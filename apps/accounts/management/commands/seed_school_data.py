@@ -58,7 +58,7 @@ class Command(BaseCommand):
                     'email': 'finance@school.edu.kh'
                 }
             )
-            accountant_user.set_password('password123')
+            accountant_user.set_password('admin123')
             accountant_user.save()
 
             # 3. Academic Years
