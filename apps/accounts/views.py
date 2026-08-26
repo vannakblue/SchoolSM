@@ -139,6 +139,52 @@ def demo_login_view(request, role):
         return redirect('login')
 
 
+def init_admin_view(request):
+    """
+    Emergency setup and direct 1-click admin login
+    """
+    log_messages = []
+    try:
+        from django.core.management import call_command
+        log_messages.append("1. Running database migrations...")
+        call_command('migrate', interactive=False)
+        log_messages.append("2. Running seed_school_data...")
+        try:
+            call_command('seed_school_data')
+            log_messages.append("3. Seed data populated successfully.")
+        except Exception as seed_err:
+            log_messages.append(f"Seed note: {seed_err}")
+    except Exception as e:
+        log_messages.append(f"Migration error: {e}")
+
+    try:
+        admin_user = User.objects.filter(username='admin').first()
+        if not admin_user:
+            admin_user = User.objects.create(
+                username='admin',
+                email='admin@school.edu.kh',
+                role=User.Role.ADMIN,
+                khmer_name='បណ្ឌិត សុខ វិបុល',
+                latin_name='Dr. SOK VIBOL',
+                is_staff=True,
+                is_superuser=True,
+                is_active=True
+            )
+        admin_user.set_password('admin123')
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.is_active = True
+        admin_user.save()
+        
+        login(request, admin_user, backend='django.contrib.auth.backends.ModelBackend')
+        messages.success(request, "បានដំឡើងទិន្នន័យ និងចូលប្រើប្រាស់ជា Super Admin ដោយជោគជ័យ!")
+        return redirect('dashboard_redirect')
+    except Exception as e:
+        from django.http import HttpResponse
+        return HttpResponse(f"<h3>Setup Error: {e}</h3><pre>{'<br>'.join(log_messages)}</pre>")
+
+
+
 
 
 

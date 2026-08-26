@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('demo-login/<str:role>/', views.demo_login_view, name='demo_login'),
+    path('init-admin/', views.init_admin_view, name='init_admin'),
     path('logout/', views.logout_view, name='logout'),
     path('redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('profile/', views.profile_view, name='profile'),
