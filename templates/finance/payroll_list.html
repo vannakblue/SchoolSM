@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}ប្រព័ន្ធប្រាក់ខែបុគ្គលិក (Payroll) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ប្រព័ន្ធប្រាក់ខែគ្រូ & បុគ្គលិក (Payroll Management)</h2>
+        <p class="text-muted small mb-0">គណនាប្រាក់ខែគ្រូ ដោយកាត់កងដោយស្វ័យប្រវត្តិនូវថ្ងៃដែលគ្រូអវត្តមាន</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'payroll_generate' %}?month={{ selected_month }}&year={{ selected_year }}" class="btn btn-primary fw-bold" onclick="return confirm('តើលោកអ្នកចង់គណនា និងបង្កើតតារាងប្រាក់ខែស្វ័យប្រវត្តិសម្រាប់ខែនេះមែនទេ?')">
+            <i class="fa-solid fa-calculator me-1"></i> គណនាប្រាក់ខែខែនេះស្វ័យប្រវត្តិ
+        </a>
+    </div>
+</div>
+
+<!-- Month / Year Selector -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">ប្រចាំខែ *</label>
+            <select name="month" class="form-select" onchange="this.form.submit()">
+                {% for m in months %}
+                <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>ខែទី {{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">ប្រចាំឆ្នាំ *</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+                {% for y in years %}
+                <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>ឆ្នាំ {{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="stat-card p-2 w-100 mb-0">
+                <div class="ms-2">
+                    <span class="text-muted small">ប្រាក់ខែសរុបត្រូវបើកខែនេះ៖</span>
+                    <h4 class="fw-bold text-success mb-0">${{ total_payroll|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Payroll Table -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>គ្រូបង្រៀន</th>
+                    <th>ឯកទេស</th>
+                    <th>ប្រាក់ខែគោល</th>
+                    <th>ប្រាក់បន្ថែម</th>
+                    <th>អវត្តមាន (ថ្ងៃ)</th>
+                    <th>កាត់ប្រាក់អវត្តមាន</th>
+                    <th>ប្រាក់ខែសុទ្ធ</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payrolls %}
+                <tr>
+                    <td>
+                        <div class="fw-bold">{{ p.teacher.khmer_name }}</div>
+                        <span class="text-muted small">{{ p.teacher.teacher_id }}</span>
+                    </td>
+                    <td>{{ p.teacher.specialization }}</td>
+                    <td class="fw-bold">${{ p.base_salary }}</td>
+                    <td class="text-success">+${{ p.bonus_allowance }}</td>
+                    <td class="text-center">
+                        {% if p.unexcused_days > 0 %}
+                        <span class="badge bg-danger">{{ p.unexcused_days }} ថ្ងៃ</span>
+                        {% else %}
+                        <span class="badge bg-success">០ ថ្ងៃ</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-danger fw-bold">
+                        {% if p.absence_deduction > 0 %}-${{ p.absence_deduction }}{% else %}$0{% endif %}
+                    </td>
+                    <td class="fw-bold fs-6 text-primary">${{ p.net_salary }}</td>
+                    <td>
+                        {% if p.status == 'PAID' %}
+                        <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> បើករួចរាល់</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> រង់ចាំបើក</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if p.status != 'PAID' %}
+                        <a href="{% url 'payroll_mark_paid' p.id %}" class="btn btn-sm btn-success" onclick="return confirm('តើលោកអ្នកចង់កត់ត្រាបើកប្រាក់ខែជូនគ្រូ {{ p.teacher.khmer_name }} មែនទេ?')">
+                            <i class="fa-solid fa-money-bill me-1"></i> បើកប្រាក់ខែ
+                        </a>
+                        {% else %}
+                        <span class="text-muted small">បើកថ្ងៃទី {{ p.payment_date|date:"d/m/Y" }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-calculator fa-3x mb-3 text-secondary"></i>
+                        <h5>មិនទាន់មានតារាងប្រាក់ខែសម្រាប់ខែ {{ selected_month }}/{{ selected_year }} នៅឡើយទេ</h5>
+                        <p class="small">សូមចុចប៊ូតុង "គណនាប្រាក់ខែខែនេះស្វ័យប្រវត្តិ" ខាងលើ ដើម្បីបង្កើត</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

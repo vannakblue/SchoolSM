@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីវិក្កយបត្រ (Invoices) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">វិក្កយបត្រទាំងអស់ (Invoices & Fee Collection)</h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងការចេញវិក្កយបត្រ បង់ប្រាក់ និងតាមដានអ្នកជំពាក់</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'invoice_create' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> ចេញវិក្កយបត្រទោល
+        </a>
+        <a href="{% url 'invoice_batch_create' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-layer-group me-1"></i> ចេញវិក្កយបត្រតាមថ្នាក់
+        </a>
+        <a href="{% url 'export_finance_excel' %}" class="btn btn-outline-success">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+    </div>
+</div>
+
+<!-- Summary Metrics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ total_billed|floatformat:2 }}</h3>
+                <p class="stat-label">តម្លៃវិក្កយបត្រចេញសរុប</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ total_collected|floatformat:2 }}</h3>
+                <p class="stat-label">ប្រមូលបានរួចរាល់</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ total_due|floatformat:2 }}</h3>
+                <p class="stat-label">នៅខ្វះជំពាក់សរុប (Due)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3">
+        <div class="col-md-6">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាមលេខវិក្កយបត្រ, ID, ឬឈ្មោះសិស្ស...">
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select">
+                <option value="">-- ស្ថានភាពទូទាត់ទាំងអស់ --</option>
+                {% for s_val, s_name in statuses %}
+                <option value="{{ s_val }}" {% if status_filter == s_val %}selected{% endif %}>{{ s_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">ចម្រាញ់</button>
+            <a href="{% url 'invoice_list' %}" class="btn btn-light">កំណត់ឡើងវិញ</a>
+        </div>
+    </form>
+</div>
+
+<!-- Invoice Table -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>លេខវិក្កយបត្រ</th>
+                    <th>សិស្ស</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th>ប្រភេទកម្រៃ</th>
+                    <th>តម្លៃត្រូវបង់</th>
+                    <th>បានបង់</th>
+                    <th>នៅសល់</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td class="fw-bold text-primary">
+                        <a href="{% url 'invoice_detail' inv.id %}" class="text-decoration-none text-primary">
+                            {{ inv.invoice_no }}
+                        </a>
+                    </td>
+                    <td>
+                        <div class="fw-bold">{{ inv.student.khmer_name }}</div>
+                        <span class="text-muted small">{{ inv.student.student_id }}</span>
+                    </td>
+                    <td><span class="badge bg-light text-dark">{{ inv.student.classroom.name|default:"-" }}</span></td>
+                    <td>{{ inv.fee_category.name }}</td>
+                    <td class="fw-bold">${{ inv.final_amount }}</td>
+                    <td class="text-success fw-bold">${{ inv.paid_amount }}</td>
+                    <td class="text-danger fw-bold">${{ inv.remaining_balance }}</td>
+                    <td>{{ inv.due_date|date:"d/m/Y" }}</td>
+                    <td>
+                        <span class="badge {% if inv.status == 'PAID' %}bg-success{% elif inv.status == 'OVERDUE' %}bg-danger{% elif inv.status == 'PARTIAL' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
+                            {{ inv.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-primary py-1">
+                            <i class="fa-solid fa-receipt me-1"></i> មើល / បង់
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-5 text-muted">រកមិនឃើញវិក្កយបត្រឡើយ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

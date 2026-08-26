@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}ការគ្រប់គ្រង Database Backup & Snapshot | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .backup-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0284c7 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 25px rgba(2, 132, 199, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card {
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.06);
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        transition: all 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    .action-panel {
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+    }
+    .snapshot-row:hover {
+        background-color: #f8fafc !important;
+    }
+    .badge-soft-success { background: #e8f7ee; color: #198754; font-weight: 600; }
+    .badge-soft-info { background: #e0f2fe; color: #0284c7; font-weight: 600; }
+    .badge-soft-primary { background: #e0e7ff; color: #4338ca; font-weight: 600; }
+    .badge-soft-warning { background: #fef3c7; color: #b45309; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard_redirect' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}" class="text-decoration-none">មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Database Backup & Snapshot</li>
+        </ol>
+    </nav>
+
+    <!-- Hero Header -->
+    <div class="backup-hero">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white mb-2" style="font-size: 0.85rem;">
+                    <i class="fa-solid fa-shield-halved text-warning"></i>
+                    <span>ប្រព័ន្ធសុវត្ថិភាពទិន្នន័យ & គ្រប់គ្រង Snapshot (Data Safety & Recovery)</span>
+                </div>
+                <h2 class="fw-bold mb-2">ការគ្រប់គ្រង Database Backup & Snapshot</h2>
+                <p class="lead mb-3 text-white-50" style="font-size: 1rem;">
+                    រក្សាទុកស្ថានភាពទិន្នន័យ (សិស្ស, គ្រូ, ពិន្ទុ, វត្តមាន...) មុនពេលតេស្ត ឬកែប្រែ Code និងអាច Restore ត្រឡប់ក្រោយវិញបានភ្លាមៗត្រឹមតែ ១ វិនាទី។
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#createSnapshotModal">
+                        <i class="fa-solid fa-camera-retro me-2"></i> បង្កើត Snapshot ឥឡូវនេះ
+                    </button>
+                    <a href="{% url 'tool_database_download_live' %}" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark">
+                        <i class="fa-solid fa-download me-2 text-primary"></i> ទាញយក Live Database
+                    </a>
+                    <button class="btn btn-outline-light px-3 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadRestoreModal">
+                        <i class="fa-solid fa-upload me-2"></i> Upload File .sqlite3
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                <div class="p-3 rounded-4 bg-white bg-opacity-10 backdrop-blur d-inline-block text-start text-white border border-white border-opacity-20">
+                    <div class="small text-white-50 mb-1"><i class="fa-solid fa-database me-1"></i> Live Database:</div>
+                    <div class="fw-bold fs-5">db.sqlite3 ({{ stats.db_size_formatted }})</div>
+                    <div class="small text-white-50 mt-1">កែប្រែចុងក្រោយ: {{ stats.last_modified|default:"បច្ចុប្បន្ន" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Safety Message -->
+    <div class="alert alert-info border-0 rounded-4 shadow-sm d-flex align-items-center mb-4 p-3 bg-opacity-10 bg-info">
+        <div class="fs-3 text-info me-3">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1 text-dark">ទិន្នន័យត្រូវបានរក្សាទុកជាអចិន្ត្រៃយ៍ ១០០% ដោយស្វ័យប្រវត្តិ</h6>
+            <div class="small text-muted">
+                រាល់ពេលកែប្រែ Code ឬ Restart Server ទិន្នន័យក្នុងប្រព័ន្ធមិនបាត់បង់ឡើយ។ លើសពីនេះ រាល់ពេលចុច <strong>Restore Snapshot</strong> ណាមួយ ប្រព័ន្ធនឹងធ្វើការ <strong>Auto Safety Backup</strong> ទិន្នន័យចាស់ទុកជាមុនដោយស្វ័យប្រវត្តិជានិច្ច!
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Database Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-primary fs-4 mb-1"><i class="fa-solid fa-user-graduate"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.students_count }}</div>
+                <div class="text-muted small">សិស្សសរុប</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-success fs-4 mb-1"><i class="fa-solid fa-chalkboard-user"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.teachers_count }}</div>
+                <div class="text-muted small">គ្រូបង្រៀន</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-warning fs-4 mb-1"><i class="fa-solid fa-school"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.classrooms_count }}</div>
+                <div class="text-muted small">ថ្នាក់រៀន</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-info fs-4 mb-1"><i class="fa-solid fa-square-poll-vertical"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.exam_scores_count }}</div>
+                <div class="text-muted small">កំណត់ត្រាពិន្ទុ</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-danger fs-4 mb-1"><i class="fa-solid fa-clipboard-user"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ stats.attendance_count }}</div>
+                <div class="text-muted small">កំណត់ត្រាវត្តមាន</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="stat-card p-3 text-center">
+                <div class="text-secondary fs-4 mb-1"><i class="fa-solid fa-box-archive"></i></div>
+                <div class="fs-4 fw-bold text-dark">{{ total_backups }}</div>
+                <div class="text-muted small">Snapshots ទាំងអស់</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snapshots Table Card -->
+    <div class="action-panel p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-1 text-dark">
+                    <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>បញ្ជី Snapshot & Backup ដែលបានរក្សាទុក ({{ total_backups }})
+                </h5>
+                <p class="text-muted small mb-0">ចុច "Restore" លើ Snapshot ណាមួយ ដើម្បីទាញទិន្នន័យក្នុងពេលនោះមកវិញភ្លាមៗ</p>
+            </div>
+            <button class="btn btn-primary fw-semibold px-3 py-2 rounded-3" data-bs-toggle="modal" data-bs-target="#createSnapshotModal">
+                <i class="fa-solid fa-plus me-1"></i> បង្កើត Snapshot ថ្មី
+            </button>
+        </div>
+
+        {% if backups %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-secondary small fw-bold">
+                        <th style="width: 50px;">#</th>
+                        <th>កាលបរិច្ឆេទ & ម៉ោង</th>
+                        <th>ចំណាំ / សម្គាល់ (Label)</th>
+                        <th>ឈ្មោះឯកសារ (Filename)</th>
+                        <th>ទំហំ</th>
+                        <th>ទិន្នន័យសង្ខេប</th>
+                        <th>បង្កើតដោយ</th>
+                        <th class="text-end" style="min-width: 180px;">សកម្មភាព (Actions)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in backups %}
+                    <tr class="snapshot-row">
+                        <td class="text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ b.created_at }}</div>
+                        </td>
+                        <td>
+                            <span class="badge badge-soft-primary px-2 py-1 rounded-pill" style="font-size: 0.85rem;">
+                                {{ b.label }}
+                            </span>
+                        </td>
+                        <td>
+                            <code class="text-muted small">{{ b.filename }}</code>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ b.size_formatted }}</span>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {% if b.students_count != '-' %}
+                                    <span class="me-2"><i class="fa-solid fa-user-graduate text-primary"></i> {{ b.students_count }}</span>
+                                    <span class="me-2"><i class="fa-solid fa-chalkboard-user text-success"></i> {{ b.teachers_count }}</span>
+                                    <span><i class="fa-solid fa-school text-warning"></i> {{ b.classrooms_count }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="text-muted small">{{ b.created_by }}</td>
+                        <td class="text-end">
+                            <!-- Restore Button -->
+                            <button class="btn btn-sm btn-outline-success fw-semibold px-2 py-1 me-1" 
+                                    onclick="confirmRestore('{{ b.filename }}', '{{ b.label|escapejs }}', '{{ b.created_at }}')">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Restore
+                            </button>
+                            <!-- Download Button -->
+                            <a href="{% url 'tool_database_backup_download' b.filename %}" class="btn btn-sm btn-outline-primary px-2 py-1 me-1" title="ទាញយកឯកសារ">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <!-- Delete Button -->
+                            <button class="btn btn-sm btn-outline-danger px-2 py-1" 
+                                    onclick="confirmDelete('{{ b.filename }}')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="display-4 text-muted opacity-25 mb-3">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h5 class="fw-bold text-secondary">មិនទាន់មាន Backup Snapshot នៅឡើយទេ</h5>
+            <p class="text-muted small mb-3">សូមចុចប៊ូតុងខាងក្រោមដើម្បីបង្កើត Snapshot ដំបូងសម្រាប់រក្សាទុកទិន្នន័យរបស់អ្នក</p>
+            <button class="btn btn-primary rounded-pill px-4 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#createSnapshotModal">
+                <i class="fa-solid fa-camera-retro me-2"></i> បង្កើត Snapshot ដំបូង
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Modal 1: Create Snapshot -->
+<div class="modal fade" id="createSnapshotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_database_backup_create' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fa-solid fa-camera-retro text-warning me-2"></i>បង្កើត Snapshot ថ្មី
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted small mb-3">
+                        ប្រព័ន្ធនឹងថតចម្លង (Snapshot) Database បច្ចុប្បន្នទាំងស្រុងដោយសុវត្ថិភាព ១០០%។ លោកអ្នកអាចដាក់ឈ្មោះចំណាំដើម្បីងាយស្រួលចំណាំពេលចង់ Restore វិញ។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ចំណាំ / សម្គាល់ (Label Note)</label>
+                        <input type="text" name="label" class="form-control form-control-lg rounded-3 fs-6" 
+                               placeholder="ឧ. មុនតេស្តប្រព័ន្ធពិន្ទុ ឬ ទិន្នន័យសិស្សដើមឆ្នាំ" autofocus>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក Snapshot
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Confirm Restore -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_database_backup_restore' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="filename" id="restoreFilenameInput">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-rotate-left me-2"></i>បញ្ជាក់ការ Restore Database
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="p-3 bg-light rounded-3 mb-3">
+                        <div class="small text-muted mb-1">អ្នកកំពុងរៀបចំ Restore ពី Snapshot៖</div>
+                        <div class="fw-bold text-dark fs-6" id="restoreModalLabel">Snapshot Name</div>
+                        <div class="small text-muted" id="restoreModalTime">2026-08-25</div>
+                    </div>
+                    <div class="alert alert-warning border-0 small mb-0 rounded-3">
+                        <i class="fa-solid fa-shield-check me-1"></i>
+                        <strong>ប្រព័ន្ធសុវត្ថិភាពស្វ័យប្រវត្តិ៖</strong> មុនពេលជំនួសទិន្នន័យ ប្រព័ន្ធនឹងធ្វើការ <strong>Auto-Backup</strong> ទិន្នន័យបច្ចុប្បន្នទុកដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-check me-1"></i> យល់ព្រម Restore ភ្លាមៗ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Upload and Restore -->
+<div class="modal fade" id="uploadRestoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_database_backup_upload_restore' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="fa-solid fa-upload me-2"></i>Upload & Restore ឯកសារ Database
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted small mb-3">
+                        ជ្រើសរើសឯកសារ Database ពីកុំព្យូទ័ររបស់អ្នក (ប្រភេទ <code>.sqlite3</code> ឬ <code>.db</code>) ដើម្បីដាក់ចូលប្រើក្នុងប្រព័ន្ធ៖
+                    </p>
+                    <div class="mb-3">
+                        <input type="file" name="db_file" class="form-control form-control-lg rounded-3 fs-6" accept=".sqlite3,.db,.sqlite" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload & Restore
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: Delete Confirmation Form (Hidden) -->
+<form id="deleteBackupForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<script>
+    function confirmRestore(filename, label, time) {
+        document.getElementById('restoreFilenameInput').value = filename;
+        document.getElementById('restoreModalLabel').innerText = label || filename;
+        document.getElementById('restoreModalTime').innerText = "កាលបរិច្ឆេទបង្កើត: " + time;
+        new bootstrap.Modal(document.getElementById('restoreModal')).show();
+    }
+
+    function confirmDelete(filename) {
+        if (confirm("តើលោកអ្នកពិតជាចង់លុប Snapshot '" + filename + "' នេះមែនទេ?")) {
+            const form = document.getElementById('deleteBackupForm');
+            form.action = "{% url 'tool_database_backup' %}delete/" + encodeURIComponent(filename) + "/";
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}

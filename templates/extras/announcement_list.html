@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}សេចក្តីជូនដំណឹងសាលា (Announcements) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-bullhorn text-primary me-2"></i>សេចក្តីជូនដំណឹង និងព្រឹត្តិការណ៍សាលា (Notice Board)
+        </h2>
+        <p class="text-muted small mb-0">ដំណឹងផ្លូវការអំពីការប្រជុំមាតាបិតា ថ្ងៃឈប់សម្រាកបុណ្យជាតិ កាលវិភាគប្រឡង និងព្រឹត្តិការណ៍ផ្សេងៗ</p>
+    </div>
+    {% if is_admin %}
+    <div class="d-flex gap-2">
+        <a href="{% url 'announcement_create' %}" class="btn btn-primary fw-bold">
+            <i class="fa-solid fa-plus me-1"></i> បង្កើតសេចក្តីជូនដំណឹងថ្មី
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-6">
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">-- ប្រភេទសេចក្តីជូនដំណឹងទាំងអស់ --</option>
+                {% for c_val, c_name in categories %}
+                <option value="{{ c_val }}" {% if selected_category == c_val %}selected{% endif %}>{{ c_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'announcement_list' %}" class="btn btn-light">កំណត់ឡើងវិញ</a>
+        </div>
+    </form>
+</div>
+
+<!-- Announcement Cards -->
+<div class="row g-4">
+    {% for ann in announcements %}
+    <div class="col-md-6 col-lg-4">
+        <div class="custom-card h-100 d-flex flex-column {% if ann.priority == 'URGENT' %}border-danger{% elif ann.priority == 'IMPORTANT' %}border-warning{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge {% if ann.category == 'HOLIDAY' %}bg-success{% elif ann.category == 'PARENT_MEETING' %}bg-primary{% elif ann.category == 'EXAM_SCHEDULE' %}bg-danger{% else %}bg-info text-dark{% endif %}">
+                    {{ ann.get_category_display }}
+                </span>
+                {% if ann.priority == 'URGENT' %}
+                <span class="badge bg-danger"><i class="fa-solid fa-bolt me-1"></i> បន្ទាន់</span>
+                {% elif ann.priority == 'IMPORTANT' %}
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-star me-1"></i> សំខាន់</span>
+                {% endif %}
+            </div>
+
+            <h5 class="fw-bold mb-2">
+                <a href="{% url 'announcement_detail' ann.id %}" class="text-dark text-decoration-none">
+                    {{ ann.title }}
+                </a>
+            </h5>
+
+            <p class="text-muted small flex-grow-1 mb-3">
+                {{ ann.content|truncatechars:140 }}
+            </p>
+
+            <div class="pt-3 border-top d-flex justify-content-between align-items-center small text-muted">
+                <div>
+                    <i class="fa-regular fa-clock me-1"></i>{{ ann.created_at|date:"d/m/Y H:i" }}
+                </div>
+                <a href="{% url 'announcement_detail' ann.id %}" class="btn btn-sm btn-outline-primary py-0">
+                    អានលម្អិត <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="fa-solid fa-bullhorn fa-3x mb-3 text-secondary"></i>
+        <h5>មិនទាន់មានសេចក្តីជូនដំណឹងផ្សាយនៅឡើយទេ</h5>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}មជ្ឈមណ្ឌលឧបករណ៍អនឡាញ (Online Tools Hub) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tools-hero {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #00b4db 100%);
+        border-radius: 20px;
+        padding: 35px 30px;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(30, 60, 114, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .tools-hero::after {
+        content: '';
+        position: absolute;
+        right: -40px;
+        bottom: -40px;
+        width: 220px;
+        height: 220px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .tool-card {
+        border: none;
+        border-radius: 16px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid rgba(0,0,0,0.06);
+        position: relative;
+        overflow: hidden;
+    }
+    .tool-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
+        border-color: rgba(30, 60, 114, 0.3);
+        color: inherit;
+    }
+    .tool-icon-box {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-bottom: 16px;
+        transition: transform 0.2s ease;
+    }
+    .tool-card:hover .tool-icon-box {
+        transform: scale(1.08);
+    }
+    .category-nav-btn {
+        border-radius: 30px;
+        padding: 8px 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid #dee2e6;
+        background: #ffffff;
+        color: #495057;
+        transition: all 0.2s ease;
+    }
+    .category-nav-btn.active, .category-nav-btn:hover {
+        background: #1e3c72;
+        color: #ffffff;
+        border-color: #1e3c72;
+        box-shadow: 0 4px 12px rgba(30, 60, 114, 0.25);
+    }
+    .badge-soft-primary { background: #e7f1ff; color: #0d6efd; }
+    .badge-soft-success { background: #e8f7ee; color: #198754; }
+    .badge-soft-warning { background: #fff8e6; color: #b78103; }
+    .badge-soft-danger { background: #fde8e8; color: #dc3545; }
+    .badge-soft-purple { background: #f3e8ff; color: #7e22ce; }
+    .badge-soft-info { background: #e0f7fa; color: #00838f; }
+
+    .quick-search-box {
+        max-width: 450px;
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        color: white;
+    }
+    .quick-search-box::placeholder {
+        color: rgba(255, 255, 255, 0.75);
+    }
+    .quick-search-box:focus {
+        background: #ffffff;
+        color: #333333;
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+    .category-header {
+        position: relative;
+        padding-left: 15px;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+    .category-header::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 5px;
+        border-radius: 4px;
+        background: #1e3c72;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <!-- Hero Banner -->
+    <div class="tools-hero">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white small mb-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-warning"></i>
+                    <span>ឧបករណ៍ឌីជីថលជំនួយការបង្រៀន & រៀន (All-in-One Educational Tools)</span>
+                </div>
+                <h1 class="display-6 fw-bold mb-2">មជ្ឈមណ្ឌលឧបករណ៍អនឡាញ (Online Tools Hub)</h1>
+                <p class="lead mb-3 text-white-50" style="font-size: 1.05rem;">
+                    ឧបករណ៍ជំនួយរហ័ស 100% ឥតគិតថ្លៃ សុវត្ថិភាពខ្ពស់ និងដំណើរការលឿនរហ័ស សម្រាប់លោកគ្រូអ្នកគ្រូ សិស្សានុសិស្ស និងរដ្ឋបាលសាលា។
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-white bg-opacity-15 text-white fw-normal"><i class="fa-solid fa-shield-halved me-1 text-info"></i> សុវត្ថិភាព ឯកសារមិនលេចធ្លាយ</span>
+                    <span class="badge bg-white bg-opacity-15 text-white fw-normal"><i class="fa-solid fa-bolt me-1 text-warning"></i> ដំណើរការភ្លាមៗ (Instant Speed)</span>
+                    <span class="badge bg-white bg-opacity-15 text-white fw-normal"><i class="fa-solid fa-mobile-screen me-1 text-success"></i> ប្រើលើទូរស័ព្ទ & កុំព្យូទ័រ</span>
+                </div>
+            </div>
+            <div class="col-lg-4 mt-4 mt-lg-0 text-lg-end">
+                <div class="position-relative d-inline-block w-100">
+                    <input type="text" id="toolSearchInput" class="form-control form-control-lg quick-search-box w-100" placeholder="🔍 ស្វែងរកឧបករណ៍... (Search Tools)" oninput="filterTools()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="d-flex flex-wrap gap-2 mb-4 pb-2 border-bottom">
+        <button class="category-nav-btn active" onclick="filterCategory('all', this)">
+            <i class="fa-solid fa-border-all me-1"></i> ឧបករណ៍ទាំងអស់ (All Tools)
+        </button>
+        <button class="category-nav-btn" onclick="filterCategory('cat-pdf', this)">
+            <i class="fa-solid fa-file-pdf me-1 text-danger"></i> ឯកសារ PDF (PDF Suite)
+        </button>
+        <button class="category-nav-btn" onclick="filterCategory('cat-image', this)">
+            <i class="fa-solid fa-image me-1 text-success"></i> កែសម្រួលរូបភាព & រូបថតកាត
+        </button>
+        <button class="category-nav-btn" onclick="filterCategory('cat-qr', this)">
+            <i class="fa-solid fa-qrcode me-1 text-primary"></i> QR Code & ស្កេន
+        </button>
+        <button class="category-nav-btn" onclick="filterCategory('cat-classroom', this)">
+            <i class="fa-solid fa-chalkboard-user me-1 text-warning"></i> ជំនួយក្នុងថ្នាក់ & គណនា
+        </button>
+        {% if user.role == 'ADMIN' or user.is_superuser %}
+        <button class="category-nav-btn" onclick="filterCategory('cat-admin', this)">
+            <i class="fa-solid fa-database me-1 text-info"></i> ទិន្នន័យ & Backup (Data Suite)
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Section 1: PDF Tools -->
+    <div class="tool-section mb-5" data-category="cat-pdf">
+        <h4 class="category-header text-dark">
+            <i class="fa-solid fa-file-pdf text-danger me-2"></i>ឧបករណ៍ចាត់ចែងឯកសារ PDF (PDF Document Tools)
+        </h4>
+        <div class="row g-4">
+            <!-- PDF Merge -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="pdf merge combine បញ្ចូល pdf ឯកសារ">
+                <a href="{% url 'tool_pdf_merge' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-danger bg-opacity-10 text-danger">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <span class="badge badge-soft-danger rounded-pill">ពេញនិយម</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">បញ្ចូល PDF (PDF Merge)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បញ្ចូលឯកសារ PDF ច្រើនចូលគ្នាជាឯកសារតែមួយ ជាមួយ Drag & Drop រៀបចំលំដាប់ទំព័របានរហ័ស។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-danger fw-semibold small">
+                        <span>បើកប្រើប្រាស់</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- PDF Split -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="pdf split extract បំបែក ទាញយកទំព័រ">
+                <a href="{% url 'tool_pdf_split' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-danger bg-opacity-10 text-danger">
+                            <i class="fa-solid fa-file-export"></i>
+                        </div>
+                        <span class="badge badge-soft-danger rounded-pill">បំបែកទំព័រ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">បំបែក PDF (PDF Split)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ជ្រើសរើសទាញយកទំព័រជាក់លាក់ ឬបំបែកឯកសារ PDF ធំៗជាកម្រងទំព័រតូចៗងាយស្រួលផ្ញើ។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-danger fw-semibold small">
+                        <span>បើកប្រើប្រាស់</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- PDF to Word & Excel -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="pdf to word excel docx xlsx បំលែង pdf">
+                <a href="{% url 'tool_pdf_to_word_excel' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fa-solid fa-file-word"></i>
+                        </div>
+                        <span class="badge badge-soft-primary rounded-pill">បំលែងឯកសារ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">PDF ទៅ Word & Excel</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ស្រង់អត្ថបទ និងតារាងពិន្ទុពីឯកសារ PDF ទៅជា Microsoft Word (.docx) និង Excel (.xlsx) អាចកែបាន។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                        <span>បើកប្រើប្រាស់</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Images to PDF -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="images to pdf រូបភាព ទៅជា pdf កិច្ចការផ្ទះ ប្រឡង">
+                <a href="{% url 'tool_images_to_pdf' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-purple bg-opacity-10 text-purple" style="background-color: #f3e8ff; color: #7e22ce;">
+                            <i class="fa-solid fa-images"></i>
+                        </div>
+                        <span class="badge badge-soft-purple rounded-pill">កិច្ចការសិស្ស</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">រូបភាពទៅជា PDF</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បំលែងរូបថតកិច្ចការផ្ទះ ឬក្រដាសប្រឡងច្រើនសន្លឹក ទៅជាឯកសារ PDF តែមួយស្អាត កំណត់ទំហំ A4។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between fw-semibold small" style="color: #7e22ce;">
+                        <span>បើកប្រើប្រាស់</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Smart Document & Paper Scanner -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="document scanner paper camscanner ស្កេន ក្រដាស ឯកសារ កាមេរ៉ា">
+                <a href="{% url 'tool_doc_scanner' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-success bg-opacity-10 text-success">
+                            <i class="fa-solid fa-file-invoice"></i>
+                        </div>
+                        <span class="badge badge-soft-success rounded-pill">CamScanner AI</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ស្កេនក្រដាស & ឯកសារ (Scanner)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ស្កេនក្រដាសផ្ទាល់តាមកាមេរ៉ាទូរស័ព្ទ លុបស្រមោល និងស្នាមជ្រីវជ្រួញលើក្រដាសចេញស្អាតដូចម៉ាស៊ីន Scanner។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-success fw-semibold small">
+                        <span>បើកស្កេន</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Image & ID Photo Tools -->
+    <div class="tool-section mb-5" data-category="cat-image">
+        <h4 class="category-header text-dark">
+            <i class="fa-solid fa-image text-success me-2"></i>ឧបករណ៍កែសម្រួលរូបភាព & រូបថតកាត (Image & ID Photo Suite)
+        </h4>
+        <div class="row g-4">
+            <!-- Studio Image Editor -->
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="image editor studio កែសម្រួល រូបភាព crop rotate draw watermark">
+                <a href="{% url 'tool_image_editor' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-success bg-opacity-10 text-success">
+                            <i class="fa-solid fa-crop-simple"></i>
+                        </div>
+                        <span class="badge badge-soft-success rounded-pill">Studio Pro</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">កម្មវិធីកែសម្រួលរូបភាព (Studio)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        កាត់ត (Crop), បង្វិល, កែពន្លឺ, គូសចំណាំកែអត្ថបទ (Pen/Shapes/Arrow) និងដាក់ត្រា Watermark សាលា។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-success fw-semibold small">
+                        <span>បើកកែសម្រួល</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Student ID Photo Maker -->
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="id photo maker រូបថតកាត 4x6 3x4 passport photo សិស្ស គ្រូ">
+                <a href="{% url 'tool_id_photo_maker' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-info bg-opacity-10 text-info">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                        <span class="badge badge-soft-info rounded-pill">កាតសិស្ស-គ្រូ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">កាត់រូបថតកាត (4x6 / 3x4 cm)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        កាត់តរូបថតកាត 4x6 & 3x4 ស្តង់ដាសាលា ដូរផ្ទៃក្រោយខៀវ/ស និងរៀបចំសន្លឹក A4 បោះពុម្ពរូបថតច្រើនសន្លឹក។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-info fw-semibold small">
+                        <span>បង្កើតរូបថតកាត</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Image Compressor -->
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="image compressor converter បង្រួមទំហំ បំលែងប្រភេទ png jpg webp">
+                <a href="{% url 'tool_image_compressor' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-secondary bg-opacity-10 text-secondary">
+                            <i class="fa-solid fa-file-zipper"></i>
+                        </div>
+                        <span class="badge bg-light text-dark rounded-pill">បង្រួមទំហំ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">បង្រួម & បំលែងប្រភេទរូបភាព</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បង្រួមទំហំរូបភាពឱ្យស្រាលស្រួល Upload និងបំលែងប្រភេទរូបភាពទៅវិញទៅមករវាង PNG, JPG, WEBP។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-secondary fw-semibold small">
+                        <span>បង្រួមទំហំ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: QR Code Suite -->
+    <div class="tool-section mb-5" data-category="cat-qr">
+        <h4 class="category-header text-dark">
+            <i class="fa-solid fa-qrcode text-primary me-2"></i>ឧបករណ៍ QR Code & ឌីជីថល (QR Code Suite)
+        </h4>
+        <div class="row g-4">
+            <!-- QR Generator -->
+            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="qr code generator បង្កើត qr link wifi vcard telegram text">
+                <a href="{% url 'tool_qr_generator' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-dark bg-opacity-10 text-dark">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <span class="badge badge-soft-warning rounded-pill">មានឡូហ្គោសាលា</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">បង្កើត QR Code គ្រប់ប្រភេទ (Advanced QR)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បង្កើត QR សម្រាប់ Link ថ្នាក់រៀន, WiFi សាលា, vCard គ្រូ, Telegram ជាមួយឡូហ្គោសាលា SM នៅចំកណ្តាល និង Frame បោះពុម្ពស្អាតៗ។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                        <span>បង្កើត QR ឥឡូវនេះ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- QR Scanner -->
+            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="qr code scanner ស្កេន qr barcode កាមេរ៉ា camera">
+                <a href="{% url 'tool_qr_scanner' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <span class="badge badge-soft-primary rounded-pill">កាមេរ៉ា & រូបភាព</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ស្កេន QR Code & Barcode</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ស្កេន QR Code និង Barcode ភ្លាមៗតាមរយៈកាមេរ៉ាទូរស័ព្ទ/កុំព្យូទ័រ ឬទាញយករូបភាពមកស្កេនបានយ៉ាងងាយស្រួល។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                        <span>បើកម៉ាស៊ីនស្កេន</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Classroom & Academic Utilities -->
+    <div class="tool-section mb-5" data-category="cat-classroom">
+        <h4 class="category-header text-dark">
+            <i class="fa-solid fa-chalkboard-user text-warning me-2"></i>ឧបករណ៍ជំនួយការបង្រៀន & រៀនក្នុងថ្នាក់ (Classroom & Academic Utilities)
+        </h4>
+        <div class="row g-4">
+            <!-- Classroom Lucky Draw & Team Splitter -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="lucky draw wheel picker ចាប់ឆ្នោត ចែកក្រុម សិស្ស team builder timer">
+                <a href="{% url 'tool_classroom_picker' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-warning bg-opacity-15 text-warning-emphasis">
+                            <i class="fa-solid fa-dharmachakra"></i>
+                        </div>
+                        <span class="badge badge-soft-warning rounded-pill">🎉 ពេញនិយមក្នុងថ្នាក់</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ចាប់ឆ្នោតសិស្ស & ចែកក្រុម</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        កង់បង្វិលចាប់ឆ្នោតឈ្មោះសិស្ស 🎉 (ទាញឈ្មោះពីថ្នាក់រៀនជាក់ស្តែង) + ចែកក្រុមរៀនស្វ័យប្រវត្តិ + នាឡិការោទិ៍ប្រឡង Fullscreen។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-warning-emphasis fw-semibold small">
+                        <span>បើកលេងក្នុងថ្នាក់</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Khmer Number Converter -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="khmer number converter លេខទៅជាអក្សរខ្មែរ ប្រាក់រៀល ដុល្លារ">
+                <a href="{% url 'tool_khmer_number_converter' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-success bg-opacity-10 text-success">
+                            <i class="fa-solid fa-money-check-dollar"></i>
+                        </div>
+                        <span class="badge badge-soft-success rounded-pill">ឯកសារផ្លូវការ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">លេខទៅជាអក្សរខ្មែរ</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បំលែងលេខពិន្ទុ និងចំនួនទឹកប្រាក់ទៅជាអក្សរខ្មែរផ្លូវការ សម្រាប់វិក្កយបត្រ បង្កាន់ដៃ និងលិខិតសរសើរ។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-success fw-semibold small">
+                        <span>បំលែងលេខ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Text Analyzer & Word Counter -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="word counter text analyzer រាប់ពាក្យ អក្សរ វិភាគអត្ថបទ">
+                <a href="{% url 'tool_text_analyzer' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-info bg-opacity-10 text-info">
+                            <i class="fa-solid fa-spell-check"></i>
+                        </div>
+                        <span class="badge badge-soft-info rounded-pill">វិភាគអត្ថបទ</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">រាប់ពាក្យ & វិភាគអត្ថបទ</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        រាប់ចំនួនពាក្យ អក្សរខ្មែរ/ឡាតាំង ជួរ បន្ទាត់ និងគណនារយៈពេលអានអត្ថបទ និងលុបចន្លោះទំនេរលើស។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-info fw-semibold small">
+                        <span>វិភាគអត្ថបទ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Voice Typing -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="voice typing speech to text វាយអត្ថបទ សំឡេង និយាយ ខ្មែរ english">
+                <a href="{% url 'tool_voice_typing' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-danger bg-opacity-10 text-danger">
+                            <i class="fa-solid fa-microphone-lines"></i>
+                        </div>
+                        <span class="badge badge-soft-danger rounded-pill">Speech to Text</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">វាយអត្ថបទតាមសំឡេង (Voice Typing)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        និយាយជាភាសាខ្មែរ និងអង់គ្លេស ដើម្បីបំលែងទៅជាអក្សរដោយស្វ័យប្រវត្តិ ស្រួលសរសេរកិច្ចការ និងមេរៀន។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-danger fw-semibold small">
+                        <span>ចាប់ផ្តើមនិយាយ</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Scientific Calculator & Unit Converter -->
+            <div class="col-xl-3 col-lg-4 col-md-6 tool-item" data-title="calculator unit converter ម៉ាស៊ីនគិតលេខ បំលែងខ្នាត គណិតវិទ្យា">
+                <a href="{% url 'tool_calculator_converter' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fa-solid fa-calculator"></i>
+                        </div>
+                        <span class="badge badge-soft-primary rounded-pill">គណិតវិទ្យា & ខ្នាត</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ម៉ាស៊ីនគិតលេខវិទ្យាសាស្ត្រ (Trig, Log, Powers) និងកម្មវិធីបំលែងខ្នាតប្រវែង ទម្ងន់ ផ្ទៃក្រឡា និងទំហំទិន្នន័យ។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                        <span>បើកគណនា</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Admin & Data Management Suite -->
+    {% if user.role == 'ADMIN' or user.is_superuser %}
+    <div class="tool-section mb-5" data-category="cat-admin">
+        <h4 class="category-header text-dark">
+            <i class="fa-solid fa-database text-info me-2"></i>ការគ្រប់គ្រងទិន្នន័យ & Backup Snapshots (Data Safety & Recovery)
+        </h4>
+        <div class="row g-4">
+            <!-- Database Backup & Snapshot Manager -->
+            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="database backup snapshot restore download sqlite data safety រក្សាទុក ទិន្នន័យ តេស្ត សុវត្ថិភាព">
+                <a href="{% url 'tool_database_backup' %}" class="tool-card p-4 border-info border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-info bg-opacity-10 text-info">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <span class="badge badge-soft-info rounded-pill">1-Click Snapshot</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ការគ្រប់គ្រង Database Backup & Snapshot</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        បង្កើត Snapshot រក្សាទុកទិន្នន័យតេស្ត ឬទិន្នន័យជាក់ស្តែងភ្លាមៗ, Download File Database ទុក និង Restore ទិន្នន័យត្រឡប់ក្រោយបានគ្រប់ពេលដោយសុវត្ថិភាពខ្ពស់។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-info fw-semibold small">
+                        <span>គ្រប់គ្រង Backup & Restore</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Direct Download Live Database -->
+            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="download database db.sqlite3 ទាញយក live data export">
+                <a href="{% url 'tool_database_download_live' %}" class="tool-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fa-solid fa-cloud-arrow-down"></i>
+                        </div>
+                        <span class="badge badge-soft-primary rounded-pill">Live Export</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">ទាញយក Live Database (db.sqlite3)</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        ចុចទាញយកឯកសារ SQLite Database ជាក់ស្តែង (Live `db.sqlite3`) មកទុកក្នុងកុំព្យូទ័ររបស់អ្នកភ្លាមៗ ដោយមិនបាច់ចូល Folder គម្រោង។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                        <span>ទាញយក Database (.sqlite3)</span>
+                        <i class="fa-solid fa-download"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function filterCategory(cat, btn) {
+        document.querySelectorAll('.category-nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const sections = document.querySelectorAll('.tool-section');
+        sections.forEach(sec => {
+            if (cat === 'all' || sec.dataset.category === cat) {
+                sec.style.display = 'block';
+            } else {
+                sec.style.display = 'none';
+            }
+        });
+    }
+
+    function filterTools() {
+        const query = document.getElementById('toolSearchInput').value.toLowerCase().trim();
+        const items = document.querySelectorAll('.tool-item');
+        
+        items.forEach(item => {
+            const title = item.dataset.title.toLowerCase();
+            const text = item.innerText.toLowerCase();
+            if (!query || title.includes(query) || text.includes(query)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Hide empty sections
+        document.querySelectorAll('.tool-section').forEach(sec => {
+            const visibleItems = sec.querySelectorAll('.tool-item[style="display: block;"], .tool-item:not([style*="display: none"])');
+            if (query && visibleItems.length === 0) {
+                sec.style.display = 'none';
+            } else {
+                sec.style.display = 'block';
+            }
+        });
+    }
+</script>
+{% endblock %}

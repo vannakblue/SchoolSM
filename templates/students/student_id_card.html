@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>កាតសម្គាល់ខ្លួនសិស្ស - {{ student.khmer_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .id-badge {
+            width: 350px;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.25);
+            border: 2px solid rgba(255,255,255,0.15);
+            position: relative;
+        }
+        .badge-header {
+            background: #ffffff;
+            color: #1e1b4b;
+            padding: 16px;
+            text-align: center;
+            border-bottom: 4px solid #f59e0b;
+        }
+        .badge-body {
+            padding: 24px 20px;
+            text-align: center;
+        }
+        .student-photo-frame {
+            width: 110px;
+            height: 125px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 3px solid #f59e0b;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .qr-mock {
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print mb-3 d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពកាត (Print ID Card)
+        </button>
+        <button onclick="window.close()" class="btn btn-secondary">បិទ (Close)</button>
+    </div>
+
+    <div class="id-badge">
+        <div class="badge-header">
+            <div class="fw-bold fs-5 d-flex align-items-center justify-content-center gap-2">
+                {% if school_info and school_info.logo %}
+                    <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 28px; width: 28px; object-fit: contain;">
+                {% else %}
+                    <i class="fa-solid fa-graduation-cap text-primary"></i>
+                {% endif %}
+                <span>{{ school_info.short_name|default:"សាលារៀន SM" }}</span>
+            </div>
+            <div class="small text-muted" style="font-size: 0.72rem; letter-spacing: 1px;">STUDENT IDENTIFICATION CARD</div>
+        </div>
+
+        <div class="badge-body">
+            <div class="student-photo-frame">
+                {% if student.photo %}
+                <img src="{{ student.photo.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ student.khmer_name }}">
+                {% else %}
+                <i class="fa-solid fa-user fa-3x text-secondary"></i>
+                {% endif %}
+            </div>
+
+            <h4 class="fw-bold text-white mb-0">{{ student.khmer_name }}</h4>
+            <div class="text-warning fw-bold mb-3 small">{{ student.latin_name }}</div>
+
+            <div class="bg-dark bg-opacity-50 p-2 rounded-3 text-start small mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">កូដសិស្ស (ID):</span>
+                    <strong class="text-warning">{{ student.student_id }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">ថ្នាក់រៀន (Class):</span>
+                    <strong>{{ student.classroom.name|default:"-" }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-white-50">ឆ្នាំសិក្សា (Year):</span>
+                    <strong>{{ student.academic_year.name|default:"2025-2026" }}</strong>
+                </div>
+            </div>
+
+            <div class="qr-mock">
+                <i class="fa-solid fa-qrcode fa-3x text-dark"></i>
+            </div>
+            <div style="font-size: 0.65rem;" class="text-white-50 mt-1">Official Student ID • {{ school_info.short_name|default:"SchoolSM" }} ({{ school_info.school_code }})</div>
+        </div>
+    </div>
+</body>
+</html>

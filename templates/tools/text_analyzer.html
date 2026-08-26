@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}រាប់ពាក្យ & វិភាគអត្ថបទ (Word Counter & Text Analyzer) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card-box {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1e3c72;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .text-editor-textarea {
+        font-size: 1.05rem;
+        line-height: 1.8;
+        border-radius: 16px;
+        padding: 20px;
+        font-family: 'Kantumruy Pro', 'Inter', sans-serif;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Text Analyzer</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-spell-check text-info me-2"></i>រាប់ពាក្យ & វិភាគអត្ថបទ (Word Counter & Text Analyzer)
+            </h2>
+            <p class="text-muted small mb-0">រាប់ចំនួនពាក្យ អក្សរខ្មែរ/ឡាតាំង ជួរ បន្ទាត់ គណនារយៈពេលអានអត្ថបទ និងឧបករណ៍កែសម្រួលអត្ថបទរហ័ស។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Quick Stats Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box">
+                <div class="stat-number" id="statWords">0</div>
+                <div class="stat-label">ពាក្យ (Words)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box">
+                <div class="stat-number" id="statCharsWithSpace">0</div>
+                <div class="stat-label">តួអក្សរ (Chars)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box">
+                <div class="stat-number" id="statCharsNoSpace">0</div>
+                <div class="stat-label">អក្សរឥតចន្លោះ</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box">
+                <div class="stat-number" id="statSentences">0</div>
+                <div class="stat-label">ប្រយោគ (Sentences)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box">
+                <div class="stat-number" id="statParagraphs">0</div>
+                <div class="stat-label">កថាខណ្ឌ (Paragraphs)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+            <div class="stat-card-box bg-primary bg-opacity-10 border-primary">
+                <div class="stat-number text-primary" id="statReadTime">0 នាទី</div>
+                <div class="stat-label text-primary">ពេលអាន (Reading)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Text Input Workspace -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                    <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-align-left text-primary me-2"></i>ផ្ទាំងសរសេរ ឬបិទភ្ជាប់អត្ថបទ (Text Input)</h6>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="copyText()">
+                            <i class="fa-regular fa-copy me-1"></i> ចម្លង
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm text-danger rounded-pill" onclick="clearText()">
+                            <i class="fa-solid fa-trash-can me-1"></i> សម្អាត
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="mainTextArea" class="form-control text-editor-textarea" rows="14" placeholder="វាយបញ្ចូល ឬបិទភ្ជាប់ (Paste) អត្ថបទមេរៀន សំណេរតែងសេចក្តី ឬសេចក្តីជូនដំណឹងទីនេះ..." oninput="analyzeText()" autofocus></textarea>
+            </div>
+        </div>
+
+        <!-- Quick Utilities Panel -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-info me-2"></i>ឧបករណ៍កែសម្រួលអត្ថបទ
+                </h5>
+
+                <div class="d-grid gap-2 mb-4">
+                    <button type="button" class="btn btn-outline-secondary text-start rounded-3" onclick="cleanExtraSpaces()">
+                        <i class="fa-solid fa-broom me-2 text-primary"></i> លុបចន្លោះទំនេរលើស (Clean Spaces)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary text-start rounded-3" onclick="cleanEmptyLines()">
+                        <i class="fa-solid fa-align-justify me-2 text-primary"></i> លុបបន្ទាត់ទទេ (Remove Empty Lines)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary text-start rounded-3" onclick="convertCase('upper')">
+                        <i class="fa-solid fa-font me-2 text-success"></i> អក្សរធំទាំងអស់ (UPPERCASE)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary text-start rounded-3" onclick="convertCase('lower')">
+                        <i class="fa-solid fa-font-awesome me-2 text-success"></i> អក្សរតូចទាំងអស់ (lowercase)
+                    </button>
+                </div>
+
+                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-chart-pie text-warning me-2"></i>ស្ថិតិភាសា (Language Ratio)</h6>
+                <div class="p-3 bg-light rounded-3">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>អក្សរខ្មែរ (Khmer):</span>
+                        <strong class="text-primary" id="khmerCharCount">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>អក្សរឡាតាំង (Latin):</span>
+                        <strong class="text-dark" id="latinCharCount">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>លេខ & និមិត្តសញ្ញា:</span>
+                        <strong class="text-secondary" id="numSymbolCount">0</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function analyzeText() {
+        const text = document.getElementById('mainTextArea').value;
+
+        // Characters with space
+        const charsWithSpace = text.length;
+        // Characters without space
+        const charsNoSpace = text.replace(/\s/g, '').length;
+
+        // Words
+        const wordsArr = text.trim().split(/\s+/).filter(w => w.length > 0);
+        const wordsCount = text.trim() === '' ? 0 : wordsArr.length;
+
+        // Sentences (splitting by ?, !, ., or Khmer ៕ (Khan))
+        const sentencesArr = text.split(/[.?!៕]/).filter(s => s.trim().length > 0);
+        const sentencesCount = sentencesArr.length;
+
+        // Paragraphs
+        const paragraphsArr = text.split(/\n+/).filter(p => p.trim().length > 0);
+        const paragraphsCount = paragraphsArr.length;
+
+        // Estimated reading time (~200 words per minute for English, ~150 for Khmer)
+        const readingMinutes = Math.ceil(wordsCount / 180);
+        const readTimeStr = wordsCount > 0 ? (readingMinutes <= 1 ? '១ នាទី' : `${readingMinutes} នាទី`) : '0 នាទី';
+
+        // Language breakdown
+        let khmerCount = 0;
+        let latinCount = 0;
+        let numSymbolCount = 0;
+
+        for (let ch of text) {
+            const code = ch.charCodeAt(0);
+            if (code >= 0x1780 && code <= 0x17FF) {
+                khmerCount++;
+            } else if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+                latinCount++;
+            } else if (!/\s/.test(ch)) {
+                numSymbolCount++;
+            }
+        }
+
+        // Update UI
+        document.getElementById('statWords').innerText = wordsCount.toLocaleString('en-US');
+        document.getElementById('statCharsWithSpace').innerText = charsWithSpace.toLocaleString('en-US');
+        document.getElementById('statCharsNoSpace').innerText = charsNoSpace.toLocaleString('en-US');
+        document.getElementById('statSentences').innerText = sentencesCount.toLocaleString('en-US');
+        document.getElementById('statParagraphs').innerText = paragraphsCount.toLocaleString('en-US');
+        document.getElementById('statReadTime').innerText = readTimeStr;
+
+        document.getElementById('khmerCharCount').innerText = khmerCount.toLocaleString('en-US');
+        document.getElementById('latinCharCount').innerText = latinCount.toLocaleString('en-US');
+        document.getElementById('numSymbolCount').innerText = numSymbolCount.toLocaleString('en-US');
+    }
+
+    function cleanExtraSpaces() {
+        const area = document.getElementById('mainTextArea');
+        area.value = area.value.replace(/[ \t]+/g, ' ').replace(/^ +| +$/gm, '');
+        analyzeText();
+    }
+
+    function cleanEmptyLines() {
+        const area = document.getElementById('mainTextArea');
+        area.value = area.value.split('\n').filter(line => line.trim() !== '').join('\n');
+        analyzeText();
+    }
+
+    function convertCase(mode) {
+        const area = document.getElementById('mainTextArea');
+        if (mode === 'upper') area.value = area.value.toUpperCase();
+        else if (mode === 'lower') area.value = area.value.toLowerCase();
+        analyzeText();
+    }
+
+    function clearText() {
+        document.getElementById('mainTextArea').value = '';
+        analyzeText();
+    }
+
+    function copyText() {
+        const text = document.getElementById('mainTextArea').value;
+        navigator.clipboard.writeText(text).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'បានចម្លងអត្ថបទរួចរាល់!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+</script>
+{% endblock %}

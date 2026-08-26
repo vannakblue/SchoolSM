@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ announcement.title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <a href="{% url 'announcement_list' %}" class="btn btn-sm btn-light mb-2">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅផ្ទាំងដំណឹង
+        </a>
+    </div>
+    <button onclick="window.print()" class="btn btn-outline-dark btn-sm">
+        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព
+    </button>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="custom-card p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-3">
+                <div>
+                    <span class="badge {% if announcement.category == 'HOLIDAY' %}bg-success{% elif announcement.category == 'PARENT_MEETING' %}bg-primary{% elif announcement.category == 'EXAM_SCHEDULE' %}bg-danger{% else %}bg-info text-dark{% endif %} mb-2">
+                        {{ announcement.get_category_display }}
+                    </span>
+                    <h3 class="fw-bold mb-2">{{ announcement.title }}</h3>
+                    <div class="text-muted small">
+                        <i class="fa-regular fa-clock me-1"></i> ផ្សាយថ្ងៃទី៖ {{ announcement.created_at|date:"d/m/Y H:i" }} | 
+                        <i class="fa-solid fa-users me-1 ms-2"></i> ជូនចំពោះ៖ <strong>{{ announcement.get_target_audience_display }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="py-3 fs-6" style="line-height: 1.8; white-space: pre-line;">
+                {{ announcement.content }}
+            </div>
+
+            {% if announcement.attachment %}
+            <div class="mt-4 p-3 bg-light rounded-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-paperclip text-primary fs-4"></i>
+                    <div>
+                        <strong>ឯកសារភ្ជាប់ផ្លូវការ</strong>
+                        <div class="text-muted small">{{ announcement.attachment.name }}</div>
+                    </div>
+                </div>
+                <a href="{{ announcement.attachment.url }}" target="_blank" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-download me-1"></i> ទាញយក
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="mt-5 pt-3 border-top text-end text-muted small">
+                ចេញផ្សាយដោយ៖ <strong>{{ announcement.created_by.display_name|default:announcement.created_by.username }}</strong> (រដ្ឋបាលសាលា)
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

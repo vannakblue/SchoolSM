@@ -1,0 +1,1063 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}គ្រប់គ្រងប្រព័ន្ធវត្តមាន & Telegram Automation (Attendance Admin Hub) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hub-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 1.25rem;
+        color: white;
+        padding: 2.25rem 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .hub-header::after {
+        content: '';
+        position: absolute;
+        top: -40%;
+        right: -10%;
+        width: 380px;
+        height: 380px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .nav-pills-custom .nav-link {
+        color: #64748b;
+        font-weight: 700;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.85rem;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid transparent;
+    }
+    .nav-pills-custom .nav-link:hover {
+        color: #1e293b;
+        background: #f1f5f9;
+    }
+    .nav-pills-custom .nav-link.active {
+        color: #ffffff;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .card-settings {
+        border-radius: 1.25rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        background: #ffffff;
+    }
+    .badge-status-pill {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-weight: 700;
+    }
+    .schedule-day-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        padding: 1rem;
+        background: #f8fafc;
+        transition: border-color 0.2s;
+    }
+    .schedule-day-card:hover {
+        border-color: #93c5fd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-md-4">
+    <!-- Hub Header Banner -->
+    <div class="hub-header mb-4 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 bg-primary bg-opacity-25 rounded-pill text-info small fw-bold mb-2">
+                    <i class="fa-solid fa-sliders"></i> មជ្ឈមណ្ឌលគ្រប់គ្រងប្រព័ន្ធវត្តមាន & Telegram
+                </div>
+                <h2 class="fw-bold text-white mb-1">
+                    <i class="fa-solid fa-network-wired me-2 text-primary"></i> Attendance & Telegram Automation Hub
+                </h2>
+                <p class="text-light text-opacity-75 mb-0 small">
+                    កំណត់ Deadline ស្រង់វត្តមាន, ប្រតិទិនវិស្សមកាល & ថ្ងៃឈប់សម្រាក, បិទថែទាំប្រព័ន្ធ, Telegram Chat ID តាមថ្នាក់ និងស្វ័យប្រវត្តិកម្មរបាយការណ៍ប្រចាំថ្ងៃ
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'student_attendance_grid' %}" class="btn btn-outline-light fw-bold btn-sm px-3">
+                    <i class="fa-solid fa-clipboard-user me-1"></i> ស្រង់វត្តមានសិស្ស
+                </a>
+                <a href="{% url 'teacher_attendance_report' %}" class="btn btn-outline-info fw-bold btn-sm px-3">
+                    <i class="fa-solid fa-chart-pie me-1"></i> របាយការណ៍វត្តមានគ្រូ
+                </a>
+                <a href="{% url 'teacher_leave_list' %}" class="btn btn-light text-dark fw-bold btn-sm px-3">
+                    <i class="fa-solid fa-envelope-open-text me-1"></i> ច្បាប់គ្រូ
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hub Navigation Tabs -->
+    <ul class="nav nav-pills nav-pills-custom gap-2 mb-4 bg-white p-2 rounded-4 shadow-sm border" id="hubTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-rules" data-bs-toggle="pill" data-bs-target="#content-rules" type="button" role="tab">
+                <i class="fa-solid fa-clock"></i> ១. Deadline & កាលវិភាគ Telegram
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-chatids" data-bs-toggle="pill" data-bs-target="#content-chatids" type="button" role="tab">
+                <i class="fa-brands fa-telegram"></i> ២. Telegram Chat ID តាមថ្នាក់
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-calendar" data-bs-toggle="pill" data-bs-target="#content-calendar" type="button" role="tab">
+                <i class="fa-solid fa-umbrella-beach"></i> ៣. វិស្សមកាល & ថ្ងៃបុណ្យ
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-maintenance" data-bs-toggle="pill" data-bs-target="#content-maintenance" type="button" role="tab">
+                <i class="fa-solid fa-screwdriver-wrench"></i> ៤. បិទប្រព័ន្ធថែទាំ (Maintenance)
+                {% if att_settings.is_maintenance_mode %}
+                <span class="badge bg-danger ms-1">ON</span>
+                {% endif %}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-leaves" data-bs-toggle="pill" data-bs-target="#content-leaves" type="button" role="tab">
+                <i class="fa-solid fa-user-clock"></i> ៥. ពាក្យសុំច្បាប់គ្រូ (Leave)
+                {% if leave_requests.count > 0 %}
+                <span class="badge bg-primary ms-1">{{ leave_requests.count }}</span>
+                {% endif %}
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="hubTabContent">
+        
+        <!-- =================================================================== -->
+        <!-- TAB 1: ATTENDANCE RULES & TELEGRAM AUTOMATION SCHEDULE               -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade show active" id="content-rules" role="tabpanel">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_rules">
+                <input type="hidden" name="submission_grace_minutes" id="hiddenSubmissionGrace" value="{{ att_settings.submission_grace_minutes }}">
+
+                <div class="row g-4">
+                    <!-- 1. Full-Width Card: 8 Periods Attendance Deadline (Grace Window) -->
+                    <div class="col-12">
+                        <div class="card card-settings p-4">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h5 class="fw-bold text-dark mb-0">
+                                            <i class="fa-solid fa-stopwatch text-primary me-2"></i> កំណត់ Deadline ស្រង់វត្តមាន (Grace Window) គ្រប់ម៉ោងបង្រៀន (១ ដល់ ៨)
+                                        </h5>
+                                        <span class="badge bg-primary-subtle text-primary fw-bold">៨ ម៉ោង / ២ វេន</span>
+                                    </div>
+                                    <p class="text-muted small mb-0">
+                                        កំណត់រយៈពេលគិតជានាទីបន្ទាប់ពីចូលបង្រៀន សម្រាប់ម៉ោងនីមួយៗ (ម៉ោងទី ១ ដល់ ម៉ោងទី ៨) ដែលអនុញ្ញាតឱ្យលោកគ្រូ-អ្នកគ្រូអាចចុះ ឬកែសម្រួលវត្តមានសិស្សបានច្រើនដង។ បន្ទាប់ពីផុតកំណត់នេះ គ្រូអាចចុះបានតែម្តងប៉ុណ្ណោះ (Grace 1-time)។
+                                    </p>
+                                </div>
+
+                                <!-- Quick Fill Toolbar -->
+                                <div class="d-flex flex-wrap align-items-center gap-2 p-2 bg-light rounded-3 border">
+                                    <span class="small fw-bold text-secondary me-1">
+                                        <i class="fa-solid fa-bolt text-warning me-1"></i> កំណត់គ្រប់ម៉ោងរហ័ស (Quick Fill)៖
+                                    </span>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyGlobalGrace(20)">20 នាទី</button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyGlobalGrace(25)">25 នាទី</button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyGlobalGrace(30)">30 នាទី</button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyGlobalGrace(35)">35 នាទី</button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyGlobalGrace(40)">40 នាទី</button>
+                                    </div>
+                                    <div class="input-group input-group-sm" style="width: 140px;">
+                                        <input type="number" id="bulkGraceInput" class="form-control text-center font-monospace" placeholder="នាទី" min="5" max="60">
+                                        <button type="button" class="btn btn-primary fw-bold" onclick="applyCustomBulkGrace()" title="អនុវត្តគ្រប់ម៉ោង">
+                                            <i class="fa-solid fa-check"></i> ដាក់
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="quickFillFeedback" class="alert alert-success py-2 px-3 small d-none mb-3"></div>
+
+                            <!-- 8 Periods Divided into 2 Sessions (Morning & Afternoon) -->
+                            <div class="row g-4 pt-2">
+                                <!-- Morning Session: Periods 1 to 4 -->
+                                <div class="col-lg-6">
+                                    <div class="p-3 rounded-4 border border-warning-subtle h-100" style="background-color: #fffdf5;">
+                                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-warning border-opacity-25">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="p-2 rounded-3 bg-warning bg-opacity-25 text-warning-emphasis">
+                                                    <i class="fa-solid fa-sun fa-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold text-dark mb-0">🌅 វេនពេលព្រឹក (Morning Session)</h6>
+                                                    <small class="text-muted">ម៉ោងទី ១ ដល់ ម៉ោងទី ៤ (07:00 - 11:00)</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-warning text-dark fw-bold">៤ ម៉ោង</span>
+                                        </div>
+
+                                        <div class="d-flex flex-column gap-2">
+                                            {% for p in periods_info %}
+                                            {% if p.session == 'MORNING' %}
+                                            <div class="schedule-day-card d-flex justify-content-between align-items-center bg-white shadow-xs flex-wrap gap-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="badge bg-primary text-white px-2.5 py-1.5 font-monospace fw-bold" style="font-size: 0.85rem;">
+                                                        P{{ p.num }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold text-dark small">{{ p.name_kh }}</div>
+                                                        <div class="text-muted font-monospace" style="font-size: 0.75rem;">
+                                                            <i class="fa-regular fa-clock me-1"></i>{{ p.time }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="input-group input-group-sm" style="width: 125px;" title="Deadline កែប្រែវត្តមាន (នាទី)">
+                                                        <input type="number" name="period_grace_{{ p.num }}" 
+                                                               id="period_grace_{{ p.num }}"
+                                                               class="form-control fw-bold text-primary font-monospace text-center period-grace-input" 
+                                                               value="{{ p.grace_mins }}" min="5" max="60" required>
+                                                        <span class="input-group-text fw-bold small text-muted">នាទី</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm" style="width: 135px;" title="Deadline ម៉ោងផ្ញើ Telegram ស្វ័យប្រវត្ត">
+                                                        <span class="input-group-text bg-light text-primary"><i class="fa-solid fa-paper-plane"></i></span>
+                                                        <input type="time" name="period_dispatch_time_{{ p.num }}" 
+                                                               id="period_dispatch_time_{{ p.num }}"
+                                                               class="form-control fw-bold text-primary font-monospace text-center" 
+                                                               value="{{ p.dispatch_time }}" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Afternoon Session: Periods 5 to 8 -->
+                                <div class="col-lg-6">
+                                    <div class="p-3 rounded-4 border border-info-subtle h-100" style="background-color: #f0f9ff;">
+                                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-info border-opacity-25">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="p-2 rounded-3 bg-info bg-opacity-25 text-info-emphasis">
+                                                    <i class="fa-solid fa-cloud-sun fa-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold text-dark mb-0">🌇 វេនពេលរសៀល (Afternoon Session)</h6>
+                                                    <small class="text-muted">ម៉ោងទី ៥ ដល់ ម៉ោងទី ៨ (13:00 - 17:00)</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-info text-white fw-bold">៤ ម៉ោង</span>
+                                        </div>
+
+                                        <div class="d-flex flex-column gap-2">
+                                            {% for p in periods_info %}
+                                            {% if p.session == 'AFTERNOON' %}
+                                            <div class="schedule-day-card d-flex justify-content-between align-items-center bg-white shadow-xs flex-wrap gap-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="badge text-white px-2.5 py-1.5 font-monospace fw-bold" style="background-color: #6366f1; font-size: 0.85rem;">
+                                                        P{{ p.num }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-bold text-dark small">{{ p.name_kh }}</div>
+                                                        <div class="text-muted font-monospace" style="font-size: 0.75rem;">
+                                                            <i class="fa-regular fa-clock me-1"></i>{{ p.time }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="input-group input-group-sm" style="width: 125px;" title="Deadline កែប្រែវត្តមាន (នាទី)">
+                                                        <input type="number" name="period_grace_{{ p.num }}" 
+                                                               id="period_grace_{{ p.num }}"
+                                                               class="form-control fw-bold text-primary font-monospace text-center period-grace-input" 
+                                                               value="{{ p.grace_mins }}" min="5" max="60" required>
+                                                        <span class="input-group-text fw-bold small text-muted">នាទី</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm" style="width: 135px;" title="Deadline ម៉ោងផ្ញើ Telegram ស្វ័យប្រវត្ត">
+                                                        <span class="input-group-text bg-light text-primary"><i class="fa-solid fa-paper-plane"></i></span>
+                                                        <input type="time" name="period_dispatch_time_{{ p.num }}" 
+                                                               id="period_dispatch_time_{{ p.num }}"
+                                                               class="form-control fw-bold text-primary font-monospace text-center" 
+                                                               value="{{ p.dispatch_time }}" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 1: Hourly Absence Dispatch Channels & Automation -->
+                    <div class="col-lg-6">
+                        <div class="card card-settings p-4 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-paper-plane text-primary me-2"></i> ប្រព័ន្ធផ្ញើបញ្ជីអវត្តមានស្វ័យប្រវត្តិតាមម៉ោង (Hourly Dispatch)
+                                </h5>
+                                <span class="badge bg-success-subtle text-success fw-bold">
+                                    <i class="fa-solid fa-bolt me-1"></i> ស្វ័យប្រវត្តិ
+                                </span>
+                            </div>
+                            <p class="text-muted small mb-3">
+                                បាញ់បញ្ជីឈ្មោះសិស្សដែលអវត្តមានរៀងរាល់ម៉ោងសិក្សា ទៅកាន់គ្រប់គោលដៅដែលបានកំណត់ (តម្រៀបតាមអក្ខរក្រម និងតាមលំដាប់ថ្នាក់ ៧ ដល់ ១២)៖
+                            </p>
+
+                            <div class="p-3 bg-light rounded-4 border mb-3">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" name="hourly_dispatch_enabled" id="hourlyDispatchCheck" {% if att_settings.hourly_dispatch_enabled %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold text-dark" for="hourlyDispatchCheck">
+                                        បើកដំណើរការផ្ញើបញ្ជីអវត្តមានតាមម៉ោង (Enable Hourly Absence Auto-Dispatch)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2 ms-3">
+                                    <input class="form-check-input" type="checkbox" name="dispatch_to_guardians" id="guardiansCheck" {% if att_settings.dispatch_to_guardians %}checked{% endif %}>
+                                    <label class="form-check-label small text-dark fw-bold" for="guardiansCheck">
+                                        👨‍👩‍👧 ផ្ញើទៅកាន់អាណាព្យាបាលផ្ទាល់ (Direct Guardian Telegram)
+                                    </label>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">បាញ់សារជូនដំណឹងផ្ទាល់ទៅ telegram_chat_id របស់អាណាព្យាបាលសិស្សអវត្តមាន។</div>
+                                </div>
+                                <div class="form-check mb-2 ms-3">
+                                    <input class="form-check-input" type="checkbox" name="dispatch_to_homeroom" id="homeroomCheck" {% if att_settings.dispatch_to_homeroom %}checked{% endif %}>
+                                    <label class="form-check-label small text-dark fw-bold" for="homeroomCheck">
+                                        👨‍🏫 ផ្ញើទៅគ្រូបន្ទុកថ្នាក់ & Telegram Group ថ្នាក់ (Homeroom Teachers & Class Groups)
+                                    </label>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">បញ្ជីឈ្មោះសិស្សអវត្តមានតម្រៀបតាមអក្ខរក្រមខ្មែរយ៉ាងច្បាស់លាស់។</div>
+                                </div>
+                                <div class="form-check ms-3">
+                                    <input class="form-check-input" type="checkbox" name="dispatch_to_management" id="mgmtCheck" {% if att_settings.dispatch_to_management %}checked{% endif %}>
+                                    <label class="form-check-label small text-dark fw-bold" for="mgmtCheck">
+                                        🏛️ ផ្ញើទៅ Group គណៈគ្រប់គ្រងសាលា (School Management Group)
+                                    </label>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">របាយការណ៍រួមទូទាំងសាលាតម្រៀបតាមលំដាប់ថ្នាក់ពីកម្រិត ៧ ដល់ ១២ (7A, 7B, 8A... 12A)។</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">Group Telegram ផ្សេងៗទៀតតាមការកំណត់ (Custom Group Chat IDs)៖</label>
+                                <input type="text" name="custom_dispatch_groups" class="form-control font-monospace" 
+                                       value="{{ att_settings.custom_dispatch_groups|default:'' }}" 
+                                       placeholder="ឧ. -100111222333, -100444555666">
+                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                                    * អាចដាក់ Chat ID ច្រើនដោយខណ្ឌដោយសញ្ញាក្បៀស (<code>,</code>) សម្រាប់ Group វិន័យ ឬ Group គណៈកម្មការផ្សេងៗ។
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Management Telegram & Daily Digest Schedule -->
+                    <div class="col-lg-6">
+                        <div class="card card-settings p-4 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-users-gear text-primary me-2"></i> Telegram Group គណៈគ្រប់គ្រង & កាលវិភាគប្រចាំថ្ងៃ
+                                </h5>
+                                <span class="badge bg-info-subtle text-info fw-bold">
+                                    <i class="fa-solid fa-layer-group me-1"></i> Management Group
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">Management Telegram Chat ID (ទទួលរបាយការណ៍សង្ខេប & គ្រូខកខាន)៖</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-brands fa-telegram text-info"></i></span>
+                                    <input type="text" name="management_chat_id" class="form-control font-monospace" 
+                                           value="{{ att_settings.management_chat_id|default:'' }}" 
+                                           placeholder="ឧ. -1001234567890, -1009876543210 ឬ @school_channel">
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" name="auto_daily_dispatch_enabled" id="autoDispatchCheck" {% if att_settings.auto_daily_dispatch_enabled %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold small text-dark" for="autoDispatchCheck">
+                                        បើកដំណើរការផ្ញើរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ (Auto Daily Summary)
+                                    </label>
+                                </div>
+                                <div class="d-flex gap-3 ms-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="auto_send_student_summary" id="autoStuCheck" {% if att_settings.auto_send_student_summary %}checked{% endif %}>
+                                        <label class="form-check-label small text-muted" for="autoStuCheck">សង្ខេបសិស្ស</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="auto_send_teacher_summary" id="autoTeachCheck" {% if att_settings.auto_send_teacher_summary %}checked{% endif %}>
+                                        <label class="form-check-label small text-muted" for="autoTeachCheck">សង្ខេបវត្តមានគ្រូ</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column gap-2 mb-3">
+                                {% for day in weekdays_info %}
+                                <div class="schedule-day-card d-flex justify-content-between align-items-center py-1.5 px-3">
+                                    <span class="fw-bold text-dark small">{{ day.name_kh }}</span>
+                                    <input type="time" name="schedule_day_{{ day.idx }}" class="form-control form-control-sm fw-bold text-primary font-monospace" 
+                                           style="width: 120px;" value="{{ day.time|default:'' }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                                <button type="submit" class="btn btn-primary fw-bold px-4 py-2">
+                                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ទាំងអស់
+                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-primary fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchHourlyModal">
+                                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើតាមម៉ោងឥឡូវនេះ
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchNowModal">
+                                        <i class="fa-solid fa-chart-pie me-1"></i> សង្ខេបប្រចាំថ្ងៃ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: CLASSROOM TELEGRAM CHAT IDS TABLE                            -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="content-chatids" role="tabpanel">
+            <div class="card card-settings p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h5 class="fw-bold text-dark mb-0">
+                                <i class="fa-brands fa-telegram text-info me-2"></i> កំណត់ Telegram Group/Chat ID តាមថ្នាក់នីមួយៗ
+                            </h5>
+                            <span class="badge bg-info-subtle text-info fw-bold">អាចដាក់ច្រើន Chat ID</span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            បំពេញ Telegram Chat ID (ឧ. <code>-1001234567890, -1009876543210</code>) សម្រាប់ថ្នាក់រៀននីមួយៗ (អាចដាក់ច្រើន Chat ID ដោយខណ្ឌដោយសញ្ញាក្បៀស <code>,</code>) ដើម្បីអាចបាញ់របាយការណ៍អវត្តមានសិស្សប្រចាំម៉ោង/ថ្ងៃ ទៅកាន់គ្រប់ Group Telegram របស់ថ្នាក់នោះ។
+                        </p>
+                    </div>
+                    <div>
+                        <button type="submit" form="classChatIdsForm" class="btn btn-primary fw-bold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក Chat ID ទាំងអស់
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" id="classChatIdsForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="save_class_chat_ids">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 80px;">កូដ</th>
+                                    <th>ឈ្មោះថ្នាក់រៀន</th>
+                                    <th>កម្រិតថ្នាក់</th>
+                                    <th>គ្រូបន្ទុកថ្នាក់</th>
+                                    <th>ចំនួនសិស្ស</th>
+                                    <th style="width: 340px;">Telegram Group/Chat ID (ខណ្ឌដោយសញ្ញាក្បៀស)</th>
+                                    <th class="text-center" style="width: 130px;">សកម្មភាព</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cls in classrooms %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ cls.code }}</td>
+                                    <td class="fw-bold text-dark">{{ cls.name }}</td>
+                                    <td><span class="badge bg-light text-dark border">ថ្នាក់ទី {{ cls.grade_level }}</span></td>
+                                    <td>
+                                        {% if cls.homeroom_teacher %}
+                                        <div class="small fw-bold text-dark">{{ cls.homeroom_teacher.khmer_name }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">{{ cls.homeroom_teacher.phone }}</div>
+                                        {% else %}
+                                        <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary">{{ cls.total_students }} នាក់</span></td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="fa-brands fa-telegram text-info"></i></span>
+                                            <input type="text" name="chat_id_class_{{ cls.id }}" class="form-control font-monospace" 
+                                                   value="{{ cls.telegram_chat_id|default:'' }}" 
+                                                   placeholder="ឧ. -100xxx, -100yyy">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                onclick="openTestClassTelegramModal('{{ cls.id }}', '{{ cls.name|escapejs }}', '{{ cls.telegram_chat_id|default:''|escapejs }}')"
+                                                title="ផ្ញើវត្តមានសាកល្បង">
+                                            <i class="fa-solid fa-paper-plane"></i> ផ្ញើ
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">ពុំទាន់មានថ្នាក់រៀនសម្រាប់ឆ្នាំសិក្សានេះនៅឡើយទេ។</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: VACATIONS & PUBLIC HOLIDAYS RESTRICTIONS                     -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="content-calendar" role="tabpanel">
+            <div class="card card-settings p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">
+                            <i class="fa-solid fa-umbrella-beach text-warning me-2"></i> ប្រតិទិនវិស្សមកាល & ថ្ងៃបុណ្យឈប់សម្រាក (Academic Restrictions)
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            កាលបរិច្ឆេទដែលបានចុះបញ្ជីនៅទីនេះ នឹងត្រូវចាក់សោស្វ័យប្រវត្តិមិនឱ្យលោកគ្រូ-អ្នកគ្រូចុះវត្តមានសិស្សបានឡើយ។
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-warning fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#addRestrictionModal">
+                        <i class="fa-solid fa-plus me-1"></i> បន្ថែមថ្ងៃឈប់សម្រាក/វិស្សមកាល
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ប្រភេទ</th>
+                                <th>ឈ្មោះកម្មវិធី/មូលហេតុ</th>
+                                <th>កាលបរិច្ឆេទចាប់ផ្តើម</th>
+                                <th>កាលបរិច្ឆេទបញ្ចប់</th>
+                                <th>រយៈពេល</th>
+                                <th>ចាក់សោវត្តមាន</th>
+                                <th>ស្ថានភាព</th>
+                                <th class="text-end">សកម្មភាព</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in restrictions %}
+                            <tr>
+                                <td>
+                                    {% if r.restriction_type == 'VACATION' %}
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-sun me-1"></i> វិស្សមកាល</span>
+                                    {% elif r.restriction_type == 'HOLIDAY' %}
+                                    <span class="badge bg-info text-white"><i class="fa-solid fa-calendar-star me-1"></i> ថ្ងៃបុណ្យ</span>
+                                    {% else %}
+                                    <span class="badge bg-danger"><i class="fa-solid fa-wrench me-1"></i> បិទថែទាំ</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold text-dark">
+                                    {{ r.title }}
+                                    {% if r.description %}
+                                    <div class="text-muted small fw-normal">{{ r.description }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold text-primary">{{ r.start_date|date:"d/m/Y" }}</td>
+                                <td class="fw-bold text-primary">{{ r.end_date|date:"d/m/Y" }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ r.end_date|timeuntil:r.start_date|default:"1 ថ្ងៃ" }}</span></td>
+                                <td>
+                                    {% if r.block_attendance %}
+                                    <span class="badge bg-danger-subtle text-danger"><i class="fa-solid fa-lock me-1"></i> ចាក់សោជាប់</span>
+                                    {% else %}
+                                    <span class="badge bg-success-subtle text-success">អនុញ្ញាត</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if r.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'delete_calendar_restriction' r.id %}" class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('តើអ្នកពិតជាចង់លុប «{{ r.title|escapejs }}» នេះមែនទេ?');">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">ពុំទាន់មានកំណត់ត្រាវិស្សមកាល ឬថ្ងៃឈប់សម្រាកនៅឡើយទេ។</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 4: SYSTEM MAINTENANCE MODE                                     -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="content-maintenance" role="tabpanel">
+            <div class="card card-settings p-4">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="p-3 rounded-circle {% if att_settings.is_maintenance_mode %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %}">
+                        <i class="fa-solid fa-shield-halved fa-2x"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1">
+                            ស្ថានភាពប្រព័ន្ធថែទាំ៖ 
+                            {% if att_settings.is_maintenance_mode %}
+                            <span class="text-danger">កំពុងបិទដំណើរការ (Maintenance Mode Active)</span>
+                            {% else %}
+                            <span class="text-success">ដំណើរការធម្មតា (Normal Operation)</span>
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted small mb-0">
+                            នៅពេលបើក Maintenance Mode គ្រូបង្រៀនទាំងអស់នឹងមិនអាចស្រង់វត្តមានសិស្សបានឡើយ ដោយប្រព័ន្ធនឹងបង្ហាញសារជូនដំណឹងដែល Admin បានកំណត់។
+                        </p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_maintenance">
+                    <div class="p-4 bg-light rounded-4 border mb-4">
+                        <div class="form-check form-switch form-switch-lg mb-3">
+                            <input class="form-check-input" type="checkbox" name="is_maintenance_mode" id="maintSwitch" 
+                                   style="width: 3.5rem; height: 1.8rem;" {% if att_settings.is_maintenance_mode %}checked{% endif %}>
+                            <label class="form-check-label fw-bold ms-3 pt-1 text-dark fs-5" for="maintSwitch">
+                                បើកដំណើរការបិទប្រព័ន្ធជាបណ្តោះអាសន្ន (Lock System for Maintenance)
+                            </label>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">ខ្លឹមសារសារជូនដំណឹងទៅកាន់លោកគ្រូ-អ្នកគ្រូ (Maintenance Notice)៖</label>
+                            <textarea name="maintenance_message" class="form-control" rows="3" required>{{ att_settings.maintenance_message }}</textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn {% if att_settings.is_maintenance_mode %}btn-danger{% else %}btn-primary{% endif %} fw-bold px-4 py-2">
+                        <i class="fa-solid fa-wrench me-1"></i> រក្សាទុកស្ថានភាព Maintenance
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 5: TEACHER LEAVE APPLICATIONS REVIEW                           -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="content-leaves" role="tabpanel">
+            <div class="card card-settings p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">
+                            <i class="fa-solid fa-user-clock text-primary me-2"></i> ការគ្រប់គ្រងពាក្យសុំច្បាប់របស់គ្រូបង្រៀន (Teacher Leave Requests)
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            គ្រូដែលមានច្បាប់អនុញ្ញាត (`APPROVED`) នឹងត្រូវបានលើកលែងពីការផ្ញើសាររំលឹកអវត្តមានរៀងរាល់ម៉ោង និងមិនមានការកាត់ប្រាក់ឡើយ។
+                        </p>
+                    </div>
+                    <a href="{% url 'teacher_leave_create' %}" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-plus me-1"></i> បញ្ចូលពាក្យសុំច្បាប់
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>គ្រូបង្រៀន</th>
+                                <th>ប្រភេទច្បាប់</th>
+                                <th>កាលបរិច្ឆេទ</th>
+                                <th>ចំនួនថ្ងៃ</th>
+                                <th>មូលហេតុ</th>
+                                <th>ស្ថានភាព</th>
+                                <th>អ្នកអនុម័ត</th>
+                                <th class="text-end">សកម្មភាព</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave in leave_requests %}
+                            <tr>
+                                <td class="fw-bold text-dark">
+                                    {{ leave.teacher.khmer_name }}
+                                    <div class="text-muted small">{{ leave.teacher.phone }}</div>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ leave.get_leave_type_display }}</span></td>
+                                <td class="fw-bold text-primary">{{ leave.start_date|date:"d/m/Y" }} ដល់ {{ leave.end_date|date:"d/m/Y" }}</td>
+                                <td><span class="badge bg-primary-subtle text-primary">{{ leave.total_days }} ថ្ងៃ</span></td>
+                                <td class="small" style="max-width: 250px;">{{ leave.reason }}</td>
+                                <td>
+                                    {% if leave.status == 'PENDING' %}
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> រង់ចាំពិនិត្យ</span>
+                                    {% elif leave.status == 'APPROVED' %}
+                                    <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> បានអនុម័ត</span>
+                                    {% elif leave.status == 'REJECTED' %}
+                                    <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i> បានបដិសេធ</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ leave.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if leave.approved_by %}
+                                    <div class="small fw-bold">{{ leave.approved_by.display_name }}</div>
+                                    {% else %}
+                                    <span class="text-muted small">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if leave.status == 'PENDING' %}
+                                    <div class="btn-group btn-group-sm">
+                                        <form method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="approve_leave">
+                                            <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                            <button type="submit" class="btn btn-success" title="អនុម័តច្បាប់">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                onclick="openRejectModal('{{ leave.id }}', '{{ leave.teacher.khmer_name|escapejs }}')" title="បដិសេធ">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted small">រួចរាល់</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">ពុំទាន់មានពាក្យសុំច្បាប់នៅឡើយទេ។</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ======================================================================= -->
+<!-- MODALS                                                                  -->
+<!-- ======================================================================= -->
+
+<!-- Modal: Add Calendar Restriction -->
+<div class="modal fade" id="addRestrictionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-calendar-plus me-2 text-warning"></i> បន្ថែមថ្ងៃឈប់សម្រាក / វិស្សមកាល
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_calendar_restriction">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ប្រភេទ (Restriction Type)៖</label>
+                        <select name="restriction_type" class="form-select" required>
+                            <option value="HOLIDAY">ថ្ងៃបុណ្យ/ឈប់សម្រាក (Public Holiday)</option>
+                            <option value="VACATION">វិស្សមកាល (Vacation Period)</option>
+                            <option value="MAINTENANCE">បិទប្រព័ន្ធថែទាំ (Maintenance)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះកម្មវិធី ឬបុណ្យ (Title)៖</label>
+                        <input type="text" name="title" class="form-control" placeholder="ឧ. ពិធីបុណ្យភ្ជុំបិណ្ឌ ឬ វិស្សមកាលធំ" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ថ្ងៃចាប់ផ្តើម៖</label>
+                            <input type="date" name="start_date" class="form-control" required value="{{ today_str }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ថ្ងៃបញ្ចប់៖</label>
+                            <input type="date" name="end_date" class="form-control" required value="{{ today_str }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="block_attendance" id="blockAttCheck" checked>
+                            <label class="form-check-label fw-bold small text-danger" for="blockAttCheck">
+                                ចាក់សោមិនឱ្យគ្រូចុះវត្តមានក្នុងកំឡុងពេលនេះ
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-bold small">ពិពណ៌នាបន្ថែម (បើមាន)៖</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="ព័ត៌មានលម្អិត..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning fw-bold text-dark px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Dispatch Daily Digest Now -->
+<div class="modal fade" id="dispatchNowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-paper-plane me-2"></i> ផ្ញើរបាយការណ៍សង្ខេបប្រចាំថ្ងៃឥឡូវនេះ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dispatch_daily_now">
+                <div class="modal-body p-4">
+                    <p class="text-muted small">
+                        ប្រព័ន្ធនឹងចងក្រងស្ថិតិអវត្តមានសិស្ស និងស្ថិតិចុះវត្តមានរបស់គ្រូពេញមួយថ្ងៃ ហើយផ្ញើទៅកាន់ Group Telegram របស់គណៈគ្រប់គ្រងសាលាភ្លាមៗ។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">កាលបរិច្ឆេទដែលត្រូវផ្ញើ៖</label>
+                        <input type="date" name="target_date" class="form-control" value="{{ today_str }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Reject Leave Request -->
+<div class="modal fade" id="rejectLeaveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-ban me-2"></i> បដិសេធពាក្យសុំច្បាប់
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject_leave">
+                <input type="hidden" name="leave_id" id="rejectLeaveIdInput">
+                <div class="modal-body p-4">
+                    <p class="text-muted small" id="rejectTeacherNameText">
+                        សូមបញ្ជាក់មូលហេតុនៃការបដិសេធពាក្យសុំច្បាប់នេះ៖
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">មូលហេតុបដិសេធ (Rejection Reason)៖</label>
+                        <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="ឧ. មិនមានឯកសារបញ្ជាក់គ្រប់គ្រាន់ ឬចំថ្ងៃប្រឡង..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">
+                        <i class="fa-solid fa-xmark me-1"></i> បដិសេធច្បាប់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Test Class Telegram -->
+<div class="modal fade" id="testClassTelegramModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-info text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-paper-plane me-2"></i> ផ្ញើវត្តមានថ្នាក់ទៅ Telegram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="testClassTelegramForm" onsubmit="submitTestClassTelegram(event)">
+                {% csrf_token %}
+                <input type="hidden" name="classroom_id" id="testClassIdInput">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ថ្នាក់រៀន៖</label>
+                        <input type="text" id="testClassNameInput" class="form-control fw-bold" readonly>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">កាលបរិច្ឆេទ៖</label>
+                            <input type="date" name="date" class="form-control" value="{{ today_str }}" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">វេនសិក្សា៖</label>
+                            <select name="session" class="form-select">
+                                <option value="MORNING">ពេលព្រឹក</option>
+                                <option value="AFTERNOON">ពេលរសៀល</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Chat ID (ស្រង់តាមថ្នាក់ដោយស្វ័យប្រវត្តិ)៖</label>
+                        <input type="text" name="custom_chat_id" id="testChatIdInput" class="form-control font-monospace" placeholder="-100xxxxxxxxx">
+                    </div>
+                    <div id="testTelegramResult" class="d-none alert mb-0"></div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold px-4" id="btnSubmitClassTelegram">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Instant Hourly Absence Telegram Dispatch -->
+<div class="modal fade" id="dispatchHourlyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-paper-plane me-2"></i> ផ្ញើបញ្ជីអវត្តមានស្វ័យប្រវត្តិតាមម៉ោង (Hourly Dispatch)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dispatch_hourly_now">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 rounded-3 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        ប្រព័ន្ធនឹងបាញ់បញ្ជីឈ្មោះសិស្សអវត្តមាន (តម្រៀបតាមអក្ខរក្រម និងតាមលំដាប់ថ្នាក់ ៧ ដល់ ១២) ទៅកាន់ <strong>អាណាព្យាបាលផ្ទាល់, គ្រូបន្ទុកថ្នាក់, និង Group គណៈគ្រប់គ្រង</strong>។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កាលបរិច្ឆេទ (Date)៖</label>
+                        <input type="date" name="target_date" class="form-control" value="{{ today_str }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសម៉ោងសិក្សា (Select Period)៖</label>
+                        <select name="period_number" class="form-select form-select-lg fw-bold text-primary">
+                            <option value="1">ម៉ោងទី ១ (07:00 - 08:00) • Deadline {{ att_settings.period_dispatch_times.1|default:"07:35" }}</option>
+                            <option value="2">ម៉ោងទី ២ (08:00 - 09:00) • Deadline {{ att_settings.period_dispatch_times.2|default:"08:30" }}</option>
+                            <option value="3">ម៉ោងទី ៣ (09:00 - 10:00) • Deadline {{ att_settings.period_dispatch_times.3|default:"09:25" }}</option>
+                            <option value="4">ម៉ោងទី ៤ (10:00 - 11:00) • Deadline {{ att_settings.period_dispatch_times.4|default:"10:20" }}</option>
+                            <option value="5">ម៉ោងទី ៥ (13:00 - 14:00) • Deadline {{ att_settings.period_dispatch_times.5|default:"13:35" }}</option>
+                            <option value="6">ម៉ោងទី ៦ (14:00 - 15:00) • Deadline {{ att_settings.period_dispatch_times.6|default:"14:30" }}</option>
+                            <option value="7">ម៉ោងទី ៧ (15:00 - 16:00) • Deadline {{ att_settings.period_dispatch_times.7|default:"15:25" }}</option>
+                            <option value="8">ម៉ោងទី ៨ (16:00 - 17:00) • Deadline {{ att_settings.period_dispatch_times.8|default:"16:20" }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ (Dispatch Now)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+    function applyGlobalGrace(minutes) {
+        const val = parseInt(minutes, 10);
+        if (!val || val < 5 || val > 60) return;
+        document.querySelectorAll('.period-grace-input').forEach(input => {
+            input.value = val;
+            input.classList.add('bg-primary', 'bg-opacity-10');
+            setTimeout(() => input.classList.remove('bg-primary', 'bg-opacity-10'), 600);
+        });
+        const hiddenSub = document.getElementById('hiddenSubmissionGrace');
+        if (hiddenSub) hiddenSub.value = val;
+
+        const feedback = document.getElementById('quickFillFeedback');
+        if (feedback) {
+            feedback.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> បានកំណត់ Deadline <strong>${val} នាទី</strong> គ្រប់ម៉ោងទាំង ៨ រួចរាល់! (សូមចុច «រក្សាទុកការកំណត់ទាំងអស់» ខាងក្រោម)`;
+            feedback.classList.remove('d-none');
+            setTimeout(() => {
+                feedback.classList.add('d-none');
+            }, 4000);
+        }
+    }
+
+    function applyCustomBulkGrace() {
+        const bulkInput = document.getElementById('bulkGraceInput');
+        if (bulkInput && bulkInput.value) {
+            applyGlobalGrace(bulkInput.value);
+            bulkInput.value = '';
+        }
+    }
+
+    function openRejectModal(leaveId, teacherName) {
+        document.getElementById('rejectLeaveIdInput').value = leaveId;
+        document.getElementById('rejectTeacherNameText').textContent = 'បដិសេធពាក្យសុំច្បាប់របស់លោកគ្រូ-អ្នកគ្រូ៖ ' + teacherName;
+        new bootstrap.Modal(document.getElementById('rejectLeaveModal')).show();
+    }
+
+    function openTestClassTelegramModal(classId, className, chatId) {
+        document.getElementById('testClassIdInput').value = classId;
+        document.getElementById('testClassNameInput').value = className;
+        document.getElementById('testChatIdInput').value = chatId;
+        document.getElementById('testTelegramResult').classList.add('d-none');
+        new bootstrap.Modal(document.getElementById('testClassTelegramModal')).show();
+    }
+
+    function submitTestClassTelegram(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitClassTelegram');
+        const form = document.getElementById('testClassTelegramForm');
+        const resultDiv = document.getElementById('testTelegramResult');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងផ្ញើ...';
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'send_class_attendance_telegram' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+            if (data.success) {
+                resultDiv.classList.add('alert-success');
+                resultDiv.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
+            } else {
+                resultDiv.classList.add('alert-danger');
+                resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> ' + data.message;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success');
+            resultDiv.classList.add('alert-danger');
+            resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> កំហុសក្នុងការផ្ញើ៖ ' + err;
+        });
+    }
+</script>
+{% endblock %}

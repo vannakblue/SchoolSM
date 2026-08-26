@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីគ្រូបង្រៀន (Teachers) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">បញ្ជីគ្រូបង្រៀនទាំងអស់ (Teachers)</h2>
+        <p class="text-muted small mb-0">គ្រូបង្រៀនសរុប៖ <strong>{{ total_count }}</strong> នាក់</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_admin %}
+        <a href="{% url 'teacher_create' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> បន្ថែមគ្រូបង្រៀនថ្មី
+        </a>
+        <a href="{% url 'teacher_import' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូបង្រៀន (Import)
+        </a>
+        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success">
+            <i class="fa-solid fa-file-excel me-1"></i> នាំចេញ Excel
+        </a>
+        <a href="{% url 'teacher_attendance' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-user-check me-1"></i> ស្រង់វត្តមានគ្រូ
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3">
+        <div class="col-md-6">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាម ID, ឈ្មោះ, ឯកទេស ឬលេខទូរស័ព្ទ...">
+        </div>
+        <div class="col-md-3">
+            <select name="status" class="form-select">
+                <option value="">-- ស្ថានភាពទាំងអស់ --</option>
+                <option value="ACTIVE" {% if selected_status == 'ACTIVE' %}selected{% endif %}>កំពុងបង្រៀន (Active)</option>
+                <option value="ON_LEAVE" {% if selected_status == 'ON_LEAVE' %}selected{% endif %}>សម្រាកច្បាប់ (On Leave)</option>
+                <option value="RESIGNED" {% if selected_status == 'RESIGNED' %}selected{% endif %}>លាឈប់</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">ស្វែងរក</button>
+            <a href="{% url 'teacher_list' %}" class="btn btn-light">កំណត់ឡើងវិញ</a>
+        </div>
+    </form>
+</div>
+
+<!-- Teachers Grid -->
+<div class="row g-4">
+    {% for t in teachers %}
+    <div class="col-md-6 col-xl-4">
+        <div class="custom-card h-100">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="avatar-circle" style="width: 54px; height: 54px; font-size: 1.4rem;">
+                    {{ t.khmer_name|slice:":1" }}
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0">
+                        <a href="{% url 'teacher_detail' t.id %}" class="text-dark text-decoration-none hover-primary">
+                            {{ t.khmer_name }}
+                        </a>
+                    </h5>
+                    <span class="text-muted small">{{ t.latin_name }} ({{ t.teacher_id }})</span>
+                </div>
+            </div>
+
+            <div class="p-3 bg-light rounded-3 mb-3 small">
+                <div class="mb-1"><strong>ឯកទេស៖</strong> <span class="text-primary fw-bold">{{ t.specialization }}</span></div>
+                <div class="mb-1"><strong>កម្រិតវប្បធម៌៖</strong> {{ t.qualification|default:"បរិញ្ញាបត្រ" }}</div>
+                <div class="mb-1"><strong>ទូរស័ព្ទ៖</strong> {{ t.phone }}</div>
+                <div><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ t.base_salary }}</span></div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <span class="badge {% if t.status == 'ACTIVE' %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ t.get_status_display }}
+                </span>
+                <div class="btn-group btn-group-sm">
+                    <a href="{% url 'teacher_detail' t.id %}" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-eye me-1"></i> មើលប្រវត្តិ
+                    </a>
+                    {% if is_admin %}
+                    <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+        <h5>មិនទាន់មានទិន្នន័យគ្រូបង្រៀននៅឡើយទេ</h5>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ឧបករណ៍ Biometric & Fingerprint Integration Hub | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning-subtle text-warning-emphasis fw-bold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-fingerprint me-1"></i> Biometric Hardware Hub
+                </span>
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1">
+                    {{ config.get_biometric_device_type_display }}
+                </span>
+            </div>
+            <h2 class="fw-bold mb-0">ឧបករណ៍ Biometric & Fingerprint Integration</h2>
+            <p class="text-muted small mb-0">
+                មជ្ឈមណ្ឌលគ្រប់គ្រង និងតភ្ជាប់ម៉ាស៊ីនស្កេនមេដៃ/ស្កេនមុខ (ZKTeco / Hikvision), ឧបករណ៍ USB Reader, និង Flash Drive Import
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="{% url 'teacher_attendance_settings' %}" class="btn btn-outline-primary btn-sm fw-bold">
+                <i class="fa-solid fa-gear me-1"></i> ការកំណត់ឧបករណ៍
+            </a>
+            <a href="{% url 'teacher_punch_logs' %}" class="btn btn-light btn-sm border">
+                <i class="fa-solid fa-list-check me-1"></i> កំណត់ត្រា Logs
+            </a>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills custom-nav-pills gap-2 mb-4 p-2 bg-light rounded-4 border" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#tab-push">
+                <i class="fa-solid fa-tower-broadcast me-1"></i> ១. Cloud Push Webhook (ZKTeco/Hikvision)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#tab-network">
+                <i class="fa-solid fa-network-wired me-1"></i> ២. Sync តាម IP Network (LAN)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#tab-usb-reader">
+                <i class="fa-solid fa-plug me-1"></i> ៣. ឧបករណ៍ USB Fingerprint Reader
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#tab-file-import">
+                <i class="fa-solid fa-file-excel me-1"></i> ៤. Import ពី Flash Drive (Excel/CSV/DAT)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content">
+        
+        <!-- Tab 1: Cloud Push Webhook -->
+        <div class="tab-pane fade show active" id="tab-push">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="custom-card p-4 shadow-sm h-100">
+                        <h5 class="fw-bold text-dark mb-3">
+                            <i class="fa-solid fa-bolt text-warning me-2"></i> Real-time Push Webhook Endpoint
+                        </h5>
+                        <p class="text-muted small">
+                            ម៉ាស៊ីនស្កេនមេដៃ ឬស្កេនមុខ ZKTeco (មុខងារ ADMS / Cloud Server) និង Hikvision (ISAPI Webhook) អាចបាញ់ទិន្នន័យស្កេនមកកាន់ Link ខាងក្រោមនេះដោយស្វ័យប្រវត្តិ ២៤/៧៖
+                        </p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Push Webhook URL៖</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace bg-light" id="webhookUrlInput" value="{{ webhook_url }}" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info border-0 rounded-4 small mb-0">
+                            <strong><i class="fa-solid fa-circle-info me-1"></i> ការកំណត់លើម៉ាស៊ីន ZKTeco៖</strong>
+                            <ol class="mb-0 ps-3 mt-1">
+                                <li>ចូល Menu លើម៉ាស៊ីន ➔ <strong>Comm. (Communication)</strong> ➔ <strong>Cloud Server Setting</strong></li>
+                                <li>ដាក់ Server Address ទៅកាន់ IP ឬ Domain របស់សាលា</li>
+                                <li>ដាក់ Port (ឧ. 80 ឬ 8000) និង Secret Token ដូចក្នុងប្រព័ន្ធ</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="custom-card p-4 shadow-sm h-100">
+                        <h5 class="fw-bold text-dark mb-3">
+                            <i class="fa-solid fa-users-gear text-primary me-2"></i> ផ្គូផ្គងកូដគ្រូ (Teacher PIN Mapping)
+                        </h5>
+                        <p class="text-muted small">
+                            គ្រូត្រូវមានលេខសម្គាល់ PIN ឬ Teacher ID ត្រូវគ្នានឹងលេខសម្គាល់លើម៉ាស៊ីនស្កេនមេដៃ៖
+                        </p>
+                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Teacher ID</th>
+                                        <th>ឈ្មោះគ្រូ</th>
+                                        <th>Biometric PIN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for t in teachers %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary-subtle text-secondary font-monospace">{{ t.teacher_id }}</span></td>
+                                        <td class="fw-bold">{{ t.khmer_name }}</td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border font-monospace">
+                                                {{ t.biometric_profile.zk_pin|default:t.teacher_id }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: IP Network Sync -->
+        <div class="tab-pane fade" id="tab-network">
+            <div class="custom-card p-4 shadow-sm">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-network-wired text-info me-2"></i> ទាញទិន្នន័យផ្ទាល់តាមបណ្តាញ LAN (Network IP Sync)
+                </h5>
+                <p class="text-muted small">
+                    ប្រព័ន្ធ SchoolSM អាចតភ្ជាប់តាមរយៈ Protocol ផ្ទាល់ទៅកាន់ IP របស់ម៉ាស៊ីន (ZKTeco Port 4370 / Hikvision Port 8000) ដើម្បីទាញយកទិន្នន័យ Punch Logs ថ្មីៗ៖
+                </p>
+
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold">IP របស់ម៉ាស៊ីន Biometric៖</label>
+                        <input type="text" id="syncDeviceIp" class="form-control" value="{{ config.biometric_device_ip }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Port៖</label>
+                        <input type="number" id="syncDevicePort" class="form-control" value="{{ config.biometric_device_port }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" onclick="triggerDeviceSync()" id="btnSyncDevice" class="btn btn-primary w-100 fw-bold">
+                            <i class="fa-solid fa-rotate me-1"></i> ភ្ជាប់ & ទាញយកទិន្នន័យ (Sync Now)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="syncResultBox" class="alert alert-light border rounded-4 d-none">
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="syncResultIcon"></span>
+                        <span id="syncResultMessage" class="fw-bold small"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: USB Fingerprint Reader -->
+        <div class="tab-pane fade" id="tab-usb-reader">
+            <div class="custom-card p-4 shadow-sm">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-plug text-success me-2"></i> ឧបករណ៍ USB Fingerprint Reader (ដោតជាប់កុំព្យូទ័រ)
+                </h5>
+                <p class="text-muted small">
+                    សម្រាប់សាលាដែលប្រើប្រាស់កូនឧបករណ៍ USB Fingerprint (ដូចជា ZKTeco ZK4500 / DigitalPersona) ដោតលើកុំព្យូទ័ររដ្ឋបាល៖
+                </p>
+
+                <div class="row g-3 align-items-center mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">ជ្រើសរើសគ្រូបង្រៀន (ឬដាក់មេដៃលើឧបករណ៍)៖</label>
+                        <select id="usbTeacherSelect" class="form-select">
+                            <option value="">-- ជ្រើសរើសគ្រូបង្រៀន --</option>
+                            {% for t in teachers %}
+                            <option value="{{ t.id }}">{{ t.teacher_id }} - {{ t.khmer_name }} ({{ t.specialization }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 pt-md-4">
+                        <button type="button" onclick="submitUsbFingerprint()" class="btn btn-success fw-bold px-4">
+                            <i class="fa-solid fa-fingerprint me-2"></i> ចុះវត្តមាន (USB Scan Punch)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded-4 text-center">
+                    <i class="fa-solid fa-fingerprint display-4 text-success mb-2"></i>
+                    <p class="text-muted small mb-0">
+                        ឧបករណ៍ USB Fingerprint ត្រូវបានភ្ជាប់ និងត្រៀមទទួលការស្កេនមេដៃ
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: File Import (Excel/CSV/DAT) -->
+        <div class="tab-pane fade" id="tab-file-import">
+            <div class="custom-card p-4 shadow-sm">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-file-arrow-up text-primary me-2"></i> Import ទិន្នន័យពី USB Flash Drive (Excel / CSV / DAT)
+                </h5>
+                <p class="text-muted small">
+                    ប្រសិនបើសាលាមានម៉ាស៊ីនស្កេនមេដៃធម្មតា លោកអ្នកគ្រាន់តែដោត Flash Drive ទាញយក File Log ចេញពីម៉ាស៊ីន រួចយកមក Upload ចូលប្រព័ន្ធនៅទីនេះ៖
+                </p>
+
+                <form method="POST" action="{% url 'biometric_file_import' %}" enctype="multipart/form-data" class="p-4 border border-2 border-dashed rounded-4 bg-light text-center mb-3">
+                    {% csrf_token %}
+                    <i class="fa-solid fa-cloud-arrow-up display-4 text-primary mb-3"></i>
+                    <h6 class="fw-bold text-dark">ជ្រើសរើស File Log ឬអូសទម្លាក់ទីនេះ</h6>
+                    <p class="text-muted small">គាំទ្រទម្រង់ File: <strong>.csv, .xlsx, .dat, .txt</strong> (ZKTeco Attendance Logs)</p>
+                    
+                    <div class="d-inline-block mx-auto mb-3">
+                        <input type="file" name="log_file" class="form-control" required accept=".csv,.xlsx,.xls,.dat,.txt">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                            <i class="fa-solid fa-upload me-1"></i> Upload & Import ចូលប្រព័ន្ធ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyWebhookUrl() {
+        const input = document.getElementById('webhookUrlInput');
+        input.select();
+        navigator.clipboard.writeText(input.value);
+        alert("✅ បានចម្លង Webhook URL ជោគជ័យ!");
+    }
+
+    async function triggerDeviceSync() {
+        const btn = document.getElementById('btnSyncDevice');
+        const ip = document.getElementById('syncDeviceIp').value;
+        const port = document.getElementById('syncDevicePort').value;
+        const resultBox = document.getElementById('syncResultBox');
+        const msg = document.getElementById('syncResultMessage');
+        const icon = document.getElementById('syncResultIcon');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងទាក់ទងម៉ាស៊ីន...';
+
+        const formData = new FormData();
+        formData.append('device_ip', ip);
+        formData.append('device_port', port);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        try {
+            const res = await fetch("{% url 'api_sync_biometric_device' %}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            resultBox.classList.remove('d-none');
+            msg.textContent = data.message;
+            if (data.is_online) {
+                resultBox.className = 'alert alert-success border rounded-4';
+                icon.className = 'fa-solid fa-circle-check text-success fs-5';
+            } else {
+                resultBox.className = 'alert alert-warning border rounded-4';
+                icon.className = 'fa-solid fa-triangle-exclamation text-warning fs-5';
+            }
+        } catch (e) {
+            resultBox.classList.remove('d-none');
+            resultBox.className = 'alert alert-danger border rounded-4';
+            msg.textContent = '❌ មានបញ្ហាក្នុងការភ្ជាប់ទៅកាន់ Server៖ ' + e;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate me-1"></i> ភ្ជាប់ & ទាញយកទិន្នន័យ (Sync Now)';
+        }
+    }
+
+    async function submitUsbFingerprint() {
+        const teacherId = document.getElementById('usbTeacherSelect').value;
+        if (!teacherId) {
+            alert("សូមជ្រើសរើសគ្រូបង្រៀន!");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('teacher_id', teacherId);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        try {
+            const res = await fetch("{% url 'api_usb_fingerprint_punch' %}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert("❌ បរាជ័យ៖ " + (data.message || 'Error'));
+            }
+        } catch (e) {
+            alert("❌ មានបញ្ហា៖ " + e);
+        }
+    }
+</script>
+{% endblock %}

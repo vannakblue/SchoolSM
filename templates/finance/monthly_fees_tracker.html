@@ -1,0 +1,2667 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}បញ្ជីទឹកភ្លើងប្រចាំខែ - {{ school_info.short_name|default:"SchoolSM" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Premium KPI Cards */
+    .kpi-metric-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    }
+    .kpi-metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+    }
+    .kpi-blue::before { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+    .kpi-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .kpi-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .kpi-purple::before { background: linear-gradient(90deg, #8b5cf6, #a855f7); }
+
+    .kpi-icon-wrap {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+
+    /* Month Ticking Scope Bar */
+    .month-scope-bar {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-bottom: 24px;
+    }
+    .month-pill-checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 30px;
+        background: #f8fafc;
+        border: 1.5px solid #cbd5e1;
+        cursor: pointer;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: #475569;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .month-pill-checkbox.active {
+        background: #eff6ff;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.18);
+    }
+    .month-pill-checkbox input[type="checkbox"] {
+        cursor: pointer;
+        accent-color: #2563eb;
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Filter Toolbar */
+    .filter-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+        margin-bottom: 20px;
+    }
+
+    /* Desktop Table with Smooth Horizontal Scrolling */
+    .matrix-table-wrap {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #94a3b8 #f1f5f9;
+        margin-bottom: 24px;
+    }
+    .matrix-table-wrap::-webkit-scrollbar {
+        height: 10px;
+    }
+    .matrix-table-wrap::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 8px;
+    }
+    .matrix-table-wrap::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 8px;
+        border: 2px solid #f1f5f9;
+    }
+    .matrix-table-wrap::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+    .table-fees {
+        margin-bottom: 0;
+        vertical-align: middle;
+        min-width: 1380px;
+        width: 100%;
+    }
+    .table-fees thead th {
+        background: #f8fafc;
+        color: #334155;
+        font-weight: 700;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 10px;
+        border-bottom: 2px solid #e2e8f0;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .table-fees tbody td {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .table-fees tbody tr:hover {
+        background: #f8fafc;
+    }
+    .sortable-th {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .sortable-th:hover {
+        background-color: #e0e7ff !important;
+        color: #4338ca !important;
+    }
+    .sortable-th.sorted-asc, .sortable-th.sorted-desc {
+        background-color: #dbeafe !important;
+        color: #1d4ed8 !important;
+    }
+    .sortable-th .sort-icon {
+        font-size: 0.72rem;
+        transition: transform 0.2s ease;
+    }
+
+    /* Month Status Badges */
+    .fee-badge {
+        padding: 5px 9px;
+        border-radius: 6px;
+        font-size: 0.73rem;
+        font-weight: 700;
+        display: inline-block;
+        min-width: 62px;
+        text-align: center;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .fee-badge:hover {
+        transform: scale(1.08);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+    .fee-badge.paid {
+        background: #dcfce7;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+    .fee-badge.unpaid {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+    .fee-badge.partial {
+        background: #fef3c7;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+    .fee-badge.not-due {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+        opacity: 0.7;
+    }
+
+    /* Mobile Student Cards */
+    .mobile-student-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        transition: all 0.2s ease;
+    }
+    .mobile-student-card:active {
+        background: #f8fafc;
+        transform: scale(0.99);
+    }
+    .mobile-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .mobile-month-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-top: 12px;
+        margin-bottom: 14px;
+    }
+    .mobile-month-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 4px;
+        text-align: center;
+        font-size: 0.72rem;
+    }
+    .mobile-month-item.is-paid {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #15803d;
+        font-weight: 700;
+    }
+    .mobile-month-item.is-unpaid {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+        font-weight: 700;
+    }
+    .mobile-month-item.is-not-due {
+        background: #f8fafc;
+        color: #94a3b8;
+    }
+
+    .btn-quick-pay {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        font-weight: 700;
+        padding: 6px 14px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.82rem;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        transition: all 0.2s ease;
+    }
+    .btn-quick-pay:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
+        transform: translateY(-1px);
+    }
+    .btn-telegram-reminder {
+        background: linear-gradient(135deg, #0088cc, #0274ae);
+        color: white;
+        border: none;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.82rem;
+        box-shadow: 0 2px 6px rgba(0, 136, 204, 0.25);
+        transition: all 0.2s ease;
+    }
+    .btn-telegram-reminder:hover {
+        background: linear-gradient(135deg, #0274ae, #015c8a);
+        color: white;
+        transform: translateY(-1px);
+    }
+    .category-radio-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #ffffff;
+    }
+    .category-radio-card:hover {
+        background: #f8fafc;
+        border-color: #94a3b8 !important;
+    }
+    .category-radio-card input:checked ~ div span {
+        color: #16a34a !important;
+    }
+    .student-picker-item {
+        transition: background 0.15s ease;
+    }
+    .student-picker-item:hover {
+        background: #f1f5f9;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .hover-shadow:hover {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-3">
+
+    <!-- Top Title & Action Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                <i class="fa-solid fa-faucet-drip text-primary"></i> បញ្ជីទឹកភ្លើងប្រចាំខែ
+            </h2>
+            <div class="text-muted small">
+                <i class="fa-solid fa-calendar-check me-1 text-info"></i> ឆ្នាំសិក្សា៖ <strong>{{ active_year.name|default:"២០២៥-២០២៦" }}</strong> | សរុបសិស្ស៖ <strong>{{ students_count }}</strong> នាក់
+            </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Telegram Classroom Summary Dispatch -->
+            <button type="button" class="btn btn-sm btn-info text-white fw-bold" data-bs-toggle="modal" data-bs-target="#classroomTelegramModal">
+                <i class="fa-brands fa-telegram me-1"></i> ផ្ញើរបាយការណ៍ទៅ Telegram ថ្នាក់
+            </button>
+
+            <!-- Export Excel (.xlsx) -->
+            <a href="{% url 'export_monthly_fees_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-success fw-bold">
+                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+            </a>
+
+            <!-- Export CSV -->
+            <a href="{% url 'export_monthly_fees_csv' %}?{{ request.GET.urlencode }}" class="btn btn-sm btn-outline-secondary fw-bold">
+                <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+            </a>
+
+            <!-- Mobile Collector Portal -->
+            <a href="{% url 'mobile_fee_collector_portal' %}" class="btn btn-sm btn-primary fw-bold shadow-sm" target="_blank" title="បើកផ្ទាំងទូរស័ព្ទ Mobile Web App">
+                <i class="fa-solid fa-mobile-screen me-1"></i> Mobile Portal
+            </a>
+
+            {% if is_admin or is_accountant %}
+            <!-- Teacher QR Pass (Channel 2) -->
+            <button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick="openTeacherCollectorPassModal()" title="បង្កើត និង Print QR Pass ជូនគ្រូប្រមូលប្រាក់">
+                <i class="fa-solid fa-id-card-clip me-1 text-warning"></i> QR Pass គ្រូ
+            </button>
+            <!-- Rate Matrix & Month Range Settings -->
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#ratesMatrixModal">
+                <i class="fa-solid fa-table-list me-1"></i> កំណត់តម្លៃ & ខែបង់
+            </button>
+            <!-- Bulk Assign Category -->
+            <button type="button" class="btn btn-sm btn-outline-success fw-bold" data-bs-toggle="modal" data-bs-target="#bulkAssignCategoryModal">
+                <i class="fa-solid fa-user-tag me-1"></i> ចាត់តាំងប្រភេទសិស្ស
+            </button>
+            <!-- Manage Categories (CRUD) -->
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#manageCategoriesModal">
+                <i class="fa-solid fa-tags me-1"></i> ប្រភេទសិស្ស
+            </button>
+            <!-- Teacher Authorization -->
+            <button type="button" class="btn btn-sm btn-outline-warning fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#feeCollectorsModal">
+                <i class="fa-solid fa-chalkboard-user me-1"></i> សិទ្ធិគ្រូប្រមូល
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 4 KPI Summary Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="kpi-metric-card kpi-blue">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">ប្រាក់ត្រូវប្រមូល (ក្នុងខែ Tick)</div>
+                        <div class="fs-4 fw-bold text-primary mt-1">{{ kpi_total_expected|floatformat:0 }} {{ config.currency_symbol }}</div>
+                    </div>
+                    <div class="kpi-icon-wrap bg-primary-subtle text-primary">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-metric-card kpi-green">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">ប្រាក់ប្រមូលបានរួច</div>
+                        <div class="fs-4 fw-bold text-success mt-1">{{ kpi_total_collected|floatformat:0 }} {{ config.currency_symbol }}</div>
+                    </div>
+                    <div class="kpi-icon-wrap bg-success-subtle text-success">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-metric-card kpi-red">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">ប្រាក់នៅជំពាក់សរុប</div>
+                        <div class="fs-4 fw-bold text-danger mt-1">{{ kpi_total_remaining|floatformat:0 }} {{ config.currency_symbol }}</div>
+                    </div>
+                    <div class="kpi-icon-wrap bg-danger-subtle text-danger">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-metric-card kpi-purple">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">សិស្សបង់គ្រប់ / នៅជំពាក់</div>
+                        <div class="fs-4 fw-bold text-purple mt-1">{{ kpi_fully_paid_count }} <span class="fs-6 text-muted">/ {{ kpi_due_count }} នាក់</span></div>
+                    </div>
+                    <div class="kpi-icon-wrap bg-purple-subtle text-purple">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Month Ticking Scope Bar (Interactive Checkbox Bar) -->
+    <div class="month-scope-bar">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-primary"></i> 
+                <span>កំណត់ខែដែលត្រូវបង់ (Admin Month Ticking Scope):</span>
+            </div>
+            {% if is_admin or is_accountant %}
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
+                <i class="fa-solid fa-sliders me-1"></i> Admin អាច Tick ដើម្បីបើក/បិទខែត្រូវបង់
+            </span>
+            {% endif %}
+        </div>
+        
+        <div class="d-flex flex-wrap gap-2 pt-1" id="monthScopeContainer">
+            {% for m in months_data %}
+            <label class="month-pill-checkbox {% if m.is_ticked %}active{% endif %}" id="labelMonth{{ m.number }}">
+                <input type="checkbox" value="{{ m.number }}" class="scope-month-cb" {% if m.is_ticked %}checked{% endif %} {% if not is_admin and not is_accountant %}disabled{% endif %} onchange="handleMonthScopeChange(this)">
+                <span>{{ m.name }}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="mt-2 text-muted small" style="font-size: 0.78rem;">
+            <i class="fa-solid fa-circle-info text-info me-1"></i>
+            <strong>សម្គាល់៖</strong> ការបូកសរុបប្រាក់ដែលនៅសល់របស់សិស្សគឺបូកតែតាមខែណាដែល Admin បាន Tick ខាងលើនេះប៉ុណ្ណោះ។ ខែដែលមិនបាន Tick មិនតម្រូវឱ្យសិស្សបង់ប្រាក់ឡើយ។
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="filter-card">
+        <form method="get" class="row g-2 align-items-center" id="feesFilterForm">
+            <!-- 1. Textbox ស្វែងរក -->
+            <div class="col-12 col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="q" value="{{ search_q }}" class="form-control form-control-sm border-start-0" placeholder="ស្វែងរកឈ្មោះ, ID, លេខទូរស័ព្ទ...">
+                </div>
+            </div>
+
+            <!-- 2. គ្រប់កម្រិតថ្នាក់ (Grade Level) -->
+            <div class="col-6 col-md-2">
+                <select name="grade_level" class="form-select form-select-sm" id="filterGradeLevelSelect" onchange="handleGradeLevelFilterChange()">
+                    <option value="" data-grade-number="ALL">-- គ្រប់កម្រិតថ្នាក់ --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g.id }}" data-grade-number="{{ g.grade_number }}" data-track="{{ g.track }}" {% if selected_grade_level == g.id|stringformat:"s" or selected_grade_level == g.grade_number|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 3. គ្រប់ថ្នាក់រៀន (Classroom) -->
+            <div class="col-6 col-md-2">
+                <select name="classroom" class="form-select form-select-sm" id="filterClassroomSelect">
+                    <option value="" data-grade="ALL">-- គ្រប់ថ្នាក់រៀន --</option>
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}" data-grade="{{ c.grade_level }}" data-track="{{ c.track }}" {% if selected_classroom == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 4. គ្រប់ប្រភេទសិស្ស (Student Category) -->
+            <div class="col-6 col-md-2">
+                <select name="category" class="form-select form-select-sm" id="filterCategorySelect">
+                    <option value="">-- គ្រប់ប្រភេទសិស្ស --</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                    <option value="NONE" {% if selected_category == 'NONE' %}selected{% endif %}>មិនទាន់ចាត់តាំង (សិស្សទូទៅ)</option>
+                </select>
+            </div>
+
+            <!-- 5. ស្ថានភាពសិក្សា (Student Academic Status) -->
+            <div class="col-6 col-md-1">
+                <select name="student_status" class="form-select form-select-sm" id="filterStudentStatusSelect" title="ស្ថានភាពសិស្ស (Student Status)">
+                    <option value="" {% if not selected_student_status %}selected{% endif %}>-- ស្ថានភាព --</option>
+                    <option value="ALL" {% if selected_student_status == 'ALL' %}selected{% endif %}>ទាំងអស់</option>
+                    <option value="ACTIVE" {% if selected_student_status == 'ACTIVE' %}selected{% endif %}>កំពុងរៀន</option>
+                    <option value="SUSPENDED" {% if selected_student_status == 'SUSPENDED' %}selected{% endif %}>ផ្អាក</option>
+                    <option value="DROPPED" {% if selected_student_status == 'DROPPED' %}selected{% endif %}>ឈប់រៀន</option>
+                    <option value="TRANSFERRED" {% if selected_student_status == 'TRANSFERRED' %}selected{% endif %}>ផ្ទេរ</option>
+                </select>
+            </div>
+
+            <!-- 6. ស្ថានភាពបង់ប្រាក់ (Payment Status) -->
+            <div class="col-6 col-md-1">
+                <select name="status" class="form-select form-select-sm" id="filterStatusSelect" title="ស្ថានភាពបង់ប្រាក់ (Payment Status)">
+                    <option value="ALL" {% if selected_status == 'ALL' %}selected{% endif %}>-- ការបង់ --</option>
+                    <option value="DUE" {% if selected_status == 'DUE' %}selected{% endif %}>🔴 ជំពាក់</option>
+                    <option value="PAID" {% if selected_status == 'PAID' %}selected{% endif %}>🟢 គ្រប់</option>
+                    <option value="PARTIAL" {% if selected_status == 'PARTIAL' %}selected{% endif %}>🟡 ខ្លះ</option>
+                    <option value="UNPAID" {% if selected_status == 'UNPAID' %}selected{% endif %}>⚪ មិនទាន់បង់</option>
+                </select>
+            </div>
+
+            <!-- 7. Filter & Reset Buttons -->
+            <div class="col-12 col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1" title="Filter (ចុចដើម្បីចម្រាញ់)">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                {% if search_q or selected_classroom or selected_grade_level or selected_category or selected_status != 'ALL' or selected_student_status %}
+                <a href="{% url 'monthly_fees_tracker' %}" class="btn btn-sm btn-light border" title="Reset Filters (សម្អាតការ Filter)">
+                    <i class="fa-solid fa-rotate-left text-muted"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- DESKTOP VIEW: High-Density Matrix Table (Shown on >= 992px)   -->
+    <!-- ============================================================== -->
+    <div class="d-none d-lg-block">
+        <div class="matrix-table-wrap table-responsive">
+            <table class="table table-hover table-fees">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">ល.រ</th>
+                        <th class="sortable-th cursor-pointer user-select-none" data-sort-key="id" onclick="sortTableBy('id', this)" style="width: 85px;" title="ចុចដើម្បីតម្រៀបតាម អត្តលេខ">
+                            <span>អត្តលេខ</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th class="sortable-th cursor-pointer user-select-none text-start" data-sort-key="name" onclick="sortTableBy('name', this)" style="min-width: 140px;" title="ចុចដើម្បីតម្រៀបតាម ឈ្មោះសិស្ស">
+                            <span>ឈ្មោះសិស្ស</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th class="sortable-th cursor-pointer user-select-none" data-sort-key="gender" onclick="sortTableBy('gender', this)" style="width: 55px;" title="ចុចដើម្បីតម្រៀបតាម ភេទ">
+                            <span>ភេទ</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th class="sortable-th cursor-pointer user-select-none" data-sort-key="class" onclick="sortTableBy('class', this)" style="width: 80px;" title="ចុចដើម្បីតម្រៀបតាម ថ្នាក់">
+                            <span>ថ្នាក់</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th class="sortable-th cursor-pointer user-select-none" data-sort-key="category" onclick="sortTableBy('category', this)" style="min-width: 110px;" title="ចុចដើម្បីតម្រៀបតាម ប្រភេទសិស្ស">
+                            <span>ប្រភេទសិស្ស</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        {% for m in months_data %}
+                        <th style="min-width: 70px;" class="{% if not m.is_ticked %}text-muted opacity-50{% endif %}">
+                            {{ m.short_name }}
+                            {% if m.is_ticked %}
+                            <span class="badge bg-primary" style="font-size: 0.55rem; padding: 1px 3px;">Active</span>
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                        <th class="sortable-th cursor-pointer user-select-none" data-sort-key="paid" onclick="sortTableBy('paid', this)" style="min-width: 100px;" title="ចុចដើម្បីតម្រៀបតាម សរុបបានបង់">
+                            <span>សរុបបានបង់</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th class="sortable-th cursor-pointer user-select-none text-danger" data-sort-key="debt" onclick="sortTableBy('debt', this)" style="min-width: 105px;" title="ចុចដើម្បីតម្រៀបតាម ប្រាក់ជំពាក់">
+                            <span>ប្រាក់ជំពាក់</span> <i class="fa-solid fa-sort sort-icon text-muted ms-1 small"></i>
+                        </th>
+                        <th style="min-width: 155px;">សកម្មភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in students_data %}
+                    <tr class="student-fee-row" id="rowStudent_{{ item.student.id }}" 
+                        data-id="{{ item.student.student_id }}" 
+                        data-name="{{ item.student.khmer_name }}" 
+                        data-gender="{{ item.student.gender }}" 
+                        data-class="{{ item.student.classroom.name|default:'' }}" 
+                        data-category="{{ item.category.name|default:'ទូទៅ' }}" 
+                        data-paid="{{ item.total_paid }}" 
+                        data-debt="{{ item.remaining_balance }}" 
+                        data-paid-months="{{ item.paid_month_numbers|join:"," }}" 
+                        data-unpaid-months="{{ item.unpaid_month_numbers|join:"," }}" 
+                        data-status-json="{{ item.months_status_json }}">
+                        <td class="text-muted small">{{ forloop.counter }}</td>
+                        <td><span class="badge bg-light text-dark border font-monospace">{{ item.student.student_id }}</span></td>
+                        <td class="text-start">
+                            <div class="fw-bold text-dark">{{ item.student.khmer_name }}</div>
+                            <div class="text-muted small" style="font-size: 0.72rem;">{{ item.student.latin_name }}</div>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                {% if item.fee_start_month %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 0.68rem;" title="សិស្សចូលរៀនពាក់កណ្តាលឆ្នាំ ចាប់ផ្តើមបង់ពីខែ {{ item.fee_start_month_name }}">
+                                    <i class="fa-solid fa-calendar-day me-1"></i>ចូល {{ item.fee_start_month_name }}
+                                </span>
+                                {% endif %}
+                                {% if item.fee_end_month %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.68rem;" title="បញ្ចប់/ផ្អាកការបង់ត្រឹមខែ {{ item.fee_end_month_name }}">
+                                    <i class="fa-solid fa-calendar-xmark me-1"></i>ឈប់ត្រឹម {{ item.fee_end_month_name }}
+                                </span>
+                                {% endif %}
+                                {% if item.status != 'ACTIVE' %}
+                                <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem;">{{ item.status_display }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if item.student.gender == 'M' %}
+                            <span class="badge bg-primary-subtle text-primary">ប្រុស</span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger">ស្រី</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-secondary fw-bold">
+                                {{ item.student.classroom.name|default:"-" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if is_admin or is_accountant %}
+                            <button type="button" class="btn btn-sm p-0 border-0 text-start" title="ចុចដើម្បីចាត់តាំងប្រភេទ / កាលវិភាគបង់ / ស្ថានភាព (Admin)" onclick="openAssignSingleCategoryModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.id|default:'NONE' }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.fee_start_month|default:'' }}', '{{ item.fee_end_month|default:'' }}', '{{ item.status|default:'ACTIVE' }}')">
+                                {% if item.category %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle cursor-pointer hover-shadow">
+                                    <i class="fa-solid fa-pen-to-square me-1 small"></i>{{ item.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border cursor-pointer hover-shadow">
+                                    <i class="fa-solid fa-pen-to-square me-1 small"></i>ទូទៅ
+                                </span>
+                                {% endif %}
+                            </button>
+                            {% else %}
+                                {% if item.category %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                    {{ item.category.name }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border">ទូទៅ</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+
+                        <!-- Month Columns -->
+                        {% for m in item.months %}
+                        <td>
+                            {% if m.cell_status == 'PAID' %}
+                            <span class="fee-badge paid" title="បង់គ្រប់៖ {{ m.paid|floatformat:0 }} {{ config.currency_symbol }}{% if m.payment_date %} ({{ m.payment_date|date:'d/m' }}){% endif %} (ចុចដើម្បីកែប្រែ)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '{{ m.paid|floatformat:0 }}')">
+                                <i class="fa-solid fa-check me-1"></i>គ្រប់
+                            </span>
+                            {% elif m.cell_status == 'PARTIAL' %}
+                            <span class="fee-badge partial" title="បង់បានខ្លះ៖ {{ m.paid|floatformat:0 }} / {{ m.expected|floatformat:0 }} (ចុចដើម្បីកែប្រែ/បង់បន្ថែម)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '{{ m.paid|floatformat:0 }}')">
+                                {{ m.paid|floatformat:0 }}
+                            </span>
+                            {% elif m.cell_status == 'UNPAID' %}
+                            <span class="fee-badge unpaid" title="ជំពាក់៖ {{ m.expected|floatformat:0 }} {{ config.currency_symbol }} (ចុចដើម្បីកត់ត្រាបង់ប្រាក់)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '0')">
+                                ជំពាក់
+                            </span>
+                            {% else %}
+                            <span class="fee-badge not-due {% if m.is_pre_enrollment or m.is_post_stop %}opacity-50{% endif %}" title="{% if m.is_pre_enrollment %}មិនទាន់ចូលរៀន (ចាប់ផ្តើមបង់ពីខែ {{ item.fee_start_month_name }}){% elif m.is_post_stop %}ផ្អាក/ឈប់រៀន (បញ្ចប់ការបង់ត្រឹមខែ {{ item.fee_end_month_name }}){% else %}មិនទាន់ដល់ខែត្រូវបង់{% endif %}" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '0')">
+                                {% if m.is_post_stop %}
+                                    <span style="font-size: 0.72rem;">{{ m.cell_label }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+
+                        <!-- Total Paid in Scope -->
+                        <td class="fw-bold text-success">
+                            {{ item.total_paid|floatformat:0 }} {{ config.currency_symbol }}
+                        </td>
+
+                        <!-- Remaining Due in Scope -->
+                        <td>
+                            {% if item.remaining_balance > 0 %}
+                            <span class="badge bg-danger text-white px-2 py-1 fw-bold fs-7">
+                                {{ item.remaining_balance|floatformat:0 }} {{ config.currency_symbol }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-semibold">
+                                <i class="fa-solid fa-circle-check me-1"></i>រួចរាល់
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Action Buttons -->
+                        <td>
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <!-- Record Payment -->
+                                <button type="button" class="btn btn-sm btn-quick-pay" title="កត់ត្រាការបង់ប្រាក់" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}')">
+                                    <i class="fa-solid fa-receipt"></i> បង់
+                                </button>
+                                <!-- Telegram Reminder -->
+                                <button type="button" class="btn btn-sm btn-telegram-reminder" title="ផ្ញើសាររំលឹកតាម Telegram" onclick="openSendTelegramModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.remaining_balance|floatformat:0 }}', '{{ item.unpaid_months_str|escapejs }}', '{{ item.guardian_phone|escapejs }}', '{{ item.student.telegram_chat_id|default:''|escapejs }}')">
+                                    <i class="fa-brands fa-telegram"></i>
+                                </button>
+                                {% if is_admin or is_accountant %}
+                                <!-- Assign Category & Fee Start/End Month -->
+                                <button type="button" class="btn btn-sm btn-outline-success" title="ចាត់តាំងប្រភេទ / កាលវិភាគបង់ / ស្ថានភាព (Admin)" onclick="openAssignSingleCategoryModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.id|default:'NONE' }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.fee_start_month|default:'' }}', '{{ item.fee_end_month|default:'' }}', '{{ item.status|default:'ACTIVE' }}')">
+                                    <i class="fa-solid fa-user-tag"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="18" class="py-5 text-center text-muted">
+                            <i class="fa-solid fa-inbox fs-1 mb-2 text-secondary"></i>
+                            <div>មិនមានទិន្នន័យសិស្សត្រូវបង្ហាញឡើយ!</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SMARTPHONE / TABLET VIEW: Touch-Friendly Cards (Shown on <992px)-->
+    <!-- ============================================================== -->
+    <div class="d-lg-none">
+        <div class="row g-2">
+            {% for item in students_data %}
+            <div class="col-12 col-md-6 student-fee-row" id="mobileRowStudent_{{ item.student.id }}" data-paid-months="{{ item.paid_month_numbers|join:"," }}" data-unpaid-months="{{ item.unpaid_month_numbers|join:"," }}" data-status-json="{{ item.months_status_json }}">
+                <div class="mobile-student-card">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="mobile-avatar">
+                                {{ item.student.khmer_name|slice:":1" }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark fs-6">{{ item.student.khmer_name }}</div>
+                                <div class="text-muted small">
+                                    <span class="badge bg-light text-dark border">{{ item.student.classroom.name|default:"គ្មានថ្នាក់" }}</span>
+                                    {% if is_admin or is_accountant %}
+                                    <button type="button" class="btn btn-sm p-0 border-0 ms-1" title="ចុចដើម្បីប្តូរប្រភេទ / កាលវិភាគ / ស្ថានភាព" onclick="openAssignSingleCategoryModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.id|default:'NONE' }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.fee_start_month|default:'' }}', '{{ item.fee_end_month|default:'' }}', '{{ item.status|default:'ACTIVE' }}')">
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="fa-solid fa-pen-to-square me-1 small"></i>{{ item.category.name|default:"ទូទៅ" }}</span>
+                                    </button>
+                                    {% else %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle ms-1">{{ item.category.name|default:"ទូទៅ" }}</span>
+                                    {% endif %}
+                                    {% if item.fee_start_month %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.68rem;">ចូល {{ item.fee_start_month_name }}</span>
+                                    {% endif %}
+                                    {% if item.fee_end_month %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.68rem;">ឈប់ត្រឹម {{ item.fee_end_month_name }}</span>
+                                    {% endif %}
+                                    {% if item.status != 'ACTIVE' %}
+                                    <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size: 0.68rem;">{{ item.status_display }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Remaining Due Badge -->
+                        <div class="text-end">
+                            {% if item.remaining_balance > 0 %}
+                            <div class="text-danger fw-bold fs-6">{{ item.remaining_balance|floatformat:0 }} {{ config.currency_symbol }}</div>
+                            <span class="badge bg-danger-subtle text-danger" style="font-size: 0.68rem;">ជំពាក់ក្នុងខែ Tick</span>
+                            {% else %}
+                            <div class="text-success fw-bold fs-6">0 {{ config.currency_symbol }}</div>
+                            <span class="badge bg-success-subtle text-success" style="font-size: 0.68rem;">បង់គ្រប់រួចរាល់</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Mini Month Breakdown Grid -->
+                    <div class="mobile-month-grid">
+                        {% for m in item.months %}
+                        <div class="mobile-month-item {% if m.cell_status == 'PAID' %}is-paid{% elif m.cell_status == 'UNPAID' %}is-unpaid{% else %}is-not-due{% endif %}">
+                            <div>{{ m.month_name|slice:":3" }}</div>
+                            <div style="font-size: 0.65rem;">
+                                {% if m.cell_status == 'PAID' %}
+                                <i class="fa-solid fa-check"></i>
+                                {% elif m.cell_status == 'UNPAID' %}
+                                ជំពាក់
+                                {% elif m.cell_status == 'PARTIAL' %}
+                                {{ m.paid|floatformat:0 }}
+                                {% elif m.is_post_stop %}
+                                <span style="font-size:0.6rem;">{{ m.cell_label }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Bottom Action Buttons for Teachers on Mobile -->
+                    <div class="d-flex align-items-center justify-content-between gap-2 pt-1 border-top">
+                        <div class="d-flex gap-1">
+                            {% if item.student.father_phone or item.student.phone %}
+                            <a href="tel:{{ item.student.father_phone|default:item.student.phone }}" class="btn btn-sm btn-light border text-primary" title="ខលទៅអាណាព្យាបាល">
+                                <i class="fa-solid fa-phone"></i>
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-light border text-info" title="ផ្ញើសារ Telegram" onclick="openSendTelegramModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.remaining_balance|floatformat:0 }}', '{{ item.unpaid_months_str|escapejs }}', '{{ item.guardian_phone|escapejs }}', '{{ item.student.telegram_chat_id|default:''|escapejs }}')">
+                                <i class="fa-brands fa-telegram"></i>
+                            </button>
+                            {% if is_admin or is_accountant %}
+                            <button type="button" class="btn btn-sm btn-light border text-success" title="ចាត់តាំងប្រភេទ / កាលវិភាគ / ស្ថានភាព" onclick="openAssignSingleCategoryModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.id|default:'NONE' }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.fee_start_month|default:'' }}', '{{ item.fee_end_month|default:'' }}', '{{ item.status|default:'ACTIVE' }}')">
+                                <i class="fa-solid fa-user-tag"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-quick-pay flex-grow-1 justify-content-center" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}')">
+                            <i class="fa-solid fa-hand-holding-dollar me-1"></i> កត់ត្រាបង់ប្រាក់
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 text-muted">
+                <i class="fa-solid fa-inbox fs-1 mb-2 text-secondary"></i>
+                <div>មិនមានទិន្នន័យសិស្សត្រូវបង្ហាញឡើយ!</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 1: Record Student Monthly Payment                        -->
+<!-- ============================================================== -->
+<div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold" id="payModalTitle">
+                    <i class="fa-solid fa-receipt me-2"></i> កត់ត្រាការបង់ប្រាក់ទឹកភ្លើង
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formRecordPayment" onsubmit="submitRecordPayment(event)">
+                {% csrf_token %}
+                <input type="hidden" id="payStudentId" name="student_id">
+                <input type="hidden" id="payAction" name="action" value="SAVE">
+
+                <div class="modal-body p-4">
+                    <!-- Student Header Card -->
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="fw-bold fs-6 text-dark" id="payStudentName">-</div>
+                        <div class="text-muted small mt-1">
+                            ថ្នាក់៖ <span class="badge bg-secondary" id="payStudentClass">-</span> | 
+                            ប្រភេទ៖ <span class="badge bg-info text-dark" id="payStudentCat">-</span>
+                            <span class="badge bg-success ms-2 d-none" id="payCurrentStatusBadge">បានបង់រួចរាល់</span>
+                        </div>
+                    </div>
+
+                    <!-- Month Checkboxes to Pay -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <label class="form-label fw-bold text-dark mb-0">
+                                <span>ខែដែលត្រូវបង់ (តាមការកំណត់ Admin)៖ <span class="text-danger">*</span></span>
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-link p-0 text-primary text-decoration-none fw-semibold" onclick="selectAllTickedMonthsToPay()">
+                                    <i class="fa-solid fa-check-double me-1"></i>ជ្រើសរើសទាំងអស់
+                                </button>
+                                <span class="text-muted small">|</span>
+                                <button type="button" class="btn btn-sm btn-link p-0 text-secondary text-decoration-none fw-semibold" onclick="deselectAllMonthsToPay()">
+                                    <i class="fa-solid fa-xmark me-1"></i>ដោះទាំងអស់
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Active / Ticked Months (Shown directly) -->
+                        <div class="row g-2" id="payMonthCheckboxesContainer">
+                            {% for m in months_data %}
+                            {% if m.is_ticked %}
+                            <div class="col-6 pay-month-col" id="payMonthCol_{{ m.number }}">
+                                <div class="form-check p-2 bg-light rounded border border-primary-subtle d-flex align-items-center">
+                                    <input class="form-check-input ms-0 me-2 mt-0 pay-month-cb" type="checkbox" name="months[]" value="{{ m.number }}" id="payMonth_{{ m.number }}" onchange="recalculatePayTotal()">
+                                    <label class="form-check-label fw-bold text-dark small d-flex align-items-center justify-content-between flex-grow-1 cursor-pointer" for="payMonth_{{ m.number }}">
+                                        <span>{{ m.name }}</span>
+                                        <span class="badge bg-primary ms-1" id="payMonthStatusBadge_{{ m.number }}" style="font-size: 0.62rem;">ត្រូវបង់</span>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Future / Advance Months Toggle -->
+                        <div class="mt-2 text-end">
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnToggleAdvanceMonths" onclick="toggleAdvanceMonths()" style="font-size: 0.75rem;">
+                                <i class="fa-solid fa-calendar-plus me-1"></i> បង្ហាញខែផ្សេងទៀត (បង់ទុកមុន)
+                            </button>
+                        </div>
+
+                        <!-- Future / Unticked Months Container (Hidden by default) -->
+                        <div class="row g-2 mt-1 d-none" id="advanceMonthsContainer">
+                            {% for m in months_data %}
+                            {% if not m.is_ticked %}
+                            <div class="col-6 pay-month-col" id="payMonthCol_{{ m.number }}">
+                                <div class="form-check p-2 bg-light rounded border d-flex align-items-center">
+                                    <input class="form-check-input ms-0 me-2 mt-0 pay-month-cb" type="checkbox" name="months[]" value="{{ m.number }}" id="payMonth_{{ m.number }}" onchange="recalculatePayTotal()">
+                                    <label class="form-check-label fw-semibold text-muted small d-flex align-items-center justify-content-between flex-grow-1 cursor-pointer" for="payMonth_{{ m.number }}">
+                                        <span>{{ m.name }}</span>
+                                        <span class="badge bg-light text-muted border ms-1" id="payMonthStatusBadge_{{ m.number }}" style="font-size: 0.62rem;">បង់ទុកមុន</span>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Payment Amount -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">ចំនួនទឹកប្រាក់បង់ ({{ config.currency_symbol }})： <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white fw-bold">{{ config.currency_symbol }}</span>
+                            <input type="number" step="any" class="form-control fw-bold text-success fs-5" id="payAmountInput" name="amount" placeholder="ចំនួនទឹកប្រាក់">
+                        </div>
+                        <div class="form-text small text-muted">ប្រព័ន្ធគណនាចំនួនស្វ័យប្រវត្តិតាមចំនួនខែដែលបានជ្រើសរើស។</div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">វិធីសាស្ត្រទូទាត់：</label>
+                        <select class="form-select" name="payment_method" id="payMethodSelect">
+                            <option value="CASH">💵 សាច់ប្រាក់សុទ្ធ (Cash)</option>
+                            <option value="KHQR_BAKONG">📱 KHQR (Bakong / ធនាគារនានា)</option>
+                            <option value="ABA_BANK">🏦 ABA Bank Pay</option>
+                            <option value="BANK_TRANSFER">🏛️ ផ្ទេរប្រាក់ធនាគារ (Bank Transfer)</option>
+                        </select>
+                    </div>
+
+                    <!-- On-Time Flag & Notes -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_on_time" id="payOnTimeCb" checked>
+                            <label class="form-check-label fw-semibold text-dark small" for="payOnTimeCb">
+                                សម្គាល់ថាបង់ទាន់ពេលវេលា (Paid On Time)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-dark small">កំណត់ចំណាំបន្ថែម៖</label>
+                        <textarea class="form-control form-control-sm" name="notes" rows="2" placeholder="កំណត់ចំណាំ (បើមាន)..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger d-none" id="btnRevertPayment" onclick="confirmRevertPayment()">
+                        <i class="fa-solid fa-rotate-left me-1"></i> លុប/កែត្រឡប់ទៅជាជំពាក់
+                    </button>
+                    <div class="d-flex gap-2 ms-auto">
+                        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4" id="btnSubmitPayment">
+                            <i class="fa-solid fa-check me-1"></i> រក្សាទុកការបង់ប្រាក់
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 2: Send Individual Telegram Reminder                     -->
+<!-- ============================================================== -->
+<div class="modal fade" id="sendTelegramModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-info text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-brands fa-telegram me-2"></i> ផ្ញើសាររំលឹកបង់ប្រាក់តាម Telegram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSendTelegram" onsubmit="submitSendTelegram(event)">
+                {% csrf_token %}
+                <input type="hidden" id="tgStudentId" name="student_id">
+
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="fw-bold fs-6 text-dark" id="tgStudentName">-</div>
+                        <div class="text-muted small mt-1">
+                            ថ្នាក់៖ <span class="badge bg-secondary" id="tgStudentClass">-</span> | 
+                            ប្រភេទ៖ <span class="badge bg-info text-dark" id="tgStudentCat">-</span>
+                        </div>
+                        <div class="mt-2 small text-danger fw-bold">
+                            ប្រាក់ជំពាក់សរុប៖ <span id="tgStudentDue">0</span> {{ config.currency_symbol }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Chat ID / Group (បើមាន)៖</label>
+                        <input type="text" name="custom_chat_id" id="tgChatIdInput" class="form-control form-control-sm font-monospace" placeholder="ឧ. 123456789 ឬ @username (ទុកទទេដើម្បីប្រើលំនាំដើម)">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ខ្លឹមសារសាររំលឹក (Custom Message Preview)៖</label>
+                        <textarea class="form-control" name="custom_message" id="tgMessageTextarea" rows="6" required></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold px-4" id="btnSubmitTelegram">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 3: Send Classroom Summary to Telegram Group              -->
+<!-- ============================================================== -->
+<div class="modal fade" id="classroomTelegramModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-chalkboard me-2"></i> ផ្ញើរបាយការណ៍ថ្នាក់រៀនទៅ Telegram Group
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formClassroomTelegram" onsubmit="submitClassroomTelegram(event)">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ជ្រើសរើសថ្នាក់រៀន៖ <span class="text-danger">*</span></label>
+                        <select name="classroom_id" class="form-select fw-bold" required>
+                            <option value="">-- ជ្រើសរើសថ្នាក់រៀន --</option>
+                            {% for c in classrooms %}
+                            <option value="{{ c.id }}">{{ c.name }} ({{ c.homeroom_teacher.khmer_name|default:"គ្មានគ្រូបន្ទុក" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Group / Chat ID (ជម្រើសបន្ថែម)៖</label>
+                        <input type="text" name="custom_chat_id" class="form-control form-control-sm font-monospace" placeholder="ឧ. -100123456789 (ទុកទទេដើម្បីផ្ញើទៅគ្រូបន្ទុកថ្នាក់)">
+                    </div>
+
+                    <div class="alert alert-info py-2 small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i> ប្រព័ន្ធនឹងចងក្រងស្ថិតិសិស្សបង់គ្រប់ សិស្សជំពាក់ និងបញ្ជីឈ្មោះសិស្សជំពាក់ជាក់លាក់ផ្ញើជូនដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitClassTelegram">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើរបាយការណ៍
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if is_admin or is_accountant %}
+<!-- ============================================================== -->
+<!-- MODAL 3.5: Assign Single Student Category (ម្នាក់ៗ)            -->
+<!-- ============================================================== -->
+<div class="modal fade" id="assignSingleCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-user-tag me-2"></i> ចាត់តាំងប្រភេទសិស្ស (Individual Assign)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAssignSingleCategory" onsubmit="submitAssignSingleCategory(event)">
+                {% csrf_token %}
+                <input type="hidden" name="assign_type" value="STUDENTS">
+                <input type="hidden" name="student_ids[]" id="singleAssignStudentId">
+                <div class="modal-body p-4">
+                    <div class="alert alert-light border d-flex align-items-center gap-3 p-3 mb-3 rounded-3">
+                        <div class="avatar-circle bg-primary-subtle text-primary fw-bold fs-4 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%;">
+                            <i class="fa-solid fa-user-graduate"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark fs-6" id="singleAssignStudentName">-</div>
+                            <div class="text-muted small">
+                                ថ្នាក់៖ <span class="badge bg-secondary-subtle text-secondary" id="singleAssignClassName">-</span>
+                                &bull; ប្រភេទបច្ចុប្បន្ន៖ <span class="badge bg-info-subtle text-info border" id="singleAssignCurrentCat">ទូទៅ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="form-label fw-bold small text-dark mb-2">ជ្រើសរើសប្រភេទសិស្សថ្មី៖ <span class="text-danger">*</span></label>
+                    <div class="d-flex flex-column gap-2" id="singleCategoryOptionsList">
+                        <label class="category-radio-card d-flex align-items-center justify-content-between p-3 border rounded-3 cursor-pointer">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="radio" name="category_id" value="NONE" class="form-check-input mt-0 single-cat-radio" id="singleCatNone" checked>
+                                <div>
+                                    <span class="fw-bold text-dark">សិស្សទូទៅ (Normal)</span>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">បង់ប្រាក់ថ្លៃទឹកភ្លើងធម្មតា (ពេញចំនួន)</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-muted border">ទូទៅ</span>
+                        </label>
+                        {% for cat in categories %}
+                        <label class="category-radio-card d-flex align-items-center justify-content-between p-3 border rounded-3 cursor-pointer">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="radio" name="category_id" value="{{ cat.id }}" class="form-check-input mt-0 single-cat-radio" id="singleCat{{ cat.id }}">
+                                <div>
+                                    <span class="fw-bold text-dark">{{ cat.name }}</span>
+                                    {% if cat.description %}
+                                    <div class="text-muted small" style="font-size: 0.75rem;">{{ cat.description }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">{{ cat.code|default:cat.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Effective From Month for Category Change -->
+                    <div class="bg-light p-2 rounded-3 border mt-3 mb-2">
+                        <label class="form-label fw-bold small text-dark mb-1 d-flex align-items-center justify-content-between">
+                            <span><i class="fa-solid fa-clock-rotate-left text-primary me-1"></i> អនុវត្តប្រភេទថ្មីនេះចាប់ពីខែ៖</span>
+                            <span class="badge bg-white text-muted border fw-normal" style="font-size: 0.7rem;">Mid-Year Transition</span>
+                        </label>
+                        <select name="effective_from_month" id="singleAssignEffectiveMonth" class="form-select form-select-sm">
+                            <option value="">-- អនុវត្តពេញមួយឆ្នាំសិក្សា (គ្រប់ខែទាំងអស់) --</option>
+                            {% for m in all_12_months %}
+                            <option value="{{ m.number }}">{{ m.name }} (ខែ {{ m.number }}) ទៅមុខ</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-muted small mt-1" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-info-circle text-info me-1"></i> ប្រសិនបើសិស្សប្តូរប្រភេទនៅពាក់កណ្តាលឆ្នាំ (ឧ. ពី ឥតគិតថ្លៃ ទៅជា សិស្សទូទៅ) សូមជ្រើសរើសខែដែលចាប់ផ្តើមផ្លាស់ប្តូរ។ ខែមុនៗនឹងនៅរក្សាប្រភេទដើម។
+                        </div>
+                    </div>
+
+                    <!-- Fee Scheduling & Status Section -->
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="row g-2">
+                            <!-- Fee Start Month -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">
+                                    <i class="fa-solid fa-calendar-day text-primary me-1"></i> ខែចាប់ផ្តើមបង់ប្រាក់៖
+                                </label>
+                                <select name="fee_start_month" id="singleAssignFeeStartMonth" class="form-select form-select-sm">
+                                    <option value="">-- ដើមឆ្នាំសិក្សា (Default) --</option>
+                                    {% for m in all_12_months %}
+                                    <option value="{{ m.number }}">{{ m.name }} (ខែ {{ m.number }})</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text text-muted" style="font-size: 0.7rem;">សម្រាប់សិស្សចូលពាក់កណ្តាលឆ្នាំ</div>
+                            </div>
+
+                            <!-- Fee End Month -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">
+                                    <i class="fa-solid fa-calendar-xmark text-danger me-1"></i> ខែបញ្ចប់/ផ្អាកបង់ប្រាក់៖
+                                </label>
+                                <select name="fee_end_month" id="singleAssignFeeEndMonth" class="form-select form-select-sm">
+                                    <option value="">-- បង់ដល់ចប់ឆ្នាំ (Default) --</option>
+                                    {% for m in all_12_months %}
+                                    <option value="{{ m.number }}">{{ m.name }} (ខែ {{ m.number }})</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text text-muted" style="font-size: 0.7rem;">សម្រាប់សិស្សឈប់រៀន ឬផ្អាក</div>
+                            </div>
+
+                            <!-- Student Status -->
+                            <div class="col-12 mt-2">
+                                <label class="form-label fw-bold small text-dark mb-1">
+                                    <i class="fa-solid fa-user-check text-success me-1"></i> ស្ថានភាពសិស្ស (Student Status)៖
+                                </label>
+                                <select name="student_status" id="singleAssignStudentStatus" class="form-select form-select-sm">
+                                    <option value="ACTIVE">កំពុងសិក្សា (Active)</option>
+                                    <option value="SUSPENDED">ផ្អាកការសិក្សា (Suspended)</option>
+                                    <option value="DROPPED">បោះបង់ការសិក្សា / ឈប់រៀន (Dropped)</option>
+                                    <option value="TRANSFERRED">ផ្ទេរការសិក្សា (Transferred)</option>
+                                    <option value="GRADUATED">បញ្ចប់ការសិក្សា (Graduated)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border small text-muted mt-2 p-2 mb-0" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-circle-info text-info me-1"></i> <strong>ចំណាំ៖</strong> ខែដែលនៅក្រៅកាលបរិច្ឆេទសិក្សារបស់សិស្ស នឹងមិនត្រូវបានតម្រូវឱ្យបង់ប្រាក់ ឬគិតជាប្រាក់ជំពាក់ឡើយ។
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4" id="btnSubmitSingleAssign">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 4: Bulk & Classroom Specific Student Category Assignment -->
+<!-- ============================================================== -->
+<div class="modal fade" id="bulkAssignCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-user-tag me-2"></i> ចាត់តាំងប្រភេទសិស្ស (Bulk & Classroom Assign)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formBulkAssignCategory" onsubmit="submitBulkAssignCategory(event)">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ជ្រើសរើសប្រភេទសិស្សដែលត្រូវកំណត់： <span class="text-danger">*</span></label>
+                        <select name="category_id" class="form-select fw-bold" required>
+                            <option value="">-- ជ្រើសរើសប្រភេទសិស្ស --</option>
+                            <option value="NONE">សិស្សទូទៅ (Normal / ដោះប្រភេទចេញ)</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">របៀបចាត់តាំង：</label>
+                        <div class="d-flex flex-wrap gap-3 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="assign_type" id="assignByStudentsInClass" value="STUDENTS" checked onchange="toggleAssignTarget()">
+                                <label class="form-check-label fw-semibold" for="assignByStudentsInClass">
+                                    <i class="fa-solid fa-user-check text-success me-1"></i> ជ្រើសរើសសិស្សម្នាក់ៗតាមថ្នាក់ (Specific Students in Class)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="assign_type" id="assignByClass" value="CLASS" onchange="toggleAssignTarget()">
+                                <label class="form-check-label fw-semibold" for="assignByClass">
+                                    ម្តង១ថ្នាក់ទាំងមូល (By Classroom)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="assign_type" id="assignByGrade" value="GRADE" onchange="toggleAssignTarget()">
+                                <label class="form-check-label fw-semibold" for="assignByGrade">
+                                    ម្តង១កម្រិតទាំងមូល (By Grade)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target 1: Specific Students by Classroom -->
+                    <div class="mb-3" id="wrapTargetStudentsInClass">
+                        <div class="row g-2 mb-2 align-items-center">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-bold small mb-1">ជ្រើសរើសថ្នាក់រៀន：</label>
+                                <select class="form-select form-select-sm" id="pickerClassroomSelect" onchange="loadClassroomStudentsForPicker(this.value)">
+                                    <option value="">-- ជ្រើសរើសថ្នាក់ដើម្បីមើលបញ្ជីសិស្ស --</option>
+                                    {% for c in classrooms %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-bold small mb-1">ស្វែងរកសិស្សក្នុងថ្នាក់៖</label>
+                                <input type="text" class="form-control form-control-sm" id="pickerSearchInput" placeholder="វាយឈ្មោះ ឬ ID សិស្ស..." oninput="filterStudentsInPicker(this.value)">
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between my-2">
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.78rem;" onclick="toggleAllStudentsInPicker(true)">
+                                    <i class="fa-solid fa-check-double me-1"></i>ជ្រើសទាំងអស់
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 0.78rem;" onclick="toggleAllStudentsInPicker(false)">
+                                    <i class="fa-solid fa-xmark me-1"></i>ដោះទាំងអស់
+                                </button>
+                            </div>
+                            <div class="small text-muted">
+                                បានជ្រើសរើស៖ <strong class="text-primary fs-6" id="selectedStudentsCountBadge">0</strong> នាក់
+                            </div>
+                        </div>
+
+                        <!-- Student Checkbox List Container -->
+                        <div class="border rounded-3 p-2 bg-light" style="max-height: 260px; overflow-y: auto;" id="classroomStudentsPickerList">
+                            <div class="text-center py-4 text-muted small">
+                                <i class="fa-solid fa-chalkboard-user fs-4 d-block mb-1 text-secondary"></i>
+                                សូមជ្រើសរើសថ្នាក់រៀនខាងលើ ដើម្បីបង្ហាញបញ្ជីសិស្ស
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target 2: Entire Classroom -->
+                    <div class="mb-3 d-none" id="wrapTargetClass">
+                        <label class="form-label fw-bold small">ជ្រើសរើសថ្នាក់រៀនគោលដៅ：</label>
+                        <select name="classroom_id" class="form-select" id="selectTargetClass">
+                            <option value="">-- ជ្រើសរើសថ្នាក់ --</option>
+                            {% for c in classrooms %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-muted small">សិស្សទាំងអស់នៅក្នុងថ្នាក់នេះ នឹងត្រូវបានប្តូរប្រភេទរួមគ្នា។</div>
+                    </div>
+
+                    <!-- Target 3: Entire Grade Level -->
+                    <div class="mb-3 d-none" id="wrapTargetGrade">
+                        <label class="form-label fw-bold small">ជ្រើសរើសកម្រិតថ្នាក់គោលដៅ：</label>
+                        <select name="grade_level_id" class="form-select" id="selectTargetGrade">
+                            <option value="">-- ជ្រើសរើសកម្រិត --</option>
+                            {% for g in grade_levels %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-muted small">សិស្សទាំងអស់នៅក្នុងកម្រិតថ្នាក់នេះ នឹងត្រូវបានប្តូរប្រភេទរួមគ្នា។</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4" id="btnSubmitBulkAssign">
+                        <i class="fa-solid fa-check me-1"></i> អនុវត្តចាត់តាំង
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 5: Fee Rates Matrix & Academic Year Month Range Settings -->
+<!-- ============================================================== -->
+<div class="modal fade" id="ratesMatrixModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-table-list me-2"></i> កំណត់តម្លៃទឹកភ្លើងតាមខែ & កំណត់ជួរខែត្រូវបង់
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Academic Year Month Range Setting -->
+                <div class="p-3 bg-light rounded-3 border mb-4">
+                    <div class="fw-bold text-dark mb-2"><i class="fa-solid fa-calendar-range text-primary me-1"></i> កំណត់ជួរខែក្នុងឆ្នាំសិក្សា (Academic Year Month Range)</div>
+                    <form id="formSaveMonthRange" onsubmit="submitSaveMonthRange(event)" class="row g-2 align-items-center">
+                        {% csrf_token %}
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small fw-bold mb-1">ខែចាប់ផ្តើម៖</label>
+                            <select name="start_month" class="form-select form-select-sm" id="rangeStartMonth">
+                                <option value="1" {% if config.start_month == 1 %}selected{% endif %}>ខែ ១ - មករា (January)</option>
+                                <option value="2" {% if config.start_month == 2 %}selected{% endif %}>ខែ ២ - កុម្ភៈ (February)</option>
+                                <option value="3" {% if config.start_month == 3 %}selected{% endif %}>ខែ ៣ - មីនា (March)</option>
+                                <option value="4" {% if config.start_month == 4 %}selected{% endif %}>ខែ ៤ - មេសា (April)</option>
+                                <option value="5" {% if config.start_month == 5 %}selected{% endif %}>ខែ ៥ - ឧសភា (May)</option>
+                                <option value="6" {% if config.start_month == 6 %}selected{% endif %}>ខែ ៦ - មិថុនា (June)</option>
+                                <option value="7" {% if config.start_month == 7 %}selected{% endif %}>ខែ ៧ - កក្កដា (July)</option>
+                                <option value="8" {% if config.start_month == 8 %}selected{% endif %}>ខែ ៨ - សីហា (August)</option>
+                                <option value="9" {% if config.start_month == 9 %}selected{% endif %}>ខែ ៩ - កញ្ញា (September)</option>
+                                <option value="10" {% if config.start_month == 10 or not config.start_month %}selected{% endif %}>ខែ ១០ - តុលា (October)</option>
+                                <option value="11" {% if config.start_month == 11 %}selected{% endif %}>ខែ ១១ - វិច្ឆិកា (November)</option>
+                                <option value="12" {% if config.start_month == 12 %}selected{% endif %}>ខែ ១២ - ធ្នូ (December)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small fw-bold mb-1">ខែបញ្ចប់៖</label>
+                            <select name="end_month" class="form-select form-select-sm" id="rangeEndMonth">
+                                <option value="1" {% if config.end_month == 1 %}selected{% endif %}>ខែ ១ - មករា (January)</option>
+                                <option value="2" {% if config.end_month == 2 %}selected{% endif %}>ខែ ២ - កុម្ភៈ (February)</option>
+                                <option value="3" {% if config.end_month == 3 %}selected{% endif %}>ខែ ៣ - មីនា (March)</option>
+                                <option value="4" {% if config.end_month == 4 %}selected{% endif %}>ខែ ៤ - មេសា (April)</option>
+                                <option value="5" {% if config.end_month == 5 %}selected{% endif %}>ខែ ៥ - ឧសភា (May)</option>
+                                <option value="6" {% if config.end_month == 6 %}selected{% endif %}>ខែ ៦ - មិថុនា (June)</option>
+                                <option value="7" {% if config.end_month == 7 %}selected{% endif %}>ខែ ៧ - កក្កដា (July)</option>
+                                <option value="8" {% if config.end_month == 8 or not config.end_month %}selected{% endif %}>ខែ ៨ - សីហា (August)</option>
+                                <option value="9" {% if config.end_month == 9 %}selected{% endif %}>ខែ ៩ - កញ្ញា (September)</option>
+                                <option value="10" {% if config.end_month == 10 %}selected{% endif %}>ខែ ១០ - តុលា (October)</option>
+                                <option value="11" {% if config.end_month == 11 %}selected{% endif %}>ខែ ១១ - វិច្ឆិកា (November)</option>
+                                <option value="12" {% if config.end_month == 12 %}selected{% endif %}>ខែ ១២ - ធ្នូ (December)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកជួរខែ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Rates Matrix Table -->
+                <div class="fw-bold text-dark mb-2"><i class="fa-solid fa-coins text-warning me-1"></i> តម្លៃទឹកភ្លើងតាមប្រភេទសិស្ស និងតាមខែនីមួយៗ ({{ config.currency_symbol }})</div>
+                <form id="formSaveRatesMatrix" onsubmit="submitSaveRatesMatrix(event)">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width: 160px;" class="text-start">ប្រភេទសិស្ស</th>
+                                    {% for m in months_data %}
+                                    <th style="min-width: 85px;">{{ m.short_name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r_row in matrix_rates %}
+                                <tr>
+                                    <td class="text-start fw-bold">
+                                        {{ r_row.category.name }}
+                                    </td>
+                                    {% for m_item in r_row.months %}
+                                    <td>
+                                        <input type="number" step="any" class="form-control form-control-sm text-center rate-matrix-input font-monospace" data-cat-id="{{ r_row.category.id }}" data-month="{{ m_item.month }}" value="{{ m_item.amount|floatformat:0 }}">
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary fw-bold px-4">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកតម្លៃ Matrix
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light px-4 py-2">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 6: Fee Collectors Authorization (Admin Ticks Teachers)   -->
+<!-- ============================================================== -->
+<div class="modal fade" id="feeCollectorsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-warning text-dark py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-chalkboard-user me-2"></i> កំណត់សិទ្ធិគ្រូប្រមូលថវិកា (Fee Collector Teachers)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSaveFeeCollectors" onsubmit="submitSaveFeeCollectors(event)">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="fa-solid fa-shield-halved me-1"></i> <strong>សម្គាល់៖</strong> មានតែគ្រូបង្រៀនដែល Admin បាន Tick សម្គាល់ខាងក្រោមនេះប៉ុណ្ណោះ ទើបអាចមើលឃើញផ្ទាំងប្រមូលប្រាក់ និងកត់ត្រាការបង់ប្រាក់បាន។
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small text-muted">បញ្ជីគ្រូបង្រៀនទាំងអស់ ({{ teachers|length }} នាក់)</span>
+                        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-primary" onclick="toggleSelectAllTeachers(this)">
+                            ជ្រើសរើសទាំងអស់
+                        </button>
+                    </div>
+
+                    <div class="row g-2" style="max-height: 350px; overflow-y: auto;">
+                        {% for t in teachers %}
+                        <div class="col-12 col-md-6">
+                            <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input class="form-check-input collector-teacher-cb ms-1" type="checkbox" name="teacher_ids[]" value="{{ t.id }}" id="teacherCb_{{ t.id }}" {% if t.is_fee_collector %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold text-dark small" for="teacherCb_{{ t.id }}">
+                                        {{ t.khmer_name }} <span class="text-muted fw-normal">({{ t.specialization }})</span>
+                                    </label>
+                                </div>
+                                <span class="badge bg-light text-muted border small font-monospace">{{ t.teacher_id }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning fw-bold px-4">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុកសិទ្ធិគ្រូ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL 7: Manage Student Categories CRUD (Add / Edit / Delete)   -->
+<!-- ============================================================== -->
+<div class="modal fade" id="manageCategoriesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-secondary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-tags me-2"></i> គ្រប់គ្រងប្រភេទសិស្ស (Student Categories CRUD)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Add / Edit Category Form -->
+                <form id="formAddCategory" onsubmit="submitAddCategory(event)" class="p-3 bg-light rounded border mb-4">
+                    {% csrf_token %}
+                    <input type="hidden" id="editCatId" name="category_id">
+                    <div class="fw-bold mb-2 small text-dark d-flex align-items-center justify-content-between">
+                        <span id="catFormTitle"><i class="fa-solid fa-plus-circle text-primary me-1"></i>បង្កើតប្រភេទសិស្សថ្មី</span>
+                        <button type="button" class="btn btn-sm btn-link p-0 text-muted d-none" id="btnCancelEditCat" onclick="resetCategoryForm()">បោះបង់ការកែប្រែ</button>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-5">
+                            <input type="text" name="name" id="catNameInput" class="form-control form-control-sm" placeholder="ឈ្មោះប្រភេទ (ឧ. សិស្សក្រីក្រ)" required>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <input type="text" name="code" id="catCodeInput" class="form-control form-control-sm font-monospace" placeholder="កូដសម្គាល់ (ឧ. POOR)">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <input type="number" name="display_order" id="catOrderInput" class="form-control form-control-sm text-center" value="1" placeholder="លំដាប់">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold" id="btnSaveCat">
+                                បង្កើត
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Existing Categories List with Edit and Delete -->
+                <div class="fw-bold small text-muted mb-2">បញ្ជីប្រភេទសិស្សដែលមានស្រាប់៖</div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;" class="text-center">លំដាប់</th>
+                                <th>ឈ្មោះប្រភេទសិស្ស</th>
+                                <th style="width: 120px;" class="text-center">កូដសម្គាល់</th>
+                                <th style="width: 110px;" class="text-center">សកម្មភាព</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoryTableBody">
+                            {% for cat in categories %}
+                            <tr id="catRow_{{ cat.id }}">
+                                <td class="text-center font-monospace">{{ cat.display_order }}</td>
+                                <td class="fw-bold text-dark">{{ cat.name }}</td>
+                                <td class="text-center"><span class="badge bg-light text-muted border font-monospace">{{ cat.code }}</span></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" onclick="editCategory('{{ cat.id }}', '{{ cat.name|escapejs }}', '{{ cat.code|escapejs }}', '{{ cat.display_order }}')">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 ms-1" onclick="deleteCategory('{{ cat.id }}', '{{ cat.name|escapejs }}')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-2">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const DEFAULT_FEE_RATE = 20000;
+
+    // 1. Month Scope Ticking Change Handler (Admin Live Scope Sync)
+    function handleMonthScopeChange(checkbox) {
+        const label = document.getElementById('labelMonth' + checkbox.value);
+        if (label) {
+            label.classList.toggle('active', checkbox.checked);
+        }
+
+        const checkedMonths = [];
+        document.querySelectorAll('.scope-month-cb:checked').forEach(cb => {
+            checkedMonths.push(parseInt(cb.value));
+        });
+
+        // Temporarily disable checkboxes while saving
+        document.querySelectorAll('.scope-month-cb').forEach(cb => cb.disabled = true);
+
+        fetch("{% url 'save_monthly_fee_scope' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ months: checkedMonths })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('កំហុស៖ ' + (data.message || 'មិនអាចរក្សាទុកខែបានឡើយ!'));
+                document.querySelectorAll('.scope-month-cb').forEach(cb => cb.disabled = false);
+            }
+        })
+        .catch(err => {
+            console.error('Error saving month scope:', err);
+            alert('កំហុសប្រព័ន្ធក្នុងការរក្សាទុកខែ!');
+            document.querySelectorAll('.scope-month-cb').forEach(cb => cb.disabled = false);
+        });
+    }
+
+    // 2. Advance Months Collapsible Toggle
+    function toggleAdvanceMonths() {
+        const container = document.getElementById('advanceMonthsContainer');
+        const btn = document.getElementById('btnToggleAdvanceMonths');
+        if (!container || !btn) return;
+        if (container.classList.contains('d-none')) {
+            container.classList.remove('d-none');
+            btn.innerHTML = '<i class="fa-solid fa-calendar-minus me-1"></i> លាក់ខែផ្សេងទៀត';
+        } else {
+            container.classList.add('d-none');
+            btn.innerHTML = '<i class="fa-solid fa-calendar-plus me-1"></i> បង្ហាញខែផ្សេងទៀត (បង់ទុកមុន)';
+        }
+    }
+
+    let currentStudentMonthsStatus = {};
+
+    // 3. Open Payment Modal
+    function openRecordPaymentModal(studentId, name, className, catName, specificMonth, cellStatus, paidAmount) {
+        try {
+            const idInput = document.getElementById('payStudentId');
+            if (idInput) idInput.value = studentId;
+            const nameEl = document.getElementById('payStudentName');
+            if (nameEl) nameEl.textContent = name;
+            const classEl = document.getElementById('payStudentClass');
+            if (classEl) classEl.textContent = className || 'គ្មានថ្នាក់';
+            const catEl = document.getElementById('payStudentCat');
+            if (catEl) catEl.textContent = catName || 'ទូទៅ';
+            const actionInput = document.getElementById('payAction');
+            if (actionInput) actionInput.value = 'SAVE';
+
+            const statusBadge = document.getElementById('payCurrentStatusBadge');
+            const revertBtn = document.getElementById('btnRevertPayment');
+            const submitBtn = document.getElementById('btnSubmitPayment');
+
+            // Retrieve student's actual month status data from table row
+            currentStudentMonthsStatus = {};
+            let unpaidMonths = [];
+            let paidMonths = [];
+
+            const rowEl = document.getElementById('rowStudent_' + studentId) || document.getElementById('mobileRowStudent_' + studentId);
+            if (rowEl) {
+                try {
+                    const rawJson = rowEl.getAttribute('data-status-json');
+                    if (rawJson) currentStudentMonthsStatus = JSON.parse(rawJson);
+                } catch(e) {
+                    console.error('Error parsing data-status-json:', e);
+                }
+
+                const unpaidRaw = rowEl.getAttribute('data-unpaid-months');
+                if (unpaidRaw) unpaidMonths = unpaidRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+                const paidRaw = rowEl.getAttribute('data-paid-months');
+                if (paidRaw) paidMonths = paidRaw.split(',').map(s => s.trim()).filter(Boolean);
+            }
+
+            const advContainer = document.getElementById('advanceMonthsContainer');
+            const btnAdv = document.getElementById('btnToggleAdvanceMonths');
+            if (advContainer && !advContainer.classList.contains('d-none')) {
+                advContainer.classList.add('d-none');
+                if (btnAdv) btnAdv.innerHTML = '<i class="fa-solid fa-calendar-plus me-1"></i> បង្ហាញខែផ្សេងទៀត (បង់ទុកមុន)';
+            }
+
+            // If specificMonth is passed and is in advance container, show advance container
+            if (specificMonth) {
+                const targetCol = document.getElementById('payMonthCol_' + specificMonth);
+                if (targetCol && advContainer && advContainer.contains(targetCol)) {
+                    advContainer.classList.remove('d-none');
+                    if (btnAdv) btnAdv.innerHTML = '<i class="fa-solid fa-calendar-minus me-1"></i> លាក់ខែផ្សេងទៀត';
+                }
+            }
+
+            // Set live checkboxes and badges based strictly on whether each month has been paid!
+            document.querySelectorAll('.pay-month-cb').forEach(cb => {
+                const mNum = parseInt(cb.value);
+                const badgeEl = document.getElementById('payMonthStatusBadge_' + mNum);
+                const mInfo = currentStudentMonthsStatus[mNum];
+
+                const isAlreadyPaid = (mInfo && (mInfo.status === 'PAID' || (mInfo.paid >= mInfo.expected && mInfo.expected > 0))) || paidMonths.includes(String(mNum));
+
+                // Strict Tick Rule:
+                // - Only months that are PAID are ticked by default!
+                // - Unpaid months are NOT ticked!
+                // - If specificMonth was clicked from the table to pay, check that month as well.
+                if (isAlreadyPaid) {
+                    cb.checked = true;
+                } else if (specificMonth && String(specificMonth) === String(mNum)) {
+                    cb.checked = true;
+                } else {
+                    cb.checked = false;
+                }
+
+                if (mInfo && badgeEl) {
+                    if (mInfo.status === 'PAID') {
+                        badgeEl.textContent = `✓ បានបង់ (${mInfo.paid.toLocaleString()} {{ config.currency_symbol }})`;
+                        badgeEl.className = 'badge bg-success-subtle text-success border border-success-subtle ms-1';
+                    } else if (mInfo.status === 'PARTIAL') {
+                        badgeEl.textContent = `បង់បាន ${mInfo.paid.toLocaleString()} / ${mInfo.expected.toLocaleString()} {{ config.currency_symbol }}`;
+                        badgeEl.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1';
+                    } else if (mInfo.status === 'UNPAID') {
+                        badgeEl.textContent = `ជំពាក់ (${mInfo.expected.toLocaleString()} {{ config.currency_symbol }})`;
+                        badgeEl.className = 'badge bg-danger-subtle text-danger border border-danger-subtle ms-1';
+                    } else {
+                        badgeEl.textContent = `បង់ទុកមុន (${mInfo.expected.toLocaleString()} {{ config.currency_symbol }})`;
+                        badgeEl.className = 'badge bg-light text-muted border ms-1';
+                    }
+                }
+            });
+
+            // Handle Header Badges and Buttons
+            if (paidMonths.length > 0 && unpaidMonths.length === 0) {
+                if (statusBadge) {
+                    statusBadge.textContent = 'បានបង់រួចរាល់ទាំងអស់ 🟢';
+                    statusBadge.className = 'badge bg-success ms-2';
+                    statusBadge.classList.remove('d-none');
+                }
+                if (revertBtn) revertBtn.classList.remove('d-none');
+                if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
+            } else if (paidMonths.length > 0) {
+                if (statusBadge) {
+                    statusBadge.textContent = `បានបង់ ${paidMonths.length} ខែ 🟡`;
+                    statusBadge.className = 'badge bg-warning text-dark ms-2';
+                    statusBadge.classList.remove('d-none');
+                }
+                if (revertBtn) revertBtn.classList.remove('d-none');
+                if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការបង់ប្រាក់';
+            } else {
+                if (statusBadge) statusBadge.classList.add('d-none');
+                if (revertBtn) revertBtn.classList.add('d-none');
+                if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> រក្សាទុកការបង់ប្រាក់';
+            }
+
+            recalculatePayTotal();
+
+            const modalEl = document.getElementById('recordPaymentModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        } catch(err) {
+            console.error('Error opening record payment modal:', err);
+        }
+    }
+
+    // 4. Select All Ticked Months in Payment Modal
+    function selectAllTickedMonthsToPay() {
+        document.querySelectorAll('#payMonthCheckboxesContainer .pay-month-cb').forEach(cb => {
+            cb.checked = true;
+        });
+        recalculatePayTotal();
+    }
+
+    // 4.1 Deselect All Months in Payment Modal
+    function deselectAllMonthsToPay() {
+        document.querySelectorAll('.pay-month-cb').forEach(cb => {
+            cb.checked = false;
+        });
+        recalculatePayTotal();
+    }
+
+    // 5. Recalculate Payment Amount based on checked months
+    function recalculatePayTotal() {
+        let total = 0;
+        document.querySelectorAll('.pay-month-cb:checked').forEach(cb => {
+            const mNum = parseInt(cb.value);
+            if (currentStudentMonthsStatus && currentStudentMonthsStatus[mNum] && currentStudentMonthsStatus[mNum].expected !== undefined) {
+                total += currentStudentMonthsStatus[mNum].expected;
+            } else {
+                total += DEFAULT_FEE_RATE;
+            }
+        });
+        const amountInput = document.getElementById('payAmountInput');
+        if (amountInput) amountInput.value = total;
+    }
+
+    // 6. Submit Payment with Confirmation Prompt (Supports Edit / Untick)
+    function submitRecordPayment(e) {
+        e.preventDefault();
+        const studentName = document.getElementById('payStudentName') ? document.getElementById('payStudentName').textContent : '';
+        const checkedBoxes = document.querySelectorAll('.pay-month-cb:checked');
+        const amount = document.getElementById('payAmountInput') ? document.getElementById('payAmountInput').value : '0';
+
+        if (checkedBoxes.length === 0) {
+            Swal.fire({
+                title: 'ដោះ Tick ទាំងអស់ទៅជាជំពាក់?',
+                text: `លោកអ្នកមិនបានជ្រើសរើស Tick ខែណាមួយឡើយ។ តើលោកអ្នកពិតជាចង់ដោះ Tick ទាំងអស់ និងកែប្រែកំណត់ត្រាបង់ប្រាក់សម្រាប់សិស្ស "${studentName}" ឱ្យត្រឡប់ទៅជាស្ថានភាព «ជំពាក់» វិញមែនទេ?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'បាទ/ចាស ដោះ Tick ទៅជាជំពាក់',
+                cancelButtonText: 'បោះបង់'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executePaymentSubmit('REVERT');
+                }
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'រក្សាទុកការបង់ប្រាក់ / ប្តូរ Tick',
+            text: `តើលោកអ្នកពិតជាចង់រក្សាទុកការ Tick ចំនួន ${checkedBoxes.length} ខែ (សរុប ${parseFloat(amount).toLocaleString()} {{ config.currency_symbol }}) សម្រាប់សិស្ស "${studentName}" នេះមែនទេ? (ខែដែលមិនបាន Tick នឹងក្លាយជាជំពាក់)`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'បាទ/ចាស រក្សាទុក',
+            cancelButtonText: 'ពិនិត្យឡើងវិញ'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executePaymentSubmit('SAVE');
+            }
+        });
+    }
+
+    // 7. Revert / Reset to Unpaid with Confirmation Prompt
+    function confirmRevertPayment() {
+        const studentName = document.getElementById('payStudentName') ? document.getElementById('payStudentName').textContent : '';
+        const checkedBoxes = document.querySelectorAll('.pay-month-cb:checked');
+        
+        let confirmText = `តើលោកអ្នកពិតជាចង់ដោះ Tick / លុបកំណត់ត្រាបង់ប្រាក់ទាំងអស់របស់សិស្ស "${studentName}" ឱ្យត្រឡប់ទៅជាស្ថានភាព «ជំពាក់» វិញមែនទេ?`;
+        if (checkedBoxes.length > 0) {
+            confirmText = `តើលោកអ្នកពិតជាចង់ដោះ Tick / លុបកំណត់ត្រាបង់ប្រាក់ចំនួន ${checkedBoxes.length} ខែ សម្រាប់សិស្ស "${studentName}" ឱ្យត្រឡប់ទៅជាស្ថានភាព «ជំពាក់» វិញមែនទេ?`;
+        }
+
+        Swal.fire({
+            title: '⚠️ បញ្ជាក់ការដោះ Tick ឡើងវិញ!',
+            text: confirmText,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'បាទ/ចាស ដោះ Tick ទៅជាជំពាក់',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executePaymentSubmit('REVERT');
+            }
+        });
+    }
+
+    // 8. Execute Payment Submit (SAVE or REVERT)
+    function executePaymentSubmit(actionType) {
+        const form = document.getElementById('formRecordPayment');
+        const payAction = document.getElementById('payAction');
+        if (payAction) payAction.value = actionType;
+        const submitBtn = document.getElementById('btnSubmitPayment');
+        const revertBtn = document.getElementById('btnRevertPayment');
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងដំណើរការ...';
+        }
+        if (revertBtn) revertBtn.disabled = true;
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'record_student_monthly_payment' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> រក្សាទុកការបង់ប្រាក់';
+            }
+            if (revertBtn) revertBtn.disabled = false;
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message || 'មិនអាចដំណើរការបានឡើយ!'
+                });
+            }
+        })
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> រក្សាទុកការបង់ប្រាក់';
+            }
+            if (revertBtn) revertBtn.disabled = false;
+            console.error(err);
+            Swal.fire({
+                icon: 'error',
+                title: 'កំហុសប្រព័ន្ធ!',
+                text: 'មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ។'
+            });
+        });
+    }
+
+    // 9. Open Telegram Reminder Modal
+    function openSendTelegramModal(studentId, name, className, catName, dueAmount, unpaidMonthsStr, phone, chatId) {
+        try {
+            const idInput = document.getElementById('tgStudentId');
+            if (idInput) idInput.value = studentId;
+            const nameEl = document.getElementById('tgStudentName');
+            if (nameEl) nameEl.textContent = name;
+            const classEl = document.getElementById('tgStudentClass');
+            if (classEl) classEl.textContent = className || 'គ្មានថ្នាក់';
+            const catEl = document.getElementById('tgStudentCat');
+            if (catEl) catEl.textContent = catName || 'ទូទៅ';
+            const dueEl = document.getElementById('tgStudentDue');
+            if (dueEl) dueEl.textContent = dueAmount;
+            const chatInput = document.getElementById('tgChatIdInput');
+            if (chatInput) chatInput.value = chatId || '';
+
+            const monthsText = unpaidMonthsStr || 'គ្រប់ខែដែលបានកំណត់';
+            const msg = `សួស្តីលោក/លោកស្រីអាណាព្យាបាលសិស្ស ${name}!\n` +
+                        `🏫 ថ្នាក់រៀន៖ ${className || '-'}\n` +
+                        `🏷️ ប្រភេទសិស្ស៖ ${catName || 'ទូទៅ'}\n` +
+                        `📅 ខែដែលត្រូវបង់៖ ${monthsText}\n` +
+                        `💰 ចំនួនទឹកប្រាក់នៅជំពាក់សរុប៖ ${dueAmount} {{ config.currency_symbol }}\n\n` +
+                        `សូមមេត្តាទូទាត់តាមរយៈ KHQR ឬមកកាន់ការិយាល័យរដ្ឋបាលសាលា។ សូមអរគុណ!`;
+
+            const msgArea = document.getElementById('tgMessageTextarea');
+            if (msgArea) msgArea.value = msg;
+
+            const modalEl = document.getElementById('sendTelegramModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        } catch(err) {
+            console.error('Error opening telegram reminder modal:', err);
+        }
+    }
+
+    // 10. Submit Telegram Reminder
+    function submitSendTelegram(e) {
+        e.preventDefault();
+        const form = document.getElementById('formSendTelegram');
+        const submitBtn = document.getElementById('btnSubmitTelegram');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងផ្ញើ...';
+        }
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'send_monthly_fee_reminder' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram';
+            }
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ផ្ញើរួចរាល់!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                const modalEl = document.getElementById('sendTelegramModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    const inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) inst.hide();
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram';
+            }
+            Swal.fire('កំហុស!', 'មិនអាចផ្ញើសារបានឡើយ', 'error');
+        });
+    }
+
+    // 11. Submit Classroom Telegram Report
+    function submitClassroomTelegram(e) {
+        e.preventDefault();
+        const form = document.getElementById('formClassroomTelegram');
+        const submitBtn = document.getElementById('btnSubmitClassTelegram');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងផ្ញើ...';
+        }
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'send_classroom_fee_summary_telegram' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើរបាយការណ៍';
+            }
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ផ្ញើរួចរាល់!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                const modalEl = document.getElementById('classroomTelegramModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    const inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) inst.hide();
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើរបាយការណ៍';
+            }
+            Swal.fire('កំហុស!', 'មិនអាចផ្ញើរបាយការណ៍បានឡើយ', 'error');
+        });
+    }
+
+    // 12. Open Single Student Category Assign Modal
+    function openAssignSingleCategoryModal(studentId, name, className, currentCatId, currentCatName, feeStartMonth, feeEndMonth, studentStatus) {
+        try {
+            const idInput = document.getElementById('singleAssignStudentId');
+            if (idInput) idInput.value = studentId;
+            const nameEl = document.getElementById('singleAssignStudentName');
+            if (nameEl) nameEl.textContent = name;
+            const classEl = document.getElementById('singleAssignClassName');
+            if (classEl) classEl.textContent = className || 'គ្មានថ្នាក់';
+            const catEl = document.getElementById('singleAssignCurrentCat');
+            if (catEl) catEl.textContent = currentCatName || 'ទូទៅ';
+
+            // Select the matching radio button
+            document.querySelectorAll('.single-cat-radio').forEach(rb => {
+                if (rb.value === currentCatId || (rb.value === 'NONE' && (!currentCatId || currentCatId === 'NONE'))) {
+                    rb.checked = true;
+                } else {
+                    rb.checked = false;
+                }
+            });
+
+            // Set Fee Start Month Select
+            const startMonthSelect = document.getElementById('singleAssignFeeStartMonth');
+            if (startMonthSelect) {
+                startMonthSelect.value = feeStartMonth || '';
+            }
+
+            // Set Fee End Month Select
+            const endMonthSelect = document.getElementById('singleAssignFeeEndMonth');
+            if (endMonthSelect) {
+                endMonthSelect.value = feeEndMonth || '';
+            }
+
+            // Set Student Status Select
+            const statusSelect = document.getElementById('singleAssignStudentStatus');
+            if (statusSelect) {
+                statusSelect.value = studentStatus || 'ACTIVE';
+            }
+
+            // Reset Effective Month Select to default (full year)
+            const effMonthSelect = document.getElementById('singleAssignEffectiveMonth');
+            if (effMonthSelect) {
+                effMonthSelect.value = '';
+            }
+
+            const modalEl = document.getElementById('assignSingleCategoryModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        } catch(err) {
+            console.error('Error opening single category assign modal:', err);
+        }
+    }
+
+    // 8.6 Submit Single Student Category Assign
+    function submitAssignSingleCategory(e) {
+        e.preventDefault();
+        const form = document.getElementById('formAssignSingleCategory');
+        const submitBtn = document.getElementById('btnSubmitSingleAssign');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'bulk_assign_student_category' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> រក្សាទុក';
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(err => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> រក្សាទុក';
+            Swal.fire({ icon: 'error', title: 'កំហុសប្រព័ន្ធ!', text: err.message });
+        });
+    }
+
+    // 9. Bulk Assign Category Target Toggle (3 modes)
+    function toggleAssignTarget() {
+        const isStudents = document.getElementById('assignByStudentsInClass').checked;
+        const isClass = document.getElementById('assignByClass').checked;
+        const isGrade = document.getElementById('assignByGrade').checked;
+
+        document.getElementById('wrapTargetStudentsInClass').classList.toggle('d-none', !isStudents);
+        document.getElementById('wrapTargetClass').classList.toggle('d-none', !isClass);
+        document.getElementById('wrapTargetGrade').classList.toggle('d-none', !isGrade);
+    }
+
+    // 9.1 Load classroom students for picker
+    let currentLoadedStudents = [];
+    function loadClassroomStudentsForPicker(classId) {
+        const container = document.getElementById('classroomStudentsPickerList');
+        if (!classId) {
+            container.innerHTML = '<div class="text-center py-4 text-muted small"><i class="fa-solid fa-chalkboard-user fs-4 d-block mb-1 text-secondary"></i>សូមជ្រើសរើសថ្នាក់រៀនខាងលើ ដើម្បីបង្ហាញបញ្ជីសិស្ស</div>';
+            currentLoadedStudents = [];
+            updateSelectedStudentsCount();
+            return;
+        }
+
+        container.innerHTML = '<div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin fs-4 d-block mb-2 text-primary"></i>កំពុងទាញយកបញ្ជីសិស្សក្នុងថ្នាក់...</div>';
+
+        fetch(`{% url 'get_classroom_students_ajax' %}?classroom_id=${classId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.students && data.students.length > 0) {
+                currentLoadedStudents = data.students;
+                renderClassroomStudentsPicker(currentLoadedStudents);
+            } else {
+                currentLoadedStudents = [];
+                container.innerHTML = '<div class="text-center py-4 text-muted small"><i class="fa-solid fa-inbox fs-4 d-block mb-1 text-secondary"></i>មិនមានសិស្សនៅក្នុងថ្នាក់នេះឡើយ!</div>';
+            }
+            updateSelectedStudentsCount();
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="text-center py-4 text-danger small">មិនអាចទាញយកទិន្នន័យបានឡើយ!</div>';
+        });
+    }
+
+    function renderClassroomStudentsPicker(students) {
+        const container = document.getElementById('classroomStudentsPickerList');
+        let html = '<div class="row g-2">';
+        students.forEach((st, idx) => {
+            const genderBadge = st.gender === 'M' ? '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.65rem;">ប្រុស</span>' : '<span class="badge bg-danger-subtle text-danger ms-1" style="font-size:0.65rem;">ស្រី</span>';
+            const catBadge = st.category_name && st.category_name !== 'ទូទៅ' 
+                ? `<span class="badge bg-info-subtle text-info border border-info-subtle ms-auto" style="font-size:0.68rem;">${st.category_name}</span>`
+                : `<span class="badge bg-light text-muted border ms-auto" style="font-size:0.68rem;">ទូទៅ</span>`;
+
+            html += `
+            <div class="col-12 col-md-6 student-picker-card" data-search="${(st.khmer_name + ' ' + (st.latin_name || '') + ' ' + st.student_id).toLowerCase()}">
+                <label class="student-picker-item d-flex align-items-center gap-2 p-2 border rounded-2 bg-white cursor-pointer mb-0">
+                    <input type="checkbox" name="student_ids[]" value="${st.id}" class="form-check-input mt-0 picker-student-cb" onchange="updateSelectedStudentsCount()">
+                    <div class="small fw-bold text-dark font-monospace text-muted" style="font-size:0.75rem;">${st.student_id}</div>
+                    <div class="small fw-semibold text-dark text-truncate" style="max-width: 130px;">${st.khmer_name} ${genderBadge}</div>
+                    ${catBadge}
+                </label>
+            </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function filterStudentsInPicker(term) {
+        const q = (term || '').toLowerCase().trim();
+        document.querySelectorAll('.student-picker-card').forEach(card => {
+            const searchData = card.getAttribute('data-search') || '';
+            card.style.display = searchData.includes(q) ? '' : 'none';
+        });
+    }
+
+    function toggleAllStudentsInPicker(checkAll) {
+        document.querySelectorAll('.student-picker-card').forEach(card => {
+            if (card.style.display !== 'none') {
+                const cb = card.querySelector('.picker-student-cb');
+                if (cb) cb.checked = checkAll;
+            }
+        });
+        updateSelectedStudentsCount();
+    }
+
+    function updateSelectedStudentsCount() {
+        const checked = document.querySelectorAll('.picker-student-cb:checked').length;
+        const badge = document.getElementById('selectedStudentsCountBadge');
+        if (badge) badge.textContent = checked;
+    }
+
+    // 10. Submit Bulk Assign Category
+    function submitBulkAssignCategory(e) {
+        e.preventDefault();
+        const form = document.getElementById('formBulkAssignCategory');
+        const isStudents = document.getElementById('assignByStudentsInClass').checked;
+        if (isStudents) {
+            const checked = document.querySelectorAll('.picker-student-cb:checked').length;
+            if (checked === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'សូមជ្រើសរើសសិស្ស!',
+                    text: 'សូមគូសធីក (Check) សិស្សយ៉ាងហោចណាស់ម្នាក់ក្នុងបញ្ជីថ្នាក់រៀន។'
+                });
+                return;
+            }
+        }
+
+        const submitBtn = document.getElementById('btnSubmitBulkAssign');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងអនុវត្ត...';
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'bulk_assign_student_category' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> អនុវត្តចាត់តាំង';
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        })
+        .catch(err => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> អនុវត្តចាត់តាំង';
+            Swal.fire({ icon: 'error', title: 'កំហុសប្រព័ន្ធ!', text: err.message });
+        });
+    }
+
+    // 11. Save Month Range Settings
+    function submitSaveMonthRange(e) {
+        e.preventDefault();
+        const form = document.getElementById('formSaveMonthRange');
+        const formData = new FormData(form);
+
+        fetch("{% url 'save_monthly_fee_range' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        });
+    }
+
+    // 12. Submit Rates Matrix
+    function submitSaveRatesMatrix(e) {
+        e.preventDefault();
+        const inputs = document.querySelectorAll('.rate-matrix-input');
+        const rates = [];
+        inputs.forEach(inp => {
+            rates.push({
+                category_id: parseInt(inp.dataset.catId),
+                month: parseInt(inp.dataset.month),
+                amount: parseFloat(inp.value) || 0
+            });
+        });
+
+        fetch("{% url 'configure_monthly_rates_matrix' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ rates: rates })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        });
+    }
+
+    // 13. Fee Collector Teachers Toggle Select All
+    function toggleSelectAllTeachers(btn) {
+        const cbs = document.querySelectorAll('.collector-teacher-cb');
+        const allChecked = Array.from(cbs).every(cb => cb.checked);
+        cbs.forEach(cb => { cb.checked = !allChecked; });
+        btn.textContent = allChecked ? 'ជ្រើសរើសទាំងអស់' : 'ដកការជ្រើសរើស';
+    }
+
+    // 14. Submit Fee Collectors
+    function submitSaveFeeCollectors(e) {
+        e.preventDefault();
+        const form = document.getElementById('formSaveFeeCollectors');
+        const formData = new FormData(form);
+
+        fetch("{% url 'manage_fee_collectors' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'កំហុស!',
+                    text: data.message
+                });
+            }
+        });
+    }
+
+    // 15. Category Management (Edit / Create / Delete)
+    function editCategory(id, name, code, order) {
+        document.getElementById('editCatId').value = id;
+        document.getElementById('catNameInput').value = name;
+        document.getElementById('catCodeInput').value = code;
+        document.getElementById('catOrderInput').value = order;
+        document.getElementById('catFormTitle').innerHTML = '<i class="fa-solid fa-pen text-warning me-1"></i>កែប្រែប្រភេទសិស្ស';
+        document.getElementById('btnSaveCat').textContent = 'កែប្រែ';
+        document.getElementById('btnCancelEditCat').classList.remove('d-none');
+    }
+
+    function resetCategoryForm() {
+        document.getElementById('editCatId').value = '';
+        document.getElementById('catNameInput').value = '';
+        document.getElementById('catCodeInput').value = '';
+        document.getElementById('catOrderInput').value = '1';
+        document.getElementById('catFormTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-primary me-1"></i>បង្កើតប្រភេទសិស្សថ្មី';
+        document.getElementById('btnSaveCat').textContent = 'បង្កើត';
+        document.getElementById('btnCancelEditCat').classList.add('d-none');
+    }
+
+    function deleteCategory(id, name) {
+        Swal.fire({
+            title: 'តើលោកអ្នកពិតជាចង់លុប?',
+            text: `ប្រភេទសិស្ស "${name}" នឹងត្រូវលុបចេញពីប្រព័ន្ធ!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'បាទ/ចាស លុបចេញ',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/finance/monthly-fees/categories/${id}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'បានលុប!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('កំហុស!', data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function submitAddCategory(e) {
+        e.preventDefault();
+        const form = document.getElementById('formAddCategory');
+        const formData = new FormData(form);
+
+        fetch("{% url 'manage_student_categories' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('កំហុស!', data.message, 'error');
+            }
+        });
+    }
+
+    // 14. Cascading Grade Level to Classroom Filter
+    function handleGradeLevelFilterChange() {
+        const gradeSelect = document.getElementById('filterGradeLevelSelect');
+        const classSelect = document.getElementById('filterClassroomSelect');
+        if (!gradeSelect || !classSelect) return;
+
+        const selectedOption = gradeSelect.options[gradeSelect.selectedIndex];
+        const gradeNumber = selectedOption ? selectedOption.getAttribute('data-grade-number') : null;
+        const track = selectedOption ? selectedOption.getAttribute('data-track') : null;
+
+        let currentlySelectedValid = false;
+
+        Array.from(classSelect.options).forEach((opt, idx) => {
+            if (idx === 0 || !gradeNumber || gradeNumber === 'ALL') {
+                // Default option "-- គ្រប់ថ្នាក់រៀន --" or if no grade is selected, show all
+                opt.style.display = '';
+                opt.disabled = false;
+                if (opt.selected) currentlySelectedValid = true;
+            } else {
+                const optGrade = opt.getAttribute('data-grade');
+                const optTrack = opt.getAttribute('data-track');
+                
+                let matches = (optGrade === gradeNumber);
+                if (matches && track && track !== 'GENERAL' && optTrack) {
+                    matches = (optTrack === track);
+                }
+
+                if (matches) {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                    if (opt.selected) currentlySelectedValid = true;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            }
+        });
+
+        // If the selected classroom is now hidden/disabled, reset to "-- គ្រប់ថ្នាក់រៀន --"
+        if (!currentlySelectedValid) {
+            classSelect.value = "";
+        }
+    }
+
+    // 15. Dynamic Table Column Sorting (ID, Name, Gender, Class, Category, Total Paid, Debt)
+    let currentSortKey = '';
+    let currentSortDirection = 'asc';
+
+    function sortTableBy(key, thElement) {
+        const table = document.querySelector('.table-fees');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.student-fee-row'));
+        if (!rows.length) return;
+
+        // Toggle direction if clicking the same column, else set smart default
+        if (currentSortKey === key) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortKey = key;
+            // For numbers (paid / debt), default to highest first (desc), for strings default to asc
+            currentSortDirection = (key === 'paid' || key === 'debt') ? 'desc' : 'asc';
+        }
+
+        // Reset all sort headers and icons
+        document.querySelectorAll('.sortable-th').forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+            const icon = th.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = 'fa-solid fa-sort sort-icon text-muted ms-1 small';
+            }
+        });
+
+        // Set active header style and directional icon
+        if (thElement) {
+            thElement.classList.add(currentSortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            const icon = thElement.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = currentSortDirection === 'asc'
+                    ? 'fa-solid fa-sort-up sort-icon text-primary ms-1 small'
+                    : 'fa-solid fa-sort-down sort-icon text-primary ms-1 small';
+            }
+        }
+
+        // Perform sorting
+        rows.sort((a, b) => {
+            let valA = a.getAttribute(`data-${key}`) || '';
+            let valB = b.getAttribute(`data-${key}`) || '';
+
+            if (key === 'paid' || key === 'debt') {
+                const numA = parseFloat(valA) || 0;
+                const numB = parseFloat(valB) || 0;
+                return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+            } else {
+                valA = valA.toString().trim();
+                valB = valB.toString().trim();
+                const cmp = valA.localeCompare(valB, 'km', { numeric: true, sensitivity: 'base' });
+                return currentSortDirection === 'asc' ? cmp : -cmp;
+            }
+        });
+
+        // Re-append sorted rows and re-index the "ល.រ" counter column
+        const fragment = document.createDocumentFragment();
+        rows.forEach((row, index) => {
+            const numCell = row.querySelector('td:first-child');
+            if (numCell) {
+                numCell.textContent = index + 1;
+            }
+            fragment.appendChild(row);
+        });
+        tbody.appendChild(fragment);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        handleGradeLevelFilterChange();
+    });
+</script>
+
+{% include 'finance/teacher_collector_pass_modal.html' %}
+{% endblock %}

@@ -1,0 +1,831 @@
+{% extends 'base.html' %}
+{% load teacher_filters %}
+
+{% block title %}របាយការណ៍វត្តមាន & អវត្តមានគ្រូបង្រៀន | SchoolSM{% endblock %}
+
+
+{% block extra_css %}
+<style>
+    .kpi-card {
+        border-radius: 14px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+    .tab-filter-btn {
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 8px 18px;
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tab-filter-btn:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    .tab-filter-btn.active {
+        background: #4f46e5;
+        color: #ffffff;
+        border-color: #4f46e5;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+    }
+    .period-cell {
+        font-size: 0.78rem;
+        padding: 6px 8px !important;
+        vertical-align: middle;
+        min-width: 95px;
+    }
+    .slot-badge-recorded {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+        border-radius: 6px;
+        padding: 3px 6px;
+        display: block;
+        line-height: 1.25;
+    }
+    .slot-badge-unrecorded {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 3px 6px;
+        display: block;
+        line-height: 1.25;
+        font-weight: 600;
+    }
+    .slot-badge-pending {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 3px 6px;
+        display: block;
+        line-height: 1.25;
+    }
+    .slot-badge-empty {
+        color: #cbd5e1;
+        text-align: center;
+        display: block;
+    }
+    .day-pill-success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+    .day-pill-danger {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+    .day-pill-muted {
+        color: #94a3b8;
+        font-size: 0.75rem;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .app-wrapper {
+            padding: 0 !important;
+        }
+        .custom-card {
+            box-shadow: none !important;
+            border: 1px solid #000 !important;
+        }
+        body {
+            background: white !important;
+            color: black !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-chalkboard-user me-1"></i> ប្រព័ន្ធគ្រប់គ្រងគ្រូបង្រៀន
+                </span>
+                {% if active_year %}
+                <span class="badge bg-secondary-subtle text-secondary fw-semibold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-calendar-days me-1"></i> ឆ្នាំសិក្សា {{ active_year.name }}
+                </span>
+                {% endif %}
+            </div>
+            <h2 class="fw-bold mb-1 text-dark">របាយការណ៍វត្តមាន & អវត្តមានគ្រូបង្រៀន</h2>
+            <p class="text-muted small mb-0">
+                ស្រង់ទិន្នន័យស្វ័យប្រវត្តិតាមការចុះវត្តមានសិស្សជាក់ស្តែង — រាប់ចំនួនមិនបានចុះតាមម៉ោង ថ្ងៃ សប្តាហ៍ និងខែ
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap no-print">
+            {% if request.user.role == 'ADMIN' %}
+            <button type="button" class="btn btn-info btn-sm text-white fw-bold" onclick="openMissingTeachersTelegramModal()">
+                <i class="fa-brands fa-telegram me-1"></i> ផ្ញើបញ្ជីគ្រូមិនទាន់ចុះទៅ Telegram
+            </button>
+            <a href="{% url 'attendance_admin_hub' %}" class="btn btn-dark btn-sm fw-bold">
+                <i class="fa-solid fa-sliders me-1"></i> Admin Hub
+            </a>
+            {% endif %}
+            <a href="{% url 'teacher_attendance' %}{% if filter_type in 'period,day' %}?date={{ selected_date }}{% endif %}" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-user-clock me-1"></i> ស្រង់វត្តមានប្រចាំថ្ងៃ
+            </a>
+            <a href="{% url 'teacher_attendance_report' %}?filter_type={{ filter_type }}&date={{ selected_date }}&month={{ month_str }}&week_date={{ week_date_str }}&action=sync" class="btn btn-warning btn-sm text-dark fw-bold" onclick="return confirm('តើលោកអ្នកចង់ Sync វត្តមានគ្រូពីកំណត់ត្រាស្រង់វត្តមានសិស្សមែនទេ?');">
+                <i class="fa-solid fa-rotate me-1"></i> Sync ពីវត្តមានសិស្ស
+            </a>
+            <button onclick="window.print()" class="btn btn-light btn-sm border">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print)
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Quick Switcher: Student Report vs Teacher Report -->
+    <div class="d-flex align-items-center gap-2 mb-4 p-2 bg-white rounded-3 border no-print">
+        <span class="text-muted small fw-bold px-2">ផ្លាស់ប្តូររបាយការណ៍៖</span>
+        <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-users me-1"></i> របាយការណ៍វត្តមានសិស្ស (Student Attendance)
+        </a>
+        <a href="{% url 'teacher_attendance_report' %}" class="btn btn-sm btn-primary active fw-bold">
+            <i class="fa-solid fa-chalkboard-user me-1"></i> របាយការណ៍វត្តមានគ្រូ (Teacher Attendance)
+        </a>
+        <a href="{% url 'at_risk_attendance' %}" class="btn btn-sm btn-outline-danger ms-auto">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i> សិស្សអវត្តមានច្រើន (At-Risk)
+        </a>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Teachers -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card bg-white p-3 h-100 shadow-sm">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">គ្រូត្រូវបង្រៀនសរុប</p>
+                        <h3 class="fw-bold mb-0 text-dark">{{ summary.total_teachers }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                    </div>
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3">
+                        <i class="fa-solid fa-users-rectangle fs-5"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    {% if filter_type in 'period,day' %}
+                    <span>មានម៉ោងបង្រៀនថ្ងៃនេះ៖ <strong class="text-dark">{{ summary.teachers_with_schedule }}</strong> នាក់</span>
+                    {% else %}
+                    <span>ចំនួនថ្ងៃបង្រៀនសរុប៖ <strong class="text-dark">{{ summary.total_teaching_dates }}</strong> ថ្ងៃ</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Hours Scheduled -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card bg-white p-3 h-100 shadow-sm">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">ម៉ោងបង្រៀនសរុប (Timetable)</p>
+                        <h3 class="fw-bold mb-0 text-indigo">
+                            {% if filter_type in 'period,day' %}{{ summary.total_scheduled_periods }}{% else %}{{ summary.total_scheduled_hours }}{% endif %}
+                            <span class="fs-6 fw-normal text-muted">ម៉ោង</span>
+                        </h3>
+                    </div>
+                    <div class="p-2 bg-indigo-subtle text-indigo rounded-3" style="background-color: #e0e7ff; color: #4338ca;">
+                        <i class="fa-solid fa-clock fs-5"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <span>ស្រង់តាមកាលវិភាគផ្លូវការ</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recorded Hours (Present) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card bg-white p-3 h-100 shadow-sm">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">បានចុះវត្តមានសិស្ស</p>
+                        <h3 class="fw-bold mb-0 text-success">
+                            {% if filter_type in 'period,day' %}{{ summary.total_recorded_periods }}{% else %}{{ summary.total_recorded_hours }}{% endif %}
+                            <span class="fs-6 fw-normal text-muted">ម៉ោង</span>
+                        </h3>
+                    </div>
+                    <div class="p-2 bg-success-subtle text-success rounded-3">
+                        <i class="fa-solid fa-circle-check fs-5"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small d-flex align-items-center justify-content-between">
+                    <span class="text-muted">អត្រាអនុលោមភាព (Compliance):</span>
+                    <span class="badge bg-success-subtle text-success fw-bold">{{ summary.overall_compliance_rate }}%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unrecorded Hours (Absent) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card bg-white p-3 h-100 shadow-sm">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">មិនបានចុះ (អវត្តមាន)</p>
+                        <h3 class="fw-bold mb-0 text-danger">
+                            {% if filter_type in 'period,day' %}{{ summary.total_unrecorded_periods }}{% else %}{{ summary.total_unrecorded_hours }}{% endif %}
+                            <span class="fs-6 fw-normal text-muted">ម៉ោង</span>
+                        </h3>
+                    </div>
+                    <div class="p-2 bg-danger-subtle text-danger rounded-3">
+                        <i class="fa-solid fa-circle-xmark fs-5"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    {% if filter_type in 'period,day' %}
+                    <span>គ្រូមិនបានចុះ៖ <strong class="text-danger">{{ summary.teachers_with_unrecorded }}</strong> នាក់</span>
+                    {% else %}
+                    <span>គ្រូមានម៉ោងខកខាន៖ <strong class="text-danger">{{ summary.teachers_with_unrecorded }}</strong> នាក់</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-Granularity Navigation Tabs -->
+    <div class="custom-card p-3 mb-4 no-print shadow-sm">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom pb-3 mb-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-filter me-1"></i> ទម្រង់ស្រង់ទិន្នន័យ៖</span>
+                <a href="?filter_type=period&date={{ selected_date }}" class="tab-filter-btn {% if filter_type == 'period' %}active{% endif %}">
+                    <i class="fa-solid fa-clock"></i> តាមម៉ោង (Period Matrix)
+                </a>
+                <a href="?filter_type=day&date={{ selected_date }}" class="tab-filter-btn {% if filter_type == 'day' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-day"></i> តាមថ្ងៃ (Daily)
+                </a>
+                <a href="?filter_type=week&week_date={{ week_date_str }}" class="tab-filter-btn {% if filter_type == 'week' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-week"></i> តាមសប្តាហ៍ (Weekly)
+                </a>
+                <a href="?filter_type=month&month={{ month_str }}" class="tab-filter-btn {% if filter_type == 'month' %}active{% endif %}">
+                    <i class="fa-solid fa-calendar-days"></i> តាមខែ (Monthly)
+                </a>
+                <a href="?filter_type=custom&start_date={{ start_date }}&end_date={{ end_date }}" class="tab-filter-btn {% if filter_type == 'custom' %}active{% endif %}">
+                    <i class="fa-solid fa-sliders"></i> ចន្លោះថ្ងៃ (Custom)
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter Controls Form -->
+        <form method="GET" class="row g-2 align-items-end">
+            <input type="hidden" name="filter_type" value="{{ filter_type }}">
+
+            <!-- Date Specific Inputs based on filter_type -->
+            {% if filter_type == 'period' or filter_type == 'day' %}
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold mb-1">ជ្រើសរើសកាលបរិច្ឆេទ (Date)：</label>
+                <input type="date" name="date" value="{{ selected_date }}" class="form-control form-control-sm" onchange="this.form.submit()">
+            </div>
+            {% if filter_type == 'period' %}
+            <div class="col-12 col-md-2">
+                <label class="form-label small fw-bold mb-1">ម៉ោងសិក្សា (Period)：</label>
+                <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="all" {% if period_filter == 'all' %}selected{% endif %}>គ្រប់ម៉ោងទាំងអស់ (1-8)</option>
+                    {% for p in period_range %}
+                    <option value="{{ p }}" {% if period_filter == p|stringformat:"s" %}selected{% endif %}>ម៉ោងទី {{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {% elif filter_type == 'week' %}
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold mb-1">ជ្រើសរើសសប្តាហ៍ (ជ្រើសថ្ងៃណាមួយក្នុងសប្តាហ៍)：</label>
+                <input type="date" name="week_date" value="{{ week_date_str }}" class="form-control form-control-sm" onchange="this.form.submit()">
+            </div>
+
+            {% elif filter_type == 'custom' %}
+            <div class="col-12 col-md-2">
+                <label class="form-label small fw-bold mb-1">ចាប់ពីថ្ងៃ៖</label>
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label small fw-bold mb-1">ដល់ថ្ងៃ៖</label>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm">
+            </div>
+
+            {% else %}
+            <!-- Month Mode -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold mb-1">ជ្រើសរើសខែ (Month)：</label>
+                <input type="month" name="month" value="{{ month_str }}" class="form-control form-control-sm" onchange="this.form.submit()">
+            </div>
+            {% endif %}
+
+            <!-- Status Filter -->
+            <div class="col-12 col-md-2">
+                <label class="form-label small fw-bold mb-1">ស្ថានភាពវត្តមាន៖</label>
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>ទាំងអស់ (All)</option>
+                    <option value="present" {% if status_filter == 'present' %}selected{% endif %}>បានចុះគ្រប់ (100% Present)</option>
+                    <option value="unrecorded" {% if status_filter == 'unrecorded' %}selected{% endif %}>មិនបានចុះ/អវត្តមាន (Unrecorded)</option>
+                    <option value="leave" {% if status_filter == 'leave' %}selected{% endif %}>ច្បាប់អនុញ្ញាត (Excused Leave)</option>
+                    <option value="no_schedule" {% if status_filter == 'no_schedule' %}selected{% endif %}>គ្មានម៉ោងបង្រៀន (No Schedule)</option>
+                </select>
+            </div>
+
+            <!-- Search Teacher -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold mb-1">ស្វែងរកគ្រូបង្រៀន៖</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ឈ្មោះ, កូដគ្រូ, ឯកទេស...">
+                    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-2">
+                <a href="{% url 'teacher_attendance_report' %}?filter_type={{ filter_type }}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> កំណត់ឡើងវិញ
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Active Filter Display Banner -->
+    <div class="d-flex align-items-center justify-content-between p-2 mb-3 bg-light rounded border">
+        <div class="small text-muted">
+            <i class="fa-solid fa-calendar-check text-primary me-1"></i> កំពុងបង្ហាញទិន្នន័យ៖ 
+            <strong class="text-dark">{{ filter_label }}</strong> 
+            (គ្រូសរុបក្នុងតារាង៖ <strong>{{ rows|length }}</strong> នាក់)
+        </div>
+        <div class="small">
+            <span class="badge bg-success-subtle text-success me-1">🟢 បានចុះវត្តមានសិស្ស</span>
+            <span class="badge bg-danger-subtle text-danger me-1">🔴 មិនបានចុះ (អវត្តមាន)</span>
+            <span class="badge bg-secondary-subtle text-secondary">⚪ គ្មានម៉ោងបង្រៀន</span>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: BY PERIOD / HOURLY MATRIX (តាមម៉ោង) -->
+    <!-- ========================================================================= -->
+    {% if filter_type == 'period' %}
+    <div class="custom-card shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 40px;">ល.រ</th>
+                        <th style="width: 80px;">កូដគ្រូ</th>
+                        <th style="min-width: 140px;" class="text-start">ឈ្មោះគ្រូបង្រៀន</th>
+                        <th style="min-width: 110px;">ឯកទេស</th>
+                        <!-- Period Columns 1 to 8 -->
+                        <th class="period-cell bg-light">ម៉ោងទី ១<br><small class="text-muted">07:00-08:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ២<br><small class="text-muted">08:00-09:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៣<br><small class="text-muted">09:00-10:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៤<br><small class="text-muted">10:00-11:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៥<br><small class="text-muted">13:00-14:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៦<br><small class="text-muted">14:00-15:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៧<br><small class="text-muted">15:00-16:00</small></th>
+                        <th class="period-cell bg-light">ម៉ោងទី ៨<br><small class="text-muted">16:00-17:00</small></th>
+                        <!-- Summary metrics -->
+                        <th style="width: 75px;">ត្រូវបង្រៀន</th>
+                        <th style="width: 70px;">បានចុះ</th>
+                        <th style="width: 75px;">មិនបានចុះ</th>
+                        <th style="width: 80px;">អត្រា %</th>
+                        <th style="min-width: 110px;">ស្ថានភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rows %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="text-center fw-bold text-primary">{{ item.teacher.teacher_id }}</td>
+                        <td class="text-start">
+                            <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                            <small class="text-muted">{{ item.teacher.latin_name }}</small>
+                        </td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ item.teacher.specialization }}</span></td>
+
+                        <!-- Period Slots 1 to 8 -->
+                        {% for p_num, slot_data in item.period_slots.items %}
+                        <td class="period-cell text-center">
+                            {% if slot_data %}
+                                {% if slot_data.is_recorded %}
+                                <div class="slot-badge-recorded" title="បានស្រង់វត្តមានសិស្សរួចរាល់">
+                                    <div class="fw-bold">{{ slot_data.classroom.code|default:slot_data.classroom.name }}</div>
+                                    <small>{{ slot_data.subject.name_kh|truncatechars:12 }}</small>
+                                    <div class="text-success mt-1"><i class="fa-solid fa-check-double"></i> បានចុះ</div>
+                                </div>
+                                {% elif slot_data.status == 'UNRECORDED' %}
+                                <div class="slot-badge-unrecorded" title="ខកខានមិនបានស្រង់វត្តមានសិស្ស (អវត្តមាន)">
+                                    <div class="fw-bold">{{ slot_data.classroom.code|default:slot_data.classroom.name }}</div>
+                                    <small>{{ slot_data.subject.name_kh|truncatechars:12 }}</small>
+                                    <div class="text-danger mt-1"><i class="fa-solid fa-xmark"></i> មិនបានចុះ</div>
+                                </div>
+                                {% else %}
+                                <div class="slot-badge-pending" title="មិនទាន់ដល់ម៉ោង ឬកំពុងរង់ចាំ">
+                                    <div class="fw-bold">{{ slot_data.classroom.code|default:slot_data.classroom.name }}</div>
+                                    <small>{{ slot_data.subject.name_kh|truncatechars:12 }}</small>
+                                    <div class="text-primary mt-1"><i class="fa-solid fa-hourglass-half"></i> រង់ចាំ</div>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="slot-badge-empty">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+
+                        <!-- Counts -->
+                        <td class="text-center fw-bold">{{ item.scheduled_count }}</td>
+                        <td class="text-center text-success fw-bold">{{ item.recorded_count }}</td>
+                        <td class="text-center {% if item.unrecorded_count > 0 %}text-danger fw-bold bg-danger-subtle{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_count }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if item.compliance_rate == 100 %}bg-success-subtle text-success{% elif item.compliance_rate >= 50 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %} fw-bold">
+                                {{ item.compliance_rate }}%
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ item.badge_class }}">{{ item.status_label }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="17" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់កាលបរិច្ឆេទនេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: BY DAY (តាមថ្ងៃ) -->
+    <!-- ========================================================================= -->
+    {% elif filter_type == 'day' %}
+    <div class="custom-card shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;" class="text-center">ល.រ</th>
+                        <th style="width: 90px;">កូដគ្រូ</th>
+                        <th>ឈ្មោះគ្រូបង្រៀន</th>
+                        <th>ឯកទេស</th>
+                        <th>កាលវិភាគបង្រៀនថ្ងៃនេះ</th>
+                        <th class="text-center">ម៉ោងបង្រៀន</th>
+                        <th class="text-center">បានចុះ</th>
+                        <th class="text-center">មិនបានចុះ</th>
+                        <th class="text-center">អត្រា %</th>
+                        <th class="text-center">ស្ថានភាពវត្តមានគ្រូ</th>
+                        <th class="text-end">កាត់ប្រាក់ ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rows %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="fw-bold text-primary">{{ item.teacher.teacher_id }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                            <small class="text-muted">{{ item.teacher.latin_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.teacher.specialization }}</span></td>
+                        <td>
+                            {% if item.slots_list %}
+                                <div class="d-flex flex-wrap gap-1">
+                                {% for slot in item.slots_list %}
+                                    {% with slot_info=item.period_slots|get_item:slot.period_number %}
+                                        <span class="badge {% if slot_info.is_recorded %}bg-success-subtle text-success border border-success{% elif slot_info.status == 'UNRECORDED' %}bg-danger-subtle text-danger border border-danger{% else %}bg-light text-dark border{% endif %} px-2 py-1">
+                                            ម៉ោង {{ slot.period_number }}: {{ slot.classroom.code }} ({{ slot.subject.name_kh|truncatechars:8 }})
+                                            {% if slot_info.is_recorded %}✓{% elif slot_info.status == 'UNRECORDED' %}✗{% endif %}
+                                        </span>
+                                    {% endwith %}
+                                {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">ពុំមានម៉ោងបង្រៀនក្នុងថ្ងៃនេះ</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">{{ item.scheduled_count }} ម៉ោង</td>
+                        <td class="text-center text-success fw-bold">{{ item.recorded_count }}</td>
+                        <td class="text-center {% if item.unrecorded_count > 0 %}text-danger fw-bold bg-danger-subtle{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_count }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if item.compliance_rate == 100 %}bg-success-subtle text-success{% elif item.compliance_rate >= 50 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %} fw-bold">
+                                {{ item.compliance_rate }}%
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ item.badge_class }} px-2 py-1">{{ item.status_label }}</span>
+                        </td>
+                        <td class="text-end fw-bold {% if item.deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if item.deduction > 0 %}-${{ item.deduction }}{% else %}$0.00{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់កាលបរិច្ឆេទនេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: BY WEEK (តាមសប្តាហ៍) -->
+    <!-- ========================================================================= -->
+    {% elif filter_type == 'week' %}
+    <div class="custom-card shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 45px;">ល.រ</th>
+                        <th style="width: 85px;">កូដគ្រូ</th>
+                        <th style="min-width: 150px;" class="text-start">ឈ្មោះគ្រូបង្រៀន</th>
+                        <th style="min-width: 110px;">ឯកទេស</th>
+                        <!-- Days of Week: Mon to Sat -->
+                        <th style="min-width: 90px;">ច័ន្ទ<br><small class="text-muted">Mon</small></th>
+                        <th style="min-width: 90px;">អង្គារ<br><small class="text-muted">Tue</small></th>
+                        <th style="min-width: 90px;">ពុធ<br><small class="text-muted">Wed</small></th>
+                        <th style="min-width: 90px;">ព្រហស្បតិ៍<br><small class="text-muted">Thu</small></th>
+                        <th style="min-width: 90px;">សុក្រ<br><small class="text-muted">Fri</small></th>
+                        <th style="min-width: 90px;">សៅរ៍<br><small class="text-muted">Sat</small></th>
+                        <!-- Summary -->
+                        <th style="width: 75px;">ម៉ោងសរុប</th>
+                        <th style="width: 75px;">បានចុះ</th>
+                        <th style="width: 80px;">មិនបានចុះ</th>
+                        <th style="width: 80px;">ថ្ងៃខកខាន</th>
+                        <th style="width: 80px;">អត្រា %</th>
+                        <th style="width: 90px;">ប៉ាន់ស្មានកាត់</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rows %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="text-center fw-bold text-primary">{{ item.teacher.teacher_id }}</td>
+                        <td class="text-start">
+                            <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                            <small class="text-muted">{{ item.teacher.latin_name }}</small>
+                        </td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ item.teacher.specialization }}</span></td>
+
+                        <!-- Day by Day Pills (Mon-Sat) -->
+                        {% for d in range_report_data.dates_list %}
+                            {% with day_row=item.day_by_day|get_item:d %}
+                            <td class="text-center">
+                                {% if day_row and day_row.scheduled_count > 0 %}
+                                    {% if day_row.unrecorded_count == 0 %}
+                                    <span class="day-pill-success" title="{{ d|date:'d/m' }}: បានចុះគ្រប់ {{ day_row.recorded_count }}/{{ day_row.scheduled_count }} ម៉ោង">
+                                        {{ day_row.recorded_count }}/{{ day_row.scheduled_count }} ✓
+                                    </span>
+                                    {% else %}
+                                    <span class="day-pill-danger" title="{{ d|date:'d/m' }}: ខកខាន {{ day_row.unrecorded_count }} ម៉ោង">
+                                        {{ day_row.recorded_count }}/{{ day_row.scheduled_count }} ✗
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="day-pill-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+
+                        <!-- Totals -->
+                        <td class="text-center fw-bold">{{ item.scheduled_hours }}</td>
+                        <td class="text-center text-success fw-bold">{{ item.recorded_hours }}</td>
+                        <td class="text-center {% if item.unrecorded_hours > 0 %}text-danger fw-bold bg-danger-subtle{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_hours }}
+                        </td>
+                        <td class="text-center {% if item.unrecorded_days_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_days_count }} ថ្ងៃ
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if item.compliance_rate == 100 %}bg-success-subtle text-success{% elif item.compliance_rate >= 50 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %} fw-bold">
+                                {{ item.compliance_rate }}%
+                            </span>
+                        </td>
+                        <td class="text-end fw-bold {% if item.estimated_deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if item.estimated_deduction > 0 %}-${{ item.estimated_deduction }}{% else %}$0.00{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="16" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានក្នុងសប្តាហ៍នេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: BY MONTH / CUSTOM RANGE (តាមខែ / ចន្លោះថ្ងៃ) -->
+    <!-- ========================================================================= -->
+    {% else %}
+    <div class="custom-card shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;" class="text-center">ល.រ</th>
+                        <th style="width: 90px;">កូដគ្រូ</th>
+                        <th>ឈ្មោះគ្រូបង្រៀន</th>
+                        <th>ឯកទេស</th>
+                        <th class="text-center">ថ្ងៃបង្រៀនសរុប</th>
+                        <th class="text-center">ម៉ោងបង្រៀនសរុប</th>
+                        <th class="text-center">បានចុះវត្តមាន</th>
+                        <th class="text-center">មិនបានចុះ (ខកខាន)</th>
+                        <th class="text-center">ថ្ងៃអវត្តមាន</th>
+                        <th class="text-center">ច្បាប់</th>
+                        <th class="text-center">អត្រាអនុលោមភាព</th>
+                        <th class="text-end">ប៉ាន់ស្មានកាត់ប្រាក់</th>
+                        <th class="text-center">ស្ថានភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in rows %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="fw-bold text-primary">{{ item.teacher.teacher_id }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                            <small class="text-muted">{{ item.teacher.latin_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.teacher.specialization }}</span></td>
+                        <td class="text-center fw-bold">{{ item.teaching_days_count }} ថ្ងៃ</td>
+                        <td class="text-center fw-bold text-indigo">{{ item.scheduled_hours }} ម៉ោង</td>
+                        <td class="text-center text-success fw-bold">{{ item.recorded_hours }} ម៉ោង</td>
+                        <td class="text-center {% if item.unrecorded_hours > 0 %}text-danger fw-bold bg-danger-subtle{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_hours }} ម៉ោង
+                        </td>
+                        <td class="text-center {% if item.unrecorded_days_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                            {{ item.unrecorded_days_count }} ថ្ងៃ
+                        </td>
+                        <td class="text-center text-warning fw-bold">{{ item.excused_days_count }} ថ្ងៃ</td>
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px; max-width: 70px;">
+                                    <div class="progress-bar {% if item.compliance_rate >= 90 %}bg-success{% elif item.compliance_rate >= 60 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ item.compliance_rate }}%"></div>
+                                </div>
+                                <span class="badge {% if item.compliance_rate == 100 %}bg-success-subtle text-success{% elif item.compliance_rate >= 60 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %} fw-bold">
+                                    {{ item.compliance_rate }}%
+                                </span>
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold {% if item.estimated_deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if item.estimated_deduction > 0 %}-${{ item.estimated_deduction }}{% else %}$0.00{% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if item.no_schedule %}
+                            <span class="badge bg-secondary">គ្មានម៉ោងបង្រៀន</span>
+                            {% elif item.is_perfect %}
+                            <span class="badge bg-success">ល្អឥតខ្ចោះ (១០០%)</span>
+                            {% elif item.unrecorded_days_count > 0 %}
+                            <span class="badge bg-danger">អវត្តមាន {{ item.unrecorded_days_count }} ថ្ងៃ</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">មធ្យម</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="13" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់ចន្លោះកាលបរិច្ឆេទនេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Report Footer Explanation -->
+    <div class="custom-card p-3 bg-light border-0 shadow-sm mb-4">
+        <div class="d-flex align-items-start gap-2">
+            <i class="fa-solid fa-circle-info text-primary mt-1"></i>
+            <div class="small text-muted">
+                <strong class="text-dark">គោលការណ៍កំណត់អវត្តមានគ្រូបង្រៀន៖</strong>
+                ប្រព័ន្ធស្រង់វត្តមានគ្រូគឺផ្អែកទៅលើការចុះវត្តមានសិស្សតាមកាលវិភាគបង្រៀនជាក់ស្តែង។ ប្រសិនបើគ្រូមិនបានចុះវត្តមានសិស្សក្នុងម៉ោងបង្រៀនណាមួយនោះ ម៉ោងនោះនឹងត្រូវចាត់ចូលជា "មិនបានចុះវត្តមាន (អវត្តមាន)"។ ចំនួនថ្ងៃអវត្តមានឥតច្បាប់នឹងត្រូវកត់ត្រាចូលទៅកាន់ប្រព័ន្ធបើកប្រាក់ខែដើម្បីធ្វើការកាត់ប្រាក់ខែដោយស្វ័យប្រវត្តិ។
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Send Missing Teachers Alert to Management Telegram -->
+<div class="modal fade" id="missingTeachersTelegramModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> ផ្ញើបញ្ជីគ្រូមិនទាន់ចុះវត្តមានទៅ Telegram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="missingTeachersTelegramForm" onsubmit="submitMissingTeachersTelegram(event)">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-muted small">
+                        ប្រព័ន្ធនឹងស្វែងរកគ្រូទាំងអស់ដែលខកខានមិនបានចុះវត្តមានសិស្សនៅកាលបរិច្ឆេទដែលបានជ្រើសរើស (មិនរាប់បញ្ចូលគ្រូដែលមានច្បាប់អនុញ្ញាតឡើយ) ហើយផ្ញើបញ្ជីឈ្មោះទៅកាន់ Telegram គណៈគ្រប់គ្រងសាលាភ្លាមៗ។
+                    </p>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label fw-bold small">កាលបរិច្ឆេទ៖</label>
+                            <input type="date" name="date" class="form-control" value="{{ selected_date }}" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small">ម៉ោងទី (ជម្រើស)៖</label>
+                            <select name="period" class="form-select">
+                                <option value="">គ្រប់ម៉ោង</option>
+                                {% for p in period_range %}
+                                <option value="{{ p }}" {% if period_filter == p|stringformat:"s" %}selected{% endif %}>ម៉ោងទី {{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Management Chat ID (ជម្រើសកែប្រែ)៖</label>
+                        <input type="text" name="custom_chat_id" class="form-control font-monospace" placeholder="ប្រើ Chat ID គណៈគ្រប់គ្រងដែលបានកំណត់">
+                    </div>
+
+                    <div id="missingTeachersResult" class="alert d-none mb-0"></div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4" id="btnSubmitMissingTeachers">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openMissingTeachersTelegramModal() {
+        document.getElementById('missingTeachersResult').classList.add('d-none');
+        new bootstrap.Modal(document.getElementById('missingTeachersTelegramModal')).show();
+    }
+
+    function submitMissingTeachersTelegram(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitMissingTeachers');
+        const form = document.getElementById('missingTeachersTelegramForm');
+        const resultDiv = document.getElementById('missingTeachersResult');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងស្វែងរក និងផ្ញើ...';
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'send_missing_teachers_telegram' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+            if (data.success) {
+                resultDiv.classList.add('alert-success');
+                resultDiv.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
+            } else {
+                resultDiv.classList.add('alert-danger');
+                resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> ' + data.message;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success');
+            resultDiv.classList.add('alert-danger');
+            resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> កំហុសក្នុងការផ្ញើ៖ ' + err;
+        });
+    }
+</script>
+{% endblock %}
+

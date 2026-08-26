@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីសិស្សជំពាក់ថ្លៃសិក្សា (Due Fees) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>បញ្ជីសិស្សជំពាក់ថ្លៃសិក្សា (Due Fees Tracker)</h2>
+        <p class="text-muted small mb-0">តាមដានសិស្សយឺតយ៉ាវការបង់ប្រាក់ និងផ្ញើសាររំលឹកតាម Telegram ទៅកាន់អាណាព្យាបាល</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'invoice_list' %}" class="btn btn-light">
+            <i class="fa-solid fa-file-invoice me-1"></i> បញ្ជីវិក្កយបត្រទាំងអស់
+        </a>
+    </div>
+</div>
+
+<!-- Alert banner -->
+<div class="alert alert-danger d-flex align-items-center justify-content-between p-3 mb-4 shadow-sm border-0">
+    <div class="d-flex align-items-center gap-3">
+        <i class="fa-solid fa-circle-exclamation fa-2x"></i>
+        <div>
+            <h5 class="fw-bold mb-0">ទឹកប្រាក់ជំពាក់សរុប៖ ${{ total_due_balance|floatformat:2 }}</h5>
+            <span class="small">ចំនួនវិក្កយបត្រមិនទាន់បង់/ហួសកំណត់៖ {{ due_invoices.count }} សន្លឹក</span>
+        </div>
+    </div>
+</div>
+
+<!-- Table of Due Invoices -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>លេខវិក្កយបត្រ</th>
+                    <th>សិស្ស</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th>អាណាព្យាបាល & ទូរស័ព្ទ</th>
+                    <th>ប្រភេទកម្រៃ</th>
+                    <th>ទឹកប្រាក់នៅសល់</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in due_invoices %}
+                <tr>
+                    <td class="fw-bold text-primary">{{ inv.invoice_no }}</td>
+                    <td>
+                        <div class="fw-bold">{{ inv.student.khmer_name }}</div>
+                        <span class="text-muted small">{{ inv.student.student_id }}</span>
+                    </td>
+                    <td><span class="badge bg-light text-dark">{{ inv.student.classroom.name|default:"-" }}</span></td>
+                    <td>
+                        <div class="small fw-bold">{{ inv.student.father_name|default:inv.student.mother_name|default:"-" }}</div>
+                        <div class="text-muted small"><i class="fa-solid fa-phone me-1"></i>{{ inv.student.father_phone|default:inv.student.phone|default:"-" }}</div>
+                    </td>
+                    <td>{{ inv.fee_category.name }}</td>
+                    <td class="fw-bold text-danger fs-6">${{ inv.remaining_balance }}</td>
+                    <td>{{ inv.due_date|date:"d/m/Y" }}</td>
+                    <td>
+                        <span class="badge {% if inv.status == 'OVERDUE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ inv.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-1">
+                            <!-- Send Telegram Reminder Button -->
+                            <form method="POST" onsubmit="return confirm('តើលោកអ្នកចង់ផ្ញើសាររំលឹកបង់ប្រាក់ទៅកាន់អាណាព្យាបាលសិស្ស {{ inv.student.khmer_name }} មែនទេ?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="send_reminder" value="1">
+                                <input type="hidden" name="invoice_id" value="{{ inv.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-info" title="ផ្ញើសាររំលឹក Telegram">
+                                    <i class="fa-brands fa-telegram"></i> រំលឹក
+                                </button>
+                            </form>
+                            <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-primary">
+                                <i class="fa-solid fa-receipt"></i> បង់ប្រាក់
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
+                        <h5>អស្ចារ្យណាស់! គ្មានសិស្សជំពាក់ប្រាក់ឡើយ។</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

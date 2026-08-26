@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+
+{% block title %}វាយអត្ថបទតាមសំឡេង (Voice Typing & Dictation) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mic-button-wrapper {
+        position: relative;
+        display: inline-block;
+        margin: 20px 0;
+    }
+    .mic-btn-main {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border: 4px solid #ffffff;
+        color: #ffffff;
+        font-size: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+        transition: all 0.2s ease;
+        z-index: 2;
+        position: relative;
+    }
+    .mic-btn-main:hover {
+        transform: scale(1.05);
+        box-shadow: 0 14px 30px rgba(239, 68, 68, 0.5);
+    }
+    .mic-btn-main.recording {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        animation: pulse-border 1.5s infinite;
+    }
+    @keyframes pulse-border {
+        0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+        }
+        70% {
+            box-shadow: 0 0 0 24px rgba(16, 185, 129, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+    .pulse-ring {
+        position: absolute;
+        top: -15px;
+        left: -15px;
+        right: -15px;
+        bottom: -15px;
+        border-radius: 50%;
+        border: 2px dashed rgba(239, 68, 68, 0.4);
+        animation: rotate-ring 12s linear infinite;
+        display: none;
+    }
+    .mic-btn-main.recording ~ .pulse-ring {
+        display: block;
+        border-color: rgba(16, 185, 129, 0.6);
+    }
+    @keyframes rotate-ring {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .dictation-textarea {
+        font-family: 'Kantumruy Pro', sans-serif;
+        font-size: 1.15rem;
+        line-height: 1.8;
+        border-radius: 16px;
+        border: 2px solid #e2e8f0;
+        padding: 20px;
+        background: #ffffff;
+        min-height: 380px;
+        resize: vertical;
+        transition: border-color 0.2s ease;
+    }
+    .dictation-textarea:focus {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+    }
+    .interim-preview-text {
+        color: #94a3b8;
+        font-style: italic;
+    }
+    .lang-pill-btn {
+        border-radius: 30px;
+        padding: 8px 20px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        border: 2px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .lang-pill-btn.active {
+        border-color: #ef4444;
+        background: #fef2f2;
+        color: #dc2626;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+    }
+    .quick-symbol-btn {
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 6px 14px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        transition: all 0.15s ease;
+    }
+    .quick-symbol-btn:hover {
+        background: #ef4444;
+        color: #ffffff;
+        border-color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Voice Typing</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-microphone-lines text-danger me-2"></i>វាយអត្ថបទតាមសំឡេង (Voice Typing & Dictation)
+            </h2>
+            <p class="text-muted small mb-0">និយាយជាភាសាខ្មែរ 🇰🇭 និងអង់គ្លេស 🇺🇸 ដើម្បីបំលែងទៅជាអក្សរដោយស្វ័យប្រវត្តិ ស្រួលរៀបចំកិច្ចការ មេរៀន និងឯកសារ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Speech API Warning (if unsupported) -->
+    <div id="unsupportedWarning" class="alert alert-warning border-0 rounded-4 shadow-sm mb-4" style="display: none;">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation fs-3 text-warning"></i>
+            <div>
+                <h6 class="fw-bold mb-1">កម្មវិធី Browser របស់អ្នកមិនទាន់គាំទ្រ Speech Recognition ពេញលេញឡើយ</h6>
+                <p class="small mb-0">សូមប្រើប្រាស់កម្មវិធី <strong>Google Chrome, Microsoft Edge, ឬ Safari</strong> នៅលើទូរស័ព្ទដៃ ឬកុំព្យូទ័រ ដើម្បីទទួលបានបទពិសោធន៍ល្អបំផុត។</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Dictation Box Column -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+                <!-- Top Toolbar: Language Selector & Mic Control -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+                    <!-- Language Selection -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small fw-bold text-muted me-1">ជ្រើសរើសភាសា៖</span>
+                        <button type="button" class="lang-pill-btn active" id="btnLangKhmer" onclick="setLanguage('km-KH', this)">
+                            🇰🇭 <span>ភាសាខ្មែរ (Khmer)</span>
+                        </button>
+                        <button type="button" class="lang-pill-btn" id="btnLangEnglish" onclick="setLanguage('en-US', this)">
+                            🇺🇸 <span>English (US)</span>
+                        </button>
+                    </div>
+
+                    <!-- Clear / Copy Quick Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light btn-sm text-secondary rounded-pill" onclick="copyDictationText()" title="ចម្លងអត្ថបទ">
+                            <i class="fa-solid fa-copy me-1"></i> ចម្លង
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm text-secondary rounded-pill" onclick="speakDictationText()" title="ស្តាប់ការអានជាសំឡេង">
+                            <i class="fa-solid fa-volume-high me-1"></i> ស្តាប់
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" onclick="clearDictationText()" title="សម្អាត">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Textarea Editor with Live Interim -->
+                <div class="position-relative">
+                    <textarea id="dictationTextarea" class="form-control dictation-textarea w-100" placeholder="សូមចុចលើប៊ូតុងមីក្រូហ្វូនខាងក្រោម ហើយចាប់ផ្តើមនិយាយ..." oninput="updateLiveStats()"></textarea>
+                    
+                    <!-- Live Interim Listening Indicator -->
+                    <div id="interimDisplay" class="interim-preview-text small mt-2 px-2" style="min-height: 22px;"></div>
+                </div>
+
+                <!-- Quick Punctuation Insert Bar -->
+                <div class="mt-3 pt-3 border-top">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <small class="text-muted fw-bold me-1">សញ្ញាវណ្ណយុត្តិរហ័ស៖</small>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol('។ ')">សញ្ញាខណ្ឌ (។)</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol('? ')">សញ្ញាសួរ (?)</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol('! ')">សញ្ញាឧទាន (!)</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol(', ')">ក្បៀស (,)</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol('៖ ')">ចំណុចពីរ (៖)</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol('\n')">↵ ធ្លាក់បន្ទាត់</button>
+                            <button type="button" class="quick-symbol-btn" onclick="insertSymbol(' ')">ដកឃ្លា</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Microphone Action Center -->
+                <div class="text-center mt-4">
+                    <div class="mic-button-wrapper">
+                        <button type="button" class="mic-btn-main" id="btnToggleMic" onclick="toggleVoiceDictation()">
+                            <i class="fa-solid fa-microphone" id="micIcon"></i>
+                        </button>
+                        <div class="pulse-ring"></div>
+                    </div>
+                    <div>
+                        <span class="badge px-3 py-2 rounded-pill bg-light text-muted fw-semibold" id="micStatusText">
+                            ចុចមីក្រូហ្វូនដើម្បីចាប់ផ្តើមនិយាយ
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats & Download Options Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-chart-simple text-primary me-2"></i>ស្ថិតិអត្ថបទ (Live Stats)
+                </h5>
+
+                <div class="row g-2 mb-4">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 text-center">
+                            <div class="display-6 fw-bold text-primary" id="statWordCount">0</div>
+                            <div class="small text-muted fw-semibold">ចំនួនពាក្យ (Words)</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 text-center">
+                            <div class="display-6 fw-bold text-success" id="statCharCount">0</div>
+                            <div class="small text-muted fw-semibold">តួអក្សរ (Chars)</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-2 bg-light rounded-3 d-flex justify-content-between px-3">
+                            <span class="small text-muted">កថាខណ្ឌ (Paragraphs)៖</span>
+                            <span class="fw-bold text-dark" id="statParagraphCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-download text-danger me-2"></i>ទាញយកឯកសារ (Export)</h6>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary rounded-pill shadow-sm" onclick="exportAsWordDoc()">
+                        <i class="fa-solid fa-file-word me-2"></i> ទាញយកជា Word (.docx)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="exportAsTextFile()">
+                        <i class="fa-solid fa-file-lines me-2"></i> ទាញយកជា Text (.txt)
+                    </button>
+                </div>
+
+                <div class="alert alert-info border-0 rounded-4 mt-4 small mb-0">
+                    <i class="fa-solid fa-lightbulb me-1"></i> <strong>គន្លឹះ៖</strong> និយាយឱ្យច្បាស់ និងមិនលឿនពេក។ ប្រព័ន្ធដំណើរការល្អឥតខ្ចោះលើទូរស័ព្ទដៃ និងកុំព្យូទ័រដែលមានមីក្រូហ្វូន។
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Docx.js for instant export -->
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+<script>
+    let currentLang = 'km-KH';
+    let recognition = null;
+    let isRecording = false;
+    let finalTranscript = '';
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initSpeechRecognition();
+        updateLiveStats();
+    });
+
+    function initSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            document.getElementById('unsupportedWarning').style.display = 'block';
+            document.getElementById('btnToggleMic').disabled = true;
+            document.getElementById('micStatusText').innerText = 'Browser មិនគាំទ្រ Speech Recognition';
+            return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = currentLang;
+
+        recognition.onstart = () => {
+            isRecording = true;
+            const btn = document.getElementById('btnToggleMic');
+            btn.classList.add('recording');
+            document.getElementById('micIcon').className = 'fa-solid fa-square';
+            document.getElementById('micStatusText').innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-circle-dot text-danger fa-beat me-1"></i> កំពុងស្តាប់... សូមចាប់ផ្តើមនិយាយ</span>';
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    insertSpokenText(transcript);
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            document.getElementById('interimDisplay').innerText = interimTranscript ? '🎙️ កំពុងនិយាយ៖ ' + interimTranscript : '';
+        };
+
+        recognition.onerror = (event) => {
+            console.warn('Speech recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+                Swal.fire('មិនបានអនុញ្ញាតមីក្រូហ្វូន', 'សូមអនុញ្ញាត Microphone Permission ក្នុង Browser របស់អ្នកដើម្បីដំណើរការ។', 'warning');
+                stopVoiceDictation();
+            }
+        };
+
+        recognition.onend = () => {
+            document.getElementById('interimDisplay').innerText = '';
+            if (isRecording) {
+                // Auto restart continuous listening if user hasn't explicitly stopped
+                try {
+                    recognition.start();
+                } catch(e) {
+                    stopVoiceDictation();
+                }
+            } else {
+                stopVoiceDictation();
+            }
+        };
+    }
+
+    function toggleVoiceDictation() {
+        if (!recognition) {
+            initSpeechRecognition();
+        }
+        if (!recognition) return;
+
+        if (isRecording) {
+            isRecording = false;
+            recognition.stop();
+            stopVoiceDictation();
+        } else {
+            recognition.lang = currentLang;
+            try {
+                recognition.start();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+    }
+
+    function stopVoiceDictation() {
+        isRecording = false;
+        const btn = document.getElementById('btnToggleMic');
+        btn.classList.remove('recording');
+        document.getElementById('micIcon').className = 'fa-solid fa-microphone';
+        document.getElementById('micStatusText').innerText = 'ចុចមីក្រូហ្វូនដើម្បីចាប់ផ្តើមនិយាយ';
+    }
+
+    function insertSpokenText(text) {
+        const textarea = document.getElementById('dictationTextarea');
+        const currentVal = textarea.value;
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        // Auto spacing
+        if (currentVal && !currentVal.endsWith(' ') && !currentVal.endsWith('\n')) {
+            textarea.value += ' ' + trimmed;
+        } else {
+            textarea.value += trimmed;
+        }
+
+        updateLiveStats();
+        // Scroll to bottom
+        textarea.scrollTop = textarea.scrollHeight;
+    }
+
+    function setLanguage(langCode, btn) {
+        currentLang = langCode;
+        document.querySelectorAll('.lang-pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (recognition) {
+            recognition.lang = currentLang;
+            if (isRecording) {
+                recognition.stop();
+                setTimeout(() => {
+                    try { recognition.start(); } catch(e) {}
+                }, 200);
+            }
+        }
+    }
+
+    function insertSymbol(symbol) {
+        const textarea = document.getElementById('dictationTextarea');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + symbol + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
+        updateLiveStats();
+    }
+
+    function updateLiveStats() {
+        const text = document.getElementById('dictationTextarea').value;
+        
+        // Count words
+        const trimmed = text.trim();
+        let words = 0;
+        if (trimmed) {
+            // Split by spaces or Khmer word boundaries
+            words = trimmed.split(/\s+/).filter(w => w.length > 0).length;
+        }
+        document.getElementById('statWordCount').innerText = words;
+
+        // Count characters
+        document.getElementById('statCharCount').innerText = text.length;
+
+        // Count paragraphs
+        const paras = text.split(/\n+/).filter(p => p.trim().length > 0).length;
+        document.getElementById('statParagraphCount').innerText = paras;
+    }
+
+    function copyDictationText() {
+        const text = document.getElementById('dictationTextarea').value;
+        if (!text.trim()) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'បានចម្លងអត្ថបទជោគជ័យ!',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+
+    function clearDictationText() {
+        if (!document.getElementById('dictationTextarea').value.trim()) return;
+        Swal.fire({
+            title: 'តើលោកអ្នកចង់សម្អាតអត្ថបទទាំងអស់?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'សម្អាត',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('dictationTextarea').value = '';
+                updateLiveStats();
+            }
+        });
+    }
+
+    function speakDictationText() {
+        const text = document.getElementById('dictationTextarea').value;
+        if (!text.trim()) {
+            Swal.fire('មិនមានអត្ថបទ', 'សូមនិយាយ ឬវាយអត្ថបទជាមុនសិន។', 'info');
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = currentLang;
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function exportAsTextFile() {
+        const text = document.getElementById('dictationTextarea').value;
+        if (!text.trim()) {
+            Swal.fire('មិនមានអត្ថបទ', 'សូមនិយាយ ឬវាយអត្ថបទជាមុនសិន។', 'info');
+            return;
+        }
+
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Voice_Dictation_${new Date().toISOString().slice(0,10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    async function exportAsWordDoc() {
+        const text = document.getElementById('dictationTextarea').value;
+        if (!text.trim()) {
+            Swal.fire('មិនមានអត្ថបទ', 'សូមនិយាយ ឬវាយអត្ថបទជាមុនសិន។', 'info');
+            return;
+        }
+
+        if (typeof docx === 'undefined') {
+            exportAsTextFile();
+            return;
+        }
+
+        try {
+            const paragraphs = text.split('\n').map(line => {
+                return new docx.Paragraph({
+                    children: [
+                        new docx.TextRun({
+                            text: line,
+                            font: "Kantumruy Pro",
+                            size: 24,
+                        }),
+                    ],
+                    spacing: { after: 120 },
+                });
+            });
+
+            const doc = new docx.Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new docx.Paragraph({
+                            children: [
+                                new docx.TextRun({
+                                    text: "អត្ថបទកត់ត្រាតាមសំឡេង (Voice Dictation Document)",
+                                    bold: true,
+                                    font: "Kantumruy Pro",
+                                    size: 32,
+                                    color: "1e3c72"
+                                }),
+                            ],
+                            spacing: { after: 200 }
+                        }),
+                        ...paragraphs
+                    ],
+                }],
+            });
+
+            const blob = await docx.Packer.toBlob(doc);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Voice_Dictation_${new Date().toISOString().slice(0,10)}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ទាញយកជា Word (.docx) ជោគជ័យ!',
+                confirmButtonColor: '#1e3c72'
+            });
+        } catch (e) {
+            console.error(e);
+            exportAsTextFile();
+        }
+    }
+</script>
+{% endblock %}

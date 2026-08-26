@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+    </div>
+    <a href="{% url 'exam_term_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="custom-card">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ឈ្មោះសម័យប្រឡង *</label>
+                    {{ form.name }}
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឆ្នាំសិក្សា *</label>
+                        {{ form.academic_year }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឆមាស *</label>
+                        {{ form.semester }}
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ប្រភេទប្រឡង *</label>
+                        {{ form.term_type }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">របៀបបញ្ចូលពិន្ទុ *</label>
+                        {{ form.scoring_mode }}
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ថ្ងៃចាប់ផ្តើម *</label>
+                        {{ form.start_date }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ថ្ងៃបញ្ចប់ *</label>
+                        {{ form.end_date }}
+                    </div>
+                </div>
+                <div class="form-check mb-2">
+                    {{ form.is_counted_in_semester }}
+                    <label class="form-check-label fw-bold small" for="{{ form.is_counted_in_semester.id_for_label }}">
+                        រាប់បញ្ចូលក្នុងមធ្យមភាគឆមាស (Count in Semester Average Calculation)
+                    </label>
+                </div>
+                <div class="form-check mb-4">
+                    {{ form.is_published }}
+                    <label class="form-check-label fw-bold small" for="{{ form.is_published.id_for_label }}">
+                        ប្រកាសលទ្ធផលជាសាធារណៈ (Publish results to students & parents)
+                    </label>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                        </button>
+                        <a href="{% url 'exam_term_list' %}" class="btn btn-light border">បោះបង់</a>
+                    </div>
+                    {% if is_edit and term %}
+                    <form method="POST" action="{% url 'exam_term_delete' term.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបសម័យប្រឡង «{{ term.name }}» នេះមែនទេ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡង
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

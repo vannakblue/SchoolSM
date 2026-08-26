@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ចូលទិន្នន័យសិស្សពី Excel / CSV (Bulk Import) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-file-import text-primary me-2"></i>បញ្ចូលទិន្នន័យសិស្សពី Excel / CSV (Bulk Import)
+        </h2>
+        <p class="text-muted small mb-0">បញ្ចូលព័ត៌មានសិស្សជាក្រុមក្នុងពេលតែមួយតាមរយៈឯកសារ Excel (.xlsx, .xls) ឬ CSV (.csv)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'student_list' %}" class="btn btn-light">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសិស្ស
+        </a>
+    </div>
+</div>
+
+<!-- Results Card if Form Submitted -->
+{% if results %}
+<div class="custom-card mb-4 border-top border-4 {% if results.errors %}border-warning{% else %}border-success{% endif %}">
+    <h5 class="fw-bold mb-3 d-flex align-items-center justify-content-between">
+        <span><i class="fa-solid fa-square-poll-vertical me-2 text-primary"></i>លទ្ធផលនៃការ Import ទិន្នន័យ (Import Results)</span>
+        <span class="badge bg-secondary">សរុប៖ {{ results.total }} ជួរ</span>
+    </h5>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="p-3 bg-success bg-opacity-10 border border-success rounded-3 d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-success text-white p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <i class="fa-solid fa-circle-check fs-4"></i>
+                </div>
+                <div>
+                    <div class="text-success fw-bold">ជោគជ័យ (Successful)</div>
+                    <div class="fs-4 fw-bold text-success">{{ results.success_count }} នាក់</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="p-3 bg-danger bg-opacity-10 border border-danger rounded-3 d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-danger text-white p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <i class="fa-solid fa-triangle-exclamation fs-4"></i>
+                </div>
+                <div>
+                    <div class="text-danger fw-bold">មានបញ្ហា/រំលង (Skipped / Errors)</div>
+                    <div class="fs-4 fw-bold text-danger">{{ results.skipped_count }} នាក់</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Details if any -->
+    {% if results.errors %}
+    <div class="mb-4">
+        <h6 class="fw-bold text-danger mb-2">
+            <i class="fa-solid fa-circle-exclamation me-1"></i> បញ្ជីកំហុសដែលត្រូវកែតម្រូវ (Error Details)：
+        </h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-danger text-dark">
+                    <tr>
+                        <th style="width: 80px;">ជួរ (Row)</th>
+                        <th style="width: 200px;">ឈ្មោះសិស្ស</th>
+                        <th>មូលហេតុកំហុស (Reason)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for err in results.errors %}
+                    <tr>
+                        <td class="fw-bold text-center">{{ err.row }}</td>
+                        <td class="fw-bold">{{ err.name }}</td>
+                        <td class="text-danger small">{{ err.error }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Success Table Preview -->
+    {% if results.imported_students %}
+    <div>
+        <h6 class="fw-bold text-success mb-2">
+            <i class="fa-solid fa-list-check me-1"></i> សិស្សដែលបានបញ្ចូលជោគជ័យថ្មីៗ (Preview)：
+        </h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead class="table-light">
+                    <tr>
+                        <th>កូដសិស្ស (ID)</th>
+                        <th>ឈ្មោះខ្មែរ</th>
+                        <th>ឈ្មោះឡាតាំង</th>
+                        <th>ភេទ</th>
+                        <th>ថ្នាក់រៀន</th>
+                        <th class="text-end">មើលប្រវត្តិរូប</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in results.imported_students %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ s.student_id }}</td>
+                        <td class="fw-bold">{{ s.khmer_name }}</td>
+                        <td>{{ s.latin_name|default:"-" }}</td>
+                        <td>{{ s.gender }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ s.classroom }}</span></td>
+                        <td class="text-end">
+                            <a href="{% url 'student_detail' s.id %}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.8rem;">
+                                <i class="fa-solid fa-eye me-1"></i> បើកមើល
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Left Column: Upload Form -->
+    <div class="col-lg-6">
+        <div class="custom-card h-100">
+            <h5 class="fw-bold mb-3 text-primary border-bottom pb-2">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i>១. ជ្រើសរើសឯកសារសម្រាប់ Upload
+            </h5>
+
+            <form method="POST" enctype="multipart/form-data" id="importForm">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">កំណត់ចូលឆ្នាំសិក្សា (Target Academic Year) *</label>
+                    <select name="academic_year" class="form-select">
+                        {% for y in academic_years %}
+                        <option value="{{ y.id }}" {% if y.is_current %}selected{% endif %}>
+                            {{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន - Current){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small">សិស្សដែល Import នឹងត្រូវចាត់ចូលឆ្នាំសិក្សានេះដោយស្វ័យប្រវត្តិ។</div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">ជ្រើសរើសឯកសារ Excel ឬ CSV *</label>
+                    <div class="upload-dropzone p-4 text-center border border-2 border-dashed rounded-3 bg-light position-relative" style="cursor: pointer; transition: all 0.2s;" id="dropZone">
+                        <input type="file" name="file" id="fileInput" class="position-absolute top-0 start-0 w-100 h-100 opacity-0" accept=".xlsx, .xls, .csv" required>
+                        <div id="dropZoneContent">
+                            <div class="mb-2">
+                                <i class="fa-solid fa-file-excel text-success fs-1 me-2"></i>
+                                <i class="fa-solid fa-file-csv text-secondary fs-1"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1" id="fileLabel">ចុចទីនេះ ឬទម្លាក់ File (.xlsx, .xls, .csv) មកទីនេះ</h6>
+                            <p class="text-muted small mb-0" id="fileSubLabel">ទ្រទ្រង់ទំហំរហូតដល់ 20MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <i class="fa-solid fa-upload me-2"></i> ចាប់ផ្តើម Import ទិន្នន័យ (Import Now)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Download Templates & Guidelines -->
+    <div class="col-lg-6">
+        <div class="custom-card mb-4">
+            <h5 class="fw-bold mb-3 text-success border-bottom pb-2">
+                <i class="fa-solid fa-download me-2"></i>២. ទាញយកគំរូទម្រង់ (Download Sample Template)
+            </h5>
+            <p class="text-muted small mb-3">
+                ដើម្បីធានាថាការបញ្ចូលទិន្នន័យត្រឹមត្រូវឥតមានកំហុស សូមទាញយកឯកសារគំរូដែលមានក្បាលជួរ (Header) ត្រឹមត្រូវស្រាប់៖
+            </p>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{% url 'download_student_template_excel' %}" class="btn btn-outline-success flex-grow-1">
+                    <i class="fa-solid fa-file-excel me-1"></i> ទាញយកទម្រង់ Excel (.xlsx)
+                </a>
+                <a href="{% url 'download_student_template_csv' %}" class="btn btn-outline-secondary flex-grow-1">
+                    <i class="fa-solid fa-file-csv me-1"></i> ទាញយកទម្រង់ CSV (.csv)
+                </a>
+            </div>
+
+            <div class="alert alert-info py-2 px-3 small mb-0 d-flex align-items-center gap-2">
+                <i class="fa-solid fa-circle-info fs-5"></i>
+                <div>
+                    នៅក្នុងឯកសារ Excel គំរូ មានភ្ជាប់មកជាមួយនូវ <strong>Sheet ទី២</strong> បង្ហាញបញ្ជីកូដថ្នាក់រៀនដែលមានក្នុងប្រព័ន្ធស្រាប់ ងាយស្រួលចម្លងយកទៅប្រើ។
+                </div>
+            </div>
+        </div>
+
+        <!-- Guidelines Card -->
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 text-dark border-bottom pb-2">
+                <i class="fa-solid fa-circle-question me-2 text-primary"></i>៣. ការណែនាំអំពីទិន្នន័យ (Data Rules)
+            </h5>
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ឈ្មោះ Column</th>
+                            <th>លក្ខខណ្ឌ</th>
+                            <th>ឧទាហរណ៍</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">ឈ្មោះខ្មែរ <span class="text-danger">*</span></td>
+                            <td>ចាំបាច់ (Required)</td>
+                            <td>សេង វណ្ណា</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ឈ្មោះឡាតាំង</td>
+                            <td>ស្រេចចិត្ត (Optional)</td>
+                            <td>SENG VANNA</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ភេទ <span class="text-danger">*</span></td>
+                            <td>ប្រុស, ស្រី ឬ M, F</td>
+                            <td>ប្រុស / ស្រី</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ថ្ងៃខែឆ្នាំកំណើត</td>
+                            <td>ទម្រង់ DD/MM/YYYY ឬ YYYY-MM-DD</td>
+                            <td>15/05/2009</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ថ្នាក់រៀន (Class)</td>
+                            <td>កូដថ្នាក់ ឬឈ្មោះថ្នាក់</td>
+                            <td><code>7A</code>, <code>10-SCI</code>, <code>11-SOC</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">ប្រភេទកម្រៃ</td>
+                            <td>Full Pay, 50%, 100%, Installment</td>
+                            <td>Full Pay (100%)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Available Class Codes in badges -->
+            <div class="mt-3">
+                <label class="fw-bold small text-muted mb-1">កូដថ្នាក់រៀនដែលមានក្នុងប្រព័ន្ធបច្ចុប្បន្ន (Active Class Codes):</label>
+                <div class="d-flex flex-wrap gap-1">
+                    {% for c in classrooms %}
+                    <span class="badge bg-light text-primary border fw-bold" style="font-size: 0.75rem;" title="{{ c.name }}">
+                        {{ c.code }} ({{ c.name }})
+                    </span>
+                    {% empty %}
+                    <span class="text-muted small">មិនទាន់មានថ្នាក់រៀននៅឡើយទេ</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('fileInput');
+    const fileLabel = document.getElementById('fileLabel');
+    const fileSubLabel = document.getElementById('fileSubLabel');
+    const dropZone = document.getElementById('dropZone');
+    const importForm = document.getElementById('importForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileLabel.innerHTML = `<span class="text-primary"><i class="fa-solid fa-file me-1"></i> ${file.name}</span>`;
+            fileSubLabel.textContent = `ទំហំ: ${(file.size / 1024).toFixed(1)} KB`;
+            dropZone.classList.add('border-primary', 'bg-white');
+        }
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-primary', 'bg-white');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            if (!fileInput.files.length) {
+                dropZone.classList.remove('border-primary', 'bg-white');
+            }
+        }, false);
+    });
+
+    importForm.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> កំពុងដំណើរការ Import...`;
+    });
+});
+</script>
+{% endblock %}

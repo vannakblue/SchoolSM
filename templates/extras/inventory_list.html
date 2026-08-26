@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}ស្តុកសម្ភារៈ (Inventory) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ស្តុកសម្ភារៈសាលារៀន (Inventory Management)</h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងស្តុកសៀវភៅពុម្ព ឯកសណ្ឋានសាលា និងសម្ភារៈសិក្សាផ្សេងៗ</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if is_admin or is_accountant %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">
+            <i class="fa-solid fa-plus me-1"></i> បន្ថែមមុខទំនិញថ្មី
+        </button>
+        <a href="{% url 'inventory_transaction_create' %}" class="btn btn-success">
+            <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> នាំចូល/លក់ចេញ
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3">
+        <div class="col-md-6">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាមឈ្មោះទំនិញ ឬកូដ...">
+        </div>
+        <div class="col-md-4">
+            <select name="category" class="form-select">
+                <option value="">-- ប្រភេទទាំងអស់ --</option>
+                {% for c_val, c_name in categories %}
+                <option value="{{ c_val }}" {% if selected_category == c_val %}selected{% endif %}>{{ c_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">ស្វែងរក</button>
+        </div>
+    </form>
+</div>
+
+<!-- Inventory Items Grid -->
+<div class="row g-4">
+    {% for item in items %}
+    <div class="col-md-6 col-xl-4">
+        <div class="custom-card h-100 {% if item.is_low_stock %}border-danger{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <span class="badge bg-light text-dark mb-2">{{ item.get_category_display }}</span>
+                    <h5 class="fw-bold mb-1 text-dark">{{ item.name }}</h5>
+                    <span class="text-muted small">Code: {{ item.item_code }}</span>
+                </div>
+                <div class="text-end">
+                    <span class="badge {% if item.is_low_stock %}bg-danger{% else %}bg-success{% endif %} fs-6 px-3 py-2">
+                        {{ item.stock_quantity }} ក្នុងស្តុក
+                    </span>
+                    {% if item.is_low_stock %}
+                    <div class="text-danger small mt-1"><i class="fa-solid fa-triangle-exclamation"></i> ជិតអស់ស្តុក!</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="p-3 bg-light rounded-3 mb-3 small">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">តម្លៃលក់ឯកតា៖</span>
+                    <strong class="text-success">${{ item.unit_price }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">កម្រិតផ្តល់ដំណឹង (Min Alert)៖</span>
+                    <strong>{{ item.min_alert_level }}</strong>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <a href="{% url 'inventory_transaction_create' %}?item={{ item.id }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fa-solid fa-cart-shopping me-1"></i> កត់ត្រាលក់/នាំចូល
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+        <h5>មិនទាន់មានទំនិញក្នុងស្តុកនៅឡើយទេ</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: Add Item -->
+{% if is_admin or is_accountant %}
+<div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">បន្ថែមមុខទំនិញក្នុងស្តុក</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">កូដសម្ភារៈ *</label>
+                        {{ form.item_code }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះសម្ភារៈ *</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ប្រភេទ *</label>
+                            {{ form.category }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">តម្លៃឯកតា ($) *</label>
+                            {{ form.unit_price }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ចំនួនក្នុងស្តុកដំបូង *</label>
+                            {{ form.stock_quantity }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">កម្រិតប្រកាសអាសន្នជិតអស់</label>
+                            {{ form.min_alert_level }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary">រក្សាទុក</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

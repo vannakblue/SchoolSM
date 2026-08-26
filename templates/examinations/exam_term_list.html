@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}សម័យប្រឡង (Exam Terms) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">សម័យប្រឡងទាំងអស់ (Exam Terms)</h2>
+        <p class="text-muted small mb-0">ប្រឡងប្រចាំខែ ឆមាសទី១ ឆមាសទី២ និងការប្រឡងចុងឆ្នាំ</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if is_admin %}
+        <a href="{% url 'exam_term_create' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> បង្កើតសម័យប្រឡងថ្មី
+        </a>
+        {% endif %}
+        <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-danger fw-bold">
+            <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែងមិនឱ្យប្រឡង
+        </a>
+        <a href="{% url 'grade_entry_matrix' %}" class="btn btn-success">
+            <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលពិន្ទុសិស្ស
+        </a>
+    </div>
+</div>
+
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>ឈ្មោះសម័យប្រឡង</th>
+                    <th>ឆ្នាំសិក្សា</th>
+                    <th>ប្រភេទ</th>
+                    <th>របៀបបញ្ចូលពិន្ទុ</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in terms %}
+                <tr>
+                    <td class="fw-bold fs-6 text-primary">{{ t.name }}</td>
+                    <td>{{ t.academic_year.name }}</td>
+                    <td><span class="badge bg-light text-dark">{{ t.get_term_type_display }}</span></td>
+                    <td>
+                        {% if t.scoring_mode == 'CLASSROOM' %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="fa-solid fa-users-rectangle me-1"></i>តាមថ្នាក់រៀន (Classroom)</span>
+                        {% elif t.scoring_mode == 'STANDARDIZED_ROOM' %}
+                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle"><i class="fa-solid fa-door-open me-1"></i>តាមបន្ទប់ (Rooms 1-25)</span>
+                        {% else %}
+                        <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="fa-solid fa-layer-group me-1"></i>ទាំងពីរ (Both)</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.start_date|date:"d/m/Y" }} ដល់ {{ t.end_date|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if t.is_published %}
+                        <span class="badge bg-success">បានប្រកាសលទ្ធផល (Published)</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">មិនទាន់ប្រកាស</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1 align-items-center">
+                            {% if t.scoring_mode == 'STANDARDIZED_ROOM' %}
+                            <a href="{% url 'standardized_exam_list' %}" class="btn btn-sm btn-outline-warning" title="បញ្ចូលតាមបន្ទប់">
+                                <i class="fa-solid fa-door-open"></i>
+                            </a>
+                            {% else %}
+                            <a href="{% url 'grade_entry_matrix' %}?term={{ t.id }}" class="btn btn-sm btn-outline-success" title="បញ្ចូលពិន្ទុ">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'grade_summary' %}?term={{ t.id }}" class="btn btn-sm btn-outline-primary" title="តារាងចំណាត់ថ្នាក់">
+                                <i class="fa-solid fa-ranking-star"></i>
+                            </a>
+                            {% if is_admin %}
+                            <a href="{% url 'exam_term_edit' t.id %}" class="btn btn-sm btn-outline-secondary" title="កែប្រែសម័យប្រឡង">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <form method="POST" action="{% url 'exam_term_delete' t.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបសម័យប្រឡង «{{ t.name }}» នេះមែនទេ? ពិន្ទុ និងកំណត់ត្រាដែលទាក់ទងនឹងត្រូវបានលុបផងដែរ។')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="លុបសម័យប្រឡង">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">មិនទាន់មានសម័យប្រឡងនៅឡើយទេ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

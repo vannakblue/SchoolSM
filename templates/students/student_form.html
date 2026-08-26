@@ -1,0 +1,853 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+        <p class="text-muted small mb-0">សូមបំពេញព័ត៌មានលម្អិតរបស់សិស្ស ព័ត៌មានអាណាព្យាបាល និងឯកសារភ្ជាប់</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        {% if current_year %}
+        <span class="badge bg-primary-soft text-primary border border-primary px-3 py-2 fs-6 fw-bold">
+            <i class="fa-solid fa-calendar-check me-1"></i> ឆ្នាំសិក្សា៖ {{ current_year.name }}
+        </span>
+        {% endif %}
+        <button type="button" class="btn btn-light shadow-xs border text-secondary btn-sm" onclick="resetCardLayout()" title="កំណត់លំដាប់លំនាំដើមនៃស៊ុម">
+            <i class="fa-solid fa-rotate-left me-1"></i> Reset Layout
+        </button>
+        <a href="{% url 'student_list' %}" class="btn btn-light shadow-xs border">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+        </a>
+    </div>
+</div>
+
+<!-- Drag & Drop Layout Notice -->
+<div class="alert alert-light border shadow-xs rounded-3 py-2 px-3 d-flex align-items-center justify-content-between mb-3 text-muted small">
+    <div>
+        <i class="fa-solid fa-hand-pointer text-primary me-2"></i>
+        <strong>ប្លង់ស៊ុមបែប Drag & Drop៖</strong> លោកអ្នកអាចចុចអូសរូបតំណាង <i class="fa-solid fa-grip-vertical text-secondary"></i> នៅលើក្បាលស៊ុមនីមួយៗ ដើម្បីរៀបចំទីតាំង លើ-ក្រោម ឬផ្លាស់ប្តូរជួរ តាមតម្រូវការបានដោយសេរី។
+    </div>
+</div>
+
+<form method="POST" enctype="multipart/form-data" id="studentEnrollForm">
+    {% csrf_token %}
+    
+    <div class="row g-4">
+        <!-- Left Column Container -->
+        <div class="col-lg-8 form-card-column" id="leftFormCol">
+            <!-- Section 1: Student Information -->
+            <div class="custom-card mb-4 draggable-form-card" id="card-student-info" draggable="true">
+                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                    <i class="fa-solid fa-user-graduate me-2"></i>១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                        {{ form.khmer_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង *</label>
+                        {{ form.latin_name }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ភេទ *</label>
+                        {{ form.gender }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត *</label>
+                        {{ form.date_of_birth }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស</label>
+                        {{ form.phone }}
+                    </div>
+                </div>
+
+                <!-- 📍 ទីកន្លែងកំណើត (Place of Birth - ជ្រើសរើសតាមលំដាប់ថ្នាក់) -->
+                <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-danger"></i>
+                            <span>ទីកន្លែងកំណើត (Place of Birth - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
+                        </h6>
+                        <span class="badge bg-light text-secondary border small fw-normal">ទាញចេញពី Database</span>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
+                            <select id="pob_province" class="form-select form-select-sm">
+                                <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                            <select id="pob_district" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
+                            <select id="pob_commune" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
+                            <select id="pob_village" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសភូមិ --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                        <span class="fw-semibold">ទីកន្លែងកំណើតសរុប៖</span>
+                        <span id="pob_preview" class="fw-bold text-primary">{% if form.instance.place_of_birth %}{{ form.instance.place_of_birth }}{% else %}...{% endif %}</span>
+                    </div>
+
+                    <!-- Synced Real Input -->
+                    <div style="display: none;">
+                        {{ form.place_of_birth }}
+                    </div>
+                </div>
+
+                <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន (Current Address - ជ្រើសរើសតាមលំដាប់ថ្នាក់) -->
+                <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-house-chimney-user text-success"></i>
+                            <span>អាសយដ្ឋានបច្ចុប្បន្ន (Current Address - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold" id="btn_copy_pob">
+                            <i class="fa-solid fa-copy me-1"></i> ដូចទីកន្លែងកំណើត
+                        </button>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-12 mb-1">
+                            <label class="form-label small text-secondary fw-semibold mb-1">ផ្ទះលេខ / ផ្លូវ (ប្រសិនបើមាន)</label>
+                            <input type="text" id="cur_street" class="form-control form-control-sm" placeholder="ឧ. ផ្ទះលេខ 12, ផ្លូវ 2004...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
+                            <select id="cur_province" class="form-select form-select-sm">
+                                <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                            <select id="cur_district" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
+                            <select id="cur_commune" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
+                            <select id="cur_village" class="form-select form-select-sm" disabled>
+                                <option value="">-- ជ្រើសរើសភូមិ --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                        <span class="fw-semibold">អាសយដ្ឋានបច្ចុប្បន្នសរុប៖</span>
+                        <span id="cur_preview" class="fw-bold text-dark">{% if form.instance.current_address %}{{ form.instance.current_address }}{% else %}...{% endif %}</span>
+                    </div>
+
+                    <!-- Synced Real Input -->
+                    <div style="display: none;">
+                        {{ form.current_address }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Parent Information -->
+            <div class="custom-card mb-4 draggable-form-card" id="card-parent-info" draggable="true">
+                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                    <i class="fa-solid fa-people-roof me-2"></i>២. ព័ត៌មានអាណាព្យាបាល (Parent / Guardian Info)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
+                        {{ form.father_name }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
+                        {{ form.father_phone }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">មុខរបរឪពុក</label>
+                        {{ form.father_job }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
+                        {{ form.mother_name }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
+                        {{ form.mother_phone }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">មុខរបរម្តាយ</label>
+                        {{ form.mother_job }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស (បើមាន)</label>
+                        {{ form.guardian_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">លេខទាក់ទងបន្ទាន់</label>
+                        {{ form.emergency_phone }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Dynamic Grade-Specific Information (បែបបទបំពេញតាមកម្រិតថ្នាក់) -->
+            <div class="custom-card mb-4 draggable-form-card" id="card-grade-specific" draggable="true" style="display: none;">
+                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center justify-content-between">
+                    <span class="d-flex align-items-center">
+                        <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <i class="fa-solid fa-clipboard-list me-2 text-warning"></i>៥. ព័ត៌មានបន្ថែមសម្រាប់កម្រិតថ្នាក់ (<span id="gradeNameBadge">...</span>)
+                    </span>
+                    <span class="badge bg-light text-primary border small fw-normal">កំណត់ដោយ Admin</span>
+                </h5>
+                <div class="row g-3" id="gradeOptionsContainer">
+                    <!-- Loaded dynamically via JavaScript based on classroom selection -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column Container -->
+        <div class="col-lg-4 form-card-column" id="rightFormCol">
+            <!-- Section 3: Academic & Fee Tier -->
+            <div class="custom-card mb-4 draggable-form-card" id="card-academic-fee" draggable="true">
+                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                    <i class="fa-solid fa-school me-2"></i>៣. ការសិក្សា & កម្រៃ
+                </h5>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold small mb-0">ឆ្នាំសិក្សា *</label>
+                        {% if is_admin %}
+                        <a href="{% url 'academic_year_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រង ឬបន្ថែមឆ្នាំសិក្សាថ្មី">
+                            <i class="fa-solid fa-plus-circle me-1"></i>បន្ថែមឆ្នាំសិក្សា
+                        </a>
+                        {% endif %}
+                    </div>
+                    {{ form.academic_year }}
+                    <div class="form-text small text-muted">ការចុះឈ្មោះត្រូវបានកំណត់ត្រឹមឆ្នាំសិក្សាដែលបានជ្រើសរើស</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
+                    {{ form.classroom }}
+                    <div class="form-text small text-muted">បង្ហាញតែថ្នាក់រៀនក្នុងឆ្នាំសិក្សាបច្ចុប្បន្នប៉ុណ្ណោះ</div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold small mb-0">ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍ *</label>
+                        {% if is_admin %}
+                        <a href="{% url 'scholarship_type_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រងប្រភេទកម្រៃសិក្សា">
+                            <i class="fa-solid fa-gear me-1"></i>កំណត់កម្រៃ
+                        </a>
+                        {% endif %}
+                    </div>
+                    {{ form.scholarship_type }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">
+                        <i class="fa-solid fa-calendar-day text-primary me-1"></i>ខែចាប់ផ្តើមបង់ប្រាក់
+                    </label>
+                    {{ form.fee_start_month }}
+                    <div class="form-text small text-muted">ទុកទទេដើម្បីគិតចាប់ពីដើមឆ្នាំសិក្សា</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Telegram Chat ID (សម្រាប់ទទួលដំណឹង)</label>
+                    {{ form.telegram_chat_id }}
+                </div>
+            </div>
+
+            <!-- Section 4: Attachments -->
+            <div class="custom-card mb-4 draggable-form-card" id="card-documents" draggable="true">
+                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                    <i class="fa-solid fa-paperclip me-2"></i>៤. ឯកសារ & រូបថត
+                </h5>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
+                    {{ form.photo }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">សំបុត្រកំណើត / ឯកសារ</label>
+                    {{ form.birth_certificate }}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" id="btnSubmitForm">
+                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកទិន្នន័យសិស្ស
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+// Pass existing saved enrollment data if editing
+const initialEnrollmentData = {{ student.enrollment_data|default:'{}'|safe }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    let globalProvinces = [];
+
+    // Elements for POB
+    const pobProv = document.getElementById('pob_province');
+    const pobDist = document.getElementById('pob_district');
+    const pobComm = document.getElementById('pob_commune');
+    const pobVill = document.getElementById('pob_village');
+    const pobPreview = document.getElementById('pob_preview');
+    const pobHiddenInput = document.querySelector('[name="place_of_birth"]');
+
+    // Elements for Current Address
+    const curStreet = document.getElementById('cur_street');
+    const curProv = document.getElementById('cur_province');
+    const curDist = document.getElementById('cur_district');
+    const curComm = document.getElementById('cur_commune');
+    const curVill = document.getElementById('cur_village');
+    const curPreview = document.getElementById('cur_preview');
+    const curHiddenInput = document.querySelector('[name="current_address"]');
+    const btnCopyPob = document.getElementById('btn_copy_pob');
+
+    // Elements for Classroom & Dynamic Grade Options
+    const classroomSelect = document.getElementById('id_classroom') || document.querySelector('[name="classroom"]');
+    const gradeCard = document.getElementById('gradeSpecificCard');
+    const gradeNameBadge = document.getElementById('gradeNameBadge');
+    const gradeContainer = document.getElementById('gradeOptionsContainer');
+
+    function loadGradeOptions(classroomId) {
+        if (!classroomId) {
+            gradeCard.style.display = 'none';
+            gradeContainer.innerHTML = '';
+            return;
+        }
+
+        fetch(`/students/api/grade-options/?classroom_id=${classroomId}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success' && res.data && res.data.length > 0) {
+                    gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
+                    gradeContainer.innerHTML = '';
+
+                    res.data.forEach(opt => {
+                        const col = document.createElement('div');
+                        const colW = opt.col_width || 6;
+                        col.className = `col-md-${colW}`;
+
+                        const inputName = `grade_opt_${opt.field_name}`;
+                        const isReq = opt.is_required ? 'required' : '';
+                        const reqBadge = opt.is_required ? '<span class="text-danger">*</span>' : '';
+                        
+                        // Section Header / Frame Divider
+                        if (opt.field_type === 'SECTION') {
+                            col.className = 'col-12 mt-3';
+                            col.innerHTML = `<h6 class="fw-bold text-dark border-bottom pb-2 mb-0"><i class="fa-solid fa-circle-chevron-right text-primary me-2"></i>${opt.label}</h6>`;
+                            gradeContainer.appendChild(col);
+                            return;
+                        }
+
+                        // Extract existing value if any
+                        let savedVal = '';
+                        if (initialEnrollmentData && initialEnrollmentData[opt.field_name]) {
+                            savedVal = initialEnrollmentData[opt.field_name].value || initialEnrollmentData[opt.field_name] || '';
+                        }
+
+                        let inputHtml = '';
+                        if (opt.field_type === 'TEXT') {
+                            inputHtml = `<input type="text" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'NUMBER') {
+                            inputHtml = `<input type="number" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'DATE') {
+                            inputHtml = `<input type="date" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'TIME') {
+                            inputHtml = `<input type="time" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'DATETIME') {
+                            inputHtml = `<input type="datetime-local" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'PHONE') {
+                            inputHtml = `<input type="tel" name="${inputName}" class="form-control" placeholder="${opt.placeholder || '012 345 678'}" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'EMAIL') {
+                            inputHtml = `<input type="email" name="${inputName}" class="form-control" placeholder="${opt.placeholder || 'example@email.com'}" value="${savedVal}" ${isReq}>`;
+                        } else if (opt.field_type === 'TEXTAREA') {
+                            inputHtml = `<textarea name="${inputName}" class="form-control" rows="2" placeholder="${opt.placeholder || ''}" ${isReq}>${savedVal}</textarea>`;
+                        } else if (opt.field_type === 'SELECT') {
+                            let optionsHtml = `<option value="">-- ជ្រើសរើស --</option>`;
+                            if (opt.choices && opt.choices.length > 0) {
+                                opt.choices.forEach(ch => {
+                                    const selected = (savedVal === ch) ? 'selected' : '';
+                                    optionsHtml += `<option value="${ch}" ${selected}>${ch}</option>`;
+                                });
+                            }
+                            inputHtml = `<select name="${inputName}" class="form-select" ${isReq}>${optionsHtml}</select>`;
+                        } else if (opt.field_type === 'RADIO') {
+                            inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
+                            if (opt.choices) {
+                                opt.choices.forEach((ch, idx) => {
+                                    const checked = (savedVal === ch) ? 'checked' : '';
+                                    inputHtml += `
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked} ${isReq}>
+                                            <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
+                                        </div>`;
+                                });
+                            }
+                            inputHtml += `</div>`;
+                        } else if (opt.field_type === 'MULTISELECT') {
+                            inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
+                            const savedList = (initialEnrollmentData && initialEnrollmentData[opt.field_name] && initialEnrollmentData[opt.field_name].list) ? initialEnrollmentData[opt.field_name].list : (savedVal ? savedVal.split(', ') : []);
+                            if (opt.choices) {
+                                opt.choices.forEach((ch, idx) => {
+                                    const checked = savedList.includes(ch) ? 'checked' : '';
+                                    inputHtml += `
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked}>
+                                            <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
+                                        </div>`;
+                                });
+                            }
+                            inputHtml += `</div>`;
+                        } else if (opt.field_type === 'CHECKBOX') {
+                            const checked = (savedVal === 'true' || savedVal === true || savedVal === 'on') ? 'checked' : '';
+                            inputHtml = `
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" name="${inputName}" id="${inputName}" class="form-check-input" value="true" ${checked}>
+                                    <label class="form-check-label small" for="${inputName}">យល់ព្រម / បាទ / ចាស</label>
+                                </div>`;
+                        } else if (opt.field_type === 'FILE') {
+                            let previewLink = '';
+                            if (savedVal) {
+                                previewLink = `<div class="mt-1 small"><a href="${savedVal}" target="_blank" class="text-primary"><i class="fa-solid fa-file me-1"></i> មើលឯកសារចាស់</a></div>`;
+                            }
+                            inputHtml = `<input type="file" name="${inputName}" class="form-control"> ${previewLink}`;
+                        }
+
+                        col.innerHTML = `
+                            <label class="form-label fw-bold small">${opt.label} ${reqBadge}</label>
+                            ${inputHtml}
+                        `;
+                        gradeContainer.appendChild(col);
+                    });
+
+                    gradeCard.style.display = 'block';
+                } else {
+                    gradeCard.style.display = 'none';
+                    gradeContainer.innerHTML = '';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching grade options:', err);
+                gradeCard.style.display = 'none';
+            });
+    }
+
+    if (classroomSelect) {
+        classroomSelect.addEventListener('change', function() {
+            loadGradeOptions(this.value);
+        });
+
+        // Trigger on load if classroom already selected
+        if (classroomSelect.value) {
+            loadGradeOptions(classroomSelect.value);
+        }
+    }
+
+    // Load Provinces
+    fetch('/academics/api/locations/provinces/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                globalProvinces = data.data;
+                populateSelect(pobProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+                populateSelect(curProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+            }
+        })
+        .catch(err => console.error('Error loading provinces:', err));
+
+    function populateSelect(selectEl, items, placeholder) {
+        selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.name_kh + (item.name_en ? ` (${item.name_en})` : '');
+            opt.dataset.nameKh = item.name_kh;
+            selectEl.appendChild(opt);
+        });
+    }
+
+    function formatUnit(type, name) {
+        if (!name) return '';
+        name = name.trim();
+        if (type === 'village') {
+            return name.startsWith('ភូមិ') ? name : `ភូមិ${name}`;
+        }
+        if (type === 'commune') {
+            if (name.startsWith('ឃុំ') || name.startsWith('សង្កាត់')) return name;
+            return `ឃុំ/សង្កាត់${name}`;
+        }
+        if (type === 'district') {
+            if (name.startsWith('ស្រុក') || name.startsWith('ខណ្ឌ') || name.startsWith('ក្រុង')) return name;
+            return `ស្រុក/ខណ្ឌ${name}`;
+        }
+        if (type === 'province') {
+            if (name.startsWith('ខេត្ត') || name.startsWith('រាជធានី')) return name;
+            return name.includes('ភ្នំពេញ') ? `រាជធានី${name}` : `ខេត្ត${name}`;
+        }
+        return name;
+    }
+
+    // POB Chain
+    pobProv.addEventListener('change', function() {
+        resetSelect(pobDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+        resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            pobDist.disabled = false;
+            fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(pobDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                });
+        } else {
+            pobDist.disabled = true;
+            pobComm.disabled = true;
+            pobVill.disabled = true;
+        }
+        updatePobString();
+    });
+
+    pobDist.addEventListener('change', function() {
+        resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            pobComm.disabled = false;
+            fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(pobComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                });
+        } else {
+            pobComm.disabled = true;
+            pobVill.disabled = true;
+        }
+        updatePobString();
+    });
+
+    pobComm.addEventListener('change', function() {
+        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            pobVill.disabled = false;
+            fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(pobVill, d.data, '-- ជ្រើសរើសភូមិ --');
+                });
+        } else {
+            pobVill.disabled = true;
+        }
+        updatePobString();
+    });
+
+    pobVill.addEventListener('change', updatePobString);
+
+    function resetSelect(selectEl, placeholder) {
+        selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+        selectEl.disabled = true;
+    }
+
+    function getSelectedText(selectEl) {
+        if (!selectEl || selectEl.selectedIndex <= 0) return '';
+        const opt = selectEl.options[selectEl.selectedIndex];
+        return opt.dataset.nameKh || opt.text.split(' (')[0];
+    }
+
+    function updatePobString() {
+        const p = getSelectedText(pobProv);
+        const d = getSelectedText(pobDist);
+        const c = getSelectedText(pobComm);
+        const v = getSelectedText(pobVill);
+
+        const parts = [];
+        if (v) parts.push(formatUnit('village', v));
+        if (c) parts.push(formatUnit('commune', c));
+        if (d) parts.push(formatUnit('district', d));
+        if (p) parts.push(formatUnit('province', p));
+
+        const result = parts.join(', ');
+        pobPreview.textContent = result || '...';
+        if (pobHiddenInput) {
+            pobHiddenInput.value = result;
+        }
+    }
+
+    // Current Address Chain
+    curProv.addEventListener('change', function() {
+        resetSelect(curDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+        resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            curDist.disabled = false;
+            fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                });
+        } else {
+            curDist.disabled = true;
+            curComm.disabled = true;
+            curVill.disabled = true;
+        }
+        updateCurString();
+    });
+
+    curDist.addEventListener('change', function() {
+        resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            curComm.disabled = false;
+            fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(curComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                });
+        } else {
+            curComm.disabled = true;
+            curVill.disabled = true;
+        }
+        updateCurString();
+    });
+
+    curComm.addEventListener('change', function() {
+        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+        if (this.value) {
+            curVill.disabled = false;
+            fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(curVill, d.data, '-- ជ្រើសរើសភូមិ --');
+                });
+        } else {
+            curVill.disabled = true;
+        }
+        updateCurString();
+    });
+
+    curVill.addEventListener('change', updateCurString);
+    curStreet.addEventListener('input', updateCurString);
+
+    function updateCurString() {
+        const street = curStreet.value.trim();
+        const p = getSelectedText(curProv);
+        const d = getSelectedText(curDist);
+        const c = getSelectedText(curComm);
+        const v = getSelectedText(curVill);
+
+        const parts = [];
+        if (street) parts.push(street);
+        if (v) parts.push(formatUnit('village', v));
+        if (c) parts.push(formatUnit('commune', c));
+        if (d) parts.push(formatUnit('district', d));
+        if (p) parts.push(formatUnit('province', p));
+
+        const result = parts.join(', ');
+        curPreview.textContent = result || '...';
+        if (curHiddenInput) {
+            curHiddenInput.value = result;
+        }
+    }
+
+    // Copy POB to Current Address
+    btnCopyPob.addEventListener('click', function() {
+        if (!pobProv.value) {
+            alert('សូមជ្រើសរើសទីកន្លែងកំណើតជាមុនសិន!');
+            return;
+        }
+
+        const pVal = pobProv.value;
+        const dVal = pobDist.value;
+        const cVal = pobComm.value;
+        const vVal = pobVill.value;
+
+        curProv.value = pVal;
+        curDist.disabled = false;
+
+        fetch(`/academics/api/locations/districts/?province_id=${pVal}`)
+            .then(res => res.json())
+            .then(d => {
+                populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                curDist.value = dVal;
+                if (dVal) {
+                    curComm.disabled = false;
+                    fetch(`/academics/api/locations/communes/?district_id=${dVal}`)
+                        .then(res => res.json())
+                        .then(c => {
+                            populateSelect(curComm, c.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                            curComm.value = cVal;
+                            if (cVal) {
+                                curVill.disabled = false;
+                                fetch(`/academics/api/locations/villages/?commune_id=${cVal}`)
+                                    .then(res => res.json())
+                                    .then(v => {
+                                        populateSelect(curVill, v.data, '-- ជ្រើសរើសភូមិ --');
+                                        curVill.value = vVal;
+                                        updateCurString();
+                                    });
+                            } else {
+                                updateCurString();
+                            }
+                        });
+                } else {
+                    updateCurString();
+                }
+            });
+    });
+
+    // Initialize Card Drag and Drop on Enrollment Form
+    initCardDragAndDrop();
+});
+
+// --- CARD DRAG & DROP REORDERING SYSTEM ---
+function initCardDragAndDrop() {
+    const leftCol = document.getElementById('leftFormCol');
+    const rightCol = document.getElementById('rightFormCol');
+    const columns = [leftCol, rightCol];
+    let draggedCard = null;
+
+    // Restore saved layout
+    const savedLayout = localStorage.getItem('schoolsm_enroll_card_layout');
+    if (savedLayout) {
+        try {
+            const layout = JSON.parse(savedLayout);
+            if (layout.left && Array.isArray(layout.left)) {
+                layout.left.forEach(cardId => {
+                    const card = document.getElementById(cardId);
+                    if (card && leftCol) leftCol.appendChild(card);
+                });
+            }
+            if (layout.right && Array.isArray(layout.right)) {
+                layout.right.forEach(cardId => {
+                    const card = document.getElementById(cardId);
+                    if (card && rightCol) {
+                        const submitBtn = document.getElementById('btnSubmitForm');
+                        if (submitBtn) {
+                            rightCol.insertBefore(card, submitBtn);
+                        } else {
+                            rightCol.appendChild(card);
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.error('Failed to restore layout', e);
+        }
+    }
+
+    document.querySelectorAll('.draggable-form-card').forEach(card => {
+        card.addEventListener('dragstart', function(e) {
+            draggedCard = this;
+            this.classList.add('card-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.id);
+        });
+
+        card.addEventListener('dragend', function() {
+            this.classList.remove('card-dragging');
+            document.querySelectorAll('.draggable-form-card').forEach(c => c.classList.remove('card-drag-over'));
+            draggedCard = null;
+            saveCardLayout();
+        });
+
+        card.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedCard && draggedCard !== this) {
+                document.querySelectorAll('.draggable-form-card').forEach(c => c.classList.remove('card-drag-over'));
+                this.classList.add('card-drag-over');
+            }
+        });
+
+        card.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('card-drag-over');
+            if (draggedCard && draggedCard !== this) {
+                const parent = this.parentElement;
+                const cards = Array.from(parent.querySelectorAll('.draggable-form-card'));
+                const draggedIdx = cards.indexOf(draggedCard);
+                const targetIdx = cards.indexOf(this);
+
+                if (draggedIdx !== -1 && draggedIdx < targetIdx) {
+                    this.after(draggedCard);
+                } else {
+                    this.before(draggedCard);
+                }
+                saveCardLayout();
+            }
+        });
+    });
+
+    columns.forEach(col => {
+        if (!col) return;
+        col.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        col.addEventListener('drop', function(e) {
+            if (draggedCard && !e.target.closest('.draggable-form-card')) {
+                const submitBtn = col.querySelector('#btnSubmitForm');
+                if (submitBtn) {
+                    col.insertBefore(draggedCard, submitBtn);
+                } else {
+                    col.appendChild(draggedCard);
+                }
+                saveCardLayout();
+            }
+        });
+    });
+}
+
+function saveCardLayout() {
+    const leftCards = Array.from(document.querySelectorAll('#leftFormCol .draggable-form-card')).map(c => c.id);
+    const rightCards = Array.from(document.querySelectorAll('#rightFormCol .draggable-form-card')).map(c => c.id);
+    localStorage.setItem('schoolsm_enroll_card_layout', JSON.stringify({ left: leftCards, right: rightCards }));
+}
+
+function resetCardLayout() {
+    localStorage.removeItem('schoolsm_enroll_card_layout');
+    location.reload();
+}
+</script>
+
+<style>
+.cursor-grab {
+    cursor: grab;
+}
+.cursor-grab:active {
+    cursor: grabbing;
+}
+.draggable-form-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.draggable-form-card.card-dragging {
+    opacity: 0.45;
+    transform: scale(0.99);
+    border: 2px dashed #4f46e5 !important;
+}
+.draggable-form-card.card-drag-over {
+    border-top: 3px solid #4f46e5 !important;
+    background-color: #f8faff !important;
+}
+</style>
+{% endblock %}
+

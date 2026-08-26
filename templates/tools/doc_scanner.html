@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block title %}ម៉ាស៊ីនស្កេនក្រដាស & ឯកសារ (Smart Document Scanner) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+    .scanner-main-box {
+        background: #0f172a;
+        border-radius: 20px;
+        min-height: 480px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .video-viewport {
+        width: 100%;
+        max-height: 460px;
+        object-fit: contain;
+        display: none;
+    }
+    .scanner-preview-img {
+        max-width: 100%;
+        max-height: 460px;
+        display: block;
+        border-radius: 8px;
+    }
+    .mobile-shutter-bar {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    .shutter-btn {
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 4px solid #10b981;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        color: #10b981;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        transition: transform 0.15s ease;
+    }
+    .shutter-btn:active {
+        transform: scale(0.92);
+        background: #10b981;
+        color: #ffffff;
+    }
+    .page-tray-item {
+        width: 80px;
+        height: 105px;
+        border-radius: 10px;
+        border: 2px solid #cbd5e1;
+        background: #ffffff;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.15s ease;
+    }
+    .page-tray-item.active {
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
+    }
+    .page-tray-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .page-tray-badge {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+    .filter-pill-btn {
+        border-radius: 30px;
+        padding: 6px 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #334155;
+        transition: all 0.2s ease;
+    }
+    .filter-pill-btn.active, .filter-pill-btn:hover {
+        background: #10b981;
+        color: #ffffff;
+        border-color: #10b981;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Document Scanner</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-file-invoice text-success me-2"></i>ម៉ាស៊ីនស្កេនក្រដាស & ឯកសារ (Smart Document Scanner)
+            </h2>
+            <p class="text-muted small mb-0">ស្កេនក្រដាសកិច្ចការ និងឯកសារផ្ទាល់តាមកាមេរ៉ាទូរស័ព្ទ លុបស្រមោល និងស្នាមជ្រីវជ្រួញ ទៅជាឯកសារ PDF A4 ស្អាតឥតខ្ចោះ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Hidden Native Mobile Camera Input & File Input -->
+    <input type="file" id="nativeCameraInput" accept="image/*" capture="environment" class="d-none" onchange="handleFileInput(event)">
+    <input type="file" id="standardFileInput" accept="image/*" multiple class="d-none" onchange="handleFileInput(event)">
+    {% csrf_token %}
+
+    <div class="row g-4">
+        <!-- Main Scanner Viewport Area -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+                <!-- Top Viewport Bar -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success rounded-pill px-3 py-1">
+                            <i class="fa-solid fa-camera me-1"></i> ទំព័រទី <span id="currentPageNumDisplay">1</span> / <span id="totalPagesDisplay">0</span>
+                        </span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light btn-sm text-secondary rounded-pill" onclick="rotateCurrentPage(-90)" title="បង្វិលឆ្វេង">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-light btn-sm text-secondary rounded-pill" onclick="rotateCurrentPage(90)" title="បង្វិលស្តាំ">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" onclick="deleteCurrentPage()" title="លុបទំព័រនេះ" id="btnDeletePage" disabled>
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scanner Viewport Frame -->
+                <div class="scanner-main-box" id="scannerViewport">
+                    <!-- Placeholder when empty -->
+                    <div id="scannerPlaceholder" class="text-center text-white-50 p-4">
+                        <i class="fa-solid fa-camera display-3 text-success mb-3"></i>
+                        <h5 class="text-white">សូមចាប់ផ្តើមថត ឬជ្រើសរើសរូបថតក្រដាសឯកសារ</h5>
+                        <p class="small text-white-50 mb-3">គាំទ្រការថតតាមទូរស័ព្ទដៃ iPad និងកុំព្យូទ័រ</p>
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <button type="button" class="btn btn-success rounded-pill px-4" onclick="triggerMobileCamera()">
+                                <i class="fa-solid fa-camera me-1"></i> ថតស្កេនតាមកាមេរ៉ា
+                            </button>
+                            <button type="button" class="btn btn-outline-light rounded-pill px-3" onclick="triggerFileUpload()">
+                                <i class="fa-solid fa-images me-1"></i> បញ្ចូលរូបថត
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Web Camera Video Element -->
+                    <video id="liveWebcamVideo" class="video-viewport" autoplay playsinline></video>
+
+                    <!-- Image Display / Cropper Area -->
+                    <div id="imageDisplayWrapper" style="display: none; width: 100%; max-height: 480px; text-align: center;">
+                        <img id="currentDocImage" class="scanner-preview-img" src="" alt="Scanned Document">
+                    </div>
+                </div>
+
+                <!-- Mobile Action Shutter Bar -->
+                <div class="mobile-shutter-bar">
+                    <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="triggerFileUpload()">
+                        <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសរូប
+                    </button>
+
+                    <!-- Large Shutter Button -->
+                    <button type="button" class="shutter-btn" onclick="triggerMobileCamera()" title="ថតស្កេនទំព័រថ្មី">
+                        <i class="fa-solid fa-camera"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="startWebcamFeed()" id="btnWebcamToggle">
+                        <i class="fa-solid fa-video me-1"></i> WebCam
+                    </button>
+                </div>
+
+                <!-- Scanned Pages Bottom Tray Strip -->
+                <div class="mt-3" id="pagesTrayContainer" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <small class="fw-bold text-dark"><i class="fa-solid fa-layer-group text-success me-1"></i> ទំព័រដែលបានស្កេនរួច (<span id="trayCountText">0</span>)</small>
+                        <button type="button" class="btn btn-link text-success p-0 text-decoration-none small fw-bold" onclick="triggerMobileCamera()">
+                            + ថតបន្ថែមទំព័រទៀត
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 overflow-x-auto pb-2" id="pagesTrayStrip" style="scroll-behavior: smooth;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Document Export Settings Column -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-wand-magic-sparkles text-success me-2"></i>Filter សម្អាតក្រដាសឯកសារ
+                </h5>
+
+                <!-- Paper Magic Enhancement Filters -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small text-muted">ជ្រើសរើសបែបផែនកែសម្អាត (Scan Presets)</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="filter-pill-btn active" id="fltMagic" onclick="applyScanFilter('magic')">
+                            ✨ Magic Color (លុបស្រមោល)
+                        </button>
+                        <button type="button" class="filter-pill-btn" id="fltBw" onclick="applyScanFilter('bw')">
+                            📄 B&W Photocopy (កូពីសខ្មៅ)
+                        </button>
+                        <button type="button" class="filter-pill-btn" id="fltGray" onclick="applyScanFilter('gray')">
+                            🔘 Grayscale (ប្រផេះ)
+                        </button>
+                        <button type="button" class="filter-pill-btn" id="fltOrig" onclick="applyScanFilter('original')">
+                            🖼️ រូបដើម (Original)
+                        </button>
+                    </div>
+                    <div class="form-text mt-2 text-success small">
+                        <i class="fa-solid fa-check-circle me-1"></i> <strong>Magic Color:</strong> បង្កើនកម្រិតសលើផ្ទៃក្រដាស និងដិតអក្សរស្អាតដូចម៉ាស៊ីន Scan ស្តង់ដា។
+                    </div>
+                </div>
+
+                <!-- Page Format & Export Settings -->
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-file-pdf text-danger me-2"></i>បង្កើតឯកសារ PDF (Export Document)</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះឯកសារទាញយក</label>
+                    <div class="input-group">
+                        <input type="text" id="outputDocName" class="form-control" value="Scanned_Document">
+                        <span class="input-group-text bg-light text-muted">.pdf</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ទំហំក្រដាស (Page Size)</label>
+                    <select class="form-select form-select-sm" id="exportPageSize">
+                        <option value="A4" selected>A4 (ស្តង់ដាសាលារៀន 210 x 297 mm)</option>
+                        <option value="Letter">US Letter</option>
+                        <option value="Fit">តាមទំហំរូបថតជាក់ស្តែង (Fit to Paper)</option>
+                    </select>
+                </div>
+
+                <!-- Instant Download Actions -->
+                <div class="d-grid gap-2 mt-4">
+                    <button type="button" id="btnExportPdf" class="btn btn-success btn-lg rounded-pill shadow-sm" onclick="exportScannedDocumentPdf()" disabled>
+                        <i class="fa-solid fa-file-arrow-down me-2"></i> បង្កើត & ទាញយក PDF Document
+                    </button>
+                    <button type="button" id="btnDownloadCurrentPage" class="btn btn-outline-secondary rounded-pill" onclick="downloadCurrentPageImage()" disabled>
+                        <i class="fa-solid fa-image me-1"></i> ទាញយករូបភាពទំព័រនេះ (JPG)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF-lib & Cropper.js -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.9/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<script>
+    let scannedPages = []; // Array of { id, originalDataUrl, processedDataUrl, rotation, filter }
+    let activePageIndex = 0;
+    let cropper = null;
+    let isWebcamRunning = false;
+    let webcamStream = null;
+
+    function triggerMobileCamera() {
+        stopWebcamFeed();
+        document.getElementById('nativeCameraInput').click();
+    }
+
+    function triggerFileUpload() {
+        stopWebcamFeed();
+        document.getElementById('standardFileInput').click();
+    }
+
+    async function handleFileInput(e) {
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+        if (files.length === 0) return;
+
+        Swal.fire({
+            title: 'កំពុងដំណើរការក្រដាសឯកសារ...',
+            text: 'សូមរង់ចាំបន្តិច ប្រព័ន្ធកំពុងដំណើរការ Filter',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        for (const file of files) {
+            const dataUrl = await readFileAsDataUrl(file);
+            const processedUrl = await applyMagicColorFilter(dataUrl, 'magic');
+            scannedPages.push({
+                id: Date.now() + Math.random(),
+                originalDataUrl: dataUrl,
+                processedDataUrl: processedUrl,
+                rotation: 0,
+                filter: 'magic'
+            });
+        }
+
+        activePageIndex = scannedPages.length - 1;
+        renderPagesTray();
+        displayActivePage();
+        e.target.value = '';
+        Swal.close();
+    }
+
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
+    function displayActivePage() {
+        if (scannedPages.length === 0) {
+            document.getElementById('scannerPlaceholder').style.display = 'block';
+            document.getElementById('imageDisplayWrapper').style.display = 'none';
+            document.getElementById('pagesTrayContainer').style.display = 'none';
+            document.getElementById('btnExportPdf').disabled = true;
+            document.getElementById('btnDownloadCurrentPage').disabled = true;
+            document.getElementById('btnDeletePage').disabled = true;
+            document.getElementById('currentPageNumDisplay').innerText = '0';
+            document.getElementById('totalPagesDisplay').innerText = '0';
+            return;
+        }
+
+        const page = scannedPages[activePageIndex];
+        document.getElementById('scannerPlaceholder').style.display = 'none';
+        document.getElementById('imageDisplayWrapper').style.display = 'block';
+        document.getElementById('pagesTrayContainer').style.display = 'block';
+        document.getElementById('btnExportPdf').disabled = false;
+        document.getElementById('btnDownloadCurrentPage').disabled = false;
+        document.getElementById('btnDeletePage').disabled = false;
+
+        document.getElementById('currentPageNumDisplay').innerText = activePageIndex + 1;
+        document.getElementById('totalPagesDisplay').innerText = scannedPages.length;
+
+        const img = document.getElementById('currentDocImage');
+        img.src = page.processedDataUrl;
+
+        // Highlight active filter pill
+        document.querySelectorAll('.filter-pill-btn').forEach(b => b.classList.remove('active'));
+        if (page.filter === 'magic') document.getElementById('fltMagic').classList.add('active');
+        else if (page.filter === 'bw') document.getElementById('fltBw').classList.add('active');
+        else if (page.filter === 'gray') document.getElementById('fltGray').classList.add('active');
+        else if (page.filter === 'original') document.getElementById('fltOrig').classList.add('active');
+    }
+
+    function renderPagesTray() {
+        const strip = document.getElementById('pagesTrayStrip');
+        const countSpan = document.getElementById('trayCountText');
+        countSpan.innerText = scannedPages.length;
+
+        strip.innerHTML = '';
+        scannedPages.forEach((page, index) => {
+            const item = document.createElement('div');
+            item.className = `page-tray-item ${index === activePageIndex ? 'active' : ''}`;
+            item.onclick = () => {
+                activePageIndex = index;
+                renderPagesTray();
+                displayActivePage();
+            };
+            item.innerHTML = `
+                <span class="page-tray-badge">ទំព័រ ${index + 1}</span>
+                <img src="${page.processedDataUrl}" alt="Page ${index + 1}">
+            `;
+            strip.appendChild(item);
+        });
+    }
+
+    async function applyScanFilter(filterType) {
+        if (scannedPages.length === 0) return;
+        const page = scannedPages[activePageIndex];
+        page.filter = filterType;
+
+        const newProcessed = await applyMagicColorFilter(page.originalDataUrl, filterType);
+        page.processedDataUrl = newProcessed;
+
+        displayActivePage();
+        renderPagesTray();
+    }
+
+    function applyMagicColorFilter(dataUrl, filterType) {
+        return new Promise((resolve) => {
+            if (filterType === 'original') {
+                return resolve(dataUrl);
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+
+                    // Perceived luminance
+                    const v = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                    if (filterType === 'magic') {
+                        // Magic Paper Enhancer: stretch contrast, bleach paper background
+                        // High levels (>160) go pure white, dark levels (<110) get dark
+                        let enhanced = (v - 80) * 1.5;
+                        if (enhanced > 210) enhanced = 255;
+                        if (enhanced < 0) enhanced = 0;
+
+                        data[i] = Math.min(255, (r / (v || 1)) * enhanced);
+                        data[i + 1] = Math.min(255, (g / (v || 1)) * enhanced);
+                        data[i + 2] = Math.min(255, (b / (v || 1)) * enhanced);
+                    } else if (filterType === 'bw') {
+                        // High contrast binarization (Photocopy style)
+                        const threshold = 135;
+                        const bw = v > threshold ? 255 : 20;
+                        data[i] = bw;
+                        data[i + 1] = bw;
+                        data[i + 2] = bw;
+                    } else if (filterType === 'gray') {
+                        data[i] = v;
+                        data[i + 1] = v;
+                        data[i + 2] = v;
+                    }
+                }
+
+                ctx.putImageData(imgData, 0, 0);
+                resolve(canvas.toDataURL('image/jpeg', 0.92));
+            };
+            img.src = dataUrl;
+        });
+    }
+
+    async function rotateCurrentPage(deg) {
+        if (scannedPages.length === 0) return;
+        const page = scannedPages[activePageIndex];
+
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            if (Math.abs(deg) === 90 || Math.abs(deg) === 270) {
+                canvas.width = img.height;
+                canvas.height = img.width;
+            } else {
+                canvas.width = img.width;
+                canvas.height = img.height;
+            }
+
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((deg * Math.PI) / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            const rotatedUrl = canvas.toDataURL('image/jpeg', 0.92);
+            page.originalDataUrl = rotatedUrl;
+            page.processedDataUrl = rotatedUrl;
+
+            displayActivePage();
+            renderPagesTray();
+        };
+        img.src = page.originalDataUrl;
+    }
+
+    function deleteCurrentPage() {
+        if (scannedPages.length === 0) return;
+        scannedPages.splice(activePageIndex, 1);
+        if (activePageIndex >= scannedPages.length) {
+            activePageIndex = Math.max(0, scannedPages.length - 1);
+        }
+        renderPagesTray();
+        displayActivePage();
+    }
+
+    // Live Webcam integration
+    async function startWebcamFeed() {
+        const video = document.getElementById('liveWebcamVideo');
+        const btnToggle = document.getElementById('btnWebcamToggle');
+
+        if (isWebcamRunning) {
+            stopWebcamFeed();
+            return;
+        }
+
+        try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            });
+            video.srcObject = webcamStream;
+            video.style.display = 'block';
+            document.getElementById('scannerPlaceholder').style.display = 'none';
+            document.getElementById('imageDisplayWrapper').style.display = 'none';
+            isWebcamRunning = true;
+            btnToggle.innerHTML = '<i class="fa-solid fa-stop me-1"></i> បិទកាមេរ៉ា';
+            btnToggle.className = 'btn btn-danger btn-sm rounded-pill px-3';
+        } catch (e) {
+            Swal.fire('មិនអាចបើកកាមេរ៉ា', 'សូមអនុញ្ញាត Camera Permission ក្នុង Browser៖ ' + e.message, 'warning');
+        }
+    }
+
+    function stopWebcamFeed() {
+        const video = document.getElementById('liveWebcamVideo');
+        const btnToggle = document.getElementById('btnWebcamToggle');
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+        }
+        video.style.display = 'none';
+        isWebcamRunning = false;
+        btnToggle.innerHTML = '<i class="fa-solid fa-video me-1"></i> WebCam';
+        btnToggle.className = 'btn btn-outline-light btn-sm rounded-pill px-3';
+        displayActivePage();
+    }
+
+    // Export entire scanned document as A4 PDF
+    async function exportScannedDocumentPdf() {
+        if (scannedPages.length === 0) return;
+
+        const btn = document.getElementById('btnExportPdf');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងរៀបចំ PDF...';
+
+        try {
+            if (typeof PDFLib === 'undefined') {
+                await exportToPdfBackend();
+                return;
+            }
+
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            const pageSizeChoice = document.getElementById('exportPageSize').value;
+
+            // A4 dimensions in points: 595.28 x 841.89
+            let defaultWidth = 595.28;
+            let defaultHeight = 841.89;
+            if (pageSizeChoice === 'Letter') {
+                defaultWidth = 612;
+                defaultHeight = 792;
+            }
+
+            for (const pageItem of scannedPages) {
+                const imgBytes = await fetch(pageItem.processedDataUrl).then(res => res.arrayBuffer());
+                const embeddedImage = await pdfDoc.embedJpg(imgBytes);
+
+                let pageWidth = defaultWidth;
+                let pageHeight = defaultHeight;
+
+                // Auto rotate page if image is landscape
+                if (embeddedImage.width > embeddedImage.height && pageSizeChoice !== 'Fit') {
+                    pageWidth = defaultHeight;
+                    pageHeight = defaultWidth;
+                }
+
+                if (pageSizeChoice === 'Fit') {
+                    pageWidth = embeddedImage.width;
+                    pageHeight = embeddedImage.height;
+                }
+
+                const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                const margin = 15;
+                const availWidth = pageWidth - (margin * 2);
+                const availHeight = pageHeight - (margin * 2);
+
+                const imgAspect = embeddedImage.width / embeddedImage.height;
+                const pageAspect = availWidth / availHeight;
+
+                let drawWidth, drawHeight;
+                if (imgAspect > pageAspect) {
+                    drawWidth = availWidth;
+                    drawHeight = availWidth / imgAspect;
+                } else {
+                    drawHeight = availHeight;
+                    drawWidth = availHeight * imgAspect;
+                }
+
+                const x = margin + (availWidth - drawWidth) / 2;
+                const y = margin + (availHeight - drawHeight) / 2;
+
+                page.drawImage(embeddedImage, {
+                    x: x,
+                    y: y,
+                    width: drawWidth,
+                    height: drawHeight,
+                });
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            let docName = (document.getElementById('outputDocName').value || 'Scanned_Document').trim();
+            if (!docName.toLowerCase().endsWith('.pdf')) docName += '.pdf';
+            a.href = url;
+            a.download = docName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ស្កេន និងទាញយកជោគជ័យ!',
+                text: `ឯកសារ "${docName}" ចំនួន ${scannedPages.length} ទំព័រ ត្រូវបានទាញយក។`,
+                confirmButtonColor: '#10b981',
+            });
+        } catch (e) {
+            console.warn('PDFLib failed, trying backend converter:', e);
+            try {
+                await exportToPdfBackend();
+            } catch (backendErr) {
+                console.error('All PDF engines failed:', backendErr);
+                Swal.fire('មានបញ្ហា!', 'មិនអាចបង្កើត PDF បានទេ៖ ' + backendErr.message, 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-arrow-down me-2"></i> បង្កើត & ទាញយក PDF Document';
+        }
+    }
+
+    async function exportToPdfBackend() {
+        const formData = new FormData();
+        for (let i = 0; i < scannedPages.length; i++) {
+            const blob = await fetch(scannedPages[i].processedDataUrl).then(r => r.blob());
+            formData.append('images', blob, `page_${i + 1}.jpg`);
+        }
+        formData.append('orientation', 'portrait');
+        formData.append('pageSize', document.getElementById('exportPageSize').value.toLowerCase());
+        formData.append('margin', 'small');
+        let docName = (document.getElementById('outputDocName').value || 'Scanned_Document').trim();
+        formData.append('docTitle', docName);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        const response = await fetch("{% url 'api_tool_images_to_pdf' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'បរាជ័យក្នុងការបង្កើត PDF');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        if (!docName.toLowerCase().endsWith('.pdf')) docName += '.pdf';
+        a.href = url;
+        a.download = docName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ស្កេន និងទាញយកជោគជ័យ!',
+            text: `ឯកសារ "${docName}" ចំនួន ${scannedPages.length} ទំព័រ ត្រូវបានទាញយក។`,
+            confirmButtonColor: '#10b981',
+        });
+    }
+
+    function downloadCurrentPageImage() {
+        if (scannedPages.length === 0) return;
+        const page = scannedPages[activePageIndex];
+        const a = document.createElement('a');
+        a.href = page.processedDataUrl;
+        a.download = `Page_${activePageIndex + 1}_Scanned.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+</script>
+{% endblock %}

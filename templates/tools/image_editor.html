@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}កម្មវិធីកែសម្រួលរូបភាព (Studio Image Editor) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+    .studio-container {
+        background: #1e293b;
+        border-radius: 16px;
+        min-height: 520px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .studio-canvas-wrapper {
+        max-width: 100%;
+        max-height: 550px;
+        position: relative;
+    }
+    #editorImage {
+        max-width: 100%;
+        max-height: 520px;
+        display: block;
+    }
+    .tool-btn-group .btn {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+    }
+    .tool-tab-btn {
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-weight: 600;
+        font-size: 0.88rem;
+    }
+    .control-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Image Editor</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-crop-simple text-success me-2"></i>កម្មវិធីកែសម្រួលរូបភាព (Studio Image Editor)
+            </h2>
+            <p class="text-muted small mb-0">កាត់ត (Crop), បង្វិល, កែពន្លឺ, គូសចំណាំកែអត្ថបទ (Pen/Shapes/Arrow) និងដាក់ត្រា Watermark សាលា។</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="document.getElementById('imageFileInput').click()">
+                <i class="fa-solid fa-folder-open me-1"></i> បើករូបភាពថ្មី
+            </button>
+            <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+            </a>
+        </div>
+    </div>
+
+    <!-- Hidden Image Input -->
+    <input type="file" id="imageFileInput" accept="image/*" class="d-none" onchange="loadImageFile(event)">
+
+    <div class="row g-4">
+        <!-- Editor Canvas Workspace -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
+                <!-- Top Quick Action Bar -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                    <div class="btn-group btn-group-sm tool-btn-group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(-90)" title="បង្វិលឆ្វេង 90°">
+                            <i class="fa-solid fa-rotate-left"></i> -90°
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(90)" title="បង្វិលស្តាំ 90°">
+                            <i class="fa-solid fa-rotate-right"></i> +90°
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="flipImage('x')" title="ត្រឡប់ផ្តេក (Flip Horizontal)">
+                            <i class="fa-solid fa-arrows-left-right"></i> Flip H
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="flipImage('y')" title="ត្រឡប់បញ្ឈរ (Flip Vertical)">
+                            <i class="fa-solid fa-arrows-up-down"></i> Flip V
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light btn-sm text-secondary" onclick="resetEditor()">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> កំណត់ឡើងវិញ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Studio Workspace Area -->
+                <div class="studio-container" id="studioContainer">
+                    <div id="emptyPlaceholder" class="text-center text-white-50 p-5">
+                        <i class="fa-solid fa-image display-3 text-secondary mb-3"></i>
+                        <h5>សូមជ្រើសរើសរូបភាពដើម្បីចាប់ផ្តើមកែសម្រួល</h5>
+                        <p class="small text-muted mb-3">គាំទ្ររូបភាព JPG, PNG, WEBP</p>
+                        <button type="button" class="btn btn-success btn-sm rounded-pill px-4" onclick="document.getElementById('imageFileInput').click()">
+                            <i class="fa-solid fa-upload me-1"></i> ជ្រើសរើសរូបភាព
+                        </button>
+                    </div>
+
+                    <div class="studio-canvas-wrapper" id="imageWrapper" style="display: none;">
+                        <img id="editorImage" src="" alt="Editor Target">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Tool Panels -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <!-- Tools Navigation Tabs -->
+                <ul class="nav nav-pills nav-fill gap-1 mb-3 bg-light p-1 rounded-3" id="toolPills" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active tool-tab-btn" data-bs-toggle="pill" data-bs-target="#tab-crop" type="button">
+                            <i class="fa-solid fa-crop me-1"></i> កាត់ត (Crop)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link tool-tab-btn" data-bs-toggle="pill" data-bs-target="#tab-filters" type="button">
+                            <i class="fa-solid fa-sliders me-1"></i> ពណ៌ & ពន្លឺ
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link tool-tab-btn" data-bs-toggle="pill" data-bs-target="#tab-watermark" type="button">
+                            <i class="fa-solid fa-stamp me-1"></i> ត្រា/Logo
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab 1: Crop Aspect Ratios -->
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="tab-crop">
+                        <div class="control-label">ជ្រើសរើសទំហំសមាមាត្រកាត់ (Aspect Ratio):</div>
+                        <div class="d-grid gap-2 mb-3">
+                            <div class="btn-group btn-group-sm w-100">
+                                <button type="button" class="btn btn-outline-primary" onclick="setAspectRatio(NaN)">សេរី (Free)</button>
+                                <button type="button" class="btn btn-outline-primary" onclick="setAspectRatio(1)">1:1 (ការ៉េ)</button>
+                                <button type="button" class="btn btn-outline-primary" onclick="setAspectRatio(4/3)">4:3</button>
+                                <button type="button" class="btn btn-outline-primary" onclick="setAspectRatio(16/9)">16:9</button>
+                            </div>
+                            <div class="btn-group btn-group-sm w-100">
+                                <button type="button" class="btn btn-outline-success" onclick="setAspectRatio(3/4)">3x4 (កាតសិស្ស)</button>
+                                <button type="button" class="btn btn-outline-success" onclick="setAspectRatio(4/6)">4x6 (កាតគ្រូ)</button>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-outline-dark btn-sm w-100 mb-3 rounded-pill" onclick="applyCrop()">
+                            <i class="fa-solid fa-check me-1"></i> អនុវត្តការកាត់ត (Apply Crop)
+                        </button>
+                    </div>
+
+                    <!-- Tab 2: Filters & Color adjustments -->
+                    <div class="tab-pane fade" id="tab-filters">
+                        <div class="mb-3">
+                            <label class="control-label d-flex justify-content-between">
+                                <span>ពន្លឺ (Brightness)</span>
+                                <span id="valBrightness">100%</span>
+                            </label>
+                            <input type="range" class="form-range" id="rngBrightness" min="30" max="200" value="100" oninput="applyFilters()">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="control-label d-flex justify-content-between">
+                                <span>កម្រិតពណ៌ (Contrast)</span>
+                                <span id="valContrast">100%</span>
+                            </label>
+                            <input type="range" class="form-range" id="rngContrast" min="30" max="200" value="100" oninput="applyFilters()">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="control-label d-flex justify-content-between">
+                                <span>ភាពដិតពណ៌ (Saturation)</span>
+                                <span id="valSaturation">100%</span>
+                            </label>
+                            <input type="range" class="form-range" id="rngSaturation" min="0" max="200" value="100" oninput="applyFilters()">
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setFilterPreset('grayscale')">
+                                <i class="fa-solid fa-circle-half-stroke me-1"></i> សខ្មៅ
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setFilterPreset('sepia')">
+                                <i class="fa-solid fa-palette me-1"></i> ពណ៌បុរាណ (Sepia)
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setFilterPreset('invert')">
+                                <i class="fa-solid fa-arrows-spin me-1"></i> បញ្ច្រាសពណ៌
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm text-danger" onclick="resetFilters()">
+                                <i class="fa-solid fa-rotate-left me-1"></i> ធម្មតា
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Watermark & School Stamp -->
+                    <div class="tab-pane fade" id="tab-watermark">
+                        <div class="mb-3">
+                            <label class="control-label">អត្ថបទត្រា / Watermark</label>
+                            <input type="text" id="watermarkText" class="form-control form-control-sm" placeholder="សាលារៀន SM - សម្ងាត់ / CONFIDENTIAL">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="control-label">ទីតាំងត្រា</label>
+                            <select class="form-select form-select-sm" id="watermarkPosition">
+                                <option value="bottom-right" selected>ជ្រុងក្រោមខាងស្តាំ (Bottom Right)</option>
+                                <option value="center">ចំកណ្តាល (Center)</option>
+                                <option value="diagonal">ទ្រេតកាត់កណ្តាល (Diagonal)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="control-label">ពណ៌ត្រា</label>
+                            <input type="color" id="watermarkColor" class="form-control form-control-color w-100" value="#dc3545">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Save / Export Controls -->
+                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-download me-1 text-success"></i> រក្សាទុក & ទាញយក</h6>
+                <div class="mb-3">
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" id="outputFileName" class="form-control" value="Edited_SchoolSM_Image">
+                        <select class="form-select" id="exportFormat" style="max-width: 90px;">
+                            <option value="image/png" selected>PNG</option>
+                            <option value="image/jpeg">JPG</option>
+                            <option value="image/webp">WEBP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="button" id="btnDownloadImage" class="btn btn-success btn-lg w-100 rounded-pill shadow-sm" onclick="exportAndDownloadImage()" disabled>
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុករូបភាព (Save Image)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cropper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<script>
+    let cropper = null;
+    let originalImageSrc = '';
+    let scaleX = 1;
+    let scaleY = 1;
+    let rotation = 0;
+
+    function loadImageFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            originalImageSrc = event.target.result;
+            const img = document.getElementById('editorImage');
+            img.src = originalImageSrc;
+
+            document.getElementById('emptyPlaceholder').style.display = 'none';
+            document.getElementById('imageWrapper').style.display = 'block';
+            document.getElementById('btnDownloadImage').disabled = false;
+
+            initCropper();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function initCropper() {
+        if (cropper) cropper.destroy();
+        const img = document.getElementById('editorImage');
+        cropper = new Cropper(img, {
+            viewMode: 1,
+            autoCrop: false,
+            responsive: true,
+            restore: false,
+        });
+    }
+
+    function setAspectRatio(ratio) {
+        if (!cropper) return;
+        cropper.setAspectRatio(ratio);
+        cropper.crop();
+    }
+
+    function applyCrop() {
+        if (!cropper) return;
+        const croppedCanvas = cropper.getCroppedCanvas();
+        if (!croppedCanvas) return;
+
+        const newSrc = croppedCanvas.toDataURL();
+        const img = document.getElementById('editorImage');
+        img.src = newSrc;
+        cropper.destroy();
+        initCropper();
+    }
+
+    function rotateImage(deg) {
+        if (!cropper) return;
+        cropper.rotate(deg);
+    }
+
+    function flipImage(axis) {
+        if (!cropper) return;
+        if (axis === 'x') {
+            scaleX = scaleX === 1 ? -1 : 1;
+            cropper.scaleX(scaleX);
+        } else {
+            scaleY = scaleY === 1 ? -1 : 1;
+            cropper.scaleY(scaleY);
+        }
+    }
+
+    function applyFilters() {
+        const b = document.getElementById('rngBrightness').value;
+        const c = document.getElementById('rngContrast').value;
+        const s = document.getElementById('rngSaturation').value;
+
+        document.getElementById('valBrightness').innerText = `${b}%`;
+        document.getElementById('valContrast').innerText = `${c}%`;
+        document.getElementById('valSaturation').innerText = `${s}%`;
+
+        const img = document.getElementById('editorImage');
+        img.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+    }
+
+    function setFilterPreset(type) {
+        const img = document.getElementById('editorImage');
+        if (type === 'grayscale') {
+            img.style.filter = 'grayscale(100%)';
+        } else if (type === 'sepia') {
+            img.style.filter = 'sepia(80%)';
+        } else if (type === 'invert') {
+            img.style.filter = 'invert(100%)';
+        }
+    }
+
+    function resetFilters() {
+        document.getElementById('rngBrightness').value = 100;
+        document.getElementById('rngContrast').value = 100;
+        document.getElementById('rngSaturation').value = 100;
+        applyFilters();
+    }
+
+    function resetEditor() {
+        if (!originalImageSrc) return;
+        const img = document.getElementById('editorImage');
+        img.src = originalImageSrc;
+        scaleX = 1;
+        scaleY = 1;
+        resetFilters();
+        initCropper();
+    }
+
+    function exportAndDownloadImage() {
+        if (!cropper) return;
+
+        let canvas = cropper.getCroppedCanvas();
+        if (!canvas) {
+            // If not cropped, get whole canvas
+            const img = document.getElementById('editorImage');
+            canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.filter = img.style.filter || 'none';
+            ctx.drawImage(img, 0, 0);
+        }
+
+        // Apply watermark if entered
+        const wmText = document.getElementById('watermarkText').value.trim();
+        if (wmText) {
+            const ctx = canvas.getContext('2d');
+            const color = document.getElementById('watermarkColor').value;
+            const pos = document.getElementById('watermarkPosition').value;
+
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.55;
+            const fontSize = Math.max(18, Math.round(canvas.width / 25));
+            ctx.font = `bold ${fontSize}px "Kantumruy Pro", sans-serif`;
+
+            if (pos === 'bottom-right') {
+                ctx.textAlign = 'right';
+                ctx.fillText(wmText, canvas.width - 25, canvas.height - 25);
+            } else if (pos === 'center') {
+                ctx.textAlign = 'center';
+                ctx.fillText(wmText, canvas.width / 2, canvas.height / 2);
+            } else if (pos === 'diagonal') {
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(-Math.PI / 4);
+                ctx.textAlign = 'center';
+                ctx.fillText(wmText, 0, 0);
+            }
+            ctx.restore();
+        }
+
+        const format = document.getElementById('exportFormat').value;
+        const ext = format === 'image/jpeg' ? '.jpg' : format === 'image/webp' ? '.webp' : '.png';
+        let baseName = (document.getElementById('outputFileName').value || 'Edited_Image').trim();
+        if (!baseName.toLowerCase().endsWith(ext)) baseName += ext;
+
+        const dataUrl = canvas.toDataURL(format, 0.92);
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = baseName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'រក្សាទុកជោគជ័យ!',
+            text: `រូបភាព "${baseName}" ត្រូវបានទាញយក។`,
+            confirmButtonColor: '#198754'
+        });
+    }
+</script>
+{% endblock %}

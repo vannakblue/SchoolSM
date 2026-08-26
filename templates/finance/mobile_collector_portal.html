@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}📱 Mobile Fee Collector Portal | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<!-- html5-qrcode library for camera barcode/QR scanning -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+    :root {
+        --mobile-primary: #4361ee;
+        --mobile-primary-dark: #3730a3;
+        --mobile-success: #10b981;
+        --mobile-danger: #ef4444;
+        --mobile-warning: #f59e0b;
+        --mobile-bg: #f8fafc;
+        --mobile-card-bg: #ffffff;
+    }
+
+    body {
+        background-color: var(--mobile-bg);
+        font-family: 'Kantumruy Pro', 'Inter', sans-serif;
+    }
+
+    .collector-app-container {
+        max-width: 520px;
+        margin: 0 auto;
+        padding-bottom: 90px;
+    }
+
+    /* Top App Header */
+    .collector-top-nav {
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        color: white;
+        border-radius: 0 0 24px 24px;
+        padding: 20px 18px 24px 18px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+        position: relative;
+    }
+
+    .collector-kpi-pill {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        padding: 12px 16px;
+        margin-top: 14px;
+    }
+
+    /* Floating Action / Scanner Bar */
+    .scanner-trigger-btn {
+        background: linear-gradient(135deg, #4f46e5, #3b82f6);
+        color: white;
+        border: none;
+        border-radius: 16px;
+        padding: 14px 20px;
+        font-weight: 700;
+        font-size: 1rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        margin-top: -18px;
+        position: relative;
+        z-index: 10;
+    }
+    .scanner-trigger-btn:active {
+        transform: scale(0.97);
+    }
+
+    /* Student Cards */
+    .mobile-student-card {
+        background: white;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+    }
+    .mobile-student-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+    .mobile-student-card.is-paid-card {
+        border-left: 5px solid var(--mobile-success);
+    }
+    .mobile-student-card.is-due-card {
+        border-left: 5px solid var(--mobile-danger);
+    }
+
+    .student-avatar-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #6366f1, #3b82f6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+
+    /* Month Mini Matrix Grid */
+    .mini-month-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 10px 0;
+    }
+    .month-chip {
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    .month-chip.paid {
+        background: #dcfce7;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+    .month-chip.unpaid {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+
+    /* Bottom Touch Navigation */
+    .collector-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        z-index: 1000;
+        box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+    }
+    .bottom-nav-item {
+        color: #64748b;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .bottom-nav-item.active {
+        color: var(--mobile-primary);
+    }
+    .bottom-nav-item i {
+        font-size: 1.25rem;
+        margin-bottom: 3px;
+    }
+
+    /* Scanner View Modal */
+    #reader {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    /* Quick Pay Button */
+    .btn-collect-now {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-collect-now:active {
+        transform: scale(0.96);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="collector-app-container">
+
+    <!-- Top Navigation Card -->
+    <div class="collector-top-nav">
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small mb-1">
+                    <i class="fa-solid fa-bolt me-1"></i> Mobile Collector Portal
+                </span>
+                <h5 class="fw-bold mb-0 text-white">
+                    {% if teacher_obj %}{{ teacher_obj.khmer_name }}{% else %}{{ user.display_name }}{% endif %}
+                </h5>
+                <div class="text-white-50 small" style="font-size: 0.78rem;">
+                    ឆ្នាំសិក្សា៖ {{ active_year.name|default:"២០២៥-២០២៦" }}
+                </div>
+            </div>
+            <div class="text-end">
+                <a href="{% url 'monthly_fees_tracker' %}" class="btn btn-sm btn-outline-light rounded-pill px-3" title="ត្រឡប់ទៅផ្ទាំង Desktop Tracker">
+                    <i class="fa-solid fa-desktop me-1"></i> Desktop
+                </a>
+            </div>
+        </div>
+
+        <!-- Today Summary Card -->
+        <div class="collector-kpi-pill d-flex align-items-center justify-content-between">
+            <div>
+                <div class="text-white-50 small" style="font-size: 0.75rem;">💰 បានប្រមូលថ្ងៃនេះ (Today)</div>
+                <div class="fs-4 fw-bold text-warning">{{ today_collected|floatformat:0 }} {{ config.currency_symbol }}</div>
+            </div>
+            <div class="text-end">
+                <div class="text-white-50 small" style="font-size: 0.75rem;">សិស្សជំពាក់ក្នុងថ្នាក់</div>
+                <div class="fs-5 fw-bold text-danger">{{ kpi_due_count }} នាក់</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live QR Camera Scanner Trigger Button -->
+    <div class="px-3">
+        <button type="button" class="scanner-trigger-btn" onclick="openQrScannerModal()">
+            <i class="fa-solid fa-qrcode fa-lg"></i>
+            <span>ស្កេនកាតសិស្ស (Scan Student QR)</span>
+        </button>
+    </div>
+
+    <!-- Quick Search & Filter -->
+    <div class="px-3 mt-3">
+        <div class="bg-white p-2 rounded-4 border shadow-sm">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="mobileSearchInput" class="form-control border-0" placeholder="វាយឈ្មោះ, ID, ឬលេខទូរស័ព្ទ..." onkeyup="filterMobileStudents()">
+                <button class="btn btn-light border-0 text-muted" type="button" onclick="clearMobileSearch()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Classroom Tabs Carousel -->
+        <div class="d-flex gap-2 overflow-auto py-2 px-1" style="scrollbar-width: none;">
+            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap classroom-tab-btn active" data-class="ALL" onclick="filterByClassroom('ALL', this)">
+                គ្រប់ថ្នាក់ ({{ students_count }})
+            </button>
+            {% for c in classrooms %}
+            <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 text-nowrap classroom-tab-btn" data-class="{{ c.name }}" onclick="filterByClassroom('{{ c.name }}', this)">
+                {{ c.name }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Student Cards List -->
+    <div class="px-3 mt-2" id="mobileStudentsContainer">
+        {% for item in students_data %}
+        <div class="mobile-student-card {% if item.remaining_balance > 0 %}is-due-card{% else %}is-paid-card{% endif %}" 
+             data-student-id="{{ item.student.student_id }}" 
+             data-name="{{ item.student.khmer_name|lower }}" 
+             data-latin="{{ item.student.latin_name|lower }}" 
+             data-phone="{{ item.guardian_phone }}" 
+             data-class="{{ item.student.classroom.name|default:'' }}">
+            
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="student-avatar-badge">
+                        {{ item.student.khmer_name|slice:":1" }}
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-6">{{ item.student.khmer_name }}</div>
+                        <div class="text-muted small" style="font-size: 0.75rem;">
+                            <span class="badge bg-light text-dark border font-monospace">{{ item.student.student_id }}</span>
+                            <span class="badge bg-primary-subtle text-primary ms-1">{{ item.student.classroom.name|default:"-" }}</span>
+                            <span class="badge bg-info-subtle text-info ms-1">{{ item.category.name|default:"ទូទៅ" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debt / Paid Tag -->
+                <div class="text-end">
+                    {% if item.remaining_balance > 0 %}
+                    <div class="text-danger fw-bold fs-6">{{ item.remaining_balance|floatformat:0 }} {{ config.currency_symbol }}</div>
+                    <span class="badge bg-danger-subtle text-danger" style="font-size: 0.65rem;">ជំពាក់</span>
+                    {% else %}
+                    <div class="text-success fw-bold fs-6">0 {{ config.currency_symbol }}</div>
+                    <span class="badge bg-success-subtle text-success" style="font-size: 0.65rem;"><i class="fa-solid fa-check me-1"></i>គ្រប់</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Mini Month Chips -->
+            <div class="mini-month-chips">
+                {% for m in item.months %}
+                <span class="month-chip {% if m.cell_status == 'PAID' %}paid{% elif m.cell_status == 'UNPAID' %}unpaid{% endif %}">
+                    {{ m.month_name|slice:":3" }}
+                    {% if m.cell_status == 'PAID' %}<i class="fa-solid fa-check ms-1 small"></i>{% elif m.cell_status == 'UNPAID' %}<i class="fa-solid fa-xmark ms-1 small"></i>{% endif %}
+                </span>
+                {% endfor %}
+            </div>
+
+            <!-- Bottom Quick Pay & Action Row -->
+            <div class="d-flex align-items-center justify-content-between gap-2 pt-2 border-top mt-2">
+                <div class="d-flex gap-1">
+                    {% if item.guardian_phone %}
+                    <a href="tel:{{ item.guardian_phone }}" class="btn btn-sm btn-light border text-primary" title="Call">
+                        <i class="fa-solid fa-phone"></i>
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-sm btn-light border text-info" title="Telegram" onclick="openSendTelegramModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ item.remaining_balance|floatformat:0 }}', '{{ item.unpaid_months_str|escapejs }}', '{{ item.guardian_phone|escapejs }}', '{{ item.student.telegram_chat_id|default:''|escapejs }}')">
+                        <i class="fa-brands fa-telegram"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border text-warning" title="Bakong KHQR" onclick="openKhqrModal('{{ item.student.khmer_name|escapejs }}', '{{ item.remaining_balance|floatformat:0 }}')">
+                        <i class="fa-solid fa-qrcode"></i> KHQR
+                    </button>
+                </div>
+
+                <!-- 1-Tap Record Pay Button -->
+                <button type="button" class="btn btn-collect-now" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}')">
+                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> កត់ត្រាបង់
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="fa-solid fa-user-check fa-3x mb-3 text-secondary"></i>
+            <h5>មិនមានទិន្នន័យសិស្សឡើយ</h5>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: LIVE QR CAMERA SCANNER                                   -->
+<!-- ============================================================== -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3">
+                <h6 class="modal-title fw-bold">
+                    <i class="fa-solid fa-camera me-2 text-primary"></i> ស្កេន QR Code កាតសិស្ស
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopQrScanner()"></button>
+            </div>
+            <div class="modal-body p-3 text-center">
+                <div id="reader" style="min-height: 250px;"></div>
+                <div class="alert alert-light border small text-muted mt-3 mb-0" style="font-size: 0.78rem;">
+                    <i class="fa-solid fa-circle-info text-info me-1"></i> សូមតម្រង់កាមេរ៉ាទៅលើ QR Code ឬ Barcode នៅលើកាតសិស្ស។
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: BAKONG KHQR POPUP FOR PARENTS                            -->
+<!-- ============================================================== -->
+<div class="modal fade" id="khqrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white py-3">
+                <h6 class="modal-title fw-bold">
+                    <i class="fa-solid fa-qrcode me-2"></i> KHQR បង់ប្រាក់ថ្លៃទឹកភ្លើង (Bakong)
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <div class="badge bg-danger px-3 py-2 fs-6 rounded-pill mb-3">
+                    KHQR ផ្លូវការសាលារៀន
+                </div>
+                <div class="fw-bold fs-5 text-dark" id="khqrStudentName">-</div>
+                <div class="text-danger fw-bold fs-3 my-2" id="khqrAmount">0 ៛</div>
+
+                <!-- QR Image Placeholder -->
+                <div class="bg-light p-3 rounded-3 border d-inline-block shadow-sm my-2">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=KHQR_SCHOOL_PAYMENT" class="img-fluid rounded" alt="KHQR Code" style="max-width: 180px;">
+                </div>
+                <div class="text-muted small mt-2">
+                    ស្កេនជាមួយគ្រប់កម្មវិធីធនាគារ (ABA, ACLEDA, Canadia, Wing, etc.)
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3">
+                <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">រួចរាល់</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include standard Payment & Telegram Modals from monthly_fees_tracker -->
+{% include 'finance/monthly_fees_tracker.html' with is_included_component=True %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let html5QrCode = null;
+
+    // 1. Live QR Camera Scanner Functions
+    function openQrScannerModal() {
+        const modalEl = document.getElementById('qrScannerModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+
+        modalEl.addEventListener('shown.bs.modal', function () {
+            startQrScanner();
+        }, { once: true });
+    }
+
+    function startQrScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                // Success Scan
+                stopQrScanner();
+                const modalEl = document.getElementById('qrScannerModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                // Trigger Student Search & Open Payment Sheet
+                handleScannedStudentQr(decodedText);
+            },
+            (errorMessage) => {
+                // scanning frame ignored
+            }
+        ).catch(err => {
+            console.error("Camera start error:", err);
+            Swal.fire('កំហុសកាមេរ៉ា', 'មិនអាចបើកកាមេរ៉ាស្កេនបានឡើយ។ សូមពិនិត្យ Permission។', 'error');
+        });
+    }
+
+    function stopQrScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+            }).catch(err => console.log(err));
+        }
+    }
+
+    // 2. Process Scanned QR Code
+    function handleScannedStudentQr(qrText) {
+        Swal.fire({
+            title: 'កំពុងទាញយកទិន្នន័យ...',
+            text: `កូដស្កេន៖ ${qrText}`,
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        fetch(`/finance/monthly-fees/api/search-student-qr/?q=${encodeURIComponent(qrText)}`)
+            .then(res => res.json())
+            .then(data => {
+                Swal.close();
+                if (data.status === 'success' && data.student) {
+                    const st = data.student;
+                    confetti({ particleCount: 60, spread: 50, origin: { y: 0.7 } });
+                    openRecordPaymentModal(st.id, st.khmer_name, st.classroom, st.category);
+                } else {
+                    Swal.fire('រកមិនឃើញ', data.message || 'រកមិនឃើញសិស្សនេះឡើយ', 'warning');
+                }
+            })
+            .catch(err => {
+                Swal.fire('កំហុស', 'មានបញ្ហាក្នុងការស្វែងរកទិន្នន័យ', 'error');
+            });
+    }
+
+    // 3. Client-side Search & Classroom Filtering
+    function filterMobileStudents() {
+        const query = document.getElementById('mobileSearchInput').value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.mobile-student-card');
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const latin = card.getAttribute('data-latin') || '';
+            const studentId = card.getAttribute('data-student-id') || '';
+            const phone = card.getAttribute('data-phone') || '';
+
+            const match = name.includes(query) || latin.includes(query) || studentId.includes(query) || phone.includes(query);
+            card.style.display = match ? '' : 'none';
+        });
+    }
+
+    function clearMobileSearch() {
+        document.getElementById('mobileSearchInput').value = '';
+        filterMobileStudents();
+    }
+
+    function filterByClassroom(className, btn) {
+        document.querySelectorAll('.classroom-tab-btn').forEach(b => b.classList.remove('btn-primary', 'active'));
+        document.querySelectorAll('.classroom-tab-btn').forEach(b => b.classList.add('btn-light'));
+        btn.classList.remove('btn-light');
+        btn.classList.add('btn-primary', 'active');
+
+        const cards = document.querySelectorAll('.mobile-student-card');
+        cards.forEach(card => {
+            const cardClass = card.getAttribute('data-class') || '';
+            if (className === 'ALL' || cardClass === className) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // 4. Open Bakong KHQR Modal
+    function openKhqrModal(name, amount) {
+        document.getElementById('khqrStudentName').textContent = name;
+        document.getElementById('khqrAmount').textContent = `${amount} ៛`;
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('khqrModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

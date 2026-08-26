@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+
+{% block title %}លទ្ធផលសិក្សាប្រចាំឆ្នាំ (Annual Academic Results) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rank-badge-1 { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+    .rank-badge-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: white; }
+    .rank-badge-3 { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
+    .table-results thead th {
+        background-color: #15803d;
+        color: white;
+        text-align: center;
+        vertical-align: middle;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .badge-grade-A { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-grade-B { background-color: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
+    .badge-grade-C { background-color: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+    .badge-grade-D { background-color: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+    .badge-grade-E { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .badge-grade-F { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <h2 class="fw-bold mb-1 text-success">
+            <i class="fa-solid fa-award me-2"></i>លទ្ធផលសិក្សាប្រចាំឆ្នាំ (Annual Academic Results)
+        </h2>
+        <p class="text-muted small mb-0">រូបមន្តគណនាផ្លូវការ MoEYS៖ <strong>មធ្យមភាគប្រចាំឆ្នាំ = (មធ្យមភាគឆមាសទី១ + មធ្យមភាគឆមាសទី២) ÷ ២</strong></p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'semester_results' %}{% if selected_class %}?classroom={{ selected_class.id }}{% if target_year %}&year={{ target_year.id }}{% endif %}{% endif %}" class="btn btn-outline-primary fw-bold rounded-pill px-3 shadow-xs">
+            <i class="fa-solid fa-file-signature me-1"></i> លទ្ធផលប្រចាំឆមាស (Semester Results)
+        </a>
+        {% if selected_class and target_year %}
+        <a href="{% url 'export_annual_results_excel' %}?classroom={{ selected_class.id }}&year={{ target_year.id }}" class="btn btn-outline-success fw-bold rounded-pill px-3 shadow-xs">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="custom-card p-3 mb-4 rounded-4 shadow-sm bg-white">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">ឆ្នាំសិក្សា *</label>
+            <select name="year" class="form-select rounded-pill" onchange="this.form.submit()">
+                {% for ay in academic_years %}
+                <option value="{{ ay.id }}" {% if target_year and target_year.id == ay.id %}selected{% endif %}>
+                    📅 {{ ay.name }}{% if ay.is_current %} (បច្ចុប្បន្ន){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small text-muted">ថ្នាក់រៀន *</label>
+            <select name="classroom" class="form-select rounded-pill" onchange="this.form.submit()">
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>
+                    {{ c.name }} ({{ c.get_track_display }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold">
+                <i class="fa-solid fa-magnifying-glass me-1"></i> បង្ហាញ
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if annual_data and selected_class %}
+<!-- Summary Stats Banner -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-success bg-white shadow-sm rounded-4">
+            <div class="text-muted small">សិស្សសរុបក្នុងថ្នាក់</div>
+            <div class="fs-4 fw-bold text-dark">{{ annual_data.total_students }} នាក់</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-success bg-white shadow-sm rounded-4">
+            <div class="text-muted small">សិស្សជាប់ឡើងថ្នាក់ (≥ ៥០%)</div>
+            <div class="fs-4 fw-bold text-success">{{ annual_data.passed_count }} នាក់</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-danger bg-white shadow-sm rounded-4">
+            <div class="text-muted small">សិស្សធ្លាក់ / ត្រួតថ្នាក់ (< ៥០%)</div>
+            <div class="fs-4 fw-bold text-danger">{{ annual_data.failed_count }} នាក់</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-primary bg-white shadow-sm rounded-4">
+            <div class="text-muted small">អត្រាឡើងថ្នាក់ (Promotion Rate)</div>
+            <div class="fs-4 fw-bold text-primary">
+                {% if annual_data.total_students > 0 %}
+                    {% widthratio annual_data.passed_count annual_data.total_students 100 %}%
+                {% else %}
+                    0%
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Table Card -->
+<div class="custom-card mb-4 rounded-4 shadow-sm bg-white p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0 text-success">
+                <i class="fa-solid fa-trophy me-2"></i>តារាងលទ្ធផលសិក្សា និងចំណាត់ថ្នាក់ប្រចាំឆ្នាំ៖ {{ selected_class.name }}
+            </h5>
+            <span class="badge bg-light text-dark mt-1 border">ឆ្នាំសិក្សា៖ {{ target_year.name }} | កម្មវិធី៖ {{ selected_class.get_track_display }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            {% if is_admin %}
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold" onclick="openTransferModalAnnual(1)">
+                <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលពិន្ទុឆមាសទី១ (សាលាចាស់)
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle table-results">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ចំណាត់ថ្នាក់</th>
+                    <th style="width: 100px;">កូដសិស្ស</th>
+                    <th>ឈ្មោះសិស្ស</th>
+                    <th style="width: 60px;">ភេទ</th>
+                    <th style="width: 110px;">មធ្យមភាគ<br>ឆមាសទី១</th>
+                    <th style="width: 110px;">មធ្យមភាគ<br>ឆមាសទី២</th>
+                    <th style="background-color: #166534; width: 120px;">មធ្យមភាគ<br>ប្រចាំឆ្នាំ</th>
+                    <th style="width: 75px;">និទ្ទេស</th>
+                    <th style="width: 120px;">លទ្ធផលឡើងថ្នាក់</th>
+                    <th>កំណត់សម្គាល់</th>
+                    {% if is_admin %}
+                    <th style="width: 60px;">សកម្មភាព</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in annual_data.students_data %}
+                <tr {% if r.is_disqualified %}class="table-danger text-muted"{% elif not r.passed and r.has_record %}class="table-warning bg-opacity-25"{% endif %}>
+                    <td class="text-center">
+                        {% if r.rank == 1 %}
+                            <span class="badge rank-badge-1 rounded-pill px-2 py-1 fs-6">🥇 1</span>
+                        {% elif r.rank == 2 %}
+                            <span class="badge rank-badge-2 rounded-pill px-2 py-1 fs-6">🥈 2</span>
+                        {% elif r.rank == 3 %}
+                            <span class="badge rank-badge-3 rounded-pill px-2 py-1 fs-6">🥉 3</span>
+                        {% else %}
+                            <span class="fw-bold text-muted">{{ r.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold text-primary text-center">{{ r.student.student_id }}</td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ r.student.khmer_name }}</div>
+                        <div class="text-muted small" style="font-size: 0.72rem;">{{ r.student.latin_name }}</div>
+                    </td>
+                    <td class="text-center">{{ r.student.get_gender_display }}</td>
+
+                    <!-- Semester 1 Average -->
+                    <td class="text-center font-monospace bg-light">
+                        {% if r.s1_average is not None %}
+                            <span class="fw-bold">{{ r.s1_average }}%</span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Semester 2 Average -->
+                    <td class="text-center font-monospace bg-light">
+                        {% if r.s2_average is not None %}
+                            <span class="fw-bold">{{ r.s2_average }}%</span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Annual Average -->
+                    <td class="text-center font-monospace fw-bold fs-6 text-success bg-success bg-opacity-10">
+                        {{ r.annual_average }}%
+                        <div class="text-muted" style="font-size: 0.7rem;">({{ r.average_10 }}/10)</div>
+                    </td>
+
+                    <!-- Letter Grade -->
+                    <td class="text-center">
+                        <span class="badge badge-grade-{{ r.letter_grade }} rounded-pill px-2 py-1 fw-bold">
+                            {{ r.letter_grade }}
+                        </span>
+                    </td>
+
+                    <!-- Promotion Status -->
+                    <td class="text-center">
+                        {% if r.is_disqualified %}
+                            <span class="badge bg-danger rounded-pill px-2 py-1">ដកសិទ្ធិ</span>
+                        {% elif r.passed %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1">
+                                <i class="fa-solid fa-circle-up me-1"></i> ឡើងថ្នាក់
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1">
+                                <i class="fa-solid fa-circle-down me-1"></i> ត្រួតថ្នាក់
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Notes -->
+                    <td>
+                        {% if r.notes %}
+                            <span class="small text-muted">{{ r.notes }}</span>
+                        {% endif %}
+                    </td>
+
+                    {% if is_admin %}
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-light text-primary" 
+                                    onclick="openTransferModalDirect({{ r.student.id }}, '{{ r.student.khmer_name|escapejs }}', '{{ r.student.student_id }}', 1)" 
+                                    title="បញ្ចូលពិន្ទុឆមាសទី១ (សាលាចាស់)">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-user-group fa-3x mb-3 text-secondary"></i>
+                        <h5>មិនទាន់មានទិន្នន័យសិស្សក្នុងថ្នាក់នេះឡើយ</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal: Input/Edit Transfer-in Student Grades -->
+{% if is_admin %}
+<div class="modal fade" id="transferGradeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'api_save_transfer_grade' %}" method="POST" id="transferGradeForm">
+                {% csrf_token %}
+                <input type="hidden" name="student_id" id="transferStudentId">
+
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="fa-solid fa-graduation-cap me-2"></i>បញ្ចូលពិន្ទុសិស្សផ្ទេរចូល (Transfer Grade)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
+                            <div class="fw-bold fs-6 text-dark" id="modalTransferStudentName">សិស្ស គំរូ</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">កូដសិស្ស (ID)៖</div>
+                            <div class="badge bg-primary fs-6" id="modalTransferStudentID">STU001</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ឆមាស *</label>
+                        <select name="semester" id="transferSemesterSelect" class="form-select rounded-3" onchange="refreshTransferData()">
+                            <option value="1">📘 ឆមាសទី១ (Semester 1)</option>
+                            <option value="2">📙 ឆមាសទី២ (Semester 2)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ឈ្មោះសាលាចាស់ (Previous School Name)</label>
+                        <input type="text" name="prior_school_name" id="modalPriorSchool" class="form-control rounded-3" placeholder="ឧ. វិទ្យាល័យ ព្រះស៊ីសុវត្ថិ">
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">មធ្យមភាគប្រចាំខែ (Monthly Avg %)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="monthly_average" id="modalMonthlyAvg" class="form-control rounded-3" placeholder="ឧ. 75.50" oninput="autoCalculateSemesterFinal()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">ពិន្ទុប្រឡងឆមាស (Exam Score %)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="semester_exam_score" id="modalExamScore" class="form-control rounded-3" placeholder="ឧ. 80.00" oninput="autoCalculateSemesterFinal()">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-primary">
+                            មធ្យមភាគសរុបប្រចាំឆមាស (%) *
+                        </label>
+                        <input type="number" step="0.01" min="0" max="100" name="semester_final_average" id="modalSemFinal" class="form-control rounded-3 border-primary fw-bold" placeholder="ឧ. 77.75" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កំណត់សម្គាល់ (Remarks)</label>
+                        <textarea name="remarks" id="modalTransferRemarks" class="form-control rounded-3" rows="2" placeholder="កំណត់សម្គាល់ការផ្ទេរចូល..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStudentId = null;
+
+    function openTransferModalDirect(studentId, studentName, studentCode, semester) {
+        currentStudentId = studentId;
+        document.getElementById('transferStudentId').value = studentId;
+        document.getElementById('transferSemesterSelect').value = semester;
+        document.getElementById('modalTransferStudentName').innerText = studentName;
+        document.getElementById('modalTransferStudentID').innerText = studentCode;
+
+        refreshTransferData();
+        new bootstrap.Modal(document.getElementById('transferGradeModal')).show();
+    }
+
+    function refreshTransferData() {
+        if (!currentStudentId) return;
+        const semester = document.getElementById('transferSemesterSelect').value;
+
+        // Reset
+        document.getElementById('modalPriorSchool').value = '';
+        document.getElementById('modalMonthlyAvg').value = '';
+        document.getElementById('modalExamScore').value = '';
+        document.getElementById('modalSemFinal').value = '';
+        document.getElementById('modalTransferRemarks').value = '';
+
+        fetch(`/examinations/api/transfer-grade/${currentStudentId}/?semester=${semester}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.exists) {
+                    document.getElementById('modalPriorSchool').value = data.prior_school_name || '';
+                    document.getElementById('modalMonthlyAvg').value = data.monthly_average || '';
+                    document.getElementById('modalExamScore').value = data.semester_exam_score || '';
+                    document.getElementById('modalSemFinal').value = data.semester_final_average || '';
+                    document.getElementById('modalTransferRemarks').value = data.remarks || '';
+                }
+            })
+            .catch(err => console.log(err));
+    }
+
+    function autoCalculateSemesterFinal() {
+        const m = parseFloat(document.getElementById('modalMonthlyAvg').value);
+        const e = parseFloat(document.getElementById('modalExamScore').value);
+        if (!isNaN(m) && !isNaN(e)) {
+            document.getElementById('modalSemFinal').value = ((m + e) / 2.0).toFixed(2);
+        } else if (!isNaN(m)) {
+            document.getElementById('modalSemFinal').value = m.toFixed(2);
+        } else if (!isNaN(e)) {
+            document.getElementById('modalSemFinal').value = e.toFixed(2);
+        }
+    }
+</script>
+{% endif %}
+{% endblock %}

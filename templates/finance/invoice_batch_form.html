@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}ចេញវិក្កយបត្រតាមថ្នាក់ (Batch Invoicing) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ចេញវិក្កយបត្រតាមថ្នាក់ (Batch Invoices Generator)</h2>
+        <p class="text-muted small mb-0">បង្កើតវិក្កយបត្រស្វ័យប្រវត្តិសម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់ ព្រមទាំងកាត់កងអាហារូបករណ៍ដោយស្វ័យប្រវត្តិ</p>
+    </div>
+    <a href="{% url 'invoice_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="custom-card">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ជ្រើសរើសថ្នាក់រៀន *</label>
+                        <select name="classroom" class="form-select" required>
+                            <option value="">-- សូមជ្រើសរើសថ្នាក់ --</option>
+                            {% for c in classrooms %}
+                            <option value="{{ c.id }}">{{ c.name }} [{{ c.academic_year.name }}] ({{ c.total_students }} សិស្ស)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ប្រភេទកម្រៃ *</label>
+                        <select name="fee_category" class="form-select" required>
+                            {% for fc in categories %}
+                            <option value="{{ fc.id }}">{{ fc.name }} (${{ fc.default_amount }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឆ្នាំសិក្សា *</label>
+                        <select name="academic_year" class="form-select" required>
+                            {% for y in academic_years %}
+                            <option value="{{ y.id }}">{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">តម្លៃដើម ($) *</label>
+                        <input type="number" step="0.01" name="amount" value="250.00" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កាលបរិច្ឆេទទូទាត់ចុងក្រោយ *</label>
+                        <input type="date" name="due_date" value="{{ default_due }}" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 small mt-3 mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i> ប្រព័ន្ធនឹងគណនាបញ្ចុះតម្លៃស្វ័យប្រវត្តិតាមអាហារូបករណ៍របស់សិស្សម្នាក់ៗ (ឧ. អាហារូបករណ៍ 50% ឬ 100%)។
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold" onclick="return confirm('តើលោកអ្នកចង់ដំណើរការចេញវិក្កយបត្រសម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់នេះមែនទេ?')">
+                        <i class="fa-solid fa-layer-group me-1"></i> បង្កើតវិក្កយបត្រទាំងអស់
+                    </button>
+                    <a href="{% url 'invoice_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

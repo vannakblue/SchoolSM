@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM){% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom Design CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css?v=2.2">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    {% block extra_css %}{% endblock %}
+    
+    <style>
+        /* Immediate fallback style to guarantee sidebar collapses/expands smoothly */
+        body.sidebar-collapsed .app-sidebar,
+        html.sidebar-collapsed .app-sidebar {
+            transform: translateX(-100%) !important;
+        }
+        body.sidebar-collapsed .app-main,
+        html.sidebar-collapsed .app-main {
+            margin-left: 0 !important;
+        }
+    </style>
+    
+    <script>
+        // Instantly restore desktop sidebar collapsed state before page paint
+        (function() {
+            try {
+                if (window.innerWidth >= 992 && localStorage.getItem('sidebar_collapsed') === 'true') {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                    window.addEventListener('DOMContentLoaded', function() {
+                        document.body.classList.add('sidebar-collapsed');
+                    });
+                }
+            } catch(e) {}
+        })();
+
+        // Global function to toggle sidebar across all screen sizes
+        function toggleAppSidebar() {
+            const sidebar = document.querySelector('.app-sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            if (!sidebar) return;
+
+            if (window.innerWidth < 992) {
+                // Mobile behavior (Offcanvas slide in/out)
+                const isShown = sidebar.classList.toggle('show');
+                if (backdrop) {
+                    backdrop.classList.toggle('show', isShown);
+                }
+                if (isShown && typeof scrollActiveSidebarMenu === 'function') {
+                    scrollActiveSidebarMenu(false);
+                }
+            } else {
+                // Desktop behavior (Collapse/Expand main area)
+                const isCurrentlyCollapsed = document.body.classList.contains('sidebar-collapsed');
+                if (isCurrentlyCollapsed) {
+                    // UNHIDE / EXPAND
+                    document.body.classList.remove('sidebar-collapsed');
+                    document.documentElement.classList.remove('sidebar-collapsed');
+                    localStorage.setItem('sidebar_collapsed', 'false');
+                } else {
+                    // HIDE / COLLAPSE
+                    document.body.classList.add('sidebar-collapsed');
+                    document.documentElement.classList.add('sidebar-collapsed');
+                    localStorage.setItem('sidebar_collapsed', 'true');
+                }
+            }
+        }
+
+        // Global function to close mobile sidebar
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('.app-sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            if (sidebar) sidebar.classList.remove('show');
+            if (backdrop) backdrop.classList.remove('show');
+        }
+    </script>
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar no-print">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    {% if school_info and school_info.logo %}
+                        <img src="{{ school_info.logo.url }}" alt="Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: white; padding: 2px;">
+                    {% else %}
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    {% endif %}
+                </div>
+                <div class="overflow-hidden">
+                    <h1 class="brand-title text-truncate">{{ school_info.short_name|default:"សាលារៀន SM" }}</h1>
+                    <p class="brand-sub text-truncate">{{ school_info.school_code|default:"080101" }}</p>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu">
+                {% for sec in sidebar_catalog %}
+                <li class="menu-section-group">
+                    <button type="button" class="menu-header-toggle" onclick="toggleMenuSection('{{ sec.html_id }}')" id="btn-{{ sec.html_id }}" aria-expanded="true">
+                        <span class="menu-header-title">
+                            <i class="{{ sec.icon }} header-icon text-{{ sec.color }}"></i>
+                            <span>{{ sec.name_kh }} / {{ sec.name_en|upper }}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                    </button>
+                    <ul class="menu-sub-list" id="{{ sec.html_id }}">
+                        {% for item in sec.visible_items %}
+                        <li class="menu-item">
+                            <a href="{{ item.url }}" class="menu-link {% if item.is_current_active %}active{% endif %}">
+                                <i class="{{ item.icon }}"></i>
+                                <span>{{ item.name_kh }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        
+        <!-- Mobile Sidebar Backdrop -->
+        <div class="sidebar-backdrop d-lg-none" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
+        <script>
+            // Instantly restore accordion state and position sidebar scroll to active menu item on initial HTML parse
+            (function() {
+                try {
+                    var allSections = document.querySelectorAll('.menu-sub-list');
+                    if (allSections.length) {
+                        var activeSectionId = null;
+                        for (var i = 0; i < allSections.length; i++) {
+                            if (allSections[i].querySelector('.menu-link.active')) {
+                                activeSectionId = allSections[i].id;
+                                break;
+                            }
+                        }
+
+                        if (!activeSectionId) {
+                            var saved = localStorage.getItem('sidebar_active_accordion');
+                            if (saved && document.getElementById(saved)) {
+                                activeSectionId = saved;
+                            } else {
+                                activeSectionId = 'sec-dashboard';
+                            }
+                        }
+
+                        allSections.forEach(function(sec) {
+                            var btn = document.getElementById('btn-' + sec.id);
+                            if (sec.id === activeSectionId) {
+                                sec.classList.remove('is-collapsed');
+                                if (btn) {
+                                    btn.classList.remove('is-collapsed');
+                                    if (sec.querySelector('.menu-link.active')) {
+                                        btn.classList.add('has-active');
+                                    }
+                                    btn.setAttribute('aria-expanded', 'true');
+                                }
+                            } else {
+                                sec.classList.add('is-collapsed');
+                                if (btn) {
+                                    btn.classList.add('is-collapsed');
+                                    btn.classList.remove('has-active');
+                                    btn.setAttribute('aria-expanded', 'false');
+                                }
+                            }
+                        });
+                    }
+
+                    var sidebar = document.querySelector('.app-sidebar');
+                    if (sidebar) {
+                        var activeLink = sidebar.querySelector('.menu-link.active');
+                        if (activeLink) {
+                            var brand = sidebar.querySelector('.sidebar-brand');
+                            var brandHeight = brand ? brand.offsetHeight : 0;
+                            var sidebarRect = sidebar.getBoundingClientRect();
+                            var activeRect = activeLink.getBoundingClientRect();
+                            var availableHeight = sidebar.clientHeight - brandHeight;
+                            var targetScrollTop = (sidebar.scrollTop + (activeRect.top - sidebarRect.top)) - brandHeight - (availableHeight / 2) + (activeLink.clientHeight / 2);
+                            sidebar.scrollTop = Math.max(0, targetScrollTop);
+                        } else {
+                            var savedScroll = sessionStorage.getItem('sidebar_scroll_pos');
+                            if (savedScroll !== null) {
+                                sidebar.scrollTop = parseInt(savedScroll, 10);
+                            }
+                        }
+                    }
+                } catch(e) {}
+            })();
+        </script>
+
+        <!-- Main Content Layout -->
+        <main class="app-main">
+            <!-- Header Navbar -->
+            <header class="app-header no-print">
+                <div class="header-left">
+                    <button type="button" class="btn btn-light border d-flex align-items-center justify-content-center shadow-sm" id="sidebarToggle" onclick="toggleAppSidebar()" title="បិទ/បើកផ្ទាំង Sidebar (Toggle Sidebar)" style="width: 38px; height: 38px; border-radius: 10px; padding: 0; cursor: pointer;">
+                        <i class="fa-solid fa-bars text-secondary" style="pointer-events: none;"></i>
+                    </button>
+                    <div class="d-none d-md-flex align-items-center gap-2">
+                        <span class="badge badge-pill-custom badge-primary-soft">
+                            <i class="fa-solid fa-shield-halved"></i> 
+                            {{ request.user.get_role_display }}
+                        </span>
+                        
+                        <!-- Dynamic Academic Year Switcher Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1 py-1 px-2 border-0 bg-light rounded-pill shadow-xs text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="ចុចដើម្បីប្តូរឆ្នាំសិក្សាដែលកំពុងមើល">
+                                <i class="fa-solid fa-calendar-check text-primary"></i>
+                                <span class="fw-semibold small">ឆ្នាំសិក្សា៖ {{ active_academic_year.name|default:"២០២៥-២០២៦" }}</span>
+                                {% if active_academic_year.is_current %}
+                                    <span class="badge bg-success" style="font-size: 0.65rem; padding: 2px 5px;">បច្ចុប្បន្ន</span>
+                                {% endif %}
+                            </button>
+                            <ul class="dropdown-menu shadow border-0" style="min-width: 230px;">
+                                <li><h6 class="dropdown-header text-primary"><i class="fa-solid fa-calendar-days me-1"></i> ជ្រើសរើសឆ្នាំសិក្សា / Switch Year</h6></li>
+                                {% for ay in all_academic_years %}
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if active_academic_year and active_academic_year.id == ay.id %}active bg-primary text-white{% endif %}" href="{% url 'academic_year_switch' ay.id %}">
+                                        <span>
+                                            <i class="fa-solid fa-calendar me-2 {% if active_academic_year and active_academic_year.id == ay.id %}text-white{% else %}text-muted{% endif %}"></i>
+                                            {{ ay.name }}
+                                        </span>
+                                        {% if ay.is_current %}
+                                            <span class="badge {% if active_academic_year and active_academic_year.id == ay.id %}bg-light text-primary{% else %}bg-success-subtle text-success{% endif %}" style="font-size: 0.65rem;">បច្ចុប្បន្ន</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                                {% empty %}
+                                <li><span class="dropdown-item text-muted small">មិនមានឆ្នាំសិក្សា</span></li>
+                                {% endfor %}
+                                {% if is_admin %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item small text-primary" href="{% url 'academic_year_list' %}"><i class="fa-solid fa-gear me-1"></i> គ្រប់គ្រងឆ្នាំសិក្សាទាំងអស់...</a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-right d-flex align-items-center gap-2">
+                    <!-- Global Omnisearch (Ctrl+K) Trigger Button -->
+                    <button type="button" class="btn btn-light border rounded-pill d-flex align-items-center gap-2 text-muted px-3 py-1 shadow-xs" onclick="openOmnisearchModal()" title="ស្វែងរកម៉ឺនុយ ទំព័រ សៀវភៅតាមដាន... (Ctrl+K)">
+                        <i class="fa-solid fa-magnifying-glass text-primary"></i>
+                        <span class="d-none d-lg-inline small text-secondary">ស្វែងរកម៉ឺនុយ, សៀវភៅតាមដាន, ទឹកភ្លើង...</span>
+                        <kbd class="badge bg-white border text-dark ms-1 font-monospace shadow-xs d-none d-sm-inline" style="font-size: 0.65rem; border-color: #cbd5e1 !important;">Ctrl+K</kbd>
+                    </button>
+
+                    <!-- Quick Role Switch Dropdown for Easy Demo Testing -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> Switch Demo Role
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><h6 class="dropdown-header">ប្តូរ Role សាកល្បងភ្លាមៗ</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ADMIN' %}"><i class="fa-solid fa-crown text-warning me-2"></i>Super Admin</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ACCOUNTANT' %}"><i class="fa-solid fa-calculator text-info me-2"></i>Accountant (គណនេយ្យ)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'TEACHER' %}"><i class="fa-solid fa-chalkboard-user text-success me-2"></i>Teacher (គ្រូបង្រៀន)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'STUDENT' %}"><i class="fa-solid fa-user-graduate text-primary me-2"></i>Student / Parent (សិស្ស)</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- In-App Notification Bell -->
+                    {% if is_admin %}
+                    <div class="dropdown">
+                        <a href="{% url 'teacher_leave_list' %}?status=PENDING" class="btn btn-light border rounded-circle position-relative d-flex align-items-center justify-content-center shadow-xs" style="width: 38px; height: 38px;" title="ពាក្យសុំច្បាប់គ្រូថ្មី (Teacher Leave Requests)">
+                            <i class="fa-solid fa-bell {% if pending_teacher_leaves_count > 0 %}text-warning{% else %}text-muted{% endif %} fs-5"></i>
+                            {% if pending_teacher_leaves_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.65rem;">
+                                {{ pending_teacher_leaves_count }}
+                                <span class="visually-hidden">unread leave requests</span>
+                            </span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- User Profile Dropdown -->
+                    <div class="dropdown">
+                        <div class="user-profile-badge" data-bs-toggle="dropdown">
+                            <div class="avatar-circle">
+                                {{ request.user.username|slice:":1"|upper }}
+                            </div>
+                            <div class="d-none d-sm-block text-start">
+                                <div class="fw-bold small line-clamp-1">{{ user_display_name }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{{ request.user.username }}</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-down text-muted small ms-1"></i>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fa-solid fa-user-gear me-2"></i>ព័ត៌មានគណនី (Profile)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="fa-solid fa-right-from-bracket me-2"></i>ចាកចេញ (Logout)</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Alerts / Messages Container -->
+            <div class="container-fluid px-4 pt-3 no-print">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Page Specific Content -->
+            <div class="app-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Spotlight Omnisearch Command Palette Modal (Ctrl + K) -->
+    <div class="modal fade" id="omnisearchModal" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background: rgba(255, 255, 255, 0.98);">
+                <!-- Search Input Header -->
+                <div class="p-3 border-bottom d-flex align-items-center gap-3 bg-light">
+                    <i class="fa-solid fa-magnifying-glass fs-4 text-primary ms-2"></i>
+                    <input type="text" id="omnisearchInput" class="form-control form-control-lg border-0 bg-transparent shadow-none ps-0" placeholder="ស្វែងរកម៉ឺនុយ, សៀវភៅតាមដាន, ប័ណ្ណពិន្ទុ, ទឹកភ្លើង, វត្តមាន, កាលវិភាគ... (Ctrl+K)" autocomplete="off">
+                    <span class="badge bg-secondary-subtle text-secondary border font-monospace me-2 d-none d-sm-inline">ESC</span>
+                    <button type="button" class="btn-close me-1" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Suggestions / Results Container -->
+                <div class="p-3" style="max-height: 440px; overflow-y: auto;" id="omnisearchResultsContainer">
+                    <div class="text-muted small mb-2 px-2 fw-bold" id="omnisearchSectionTitle">
+                        <i class="fa-solid fa-bolt text-warning me-1"></i> ផ្លូវកាត់ & ម៉ឺនុយពេញនិយម (Quick Shortcuts)
+                    </div>
+                    <div class="list-group list-group-flush gap-1" id="omnisearchResults">
+                        <!-- Items rendered dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Omnisearch Footer Info -->
+                <div class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center text-muted small">
+                    <div>
+                        <span class="me-3"><kbd class="bg-white border text-dark">↑</kbd> <kbd class="bg-white border text-dark">↓</kbd> ផ្លាស់ទីជម្រើស</span>
+                        <span class="me-3"><kbd class="bg-white border text-dark">ENTER</kbd> ចូលទៅកាន់ទំព័រ</span>
+                        <span><kbd class="bg-white border text-dark">ESC</kbd> បិទ</span>
+                    </div>
+                    <div class="text-primary fw-bold small">
+                        <i class="fa-solid fa-school me-1"></i> SchoolSM Search
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .omnisearch-item {
+            cursor: pointer;
+            border: 1.5px solid #e2e8f0 !important;
+            background-color: #ffffff;
+            transition: all 0.15s ease-in-out;
+            text-decoration: none;
+            display: flex;
+            user-select: none;
+        }
+        .omnisearch-item:hover, .omnisearch-item.active {
+            background-color: #eff6ff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+            transform: translateY(-1px);
+        }
+        .omnisearch-item.active .badge {
+            background-color: #dbeafe !important;
+            color: #1e40af !important;
+            border-color: #93c5fd !important;
+        }
+        .omnisearch-item.active .fa-chevron-right {
+            color: #2563eb !important;
+            transform: translateX(3px);
+            transition: transform 0.15s ease;
+        }
+    </style>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js?v=2.2"></script>
+
+    <!-- Global Omnisearch Script (Ctrl + K) -->
+    <script>
+        let searchDebounceTimer = null;
+        let omnisearchSelectedIndex = 0;
+        let omnisearchResultsData = [];
+
+        function openOmnisearchModal() {
+            const modalEl = document.getElementById('omnisearchModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+            setTimeout(() => {
+                const input = document.getElementById('omnisearchInput');
+                if (input) {
+                    input.focus();
+                    if (!input.value.trim()) {
+                        performOmnisearch('');
+                    }
+                }
+            }, 200);
+        }
+
+        // Global Shortcut: Ctrl + K or Cmd + K
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                openOmnisearchModal();
+            }
+        });
+
+        const omnisearchModalEl = document.getElementById('omnisearchModal');
+        const omnisearchInput = document.getElementById('omnisearchInput');
+
+        function handleOmnisearchKeyNavigation(e) {
+            const items = document.querySelectorAll('.omnisearch-item');
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+                e.preventDefault();
+                omnisearchSelectedIndex = (omnisearchSelectedIndex + 1) % items.length;
+                highlightOmnisearchItem(items);
+            } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+                e.preventDefault();
+                omnisearchSelectedIndex = (omnisearchSelectedIndex - 1 + items.length) % items.length;
+                highlightOmnisearchItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (items[omnisearchSelectedIndex]) {
+                    const targetUrl = items[omnisearchSelectedIndex].getAttribute('data-url');
+                    if (targetUrl) {
+                        window.location.href = targetUrl;
+                    } else {
+                        items[omnisearchSelectedIndex].click();
+                    }
+                }
+            }
+        }
+
+        if (omnisearchInput) {
+            omnisearchInput.addEventListener('input', function() {
+                const q = this.value.trim();
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => {
+                    performOmnisearch(q);
+                }, 120);
+            });
+
+            omnisearchInput.addEventListener('keydown', handleOmnisearchKeyNavigation);
+        }
+
+        if (omnisearchModalEl) {
+            omnisearchModalEl.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+                    handleOmnisearchKeyNavigation(e);
+                }
+            });
+        }
+
+        function highlightOmnisearchItem(items) {
+            if (!items || !items.length) return;
+            if (omnisearchSelectedIndex >= items.length) {
+                omnisearchSelectedIndex = 0;
+            }
+            items.forEach((it, idx) => {
+                if (idx === omnisearchSelectedIndex) {
+                    it.classList.add('active');
+                    it.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                } else {
+                    it.classList.remove('active');
+                }
+            });
+        }
+
+        function performOmnisearch(q) {
+            const resultsContainer = document.getElementById('omnisearchResults');
+            const titleEl = document.getElementById('omnisearchSectionTitle');
+            if (!resultsContainer) return;
+
+            fetch(`/accounts/api/global-search/?q=${encodeURIComponent(q)}`)
+                .then(res => res.json())
+                .then(data => {
+                    omnisearchResultsData = data.results || [];
+                    omnisearchSelectedIndex = 0;
+                    resultsContainer.innerHTML = '';
+
+                    if (titleEl) {
+                        titleEl.innerHTML = q 
+                            ? `<i class="fa-solid fa-list-check text-primary me-1"></i> លទ្ធផលស្វែងរក (${omnisearchResultsData.length})` 
+                            : `<i class="fa-solid fa-bolt text-warning me-1"></i> ផ្លូវកាត់ & ម៉ឺនុយពេញនិយម (Quick Shortcuts)`;
+                    }
+
+                    if (!omnisearchResultsData.length) {
+                        resultsContainer.innerHTML = `
+                            <div class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-magnifying-glass-chart fs-1 text-secondary mb-2 d-block"></i>
+                                <div>រកមិនឃើញលទ្ធផលសម្រាប់ «<strong>${escapeHtml(q)}</strong>» ឡើយ</div>
+                                <div class="small mt-1">សូមសាកល្បងពាក្យគន្លឹះដូចជា៖ សៀវភៅតាមដាន, ប័ណ្ណពិន្ទុ, ទឹកភ្លើង, វត្តមាន, កាលវិភាគ...</div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    omnisearchResultsData.forEach((item, idx) => {
+                        const a = document.createElement('a');
+                        a.href = item.url;
+                        a.setAttribute('data-url', item.url);
+                        a.className = `list-group-item list-group-item-action rounded-3 p-3 mb-1 align-items-center justify-content-between omnisearch-item ${idx === 0 ? 'active' : ''}`;
+                        a.innerHTML = `
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle bg-white border p-2 d-flex align-items-center justify-content-center shadow-xs" style="width: 42px; height: 42px; font-size: 1.15rem;">
+                                    <i class="${item.icon || 'fa-solid fa-link text-primary'}"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark mb-0">${escapeHtml(item.title_kh)}</div>
+                                    <div class="text-muted small fst-italic">${escapeHtml(item.title_en || '')}</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-light text-secondary border small">${escapeHtml(item.category || 'ទូទៅ')}</span>
+                                <i class="fa-solid fa-chevron-right text-muted small"></i>
+                            </div>
+                        `;
+
+                        // Mouse Hover Sync: instantly activate whatever item the mouse hovers over
+                        a.addEventListener('mouseenter', function() {
+                            omnisearchSelectedIndex = idx;
+                            const allItems = document.querySelectorAll('.omnisearch-item');
+                            highlightOmnisearchItem(allItems);
+                        });
+
+                        // Mouse Click Navigation: immediately go to the clicked item URL
+                        a.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            window.location.href = item.url;
+                        });
+
+                        resultsContainer.appendChild(a);
+                    });
+                })
+                .catch(err => {
+                    console.error('Omnisearch error:', err);
+                });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

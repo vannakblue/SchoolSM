@@ -1,0 +1,1035 @@
+{% extends 'base.html' %}
+
+{% block title %}ផ្ទាំងបញ្ចូលពិន្ទុដោយលេខកូដសម្ងាត់ (Blind Exam Scoring) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .step-wizard-card {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .wizard-steps-indicator {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .wizard-steps-indicator::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 30px;
+        right: 30px;
+        height: 4px;
+        background: #e2e8f0;
+        z-index: 1;
+    }
+    .wizard-step-item {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        width: 25%;
+    }
+    .wizard-step-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 3px solid #cbd5e1;
+        color: #64748b;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 6px;
+        transition: all 0.3s ease;
+    }
+    .wizard-step-item.active .wizard-step-circle {
+        border-color: #4f46e5;
+        background: #4f46e5;
+        color: #ffffff;
+        box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.2);
+    }
+    .wizard-step-item.completed .wizard-step-circle {
+        border-color: #10b981;
+        background: #10b981;
+        color: #ffffff;
+    }
+    .wizard-step-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+    .wizard-step-item.active .wizard-step-label {
+        color: #4f46e5;
+    }
+    .wizard-step-item.completed .wizard-step-label {
+        color: #10b981;
+    }
+
+    .secret-code-input {
+        letter-spacing: 3px;
+        font-size: 1.4rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-family: monospace;
+        text-align: center;
+    }
+
+    .desk-score-input {
+        width: 90px;
+        font-size: 1.1rem;
+        font-weight: 800;
+        text-align: center;
+        border-radius: 8px;
+        padding: 6px;
+        transition: all 0.15s ease;
+    }
+    .desk-score-input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.25);
+        background-color: #f5f3ff;
+    }
+    .desk-score-input.is-absent {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary px-2.5 py-1"><i class="fa-solid fa-user-secret me-1"></i>Blind Grading System</span>
+                <span class="badge bg-light text-dark border">ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា</span>
+            </div>
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="fa-solid fa-lock me-2"></i>ផ្ទាំងបញ្ចូលពិន្ទុសិស្សដោយលេខកូដសម្ងាត់ (Blind Exam Scoring Portal)
+            </h2>
+            <p class="text-muted small mb-0">ប្រព័ន្ធបញ្ចូលពិន្ទុអនាមិកតាមរយៈលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា (កាត់ក្បាលសន្លឹក) ពីលេខរៀងទី ០១ ដល់ ២៥ ដោយមិនបង្ហាញឈ្មោះសិស្ស</p>
+        </div>
+
+        <div class="d-flex gap-2">
+            {% if is_admin %}
+            <a href="{% url 'standardized_exam_list' %}" class="btn btn-outline-primary fw-bold btn-sm">
+                <i class="fa-solid fa-graduation-cap me-1"></i> សម័យប្រឡងទាំងអស់
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 4-Step Visual Stepper -->
+<div class="custom-card p-4 mb-4 shadow-sm">
+    <div class="wizard-steps-indicator">
+        <div class="wizard-step-item active" id="stepIndicator1">
+            <div class="wizard-step-circle">១</div>
+            <div class="wizard-step-label">កម្រិតថ្នាក់ & សម័យប្រឡង</div>
+        </div>
+        <div class="wizard-step-item" id="stepIndicator2">
+            <div class="wizard-step-circle">២</div>
+            <div class="wizard-step-label">ជ្រើសរើសមុខវិជ្ជា</div>
+        </div>
+        <div class="wizard-step-item" id="stepIndicator3">
+            <div class="wizard-step-circle">៣</div>
+            <div class="wizard-step-label">បញ្ចូលលេខកូដសម្ងាត់</div>
+        </div>
+        <div class="wizard-step-item" id="stepIndicator4">
+            <div class="wizard-step-circle">៤</div>
+            <div class="wizard-step-label">បញ្ចូលពិន្ទុ (០១ - ២៥)</div>
+        </div>
+    </div>
+
+    <hr class="mb-4">
+
+    <!-- STEP 1: Select Grade Level & Exam -->
+    <div id="stepPanel1" class="wizard-panel">
+        <h5 class="fw-bold text-primary mb-3">
+            <span class="badge bg-primary me-2">ជំហានទី ១</span> ជ្រើសរើសកម្រិតថ្នាក់ និងសម័យប្រឡងតេស្តស្តង់ដា
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label fw-bold small text-muted">សម័យប្រឡង (Exam Event) *</label>
+                <select id="selectExam" class="form-select form-select-lg fw-bold" onchange="onExamSelected()">
+                    <option value="">-- សូមជ្រើសរើសសម័យប្រឡង --</option>
+                    {% for ex in exams %}
+                    <option value="{{ ex.id }}" data-grade="{{ ex.grade_level }}" data-cap="{{ ex.candidates_per_room }}" {% if pre_exam_id == ex.id|stringformat:"s" %}selected{% endif %}>
+                        ថ្នាក់ទី {{ ex.grade_level }} • {{ ex.name }} ({{ ex.academic_year.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text text-muted">ជ្រើសរើសសម័យប្រឡងដើម្បីទាញយកបញ្ជីមុខវិជ្ជាប្រឡងដែលត្រូវបញ្ចូលពិន្ទុ។</div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="button" class="btn btn-primary btn-lg fw-bold w-100 shadow-sm" onclick="goToStep(2)">
+                    បន្តទៅជំហានទី ២ <i class="fa-solid fa-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 2: Select Subject -->
+    <div id="stepPanel2" class="wizard-panel d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+                <span class="badge bg-primary me-2">ជំហានទី ២</span> ជ្រើសរើសមុខវិជ្ជាប្រឡង
+            </h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToStep(1)">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+            </button>
+        </div>
+
+        <div class="alert alert-info py-2 px-3 small border-0 mb-3" id="examInfoBox">
+            <i class="fa-solid fa-circle-info me-1"></i> សម័យប្រឡងដែលបានជ្រើសរើស៖ <strong id="selectedExamNameText">-</strong>
+        </div>
+
+        <div class="row g-3" id="subjectsContainer">
+            <!-- Dynamically populated subject cards -->
+            <div class="col-12 text-center py-4 text-muted">
+                <i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងផ្ទុកមុខវិជ្ជា...
+            </div>
+        </div>
+
+        <div class="mt-4 text-end">
+            <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm" id="btnContinueToStep3" disabled onclick="goToStep(3)">
+                បន្តទៅជំហានទី ៣ <i class="fa-solid fa-arrow-right ms-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- STEP 3: Enter Secret Code -->
+    <div id="stepPanel3" class="wizard-panel d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+                <span class="badge bg-primary me-2">ជំហានទី ៣</span> ជ្រើសរើស ឬវាយបញ្ចូលលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា
+            </h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToStep(2)">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+            </button>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card border-0 bg-light p-4 rounded-4 shadow-sm text-center">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-envelope-open-text display-4 text-primary opacity-75"></i>
+                    </div>
+                    
+                    <div class="badge bg-primary fs-6 px-3 py-1.5 mb-3 mx-auto" id="step3SubjectBadge">
+                        មុខវិជ្ជា៖ -
+                    </div>
+
+                    <!-- Quick Select Dropdown for Secret Codes -->
+                    <div class="text-start mb-3" id="secretCodeSelectWrapper">
+                        <label class="form-label fw-bold small text-muted">
+                            <i class="fa-solid fa-list-check me-1 text-primary"></i> ជ្រើសរើសលេខកូដសម្ងាត់ដែលមានស្រាប់ (កញ្ចប់កូដ)៖
+                        </label>
+                        <select id="selectSecretCodeDropdown" class="form-select form-select-lg fw-bold font-monospace text-primary" onchange="onSelectSecretCodeDropdown(this.value)">
+                            <option value="">-- ជ្រើសរើសកញ្ចប់កូដសម្ងាត់ --</option>
+                        </select>
+                    </div>
+
+                    <div class="d-flex align-items-center my-2">
+                        <hr class="flex-grow-1">
+                        <span class="px-2 text-muted small fw-bold">ឬវាយបញ្ចូលកូដដោយដៃ</span>
+                        <hr class="flex-grow-1">
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" id="inputSecretCode" class="form-control form-control-lg secret-code-input text-primary shadow-sm" 
+                               placeholder="ឧ. SEC-01-8842" autocomplete="off" value="{{ pre_code }}"
+                               onkeydown="if(event.key === 'Enter') validateSecretCode(false)">
+                    </div>
+
+                    <div id="secretCodeErrorAlert" class="alert alert-danger py-2 px-3 small border-0 d-none text-start mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> <span id="secretCodeErrorMessage"></span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary btn-lg fw-bold shadow-sm" id="btnValidateCode" onclick="validateSecretCode(false)">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូល/កែប្រែពិន្ទុ (Enter Scores)
+                        </button>
+                        <button type="button" class="btn btn-outline-info fw-bold shadow-sm" id="btnReviewCodeStep3" onclick="validateSecretCode(true)">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល (Review Scores)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 4: Rapid Blind Score Entry (01 to 25) -->
+    <div id="stepPanel4" class="wizard-panel d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <span class="badge bg-primary me-2">ជំហានទី ៤</span> បញ្ចូលពិន្ទុតាមលេខរៀងតុ (០១ ដល់ ២៥)
+                </h5>
+                <div class="text-muted small mt-1">
+                    កូដកញ្ចប់៖ <strong class="text-primary font-monospace fs-6" id="activeSecretCodeDisplay">-</strong> • 
+                    មុខវិជ្ជា៖ <strong id="activeSubjectDisplay">-</strong> • 
+                    ពិន្ទុពេញ៖ <strong class="text-danger" id="activeMaxScoreDisplay">-</strong> (មេគុណ: <strong id="activeCoefDisplay">-</strong>) • 
+                    បន្ទប់៖ <strong id="activeRoomDisplay">-</strong>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" onclick="resetToNewEnvelope()">
+                    <i class="fa-solid fa-rotate-left me-1"></i> ប្តូរកញ្ចប់កូដថ្មី
+                </button>
+                <button type="button" class="btn btn-outline-info btn-sm fw-bold shadow-sm" onclick="openScoresReviewModal()">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុ
+                </button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="saveBlindScores()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុ
+                </button>
+            </div>
+        </div>
+
+        <!-- Warning / Status Alert if Already Graded -->
+        <div id="alreadyGradedBanner" class="alert alert-warning py-2 px-3 small border-0 d-none mb-3">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> <strong>សម្គាល់៖</strong> កញ្ចប់វិញ្ញាសានេះបានបញ្ចូលពិន្ទុរួចម្តងហើយដោយ <strong id="gradedByNameText"></strong> នៅថ្ងៃ <strong id="gradedAtText"></strong>។ លោកអ្នកអាចកែសម្រួល និងរក្សាទុកឡើងវិញបាន។
+        </div>
+
+        <!-- Scores Grid Container -->
+        <div class="table-responsive border rounded-3 mb-3">
+            <table class="table table-bordered table-hover align-middle mb-0 text-center" id="blindScoresTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 80px;">លេខរៀងតុ</th>
+                        <th style="width: 130px;">ស្ថានភាព</th>
+                        <th style="width: 180px;">ពិន្ទុដែលទទួលបាន</th>
+                        <th style="text-align: left; padding-left: 15px;">កំណត់ចំណាំ / ជំនួយការវាយបញ្ចូល</th>
+                    </tr>
+                </thead>
+                <tbody id="blindScoresTableBody">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Live Summary Bar -->
+        <div class="card border-0 bg-light p-3 rounded-3 mb-3">
+            <div class="row g-2 text-center align-items-center">
+                <div class="col-6 col-md-3 border-end">
+                    <div class="text-muted small">ចំនួនបេក្ខជនក្នុងកញ្ចប់</div>
+                    <div class="fs-5 fw-bold text-primary" id="statTotalCount">0 នាក់</div>
+                </div>
+                <div class="col-6 col-md-3 border-end">
+                    <div class="text-muted small">បានបញ្ចូលពិន្ទុ</div>
+                    <div class="fs-5 fw-bold text-success" id="statEnteredCount">0 នាក់</div>
+                </div>
+                <div class="col-6 col-md-3 border-end">
+                    <div class="text-muted small">អវត្តមាន (A)</div>
+                    <div class="fs-5 fw-bold text-danger" id="statAbsentCount">0 នាក់</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">មធ្យមភាគកញ្ចប់នេះ</div>
+                    <div class="fs-5 fw-bold text-info" id="statAverageScore">0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button Footer -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
+            <div class="text-muted small">
+                <i class="fa-solid fa-keyboard me-1 text-primary"></i> ប្រើប្រាស់គ្រាប់ចុច <strong>Enter</strong> ឬ <strong>ព្រួញឡើង/ចុះ</strong> ដើម្បីប្តូរលេខរៀង។ វាយអក្សរ <strong>A</strong> សម្រាប់សិស្សអវត្តមាន។
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-info btn-lg fw-bold px-4 shadow-sm" onclick="openScoresReviewModal()">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល
+                </button>
+                <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm" id="btnSaveScoresBottom" onclick="saveBlindScores()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុឥឡូវនេះ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Review Entered Scores (ផ្ទាំងពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល) -->
+<div class="modal fade" id="reviewScoresModal" tabindex="-1" aria-labelledby="reviewScoresModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <h5 class="modal-title fw-bold" id="reviewScoresModalLabel">
+                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i>ផ្ទាំងពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល (Review Entered Scores)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Info Header -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center bg-light p-3 rounded-3 border mb-3">
+                    <div>
+                        <div class="text-muted small">កញ្ចប់កូដសម្ងាត់</div>
+                        <div class="fs-4 fw-bold font-monospace text-primary" id="revSecretCode">-</div>
+                    </div>
+                    <div>
+                        <div class="text-muted small">មុខវិជ្ជា & ពិន្ទុពេញ</div>
+                        <div class="fs-5 fw-bold text-dark" id="revSubjectInfo">-</div>
+                    </div>
+                    <div>
+                        <div class="text-muted small">បន្ទប់ប្រឡង</div>
+                        <div class="fs-5 fw-bold text-secondary" id="revRoomInfo">-</div>
+                    </div>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-3">
+                        <div class="p-2 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3">
+                            <div class="text-muted small">បានបញ្ចូល</div>
+                            <div class="fs-5 fw-bold text-success" id="revStatEntered">0 / 0</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-3">
+                            <div class="text-muted small">អវត្តមាន (A)</div>
+                            <div class="fs-5 fw-bold text-danger" id="revStatAbsent">0 នាក់</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3">
+                            <div class="text-muted small">មធ្យមភាគ</div>
+                            <div class="fs-5 fw-bold text-primary" id="revStatAvg">0.00</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-2 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3">
+                            <div class="text-muted small">ខ្ពស់បំផុត</div>
+                            <div class="fs-5 fw-bold text-dark" id="revStatHigh">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review Table -->
+                <div class="table-responsive border rounded-3" style="max-height: 380px; overflow-y: auto;">
+                    <table class="table table-sm table-striped table-hover align-middle mb-0 text-center">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 90px;">លេខរៀងតុ</th>
+                                <th style="width: 140px;">ស្ថានភាព</th>
+                                <th style="width: 140px;">ពិន្ទុទទួលបាន</th>
+                                <th>របារភាគរយពិន្ទុ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewScoresTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4 justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពផ្ទៀងផ្ទាត់
+                </button>
+                <div>
+                    <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> កែសម្រួលពិន្ទុបន្ត
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Save Success -->
+<div class="modal fade" id="saveSuccessModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-circle-check me-2"></i>រក្សាទុកពិន្ទុជោគជ័យ!
+                </h5>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3">
+                    <i class="fa-solid fa-circle-check display-3 text-success"></i>
+                </div>
+                <h5 class="fw-bold mb-2" id="successModalTitle">បានរក្សាទុកពិន្ទុដោយជោគជ័យ</h5>
+                <p class="text-muted small mb-4" id="successModalMessage">
+                    ទិន្នន័យពិន្ទុត្រូវបាន Map និងបញ្ចូលទៅក្នុងបេក្ខជនពិតប្រាកដដោយស្វ័យប្រវត្តិ ព្រមទាំងគណនាមធ្យមភាគ និងចំណាត់ថ្នាក់រួចរាល់។
+                </p>
+
+                <div class="p-3 bg-light rounded-3 border mb-4 text-start small">
+                    <div class="row g-2">
+                        <div class="col-6">ពិន្ទុខ្ពស់បំផុត៖ <strong class="text-success" id="resMaxScore">0</strong></div>
+                        <div class="col-6">ពិន្ទុទាបបំផុត៖ <strong class="text-danger" id="resMinScore">0</strong></div>
+                        <div class="col-6">មធ្យមភាគ៖ <strong class="text-primary" id="resAvgScore">0</strong></div>
+                        <div class="col-6">អវត្តមាន៖ <strong class="text-muted" id="resAbsentScore">0</strong></div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-info fw-bold py-2 shadow-sm" onclick="openScoresReviewFromSuccess()">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold py-2.5 shadow-sm" onclick="resetToNewEnvelope()">
+                        <i class="fa-solid fa-envelope-open-text me-1"></i> បញ្ចូលកញ្ចប់កូដសម្ងាត់បន្ទាប់
+                    </button>
+                    {% if is_admin %}
+                    <a href="{% url 'standardized_exam_list' %}" class="btn btn-light border py-2">
+                        <i class="fa-solid fa-gauge-high me-1"></i> ទៅកាន់ផ្ទាំងគ្រប់គ្រងសម័យប្រឡង
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Core Wizard JavaScript -->
+<script>
+    let currentStep = 1;
+    let selectedExamId = null;
+    let selectedExamData = null;
+    let selectedSubjectId = null;
+    let selectedSubjectData = null;
+    let validatedRoomData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const preExam = document.getElementById('selectExam').value;
+        if (preExam) {
+            onExamSelected();
+            const preSub = "{{ pre_subject_id }}";
+            if (preSub) {
+                // Wait for subjects load then select
+                setTimeout(() => {
+                    selectSubject(parseInt(preSub));
+                    const preCode = "{{ pre_code }}";
+                    if (preCode) {
+                        goToStep(3);
+                    }
+                }, 500);
+            }
+        }
+    });
+
+    function goToStep(stepNumber) {
+        if (stepNumber === 2 && !selectedExamId) {
+            alert('សូមជ្រើសរើសសម័យប្រឡងជាមុនសិន!');
+            return;
+        }
+        if (stepNumber === 3 && !selectedSubjectId) {
+            alert('សូមជ្រើសរើសមុខវិជ្ជាជាមុនសិន!');
+            return;
+        }
+        if (stepNumber === 4 && !validatedRoomData) {
+            alert('សូមផ្ទៀងផ្ទាត់លេខកូដសម្ងាត់ជាមុនសិន!');
+            return;
+        }
+
+        currentStep = stepNumber;
+
+        // Update Stepper UI
+        for (let i = 1; i <= 4; i++) {
+            const ind = document.getElementById(`stepIndicator${i}`);
+            const panel = document.getElementById(`stepPanel${i}`);
+            if (i < stepNumber) {
+                ind.className = 'wizard-step-item completed';
+                panel.classList.add('d-none');
+            } else if (i === stepNumber) {
+                ind.className = 'wizard-step-item active';
+                panel.classList.remove('d-none');
+            } else {
+                ind.className = 'wizard-step-item';
+                panel.classList.add('d-none');
+            }
+        }
+
+        if (stepNumber === 3) {
+            setTimeout(() => {
+                const codeInp = document.getElementById('inputSecretCode');
+                codeInp.focus();
+                codeInp.select();
+            }, 200);
+        } else if (stepNumber === 4) {
+            setTimeout(() => {
+                const firstInput = document.querySelector('.desk-score-input');
+                if (firstInput) {
+                    firstInput.focus();
+                    firstInput.select();
+                }
+            }, 200);
+        }
+    }
+
+    function onExamSelected() {
+        const sel = document.getElementById('selectExam');
+        selectedExamId = sel.value;
+        if (!selectedExamId) return;
+
+        const opt = sel.options[sel.selectedIndex];
+        document.getElementById('selectedExamNameText').innerText = opt.text;
+
+        // Fetch subjects for this exam via API
+        fetch(`/examinations/standardized/api/get-subjects/${selectedExamId}/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    selectedExamData = data;
+                    renderSubjectsList(data.subjects);
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    function renderSubjectsList(subjects) {
+        const container = document.getElementById('subjectsContainer');
+        if (!subjects || subjects.length === 0) {
+            container.innerHTML = `<div class="col-12 text-center text-muted p-4">មិនទាន់មានមុខវិជ្ជាប្រឡងក្នុងសម័យប្រឡងនេះនៅឡើយទេ!</div>`;
+            return;
+        }
+
+        let html = '';
+        subjects.forEach(s => {
+            html += `
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 p-3 border-2 subject-card hover-shadow transition-all cursor-pointer" 
+                     id="subj_card_${s.id}" onclick="selectSubject(${s.id})" style="border-color: #e2e8f0; cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-primary px-2 py-1">${s.code || 'SUB'}</span>
+                        <span class="badge bg-light text-dark border">ពេល${s.session === 'Morning Session' ? 'ព្រឹក' : 'រសៀល'}</span>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-2">${s.name}</h5>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-secondary-subtle text-dark border">ពិន្ទុពេញ: ${s.max_score}</span>
+                        <span class="badge bg-info-subtle text-info border">មេគុណ: ${s.coefficient}</span>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function selectSubject(subjectId) {
+        selectedSubjectId = subjectId;
+        if (selectedExamData && selectedExamData.subjects) {
+            selectedSubjectData = selectedExamData.subjects.find(s => s.id === subjectId);
+        }
+
+        document.querySelectorAll('.subject-card').forEach(c => {
+            c.classList.remove('border-primary', 'bg-primary-subtle');
+            c.style.borderColor = '#e2e8f0';
+        });
+
+        const activeCard = document.getElementById(`subj_card_${subjectId}`);
+        if (activeCard) {
+            activeCard.classList.add('border-primary');
+            activeCard.style.borderColor = '#4f46e5';
+        }
+
+        document.getElementById('btnContinueToStep3').removeAttribute('disabled');
+        if (selectedSubjectData) {
+            document.getElementById('step3SubjectBadge').innerText = `មុខវិជ្ជា៖ ${selectedSubjectData.name} (ពេញ ${selectedSubjectData.max_score} • មេគុណ ${selectedSubjectData.coefficient})`;
+            populateSecretCodesDropdown(selectedSubjectData.secret_codes || []);
+        }
+    }
+
+    function populateSecretCodesDropdown(secretCodes) {
+        const sel = document.getElementById('selectSecretCodeDropdown');
+        if (!sel) return;
+
+        sel.innerHTML = '<option value="">-- ជ្រើសរើសកញ្ចប់កូដសម្ងាត់ --</option>';
+        if (secretCodes && secretCodes.length > 0) {
+            secretCodes.forEach(sc => {
+                const gradedBadge = sc.is_graded ? '✅ (បានបញ្ចូលរួច)' : '⏳ (មិនទាន់វាយ)';
+                const opt = document.createElement('option');
+                opt.value = sc.secret_code;
+                opt.textContent = `${sc.secret_code} [${sc.room_name}] ${gradedBadge}`;
+                sel.appendChild(opt);
+            });
+        }
+    }
+
+    function onSelectSecretCodeDropdown(val) {
+        if (val) {
+            document.getElementById('inputSecretCode').value = val;
+            document.getElementById('secretCodeErrorAlert').classList.add('d-none');
+        }
+    }
+
+    function validateSecretCode(isReviewModeOnly = false) {
+        const codeInput = document.getElementById('inputSecretCode');
+        const code = codeInput.value.trim();
+        const errAlert = document.getElementById('secretCodeErrorAlert');
+        const errSpan = document.getElementById('secretCodeErrorMessage');
+        const btnVal = document.getElementById('btnValidateCode');
+        const btnRev = document.getElementById('btnReviewCodeStep3');
+
+        if (!code) {
+            errAlert.classList.remove('d-none');
+            errSpan.innerText = 'សូមវាយបញ្ចូល ឬជ្រើសរើសលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា!';
+            codeInput.focus();
+            return;
+        }
+
+        errAlert.classList.add('d-none');
+        if (btnVal) btnVal.disabled = true;
+        if (btnRev) btnRev.disabled = true;
+
+        fetch('/examinations/standardized/api/validate-secret-code/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                exam_id: selectedExamId,
+                subject_id: selectedSubjectId,
+                secret_code: code
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (btnVal) btnVal.disabled = false;
+            if (btnRev) btnRev.disabled = false;
+
+            if (data.status === 'success') {
+                validatedRoomData = data;
+                renderBlindScoreTable(data, code);
+                goToStep(4);
+
+                if (isReviewModeOnly) {
+                    openScoresReviewModal();
+                }
+            } else {
+                errAlert.classList.remove('d-none');
+                errSpan.innerText = data.message || 'លេខកូដសម្ងាត់មិនត្រឹមត្រូវ!';
+                codeInput.focus();
+                codeInput.select();
+            }
+        })
+        .catch(err => {
+            if (btnVal) btnVal.disabled = false;
+            if (btnRev) btnRev.disabled = false;
+            errAlert.classList.remove('d-none');
+            errSpan.innerText = 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server! សូមព្យាយាមម្តងទៀត។';
+        });
+    }
+
+    function renderBlindScoreTable(data, code) {
+        document.getElementById('activeSecretCodeDisplay').innerText = code.toUpperCase();
+        document.getElementById('activeSubjectDisplay').innerText = data.subject_name;
+        document.getElementById('activeMaxScoreDisplay').innerText = data.max_score;
+        document.getElementById('activeCoefDisplay').innerText = data.coefficient;
+        document.getElementById('activeRoomDisplay').innerText = data.room_name;
+
+        // Banner if already graded
+        const banner = document.getElementById('alreadyGradedBanner');
+        if (data.is_already_graded) {
+            banner.classList.remove('d-none');
+            document.getElementById('gradedByNameText').innerText = data.graded_by || 'គ្រូកំណែ';
+            document.getElementById('gradedAtText').innerText = data.graded_at || '-';
+        } else {
+            banner.classList.add('d-none');
+        }
+
+        const tbody = document.getElementById('blindScoresTableBody');
+        let html = '';
+
+        data.desks.forEach((d, idx) => {
+            const deskStr = String(d.desk_number).padStart(2, '0');
+            const scoreVal = d.is_absent ? 'A' : (d.score !== '' ? d.score : '');
+            
+            html += `
+            <tr id="desk_row_${d.desk_number}">
+                <td class="fw-bold bg-light fs-5 text-primary">${deskStr}</td>
+                <td>
+                    <span id="status_badge_${d.desk_number}" class="badge ${d.is_absent ? 'bg-danger' : (scoreVal !== '' ? 'bg-success' : 'bg-secondary-subtle text-muted')}">
+                        ${d.is_absent ? 'អវត្តមាន' : (scoreVal !== '' ? 'មានពិន្ទុ' : 'មិនទាន់វាយ')}
+                    </span>
+                </td>
+                <td class="p-2">
+                    <input type="text" 
+                           class="form-control desk-score-input mx-auto ${d.is_absent ? 'is-absent' : ''}" 
+                           id="desk_input_${d.desk_number}"
+                           data-desk="${d.desk_number}"
+                           data-max="${data.max_score}"
+                           value="${scoreVal}"
+                           placeholder="-"
+                           autocomplete="off"
+                           oninput="onDeskScoreInput(this)"
+                           onkeydown="handleScoreKeyNav(event, this)">
+                </td>
+                <td class="text-start ps-3 text-muted small">
+                    កូនក្រដាសលេខរៀងទី <strong>${deskStr}</strong> • ពិន្ទុអតិបរមា <strong>${data.max_score}</strong>
+                </td>
+            </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+        updateLiveStats();
+    }
+
+    function onDeskScoreInput(inputEl) {
+        let val = inputEl.value.trim().toUpperCase();
+        const deskNum = inputEl.getAttribute('data-desk');
+        const maxScore = parseFloat(inputEl.getAttribute('data-max') || '100');
+        const statusBadge = document.getElementById(`status_badge_${deskNum}`);
+
+        if (val === 'A') {
+            inputEl.value = 'A';
+            inputEl.classList.add('is-absent');
+            if (statusBadge) {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.innerText = 'អវត្តមាន';
+            }
+        } else {
+            inputEl.classList.remove('is-absent');
+            const num = parseFloat(val);
+            if (!isNaN(num)) {
+                if (num > maxScore) {
+                    inputEl.value = maxScore;
+                }
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-success';
+                    statusBadge.innerText = 'មានពិន្ទុ';
+                }
+            } else if (val === '') {
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-secondary-subtle text-muted';
+                    statusBadge.innerText = 'មិនទាន់វាយ';
+                }
+            }
+        }
+
+        updateLiveStats();
+    }
+
+    function handleScoreKeyNav(event, inputEl) {
+        const key = event.key;
+        if (!['ArrowUp', 'ArrowDown', 'Enter'].includes(key)) return;
+
+        const currentDesk = parseInt(inputEl.getAttribute('data-desk'));
+        const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
+        const currentIndex = inputs.indexOf(inputEl);
+
+        let target = null;
+        if (key === 'ArrowUp' && currentIndex > 0) {
+            event.preventDefault();
+            target = inputs[currentIndex - 1];
+        } else if ((key === 'ArrowDown' || key === 'Enter') && currentIndex < inputs.length - 1) {
+            event.preventDefault();
+            target = inputs[currentIndex + 1];
+        }
+
+        if (target) {
+            target.focus();
+            target.select();
+        }
+    }
+
+    function updateLiveStats() {
+        const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
+        const totalCount = inputs.length;
+        let enteredCount = 0;
+        let absentCount = 0;
+        let scoreSum = 0;
+
+        inputs.forEach(inp => {
+            const val = inp.value.trim().toUpperCase();
+            if (val === 'A') {
+                enteredCount++;
+                absentCount++;
+            } else {
+                const num = parseFloat(val);
+                if (!isNaN(num)) {
+                    enteredCount++;
+                    scoreSum += num;
+                }
+            }
+        });
+
+        const validNumericCount = enteredCount - absentCount;
+        const avg = validNumericCount > 0 ? (scoreSum / validNumericCount) : 0;
+
+        document.getElementById('statTotalCount').innerText = `${totalCount} នាក់`;
+        document.getElementById('statEnteredCount').innerText = `${enteredCount} នាក់`;
+        document.getElementById('statAbsentCount').innerText = `${absentCount} នាក់`;
+        document.getElementById('statAverageScore').innerText = avg.toFixed(2);
+    }
+
+    function openScoresReviewModal() {
+        if (!validatedRoomData) {
+            alert('សូមជ្រើសរើស និងផ្ទៀងផ្ទាត់លេខកូដសម្ងាត់ជាមុនសិន!');
+            return;
+        }
+
+        const code = document.getElementById('inputSecretCode').value.trim().toUpperCase();
+        document.getElementById('revSecretCode').innerText = code;
+        document.getElementById('revSubjectInfo').innerText = `${validatedRoomData.subject_name} (ពេញ ${validatedRoomData.max_score})`;
+        document.getElementById('revRoomInfo').innerText = validatedRoomData.room_name;
+
+        const maxScore = parseFloat(validatedRoomData.max_score || 100);
+        const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
+        const tbody = document.getElementById('reviewScoresTableBody');
+
+        let html = '';
+        let enteredCount = 0;
+        let absentCount = 0;
+        let highScore = 0;
+        let scoreSum = 0;
+
+        inputs.forEach((inp, idx) => {
+            const deskNum = inp.getAttribute('data-desk');
+            const deskStr = String(deskNum).padStart(2, '0');
+            const val = inp.value.trim().toUpperCase();
+            const isAbsent = val === 'A';
+            const numScore = parseFloat(val);
+
+            let statusBadge = '<span class="badge bg-secondary-subtle text-muted">មិនទាន់វាយ</span>';
+            let scoreText = '-';
+            let progressPct = 0;
+            let barColor = 'bg-primary';
+
+            if (isAbsent) {
+                enteredCount++;
+                absentCount++;
+                statusBadge = '<span class="badge bg-danger">អវត្តមាន (A)</span>';
+                scoreText = '<span class="text-danger fw-bold">០.០០</span>';
+            } else if (!isNaN(numScore)) {
+                enteredCount++;
+                scoreSum += numScore;
+                if (numScore > highScore) highScore = numScore;
+                progressPct = Math.min(100, Math.round((numScore / maxScore) * 100));
+                
+                if (progressPct >= 80) barColor = 'bg-success';
+                else if (progressPct >= 50) barColor = 'bg-primary';
+                else barColor = 'bg-warning';
+
+                statusBadge = '<span class="badge bg-success">មានពិន្ទុ</span>';
+                scoreText = `<strong class="text-dark fs-6">${numScore.toFixed(2)}</strong> <span class="text-muted small">/ ${maxScore}</span>`;
+            }
+
+            html += `
+            <tr>
+                <td class="fw-bold fs-6 text-primary bg-light">${deskStr}</td>
+                <td>${statusBadge}</td>
+                <td>${scoreText}</td>
+                <td class="text-start px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${progressPct}%" aria-valuenow="${progressPct}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span class="small text-muted font-monospace" style="width: 40px;">${progressPct}%</span>
+                    </div>
+                </td>
+            </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+
+        const validNumericCount = enteredCount - absentCount;
+        const avg = validNumericCount > 0 ? (scoreSum / validNumericCount) : 0;
+
+        document.getElementById('revStatEntered').innerText = `${enteredCount} / ${inputs.length}`;
+        document.getElementById('revStatAbsent').innerText = `${absentCount} នាក់`;
+        document.getElementById('revStatAvg').innerText = avg.toFixed(2);
+        document.getElementById('revStatHigh').innerText = highScore.toFixed(2);
+
+        const modal = new bootstrap.Modal(document.getElementById('reviewScoresModal'));
+        modal.show();
+    }
+
+    function openScoresReviewFromSuccess() {
+        const successModalEl = document.getElementById('saveSuccessModal');
+        const successModal = bootstrap.Modal.getInstance(successModalEl);
+        if (successModal) successModal.hide();
+
+        openScoresReviewModal();
+    }
+
+    function saveBlindScores() {
+        const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
+        const scoresData = [];
+
+        inputs.forEach(inp => {
+            const deskNum = parseInt(inp.getAttribute('data-desk'));
+            const val = inp.value.trim().toUpperCase();
+            const isAbsent = val === 'A';
+            scoresData.push({
+                desk_number: deskNum,
+                score: val,
+                is_absent: isAbsent
+            });
+        });
+
+        const code = document.getElementById('inputSecretCode').value.trim().toUpperCase();
+        const btnSave = document.getElementById('btnSaveScoresBottom');
+        btnSave.disabled = true;
+        btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+
+        fetch('/examinations/standardized/api/save-blind-scores/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                exam_id: selectedExamId,
+                subject_id: selectedSubjectId,
+                secret_code: code,
+                scores: scoresData
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុឥឡូវនេះ`;
+
+            if (data.status === 'success') {
+                document.getElementById('successModalMessage').innerText = data.message;
+                if (data.summary) {
+                    document.getElementById('resMaxScore').innerText = data.summary.max_score;
+                    document.getElementById('resMinScore').innerText = data.summary.min_score;
+                    document.getElementById('resAvgScore').innerText = data.summary.average_score;
+                    document.getElementById('resAbsentScore').innerText = `${data.summary.absent_count} នាក់`;
+                }
+                const modal = new bootstrap.Modal(document.getElementById('saveSuccessModal'));
+                modal.show();
+            } else {
+                alert('កំហុស៖ ' + (data.message || 'មិនអាចរក្សាទុកបាន!'));
+            }
+        })
+        .catch(err => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុឥឡូវនេះ`;
+            alert('មានបញ្ហាតភ្ជាប់ Server!');
+        });
+    }
+
+    function resetToNewEnvelope() {
+        const modalEl = document.getElementById('saveSuccessModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        validatedRoomData = null;
+        document.getElementById('inputSecretCode').value = '';
+        document.getElementById('secretCodeErrorAlert').classList.add('d-none');
+        goToStep(3);
+    }
+
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === ('csrftoken=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

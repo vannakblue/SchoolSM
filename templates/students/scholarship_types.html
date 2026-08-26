@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងប្រភេទកម្រៃសិក្សា & អាហារូបករណ៍ | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-award text-warning me-2"></i>គ្រប់គ្រងប្រភេទកម្រៃសិក្សា & អាហារូបករណ៍
+        </h2>
+        <p class="text-muted small mb-0">កំណត់ប្រភេទកម្រៃសិក្សា អាហារូបករណ៍ និងភាគរយបញ្ចុះតម្លៃសម្រាប់សិស្ស</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'student_list' %}" class="btn btn-light shadow-xs border">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសិស្ស
+        </a>
+        <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createScholarshipModal">
+            <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែមប្រភេទកម្រៃថ្មី
+        </button>
+    </div>
+</div>
+
+<!-- Overview Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="custom-card p-3 d-flex align-items-center gap-3">
+            <div class="rounded-3 bg-primary-soft text-primary p-3 fs-4">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">ប្រភេទកម្រៃសរុប</div>
+                <h4 class="fw-bold mb-0 text-dark">{{ scholarships|length }} ប្រភេទ</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="custom-card p-3 d-flex align-items-center gap-3">
+            <div class="rounded-3 bg-success-soft text-success p-3 fs-4">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">កំពុងបើកដំណើរការ (Active)</div>
+                <h4 class="fw-bold mb-0 text-success">
+                    {{ scholarships|length }}
+                </h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="custom-card p-3 d-flex align-items-center gap-3">
+            <div class="rounded-3 bg-warning-soft text-warning p-3 fs-4">
+                <i class="fa-solid fa-user-graduate"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">សិស្សដែលទទួលបានកម្រៃ/អាហារូបករណ៍</div>
+                <h4 class="fw-bold mb-0 text-primary">ប្រព័ន្ធស្វ័យប្រវត្តិ</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">ល.រ</th>
+                    <th>ឈ្មោះប្រភេទកម្រៃ / អាហារូបករណ៍</th>
+                    <th>កូដសម្គាល់ (Code)</th>
+                    <th class="text-center">បញ្ចុះតម្លៃ (%)</th>
+                    <th>ការពិពណ៌នា</th>
+                    <th class="text-center">ចំនួនសិស្ស</th>
+                    <th class="text-center">ស្ថានភាព</th>
+                    <th class="text-end" style="width: 130px;">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in scholarships %}
+                <tr>
+                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <span class="fw-bold text-dark fs-6">{{ item.obj.name }}</span>
+                    </td>
+                    <td>
+                        <code class="px-2 py-1 bg-light text-primary rounded border">{{ item.obj.code }}</code>
+                    </td>
+                    <td class="text-center">
+                        {% if item.obj.discount_percentage >= 100 %}
+                            <span class="badge bg-success py-2 px-3 fw-bold">ឥតគិតថ្លៃ (100%)</span>
+                        {% elif item.obj.discount_percentage > 0 %}
+                            <span class="badge bg-info text-dark py-2 px-3 fw-bold">-{{ item.obj.discount_percentage|floatformat:0 }}%</span>
+                        {% else %}
+                            <span class="badge bg-secondary py-2 px-3 fw-bold">បង់ពេញ (0%)</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ item.obj.description|default:"-" }}</small>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border px-3 py-1 fw-bold fs-6">
+                            {{ item.student_count }} នាក់
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if item.obj.is_active %}
+                            <span class="badge bg-success-soft text-success"><i class="fa-solid fa-circle-check me-1"></i> សកម្ម</span>
+                        {% else %}
+                            <span class="badge bg-secondary-soft text-secondary"><i class="fa-solid fa-circle-xmark me-1"></i> អសកម្ម</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-light text-primary me-1" title="កែប្រែ" onclick="editScholarship('{{ item.obj.id }}', '{{ item.obj.name|escapejs }}', '{{ item.obj.code|escapejs }}', '{{ item.obj.discount_percentage }}', '{{ item.obj.description|default:""|escapejs }}', {{ item.obj.is_active|yesno:'true,false' }}, '{{ item.obj.order }}')">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light text-danger" title="លុប" onclick="deleteScholarship('{{ item.obj.id }}', '{{ item.obj.name|escapejs }}', {{ item.student_count }})">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-award fs-1 text-secondary opacity-50 mb-3 d-block"></i>
+                        <p class="mb-2">មិនទាន់មានប្រភេទកម្រៃ ឬអាហារូបករណ៍នៅឡើយទេ</p>
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createScholarshipModal">
+                            <i class="fa-solid fa-plus-circle me-1"></i> បង្កើតឥឡូវនេះ
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Create Scholarship -->
+<div class="modal fade" id="createScholarshipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-plus-circle me-2"></i>បន្ថែមប្រភេទកម្រៃ / អាហារូបករណ៍ថ្មី
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'scholarship_type_create' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះប្រភេទកម្រៃ / អាហារូបករណ៍ *</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">កូដសម្គាល់ (Code)</label>
+                            {{ form.code }}
+                            <div class="form-text text-muted small">ទុកទទេដើម្បីបង្កើតកូដស្វ័យប្រវត្តិ</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ភាគរយបញ្ចុះតម្លៃ (%)</label>
+                            {{ form.discount_percentage }}
+                            <div class="form-text text-muted small">ឧ. 0, 25, 50, 100</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ការពិពណ៌នាបន្ថែម</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">លំដាប់លំដោយ</label>
+                            {{ form.order }}
+                        </div>
+                        <div class="col-md-6 pt-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label fw-bold small">បើកដំណើរការ (Active)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Scholarship -->
+<div class="modal fade" id="editScholarshipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>កែប្រែប្រភេទកម្រៃ / អាហារូបករណ៍
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editScholarshipForm">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះប្រភេទកម្រៃ / អាហារូបករណ៍ *</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">កូដសម្គាល់ (Code) *</label>
+                            <input type="text" name="code" id="edit_code" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ភាគរយបញ្ចុះតម្លៃ (%)</label>
+                            <input type="number" step="0.01" min="0" max="100" name="discount_percentage" id="edit_discount" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ការពិពណ៌នាបន្ថែម</label>
+                        <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">លំដាប់លំដោយ</label>
+                            <input type="number" name="order" id="edit_order" class="form-control" min="1">
+                        </div>
+                        <div class="col-md-6 pt-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" name="is_active" id="edit_is_active" class="form-check-input" value="true">
+                                <label class="form-check-label fw-bold small" for="edit_is_active">បើកដំណើរការ (Active)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> កែប្រែ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Single Delete Form -->
+<form id="deleteScholarshipForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<script>
+function editScholarship(id, name, code, discount, desc, isActive, order) {
+    const form = document.getElementById('editScholarshipForm');
+    form.action = `/students/scholarships/${id}/save/`;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_code').value = code;
+    document.getElementById('edit_discount').value = parseFloat(discount) || 0;
+    document.getElementById('edit_description').value = desc;
+    document.getElementById('edit_order').value = order || 1;
+    document.getElementById('edit_is_active').checked = isActive;
+
+    const modal = new bootstrap.Modal(document.getElementById('editScholarshipModal'));
+    modal.show();
+}
+
+function deleteScholarship(id, name, studentCount) {
+    if (studentCount > 0) {
+        Swal.fire({
+            title: 'មិនអាចលុបបានទេ!',
+            text: `ប្រភេទកម្រៃ '${name}' កំពុងត្រូវបានប្រើប្រាស់ដោយសិស្សចំនួន ${studentCount} នាក់។ សូមប្តូរប្រភេទកម្រៃរបស់សិស្សទាំងនោះជាមុនសិន។`,
+            icon: 'warning',
+            confirmButtonText: 'យល់ព្រម',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'តើអ្នកប្រាកដជាចង់លុប?',
+        text: `តើអ្នកចង់លុបប្រភេទកម្រៃ '${name}' មែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានឡើយ!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'បាទ/ចាស លុបចេញ',
+        cancelButtonText: 'បោះបង់'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.getElementById('deleteScholarshipForm');
+            form.action = `/students/scholarships/${id}/delete/`;
+            form.submit();
+        }
+    });
+}
+</script>
+{% endblock %}

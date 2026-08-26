@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}បង្កើតរូបថតកាតសិស្ស-គ្រូ 4x6 & 3x4 (ID Photo Maker) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+    .id-photo-preview-card {
+        border: 2px dashed #0dcaf0;
+        border-radius: 16px;
+        background: #f0fbff;
+        padding: 30px 20px;
+        text-align: center;
+        min-height: 380px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .print-sheet-canvas-wrap {
+        background: #e2e8f0;
+        padding: 15px;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+    }
+    #printSheetCanvas {
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        max-width: 100%;
+        height: auto;
+    }
+    .color-swatch-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+    }
+    .color-swatch-btn:hover, .color-swatch-btn.active {
+        transform: scale(1.1);
+        border-color: #0d6efd;
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">ID Photo Maker</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-id-card text-info me-2"></i>បង្កើតរូបថតកាតសិស្ស-គ្រូ 4x6 & 3x4 (ID Photo Studio)
+            </h2>
+            <p class="text-muted small mb-0">កាត់តរូបថតកាតស្តង់ដា ៤x៦ និង ៣x៤ ដូរពណ៌ផ្ទៃក្រោយ និងរៀបចំសន្លឹកបោះពុម្ពរូបថតច្រើនសន្លឹកក្នុងទំព័រតែមួយ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Hidden Input -->
+    <input type="file" id="idPhotoInput" accept="image/*" class="d-none" onchange="loadUserPhoto(event)">
+
+    <div class="row g-4">
+        <!-- Photo Cropper / Preview Workspace -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-crop me-2 text-info"></i>ផ្ទាំងកាត់តរូបថត (Crop Workspace)</h6>
+                    <button type="button" class="btn btn-info text-white btn-sm rounded-pill px-3" onclick="document.getElementById('idPhotoInput').click()">
+                        <i class="fa-solid fa-upload me-1"></i> ជ្រើសរើសរូបថត
+                    </button>
+                </div>
+
+                <div class="id-photo-preview-card" id="previewArea">
+                    <div id="uploadPrompt" class="text-center">
+                        <i class="fa-solid fa-user-tie display-3 text-info mb-3"></i>
+                        <h5>សូម Upload រូបថតសិស្ស ឬគ្រូ</h5>
+                        <p class="text-muted small mb-3">អាចយករូបថតថតពីទូរស័ព្ទដៃ ឬរូបថតចាស់ៗមកកាត់តបាន</p>
+                        <button type="button" class="btn btn-info text-white btn-sm rounded-pill px-4" onclick="document.getElementById('idPhotoInput').click()">
+                            <i class="fa-solid fa-camera me-1"></i> បើករូបថត
+                        </button>
+                    </div>
+
+                    <div id="cropperWrapper" style="display: none; width: 100%; max-height: 480px;">
+                        <img id="cropperImage" src="" style="max-width: 100%; max-height: 450px;" alt="Cropper">
+                    </div>
+                </div>
+
+                <!-- Printable Sheet Preview Container -->
+                <div class="mt-4" id="sheetPreviewContainer" style="display: none;">
+                    <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-print text-primary me-2"></i>គំរូសន្លឹកបោះពុម្ពរូបថត (Print Sheet Preview)</h6>
+                    <div class="print-sheet-canvas-wrap">
+                        <canvas id="printSheetCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Column -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-sliders text-info me-2"></i>ការកំណត់ទំហំ & ផ្ទៃក្រោយ
+                </h5>
+
+                <!-- Photo Standard Size Selection -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ទំហំរូបថតស្តង់ដា (Standard Photo Size)</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="photoSize" id="size4x6" value="4x6" checked onchange="changeSizeRatio()">
+                            <label class="btn btn-outline-primary w-100 py-2 rounded-3 text-start" for="size4x6">
+                                <div class="fw-bold">៤ x ៦ សង់ទីម៉ែត្រ</div>
+                                <small class="text-muted">កាតគ្រូ / សញ្ញាបត្រ</small>
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="photoSize" id="size3x4" value="3x4" onchange="changeSizeRatio()">
+                            <label class="btn btn-outline-primary w-100 py-2 rounded-3 text-start" for="size3x4">
+                                <div class="fw-bold">៣ x ៤ សង់ទីម៉ែត្រ</div>
+                                <small class="text-muted">កាតសិស្ស / បណ្ណ</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Background Color Selection -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ពណ៌ផ្ទៃក្រោយ (Background Tint/Color)</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="color-swatch-btn active" style="background: #1e88e5;" title="ផ្ទៃខៀវ (ស្តង់ដាសាលារៀនកម្ពុជា)" onclick="setBgColor('#1e88e5', this)"></button>
+                        <button type="button" class="color-swatch-btn" style="background: #ffffff;" title="ផ្ទៃស (White)" onclick="setBgColor('#ffffff', this)"></button>
+                        <button type="button" class="color-swatch-btn" style="background: #0d47a1;" title="ខៀវចាស់ (Navy Blue)" onclick="setBgColor('#0d47a1', this)"></button>
+                        <button type="button" class="color-swatch-btn" style="background: #dc3545;" title="ក្រហម (Red)" onclick="setBgColor('#dc3545', this)"></button>
+                        <input type="color" id="customBgColor" class="form-control form-control-color" value="#1e88e5" title="ពណ៌ផ្សេងៗ" onchange="setBgColor(this.value, null)">
+                    </div>
+                </div>
+
+                <!-- Multi-Photo Print Grid Layout -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small text-muted">ចំនួនរូបថតក្នុង ១ សន្លឹក A4 បោះពុម្ព</label>
+                    <select class="form-select" id="sheetLayout" onchange="generatePrintSheet()">
+                        <option value="6" selected>៦ សន្លឹកក្នុង ១ ក្រដាស (6 Photos)</option>
+                        <option value="8">៨ សន្លឹកក្នុង ១ ក្រដាស (8 Photos)</option>
+                        <option value="12">១២ សន្លឹកក្នុង ១ ក្រដាស (12 Photos)</option>
+                        <option value="4">៤ សន្លឹកក្នុង ១ ក្រដាស (4 Photos)</option>
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2">
+                    <button type="button" id="btnSingleDownload" class="btn btn-info text-white btn-lg rounded-pill shadow-sm" onclick="downloadSinglePhoto()" disabled>
+                        <i class="fa-solid fa-image me-2"></i> ទាញយករូបថតទោល (Single Photo)
+                    </button>
+                    <button type="button" id="btnPrintSheet" class="btn btn-outline-primary btn-lg rounded-pill shadow-sm" onclick="downloadPrintSheet()" disabled>
+                        <i class="fa-solid fa-print me-2"></i> ទាញយកសន្លឹកបោះពុម្ព (Print Sheet A4)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cropper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<script>
+    let cropper = null;
+    let selectedBgColor = '#1e88e5';
+    let currentRatio = 4 / 6; // 4x6 cm default
+
+    function loadUserPhoto(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = document.getElementById('cropperImage');
+            img.src = event.target.result;
+
+            document.getElementById('uploadPrompt').style.display = 'none';
+            document.getElementById('cropperWrapper').style.display = 'block';
+
+            initIdCropper();
+            document.getElementById('btnSingleDownload').disabled = false;
+            document.getElementById('btnPrintSheet').disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function initIdCropper() {
+        if (cropper) cropper.destroy();
+        const img = document.getElementById('cropperImage');
+        cropper = new Cropper(img, {
+            aspectRatio: currentRatio,
+            viewMode: 1,
+            autoCropArea: 0.85,
+            responsive: true,
+            cropend: generatePrintSheet,
+            ready: generatePrintSheet
+        });
+    }
+
+    function changeSizeRatio() {
+        const size = document.querySelector('input[name="photoSize"]:checked').value;
+        if (size === '4x6') {
+            currentRatio = 4 / 6;
+        } else {
+            currentRatio = 3 / 4;
+        }
+        if (cropper) {
+            cropper.setAspectRatio(currentRatio);
+            generatePrintSheet();
+        }
+    }
+
+    function setBgColor(color, btn) {
+        selectedBgColor = color;
+        if (btn) {
+            document.querySelectorAll('.color-swatch-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        document.getElementById('customBgColor').value = color;
+        generatePrintSheet();
+    }
+
+    function getCroppedPhotoCanvas() {
+        if (!cropper) return null;
+        // Standard high resolution: 4x6 cm at 300 DPI ~ 472 x 708 px
+        const is4x6 = document.querySelector('input[name="photoSize"]:checked').value === '4x6';
+        const width = is4x6 ? 472 : 354;
+        const height = is4x6 ? 708 : 472;
+
+        return cropper.getCroppedCanvas({
+            width: width,
+            height: height,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+    }
+
+    function generatePrintSheet() {
+        const photoCanvas = getCroppedPhotoCanvas();
+        if (!photoCanvas) return;
+
+        const count = parseInt(document.getElementById('sheetLayout').value, 10);
+        const sheetCanvas = document.getElementById('printSheetCanvas');
+        const ctx = sheetCanvas.getContext('2d');
+
+        // A4 sheet representation at reasonable preview scale (1200 x 1700 px)
+        sheetCanvas.width = 1200;
+        sheetCanvas.height = 1600;
+
+        // White paper background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+
+        // Header Title on A4 Sheet
+        ctx.fillStyle = '#1e3c72';
+        ctx.font = 'bold 24px "Kantumruy Pro", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('សាលារៀន SM - សន្លឹកបោះពុម្ពរូបថតកាតសិស្ស-គ្រូ (Photo Sheet)', sheetCanvas.width / 2, 45);
+
+        // Draw photo grid
+        const cols = count <= 6 ? 3 : 4;
+        const rows = Math.ceil(count / cols);
+
+        const photoW = count <= 6 ? 280 : 220;
+        const photoH = count <= 6 ? (photoW / currentRatio) : (photoW / currentRatio);
+
+        const startX = (sheetCanvas.width - (cols * photoW + (cols - 1) * 35)) / 2;
+        const startY = 80;
+
+        let index = 0;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (index >= count) break;
+                const x = startX + c * (photoW + 35);
+                const y = startY + r * (photoH + 35);
+
+                // Draw cutting border guide
+                ctx.strokeStyle = '#cccccc';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x - 2, y - 2, photoW + 4, photoH + 4);
+
+                // Draw background tint
+                ctx.fillStyle = selectedBgColor;
+                ctx.fillRect(x, y, photoW, photoH);
+
+                // Draw photo
+                ctx.drawImage(photoCanvas, x, y, photoW, photoH);
+
+                index++;
+            }
+        }
+
+        document.getElementById('sheetPreviewContainer').style.display = 'block';
+    }
+
+    function downloadSinglePhoto() {
+        const canvas = getCroppedPhotoCanvas();
+        if (!canvas) return;
+
+        const a = document.createElement('a');
+        const sizeName = document.querySelector('input[name="photoSize"]:checked').value;
+        a.href = canvas.toDataURL('image/jpeg', 0.95);
+        a.download = `ID_Photo_${sizeName}_SchoolSM.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ទាញយកជោគជ័យ!',
+            text: `រូបថតទោលទំហំ ${sizeName} ត្រូវបានទាញយក។`,
+            confirmButtonColor: '#0dcaf0'
+        });
+    }
+
+    function downloadPrintSheet() {
+        const sheetCanvas = document.getElementById('printSheetCanvas');
+        if (!sheetCanvas) return;
+
+        const a = document.createElement('a');
+        a.href = sheetCanvas.toDataURL('image/jpeg', 0.95);
+        a.download = `ID_Photo_Sheet_A4_SchoolSM.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ទាញយកសន្លឹកបោះពុម្ពជោគជ័យ!',
+            text: 'ឯកសាររូបភាព A4 ត្រូវបានទាញយក លោកអ្នកអាចយកទៅ Print លើក្រដាសរូបថតបានភ្លាមៗ។',
+            confirmButtonColor: '#0d6efd'
+        });
+    }
+</script>
+{% endblock %}

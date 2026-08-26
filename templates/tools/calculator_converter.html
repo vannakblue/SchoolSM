@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត (Scientific Calculator & Unit Converter) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calc-card {
+        max-width: 440px;
+        margin: 0 auto;
+        background: #0f172a;
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    }
+    .calc-screen {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 16px;
+        text-align: right;
+        margin-bottom: 20px;
+        min-height: 90px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    .calc-history {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        min-height: 22px;
+        font-family: monospace;
+    }
+    .calc-current {
+        color: #38bdf8;
+        font-size: 2.2rem;
+        font-weight: 700;
+        font-family: monospace;
+        line-height: 1.1;
+        overflow-x: auto;
+    }
+    .calc-btn {
+        height: 52px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.15rem;
+        border: none;
+        transition: transform 0.1s ease, filter 0.15s ease;
+    }
+    .calc-btn:active {
+        transform: scale(0.95);
+    }
+    .btn-calc-num {
+        background: #334155;
+        color: #ffffff;
+    }
+    .btn-calc-num:hover {
+        background: #475569;
+        color: #ffffff;
+    }
+    .btn-calc-op {
+        background: #0284c7;
+        color: #ffffff;
+    }
+    .btn-calc-op:hover {
+        background: #0369a1;
+        color: #ffffff;
+    }
+    .btn-calc-sci {
+        background: #1e293b;
+        color: #a5b4fc;
+        font-size: 0.95rem;
+    }
+    .btn-calc-sci:hover {
+        background: #312e81;
+        color: #ffffff;
+    }
+    .btn-calc-clear {
+        background: #e11d48;
+        color: #ffffff;
+    }
+    .btn-calc-equal {
+        background: #10b981;
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Calculator & Unit Converter</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-calculator text-primary me-2"></i>ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត (Calculator & Unit Converter)
+            </h2>
+            <p class="text-muted small mb-0">ម៉ាស៊ីនគិតលេខវិទ្យាសាស្ត្រ (Scientific Calculator) និងកម្មវិធីបំលែងខ្នាតប្រវែង ទម្ងន់ ផ្ទៃក្រឡា និងទិន្នន័យ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Navigation Pills -->
+    <ul class="nav nav-pills nav-fill gap-2 mb-4 bg-light p-1 rounded-4" id="toolPills" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-calculator" type="button">
+                <i class="fa-solid fa-calculator me-2 text-primary"></i> ម៉ាស៊ីនគិតលេខវិទ្យាសាស្ត្រ (Calculator)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-converter" type="button">
+                <i class="fa-solid fa-scale-balanced me-2 text-success"></i> កម្មវិធីបំលែងខ្នាត (Unit Converter)
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Tab 1: Scientific Calculator -->
+        <div class="tab-pane fade show active" id="tab-calculator">
+            <div class="calc-card">
+                <!-- Screen -->
+                <div class="calc-screen">
+                    <div class="calc-history" id="calcHistory"></div>
+                    <div class="calc-current" id="calcDisplay">0</div>
+                </div>
+
+                <!-- Keypad -->
+                <div class="row g-2">
+                    <!-- Row 1: Sci Functions -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('sin')">sin</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('cos')">cos</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('tan')">tan</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('sqrt')">√</button></div>
+
+                    <!-- Row 2: Sci Functions -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('log')">log</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('ln')">ln</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcInput('(')">(</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcInput(')')">)</button></div>
+
+                    <!-- Row 3: Clear & Operators -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-clear w-100 calc-btn" onclick="calcClear()">C</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcBackspace()"><i class="fa-solid fa-delete-left"></i></button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcInput('%')">%</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-op w-100 calc-btn" onclick="calcInput('/')">÷</button></div>
+
+                    <!-- Row 4: 7, 8, 9, * -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('7')">7</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('8')">8</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('9')">9</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-op w-100 calc-btn" onclick="calcInput('*')">×</button></div>
+
+                    <!-- Row 5: 4, 5, 6, - -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('4')">4</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('5')">5</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('6')">6</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-op w-100 calc-btn" onclick="calcInput('-')">−</button></div>
+
+                    <!-- Row 6: 1, 2, 3, + -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('1')">1</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('2')">2</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('3')">3</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-op w-100 calc-btn" onclick="calcInput('+')">+</button></div>
+
+                    <!-- Row 7: 0, ., PI, = -->
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('0')">0</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-num w-100 calc-btn" onclick="calcInput('.')">.</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('pi')">π</button></div>
+                    <div class="col-3"><button type="button" class="btn btn-calc-equal w-100 calc-btn" onclick="calcEvaluate()">=</button></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Universal Unit Converter -->
+        <div class="tab-pane fade" id="tab-converter">
+            <div class="card border-0 shadow-sm rounded-4 p-4" style="max-width: 780px; margin: 0 auto;">
+                <h5 class="fw-bold text-dark mb-4 text-center">
+                    <i class="fa-solid fa-scale-balanced text-success me-2"></i>កម្មវិធីបំលែងខ្នាតសកល (Universal Unit Converter)
+                </h5>
+
+                <!-- Category Selector -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small text-muted">ជ្រើសរើសប្រភេទខ្នាត (Category)</label>
+                    <select class="form-select form-select-lg fw-bold" id="unitCategorySelect" onchange="initUnitCategory()">
+                        <option value="length" selected>📏 ប្រវែង (Length - គីឡូម៉ែត្រ, ម៉ែត្រ, សង់ទីម៉ែត្រ, អ៊ីញ...)</option>
+                        <option value="weight">⚖️ ទម្ងន់ / ម៉ាស (Weight - តោន, គីឡូក្រាម, ក្រាម, ផោន...)</option>
+                        <option value="area">📐 ផ្ទៃក្រឡា (Area - ហិកតា, ម៉ែត្រការ៉េ, គីឡូម៉ែត្រការ៉េ...)</option>
+                        <option value="data">💾 ទិន្នន័យកុំព្យូទ័រ (Data Storage - Byte, KB, MB, GB, TB)</option>
+                        <option value="temperature">🌡️ សីតុណ្ហភាព (Temperature - អង្សាសេ °C, ហ្វារិនហៃ °F, Kelvin)</option>
+                    </select>
+                </div>
+
+                <div class="row g-4 align-items-center mb-3">
+                    <!-- From Unit -->
+                    <div class="col-md-5">
+                        <div class="p-3 bg-light rounded-4 border">
+                            <label class="form-label fw-semibold small text-muted">ពី (From)</label>
+                            <input type="number" id="fromValue" class="form-control form-control-lg fw-bold fs-4 mb-2" value="1" oninput="convertUnits()">
+                            <select class="form-select" id="fromUnit" onchange="convertUnits()"></select>
+                        </div>
+                    </div>
+
+                    <!-- Switch Button -->
+                    <div class="col-md-2 text-center">
+                        <button type="button" class="btn btn-outline-primary rounded-circle shadow-sm" style="width: 46px; height: 46px;" onclick="swapUnits()">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- To Unit -->
+                    <div class="col-md-5">
+                        <div class="p-3 bg-light rounded-4 border">
+                            <label class="form-label fw-semibold small text-muted">ទៅជា (To)</label>
+                            <input type="text" id="toValue" class="form-control form-control-lg fw-bold fs-4 mb-2 bg-white" readonly>
+                            <select class="form-select" id="toUnit" onchange="convertUnits()"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explanation / Formula Box -->
+                <div class="alert alert-info border-0 rounded-3 small mb-0 text-center" id="conversionFormulaText">
+                    រូបមន្តបំលែងនឹងបង្ហាញនៅទីនេះ
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Calculator Logic
+    let calcExpression = '';
+    let isEvaluated = false;
+
+    function calcInput(char) {
+        if (isEvaluated && !['+', '-', '*', '/', '%'].includes(char)) {
+            calcExpression = '';
+            isEvaluated = false;
+        }
+        calcExpression += char;
+        updateCalcDisplay();
+    }
+
+    function calcSci(fn) {
+        if (fn === 'pi') {
+            calcExpression += Math.PI.toFixed(6);
+        } else if (fn === 'sqrt') {
+            calcExpression += 'Math.sqrt(';
+        } else if (fn === 'sin') {
+            calcExpression += 'Math.sin(';
+        } else if (fn === 'cos') {
+            calcExpression += 'Math.cos(';
+        } else if (fn === 'tan') {
+            calcExpression += 'Math.tan(';
+        } else if (fn === 'log') {
+            calcExpression += 'Math.log10(';
+        } else if (fn === 'ln') {
+            calcExpression += 'Math.log(';
+        }
+        updateCalcDisplay();
+    }
+
+    function calcClear() {
+        calcExpression = '';
+        document.getElementById('calcHistory').innerText = '';
+        updateCalcDisplay();
+    }
+
+    function calcBackspace() {
+        calcExpression = calcExpression.slice(0, -1);
+        updateCalcDisplay();
+    }
+
+    function updateCalcDisplay() {
+        const display = document.getElementById('calcDisplay');
+        display.innerText = calcExpression || '0';
+    }
+
+    function calcEvaluate() {
+        try {
+            document.getElementById('calcHistory').innerText = calcExpression + ' =';
+            let sanitized = calcExpression.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+            const result = Function('"use strict";return (' + sanitized + ')')();
+            calcExpression = result.toString();
+            isEvaluated = true;
+            updateCalcDisplay();
+        } catch (e) {
+            document.getElementById('calcDisplay').innerText = 'Error';
+            isEvaluated = true;
+        }
+    }
+
+    // Unit Converter Data
+    const UNIT_DEFINITIONS = {
+        length: {
+            units: [
+                { name: 'គីឡូម៉ែត្រ (Kilometer - km)', factor: 1000 },
+                { name: 'ម៉ែត្រ (Meter - m)', factor: 1 },
+                { name: 'សង់ទីម៉ែត្រ (Centimeter - cm)', factor: 0.01 },
+                { name: 'មីលីម៉ែត្រ (Millimeter - mm)', factor: 0.001 },
+                { name: 'អ៊ីញ (Inch - in)', factor: 0.0254 },
+                { name: 'ហ្វីត (Foot - ft)', factor: 0.3048 },
+                { name: 'ម៉ាយល៍ (Mile - mi)', factor: 1609.344 }
+            ]
+        },
+        weight: {
+            units: [
+                { name: 'តោន (Metric Ton - t)', factor: 1000 },
+                { name: 'គីឡូក្រាម (Kilogram - kg)', factor: 1 },
+                { name: 'ក្រាម (Gram - g)', factor: 0.001 },
+                { name: 'មីលីក្រាម (Milligram - mg)', factor: 0.000001 },
+                { name: 'ផោន (Pound - lb)', factor: 0.453592 },
+                { name: 'អោន (Ounce - oz)', factor: 0.0283495 }
+            ]
+        },
+        area: {
+            units: [
+                { name: 'ហិកតា (Hectare - ha)', factor: 10000 },
+                { name: 'គីឡូម៉ែត្រការ៉េ (Square km)', factor: 1000000 },
+                { name: 'ម៉ែត្រការ៉េ (Square meter - m²)', factor: 1 },
+                { name: 'អា (Are - a)', factor: 100 },
+                { name: 'ហ្វីតការ៉េ (Square foot - sq ft)', factor: 0.092903 }
+            ]
+        },
+        data: {
+            units: [
+                { name: 'Bytes (B)', factor: 1 },
+                { name: 'Kilobytes (KB)', factor: 1024 },
+                { name: 'Megabytes (MB)', factor: 1024 * 1024 },
+                { name: 'Gigabytes (GB)', factor: 1024 * 1024 * 1024 },
+                { name: 'Terabytes (TB)', factor: 1024 * 1024 * 1024 * 1024 }
+            ]
+        },
+        temperature: {
+            units: [
+                { name: 'អង្សាសេ (Celsius - °C)', id: 'c' },
+                { name: 'ហ្វារិនហៃ (Fahrenheit - °F)', id: 'f' },
+                { name: 'កែលវីន (Kelvin - K)', id: 'k' }
+            ]
+        }
+    };
+
+    function initUnitCategory() {
+        const cat = document.getElementById('unitCategorySelect').value;
+        const fromSelect = document.getElementById('fromUnit');
+        const toSelect = document.getElementById('toUnit');
+        const defs = UNIT_DEFINITIONS[cat].units;
+
+        fromSelect.innerHTML = '';
+        toSelect.innerHTML = '';
+
+        defs.forEach((u, idx) => {
+            const optFrom = new Option(u.name, idx);
+            const optTo = new Option(u.name, idx);
+            fromSelect.add(optFrom);
+            toSelect.add(optTo);
+        });
+
+        if (defs.length > 1) {
+            toSelect.selectedIndex = 1;
+        }
+
+        convertUnits();
+    }
+
+    function convertUnits() {
+        const cat = document.getElementById('unitCategorySelect').value;
+        const val = parseFloat(document.getElementById('fromValue').value) || 0;
+        const fromIdx = parseInt(document.getElementById('fromUnit').value, 10);
+        const toIdx = parseInt(document.getElementById('toUnit').value, 10);
+
+        if (cat === 'temperature') {
+            const defs = UNIT_DEFINITIONS.temperature.units;
+            const fromId = defs[fromIdx].id;
+            const toId = defs[toIdx].id;
+
+            let inCelsius = val;
+            if (fromId === 'f') inCelsius = (val - 32) * 5 / 9;
+            else if (fromId === 'k') inCelsius = val - 273.15;
+
+            let result = inCelsius;
+            if (toId === 'f') result = (inCelsius * 9 / 5) + 32;
+            else if (toId === 'k') result = inCelsius + 273.15;
+
+            document.getElementById('toValue').value = result.toFixed(2);
+            document.getElementById('conversionFormulaText').innerText = `${val} ${defs[fromIdx].name} = ${result.toFixed(2)} ${defs[toIdx].name}`;
+        } else {
+            const defs = UNIT_DEFINITIONS[cat].units;
+            const fromFactor = defs[fromIdx].factor;
+            const toFactor = defs[toIdx].factor;
+
+            const baseVal = val * fromFactor;
+            const result = baseVal / toFactor;
+
+            // Display nicely with precision
+            const formatted = Math.abs(result) < 0.0001 ? result.toExponential(4) : parseFloat(result.toFixed(6));
+            document.getElementById('toValue').value = formatted;
+            document.getElementById('conversionFormulaText').innerText = `${val} ${defs[fromIdx].name} = ${formatted} ${defs[toIdx].name}`;
+        }
+    }
+
+    function swapUnits() {
+        const fromSelect = document.getElementById('fromUnit');
+        const toSelect = document.getElementById('toUnit');
+        const temp = fromSelect.selectedIndex;
+        fromSelect.selectedIndex = toSelect.selectedIndex;
+        toSelect.selectedIndex = temp;
+        convertUnits();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initUnitCategory();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}តារាងពិន្ទុ & ចំណាត់ថ្នាក់ (Grade Summary & Rankings) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-ranking-star me-2"></i>តារាងពិន្ទុ & ចំណាត់ថ្នាក់សិស្ស (Rankings)
+        </h2>
+        <p class="text-muted small mb-0">ប្រព័ន្ធបូកសរុបពិន្ទុ ភាគរយ (%) និទ្ទេស MoEYS ចាត់ចំណាត់ថ្នាក់ និងផ្ញើប័ណ្ណពិន្ទុ PDF ទៅ Telegram</p>
+    </div>
+    {% if selected_term and selected_class %}
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-info fw-bold btn-sm rounded-pill px-3 shadow-xs" onclick="openClassTelegramModal('{{ selected_class.id }}', '{{ selected_term.id }}', '{{ selected_class.name }}', '{{ selected_term.name }}')">
+            <i class="fa-brands fa-telegram me-1"></i> ផ្ញើប័ណ្ណពិន្ទុទាំងអស់ទៅ Telegram (PDF/Message)
+        </button>
+        <a href="{% url 'grade_entry_matrix' %}?term={{ selected_term.id }}&classroom={{ selected_class.id }}" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-3 shadow-xs">
+            <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែពិន្ទុ
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="custom-card p-3 mb-4 rounded-4 shadow-sm bg-white">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-5">
+            <label class="form-label fw-bold small text-muted">សម័យប្រឡង *</label>
+            <select name="term" class="form-select rounded-pill" onchange="this.form.submit()">
+                {% for t in terms %}
+                <option value="{{ t.id }}" {% if selected_term and selected_term.id == t.id %}selected{% endif %}>
+                    {{ t.name }} ({{ t.get_scoring_mode_display|default:t.get_term_type_display }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label fw-bold small text-muted">ថ្នាក់រៀន *</label>
+            <select name="classroom" class="form-select rounded-pill" onchange="this.form.submit()">
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.get_track_display }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">បង្ហាញលទ្ធផល</button>
+        </div>
+    </form>
+</div>
+
+{% if selected_term and selected_class %}
+<div class="custom-card mb-4 rounded-4 shadow-sm bg-white p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom gap-2">
+        <div>
+            <h5 class="fw-bold mb-0 text-primary">
+                <i class="fa-solid fa-ranking-star me-2"></i>ចំណាត់ថ្នាក់សិស្ស៖ {{ selected_class.name }} ({{ selected_term.name }})
+            </h5>
+            <span class="badge bg-light text-dark mt-1 border">{{ selected_class.get_track_display }} | ពិន្ទុសរុបពេញ៖ {{ total_class_max|floatformat:0 }} ពិន្ទុ</span>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-xs" onclick="openClassTelegramModal('{{ selected_class.id }}', '{{ selected_term.id }}', '{{ selected_class.name }}', '{{ selected_term.name }}')">
+                <i class="fa-brands fa-telegram me-1"></i> ផ្ញើប័ណ្ណពិន្ទុទាំងមូល (PDF & Message)
+            </button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-custom align-middle">
+            <thead>
+                <tr>
+                    <th class="text-center" width="70">ចំណាត់ថ្នាក់</th>
+                    <th>សិស្ស</th>
+                    {% for rule in subject_rules %}
+                    <th class="text-center">
+                        <div class="fw-bold">{{ rule.subject.name_kh }}</div>
+                        <div class="text-muted fw-normal" style="font-size: 0.7rem;">/{{ rule.max_score|floatformat:0 }}</div>
+                    </th>
+                    {% endfor %}
+                    <th class="text-center">ពិន្ទុសរុប</th>
+                    <th class="text-center">ភាគរយ (%)</th>
+                    <th class="text-center">និទ្ទេស</th>
+                    <th class="text-center">លទ្ធផល</th>
+                    <th class="text-end" width="220">ប័ណ្ណពិន្ទុ & Telegram</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary_results %}
+                <tr class="{% if row.rank == 1 %}table-warning bg-opacity-25{% elif row.rank <= 3 %}table-light{% endif %}">
+                    <td class="text-center fw-bold">
+                        {% if row.rank == 1 %}
+                        <span class="badge bg-warning text-dark fs-6"><i class="fa-solid fa-trophy"></i> ១</span>
+                        {% elif row.rank == 2 %}
+                        <span class="badge bg-secondary text-white fs-6">២</span>
+                        {% elif row.rank == 3 %}
+                        <span class="badge bg-danger text-white fs-6">៣</span>
+                        {% else %}
+                        <span class="fw-bold">{{ row.rank }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ row.student.khmer_name }}</div>
+                        <span class="text-muted small font-monospace">{{ row.student.student_id }}</span>
+                    </td>
+                    {% for sub_item in row.subject_details %}
+                    <td class="text-center">
+                        {% if sub_item.score != None %}
+                        <span class="fw-bold">{{ sub_item.score|floatformat:1 }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="text-center fw-bold text-primary fs-6">{{ row.total_score|floatformat:1 }} / {{ row.total_max|floatformat:0 }}</td>
+                    <td class="text-center fw-bold fs-6">{{ row.percentage }}%</td>
+                    <td class="text-center">
+                        <span class="badge {% if row.letter == 'A' %}bg-success{% elif row.letter == 'B' or row.letter == 'C' %}bg-primary{% elif row.letter == 'F' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ row.letter }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if row.passed %}
+                        <span class="badge badge-pill-custom badge-success-soft">ជាប់ (Passed)</span>
+                        {% else %}
+                        <span class="badge badge-pill-custom badge-danger-soft">ធ្លាក់ (Failed)</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'report_card' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-primary" title="មើល & បោះពុម្ពប័ណ្ណពិន្ទុ PDF">
+                                <i class="fa-solid fa-file-pdf"></i> មើល
+                            </a>
+                            <button type="button" class="btn btn-outline-info" title="ផ្ញើប័ណ្ណពិន្ទុទៅ Telegram អាណាព្យាបាល" onclick="openSingleTelegramModal('{{ row.student.id }}', '{{ selected_term.id }}', '{{ row.student.khmer_name|escapejs }}', '{{ selected_term.name|escapejs }}')">
+                                <i class="fa-brands fa-telegram"></i> ផ្ញើ
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ subject_rules|length|add:'6' }}" class="text-center py-4 text-muted">
+                        មិនទាន់មានទិន្នន័យពិន្ទុសម្រាប់ថ្នាក់នេះនៅឡើយទេ
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal: Dispatch Report Card to Telegram -->
+<div class="modal fade" id="telegramReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 p-3">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="fa-brands fa-telegram me-2 text-info fs-4"></i>ផ្ញើប័ណ្ណពិន្ទុទៅកាន់ Telegram
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3" id="tgModalSubtitle">ផ្ញើប័ណ្ណពិន្ទុផ្លូវការទៅកាន់អាណាព្យាបាល ឬគ្រុបថ្នាក់រៀន</p>
+                
+                <input type="hidden" id="tgStudentId" value="">
+                <input type="hidden" id="tgClassroomId" value="">
+                <input type="hidden" id="tgTermId" value="">
+                <input type="hidden" id="tgIsBulk" value="0">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted">គោលដៅផ្ញើ (Destination) *</label>
+                    <select id="tgDestination" class="form-select rounded-3">
+                        <option value="CLASS_GROUP">📢 Telegram Group ថ្នាក់រៀន (Class Telegram Group / Broadcast)</option>
+                        <option value="PARENT_INDIVIDUAL">👤 ផ្ញើដាច់ដោយឡែកទៅ Telegram អាណាព្យាបាលម្នាក់ៗ</option>
+                        <option value="CUSTOM_CHAT_ID">💬 បញ្ចូល Chat ID ឬ Group ID ផ្ទាល់</option>
+                    </select>
+                </div>
+
+                <div class="mb-3 d-none" id="tgCustomChatBox">
+                    <label class="form-label fw-bold small text-muted">Telegram Chat ID / Channel Username</label>
+                    <input type="text" id="tgCustomChatId" class="form-control rounded-3" placeholder="e.g. -100123456789 or @channel_name">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted">ទម្រង់ឯកសារដែលត្រូវផ្ញើ (Send Format) *</label>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="tgSendMode" id="tgModeBoth" value="BOTH" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="tgModeBoth">
+                                📄 ប័ណ្ណពិន្ទុ PDF ផ្លូវការ + 💬 សារសង្ខេបពិន្ទុ (ទាំងពីរ - Recommended)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="tgSendMode" id="tgModePdf" value="PDF_ONLY">
+                            <label class="form-check-label text-dark small" for="tgModePdf">
+                                📄 ផ្ញើតែឯកសារ PDF (Official PDF File)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tgSendMode" id="tgModeMsg" value="MESSAGE_ONLY">
+                            <label class="form-check-label text-dark small" for="tgModeMsg">
+                                💬 ផ្ញើតែសារសង្ខេបលទ្ធផល (Rich Text Message)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="submitTelegramDispatch()">
+                    <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជូនទៅ Telegram
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openSingleTelegramModal(studentId, termId, studentName, termName) {
+        document.getElementById('tgStudentId').value = studentId;
+        document.getElementById('tgClassroomId').value = '';
+        document.getElementById('tgTermId').value = termId;
+        document.getElementById('tgIsBulk').value = '0';
+        document.getElementById('tgModalSubtitle').innerText = `ផ្ញើប័ណ្ណពិន្ទុរបស់សិស្ស៖ ${studentName} (${termName})`;
+
+        const modal = new bootstrap.Modal(document.getElementById('telegramReportModal'));
+        modal.show();
+    }
+
+    function openClassTelegramModal(classroomId, termId, className, termName) {
+        document.getElementById('tgStudentId').value = '';
+        document.getElementById('tgClassroomId').value = classroomId;
+        document.getElementById('tgTermId').value = termId;
+        document.getElementById('tgIsBulk').value = '1';
+        document.getElementById('tgModalSubtitle').innerText = `ផ្ញើប័ណ្ណពិន្ទុសិស្សទាំងអស់ក្នុងថ្នាក់៖ ${className} (${termName})`;
+
+        const modal = new bootstrap.Modal(document.getElementById('telegramReportModal'));
+        modal.show();
+    }
+
+    document.getElementById('tgDestination').addEventListener('change', function() {
+        const customBox = document.getElementById('tgCustomChatBox');
+        if (this.value === 'CUSTOM_CHAT_ID') {
+            customBox.classList.remove('d-none');
+        } else {
+            customBox.classList.add('d-none');
+        }
+    });
+
+    function submitTelegramDispatch() {
+        const isBulk = document.getElementById('tgIsBulk').value === '1';
+        const studentId = document.getElementById('tgStudentId').value;
+        const classroomId = document.getElementById('tgClassroomId').value;
+        const termId = document.getElementById('tgTermId').value;
+        const destination = document.getElementById('tgDestination').value;
+        const customChatId = document.getElementById('tgCustomChatId').value;
+        
+        let sendMode = 'BOTH';
+        const selectedModeRadio = document.querySelector('input[name="tgSendMode"]:checked');
+        if (selectedModeRadio) {
+            sendMode = selectedModeRadio.value;
+        }
+
+        const modalEl = document.getElementById('telegramReportModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        Swal.fire({
+            title: 'កំពុងបញ្ជូនប័ណ្ណពិន្ទុទៅកាន់ Telegram...',
+            text: 'សូមរង់ចាំបន្តិច ប្រព័ន្ធកំពុងបង្កើត PDF និងផ្ញើ...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const endpoint = isBulk ? "{% url 'api_send_class_report_cards_telegram' %}" : "{% url 'api_send_report_card_telegram' %}";
+        const payload = isBulk ? {
+            classroom_id: classroomId,
+            term_id: termId,
+            destination: destination,
+            send_mode: sendMode,
+            custom_chat_id: customChatId
+        } : {
+            student_id: studentId,
+            term_id: termId,
+            destination: destination,
+            send_mode: sendMode,
+            custom_chat_id: customChatId
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 3000,
+                    showConfirmButton: true
+                });
+            } else {
+                Swal.fire('កំហុស!', data.message || 'មិនអាចផ្ញើទៅ Telegram បានទេ', 'error');
+            }
+        })
+        .catch(err => {
+            Swal.fire('កំហុសប្រព័ន្ធ!', err.message, 'error');
+        });
+    }
+</script>
+{% endblock %}

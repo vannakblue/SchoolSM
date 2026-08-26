@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}កំណត់ត្រាស្កេនវត្តមានគ្រូលម្អិត (Punch Logs & Audit Trail) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Audit Trail
+                </span>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">
+                    សរុប {{ total_count }} កំណត់ត្រា
+                </span>
+            </div>
+            <h2 class="fw-bold mb-0">កំណត់ត្រាស្កេនវត្តមានគ្រូ (Punch Logs)</h2>
+            <p class="text-muted small mb-0">
+                ពិនិត្យកំណត់ត្រា Check-in គ្រប់វិធីសាស្ត្រ (Dynamic QR Code, Webcam Face AI, ម៉ាស៊ីន Biometric, USB Reader)
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="{% url 'teacher_kiosk_view' %}" class="btn btn-outline-primary btn-sm fw-bold">
+                <i class="fa-solid fa-qrcode me-1"></i> QR Kiosk
+            </a>
+            <a href="{% url 'teacher_face_ai_kiosk' %}" class="btn btn-outline-info btn-sm fw-bold">
+                <i class="fa-solid fa-camera me-1"></i> Face AI
+            </a>
+            <a href="{% url 'biometric_hub' %}" class="btn btn-outline-warning btn-sm fw-bold">
+                <i class="fa-solid fa-fingerprint me-1"></i> Biometric
+            </a>
+            <a href="{% url 'teacher_attendance' %}" class="btn btn-light btn-sm border">
+                <i class="fa-solid fa-calendar-days me-1"></i> តារាងវត្តមានគ្រូ
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="custom-card p-3 shadow-sm mb-4">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">កាលបរិច្ឆេទ (Date)៖</label>
+                <input type="date" name="date" class="form-control form-control-sm" value="{{ selected_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">វិធីសាស្ត្រស្កេន (Method)៖</label>
+                <select name="method" class="form-select form-select-sm">
+                    <option value="">-- គ្រប់វិធីសាស្ត្រ --</option>
+                    {% for val, label in method_choices %}
+                    <option value="{{ val }}" {% if selected_method == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted">ស្ថានភាព (Status)៖</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">-- ទាំងអស់ --</option>
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">ស្វែងរក (Search)៖</label>
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="ឈ្មោះ ឬ Teacher ID..." value="{{ query }}">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                    <i class="fa-solid fa-filter me-1"></i> ច្រោះ
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="custom-card p-0 shadow-sm overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">ពេលវេលាស្កេន</th>
+                        <th>គ្រូបង្រៀន</th>
+                        <th>វិធីសាស្ត្រ</th>
+                        <th>ស្ថានភាព</th>
+                        <th>ទីតាំង GPS</th>
+                        <th>ឧបករណ៍ / IP</th>
+                        <th class="text-end pe-3">រូបថត Snapshot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="ps-3 font-monospace small">
+                            <span class="fw-bold text-dark">{{ log.punch_time|date:"H:i:s" }}</span>
+                            <small class="text-muted d-block">{{ log.punch_time|date:"d/m/Y" }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if log.teacher.photo %}
+                                <img src="{{ log.teacher.photo.url }}" class="rounded-circle border" width="34" height="34" style="object-fit: cover;">
+                                {% else %}
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small" style="width: 34px; height: 34px;">
+                                    {{ log.teacher.khmer_name|slice:":1" }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <span class="fw-bold text-dark d-block">{{ log.teacher.khmer_name }}</span>
+                                    <small class="text-muted font-monospace">{{ log.teacher.teacher_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if log.method == 'QR_SCAN' %}bg-primary-subtle text-primary
+                                {% elif log.method == 'FACE_AI' %}bg-info-subtle text-info
+                                {% elif log.method == 'BIOMETRIC_DEVICE' %}bg-warning-subtle text-warning-emphasis
+                                {% elif log.method == 'USB_FINGERPRINT' %}bg-success-subtle text-success
+                                {% else %}bg-secondary-subtle text-secondary{% endif %} rounded-pill px-2 py-1">
+                                {{ log.get_method_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if log.status_result == 'ON_TIME' %}
+                            <span class="badge bg-success rounded-pill px-2 py-1">
+                                <i class="fa-solid fa-check me-1"></i> ទាន់ពេល
+                            </span>
+                            {% elif log.status_result == 'LATE' %}
+                            <span class="badge bg-danger rounded-pill px-2 py-1">
+                                <i class="fa-solid fa-clock me-1"></i> មកយឺត
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary rounded-pill px-2 py-1">
+                                {{ log.get_status_result_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.gps_lat and log.gps_lng %}
+                            <a href="https://www.google.com/maps?q={{ log.gps_lat }},{{ log.gps_lng }}" target="_blank" class="small text-decoration-none text-success">
+                                <i class="fa-solid fa-location-dot me-1"></i> {{ log.gps_lat|floatformat:4 }}, {{ log.gps_lng|floatformat:4 }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted font-monospace">
+                            {% if log.device_uuid %}
+                            <span title="{{ log.device_uuid }}">{{ log.device_uuid|slice:":12" }}...</span>
+                            {% elif log.ip_address %}
+                            {{ log.ip_address }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            {% if log.snapshot_photo %}
+                            <a href="{{ log.snapshot_photo.url }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill">
+                                <i class="fa-solid fa-image me-1"></i> មើលរូប
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-clock-rotate-left display-4 mb-2 d-block opacity-25"></i>
+                            មិនមានកំណត់ត្រា Punch Log ត្រូវនឹងលក្ខខណ្ឌស្វែងរកឡើយ
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

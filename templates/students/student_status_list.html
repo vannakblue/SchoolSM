@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}ការកំណត់ស្ថានភាពសិក្សា (Student Statuses) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge-preview {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 50rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-tags me-2"></i>ការកំណត់ស្ថានភាពសិក្សា (Student Academic Statuses)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រង បង្កើត កែប្រែ លុប កំណត់ពណ៌សម្គាល់ និងកំណត់ឥរិយាបថនៃស្ថានភាពសិស្សក្នុងប្រព័ន្ធ</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'student_list' %}" class="btn btn-outline-secondary rounded-pill px-3 shadow-xs">
+            <i class="fa-solid fa-arrow-left me-1"></i> បញ្ជីសិស្សទាំងអស់
+        </a>
+        <button type="button" class="btn btn-primary rounded-pill px-3 shadow-xs fw-bold" onclick="openNewStatusModal()">
+            <i class="fa-solid fa-plus me-1"></i> បន្ថែមស្ថានភាពថ្មី
+        </button>
+    </div>
+</div>
+
+<!-- Overview Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-primary bg-white shadow-sm rounded-4">
+            <div class="text-muted small">ស្ថានភាពសរុប</div>
+            <div class="fs-4 fw-bold text-dark">{{ statuses|length }} ប្រភេទ</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-success bg-white shadow-sm rounded-4">
+            <div class="text-muted small">កំពុងសិក្សា (Active)</div>
+            <div class="fs-4 fw-bold text-success">
+                {% for st in statuses %}{% if st.obj.code == 'ACTIVE' %}{{ st.student_count }}{% endif %}{% endfor %} នាក់
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-warning bg-white shadow-sm rounded-4">
+            <div class="text-muted small">ផ្អាកការសិក្សា (Suspended)</div>
+            <div class="fs-4 fw-bold text-warning">
+                {% for st in statuses %}{% if st.obj.code == 'SUSPENDED' %}{{ st.student_count }}{% endif %}{% endfor %} នាក់
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 text-center border-start border-4 border-danger bg-white shadow-sm rounded-4">
+            <div class="text-muted small">ឈប់ / ផ្ទេរចេញ (Left)</div>
+            <div class="fs-4 fw-bold text-danger">
+                {% for st in statuses %}{% if st.obj.code == 'DROPPED' or st.obj.code == 'TRANSFERRED' %}{{ st.student_count }}{% endif %}{% endfor %} នាក់
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statuses Table -->
+<div class="custom-card rounded-4 shadow-sm bg-white p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-list-ul me-2 text-primary"></i>បញ្ជីស្ថានភាពសិក្សាទាំងអស់
+        </h5>
+        <span class="badge bg-light text-muted border">ចំនួន៖ {{ statuses|length }}</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-custom align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 60px;" class="text-center">លំដាប់</th>
+                    <th>ឈ្មោះស្ថានភាព (ខ្មែរ / អង់គ្លេស)</th>
+                    <th>កូដសម្គាល់ (Code)</th>
+                    <th>គំរូ Badge</th>
+                    <th>ឥរិយាបថក្នុងប្រព័ន្ធ</th>
+                    <th class="text-center">សិស្សកំពុងប្រើ</th>
+                    <th class="text-center">ប្រភេទ</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in statuses %}
+                {% with s=item.obj %}
+                <tr>
+                    <td class="text-center fw-bold text-muted">{{ s.order }}</td>
+                    <td>
+                        <div class="fw-bold text-dark fs-6">{{ s.name }}</div>
+                        {% if s.name_en %}
+                        <div class="text-muted small" style="font-size: 0.75rem;">{{ s.name_en }}</div>
+                        {% endif %}
+                        {% if s.description %}
+                        <div class="text-secondary small mt-1" style="font-size: 0.72rem;">{{ s.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <code class="px-2 py-1 bg-light text-primary border rounded">{{ s.code }}</code>
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ s.badge_color }} rounded-pill px-3 py-2 fw-bold">
+                            {{ s.name }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            {{ s.get_category_type_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if item.student_count > 0 %}
+                        <a href="{% url 'student_list' %}?status={{ s.code }}" class="badge bg-primary rounded-pill px-3 py-1 text-decoration-none" title="ចុចដើម្បីមើលសិស្ស">
+                            {{ item.student_count }} នាក់
+                        </a>
+                        {% else %}
+                        <span class="badge bg-light text-muted border rounded-pill px-2 py-1">0 នាក់</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if s.is_system_default %}
+                        <span class="badge bg-secondary rounded-pill px-2 py-1" title="ស្ថានភាពគោលរបស់ប្រព័ន្ធ"><i class="fa-solid fa-lock me-1"></i>លំនាំដើម</span>
+                        {% else %}
+                        <span class="badge bg-info text-dark rounded-pill px-2 py-1"><i class="fa-solid fa-sparkles me-1"></i>បន្ថែមផ្ទាល់</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-light text-primary" 
+                                    onclick="openEditStatusModal('{{ s.id }}', '{{ s.name|escapejs }}', '{{ s.name_en|default:''|escapejs }}', '{{ s.code }}', '{{ s.badge_color }}', '{{ s.category_type }}', '{{ s.order }}', '{{ s.description|default:''|escapejs }}', {{ s.is_active|yesno:'true,false' }})"
+                                    title="កែប្រែ">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            {% if not s.is_system_default %}
+                            <form action="{% url 'student_status_delete' s.id %}" method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបស្ថានភាពសិក្សា «{{ s.name }}» មែនទេ?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-light text-danger" title="លុប">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <h5>មិនទាន់មានទិន្នន័យស្ថានភាពសិក្សាឡើយ</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Create / Edit Student Status -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="POST" id="statusForm" action="{% url 'student_status_create' %}">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary" id="statusModalTitle">
+                        <i class="fa-solid fa-plus-circle me-2"></i>បន្ថែមស្ថានភាពសិក្សាថ្មី
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ឈ្មោះស្ថានភាព (ភាសាខ្មែរ) *</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ឈ្មោះជាភាសាអង់គ្លេស (English Name)</label>
+                        {{ form.name_en }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">កូដសម្គាល់ (Code) *</label>
+                            {{ form.code }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">លំដាប់បង្ហាញ (Order) *</label>
+                            {{ form.order }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">ពណ៌សម្គាល់ (Badge Color) *</label>
+                            {{ form.badge_color }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-dark">ឥរិយាបថ (Behavior) *</label>
+                            {{ form.category_type }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ការពិពណ៌នា (Description)</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label fw-bold small text-dark" for="{{ form.is_active.id_for_label }}">
+                            បើកដំណើរការស្ថានភាពនេះ (Active)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openNewStatusModal() {
+        document.getElementById('statusModalTitle').innerHTML = '<i class="fa-solid fa-plus-circle me-2"></i>បន្ថែមស្ថានភាពសិក្សាថ្មី';
+        document.getElementById('statusForm').action = "{% url 'student_status_create' %}";
+        
+        document.getElementById('id_name').value = '';
+        document.getElementById('id_name_en').value = '';
+        document.getElementById('id_code').value = '';
+        document.getElementById('id_order').value = '{{ statuses|length|add:"1" }}';
+        document.getElementById('id_badge_color').value = 'success';
+        document.getElementById('id_category_type').value = 'ACTIVE_STUDY';
+        document.getElementById('id_description').value = '';
+        document.getElementById('id_is_active').checked = true;
+
+        new bootstrap.Modal(document.getElementById('statusModal')).show();
+    }
+
+    function openEditStatusModal(id, name, nameEn, code, color, category, order, desc, isActive) {
+        document.getElementById('statusModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i>កែប្រែស្ថានភាពសិក្សា៖ ' + name;
+        document.getElementById('statusForm').action = "/students/statuses/" + id + "/save/";
+
+        document.getElementById('id_name').value = name;
+        document.getElementById('id_name_en').value = nameEn;
+        document.getElementById('id_code').value = code;
+        document.getElementById('id_order').value = order;
+        document.getElementById('id_badge_color').value = color;
+        document.getElementById('id_category_type').value = category;
+        document.getElementById('id_description').value = desc;
+        document.getElementById('id_is_active').checked = isActive;
+
+        new bootstrap.Modal(document.getElementById('statusModal')).show();
+    }
+</script>
+{% endblock %}

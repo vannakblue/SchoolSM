@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}កែប្រែមុខវិជ្ជា | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+    </div>
+    <a href="{% url 'subject_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="custom-card shadow-sm">
+            {% if form.errors %}
+            <div class="alert alert-danger mb-3 p-3 small">
+                <strong class="d-block mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> សូមពិនិត្យមើលកំហុសខាងក្រោម៖</strong>
+                <ul class="mb-0 ps-3">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="order" value="{{ form.order.value|default:1 }}">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ឈ្មោះមុខវិជ្ជាជាភាសាខ្មែរ *</label>
+                    {{ form.name_kh }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ឈ្មោះមុខវិជ្ជាជាភាសាអង់គ្លេស *</label>
+                    {{ form.name_en }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">កូដមុខវិជ្ជា / អក្សរកាត់ (Code) *</label>
+                    {{ form.code }}
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">ពណ៌សម្គាល់ (Badge Color)</label>
+                    <div class="d-flex align-items-center gap-2">
+                        {{ form.color_code }}
+                        <span class="text-muted small">ជ្រើសរើសពណ៌សម្រាប់បង្ហាញលើកាលវិភាគ និងប័ណ្ណពិន្ទុ</span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 pt-2 border-top">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                    <a href="{% url 'subject_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

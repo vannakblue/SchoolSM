@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+        <p class="text-muted small mb-0">កត់ត្រាការនាំចូលស្តុក ឬលក់ឯកសណ្ឋាន/សៀវភៅពុម្ពជូនសិស្ស</p>
+    </div>
+    <a href="{% url 'inventory_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="custom-card">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ជ្រើសរើសមុខទំនិញ *</label>
+                    {{ form.item }}
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">ប្រភេទប្រតិបត្តិការ *</label>
+                        {{ form.transaction_type }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">ចំនួន (Quantity) *</label>
+                        {{ form.quantity }}
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">តម្លៃឯកតា ($) *</label>
+                        {{ form.unit_price }}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">សិស្សទិញ (បើជាការលក់)</label>
+                        {{ form.student }}
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">កំណត់ចំណាំ</label>
+                    {{ form.notes }}
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកប្រតិបត្តិការ
+                    </button>
+                    <a href="{% url 'inventory_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

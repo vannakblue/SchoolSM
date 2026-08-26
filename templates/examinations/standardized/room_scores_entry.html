@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ចូលពិន្ទុតាមបន្ទប់៖ {{ selected_room.room_name|default:"គ្មានបន្ទប់" }} | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-input {
+        width: 75px;
+        text-align: center;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 6px;
+        transition: all 0.15s ease;
+    }
+    .score-input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        background-color: #f5f3ff;
+    }
+    .score-input.is-absent {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+    .table-matrix-scores th, .table-matrix-scores td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary fs-7">ថ្នាក់ទី {{ exam.grade_level }}</span>
+                <span class="badge bg-secondary fs-7">{{ exam.get_track_display }}</span>
+                <span class="badge bg-light text-dark border">{{ exam.academic_year.name }}</span>
+            </div>
+            <h3 class="fw-bold text-primary mb-0">
+                <i class="fa-solid fa-pen-to-square me-2"></i>បញ្ចូលពិន្ទុប្រឡង៖ {{ selected_room.room_name|default:"បន្ទប់ប្រឡង" }}
+            </h3>
+            <p class="text-muted small mb-0">{{ exam.name }} • ពិន្ទុពេញសរុប៖ <strong>{{ total_max_score|floatformat:0 }}</strong> • មេគុណសរុប៖ <strong>{{ total_coefficients|floatformat:1 }}</strong></p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'exam_provisional_results_view' exam.id %}" class="btn btn-outline-danger fw-bold btn-sm">
+                <i class="fa-solid fa-ranking-star me-1"></i> តារាងបិទផ្សាយបណ្តោះអាសន្ន
+            </a>
+            <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-outline-secondary fw-bold btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i> ផ្ទាំងគ្រប់គ្រងសម័យប្រឡង
+            </a>
+        </div>
+    </div>
+
+    <!-- Room Selector Tabs/Pills -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-bold small text-muted me-1"><i class="fa-solid fa-door-open me-1 text-primary"></i>ជ្រើសរើសបន្ទប់៖</span>
+        {% for r in rooms %}
+        <a href="{% url 'exam_room_scores_entry' exam.id %}?room_id={{ r.id }}" 
+           class="btn btn-sm fw-bold {% if selected_room and selected_room.id == r.id %}btn-primary shadow-sm{% else %}btn-light border text-dark{% endif %}">
+            {{ r.room_name }} <span class="badge {% if selected_room and selected_room.id == r.id %}bg-white text-primary{% else %}bg-secondary text-white{% endif %} ms-1">{{ r.candidate_count }}</span>
+        </a>
+        {% empty %}
+        <span class="text-muted small">មិនទាន់មានបន្ទប់ប្រឡងនៅឡើយទេ។</span>
+        {% endfor %}
+    </div>
+</div>
+
+{% if selected_room and candidate_rows %}
+<!-- Score Entry Form -->
+<form method="POST" id="scoreMatrixForm">
+    {% csrf_token %}
+    <div class="custom-card p-4 shadow-sm mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-list-check me-2"></i>តារាងបញ្ចូលពិន្ទុ ({{ selected_room.room_name }})
+                </h5>
+                <span class="text-muted small">ចំនួនបេក្ខជន៖ <strong>{{ candidate_rows|length }}</strong> នាក់ • គណនាស្វ័យប្រវត្តិនូវ ពិន្ទុសរុប មធ្យមភាគ និទ្ទេស និងចំណាត់ថ្នាក់</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <div id="saveStatusIndicator" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1.5 d-none">
+                    <i class="fa-solid fa-check-circle me-1"></i> បានរក្សាទុក
+                </div>
+                <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុបន្ទប់នេះ
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive border rounded-3" style="max-height: 650px; overflow-y: auto;">
+            <table class="table table-bordered table-hover align-middle mb-0 small text-center table-matrix-scores" id="scoresTable">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th style="width: 45px;">លេខតុ</th>
+                        <th style="width: 70px;">អត្តលេខ</th>
+                        <th style="min-width: 140px; text-align: left; padding-left: 10px;">គោត្តនាម-នាម</th>
+                        <th style="width: 50px;">ភេទ</th>
+                        
+                        <!-- Exam Subjects Column Headers with Max Score and Coefficient Badges -->
+                        {% for s in subjects %}
+                        <th style="min-width: 95px;" data-subject-id="{{ s.id }}" data-max-score="{{ s.max_score }}" data-coefficient="{{ s.coefficient }}">
+                            <div class="fw-bold text-white">{{ s.subject.name_kh }}</div>
+                            <div class="d-flex justify-content-center gap-1 mt-1">
+                                <span class="badge bg-secondary-subtle text-dark" style="font-size: 0.68rem;" title="ពិន្ទុពេញ">/{{ s.max_score|floatformat:0 }}</span>
+                                <span class="badge bg-info text-white" style="font-size: 0.68rem;" title="មេគុណ">x{{ s.coefficient|floatformat:1 }}</span>
+                            </div>
+                        </th>
+                        {% endfor %}
+
+                        <!-- Computed Columns -->
+                        <th style="width: 85px;" class="bg-primary text-white">ពិន្ទុសរុប</th>
+                        <th style="width: 80px;" class="bg-primary text-white">មធ្យមភាគ</th>
+                        <th style="width: 70px;" class="bg-primary text-white">និទ្ទេស</th>
+                        <th style="width: 75px;" class="bg-primary text-white">ចំណាត់ថ្នាក់</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in candidate_rows %}
+                    {% with c=row.candidate %}
+                    <tr id="row_cand_{{ c.id }}" data-candidate-id="{{ c.id }}">
+                        <td class="fw-bold bg-light">{{ c.desk_number|stringformat:"02d" }}</td>
+                        <td class="fw-bold text-primary bg-light">{{ c.roll_number }}</td>
+                        <td class="text-start ps-2 fw-bold text-dark">
+                            {{ c.candidate_name_kh }}
+                            <div class="text-muted fw-normal" style="font-size: 0.72rem;">{{ c.origin_class|default:"" }}</div>
+                        </td>
+                        <td>
+                            {% if c.gender == 'F' %}<span class="badge bg-danger-subtle text-danger border">ស្រី</span>
+                            {% else %}<span class="badge bg-primary-subtle text-primary border">ប្រុស</span>{% endif %}
+                        </td>
+
+                        <!-- Subject Score Inputs -->
+                        {% for item in row.scores %}
+                        <td class="p-1">
+                            <input type="text" 
+                                   name="score_{{ c.id }}_{{ item.subject.id }}"
+                                   id="input_{{ c.id }}_{{ item.subject.id }}"
+                                   value="{% if item.is_absent %}A{% elif item.score_val != '' %}{{ item.score_val|floatformat:1 }}{% endif %}"
+                                   class="form-control form-control-sm score-input mx-auto {% if item.is_absent %}is-absent{% endif %}"
+                                   data-cand-id="{{ c.id }}"
+                                   data-sub-id="{{ item.subject.id }}"
+                                   data-max="{{ item.subject.max_score }}"
+                                   data-coef="{{ item.subject.coefficient }}"
+                                   autocomplete="off"
+                                   placeholder="-"
+                                   oninput="handleScoreChange(this)"
+                                   onkeydown="handleArrowNav(event, this)">
+                        </td>
+                        {% endfor %}
+
+                        <!-- Computed Row Cells -->
+                        <td class="fw-bold text-primary fs-7" id="total_score_{{ c.id }}">
+                            {{ c.total_score|floatformat:1 }}
+                        </td>
+                        <td class="fw-bold fs-7" id="avg_score_{{ c.id }}">
+                            {{ c.average_score|floatformat:2 }}
+                        </td>
+                        <td id="grade_badge_{{ c.id }}">
+                            {% if c.grade_letter == 'A' %}<span class="badge bg-success fs-7">A</span>
+                            {% elif c.grade_letter == 'B' %}<span class="badge bg-primary fs-7">B</span>
+                            {% elif c.grade_letter == 'C' %}<span class="badge bg-info fs-7">C</span>
+                            {% elif c.grade_letter == 'D' %}<span class="badge bg-warning text-dark fs-7">D</span>
+                            {% elif c.grade_letter == 'E' %}<span class="badge bg-secondary fs-7">E</span>
+                            {% elif c.grade_letter == 'F' %}<span class="badge bg-danger fs-7">F</span>
+                            {% else %}<span class="badge bg-light text-muted border">-</span>{% endif %}
+                        </td>
+                        <td class="fw-bold" id="rank_badge_{{ c.id }}">
+                            {% if c.rank_in_room %}<span class="badge bg-dark-subtle text-dark border">#{{ c.rank_in_room }}</span>
+                            {% else %}<span class="text-muted">-</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top">
+            <div class="text-muted small">
+                <i class="fa-solid fa-keyboard me-1"></i><strong>ជំនួយ៖</strong> ប្រើគ្រាប់ចុចព្រួញ (ឡើងលើ ចុះក្រោម ឆ្វេង ស្តាំ) ឬ Enter ដើម្បីប្តូរក្រឡា។ វាយអក្សរ <strong>A</strong> សម្រាប់សិស្សអវត្តមាន។
+            </div>
+            <button type="submit" class="btn btn-primary fw-bold px-5 shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុ
+            </button>
+        </div>
+    </div>
+</form>
+{% else %}
+<div class="custom-card p-5 text-center text-muted">
+    <i class="fa-solid fa-door-open display-4 opacity-50 mb-3"></i>
+    <h4 class="fw-bold">មិនទាន់មានបន្ទប់ប្រឡង ឬបេក្ខជនក្នុងបន្ទប់នេះនៅឡើយទេ</h4>
+    <p class="mb-3">សូមចូលទៅកាន់ផ្ទាំងគ្រប់គ្រងសម័យប្រឡង រួចធ្វើការទាញឈ្មោះសិស្ស និងបែងចែកបន្ទប់ប្រឡងជាមុនសិន។</p>
+    <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-primary fw-bold">
+        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅផ្ទាំងគ្រប់គ្រង
+    </a>
+</div>
+{% endif %}
+
+<!-- Live Calculation & Keyboard Navigation Script -->
+<script>
+    const TOTAL_MAX_SCORE = parseFloat("{{ total_max_score|default:100 }}");
+    const TOTAL_COEFFICIENTS = parseFloat("{{ total_coefficients|default:1 }}");
+
+    function handleScoreChange(inputEl) {
+        const candId = inputEl.getAttribute('data-cand-id');
+        let valStr = inputEl.value.trim().toUpperCase();
+
+        if (valStr === 'A') {
+            inputEl.classList.add('is-absent');
+            inputEl.value = 'A';
+        } else {
+            inputEl.classList.remove('is-absent');
+            const maxScore = parseFloat(inputEl.getAttribute('data-max') || '100');
+            const num = parseFloat(valStr);
+            if (!isNaN(num) && num > maxScore) {
+                inputEl.value = maxScore;
+            }
+        }
+
+        recalculateRow(candId);
+        recalculateRoomRanks();
+    }
+
+    function recalculateRow(candId) {
+        const row = document.getElementById(`row_cand_${candId}`);
+        if (!row) return;
+
+        const inputs = row.querySelectorAll('.score-input');
+        let totalScore = 0;
+        let weightedSum = 0;
+        let hasAnyScore = false;
+
+        inputs.forEach(inp => {
+            const valStr = inp.value.trim().toUpperCase();
+            const coef = parseFloat(inp.getAttribute('data-coef') || '1');
+            if (valStr === 'A') {
+                hasAnyScore = true;
+                // Absent counts as 0 score
+            } else {
+                const num = parseFloat(valStr);
+                if (!isNaN(num)) {
+                    hasAnyScore = true;
+                    totalScore += num;
+                    weightedSum += (num * coef);
+                }
+            }
+        });
+
+        const totalCell = document.getElementById(`total_score_${candId}`);
+        const avgCell = document.getElementById(`avg_score_${candId}`);
+        const gradeBadge = document.getElementById(`grade_badge_${candId}`);
+
+        if (!hasAnyScore) {
+            if (totalCell) totalCell.innerText = '0.0';
+            if (avgCell) avgCell.innerText = '0.00';
+            if (gradeBadge) gradeBadge.innerHTML = '<span class="badge bg-light text-muted border">-</span>';
+            return;
+        }
+
+        const avgScore = TOTAL_COEFFICIENTS > 0 ? (weightedSum / TOTAL_COEFFICIENTS) : 0;
+        const percentage = TOTAL_MAX_SCORE > 0 ? ((totalScore / TOTAL_MAX_SCORE) * 100) : 0;
+
+        if (totalCell) totalCell.innerText = totalScore.toFixed(1);
+        if (avgCell) avgCell.innerText = avgScore.toFixed(2);
+
+        // Letter Grade determination
+        let gradeLetter = 'F';
+        let badgeClass = 'bg-danger';
+
+        if (percentage >= 85.0) {
+            gradeLetter = 'A';
+            badgeClass = 'bg-success';
+        } else if (percentage >= 75.0) {
+            gradeLetter = 'B';
+            badgeClass = 'bg-primary';
+        } else if (percentage >= 65.0) {
+            gradeLetter = 'C';
+            badgeClass = 'bg-info';
+        } else if (percentage >= 55.0) {
+            gradeLetter = 'D';
+            badgeClass = 'bg-warning text-dark';
+        } else if (percentage >= 45.0) {
+            gradeLetter = 'E';
+            badgeClass = 'bg-secondary';
+        }
+
+        if (gradeBadge) {
+            gradeBadge.innerHTML = `<span class="badge ${badgeClass} fs-7">${gradeLetter}</span>`;
+        }
+    }
+
+    function recalculateRoomRanks() {
+        const rows = Array.from(document.querySelectorAll('#scoresTable tbody tr'));
+        const candData = [];
+
+        rows.forEach(r => {
+            const candId = r.getAttribute('data-candidate-id');
+            const totalScoreText = document.getElementById(`total_score_${candId}`)?.innerText || '0';
+            const avgScoreText = document.getElementById(`avg_score_${candId}`)?.innerText || '0';
+            candData.push({
+                candId: candId,
+                totalScore: parseFloat(totalScoreText) || 0,
+                avgScore: parseFloat(avgScoreText) || 0,
+            });
+        });
+
+        candData.sort((a, b) => (b.totalScore - a.totalScore) || (b.avgScore - a.avgScore));
+
+        candData.forEach((item, idx) => {
+            const rankBadge = document.getElementById(`rank_badge_${item.candId}`);
+            if (rankBadge) {
+                if (item.totalScore > 0) {
+                    rankBadge.innerHTML = `<span class="badge bg-dark-subtle text-dark border">#${idx + 1}</span>`;
+                } else {
+                    rankBadge.innerHTML = `<span class="text-muted">-</span>`;
+                }
+            }
+        });
+    }
+
+    function handleArrowNav(event, currentInput) {
+        const key = event.key;
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(key)) return;
+
+        const table = document.getElementById('scoresTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const currentRow = currentInput.closest('tr');
+        const rowIndex = rows.indexOf(currentRow);
+        const inputsInRow = Array.from(currentRow.querySelectorAll('.score-input'));
+        const colIndex = inputsInRow.indexOf(currentInput);
+
+        let targetInput = null;
+
+        if (key === 'ArrowUp' && rowIndex > 0) {
+            event.preventDefault();
+            const prevRow = rows[rowIndex - 1];
+            targetInput = prevRow.querySelectorAll('.score-input')[colIndex];
+        } else if ((key === 'ArrowDown' || key === 'Enter') && rowIndex < rows.length - 1) {
+            event.preventDefault();
+            const nextRow = rows[rowIndex + 1];
+            targetInput = nextRow.querySelectorAll('.score-input')[colIndex];
+        } else if (key === 'ArrowLeft' && colIndex > 0) {
+            event.preventDefault();
+            targetInput = inputsInRow[colIndex - 1];
+        } else if (key === 'ArrowRight' && colIndex < inputsInRow.length - 1) {
+            event.preventDefault();
+            targetInput = inputsInRow[colIndex + 1];
+        }
+
+        if (targetInput) {
+            targetInput.focus();
+            targetInput.select();
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+<!-- ============================================================== -->
+<!-- MODAL: TEACHER COLLECTOR QR PASS & MAGIC LINKS (CHANNEL 2)     -->
+<!-- ============================================================== -->
+<div class="modal fade" id="teacherCollectorPassModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-id-card-clip me-2 text-warning"></i> កាត QR Pass សម្រាប់គ្រូប្រមូលថវិកា (Teacher QR Pass)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info border small mb-4">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    <strong>របៀបប្រើប្រាស់៖</strong> លោកគ្រូអ្នកគ្រូគ្រាន់តែយកទូរស័ព្ទមក **ស្កេន QR Code** ផ្ទាល់ខ្លួនរបស់គាត់ ឬចុចលើ **តំណភ្ជាប់ (Magic Link)** នោះគាត់នឹងចូលទៅកាន់ **Mobile Collector Portal** ដោយស្វ័យប្រវត្តិ (មិនបាច់វាយបញ្ចូល Password ឡើយ)។
+                </div>
+
+                <div id="collectorPassesContainer" class="row g-3">
+                    <div class="col-12 text-center py-4 text-muted" id="collectorPassLoading">
+                        <i class="fa-solid fa-spinner fa-spin fa-2x mb-2 text-primary"></i>
+                        <div>កំពុងទាញយកទិន្នន័យ QR Pass របស់គ្រូ...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3">
+                <button type="button" class="btn btn-outline-secondary" onclick="printAllCollectorPasses()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពកាតទាំងអស់ (Print All)
+                </button>
+                <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openTeacherCollectorPassModal() {
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('teacherCollectorPassModal'));
+        modal.show();
+
+        const container = document.getElementById('collectorPassesContainer');
+        container.innerHTML = `
+            <div class="col-12 text-center py-4 text-muted">
+                <i class="fa-solid fa-spinner fa-spin fa-2x mb-2 text-primary"></i>
+                <div>កំពុងទាញយកទិន្នន័យ QR Pass...</div>
+            </div>
+        `;
+
+        fetch("{% url 'get_teacher_collector_passes' %}")
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.collectors && data.collectors.length > 0) {
+                    let html = '';
+                    data.collectors.forEach(c => {
+                        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(c.portal_url)}`;
+                        html += `
+                            <div class="col-md-6">
+                                <div class="card border rounded-4 shadow-sm p-3 h-100 bg-light">
+                                    <div class="d-flex align-items-center gap-3 mb-2">
+                                        <div class="bg-white p-2 rounded-3 border shadow-sm text-center">
+                                            <img src="${qrImgUrl}" alt="QR Pass" class="img-fluid" style="width: 90px; height: 90px;">
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark fs-6">${c.name}</div>
+                                            <div class="text-muted small">${c.latin_name} (${c.teacher_id})</div>
+                                            <div class="small text-primary mt-1">
+                                                <i class="fa-solid fa-chalkboard-user me-1"></i>${c.classes.join(', ')}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="input-group input-group-sm mt-2">
+                                        <input type="text" class="form-control bg-white font-monospace small" value="${c.portal_url}" id="urlPass_${c.id}" readonly>
+                                        <button class="btn btn-outline-primary" type="button" onclick="copyPassUrl('urlPass_${c.id}')" title="ចម្លង Link">
+                                            <i class="fa-solid fa-copy"></i>
+                                        </button>
+                                        <a href="${c.portal_url}" target="_blank" class="btn btn-success" title="បើកសាកល្បង">
+                                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="col-12 text-center py-4 text-muted">
+                            <i class="fa-solid fa-user-slash fa-2x mb-2 text-secondary"></i>
+                            <div>មិនទាន់មានគ្រូដែលត្រូវបានកំណត់ជា «អ្នកប្រមូលថវិកា (Fee Collector)» ឡើយ។</div>
+                            <div class="small mt-2">សូមចូលទៅកាន់ <strong>«គ្រប់គ្រងអ្នកប្រមូលថវិកា»</strong> ដើម្បីផ្តល់សិទ្ធិជាមុន។</div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<div class="col-12 text-center text-danger py-4">កំហុសក្នុងការទាញយកទិន្នន័យ</div>`;
+            });
+    }
+
+    function copyPassUrl(inputId) {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.select();
+            document.execCommand('copy');
+            Swal.fire({
+                icon: 'success',
+                title: 'បានចម្លង Link!',
+                text: 'លោកអ្នកអាចផ្ញើ Link នេះតាម Telegram ជូនលោកគ្រូអ្នកគ្រូបាន។',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    }
+
+    function printAllCollectorPasses() {
+        window.print();
+    }
+</script>

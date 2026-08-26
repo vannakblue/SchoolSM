@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}ការកំណត់ Telegram Notifications | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1"><i class="fa-brands fa-telegram text-info me-2"></i>ការកំណត់ Telegram Bot Notifications</h2>
+        <p class="text-muted small mb-0">ភ្ជាប់ប្រព័ន្ធផ្ញើសារ (Telegram Bot API) ដើម្បីផ្ញើសារទៅកាន់មាតាបិតា ពេលសិស្សអវត្តមាន ពេលចេញលទ្ធផលប្រឡង ឬដល់ថ្ងៃបង់លុយ</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Config Form -->
+    <div class="col-lg-6">
+        <div class="custom-card mb-4">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">ការកំណត់ Telegram Bot</h5>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Telegram Bot Token</label>
+                    {{ form.bot_token }}
+                    <span class="text-muted small" style="font-size: 0.75rem;">បង្កើត Bot តាមរយៈ @BotFather លើ Telegram</span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Default Channel / Chat ID</label>
+                    {{ form.chat_id }}
+                    <span class="text-muted small" style="font-size: 0.75rem;">Channel ID សម្រាប់ Broadcast សារទូទៅ</span>
+                </div>
+
+                <div class="border-top pt-3 mb-3">
+                    <h6 class="fw-bold small text-muted mb-2">ប្រភេទនៃការផ្ញើសារស្វ័យប្រវត្ត៖</h6>
+                    <div class="form-check form-switch mb-2">
+                        {{ form.notify_on_absence }}
+                        <label class="form-check-label small" for="{{ form.notify_on_absence.id_for_label }}">
+                            ជូនដំណឹងពេលសិស្សអវត្តមានឥតច្បាប់ (Student Absence Alert)
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        {{ form.notify_on_exam }}
+                        <label class="form-check-label small" for="{{ form.notify_on_exam.id_for_label }}">
+                            ជូនដំណឹងពេលចេញលទ្ធផលប្រឡង (Exam Results & Rankings)
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notify_on_fee }}
+                        <label class="form-check-label small" for="{{ form.notify_on_fee.id_for_label }}">
+                            ជូនដំណឹងការរំលឹកបង់ថ្លៃសិក្សា (Fee Due Reminder)
+                        </label>
+                    </div>
+                    <div class="form-check form-switch">
+                        {{ form.is_active }}
+                        <label class="form-check-label fw-bold small text-primary" for="{{ form.is_active.id_for_label }}">
+                            បើកដំណើរការប្រព័ន្ធផ្ញើសារ (Enable System)
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់
+                </button>
+            </form>
+        </div>
+
+        <!-- Test Dispatcher Box -->
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">ផ្ញើសារសាកល្បង (Test Message)</h5>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="test_message" value="1">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ខ្លឹមសារសារសាកល្បង</label>
+                    <textarea name="message_text" class="form-control" rows="2">🔔 សួស្តី! នេះជាសារសាកល្បងពីប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)។</textarea>
+                </div>
+                <button type="submit" class="btn btn-outline-info w-100 fw-bold">
+                    <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើសារតេស្តឥឡូវនេះ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Logs -->
+    <div class="col-lg-6">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">កំណត់ត្រាការផ្ញើសារចុងក្រោយ (Notification Logs)</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for log in logs %}
+                <div class="list-group-item px-0 py-3 border-0 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-dark small"><i class="fa-brands fa-telegram text-info me-1"></i> {{ log.title }}</strong>
+                        <span class="badge {% if log.status == 'SENT' %}bg-success{% elif log.status == 'SIMULATED' %}bg-info text-dark{% else %}bg-danger{% endif %}">
+                            {{ log.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="text-muted small mb-1">{{ log.message }}</p>
+                    <div class="d-flex justify-content-between text-muted" style="font-size: 0.72rem;">
+                        <span>ជូនចំពោះ៖ {{ log.recipient_name }} ({{ log.recipient_phone|default:"-" }})</span>
+                        <span>{{ log.created_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-bell-slash fa-2x mb-2"></i>
+                    <div>មិនទាន់មានកំណត់ត្រាផ្ញើសារនៅឡើយទេ</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

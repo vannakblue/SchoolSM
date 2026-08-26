@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ការកំណត់វិធីសាស្ត្រវត្តមានគ្រូ & ឧបករណ៍ | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1000px;">
+    
+    <!-- Top Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                <i class="fa-solid fa-sliders me-1"></i> Admin Attendance Configuration
+            </span>
+            <h2 class="fw-bold mb-0 mt-1">ការកំណត់វិធីសាស្ត្រវត្តមានគ្រូ & ឧបករណ៍</h2>
+            <p class="text-muted small mb-0">
+                ជ្រើសរើសបើក/បិទ វិធីសាស្ត្រកត់ត្រាវត្តមានគ្រូ កំណត់ម៉ោងចូលធ្វើការ ម៉ោងយឺត និងលក្ខខណ្ឌសុវត្ថិភាព
+            </p>
+        </div>
+        <a href="{% url 'teacher_attendance' %}" class="btn btn-light btn-sm border">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+        </a>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        <!-- Section 0: Admin Choice for Daily Scan Method (ជម្រើសស្កេនវត្តមានប្រចាំថ្ងៃដែល Admin បានកំណត់) -->
+        <div class="custom-card p-4 shadow-sm mb-4 border-2 border-primary">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="bg-primary text-white rounded-circle p-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-crown fs-4"></i>
+                </div>
+                <div>
+                    <span class="badge bg-primary rounded-pill px-3 py-1 small">Admin Enforced Control</span>
+                    <h5 class="fw-bold text-dark mb-0 mt-1">ការកំណត់ជម្រើសស្កេនប្រចាំថ្ងៃ (Daily Enforced Scan Option)</h5>
+                    <p class="text-muted small mb-0">មានតែ Admin ទេដែលអាចកំណត់ថាការស្កេនប្រចាំថ្ងៃ ត្រូវប្រើតាមជម្រើសទី ១, ទី ២, ឬទី ៣</p>
+                </div>
+            </div>
+
+            <div class="p-3 bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25">
+                <label class="form-label fw-bold text-dark mb-2">
+                    <i class="fa-solid fa-hand-pointer text-primary me-1"></i> ជ្រើសរើសវិធីសាស្ត្រដែលត្រូវអនុវត្តសម្រាប់គ្រូទាំងអស់៖
+                </label>
+                <select name="active_daily_mode" class="form-select form-select-lg fw-bold text-primary">
+                    {% for val, label in daily_mode_choices %}
+                    <option value="{{ val }}" {% if config.active_daily_mode == val %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted d-block mt-2">
+                    <i class="fa-solid fa-circle-info text-info me-1"></i>
+                    ប្រសិនបើជ្រើសរើសយក <strong>"ជម្រើសទី ១ ប៉ុណ្ណោះ"</strong> នោះគ្រូអាចស្កេនបានតែតាម Dynamic QR Code ដោយប្រព័ន្ធនឹងបិទ Face AI / Biometric ជាបណ្តោះអាសន្ន។
+                </small>
+            </div>
+        </div>
+
+        <!-- Section 1: Method Toggles (ជម្រើសវិធីសាស្ត្រកត់ត្រាវត្តមាន) -->
+        <div class="custom-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="fa-solid fa-toggle-on text-primary me-2"></i> ១. បើក/បិទ វិធីសាស្ត្រកត់ត្រាវត្តមានគ្រូ (Method Toggles)
+            </h5>
+            <p class="text-muted small mb-4">
+                Admin អាចជ្រើសរើសបើកដំណើរការវិធីសាស្ត្រមួយ ឬច្រើនព្រមគ្នាតាមតម្រូវការរបស់សាលា៖
+            </p>
+
+            <div class="row g-3">
+
+                <!-- QR Code Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="fa-solid fa-qrcode fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Dynamic QR Code (Kiosk)</h6>
+                                <small class="text-muted">គ្រូប្រើទូរស័ព្ទស្កេន QR លើអេក្រង់សាលា</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_qr_checkin" {% if config.enable_qr_checkin %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Face AI Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-info text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="fa-solid fa-camera fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Webcam Face Recognition AI</h6>
+                                <small class="text-muted">ស្កេនផ្ទៃមុខតាម Tablet/Laptop មុខសាលា</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_face_ai_checkin" {% if config.enable_face_ai_checkin %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Biometric Device Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-warning text-dark rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="fa-solid fa-fingerprint fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">ម៉ាស៊ីន Biometric (ZKTeco/Hikvision)</h6>
+                                <small class="text-muted">ម៉ាស៊ីនស្កេនមេដៃ/មុខ តាម Wi-Fi ឬ LAN</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_biometric_device" {% if config.enable_biometric_device %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USB Fingerprint Reader Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-success text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="fa-solid fa-plug fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">ឧបករណ៍ USB Desktop Reader</h6>
+                                <small class="text-muted">កូនឧបករណ៍ដោតកុំព្យូទ័ររដ្ឋបាល</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_usb_fingerprint" {% if config.enable_usb_fingerprint %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Import Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-secondary text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="fa-solid fa-file-excel fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Flash Drive File Import</h6>
+                                <small class="text-muted">Import File Excel/CSV/DAT ពី Flash Drive</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_file_import" {% if config.enable_file_import %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timetable Sync Toggle -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-purple text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; background: #8b5cf6;">
+                                <i class="fa-solid fa-calendar-check fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Sync ពីការស្រង់វត្តមានសិស្ស</h6>
+                                <small class="text-muted">វាយតម្លៃវត្តមានតាមកាលវិភាគបង្រៀនជាក់ស្តែង</small>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" name="enable_timetable_sync" {% if config.enable_timetable_sync %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Shifts & Work Timings (ម៉ោងធ្វើការ & ម៉ោងយឺត) -->
+        <div class="custom-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="fa-solid fa-clock text-info me-2"></i> ២. កំណត់ម៉ោងចូលធ្វើការ & ម៉ោងចាត់ទុកថាយឺត (Work Shifts & Late Cutoff)
+            </h5>
+
+            <div class="row g-4">
+                <!-- Morning Shift -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-sun me-1"></i> វេនពេលព្រឹក (Morning Shift)</h6>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">ម៉ោងចាប់ផ្តើម Check-in ព្រឹក៖</label>
+                            <input type="time" name="morning_checkin_start" class="form-control" value="{{ config.morning_checkin_start|time:'H:i' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">ម៉ោងផុតកំណត់ Check-in ព្រឹក៖</label>
+                            <input type="time" name="morning_checkin_end" class="form-control" value="{{ config.morning_checkin_end|time:'H:i' }}">
+                        </div>
+                        <div>
+                            <label class="form-label small fw-bold text-danger">ម៉ោងចាត់ទុកថាមកយឺត (Late Threshold)៖</label>
+                            <input type="time" name="morning_late_threshold" class="form-control border-danger" value="{{ config.morning_late_threshold|time:'H:i' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Afternoon Shift -->
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-4 border">
+                        <h6 class="fw-bold text-warning-emphasis mb-3"><i class="fa-solid fa-cloud-sun me-1"></i> វេនពេលរសៀល (Afternoon Shift)</h6>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">ម៉ោងចាប់ផ្តើម Check-in រសៀល៖</label>
+                            <input type="time" name="afternoon_checkin_start" class="form-control" value="{{ config.afternoon_checkin_start|time:'H:i' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">ម៉ោងផុតកំណត់ Check-in រសៀល៖</label>
+                            <input type="time" name="afternoon_checkin_end" class="form-control" value="{{ config.afternoon_checkin_end|time:'H:i' }}">
+                        </div>
+                        <div>
+                            <label class="form-label small fw-bold text-danger">ម៉ោងចាត់ទុកថាមកយឺត (Late Threshold)៖</label>
+                            <input type="time" name="afternoon_late_threshold" class="form-control border-danger" value="{{ config.afternoon_late_threshold|time:'H:i' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Leave Cutoff Setting -->
+                <div class="col-12">
+                    <div class="p-3 bg-light rounded-4 border border-warning">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">
+                                    <i class="fa-solid fa-clock-rotate-left text-warning me-2"></i> ម៉ោងផុតកំណត់សម្រាប់ការសុំច្បាប់បន្ទាន់មុន ១ ថ្ងៃ (Emergency Leave Cutoff Time)
+                                </h6>
+                                <p class="text-muted small mb-0">
+                                    គ្រូអាចសុំច្បាប់បន្ទាន់បានតែចំថ្ងៃបង្រៀន ឬមុនថ្ងៃបង្រៀន ១ ថ្ងៃត្រឹមម៉ោងដែលបានកំណត់នេះប៉ុណ្ណោះ (Default: 5:00 PM / 17:00)។
+                                </p>
+                            </div>
+                            <div style="min-width: 160px;">
+                                <input type="time" name="emergency_leave_cutoff_time" class="form-control fw-bold text-primary" value="{{ config.emergency_leave_cutoff_time|time:'H:i' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Security Policies & Geofencing (គោលការណ៍សុវត្ថិភាព) -->
+        <div class="custom-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="fa-solid fa-shield-halved text-success me-2"></i> ៣. គោលការណ៍សុវត្ថិភាព & ការពារការបន្លំ (Anti-Fraud & Security)
+            </h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="gpsCheck" name="require_gps_validation" {% if config.require_gps_validation %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="gpsCheck">ផ្ទៀងផ្ទាត់ទីតាំង GPS (Geofencing)</label>
+                    </div>
+                    <small class="text-muted d-block ps-4">
+                        តម្រូវឱ្យទូរស័ព្ទគ្រូស្ថិតក្នុងកាំ <strong>{{ school_profile.gps_radius_meters|default:100 }} ម៉ែត្រ</strong> ពីសាលា។
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="deviceBindCheck" name="require_device_binding" {% if config.require_device_binding %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="deviceBindCheck">ចងភ្ជាប់ឧបករណ៍ទូរស័ព្ទ (Device Binding)</label>
+                    </div>
+                    <small class="text-muted d-block ps-4">
+                        ១ គណនីគ្រូ = ១ ទូរស័ព្ទ (ការពារមិនឱ្យយកទូរស័ព្ទមួយមកស្កេនជំនួសគ្នា)។
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="selfieCheck" name="require_selfie_snap" {% if config.require_selfie_snap %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="selfieCheck">ថតរូប Selfie បញ្ជាក់ពេលស្កេន</label>
+                    </div>
+                    <small class="text-muted d-block ps-4">
+                        ថតរូបផ្ទៃមុខ ១ សន្លឹកភ្ជាប់ជាមួយកំណត់ត្រាស្កេន។
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">រយៈពេលប្តូរ Dynamic QR Code (វិនាទី)៖</label>
+                    <input type="number" name="rolling_qr_interval_seconds" class="form-control" value="{{ config.rolling_qr_interval_seconds|default:20 }}" min="10" max="120">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Biometric Machine & Hardware Integration -->
+        <div class="custom-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold text-dark mb-3">
+                <i class="fa-solid fa-server text-warning-emphasis me-2"></i> ៤. ការកំណត់ម៉ាស៊ីន Biometric (ZKTeco / Hikvision)
+            </h5>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">ប្រភេទម៉ាស៊ីន៖</label>
+                    <select name="biometric_device_type" class="form-select">
+                        <option value="ZKTECO" {% if config.biometric_device_type == 'ZKTECO' %}selected{% endif %}>ZKTeco Standalone Terminal (4370)</option>
+                        <option value="HIKVISION" {% if config.biometric_device_type == 'HIKVISION' %}selected{% endif %}>Hikvision ISAPI Terminal (8000)</option>
+                        <option value="GENERIC_PUSH" {% if config.biometric_device_type == 'GENERIC_PUSH' %}selected{% endif %}>Generic ADMS / Cloud Webhook</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">IP របស់ម៉ាស៊ីនលើ Network LAN៖</label>
+                    <input type="text" name="biometric_device_ip" class="form-control" value="{{ config.biometric_device_ip }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Port ម៉ាស៊ីន៖</label>
+                    <input type="number" name="biometric_device_port" class="form-control" value="{{ config.biometric_device_port }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Push Webhook Secret Token៖</label>
+                    <input type="text" name="biometric_push_secret" class="form-control font-monospace" value="{{ config.biometric_push_secret|default:'' }}">
+                </div>
+                <div class="col-md-6 d-flex align-items-center pt-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="teleCheck" name="notify_telegram_on_punch" {% if config.notify_telegram_on_punch %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="teleCheck">ផ្ញើសារដំណឹងទៅ Telegram ពេលគ្រូ Check-in</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="d-flex justify-content-end gap-2 mb-5">
+            <a href="{% url 'teacher_attendance' %}" class="btn btn-light px-4">បោះបង់</a>
+            <button type="submit" class="btn btn-primary px-5 py-2 fw-bold rounded-pill shadow">
+                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកការកំណត់ទាំងអស់
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

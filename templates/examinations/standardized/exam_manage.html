@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងសម័យប្រឡង៖ {{ exam.name }} | SchoolSM{% endblock %}
+
+{% block content %}
+<!-- Exam Header Card -->
+<div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+        <div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="badge bg-primary fs-6 px-3 py-1">ថ្នាក់ទី {{ exam.grade_level }}</span>
+                <span class="badge bg-secondary fs-6 px-2.5 py-1">{{ exam.get_track_display }}</span>
+                <span class="badge bg-info text-dark fs-6 px-2.5 py-1 fw-bold">
+                    {% if exam.session == 'MORNING' %}<i class="fa-solid fa-sun text-warning me-1"></i>{% elif exam.session == 'AFTERNOON' %}<i class="fa-solid fa-cloud-sun text-primary me-1"></i>{% else %}<i class="fa-solid fa-clock me-1"></i>{% endif %}
+                    {{ exam.get_session_display }}
+                </span>
+                <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar-days text-primary me-1"></i>{{ exam.academic_year.name }}</span>
+                {% if exam.is_published %}
+                <span class="badge bg-success px-2.5 py-1"><i class="fa-solid fa-circle-check me-1"></i>បានប្រកាសលទ្ធផល</span>
+                {% else %}
+                <span class="badge bg-warning text-dark px-2.5 py-1"><i class="fa-solid fa-clock me-1"></i>ព្រាង (Draft)</span>
+                {% endif %}
+            </div>
+            <h2 class="fw-bold text-primary mb-1">{{ exam.name }}</h2>
+            <p class="text-muted small mb-0">
+                <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong> • 
+                <i class="fa-solid fa-door-open me-1"></i>ស្តង់ដារបន្ទប់៖ <strong>{{ exam.candidates_per_room }} នាក់/បន្ទប់</strong>
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-primary fw-bold btn-sm">
+                <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែការកំណត់ & មុខវិជ្ជា
+            </a>
+            {% if is_admin %}
+            <button type="button" class="btn btn-outline-danger fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#deleteExamModal">
+                <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡង
+            </button>
+            {% endif %}
+            <a href="{% url 'standardized_exam_list' %}" class="btn btn-outline-secondary fw-bold btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i> បញ្ជីសម័យប្រឡង
+            </a>
+        </div>
+
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div class="d-flex flex-wrap align-items-center gap-2 justify-content-between bg-light p-2.5 rounded-3 border">
+        <!-- Candidate Actions -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- 1-Click Pull Candidates -->
+            <form method="POST" action="{% url 'exam_pull_candidates' exam.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ទាញបញ្ជីសិស្សសកម្មទាំងអស់ពីកម្រិតថ្នាក់ទី {{ exam.grade_level }} ចូលជាបេក្ខជនប្រឡងមែនទេ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm fw-bold shadow-sm">
+                    <i class="fa-solid fa-cloud-arrow-down me-1"></i> ១. ទាញឈ្មោះសិស្សស្វ័យប្រវត្តិ (1-Click Pull)
+                </button>
+            </form>
+
+            <!-- Auto-Generate Rooms (25/room) -->
+            <form method="POST" action="{% url 'exam_generate_rooms' exam.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់បែងចែកបេក្ខជនទាំងអស់ចូលក្នុងបន្ទប់ប្រឡង ({{ exam.candidates_per_room }} នាក់/បន្ទប់) ឡើងវិញមែនទេ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm fw-bold shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ ២៥ នាក់/បន្ទប់ (Auto-Rooms)
+                </button>
+            </form>
+
+            <!-- Excel Import Button -->
+            <button type="button" class="btn btn-teal btn-sm fw-bold text-white shadow-sm" style="background: #0d9488;" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                <i class="fa-solid fa-file-excel me-1"></i> នាំចូល Excel
+            </button>
+
+            <!-- Excel Export Button -->
+            <a href="{% url 'exam_export_candidates_excel' exam.id %}" class="btn btn-outline-success btn-sm fw-bold bg-white">
+                <i class="fa-solid fa-download me-1"></i> នាំចេញ Excel
+            </a>
+        </div>
+
+        <!-- Print & Results Actions -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Postings Sheet -->
+            <a href="{% url 'exam_room_postings_view' exam.id %}" class="btn btn-dark btn-sm fw-bold shadow-sm">
+                <i class="fa-solid fa-door-open me-1"></i> បញ្ជីបិទផ្សាយតាមបន្ទប់
+            </a>
+
+            <!-- Subject Attendance Sheet -->
+            <a href="{% url 'exam_subject_attendance_view' exam.id %}" class="btn btn-purple btn-sm fw-bold text-white shadow-sm" style="background: #7c3aed;">
+                <i class="fa-solid fa-file-signature me-1"></i> បញ្ជីវត្តមានចុះហត្ថលេខា
+            </a>
+
+            <!-- Secret Blind Scoring Portal -->
+            <a href="{% url 'exam_blind_scoring_portal' %}?exam_id={{ exam.id }}" class="btn btn-primary btn-sm fw-bold shadow-sm">
+                <i class="fa-solid fa-lock me-1"></i> បញ្ចូលពិន្ទុកូដសម្ងាត់ (Blind)
+            </a>
+
+            <!-- Scores Entry -->
+            <a href="{% url 'exam_room_scores_entry' exam.id %}" class="btn btn-warning btn-sm fw-bold text-dark shadow-sm">
+                <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលពិន្ទុតាមបន្ទប់
+            </a>
+
+            <!-- Secret Codes Directory (Admin Only) -->
+            <a href="{% url 'exam_secret_codes_directory' exam.id %}" class="btn btn-outline-dark btn-sm fw-bold bg-white shadow-sm" title="បញ្ជីលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា">
+                <i class="fa-solid fa-key me-1"></i> បញ្ជីកូដសម្ងាត់
+            </a>
+
+            <!-- Master Provisional Board -->
+            <a href="{% url 'exam_provisional_results_view' exam.id %}" class="btn btn-danger btn-sm fw-bold shadow-sm">
+                <i class="fa-solid fa-ranking-star me-1"></i> តារាងបិទផ្សាយបណ្តោះអាសន្ន
+            </a>
+        </div>
+    </div>
+</div>
+
+
+<!-- Stats Counter Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-primary h-100">
+            <div class="text-muted small fw-bold">បេក្ខជនសរុប</div>
+            <div class="display-6 fw-bold text-primary">{{ total_candidates }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
+            <div class="text-muted small">ស្រី៖ <strong>{{ female_candidates }}</strong> នាក់</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-success h-100">
+            <div class="text-muted small fw-bold">បន្ទប់ប្រឡង</div>
+            <div class="display-6 fw-bold text-success">{{ total_rooms }} <span class="fs-6 text-muted fw-normal">បន្ទប់</span></div>
+            <div class="text-muted small">ស្តង់ដារ៖ <strong>{{ exam.candidates_per_room }}</strong> នាក់/បន្ទប់</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-info h-100">
+            <div class="text-muted small fw-bold">មុខវិជ្ជាប្រឡង</div>
+            <div class="display-6 fw-bold text-info">{{ subjects.count }} <span class="fs-6 text-muted fw-normal">មុខវិជ្ជា</span></div>
+            <div class="text-muted small">មេគុណសរុប៖ <strong>{{ total_coefficients|floatformat:1 }}</strong></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-warning h-100">
+            <div class="text-muted small fw-bold">ពិន្ទុពេញសរុប</div>
+            <div class="display-6 fw-bold text-warning-emphasis">{{ total_max_score|floatformat:0 }} <span class="fs-6 text-muted fw-normal">ពិន្ទុ</span></div>
+            <div class="text-muted small">ប្រព័ន្ធនិទ្ទេស៖ <strong>A, B, C, D, E, F</strong></div>
+        </div>
+    </div>
+</div>
+
+<!-- Exam Rooms & Subjects Preview Bar -->
+<div class="row g-4 mb-4">
+    <!-- Exam Rooms List -->
+    <div class="col-lg-6">
+        <div class="custom-card p-3 h-100 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <h6 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-door-open me-2"></i>បន្ទប់ប្រឡងទាំងអស់ ({{ total_rooms }} បន្ទប់)
+                </h6>
+                <a href="{% url 'exam_room_postings_view' exam.id %}" class="btn btn-outline-primary btn-sm fw-bold" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពបញ្ជីបិទផ្សាយទាំងអស់
+                </a>
+            </div>
+            <div class="d-flex flex-wrap gap-2 pt-1" style="max-height: 180px; overflow-y: auto;">
+                {% for r in rooms %}
+                <a href="{% url 'exam_room_scores_entry' exam.id %}?room_id={{ r.id }}" class="badge bg-light text-dark border p-2 text-decoration-none hover-shadow transition-all d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+                    <span class="badge bg-primary">{{ r.room_name }}</span>
+                    <span><strong>{{ r.candidate_count }}</strong> នាក់ (ស្រី {{ r.female_count }})</span>
+                    <i class="fa-solid fa-chevron-right opacity-50 small"></i>
+                </a>
+                {% empty %}
+                <div class="text-muted small p-2">មិនទាន់មានបន្ទប់ប្រឡងនៅឡើយទេ។ សូមចុចប៊ូតុង <strong>«២. ចែកបន្ទប់ ២៥ នាក់/បន្ទប់»</strong> ខាងលើ។</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Subjects List -->
+    <div class="col-lg-6">
+        <div class="custom-card p-3 h-100 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <h6 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-book-bookmark me-2"></i>មុខវិជ្ជា & មេគុណ ({{ subjects.count }} មុខ)
+                </h6>
+                <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-pen me-1"></i> កែប្រែមេគុណ/ពិន្ទុ
+                </a>
+            </div>
+            <div class="d-flex flex-wrap gap-1.5 pt-1" style="max-height: 180px; overflow-y: auto;">
+                {% for s in subjects %}
+                <span class="badge bg-light text-dark border p-2 d-inline-flex align-items-center gap-1.5" style="font-size: 0.78rem;">
+                    <span class="fw-bold text-primary">{{ s.subject.name_kh }}</span>
+                    <span class="badge bg-secondary-subtle text-dark border">ពេញ: {{ s.max_score|floatformat:0 }}</span>
+                    <span class="badge bg-primary-subtle text-primary border">មេគុណ: {{ s.coefficient|floatformat:1 }}</span>
+                    <span class="badge {% if s.session == 'MORNING' %}bg-warning-subtle text-dark{% else %}bg-info-subtle text-dark{% endif %} border">{{ s.get_session_display }}</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Candidates Roster Table -->
+<div class="custom-card p-4 shadow-sm mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-2 border-bottom">
+        <div>
+            <h5 class="fw-bold text-primary mb-0">
+                <i class="fa-solid fa-users me-2"></i>បញ្ជីឈ្មោះបេក្ខជនប្រឡង (Candidates Roster)
+            </h5>
+            <div class="text-muted small">បង្ហាញបេក្ខជនចំនួន <strong>{{ candidates.count }}</strong> នាក់</div>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="GET" class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Room Filter -->
+            <select name="room" class="form-select form-select-sm" style="width: 160px;" onchange="this.form.submit()">
+                <option value="">-- គ្រប់បន្ទប់ទាំងអស់ --</option>
+                <option value="unassigned" {% if selected_room == 'unassigned' %}selected{% endif %}>មិនទាន់មានបន្ទប់</option>
+                {% for r in rooms %}
+                <option value="{{ r.id }}" {% if selected_room == r.id|stringformat:"s" %}selected{% endif %}>{{ r.room_name }} ({{ r.candidate_count }})</option>
+                {% endfor %}
+            </select>
+
+            <!-- Gender Filter -->
+            <select name="gender" class="form-select form-select-sm" style="width: 120px;" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ភេទ --</option>
+                <option value="M" {% if selected_gender == 'M' %}selected{% endif %}>ប្រុស</option>
+                <option value="F" {% if selected_gender == 'F' %}selected{% endif %}>ស្រី</option>
+            </select>
+
+            <!-- Search Box -->
+            <div class="input-group input-group-sm" style="width: 220px;">
+                <input type="text" name="q" class="form-control" placeholder="ស្វែងរកឈ្មោះ/អត្តលេខ..." value="{{ search_q }}">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+            {% if selected_room or selected_gender or search_q %}
+            <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-light btn-sm border" title="សម្អាត Filter"><i class="fa-solid fa-rotate-left"></i></a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 bg-light rounded-3 border">
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" id="selectAllCandidates" onchange="toggleSelectAllCandidates(this)">
+                <label class="form-check-label small fw-bold text-muted" for="selectAllCandidates">ជ្រើសរើសទាំងអស់</label>
+            </div>
+            <span id="selectedCountBadge" class="badge bg-secondary" style="display: none;">ជ្រើសរើស 0 នាក់</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="batchSetDiscipline('block')" title="ដាក់វិន័យ/ផ្អាកបិទផ្សាយលើបេក្ខជនដែលបានជ្រើស">
+                <i class="fa-solid fa-user-lock me-1"></i> ដាក់វិន័យ (ផ្អាកបិទផ្សាយ)
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="batchSetDiscipline('unblock')" title="ដោះវិន័យ និងអនុញ្ញាតឱ្យប្រឡងវិញ">
+                <i class="fa-solid fa-user-check me-1"></i> ដោះវិន័យ (អនុញ្ញាតធម្មតា)
+            </button>
+            <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-dark btn-sm fw-bold bg-white">
+                <i class="fa-solid fa-user-slash me-1"></i> បញ្ជីសិស្សលើកលែងមិនឱ្យប្រឡង
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive border rounded-3">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-center" style="width: 40px;">
+                        <i class="fa-solid fa-check-double text-muted"></i>
+                    </th>
+                    <th class="text-center" style="width: 45px;">ល.រ</th>
+                    <th style="width: 110px;">បន្ទប់ & តុ</th>
+                    <th style="width: 85px;">អត្តលេខ</th>
+                    <th>គោត្តនាម-នាម</th>
+                    <th>ឈ្មោះឡាតាំង</th>
+                    <th class="text-center" style="width: 55px;">ភេទ</th>
+                    <th style="width: 95px;">ថ្ងៃខែឆ្នាំកំណើត</th>
+                    <th style="width: 85px;">ថ្នាក់ដើម</th>
+                    <th class="text-center" style="width: 140px;">ស្ថានភាពវិន័យ/កិច្ចសន្យា</th>
+                    <th class="text-center" style="width: 80px;">ពិន្ទុសរុប</th>
+                    <th class="text-center" style="width: 75px;">មធ្យមភាគ</th>
+                    <th class="text-center" style="width: 65px;">និទ្ទេស</th>
+                    <th class="text-center" style="width: 75px;">ចំណាត់ថ្នាក់</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidates %}
+                <tr id="cand-row-{{ c.id }}" class="{% if c.is_disciplinary_blocked %}table-danger{% endif %}">
+                    <td class="text-center">
+                        <input type="checkbox" class="cand-checkbox form-check-input" value="{{ c.id }}" onchange="updateSelectedCount()">
+                    </td>
+                    <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                    <td>
+                        {% if c.room %}
+                        <span class="badge bg-primary-subtle text-primary border fw-bold">{{ c.room.room_name }}</span>
+                        <span class="badge bg-light text-dark border">តុ: {{ c.desk_number|stringformat:"02d" }}</span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger border">គ្មានបន្ទប់</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold text-primary">{{ c.roll_number }}</td>
+                    <td class="fw-bold text-dark">
+                        {{ c.candidate_name_kh }}
+                        {% if c.is_disciplinary_blocked %}
+                        <div class="small text-danger fw-normal" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>លាក់ក្នុងបញ្ជីបិទផ្សាយ & ចុះហត្ថលេខា
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ c.candidate_name_en|default:"-" }}</td>
+                    <td class="text-center">
+                        {% if c.gender == 'F' %}
+                        <span class="badge bg-danger-subtle text-danger border">ស្រី</span>
+                        {% else %}
+                        <span class="badge bg-primary-subtle text-primary border">ប្រុស</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ c.dob|date:"d/m/Y"|default:"-" }}</td>
+                    <td><span class="badge bg-light text-dark border">{{ c.origin_class|default:"-" }}</span></td>
+                    
+                    <!-- Disciplinary Hold Toggle Column -->
+                    <td class="text-center">
+                        <div class="d-inline-flex align-items-center gap-1.5">
+                            <button type="button" 
+                                    id="btn-disc-{{ c.id }}"
+                                    class="btn btn-sm {% if c.is_disciplinary_blocked %}btn-danger{% else %}btn-outline-success{% endif %} py-0.5 px-2 fw-bold"
+                                    style="font-size: 0.75rem;"
+                                    onclick="toggleDiscipline({{ c.id }})"
+                                    title="ចុចដើម្បី Tick ឬ ដោះ Tick វិន័យ">
+                                {% if c.is_disciplinary_blocked %}
+                                <i class="fa-solid fa-lock me-1"></i> ជាប់វិន័យ (Tick)
+                                {% else %}
+                                <i class="fa-solid fa-check me-1"></i> ធម្មតា
+                                {% endif %}
+                            </button>
+                        </div>
+                    </td>
+
+                    <td class="text-center fw-bold text-primary">{{ c.total_score|floatformat:1 }}</td>
+                    <td class="text-center fw-bold">{{ c.average_score|floatformat:2 }}</td>
+                    <td class="text-center">
+                        {% if c.grade_letter == 'A' %}<span class="badge bg-success fs-7">A</span>
+                        {% elif c.grade_letter == 'B' %}<span class="badge bg-primary fs-7">B</span>
+                        {% elif c.grade_letter == 'C' %}<span class="badge bg-info fs-7">C</span>
+                        {% elif c.grade_letter == 'D' %}<span class="badge bg-warning text-dark fs-7">D</span>
+                        {% elif c.grade_letter == 'E' %}<span class="badge bg-secondary fs-7">E</span>
+                        {% elif c.grade_letter == 'F' %}<span class="badge bg-danger fs-7">F</span>
+                        {% else %}<span class="badge bg-light text-muted border">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-bold">
+                        {% if c.rank_overall %}
+                        <span class="badge bg-dark-subtle text-dark border">#{{ c.rank_overall }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="14" class="text-center text-muted p-4">
+                        <i class="fa-solid fa-user-xmark display-6 opacity-50 mb-2"></i>
+                        <p class="mb-0">មិនមានទិន្នន័យបេក្ខជនតាមលក្ខខណ្ឌស្វែងរកនេះឡើយ។</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- JavaScript for Disciplinary Toggle & Batch Actions -->
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function toggleDiscipline(candidateId) {
+    const btn = document.getElementById('btn-disc-' + candidateId);
+    if (!btn) return;
+    btn.disabled = true;
+
+    fetch("{% url 'api_toggle_candidate_disciplinary_hold' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            candidate_id: candidateId,
+            reason: 'បញ្ហាវិន័យ / ត្រូវមកធ្វើកិច្ចសន្យាជាមុនសិន'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.status === 'success') {
+            const row = document.getElementById('cand-row-' + candidateId);
+            if (data.is_disciplinary_blocked) {
+                btn.className = 'btn btn-sm btn-danger py-0.5 px-2 fw-bold';
+                btn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> ជាប់វិន័យ (Tick)';
+                if (row) row.classList.add('table-danger');
+            } else {
+                btn.className = 'btn btn-sm btn-outline-success py-0.5 px-2 fw-bold';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ធម្មតា';
+                if (row) row.classList.remove('table-danger');
+            }
+        } else {
+            alert(data.message || 'មានបញ្ហាក្នុងការប្តូរស្ថានភាពវិន័យ!');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        alert('កំហុសប្រព័ន្ធ៖ ' + err);
+    });
+}
+
+function toggleSelectAllCandidates(master) {
+    const checkboxes = document.querySelectorAll('.cand-checkbox');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selected = document.querySelectorAll('.cand-checkbox:checked');
+    const badge = document.getElementById('selectedCountBadge');
+    if (selected.length > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = `ជ្រើសរើស ${selected.length} នាក់`;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function batchSetDiscipline(action) {
+    const selected = Array.from(document.querySelectorAll('.cand-checkbox:checked')).map(cb => parseInt(cb.value));
+    if (selected.length === 0) {
+        alert('សូមជ្រើសរើសបេក្ខជនយ៉ាងតិច ១ នាក់ជាមុនសិន!');
+        return;
+    }
+
+    const actionText = action === 'block' ? 'ដាក់វិន័យ (ផ្អាកបិទផ្សាយ)' : 'ដោះវិន័យ (អនុញ្ញាតឱ្យប្រឡងវិញ)';
+    if (!confirm(`តើលោកអ្នកពិតជាចង់ ${actionText} លើបេក្ខជនចំនួន ${selected.length} នាក់មែនទេ?`)) {
+        return;
+    }
+
+    fetch("{% url 'api_batch_toggle_disciplinary_hold' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            candidate_ids: selected,
+            action: action,
+            reason: 'បញ្ហាវិន័យ / ត្រូវមកធ្វើកិច្ចសន្យាជាមុនសិន'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.reload();
+        } else {
+            alert(data.message || 'មានបញ្ហា!');
+        }
+    })
+    .catch(err => alert('កំហុស៖ ' + err));
+}
+</script>
+
+
+<!-- Modal: Import Candidates Excel -->
+<div class="modal fade" id="importExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-teal text-white py-3" style="background: #0d9488;">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-file-excel me-2"></i>នាំចូលបញ្ជីបេក្ខជនពី Excel (.xlsx)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'exam_import_candidates_excel' exam.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 px-3 small mb-3 border-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដែលមានជួរឈរដូចជា៖ <strong>គោត្តនាម-នាម, ឈ្មោះឡាតាំង, ភេទ, ថ្ងៃខែឆ្នាំកំណើត, ថ្នាក់ដើម</strong>។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">ជ្រើសរើសឯកសារ Excel *</label>
+                        <input type="file" name="excel_file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-teal text-white fw-bold" style="background: #0d9488;">
+                        <i class="fa-solid fa-upload me-1"></i> នាំចូលឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Delete Exam Confirmation -->
+{% if is_admin %}
+<div class="modal fade" id="deleteExamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបសម័យប្រឡង
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-dark mb-2">
+                    តើលោកអ្នកពិតជាចង់លុបសម័យប្រឡង <strong>«{{ exam.name }}»</strong> (ថ្នាក់ទី {{ exam.grade_level }} • {{ exam.academic_year.name }}) នេះមែនទេ?
+                </p>
+                <div class="alert alert-warning border-0 rounded-3 small mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    <strong>ចំណាំ៖</strong> ការលុបនេះនឹងលុបចេញនូវបញ្ជីបេក្ខជនទាំងអស់ បន្ទប់ប្រឡង លេខកូដសម្ងាត់ និងពិន្ទុទាំងអស់ដែលទាក់ទងនឹងសម័យប្រឡងនេះ ហើយមិនអាចទាញយកមកវិញបានទេ។
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <form method="POST" action="{% url 'standardized_exam_delete' exam.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger fw-bold px-4">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡងឥឡូវនេះ
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+

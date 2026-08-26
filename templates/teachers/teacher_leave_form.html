@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ដាក់ពាក្យសុំច្បាប់គ្រូបង្រៀន (Apply for Leave) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden bg-white">
+                <div class="card-header bg-gradient-primary text-white p-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="p-3 bg-white bg-opacity-20 rounded-circle text-white">
+                            <i class="fa-solid fa-file-signature fa-2x"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold mb-1">ពាក្យសុំច្បាប់ឈប់សម្រាកគ្រូបង្រៀន</h4>
+                            <p class="text-white text-opacity-75 small mb-0">Teacher Leave Application Form</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        {% if all_teachers %}
+                        <!-- Admin selecting teacher & Proxy Note -->
+                        <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 mb-4">
+                            <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-bold">
+                                <i class="fa-solid fa-user-shield"></i> ការដាក់ពាក្យសុំច្បាប់ជំនួសគ្រូដោយគណៈគ្រប់គ្រង (Admin Proxy Submission)
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">ជ្រើសរើសគ្រូបង្រៀន (Select Teacher) <span class="text-danger">*</span></label>
+                                <select name="teacher_id" class="form-select form-select-lg" required>
+                                    <option value="">-- សូមជ្រើសរើសលោកគ្រូ-អ្នកគ្រូ --</option>
+                                    {% for t in all_teachers %}
+                                    <option value="{{ t.id }}">{{ t.khmer_name }} (ID: {{ t.teacher_id }} • {{ t.specialization }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label fw-bold small text-dark">កំណត់សម្គាល់ការដាក់ពាក្យជំនួស (Proxy Reason / Notes)៖</label>
+                                <input type="text" name="proxy_note" class="form-control" placeholder="ឧ. គ្រូបានទូរស័ព្ទមកសុំច្បាប់ផ្ទាល់ ឬសម្រាកព្យាបាលនៅមន្ទីរពេទ្យ...">
+                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                                    * ប្រព័ន្ធនឹងកត់ត្រាឈ្មោះគណនី Admin <strong>{{ request.user.display_name }}</strong> ជាអ្នកដាក់ពាក្យជំនួសលើរបាយការណ៍ និងលិខិតសុំច្បាប់។
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Current Teacher Profile Card -->
+                        <div class="p-3 bg-light rounded-3 border mb-4 d-flex align-items-center gap-3">
+                            <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+                                <i class="fa-solid fa-chalkboard-user fa-lg"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ teacher_profile.khmer_name }} (ID: {{ teacher_profile.teacher_id }})</div>
+                                <div class="text-muted small">ឯកទេស៖ {{ teacher_profile.specialization }} • ទូរស័ព្ទ៖ {{ teacher_profile.phone }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Leave Category Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-dark d-block">
+                                <i class="fa-solid fa-layer-group text-primary me-1"></i> ជ្រើសរើសប្រភេទនៃការសុំច្បាប់ (Leave Category) <span class="text-danger">*</span>
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-light position-relative category-card" id="cardEmergency" style="cursor: pointer;" onclick="selectCategory('EMERGENCY')">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="category" id="catEmergency" value="EMERGENCY" onchange="updateCategoryUI()">
+                                            <label class="form-check-label fw-bold text-danger" for="catEmergency">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i> ១. សុំច្បាប់ភ្លាមៗ (បន្ទាន់)
+                                            </label>
+                                        </div>
+                                        <p class="text-muted small mb-0 mt-2" style="font-size: 0.8rem;">
+                                            សម្រាប់ករណីបន្ទាន់ (ឈឺ គ្រោះថ្នាក់...)។ សុំបានតែចំថ្ងៃបង្រៀន ឬមុន១ថ្ងៃ (ត្រឹមម៉ោង {{ config.emergency_leave_cutoff_time|time:"H:i" }} រសៀល)។
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-light position-relative category-card" id="cardPlanned" style="cursor: pointer;" onclick="selectCategory('PLANNED')">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="category" id="catPlanned" value="PLANNED" checked onchange="updateCategoryUI()">
+                                            <label class="form-check-label fw-bold text-primary" for="catPlanned">
+                                                <i class="fa-solid fa-calendar-check me-1"></i> ២. សុំច្បាប់ទុកជាមុន (គ្រោងទុក)
+                                            </label>
+                                        </div>
+                                        <p class="text-muted small mb-0 mt-2" style="font-size: 0.8rem;">
+                                            សម្រាប់គម្រោងឈប់សម្រាកទុកជាមុន។ អាចបោះពុម្ពលិខិតសុំច្បាប់ផ្លូវការ (Hardcopy) ជូនគណៈគ្រប់គ្រង។
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Emergency Cutoff Alert Box -->
+                        <div class="alert alert-warning border-0 rounded-3 small mb-4 d-none" id="emergencyNoticeBox">
+                            <i class="fa-solid fa-clock text-danger me-1"></i>
+                            <strong>គោលការណ៍សុំច្បាប់បន្ទាន់៖</strong> អាចដាក់ពាក្យបានតែ <strong>ចំថ្ងៃបង្រៀន</strong> ឬ <strong>មុនថ្ងៃបង្រៀន ១ ថ្ងៃ (ត្រឹមម៉ោង {{ config.emergency_leave_cutoff_time|time:"H:i" }} រសៀល)</strong> ប៉ុណ្ណោះ ដើម្បីឱ្យគណៈគ្រប់គ្រងអាចដឹង និងជូនដំណឹងទៅសិស្ស/អាណាព្យាបាលបានទាន់ពេលវេលា។
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">ប្រភេទច្បាប់ (Leave Type) <span class="text-danger">*</span></label>
+                                <select name="leave_type" class="form-select" required>
+                                    {% for val, label in leave_type_choices %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">
+                                    <i class="fa-solid fa-user-tag text-secondary me-1"></i> គ្រូបង្រៀនជំនួស (Substitute Teacher - បើមាន)
+                                </label>
+                                <select name="substitute_teacher_id" class="form-select">
+                                    <option value="">-- គ្មានគ្រូជំនួស / No Substitute --</option>
+                                    {% for t in available_substitutes %}
+                                    <option value="{{ t.id }}">{{ t.khmer_name }} ({{ t.specialization }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+
+                        <!-- Emergency Timetable Schedule Date Selection -->
+                        <div id="emergencyDateSection" class="mb-4 d-none">
+                            <label class="form-label fw-bold small text-dark d-block">
+                                <i class="fa-solid fa-calendar-day text-danger me-1"></i> ជ្រើសរើសថ្ងៃដែលមានកាលវិភាគបង្រៀន (Select Teaching Date) <span class="text-danger">*</span>
+                            </label>
+                            
+                            <div id="emergencyOptionsList" class="row g-3">
+                                {% for opt in emergency_schedule.options %}
+                                <div class="col-md-6">
+                                    <div class="p-3 border rounded-4 bg-light position-relative emergency-option-card {% if not opt.is_allowed %}opacity-50{% endif %}" 
+                                         id="emergCard_{{ opt.date_str }}" 
+                                         style="cursor: {% if opt.is_allowed %}pointer{% else %}not-allowed{% endif %};" 
+                                         onclick="{% if opt.is_allowed %}selectEmergencyDate('{{ opt.date_str }}'){% endif %}">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="emergency_date_choice" id="emergRadio_{{ opt.date_str }}" value="{{ opt.date_str }}" 
+                                                   {% if forloop.first and opt.is_allowed %}checked{% endif %} 
+                                                   {% if not opt.is_allowed %}disabled{% endif %} 
+                                                   onchange="onEmergencyDateChanged('{{ opt.date_str }}')">
+                                            <label class="form-check-label fw-bold text-dark" for="emergRadio_{{ opt.date_str }}">
+                                                {{ opt.label }}
+                                            </label>
+                                        </div>
+                                        <div class="mt-2 small">
+                                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold">
+                                                <i class="fa-solid fa-chalkboard-user me-1"></i> {{ opt.slots_count }} ម៉ោងបង្រៀន
+                                            </span>
+                                            <div class="text-muted small mt-1 text-truncate" title="{{ opt.classes_summary }}">
+                                                {{ opt.classes_summary }}
+                                            </div>
+                                            {% if not opt.is_allowed %}
+                                            <div class="text-danger fw-bold small mt-1">
+                                                <i class="fa-solid fa-circle-exclamation me-1"></i> {{ opt.blocked_reason }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-danger border-0 rounded-4 p-3 small mb-0">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                        <strong>គ្មានកាលវិភាគបង្រៀន៖</strong> លោកគ្រូ-អ្នកគ្រូគ្មានកាលវិភាគបង្រៀននៅថ្ងៃនេះ ឬថ្ងៃស្អែកឡើយ។ ការសុំច្បាប់បន្ទាន់អនុញ្ញាតតែថ្ងៃដែលមានកាលវិភាគបង្រៀនប៉ុណ្ណោះ។ សូមជ្រើសរើស <strong>«ការសុំច្បាប់ទុកជាមុន»</strong>។
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Planned Date Range Selection (Standard) -->
+                        <div id="plannedDateSection" class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">ថ្ងៃចាប់ផ្តើមឈប់ (Start Date) <span class="text-danger">*</span></label>
+                                <input type="date" name="start_date" id="inputStartDate" class="form-control" required value="{{ today_str }}" min="{{ today_str }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">ថ្ងៃបញ្ចប់ (End Date) <span class="text-danger">*</span></label>
+                                <input type="date" name="end_date" id="inputEndDate" class="form-control" required value="{{ today_str }}" min="{{ today_str }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-dark">មូលហេតុនៃការសុំច្បាប់ (Reason for Leave) <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control" rows="4" required placeholder="សូមបញ្ជាក់មូលហេតុលម្អិត..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-dark">ឯកសារភ្ជាប់ (លិខិតពេទ្យ ឬឯកសារយោង បើមាន)៖</label>
+                            <input type="file" name="attachment" class="form-control">
+                        </div>
+
+                        <div class="alert alert-info border-0 rounded-3 small mb-4">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            <strong>ចំណាំ៖</strong> នៅពេលពាក្យសុំច្បាប់ត្រូវបានអនុម័តដោយគណៈគ្រប់គ្រងសាលា ប្រព័ន្ធនឹងកត់ត្រាជា <strong>ច្បាប់អនុញ្ញាត (Excused Leave)</strong> ដោយមិនមានការកាត់ប្រាក់ខែ និងមិនមានការផ្ញើសាររំលឹកអវត្តមានរៀងរាល់ម៉ោងឡើយ។
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'teacher_leave_list' %}" class="btn btn-outline-secondary px-4">
+                                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                            </a>
+                            <button type="submit" id="btnSubmitLeave" class="btn btn-primary fw-bold px-5 py-2">
+                                <i class="fa-solid fa-paper-plane me-1"></i> ដាក់ពាក្យសុំច្បាប់
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const emergencySchedulesMap = JSON.parse('{{ emergency_schedules_json|default:"{}"|escapejs }}');
+    const todayStr = '{{ today_str }}';
+
+    function selectCategory(cat) {
+        if (cat === 'EMERGENCY') {
+            document.getElementById('catEmergency').checked = true;
+        } else {
+            document.getElementById('catPlanned').checked = true;
+        }
+        updateCategoryUI();
+    }
+
+    function selectEmergencyDate(dateStr) {
+        const radio = document.getElementById('emergRadio_' + dateStr);
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            onEmergencyDateChanged(dateStr);
+        }
+    }
+
+    function onEmergencyDateChanged(dateStr) {
+        document.getElementById('inputStartDate').value = dateStr;
+        document.getElementById('inputEndDate').value = dateStr;
+
+        // Highlight selected emergency card
+        document.querySelectorAll('.emergency-option-card').forEach(card => {
+            card.classList.remove('border-danger', 'bg-danger', 'bg-opacity-10');
+            card.classList.add('bg-light');
+        });
+        const activeCard = document.getElementById('emergCard_' + dateStr);
+        if (activeCard) {
+            activeCard.classList.add('border-danger', 'bg-danger', 'bg-opacity-10');
+            activeCard.classList.remove('bg-light');
+        }
+    }
+
+    function updateCategoryUI() {
+        const isEmergency = document.getElementById('catEmergency').checked;
+        const cardEmerg = document.getElementById('cardEmergency');
+        const cardPlan = document.getElementById('cardPlanned');
+        const alertBox = document.getElementById('emergencyNoticeBox');
+        const emergencySection = document.getElementById('emergencyDateSection');
+        const plannedSection = document.getElementById('plannedDateSection');
+        const inputStartDate = document.getElementById('inputStartDate');
+        const inputEndDate = document.getElementById('inputEndDate');
+
+        if (isEmergency) {
+            cardEmerg.classList.add('border-danger', 'bg-danger', 'bg-opacity-10');
+            cardEmerg.classList.remove('bg-light');
+            cardPlan.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+            cardPlan.classList.add('bg-light');
+            alertBox.classList.remove('d-none');
+            emergencySection.classList.remove('d-none');
+            plannedSection.classList.add('d-none');
+
+            // Find checked or first available emergency radio
+            const checkedRadio = document.querySelector('input[name="emergency_date_choice"]:checked');
+            if (checkedRadio) {
+                onEmergencyDateChanged(checkedRadio.value);
+            } else {
+                const firstAllowed = document.querySelector('input[name="emergency_date_choice"]:not(:disabled)');
+                if (firstAllowed) {
+                    firstAllowed.checked = true;
+                    onEmergencyDateChanged(firstAllowed.value);
+                }
+            }
+        } else {
+            cardPlan.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+            cardPlan.classList.remove('bg-light');
+            cardEmerg.classList.remove('border-danger', 'bg-danger', 'bg-opacity-10');
+            cardEmerg.classList.add('bg-light');
+            alertBox.classList.add('d-none');
+            emergencySection.classList.add('d-none');
+            plannedSection.classList.remove('d-none');
+        }
+    }
+
+    // Dynamic Admin Teacher selection switch
+    const adminTeacherSelect = document.querySelector('select[name="teacher_id"]');
+    if (adminTeacherSelect) {
+        adminTeacherSelect.addEventListener('change', function() {
+            const teacherId = this.value;
+            const sched = emergencySchedulesMap[teacherId];
+            const container = document.getElementById('emergencyOptionsList');
+            if (!sched || !sched.options || sched.options.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger border-0 rounded-4 p-3 small mb-0">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <strong>គ្មានកាលវិភាគបង្រៀន៖</strong> លោកគ្រូ-អ្នកគ្រូដែលបានជ្រើសរើសគ្មានកាលវិភាគបង្រៀននៅថ្ងៃនេះ ឬថ្ងៃស្អែកឡើយ។
+                        </div>
+                    </div>
+                `;
+            } else {
+                let html = '';
+                sched.options.forEach((opt, idx) => {
+                    const disabledAttr = opt.is_allowed ? '' : 'disabled';
+                    const opacityClass = opt.is_allowed ? '' : 'opacity-50';
+                    const pointerStyle = opt.is_allowed ? 'cursor: pointer;' : 'cursor: not-allowed;';
+                    const blockedHtml = opt.blocked_reason ? `<div class="text-danger fw-bold small mt-1"><i class="fa-solid fa-circle-exclamation me-1"></i> ${opt.blocked_reason}</div>` : '';
+                    const checkedAttr = (idx === 0 && opt.is_allowed) ? 'checked' : '';
+
+                    html += `
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-4 bg-light position-relative emergency-option-card ${opacityClass}" 
+                                 id="emergCard_${opt.date_str}" 
+                                 style="${pointerStyle}" 
+                                 onclick="${opt.is_allowed ? `selectEmergencyDate('${opt.date_str}')` : ''}">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="emergency_date_choice" id="emergRadio_${opt.date_str}" value="${opt.date_str}" 
+                                           ${checkedAttr} ${disabledAttr} 
+                                           onchange="onEmergencyDateChanged('${opt.date_str}')">
+                                    <label class="form-check-label fw-bold text-dark" for="emergRadio_${opt.date_str}">
+                                        ${opt.label}
+                                    </label>
+                                </div>
+                                <div class="mt-2 small">
+                                    <span class="badge bg-primary bg-opacity-10 text-primary fw-bold">
+                                        <i class="fa-solid fa-chalkboard-user me-1"></i> ${opt.slots_count} ម៉ោងបង្រៀន
+                                    </span>
+                                    <div class="text-muted small mt-1 text-truncate" title="${opt.classes_summary}">
+                                        ${opt.classes_summary}
+                                    </div>
+                                    ${blockedHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+            updateCategoryUI();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCategoryUI();
+    });
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}សិស្សប្រឈមនឹងអវត្តមានច្រើន (At-Risk Attendance) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-danger">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>តាមដានសិស្សអវត្តមានច្រើន (At-Risk Chronic Absentees)
+        </h2>
+        <p class="text-muted small mb-0">កំណត់អត្តសញ្ញាណសិស្សដែលមានអវត្តមានច្រើនប្រឈមនឹងការបោះបង់ការសិក្សា និងទាក់ទងមាតាបិតាជាបន្ទាន់</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'student_attendance_grid' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-calendar-check me-1"></i> ស្រង់វត្តមានប្រចាំថ្ងៃ
+        </a>
+        <a href="{% url 'attendance_report' %}" class="btn btn-light">
+            <i class="fa-solid fa-chart-column me-1"></i> របាយការណ៍វត្តមានប្រចាំខែ
+        </a>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-5">
+            <label class="form-label fw-bold small text-muted">ចម្រាញ់តាមថ្នាក់រៀន</label>
+            <select name="classroom" class="form-select" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ថ្នាក់រៀនទាំងអស់ --</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">កម្រិតកំណត់អវត្តមានឥតច្បាប់ (យ៉ាងហោចណាស់)</label>
+            <select name="threshold" class="form-select" onchange="this.form.submit()">
+                <option value="1" {% if threshold == 1 %}selected{% endif %}>ចាប់ពី ១ ថ្ងៃឡើងទៅ</option>
+                <option value="2" {% if threshold == 2 %}selected{% endif %}>ចាប់ពី ២ ថ្ងៃឡើងទៅ (កម្រិតប្រកាសអាសន្ន)</option>
+                <option value="3" {% if threshold == 3 %}selected{% endif %}>ចាប់ពី ៣ ថ្ងៃឡើងទៅ (កម្រិតធ្ងន់ធ្ងរ)</option>
+                <option value="5" {% if threshold == 5 %}selected{% endif %}>ចាប់ពី ៥ ថ្ងៃឡើងទៅ (ប្រឈមបោះបង់)</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <a href="{% url 'at_risk_attendance' %}" class="btn btn-light w-100">កំណត់ឡើងវិញ</a>
+        </div>
+    </form>
+</div>
+
+<!-- At-Risk Table -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>កូដ & ឈ្មោះសិស្ស</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th>អវត្តមានឥតច្បាប់</th>
+                    <th>សុំច្បាប់</th>
+                    <th>អត្រាវត្តមាន</th>
+                    <th>កម្រិតហានិភ័យ</th>
+                    <th>ព័ត៌មានអាណាព្យាបាល</th>
+                    <th class="text-end">ចំណាត់ការបន្ទាន់</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in at_risk_list %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" style="width: 38px; height: 38px; font-size: 14px; background: #fee2e2; color: #ef4444;">
+                                {{ item.student.khmer_name|slice:":1" }}
+                            </div>
+                            <div>
+                                <a href="{% url 'student_detail' item.student.id %}" class="fw-bold text-dark text-decoration-none">
+                                    {{ item.student.khmer_name }}
+                                </a>
+                                <div class="text-muted small">{{ item.student.student_id }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-light text-dark">{{ item.student.classroom.name|default:"-" }}</span></td>
+                    <td>
+                        <span class="badge bg-danger fs-6 px-3 py-1">
+                            {{ item.absent_count }} ថ្ងៃ
+                        </span>
+                    </td>
+                    <td><span class="badge bg-warning text-dark">{{ item.perm_count }} ថ្ងៃ</span></td>
+                    <td class="fw-bold {% if item.attendance_rate < 80 %}text-danger{% else %}text-warning{% endif %}">
+                        {{ item.attendance_rate }}%
+                    </td>
+                    <td>
+                        {% if item.risk_level == 'HIGH' %}
+                        <span class="badge bg-danger"><i class="fa-solid fa-circle-radiation me-1"></i> ហានិភ័យខ្ពស់</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> មធ្យម</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small fw-bold">{{ item.student.father_name|default:item.student.mother_name|default:"-" }}</div>
+                        <a href="tel:{{ item.student.father_phone|default:item.student.phone }}" class="text-muted small text-decoration-none">
+                            <i class="fa-solid fa-phone text-success me-1"></i>{{ item.student.father_phone|default:item.student.phone|default:"-" }}
+                        </a>
+                    </td>
+                    <td class="text-end">
+                        <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ផ្ញើសារក្រើនរំលឹក និងកោះហៅមាតាបិតាសិស្ស {{ item.student.khmer_name }} តាម Telegram មែនទេ?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="send_warning" value="1">
+                            <input type="hidden" name="student_id" value="{{ item.student.id }}">
+                            <input type="hidden" name="absent_days" value="{{ item.absent_count }}">
+                            <button type="submit" class="btn btn-sm btn-danger fw-bold" title="ផ្ញើសារកោះហៅមាតាបិតា">
+                                <i class="fa-brands fa-telegram me-1"></i> កោះហៅមាតាបិតា
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
+                        <h5 class="fw-bold">ល្អប្រសើរណាស់! គ្មានសិស្សណាមានអវត្តមានលើសកម្រិតកំណត់ឡើយ។</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}បណ្ណាល័យសាលា (Library Books) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">បណ្ណាល័យសាលារៀន (Library Module)</h2>
+        <p class="text-muted small mb-0">កាតាឡុកសៀវភៅ ធ្នើសៀវភៅ និងចំនួននៅសល់ក្នុងស្តុក</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'book_borrow_list' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-book-reader me-1"></i> បញ្ជីខ្ចី-សងសៀវភៅ
+        </a>
+        {% if is_admin %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBookModal">
+            <i class="fa-solid fa-plus me-1"></i> បន្ថែមសៀវភៅថ្មី
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="d-flex gap-2">
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាមចំណងជើង, អ្នកនិពន្ធ, ISBN...">
+        <button type="submit" class="btn btn-primary">ស្វែងរក</button>
+    </form>
+</div>
+
+<!-- Book Cards -->
+<div class="row g-4">
+    {% for b in books %}
+    <div class="col-md-6 col-xl-4">
+        <div class="custom-card h-100">
+            <div class="d-flex align-items-start gap-3 mb-3">
+                <div class="stat-icon-wrapper stat-icon-purple" style="width: 48px; height: 48px; font-size: 20px;">
+                    <i class="fa-solid fa-book"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <span class="badge bg-light text-dark mb-1">{{ b.category }}</span>
+                    <h5 class="fw-bold mb-1 text-dark">{{ b.title }}</h5>
+                    <div class="text-muted small"><i class="fa-solid fa-user-pen me-1"></i>{{ b.author|default:"Unknown" }}</div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-light rounded-3 mb-3 small">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">កូដ ISBN៖</span>
+                    <strong>{{ b.isbn|default:"-" }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">ទីតាំងធ្នើ៖</span>
+                    <strong>{{ b.shelf_location|default:"-" }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">ចំនួននៅសល់៖</span>
+                    <span class="badge {% if b.available_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ b.available_quantity }} / {{ b.quantity }} ក្បាល
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+        <h5>មិនទាន់មានសៀវភៅក្នុងបណ្ណាល័យនៅឡើយទេ</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: Add Book -->
+{% if is_admin %}
+<div class="modal fade" id="addBookModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">បន្ថែមសៀវភៅបណ្ណាល័យថ្មី</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ចំណងជើងសៀវភៅ *</label>
+                        {{ form.title }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">អ្នកនិពន្ធ</label>
+                            {{ form.author }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">កូដ ISBN</label>
+                            {{ form.isbn }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ប្រភេទសៀវភៅ</label>
+                            {{ form.category }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ចំនួនក្បាលសរុប *</label>
+                            {{ form.quantity }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ទីតាំងធ្នើសៀវភៅ</label>
+                        {{ form.shelf_location }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary">រក្សាទុកសៀវភៅ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

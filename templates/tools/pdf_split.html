@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}បំបែក & ទាញយកទំព័រ PDF (PDF Split) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone-box {
+        border: 2px dashed #dc3545;
+        border-radius: 16px;
+        background: #fff8f8;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .dropzone-box:hover, .dropzone-box.dragover {
+        background: #fde8e8;
+        border-color: #bb2d3b;
+        transform: scale(1.01);
+    }
+    .page-thumb-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    .page-thumb-card.selected {
+        border-color: #dc3545;
+        background: #fff5f5;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    }
+    .page-thumb-card .badge-page {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        font-size: 0.75rem;
+    }
+    .page-preview-canvas {
+        max-width: 100%;
+        height: 140px;
+        object-fit: contain;
+        border-radius: 6px;
+        background: #fafafa;
+        border: 1px solid #eee;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">PDF Split</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-file-export text-danger me-2"></i>បំបែក & ទាញយកទំព័រ PDF (PDF Split & Page Extractor)
+            </h2>
+            <p class="text-muted small mb-0">ជ្រើសរើសទំព័រជាក់លាក់ដែលចង់ទាញយក ឬបំបែកឯកសារ PDF តាមតម្រូវការ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- PDF Upload & Page Grid Column -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Dropzone Area (Initial) -->
+                <div class="dropzone-box" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="application/pdf" class="d-none" onchange="handleFileSelect(event)">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-file-arrow-up display-4 text-danger"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">អូសទម្លាក់ឯកសារ PDF ឬចុចដើម្បីជ្រើសរើស</h5>
+                    <p class="text-muted small mb-2">ជ្រើសរើសឯកសារ PDF មួយដែលលោកអ្នកចង់បំបែក ឬទាញយកទំព័រ</p>
+                    <button type="button" class="btn btn-danger btn-sm rounded-pill px-4">
+                        <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសឯកសារ PDF
+                    </button>
+                </div>
+
+                <!-- Page Selector Grid (Loaded after PDF selected) -->
+                <div id="pagesContainer" style="display: none;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                        <div>
+                            <span class="fw-bold text-dark" id="currentFileName">Document.pdf</span>
+                            <span class="badge bg-secondary ms-2" id="totalPageBadge">0 ទំព័រ</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-dark btn-sm rounded-pill" onclick="selectAllPages(true)">
+                                <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="selectAllPages(false)">
+                                <i class="fa-solid fa-xmark me-1"></i> ដោះការជ្រើស
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm text-danger" onclick="resetFile()">
+                                <i class="fa-solid fa-arrows-rotate me-1"></i> ដូរ File
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3" id="pagesGrid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extract Settings Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-scissors text-danger me-2"></i>ជម្រើសបំបែក & ទាញយក
+                </h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">របៀបជ្រើសរើសទំព័រ</label>
+                    <select class="form-select" id="splitMode" onchange="toggleSplitMode()">
+                        <option value="custom">ជ្រើសរើសទំព័រដោយចុច ឬវាយលេខទំព័រ</option>
+                        <option value="range">ទាញយកតាមចន្លោះទំព័រ (Range)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="rangeInputBox">
+                    <label class="form-label fw-semibold small text-muted">វាយលេខទំព័រ (ឧ. 1-3, 5, 8-10)</label>
+                    <input type="text" id="pageRangeText" class="form-control" placeholder="1-3, 5" oninput="applyRangeFromText()">
+                    <div class="form-text">ទំព័រដែលបានជ្រើស៖ <strong class="text-danger" id="selectedCountText">0</strong> ទំព័រ</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះឯកសារទាញយក</label>
+                    <div class="input-group">
+                        <input type="text" id="outputFileName" class="form-control" value="Extracted_Pages">
+                        <span class="input-group-text bg-light text-muted">.pdf</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border small text-muted mb-4">
+                    <i class="fa-solid fa-shield-check text-success me-1"></i> <strong>សុវត្ថិភាពខ្ពស់ 100%:</strong> ដំណើរការក្នុង Browser ផ្ទាល់ គ្មានការរក្សាទុកទិន្នន័យឯកជនឡើយ។
+                </div>
+
+                <!-- Split & Download Button -->
+                <button type="button" id="btnSplitPdf" class="btn btn-danger btn-lg w-100 rounded-pill shadow-sm" onclick="splitAndDownloadPdf()" disabled>
+                    <i class="fa-solid fa-download me-2"></i> ទាញយកទំព័រដែលបានជ្រើស (Extract PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF-lib & PDF.js -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.9/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let currentPdfDoc = null;
+    let currentPdfBytes = null;
+    let totalPages = 0;
+    let selectedPages = new Set(); // 1-indexed
+
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const file = Array.from(dt.files).find(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (file) loadPdfFile(file);
+    });
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) loadPdfFile(file);
+    }
+
+    async function loadPdfFile(file) {
+        try {
+            Swal.fire({
+                title: 'កំពុងដំណើរការឯកសារ...',
+                text: 'សូមរង់ចាំបន្តិច',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            document.getElementById('currentFileName').innerText = file.name;
+            const originalName = file.name.replace(/\.[^/.]+$/, "");
+            document.getElementById('outputFileName').value = `${originalName}_extracted`;
+
+            currentPdfBytes = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({ data: currentPdfBytes.slice(0) });
+            currentPdfDoc = await loadingTask.promise;
+            totalPages = currentPdfDoc.numPages;
+
+            document.getElementById('totalPageBadge').innerText = `${totalPages} ទំព័រ`;
+            document.getElementById('dropzone').style.display = 'none';
+            document.getElementById('pagesContainer').style.display = 'block';
+
+            selectedPages.clear();
+            // Default select page 1
+            selectedPages.add(1);
+
+            renderThumbnails();
+            updateSelectionDisplay();
+            Swal.close();
+        } catch (error) {
+            console.error(error);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចបើកឯកសារ PDF នេះបានទេ៖ ' + error.message, 'error');
+        }
+    }
+
+    async function renderThumbnails() {
+        const grid = document.getElementById('pagesGrid');
+        grid.innerHTML = '';
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-sm-4 col-md-3';
+            col.innerHTML = `
+                <div class="page-thumb-card ${selectedPages.has(pageNum) ? 'selected' : ''}" id="thumb-card-${pageNum}" onclick="togglePageSelect(${pageNum})">
+                    <span class="badge ${selectedPages.has(pageNum) ? 'bg-danger' : 'bg-secondary'} badge-page" id="badge-page-${pageNum}">
+                        ទំព័រ ${pageNum}
+                    </span>
+                    <canvas class="page-preview-canvas" id="canvas-page-${pageNum}"></canvas>
+                </div>
+            `;
+            grid.appendChild(col);
+
+            renderPageCanvas(pageNum);
+        }
+    }
+
+    async function renderPageCanvas(pageNum) {
+        try {
+            const page = await currentPdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 0.5 });
+            const canvas = document.getElementById(`canvas-page-${pageNum}`);
+            if (!canvas) return;
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+        } catch (e) {
+            console.warn('Canvas render error', e);
+        }
+    }
+
+    function togglePageSelect(pageNum) {
+        if (selectedPages.has(pageNum)) {
+            selectedPages.delete(pageNum);
+        } else {
+            selectedPages.add(pageNum);
+        }
+        updateCardUI(pageNum);
+        updateSelectionDisplay();
+    }
+
+    function updateCardUI(pageNum) {
+        const card = document.getElementById(`thumb-card-${pageNum}`);
+        const badge = document.getElementById(`badge-page-${pageNum}`);
+        if (!card) return;
+
+        if (selectedPages.has(pageNum)) {
+            card.classList.add('selected');
+            badge.classList.remove('bg-secondary');
+            badge.classList.add('bg-danger');
+        } else {
+            card.classList.remove('selected');
+            badge.classList.remove('bg-danger');
+            badge.classList.add('bg-secondary');
+        }
+    }
+
+    function selectAllPages(select) {
+        selectedPages.clear();
+        if (select) {
+            for (let i = 1; i <= totalPages; i++) selectedPages.add(i);
+        }
+        for (let i = 1; i <= totalPages; i++) updateCardUI(i);
+        updateSelectionDisplay();
+    }
+
+    function updateSelectionDisplay() {
+        const countSpan = document.getElementById('selectedCountText');
+        const btnSplit = document.getElementById('btnSplitPdf');
+        const rangeInput = document.getElementById('pageRangeText');
+
+        countSpan.innerText = selectedPages.size;
+        btnSplit.disabled = selectedPages.size === 0;
+
+        // Auto update range text box
+        const sorted = Array.from(selectedPages).sort((a, b) => a - b);
+        rangeInput.value = formatRanges(sorted);
+    }
+
+    function formatRanges(pages) {
+        if (pages.length === 0) return '';
+        const ranges = [];
+        let start = pages[0];
+        let prev = pages[0];
+
+        for (let i = 1; i < pages.length; i++) {
+            if (pages[i] === prev + 1) {
+                prev = pages[i];
+            } else {
+                ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+                start = pages[i];
+                prev = pages[i];
+            }
+        }
+        ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+        return ranges.join(', ');
+    }
+
+    function applyRangeFromText() {
+        const text = document.getElementById('pageRangeText').value.trim();
+        selectedPages.clear();
+
+        if (text) {
+            const parts = text.split(',');
+            parts.forEach(part => {
+                const clean = part.trim();
+                if (clean.includes('-')) {
+                    const [s, e] = clean.split('-').map(n => parseInt(n.trim(), 10));
+                    if (!isNaN(s) && !isNaN(e)) {
+                        for (let p = Math.min(s, e); p <= Math.max(s, e); p++) {
+                            if (p >= 1 && p <= totalPages) selectedPages.add(p);
+                        }
+                    }
+                } else {
+                    const p = parseInt(clean, 10);
+                    if (!isNaN(p) && p >= 1 && p <= totalPages) selectedPages.add(p);
+                }
+            });
+        }
+
+        for (let i = 1; i <= totalPages; i++) updateCardUI(i);
+        document.getElementById('selectedCountText').innerText = selectedPages.size;
+        document.getElementById('btnSplitPdf').disabled = selectedPages.size === 0;
+    }
+
+    function resetFile() {
+        currentPdfDoc = null;
+        currentPdfBytes = null;
+        totalPages = 0;
+        selectedPages.clear();
+        document.getElementById('dropzone').style.display = 'block';
+        document.getElementById('pagesContainer').style.display = 'none';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('btnSplitPdf').disabled = true;
+    }
+
+    async function splitAndDownloadPdf() {
+        if (selectedPages.size === 0) {
+            Swal.fire('សូមជ្រើសរើសទំព័រ', 'សូមជ្រើសរើសយ៉ាងហោចណាស់ ១ ទំព័រដើម្បីទាញយក', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnSplitPdf');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងដំណើរការ...';
+
+        try {
+            const srcPdf = await PDFLib.PDFDocument.load(currentPdfBytes);
+            const newPdf = await PDFLib.PDFDocument.create();
+
+            const sortedIndices = Array.from(selectedPages).sort((a, b) => a - b).map(p => p - 1);
+            const copiedPages = await newPdf.copyPages(srcPdf, sortedIndices);
+            copiedPages.forEach(p => newPdf.addPage(p));
+
+            const newPdfBytes = await newPdf.save();
+
+            // Download file
+            const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            let outName = (document.getElementById('outputFileName').value || 'Extracted_Pages').trim();
+            if (!outName.toLowerCase().endsWith('.pdf')) outName += '.pdf';
+            a.href = url;
+            a.download = outName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ទាញយកជោគជ័យ!',
+                text: `ឯកសារ "${outName}" ចំនួន ${selectedPages.size} ទំព័រ ត្រូវបានទាញយករួចរាល់។`,
+                confirmButtonColor: '#dc3545',
+            });
+        } catch (error) {
+            console.error('Split error:', error);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចទាញយកទំព័របានទេ៖ ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-download me-2"></i> ទាញយកទំព័រដែលបានជ្រើស (Extract PDF)';
+        }
+    }
+</script>
+{% endblock %}

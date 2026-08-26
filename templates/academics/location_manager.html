@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងតំបន់រដ្ឋបាល | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-map-location-dot me-2"></i>គ្រប់គ្រងតំបន់រដ្ឋបាល (Administrative Divisions)
+        </h2>
+        <p class="text-muted small mb-0">Admin មានសិទ្ធិពេញលេញក្នុងការ បន្ថែម កែប្រែ ឬលុប ខេត្ត/រាជធានី, ស្រុក/ខណ្ឌ, ឃុំ/សង្កាត់ និងភូមិ</p>
+    </div>
+    
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary fw-bold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#createLocationModal">
+            <i class="fa-solid fa-plus-circle me-1"></i>
+            {% if level == 'province' %}បន្ថែមខេត្ត/រាជធានីថ្មី
+            {% elif level == 'district' %}បន្ថែមស្រុក/ខណ្ឌថ្មី
+            {% elif level == 'commune' %}បន្ថែមឃុំ/សង្កាត់ថ្មី
+            {% elif level == 'village' %}បន្ថែមភូមិថ្មី
+            {% endif %}
+        </button>
+
+        <!-- Export Excel Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-outline-success fw-bold dropdown-toggle shadow-sm px-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
+                <li><h6 class="dropdown-header text-muted small fw-bold">ទាញយកទិន្នន័យជា Excel (.xlsx)</h6></li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'location_export_excel' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}">
+                        <i class="fa-solid fa-file-export me-2 text-success"></i><strong>ទំព័របច្ចុប្បន្ន ({{ level_kh }})</strong>
+                        <span class="d-block small text-muted ms-4">Export តាមតម្រង និងការស្វែងរក</span>
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'location_export_excel' %}?level=all">
+                        <i class="fa-solid fa-layer-group me-2 text-primary"></i><strong>Export គ្រប់កម្រិត (៤ Sheets ក្នុង file តែមួយ)</strong>
+                        <span class="d-block small text-muted ms-4">ខេត្ត ស្រុក ឃុំ និងភូមិ</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_excel' %}?level=province">
+                        <i class="fa-solid fa-city me-2 text-primary"></i>ខេត្ត/រាជធានីទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_excel' %}?level=district">
+                        <i class="fa-solid fa-landmark me-2 text-success"></i>ស្រុក/ខណ្ឌទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_excel' %}?level=commune">
+                        <i class="fa-solid fa-tree-city me-2 text-warning"></i>ឃុំ/សង្កាត់ទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_excel' %}?level=village">
+                        <i class="fa-solid fa-house-chimney-user me-2 text-info"></i>ភូមិទាំងអស់
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Export CSV Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary fw-bold dropdown-toggle shadow-sm px-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
+                <li><h6 class="dropdown-header text-muted small fw-bold">ទាញយកទិន្នន័យជា CSV (.csv)</h6></li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'location_export_csv' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}">
+                        <i class="fa-solid fa-file-export me-2 text-secondary"></i><strong>ទំព័របច្ចុប្បន្ន ({{ level_kh }})</strong>
+                        <span class="d-block small text-muted ms-4">Export តាមតម្រង និងការស្វែងរក</span>
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'location_export_csv' %}?level=full_flat">
+                        <i class="fa-solid fa-table-list me-2 text-dark"></i><strong>Export ឋានានុក្រមពេញ (Full Flat CSV)</strong>
+                        <span class="d-block small text-muted ms-4">ខេត្ត-ស្រុក-ឃុំ-ភូមិ រួមគ្នាក្នុងជួរតែមួយ</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_csv' %}?level=province">
+                        <i class="fa-solid fa-city me-2 text-primary"></i>ខេត្ត/រាជធានីទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_csv' %}?level=district">
+                        <i class="fa-solid fa-landmark me-2 text-success"></i>ស្រុក/ខណ្ឌទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_csv' %}?level=commune">
+                        <i class="fa-solid fa-tree-city me-2 text-warning"></i>ឃុំ/សង្កាត់ទាំងអស់
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-1" href="{% url 'location_export_csv' %}?level=village">
+                        <i class="fa-solid fa-house-chimney-user me-2 text-info"></i>ភូមិទាំងអស់
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <form action="{% url 'location_sync_excel' %}" method="POST" onsubmit="return confirm('តើលោកអ្នកចង់ Sync ទិន្នន័យឡើងវិញពី Cambodia All List2025.xlsx មែនទេ?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-dark fw-bold" title="ទាញយកទិន្នន័យដើមឡើងវិញពី Excel">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> Sync ពី Excel 2025
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Stats Overview Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-primary bg-opacity-10 border-start border-primary border-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold">ខេត្ត / រាជធានី</span>
+                    <h3 class="fw-bold mb-0 text-primary mt-1">{{ total_provinces }}</h3>
+                </div>
+                <i class="fa-solid fa-city fa-2x text-primary opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-success bg-opacity-10 border-start border-success border-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold">ស្រុក / ខណ្ឌ / ក្រុង</span>
+                    <h3 class="fw-bold mb-0 text-success mt-1">{{ total_districts }}</h3>
+                </div>
+                <i class="fa-solid fa-landmark fa-2x text-success opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-warning bg-opacity-10 border-start border-warning border-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold">ឃុំ / សង្កាត់</span>
+                    <h3 class="fw-bold mb-0 text-warning mt-1">{{ total_communes }}</h3>
+                </div>
+                <i class="fa-solid fa-tree-city fa-2x text-warning opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-info bg-opacity-10 border-start border-info border-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold">ភូមិសរុប</span>
+                    <h3 class="fw-bold mb-0 text-info mt-1">{{ total_villages }}</h3>
+                </div>
+                <i class="fa-solid fa-house-chimney-user fa-2x text-info opacity-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Table Card with Tabs & Filters -->
+<div class="card border-0 shadow-sm rounded-3 bg-white">
+    <!-- Level Tabs -->
+    <div class="card-header bg-white border-bottom p-0">
+        <ul class="nav nav-tabs card-header-tabs m-0 px-3">
+            <li class="nav-item">
+                <a class="nav-link py-3 fw-bold {% if level == 'province' %}active text-primary{% else %}text-muted{% endif %}" href="?level=province">
+                    <i class="fa-solid fa-city me-1"></i> ១. ខេត្ត/រាជធានី ({{ total_provinces }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 fw-bold {% if level == 'district' %}active text-primary{% else %}text-muted{% endif %}" href="?level=district">
+                    <i class="fa-solid fa-landmark me-1"></i> ២. ស្រុក/ខណ្ឌ/ក្រុង ({{ total_districts }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 fw-bold {% if level == 'commune' %}active text-primary{% else %}text-muted{% endif %}" href="?level=commune">
+                    <i class="fa-solid fa-tree-city me-1"></i> ៣. ឃុំ/សង្កាត់ ({{ total_communes }})
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 fw-bold {% if level == 'village' %}active text-primary{% else %}text-muted{% endif %}" href="?level=village">
+                    <i class="fa-solid fa-house-chimney-user me-1"></i> ៤. ភូមិ ({{ total_villages }})
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="card-body bg-light border-bottom py-3">
+        <form method="GET" class="row g-2 align-items-center">
+            <input type="hidden" name="level" value="{{ level }}">
+            
+            {% if level != 'province' %}
+            <div class="col-md-3">
+                <select name="province_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- ខេត្ត/រាជធានីទាំងអស់ --</option>
+                    {% for p in provinces %}
+                    <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name_kh }} ({{ p.name_en }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {% if level == 'commune' or level == 'village' %}
+            {% if districts %}
+            <div class="col-md-3">
+                <select name="district_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- ស្រុក/ខណ្ឌទាំងអស់ --</option>
+                    {% for d in districts %}
+                    <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name_kh }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            {% if level == 'village' %}
+            {% if communes %}
+            <div class="col-md-3">
+                <select name="commune_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- ឃុំ/សង្កាត់ទាំងអស់ --</option>
+                    {% for c in communes %}
+                    <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name_kh }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <div class="col">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="ស្វែងរកតាមឈ្មោះខ្មែរ ឡាតាំង ឬកូដ..." value="{{ search }}">
+                    <button type="submit" class="btn btn-primary fw-bold">ស្វែងរក</button>
+                    {% if search or province_id or district_id or commune_id %}
+                    <a href="?level={{ level }}" class="btn btn-secondary">សម្អាត</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-auto d-flex gap-1">
+                <a href="{% url 'location_export_excel' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}" class="btn btn-sm btn-outline-success fw-bold" title="Export តារាងនេះទៅជា Excel (.xlsx)">
+                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </a>
+                <a href="{% url 'location_export_csv' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}" class="btn btn-sm btn-outline-secondary fw-bold" title="Export តារាងនេះទៅជា CSV (.csv)">
+                    <i class="fa-solid fa-file-csv me-1"></i> CSV
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 60px;" class="text-center">ល.រ</th>
+                        <th style="width: 120px;">កូដ</th>
+                        <th>ឈ្មោះជាភាសាខ្មែរ</th>
+                        <th>ឈ្មោះជាអក្សរឡាតាំង (EN)</th>
+                        {% if level != 'province' %}
+                        <th>ទីតាំងមេ (Parent Area)</th>
+                        {% endif %}
+                        <th style="width: 150px;" class="text-center">សកម្មភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="text-center text-muted small">{{ forloop.counter }}</td>
+                        <td><code>{{ item.code }}</code></td>
+                        <td><span class="fw-bold text-dark fs-6">{{ item.name_kh }}</span></td>
+                        <td><span class="text-secondary">{{ item.name_en|default:"-" }}</span></td>
+                        {% if level == 'district' %}
+                        <td><span class="badge bg-primary-subtle text-primary">{{ item.province.name_kh }}</span></td>
+                        {% elif level == 'commune' %}
+                        <td><span class="badge bg-success-subtle text-success">{{ item.district.name_kh }}</span> <small class="text-muted">({{ item.district.province.name_kh }})</small></td>
+                        {% elif level == 'village' %}
+                        <td><span class="badge bg-info-subtle text-info">{{ item.commune.name_kh }}</span> <small class="text-muted">({{ item.commune.district.name_kh }}, {{ item.commune.district.province.name_kh }})</small></td>
+                        {% endif %}
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <!-- Edit Button -->
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#editModal_{{ item.id }}" title="កែសម្រួលឈ្មោះ">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>កែប្រែ
+                                </button>
+
+                                <!-- Delete Button -->
+                                <form action="{% url 'location_item_delete' %}" method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុប {{ item.name_kh }} មែនទេ?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="level" value="{{ level }}">
+                                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="លុប">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Modal -->
+                    <div class="modal fade" id="editModal_{{ item.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form action="{% url 'location_item_edit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="level" value="{{ level }}">
+                                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                                    
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold text-primary">
+                                            <i class="fa-solid fa-pen-to-square me-2"></i>កែសម្រួលឈ្មោះ ({{ item.name_kh }})
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold small">កូដរដ្ឋបាល</label>
+                                            <input type="text" name="code" class="form-control bg-light" value="{{ item.code }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                                            <input type="text" name="name_kh" class="form-control fw-bold" value="{{ item.name_kh }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង (English / Latin)</label>
+                                            <input type="text" name="name_en" class="form-control" value="{{ item.name_en }}">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-light py-2">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                                        <button type="submit" class="btn btn-primary fw-bold">
+                                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-map-pin fa-3x mb-3 text-secondary"></i>
+                            <h5>រកមិនឃើញទិន្នន័យតំបន់រដ្ឋបាលឡើយ</h5>
+                            <p class="small">សូមសាកល្បងស្វែងរកពាក្យគន្លឹះផ្សេង ឬជ្រើសរើសខេត្ត/ស្រុកឡើងវិញ</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white text-muted small py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span>កំពុងបង្ហាញ {{ items|length }} ជួរ (ក្នុងចំណោមទិន្នន័យសរុប)</span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">ទាញយកទិន្នន័យពេញលេញ៖</span>
+            <a href="{% url 'location_export_excel' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}" class="btn btn-sm btn-outline-success fw-bold py-1 px-2">
+                <i class="fa-solid fa-file-excel me-1"></i>Excel (.xlsx)
+            </a>
+            <a href="{% url 'location_export_csv' %}?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}" class="btn btn-sm btn-outline-secondary fw-bold py-1 px-2">
+                <i class="fa-solid fa-file-csv me-1"></i>CSV (.csv)
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Create Modal for Current Level -->
+<div class="modal fade" id="createLocationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'location_item_create' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="level" value="{{ level }}">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="fa-solid fa-plus-circle me-2"></i>
+                        {% if level == 'province' %}បន្ថែមខេត្ត/រាជធានីថ្មី
+                        {% elif level == 'district' %}បន្ថែមស្រុក/ខណ្ឌ/ក្រុងថ្មី
+                        {% elif level == 'commune' %}បន្ថែមឃុំ/សង្កាត់ថ្មី
+                        {% elif level == 'village' %}បន្ថែមភូមិថ្មី
+                        {% endif %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if level == 'district' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ជ្រើសរើសខេត្ត/រាជធានី *</label>
+                        <select name="province_id" class="form-select" required>
+                            <option value="">-- ជ្រើសរើសខេត្ត --</option>
+                            {% for p in provinces %}
+                            <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name_kh }} ({{ p.name_en }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif level == 'commune' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ជ្រើសរើសស្រុក/ខណ្ឌ *</label>
+                        <select name="district_id" class="form-select" required>
+                            <option value="">-- ជ្រើសរើសស្រុក --</option>
+                            {% for d in districts %}
+                            <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name_kh }} ({{ d.province.name_kh }})</option>
+                            {% empty %}
+                            {% for d in items %}
+                            <option value="{{ d.id }}">{{ d.name_kh }}</option>
+                            {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif level == 'village' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ជ្រើសរើសឃុំ/សង្កាត់ *</label>
+                        <select name="commune_id" class="form-select" required>
+                            <option value="">-- ជ្រើសរើសឃុំ --</option>
+                            {% for c in communes %}
+                            <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name_kh }}</option>
+                            {% empty %}
+                            {% for c in items %}
+                            <option value="{{ c.id }}">{{ c.name_kh }}</option>
+                            {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">កូដរដ្ឋបាល (ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ)</label>
+                        <input type="text" name="code" class="form-control" placeholder="ឧ. 0102, 120401...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                        <input type="text" name="name_kh" class="form-control fw-bold" placeholder="ឈ្មោះជាភាសាខ្មែរ" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង (English / Latin)</label>
+                        <input type="text" name="name_en" class="form-control" placeholder="Latin Name (e.g. Phnom Penh)">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទិន្នន័យ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

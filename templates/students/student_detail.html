@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ student.khmer_name }} ({{ student.student_id }}) | SchoolSM{% endblock %}
+
+{% block content %}
+<!-- Header Bar -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ student.khmer_name }} ({{ student.latin_name }})</h2>
+        <p class="text-muted small mb-0">កូដសិស្ស (ID)៖ <strong>{{ student.student_id }}</strong> | ថ្នាក់៖ <strong>{{ student.classroom.name|default:"គ្មានថ្នាក់" }}</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'student_id_card' student.id %}" target="_blank" class="btn btn-outline-primary">
+            <i class="fa-solid fa-address-card me-1"></i> បោះពុម្ពកាតសិស្ស
+        </a>
+        {% if is_admin %}
+        <a href="{% url 'student_edit' student.id %}" class="btn btn-light">
+            <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែព័ត៌មាន
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded-3 border shadow-sm" id="studentDetailTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold" id="info-tab" data-bs-toggle="pill" data-bs-target="#info" type="button" role="tab">
+            <i class="fa-solid fa-user me-1"></i> ព័ត៌មានទូទៅ
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="attendance-tab" data-bs-toggle="pill" data-bs-target="#attendance" type="button" role="tab">
+            <i class="fa-solid fa-clipboard-check me-1"></i> ប្រវត្តិវត្តមាន ({{ attendance_rate }}%)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="grades-tab" data-bs-toggle="pill" data-bs-target="#grades" type="button" role="tab">
+            <i class="fa-solid fa-graduation-cap me-1"></i> លទ្ធផលប្រឡង & ពិន្ទុ
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="finance-tab" data-bs-toggle="pill" data-bs-target="#finance" type="button" role="tab">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i> វិក្កយបត្រ & បង់ប្រាក់
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="library-tab" data-bs-toggle="pill" data-bs-target="#library" type="button" role="tab">
+            <i class="fa-solid fa-book me-1"></i> សៀវភៅបណ្ណាល័យ ({{ borrowings.count }})
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Contents -->
+<div class="tab-content" id="studentDetailTabContent">
+    <!-- TAB 1: INFO -->
+    <div class="tab-pane fade show active" id="info" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="custom-card text-center">
+                    <div class="avatar-circle mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                        {{ student.khmer_name|slice:":1" }}
+                    </div>
+                    <h4 class="fw-bold mb-1">{{ student.khmer_name }}</h4>
+                    <p class="text-muted mb-2">{{ student.latin_name }}</p>
+                    <div class="d-flex justify-content-center gap-1 flex-wrap mb-2">
+                        <span class="badge bg-primary px-3 py-2 rounded-pill">{{ student.get_status_display }}</span>
+                        {% if student.is_exam_suspended %}
+                        <span class="badge bg-danger px-3 py-2 rounded-pill" title="{{ student.exam_suspension_notes }}">
+                            <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡង
+                        </span>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    <div class="text-start small">
+                        <div class="mb-2"><strong>ID សិស្ស៖</strong> {{ student.student_id }}</div>
+                        <div class="mb-2"><strong>ភេទ៖</strong> {{ student.get_gender_display }}</div>
+                        <div class="mb-2"><strong>ថ្ងៃកំណើត៖</strong> {{ student.date_of_birth|date:"d/m/Y" }}</div>
+                        <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ student.phone|default:"-" }}</div>
+                        <div class="mb-2"><strong>កម្រៃសិក្សា៖</strong> {{ student.get_scholarship_type_display }}</div>
+                        <div>
+                            <strong>សិទ្ធិប្រឡង៖</strong> 
+                            {% if student.is_exam_suspended %}
+                                <span class="text-danger fw-bold"><i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិ ({{ student.get_exam_suspension_reason_display }})</span>
+                                {% if student.exam_suspension_notes %}<div class="text-muted small mt-1">ចំណាំ៖ {{ student.exam_suspension_notes }}</div>{% endif %}
+                            {% else %}
+                                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i> មានសិទ្ធិប្រឡង</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="custom-card mb-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">ព័ត៌មានអាណាព្យាបាល & ទំនាក់ទំនង</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <span class="text-muted small">ឈ្មោះឪពុក៖</span>
+                            <div class="fw-bold">{{ student.father_name|default:"-" }} ({{ student.father_job|default:"-" }})</div>
+                            <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>{{ student.father_phone|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted small">ឈ្មោះម្តាយ៖</span>
+                            <div class="fw-bold">{{ student.mother_name|default:"-" }} ({{ student.mother_job|default:"-" }})</div>
+                            <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>{{ student.mother_phone|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted small">អាណាព្យាបាលជំនួស៖</span>
+                            <div class="fw-bold">{{ student.guardian_name|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted small">លេខទាក់ទងបន្ទាន់៖</span>
+                            <div class="fw-bold text-danger">{{ student.emergency_phone|default:"-" }}</div>
+                        </div>
+                        <div class="col-12">
+                            <span class="text-muted small">អាសយដ្ឋានបច្ចុប្បន្ន៖</span>
+                            <div class="fw-bold">{{ student.current_address|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if student.enrollment_data %}
+                <!-- Grade-Specific Additional Info Card -->
+                <div class="custom-card mb-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center justify-content-between">
+                        <span>
+                            <i class="fa-solid fa-clipboard-check me-2 text-warning"></i>ព័ត៌មានបន្ថែមតាមកម្រិតថ្នាក់ (Grade-Specific Info)
+                        </span>
+                        <span class="badge bg-light text-primary border small fw-normal">{{ student.classroom.grade_level }} {{ student.classroom.get_track_display|default:"" }}</span>
+                    </h5>
+                    <div class="row g-3">
+                        {% for key, item in student.enrollment_data.items %}
+                        <div class="col-md-6">
+                            <span class="text-muted small">{{ item.label|default:key }}៖</span>
+                            <div class="fw-bold text-dark">
+                                {% if item.type == 'FILE' %}
+                                    <a href="{{ item.url|default:item.value }}" target="_blank" class="btn btn-xs btn-outline-primary mt-1">
+                                        <i class="fa-solid fa-file-arrow-down me-1"></i> មើលឯកសារភ្ជាប់
+                                    </a>
+                                {% elif item.type == 'CHECKBOX' %}
+                                    {% if item.value == 'true' or item.value == True or item.value == 'on' %}
+                                        <span class="badge bg-success-soft text-success"><i class="fa-solid fa-check me-1"></i> បាទ/ចាស</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-soft text-muted"><i class="fa-solid fa-xmark me-1"></i> ទេ</span>
+                                    {% endif %}
+                                {% else %}
+                                    {{ item.value|default:"-" }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: ATTENDANCE -->
+    <div class="tab-pane fade" id="attendance" role="tabpanel">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">ប្រវត្តិនៃការចូលរៀន (Attendance Records)</h5>
+                <span class="badge bg-success">អត្រាវត្តមាន៖ {{ attendance_rate }}%</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>វេនសិក្សា</th>
+                            <th>ស្ថានភាព</th>
+                            <th>កំណត់ចំណាំ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in attendances %}
+                        <tr>
+                            <td class="fw-bold">{{ a.date|date:"d/m/Y" }}</td>
+                            <td>{{ a.get_session_display }}</td>
+                            <td>
+                                <span class="badge {% if a.status == 'PRESENT' %}bg-success{% elif a.status == 'ABSENT' %}bg-danger{% elif a.status == 'PERMISSION' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                                    {{ a.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ a.notes|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">មិនទាន់មានទិន្នន័យវត្តមាននៅឡើយទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: GRADES -->
+    <div class="tab-pane fade" id="grades" role="tabpanel">
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">តារាងពិន្ទុតាមមុខវិជ្ជា & សម័យប្រឡង</h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>សម័យប្រឡង</th>
+                            <th>មុខវិជ្ជា</th>
+                            <th>ពិន្ទុ</th>
+                            <th>និទ្ទេស</th>
+                            <th>សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in grades %}
+                        <tr>
+                            <td class="fw-bold">{{ g.exam_term.name }}</td>
+                            <td>{{ g.subject.name_kh }}</td>
+                            <td>{{ g.score }}/{{ g.max_score }}</td>
+                            <td>
+                                <span class="badge {% if g.grade_letter == 'A' %}bg-success{% elif g.grade_letter == 'B' %}bg-primary{% elif g.grade_letter == 'F' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ g.grade_letter }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'report_card' student.id g.exam_term.id %}" target="_blank" class="btn btn-sm btn-outline-primary py-0">
+                                    <i class="fa-solid fa-file-pdf"></i> តារាងពិន្ទុផ្លូវការ
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">មិនទាន់មានទិន្នន័យពិន្ទុនៅឡើយទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: FINANCE -->
+    <div class="tab-pane fade" id="finance" role="tabpanel">
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">វិក្កយបត្របង់ថ្លៃសិក្សា</h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>លេខវិក្កយបត្រ</th>
+                            <th>ប្រភេទកម្រៃ</th>
+                            <th>តម្លៃពេញ</th>
+                            <th>បានបង់</th>
+                            <th>នៅសល់</th>
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>ស្ថានភាព</th>
+                            <th>សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inv in invoices %}
+                        <tr>
+                            <td class="fw-bold">{{ inv.invoice_no }}</td>
+                            <td>{{ inv.fee_category.name }}</td>
+                            <td>${{ inv.final_amount }}</td>
+                            <td class="text-success fw-bold">${{ inv.paid_amount }}</td>
+                            <td class="text-danger fw-bold">${{ inv.remaining_balance }}</td>
+                            <td>{{ inv.due_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <span class="badge {% if inv.status == 'PAID' %}bg-success{% elif inv.status == 'OVERDUE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ inv.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-primary py-0">
+                                    <i class="fa-solid fa-eye"></i> មើល / បង់
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">គ្មានវិក្កយបត្រឡើយ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: LIBRARY -->
+    <div class="tab-pane fade" id="library" role="tabpanel">
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">សៀវភៅបណ្ណាល័យដែលបានខ្ចី</h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>ចំណងជើងសៀវភៅ</th>
+                            <th>ថ្ងៃខ្ចី</th>
+                            <th>ថ្ងៃត្រូវសង</th>
+                            <th>ស្ថានភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in borrowings %}
+                        <tr>
+                            <td class="fw-bold">{{ b.book.title }}</td>
+                            <td>{{ b.borrow_date|date:"d/m/Y" }}</td>
+                            <td>{{ b.due_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <span class="badge {% if b.status == 'RETURNED' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {{ b.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">មិនមានប្រវត្តិខ្ចីសៀវភៅទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}ការប្រឡងតេស្តស្តង់ដា (Standardized Exams) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-graduation-cap me-2"></i>ការប្រឡងតេស្តស្តង់ដា (Standardized Exams)
+        </h2>
+        <p class="text-muted small mb-0">ប្រព័ន្ធគ្រប់គ្រងការប្រឡងតេស្តស្តង់ដារបស់សិស្សវិទ្យាល័យ តាមស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-danger fw-bold shadow-sm">
+            <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែងមិនឱ្យប្រឡង
+        </a>
+        {% if is_admin %}
+        <a href="{% url 'standardized_exam_create' %}" class="btn btn-primary fw-bold shadow-sm">
+            <i class="fa-solid fa-circle-plus me-1"></i> បង្កើតសម័យប្រឡងថ្មី
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Academic Year & Grade Level Filter -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">ឆ្នាំសិក្សា (Academic Year)</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+                <option value="all" {% if not active_year %}selected{% endif %}>-- បង្ហាញគ្រប់ឆ្នាំសិក្សាទាំងអស់ --</option>
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>{{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted">កម្រិតថ្នាក់ (Grade Level)</label>
+            <select name="grade" class="form-select" onchange="this.form.submit()">
+                <option value="all" {% if selected_grade == 'all' %}selected{% endif %}>-- គ្រប់កម្រិតថ្នាក់ (៧ ដល់ ១២) --</option>
+                <option value="7" {% if selected_grade == '7' %}selected{% endif %}>ថ្នាក់ទី ៧</option>
+                <option value="8" {% if selected_grade == '8' %}selected{% endif %}>ថ្នាក់ទី ៨</option>
+                <option value="9" {% if selected_grade == '9' %}selected{% endif %}>ថ្នាក់ទី ៩</option>
+                <option value="10" {% if selected_grade == '10' %}selected{% endif %}>ថ្នាក់ទី ១០</option>
+                <option value="11" {% if selected_grade == '11' %}selected{% endif %}>ថ្នាក់ទី ១១</option>
+                <option value="12" {% if selected_grade == '12' %}selected{% endif %}>ថ្នាក់ទី ១២</option>
+            </select>
+        </div>
+        <div class="col-md-4 text-end d-flex align-items-end justify-content-end gap-2">
+            {% if selected_grade != 'all' or active_year %}
+            <a href="{% url 'standardized_exam_list' %}" class="btn btn-light border fw-bold">
+                <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ឡើងវិញ
+            </a>
+            {% endif %}
+            <button type="submit" class="btn btn-outline-primary px-4 fw-bold">
+                <i class="fa-solid fa-filter me-1"></i> ច្រោះទិន្នន័យ
+            </button>
+        </div>
+    </form>
+</div>
+
+
+<!-- Exams Cards Grid -->
+<div class="row g-4">
+    {% for item in exams_data %}
+    {% with ex=item.exam %}
+    <div class="col-md-6 col-xl-4">
+        <div class="custom-card h-100 position-relative d-flex flex-column justify-content-between border-top border-4 border-primary shadow-sm hover-shadow transition-all">
+            <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="badge bg-primary px-2.5 py-1">ថ្នាក់ទី {{ ex.grade_level }}</span>
+                        <span class="badge bg-secondary px-2 py-1">{{ ex.get_track_display }}</span>
+                        {% if ex.is_published %}
+                        <span class="badge bg-success px-2 py-1"><i class="fa-solid fa-check me-1"></i>បានប្រកាស</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark px-2 py-1">ព្រាង (Draft)</span>
+                        {% endif %}
+                    </div>
+                    <span class="badge bg-light text-muted border">
+                        <i class="fa-regular fa-calendar me-1"></i>{{ ex.exam_date|date:"d/m/Y" }}
+                    </span>
+                </div>
+
+                <h4 class="fw-bold mb-2 text-primary">
+                    <a href="{% url 'standardized_exam_manage' ex.id %}" class="text-decoration-none text-primary hover-underline">
+                        {{ ex.name }}
+                    </a>
+                </h4>
+                
+                <p class="text-muted small mb-3">
+                    <i class="fa-solid fa-school me-1"></i>ឆ្នាំសិក្សា៖ <strong>{{ ex.academic_year.name }}</strong>
+                    {% if ex.description %}
+                    <br><span class="opacity-75">{{ ex.description|truncatewords:15 }}</span>
+                    {% endif %}
+                </p>
+
+                <!-- Statistics Box -->
+                <div class="p-3 bg-light rounded-3 mb-3 border">
+                    <div class="row g-2 text-center">
+                        <div class="col-4 border-end">
+                            <div class="fs-5 fw-bold text-primary">{{ item.total_candidates }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">បេក្ខជនសរុប (ស្រី {{ item.female_candidates }})</div>
+                        </div>
+                        <div class="col-4 border-end">
+                            <div class="fs-5 fw-bold text-success">{{ item.total_rooms }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">បន្ទប់ប្រឡង ({{ ex.candidates_per_room }}នាក់/បន្ទប់)</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5 fw-bold text-info">{{ item.total_subjects }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">មុខវិជ្ជាប្រឡង</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-3 border-top d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <a href="{% url 'standardized_exam_manage' ex.id %}" class="btn btn-primary btn-sm fw-bold flex-fill">
+                    <i class="fa-solid fa-gauge-high me-1"></i> ផ្ទាំងគ្រប់គ្រង & បេក្ខជន
+                </a>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-solid fa-print me-1"></i> ឯកសារ & ពិន្ទុ
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'exam_room_postings_view' ex.id %}">
+                                <i class="fa-solid fa-door-open text-primary me-2"></i>បញ្ជីបិទផ្សាយតាមបន្ទប់ (Room Postings)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'exam_subject_attendance_view' ex.id %}">
+                                <i class="fa-solid fa-file-signature text-success me-2"></i>បញ្ជីវត្តមានចុះហត្ថលេខា (Attendance)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'exam_room_scores_entry' ex.id %}">
+                                <i class="fa-solid fa-pen-to-square text-warning me-2"></i>បញ្ចូលពិន្ទុតាមបន្ទប់ (Scores Entry)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item py-2" href="{% url 'exam_provisional_results_view' ex.id %}">
+                                <i class="fa-solid fa-ranking-star text-info me-2"></i>តារាងបិទផ្សាយបណ្តោះអាសន្ន (Provisional Board)
+                            </a>
+                        </li>
+                        {% if is_admin %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item py-2 text-primary" href="{% url 'standardized_exam_edit' ex.id %}">
+                                <i class="fa-solid fa-pen-to-square me-2"></i>កែប្រែសម័យប្រឡង (Edit)
+                            </a>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 text-danger" data-bs-toggle="modal" data-bs-target="#deleteExamModal{{ ex.id }}">
+                                <i class="fa-solid fa-trash-can me-2"></i>លុបសម័យប្រឡង (Delete)
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Delete Confirmation -->
+    {% if is_admin %}
+    <div class="modal fade" id="deleteExamModal{{ ex.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                <div class="modal-header bg-danger text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបសម័យប្រឡង
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-dark mb-2">
+                        តើលោកអ្នកពិតជាចង់លុបសម័យប្រឡង <strong>«{{ ex.name }}»</strong> (ថ្នាក់ទី {{ ex.grade_level }} • {{ ex.academic_year.name }}) នេះមែនទេ?
+                    </p>
+                    <div class="alert alert-warning border-0 rounded-3 small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        <strong>ចំណាំ៖</strong> ការលុបនេះនឹងលុបចេញនូវបញ្ជីបេក្ខជន បន្ទប់ប្រឡង លេខកូដសម្ងាត់ និងពិន្ទុទាំងអស់ដែលទាក់ទងនឹងសម័យប្រឡងនេះ ហើយមិនអាចទាញយកមកវិញបានទេ។
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <form method="POST" action="{% url 'standardized_exam_delete' ex.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger fw-bold px-4">
+                            <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡងឥឡូវនេះ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endwith %}
+    {% empty %}
+
+    <div class="col-12">
+        <div class="custom-card p-5 text-center text-muted">
+            <i class="fa-solid fa-graduation-cap display-3 text-muted opacity-50 mb-3"></i>
+            <h4 class="fw-bold">មិនទាន់មានសម័យប្រឡងតេស្តស្តង់ដានៅឡើយទេ</h4>
+            <p class="mb-3">លោកអ្នកអាចបង្កើតសម័យប្រឡងតេស្តស្តង់ដាថ្មីសម្រាប់ថ្នាក់ទី ៧ ដល់ទី ១២ បានយ៉ាងងាយស្រួល។</p>
+            {% if is_admin %}
+            <a href="{% url 'standardized_exam_create' %}" class="btn btn-primary fw-bold px-4 py-2">
+                <i class="fa-solid fa-circle-plus me-1"></i> បង្កើតសម័យប្រឡងថ្មីឥឡូវនេះ
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

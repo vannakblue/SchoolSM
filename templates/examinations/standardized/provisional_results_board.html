@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block title %}តារាងបិទផ្សាយបណ្តោះអាសន្ន៖ {{ exam.name }} | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rank-trophy-1 {
+        background: linear-gradient(135deg, #fbbf24, #d97706);
+        color: #fff;
+        font-weight: 800;
+    }
+    .rank-trophy-2 {
+        background: linear-gradient(135deg, #94a3b8, #64748b);
+        color: #fff;
+        font-weight: 800;
+    }
+    .rank-trophy-3 {
+        background: linear-gradient(135deg, #f97316, #c2410c);
+        color: #fff;
+        font-weight: 800;
+    }
+
+    @media print {
+        body {
+            background: #fff !important;
+            padding: 0 !important;
+            color: #000 !important;
+        }
+        .no-print, nav, .sidebar, header, .navbar, .btn, .custom-sidebar, .main-header {
+            display: none !important;
+        }
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .custom-card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        .print-header {
+            display: block !important;
+        }
+        .table {
+            font-size: 0.78rem !important;
+        }
+        .table th, .table td {
+            border: 1px solid #000 !important;
+            padding: 4px 6px !important;
+        }
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar -->
+<div class="custom-card p-4 mb-4 shadow-sm no-print">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary fs-7">ថ្នាក់ទី {{ exam.grade_level }}</span>
+                <span class="badge bg-secondary fs-7">{{ exam.get_track_display }}</span>
+                <span class="badge bg-light text-dark border">{{ exam.academic_year.name }}</span>
+            </div>
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="fa-solid fa-ranking-star me-2"></i>តារាងបិទផ្សាយបណ្តោះអាសន្ន (Provisional Results Board)
+            </h2>
+            <p class="text-muted small mb-0">{{ exam.name }} • កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong></p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <!-- Excel Export Button -->
+            <a href="{% url 'exam_export_provisional_excel' exam.id %}" class="btn btn-success btn-sm fw-bold shadow-sm">
+                <i class="fa-solid fa-file-excel me-1"></i> នាំចេញជា Excel
+            </a>
+            <!-- Direct Print Button -->
+            <button type="button" class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="window.print()">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ពតារាងបិទផ្សាយ (Print)
+            </button>
+            <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold">
+                <i class="fa-solid fa-arrow-left me-1"></i> ផ្ទាំងគ្រប់គ្រង
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Statistics Bar -->
+    <div class="row g-3 text-center">
+        <div class="col-6 col-md-2">
+            <div class="p-2.5 bg-light rounded-3 border">
+                <div class="text-muted small">បេក្ខជនសរុប</div>
+                <div class="fs-4 fw-bold text-primary">{{ total_cand }} <span class="fs-7 fw-normal text-muted">នាក់ (ស្រី {{ females }})</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="p-2.5 bg-light rounded-3 border">
+                <div class="text-muted small">ជាប់សរុប (Passed)</div>
+                <div class="fs-4 fw-bold text-success">{{ passed_cand }} <span class="fs-7 fw-normal text-success">({{ pass_rate }}%)</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="p-2.5 bg-light rounded-3 border">
+                <div class="text-muted small">ធ្លាក់សរុប (Failed)</div>
+                <div class="fs-4 fw-bold text-danger">{{ failed_cand }} <span class="fs-7 fw-normal text-muted">នាក់</span></div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="p-2 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-around h-100 gap-1">
+                <div class="text-center">
+                    <span class="badge bg-success px-2 py-1 fs-7">A: {{ grade_counts.A }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">ល្អប្រសើរ</div>
+                </div>
+                <div class="text-center">
+                    <span class="badge bg-primary px-2 py-1 fs-7">B: {{ grade_counts.B }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">ល្អណាស់</div>
+                </div>
+                <div class="text-center">
+                    <span class="badge bg-info px-2 py-1 fs-7">C: {{ grade_counts.C }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">ល្អ</div>
+                </div>
+                <div class="text-center">
+                    <span class="badge bg-warning text-dark px-2 py-1 fs-7">D: {{ grade_counts.D }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">ល្អបង្គួរ</div>
+                </div>
+                <div class="text-center">
+                    <span class="badge bg-secondary px-2 py-1 fs-7">E: {{ grade_counts.E }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">មធ្យម</div>
+                </div>
+                <div class="text-center">
+                    <span class="badge bg-danger px-2 py-1 fs-7">F: {{ grade_counts.F }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">ធ្លាក់</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters & Sorting Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm no-print">
+    <form method="GET" class="row g-2 align-items-center">
+        <!-- Sort Control -->
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted mb-1"><i class="fa-solid fa-arrow-down-wide-short me-1 text-primary"></i>តម្រៀបលទ្ធផលតាម *</label>
+            <select name="sort" class="form-select form-select-sm fw-bold" onchange="this.form.submit()">
+                <option value="rank" {% if selected_sort == 'rank' %}selected{% endif %}>🏆 តាមចំណាត់ថ្នាក់ (Rank & ពិន្ទុសរុប)</option>
+                <option value="name" {% if selected_sort == 'name' %}selected{% endif %}>🔤 តាមឈ្មោះសិស្ស (អក្ខរក្រម)</option>
+                <option value="desk" {% if selected_sort == 'desk' %}selected{% endif %}>🚪 តាមបន្ទប់ & លេខតុ (Room & Desk)</option>
+                <option value="roll" {% if selected_sort == 'roll' %}selected{% endif %}>🔢 តាមអត្តលេខបេក្ខជន (Roll No)</option>
+            </select>
+        </div>
+
+        <!-- Room Filter -->
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted mb-1"><i class="fa-solid fa-door-open me-1 text-primary"></i>បន្ទប់ប្រឡង</label>
+            <select name="room" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់បន្ទប់ទាំងអស់ --</option>
+                {% for r in rooms %}
+                <option value="{{ r.id }}" {% if selected_room == r.id|stringformat:"s" %}selected{% endif %}>{{ r.room_name }} ({{ r.candidate_count }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Grade Filter -->
+        <div class="col-md-2">
+            <label class="form-label fw-bold small text-muted mb-1"><i class="fa-solid fa-medal me-1 text-primary"></i>និទ្ទេស (Grade)</label>
+            <select name="grade" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់និទ្ទេស --</option>
+                <option value="A" {% if selected_grade == 'A' %}selected{% endif %}>និទ្ទេស A</option>
+                <option value="B" {% if selected_grade == 'B' %}selected{% endif %}>និទ្ទេស B</option>
+                <option value="C" {% if selected_grade == 'C' %}selected{% endif %}>និទ្ទេស C</option>
+                <option value="D" {% if selected_grade == 'D' %}selected{% endif %}>និទ្ទេស D</option>
+                <option value="E" {% if selected_grade == 'E' %}selected{% endif %}>និទ្ទេស E</option>
+                <option value="F" {% if selected_grade == 'F' %}selected{% endif %}>និទ្ទេស F (ធ្លាក់)</option>
+            </select>
+        </div>
+
+        <!-- Search Box -->
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted mb-1"><i class="fa-solid fa-magnifying-glass me-1 text-primary"></i>ស្វែងរក</label>
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" class="form-control" placeholder="ឈ្មោះសិស្ស, អត្តលេខ..." value="{{ search_q }}">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+
+        <div class="col-md-1 d-flex align-items-end">
+            <a href="{% url 'exam_provisional_results_view' exam.id %}" class="btn btn-light btn-sm border w-100" title="សម្អាត Filter">
+                <i class="fa-solid fa-rotate-left"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Printable Header (Visible Only on Print) -->
+<div class="print-header d-none mb-3 text-center">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="text-start" style="font-size: 0.85rem;">
+            <div class="fw-bold">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+            <div>មន្ទីរអប់រំ យុវជន និងកីឡា</div>
+            <div class="fw-bold">{{ exam.academic_year.name }}</div>
+        </div>
+        <div class="text-center">
+            <div style="font-family: 'Moul', cursive; font-size: 1.1rem;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+            <div style="font-family: 'Moul', cursive; font-size: 1rem;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            <div>***</div>
+        </div>
+    </div>
+    <h4 style="font-family: 'Moul', cursive; font-size: 1.3rem; margin-top: 5px; margin-bottom: 2px;">
+        តារាងបិទផ្សាយបណ្តោះអាសន្នលទ្ធផលប្រឡង
+    </h4>
+    <div class="small fw-bold">{{ exam.name }} • ថ្នាក់ទី {{ exam.grade_level }} • កាលបរិច្ឆេទ៖ {{ exam.exam_date|date:"d/m/Y" }}</div>
+</div>
+
+<!-- Master Provisional Results Matrix Table -->
+<div class="custom-card p-4 shadow-sm mb-4">
+    <div class="table-responsive border rounded-3" style="max-height: 750px; overflow-y: auto;">
+        <table class="table table-bordered table-hover align-middle mb-0 small text-center" id="provisionalTable">
+            <thead class="table-dark sticky-top">
+                <tr>
+                    <th style="width: 70px;">ចំណាត់ថ្នាក់</th>
+                    <th style="width: 70px;">អត្តលេខ</th>
+                    <th style="width: 100px;">បន្ទប់ & តុ</th>
+                    <th style="min-width: 130px; text-align: left; padding-left: 10px;">គោត្តនាម-នាម</th>
+                    <th style="min-width: 110px; text-align: left; padding-left: 10px;">ឈ្មោះឡាតាំង</th>
+                    <th style="width: 45px;">ភេទ</th>
+                    <th style="width: 75px;">ថ្នាក់ដើម</th>
+
+                    <!-- Exam Subject Headers with Max Score -->
+                    {% for s in subjects %}
+                    <th style="min-width: 75px;">
+                        <div>{{ s.subject.name_kh }}</div>
+                        <div class="fw-normal text-muted" style="font-size: 0.68rem; color: #cbd5e1 !important;">/{{ s.max_score|floatformat:0 }}</div>
+                    </th>
+                    {% endfor %}
+
+                    <!-- Summary & Final Results -->
+                    <th style="width: 85px;" class="bg-primary text-white">ពិន្ទុសរុប</th>
+                    <th style="width: 80px;" class="bg-primary text-white">មធ្យមភាគ</th>
+                    <th style="width: 65px;" class="bg-primary text-white">និទ្ទេស</th>
+                    <th style="width: 75px;" class="bg-primary text-white">លទ្ធផល</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in candidate_rows %}
+                {% with c=row.candidate %}
+                <tr class="{% if c.rank_overall == 1 %}table-warning bg-opacity-25{% elif c.rank_overall <= 3 %}table-light{% endif %}">
+                    <td class="fw-bold">
+                        {% if c.rank_overall == 1 %}
+                        <span class="badge rank-trophy-1 px-2 py-1"><i class="fa-solid fa-trophy"></i> ១</span>
+                        {% elif c.rank_overall == 2 %}
+                        <span class="badge rank-trophy-2 px-2 py-1">២</span>
+                        {% elif c.rank_overall == 3 %}
+                        <span class="badge rank-trophy-3 px-2 py-1">៣</span>
+                        {% elif c.rank_overall %}
+                        <span class="fw-bold text-dark">{{ c.rank_overall }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-bold text-primary">{{ c.roll_number }}</td>
+                    <td>
+                        {% if c.room %}
+                        <span class="badge bg-light text-dark border">{{ c.room.room_name }} ({{ c.desk_number|stringformat:"02d" }})</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-start ps-2 fw-bold text-dark">{{ c.candidate_name_kh }}</td>
+                    <td class="text-start ps-2 text-muted">{{ c.candidate_name_en|default:"-" }}</td>
+                    <td>
+                        {% if c.gender == 'F' %}<span class="badge bg-danger-subtle text-danger border">ស្រី</span>
+                        {% else %}<span class="badge bg-primary-subtle text-primary border">ប្រុស</span>{% endif %}
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ c.origin_class|default:"-" }}</span></td>
+
+                    <!-- Subject Scores -->
+                    {% for item in row.scores %}
+                    <td class="{% if item.is_absent %}bg-danger-subtle text-danger fw-bold{% elif item.score != '-' and item.score < 25 %}text-danger fw-bold{% endif %}">
+                        {% if item.is_absent %}
+                        អវត្តមាន
+                        {% else %}
+                        {{ item.score|floatformat:1 }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+
+                    <!-- Total & Average & Grade -->
+                    <td class="fw-bold text-primary fs-7">{{ c.total_score|floatformat:1 }}</td>
+                    <td class="fw-bold fs-7">{{ c.average_score|floatformat:2 }}</td>
+                    <td>
+                        {% if c.grade_letter == 'A' %}<span class="badge bg-success fs-7">A</span>
+                        {% elif c.grade_letter == 'B' %}<span class="badge bg-primary fs-7">B</span>
+                        {% elif c.grade_letter == 'C' %}<span class="badge bg-info fs-7">C</span>
+                        {% elif c.grade_letter == 'D' %}<span class="badge bg-warning text-dark fs-7">D</span>
+                        {% elif c.grade_letter == 'E' %}<span class="badge bg-secondary fs-7">E</span>
+                        {% elif c.grade_letter == 'F' %}<span class="badge bg-danger fs-7">F</span>
+                        {% else %}<span class="badge bg-light text-muted border">-</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if row.is_passed %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">ជាប់</span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 fw-bold">ធ្លាក់</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr>
+                    <td colspan="{{ 11|add:subjects.count }}" class="text-center text-muted p-5">
+                        <i class="fa-solid fa-file-circle-xmark display-5 opacity-50 mb-2"></i>
+                        <p class="mb-0">មិនមានទិន្នន័យបេក្ខជនតាមលក្ខខណ្ឌស្វែងរកនេះឡើយ។</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

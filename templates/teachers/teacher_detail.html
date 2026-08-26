@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ teacher.khmer_name }} ({{ teacher.teacher_id }}) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ teacher.khmer_name }} ({{ teacher.latin_name }})</h2>
+        <p class="text-muted small mb-0">កូដគ្រូ៖ <strong>{{ teacher.teacher_id }}</strong> | ឯកទេស៖ <strong>{{ teacher.specialization }}</strong></p>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'face_enroll' teacher.id %}" class="btn btn-outline-info">
+            <i class="fa-solid fa-camera-retro me-1"></i> ចុះឈ្មោះផ្ទៃមុខ (Face AI)
+        </a>
+        {% if is_admin %}
+        <a href="{% url 'teacher_edit' teacher.id %}" class="btn btn-light border">
+            <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែព័ត៌មាន
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Profile summary -->
+    <div class="col-lg-4">
+        <div class="custom-card text-center mb-4">
+            <div class="avatar-circle mx-auto mb-3" style="width: 90px; height: 90px; font-size: 2.2rem;">
+                {{ teacher.khmer_name|slice:":1" }}
+            </div>
+            <h4 class="fw-bold mb-1">{{ teacher.khmer_name }}</h4>
+            <p class="text-muted small mb-2">{{ teacher.latin_name }}</p>
+            <span class="badge bg-success mb-3">{{ teacher.get_status_display }}</span>
+            
+            <div class="text-start small p-3 bg-light rounded-3">
+                <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ teacher.phone }}</div>
+                <div class="mb-2"><strong>អ៊ីមែល៖</strong> {{ teacher.email|default:"-" }}</div>
+                <div class="mb-2"><strong>កម្រិតវប្បធម៌៖</strong> {{ teacher.qualification|default:"-" }}</div>
+                <div class="mb-2"><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ teacher.base_salary }}</span></div>
+                <div><strong>ថ្ងៃចូលបម្រើការ៖</strong> {{ teacher.hire_date|date:"d/m/Y"|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Schedule, Attendance & Payroll history -->
+    <div class="col-lg-8">
+        <!-- Schedule -->
+        <div class="custom-card mb-4">
+            <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">
+                <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍
+            </h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>ថ្ងៃ</th>
+                            <th>ម៉ោង</th>
+                            <th>ថ្នាក់រៀន</th>
+                            <th>មុខវិជ្ជា</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tt in timetables %}
+                        <tr>
+                            <td class="fw-bold">{{ tt.get_day_of_week_display }}</td>
+                            <td>{{ tt.start_time|time:"H:i" }} - {{ tt.end_time|time:"H:i" }}</td>
+                            <td><span class="badge bg-light text-dark">{{ tt.classroom.name }}</span></td>
+                            <td>{{ tt.subject.name_kh }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-muted">មិនទាន់មានកាលវិភាគបង្រៀនឡើយ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Attendance Logs -->
+        <div class="custom-card mb-4">
+            <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">
+                <i class="fa-solid fa-user-clock me-2"></i>កំណត់ត្រាវត្តមានគ្រូ (ចុងក្រោយ)
+            </h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>ស្ថានភាព</th>
+                            <th>កាត់ប្រាក់ខែ</th>
+                            <th>កំណត់ចំណាំ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for att in attendances %}
+                        <tr>
+                            <td class="fw-bold">{{ att.date|date:"d/m/Y" }}</td>
+                            <td>
+                                <span class="badge {% if att.status == 'PRESENT' %}bg-success{% elif att.status == 'UNEXCUSED_ABSENCE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ att.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-danger fw-bold">{% if att.deduction_amount > 0 %}-${{ att.deduction_amount }}{% else %}$0{% endif %}</td>
+                            <td>{{ att.notes|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-3 text-muted">មិនទាន់មានទិន្នន័យវត្តមានឡើយ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

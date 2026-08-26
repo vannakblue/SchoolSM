@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងឆ្នាំសិក្សា | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-calendar-days me-2"></i>គ្រប់គ្រងឆ្នាំសិក្សា (Academic Years)
+        </h2>
+        <p class="text-muted small mb-0">បន្ថែម កែសម្រួល ឬកំណត់ឆ្នាំសិក្សាបច្ចុប្បន្នសម្រាប់សាលារៀន</p>
+    </div>
+    
+    <button type="button" class="btn btn-primary fw-bold shadow-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#createYearModal">
+        <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែមឆ្នាំសិក្សាថ្មី
+    </button>
+</div>
+
+<!-- Academic Years List Table -->
+<div class="card border-0 shadow-sm rounded-3 bg-white">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 60px;" class="text-center">ល.រ</th>
+                        <th>ឆ្នាំសិក្សា (Academic Year)</th>
+                        <th>ថ្ងៃចាប់ផ្តើម</th>
+                        <th>ថ្ងៃបញ្ចប់</th>
+                        <th class="text-center">សិស្សចុះឈ្មោះ</th>
+                        <th class="text-center">ចំនួនថ្នាក់រៀន</th>
+                        <th class="text-center">ស្ថានភាព</th>
+                        <th style="width: 220px;" class="text-center">សកម្មភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in years_data %}
+                    <tr class="{% if item.year.is_current %}table-primary-subtle{% endif %}">
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold fs-6 text-dark">{{ item.year.name }}</span>
+                                {% if item.year.is_current %}
+                                <span class="badge bg-success px-2 py-1">
+                                    <i class="fa-solid fa-check-circle me-1"></i>បច្ចុប្បន្ន (Active)
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td><i class="fa-regular fa-calendar text-muted me-1"></i>{{ item.year.start_date|date:"d/m/Y" }}</td>
+                        <td><i class="fa-regular fa-calendar-check text-muted me-1"></i>{{ item.year.end_date|date:"d/m/Y" }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-light text-dark border px-2 py-1">{{ item.students_count }} នាក់</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-light text-dark border px-2 py-1">{{ item.classrooms_count }} ថ្នាក់</span>
+                        </td>
+                        <td class="text-center">
+                            {% if item.year.is_current %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">កំពុងដំណើរការ</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary px-2 py-1">មិនដំណើរការ</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                {% if not item.year.is_current %}
+                                <form action="{% url 'academic_year_set_current' item.year.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success fw-bold py-1 px-2" title="កំណត់ជាឆ្នាំសិក្សាបច្ចុប្បន្ន">
+                                        <i class="fa-solid fa-star me-1"></i> កំណត់បច្ចុប្បន្ន
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Edit Button -->
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" data-bs-toggle="modal" data-bs-target="#editYearModal_{{ item.year.id }}" title="កែសម្រួល">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+
+                                {% if not item.year.is_current %}
+                                <!-- Delete Button -->
+                                <form action="{% url 'academic_year_delete' item.year.id %}" method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបឆ្នាំសិក្សា {{ item.year.name }} មែនទេ?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="លុបឆ្នាំសិក្សា">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Modal for each year -->
+                    <div class="modal fade" id="editYearModal_{{ item.year.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form action="{% url 'academic_year_edit' item.year.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold">
+                                            <i class="fa-solid fa-pen-to-square me-2 text-primary"></i>កែសម្រួលឆ្នាំសិក្សា {{ item.year.name }}
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold small">ឈ្មោះឆ្នាំសិក្សា *</label>
+                                            <input type="text" name="name" class="form-control fw-bold" value="{{ item.year.name }}" required>
+                                        </div>
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold small">ថ្ងៃចាប់ផ្តើម *</label>
+                                                <input type="date" name="start_date" class="form-control" value="{{ item.year.start_date|date:'Y-m-d' }}" required>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold small">ថ្ងៃបញ្ចប់ *</label>
+                                                <input type="date" name="end_date" class="form-control" value="{{ item.year.end_date|date:'Y-m-d' }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" name="is_current" id="chk_current_{{ item.year.id }}" {% if item.year.is_current %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold small" for="chk_current_{{ item.year.id }}">កំណត់ជាឆ្នាំសិក្សាបច្ចុប្បន្ន</label>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-light py-2">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                                        <button type="submit" class="btn btn-primary fw-bold">រក្សាទុកការកែប្រែ</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-calendar-xmark fa-3x mb-3 text-secondary"></i>
+                            <h5>មិនទាន់មានឆ្នាំសិក្សានៅឡើយទេ</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Academic Year Modal -->
+<div class="modal fade" id="createYearModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'academic_year_create' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="fa-solid fa-calendar-plus me-2"></i>បន្ថែមឆ្នាំសិក្សាថ្មី
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះឆ្នាំសិក្សា *</label>
+                        {{ form.name }}
+                        <div class="form-text small">ឧទាហរណ៍៖ 2026-2027 ឬ ២០២៦-២០២៧</div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ថ្ងៃចាប់ផ្តើម *</label>
+                            {{ form.start_date }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">ថ្ងៃបញ្ចប់ *</label>
+                            {{ form.end_date }}
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                        {{ form.is_current }}
+                        <label class="form-check-label fw-bold small" for="{{ form.is_current.id_for_label }}">
+                            កំណត់ជាឆ្នាំសិក្សាបច្ចុប្បន្ន (Set as Current Active Year)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកឆ្នាំសិក្សា
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

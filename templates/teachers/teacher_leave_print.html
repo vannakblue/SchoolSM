@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <!-- Google Fonts: Khmer OS Siemreap / Battambang / Moul -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 15mm 20mm;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Kantumruy Pro', 'Siemreap', sans-serif;
+            font-size: 14px;
+            color: #1e293b;
+            background-color: #f1f5f9;
+            line-height: 1.6;
+        }
+
+        .no-print-bar {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-print {
+            background-color: #2563eb;
+            color: #ffffff;
+        }
+        .btn-print:hover { background-color: #1d4ed8; }
+
+        .btn-back {
+            background-color: #475569;
+            color: #ffffff;
+        }
+        .btn-back:hover { background-color: #334155; }
+
+        .print-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm 25mm;
+            margin: 20px auto;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        /* Kingdom Header */
+        .kingdom-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .kingdom-header h3 {
+            font-family: 'Moul', serif;
+            font-size: 16px;
+            color: #0f172a;
+            font-weight: normal;
+            margin-bottom: 4px;
+        }
+        .kingdom-header h4 {
+            font-family: 'Moul', serif;
+            font-size: 14px;
+            color: #0f172a;
+            font-weight: normal;
+        }
+        .kingdom-header .tatch {
+            font-size: 18px;
+            letter-spacing: 4px;
+            margin-top: -2px;
+        }
+
+        /* School & Reference Info */
+        .school-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .school-logo-text {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .school-logo-text img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+
+        .school-names h4 {
+            font-family: 'Moul', serif;
+            font-size: 14px;
+            color: #1e3a8a;
+            font-weight: normal;
+        }
+        .school-names p {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .reference-box {
+            text-align: right;
+            font-size: 12px;
+            color: #475569;
+        }
+        .reference-box .code {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 13px;
+            color: #0f172a;
+        }
+
+        /* Document Title */
+        .doc-title {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .doc-title h2 {
+            font-family: 'Moul', serif;
+            font-size: 17px;
+            color: #1e293b;
+            font-weight: normal;
+            margin-bottom: 6px;
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-emergency {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #f87171;
+        }
+        .badge-planned {
+            background-color: #dbeafe;
+            color: #2563eb;
+            border: 1px solid #93c5fd;
+        }
+
+        /* Form Details Table */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        .info-table td {
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            font-size: 13.5px;
+        }
+        .info-table .label {
+            width: 28%;
+            background-color: #f8fafc;
+            font-weight: bold;
+            color: #334155;
+        }
+        .info-table .value {
+            color: #0f172a;
+        }
+
+        .reason-box {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 25px;
+            font-size: 13.5px;
+        }
+        .reason-box h5 {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #334155;
+            font-size: 13.5px;
+        }
+
+        /* Signature Blocks */
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-top: 35px;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+        .sign-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 150px;
+            padding: 10px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            background-color: #ffffff;
+        }
+        .sign-title {
+            font-weight: bold;
+            font-size: 12.5px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .sign-sub {
+            font-size: 11px;
+            color: #64748b;
+        }
+        .sign-name {
+            font-weight: bold;
+            font-size: 13px;
+            color: #0f172a;
+            margin-top: 50px;
+            border-top: 1px solid #94a3b8;
+            padding-top: 4px;
+        }
+
+        .status-stamp {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+        .stamp-approved { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .stamp-pending { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .stamp-rejected { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        @media print {
+            body {
+                background: none;
+                color: #000;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .print-sheet {
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                min-height: auto;
+            }
+            .info-table td, .sign-col, .reason-box {
+                border-color: #94a3b8 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar (Hidden when printing) -->
+    <div class="no-print-bar">
+        <div style="font-weight: bold; font-size: 15px;">
+            <i class="fa-solid fa-file-signature me-2"></i> លិខិតសុំច្បាប់ឈប់សម្រាកផ្លូវការ (Official Leave Application Letter)
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn-action btn-print">
+                <i class="fa-solid fa-print"></i> បោះពុម្ពលិខិត (Print A4)
+            </button>
+            <a href="{% url 'teacher_leave_list' %}" class="btn-action btn-back">
+                <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ក្រោយ
+            </a>
+        </div>
+    </div>
+
+    <!-- Printable A4 Sheet -->
+    <div class="print-sheet">
+        
+        <!-- Kingdom Header -->
+        <div class="kingdom-header">
+            <h3>ព្រះរាជាណាចក្រកម្ពុជា</h3>
+            <h4>ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
+            <div class="tatch">***</div>
+        </div>
+
+        <!-- School Info & Reference -->
+        <div class="school-info-row">
+            <div class="school-logo-text">
+                {% if school.logo %}
+                <img src="{{ school.logo.url }}" alt="School Logo">
+                {% endif %}
+                <div class="school-names">
+                    <h4>{{ school.school_name_kh|default:"សាលារៀន" }}</h4>
+                    <p>{{ school.school_name_en|default:"School Management System" }}</p>
+                    <p style="font-size: 11px; color: #64748b;">ទូរស័ព្ទ៖ {{ school.phone|default:"-" }} • អ៊ីមែល៖ {{ school.email|default:"-" }}</p>
+                </div>
+            </div>
+            <div class="reference-box">
+                <div>លេខកូដលិខិត៖ <span class="code">{{ leave.leave_code|default:leave.id }}</span></div>
+                <div>កាលបរិច្ឆេទដាក់ពាក្យ៖ <strong>{{ leave.created_at|date:"d/m/Y H:i" }}</strong></div>
+                <div>
+                    ស្ថានភាព៖ 
+                    {% if leave.status == 'APPROVED' %}
+                    <span class="status-stamp stamp-approved">✅ បានអនុម័ត (Approved)</span>
+                    {% elif leave.status == 'PENDING' %}
+                    <span class="status-stamp stamp-pending">⏳ រង់ចាំពិនិត្យ (Pending)</span>
+                    {% else %}
+                    <span class="status-stamp stamp-rejected">❌ បានបដិសេធ (Rejected)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Title -->
+        <div class="doc-title">
+            <h2>ពាក្យសុំច្បាប់ឈប់សម្រាក</h2>
+            <div>
+                {% if leave.category == 'EMERGENCY' %}
+                <span class="category-badge badge-emergency">
+                    <i class="fa-solid fa-triangle-exclamation"></i> ការសុំច្បាប់ភ្លាមៗ (បន្ទាន់ / Emergency Leave)
+                </span>
+                {% else %}
+                <span class="category-badge badge-planned">
+                    <i class="fa-solid fa-calendar-check"></i> ការសុំច្បាប់ទុកជាមុន (គ្រោងទុក / Planned Leave)
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Teacher Information Table -->
+        <table class="info-table">
+            <tr>
+                <td class="label">គោត្តនាម និងនាម៖</td>
+                <td class="value" style="font-weight: bold; font-size: 14.5px;">
+                    {{ leave.teacher.khmer_name }} ({{ leave.teacher.latin_name|default:"-" }})
+                </td>
+                <td class="label">អត្តលេខគ្រូ (ID)៖</td>
+                <td class="value" style="font-family: monospace; font-weight: bold;">{{ leave.teacher.teacher_id }}</td>
+            </tr>
+            <tr>
+                <td class="label">ឯកទេស / មុខវិជ្ជា៖</td>
+                <td class="value">{{ leave.teacher.specialization }}</td>
+                <td class="label">លេខទូរស័ព្ទទំនាក់ទំនង៖</td>
+                <td class="value">{{ leave.teacher.phone|default:"-" }}</td>
+            </tr>
+            <tr>
+                <td class="label">ប្រភេទនៃការសុំច្បាប់៖</td>
+                <td class="value" style="font-weight: bold; color: #1e3a8a;">
+                    {{ leave.get_leave_type_display }}
+                </td>
+                <td class="label">ចំនួនថ្ងៃឈប់សម្រាក៖</td>
+                <td class="value" style="font-weight: bold; color: #2563eb;">
+                    {{ leave.total_days }} ថ្ងៃ
+                </td>
+            </tr>
+            <tr>
+                <td class="label">កាលបរិច្ឆេទឈប់សម្រាក៖</td>
+                <td class="value" colspan="3">
+                    ចាប់ពីថ្ងៃទី <strong>{{ leave.start_date|date:"d/m/Y" }}</strong> ដល់ថ្ងៃទី <strong>{{ leave.end_date|date:"d/m/Y" }}</strong>
+                </td>
+            </tr>
+            {% if leave.substitute_teacher %}
+            <tr>
+                <td class="label">គ្រូបង្រៀនជំនួស (Substitute)៖</td>
+                <td class="value" colspan="3">
+                    <strong>{{ leave.substitute_teacher.khmer_name }}</strong> (ID: {{ leave.substitute_teacher.teacher_id }} • ឯកទេស៖ {{ leave.substitute_teacher.specialization }} • ទូរស័ព្ទ៖ {{ leave.substitute_teacher.phone }})
+                </td>
+            </tr>
+            {% endif %}
+            {% if leave.is_proxy_application %}
+            <tr>
+                <td class="label" style="background-color: #f3e8ff; color: #6b21a8;">ដាក់ពាក្យជំនួសដោយ៖</td>
+                <td class="value" colspan="3">
+                    <strong style="color: #6b21a8;">{{ leave.applied_by.display_name }} (គណៈគ្រប់គ្រង / Admin)</strong>
+                    {% if leave.proxy_note %}
+                    <span style="color: #475569; font-style: italic;"> — កំណត់សម្គាល់៖ {{ leave.proxy_note }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+        </table>
+
+        <!-- Reason Box -->
+        <div class="reason-box">
+            <h5>មូលហេតុនៃការសុំច្បាប់ឈប់សម្រាក (Reason)៖</h5>
+            <p>{{ leave.reason }}</p>
+        </div>
+
+        {% if leave.rejection_reason %}
+        <div class="reason-box" style="border-color: #f87171; background-color: #fef2f2;">
+            <h5 style="color: #991b1b;"><i class="fa-solid fa-circle-xmark"></i> មូលហេតុនៃការបដិសេធ (Rejection Reason)៖</h5>
+            <p style="color: #b91c1c;">{{ leave.rejection_reason }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Signatures Grid -->
+        <div class="signature-grid">
+            <!-- 1. Applicant / Proxy Applicant -->
+            <div class="sign-col">
+                <div>
+                    <div class="sign-title">
+                        {% if leave.is_proxy_application %}
+                        ហត្ថលេខាអ្នកដាក់ពាក្យជំនួស
+                        {% else %}
+                        ហត្ថលេខាសាមីខ្លួន
+                        {% endif %}
+                    </div>
+                    <div class="sign-sub">ថ្ងៃទី.......ខែ.......ឆ្នាំ២០២...</div>
+                </div>
+                <div>
+                    <div class="sign-name">
+                        {% if leave.is_proxy_application %}
+                            {{ leave.applied_by.display_name }} (ជំនួស {{ leave.teacher.khmer_name }})
+                        {% else %}
+                            {{ leave.teacher.khmer_name }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 2. Section Head / Supervisor -->
+            <div class="sign-col">
+                <div>
+                    <div class="sign-title">មតិប្រធានផ្នែក/ការិយាល័យ</div>
+                    <div class="sign-sub">[ ] យល់ព្រម   [ ] មិនយល់ព្រម</div>
+                </div>
+                <div>
+                    <div class="sign-name">ហត្ថលេខា និងឈ្មោះ</div>
+                </div>
+            </div>
+
+            <!-- 3. School Principal / Director -->
+            <div class="sign-col" style="border-color: #1e3a8a;">
+                <div>
+                    <div class="sign-title" style="color: #1e3a8a;">ការសម្រេចរបស់នាយកសាលា</div>
+                    <div class="sign-sub">
+                        {% if leave.status == 'APPROVED' %}
+                        [ ✔ ] យល់ព្រមអនុញ្ញាត
+                        {% elif leave.status == 'REJECTED' %}
+                        [ ✖ ] មិនយល់ព្រម
+                        {% else %}
+                        [  ] យល់ព្រម   [  ] មិនយល់ព្រម
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="sign-name" style="color: #1e3a8a;">
+                        {% if leave.approved_by %}
+                            {{ leave.approved_by.display_name }} (ហត្ថលេខា & ត្រា)
+                        {% else %}
+                            ហត្ថលេខា និងត្រាសាលា
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+            ឯកសារនេះត្រូវបានបង្កើតឡើងដោយស្វ័យប្រវត្តិតាមរយៈប្រព័ន្ធ SchoolSM • មិនកែប្រែដោយគ្មានការអនុញ្ញាត
+        </div>
+
+    </div>
+
+</body>
+</html>

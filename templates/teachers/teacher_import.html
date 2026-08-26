@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ចូលទិន្នន័យគ្រូបង្រៀនពី Excel / CSV | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-file-excel text-success me-2"></i>បញ្ចូលទិន្នន័យគ្រូបង្រៀនពី Excel / CSV (Bulk Import)
+        </h2>
+        <p class="text-muted small mb-0">បញ្ចូលព័ត៌មានគ្រូបង្រៀនជាក្រុមក្នុងពេលតែមួយ សម្រាប់រៀបចំកាលវិភាគ ស្រង់វត្តមាន និងគ្រប់គ្រងបុគ្គលិក</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'teacher_list' %}" class="btn btn-light">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីគ្រូ
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Upload Form -->
+    <div class="col-lg-7">
+        <div class="custom-card h-100">
+            <h5 class="fw-bold mb-3">
+                <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>ជ្រើសរើសឯកសារសម្រាប់ Upload
+            </h5>
+
+            <form method="POST" enctype="multipart/form-data" id="importForm">
+                {% csrf_token %}
+
+                <!-- Drag and Drop Box -->
+                <div class="border border-2 border-dashed rounded-3 p-5 text-center mb-4 bg-light position-relative" id="dropZone" style="cursor: pointer;">
+                    <input type="file" name="file" id="fileInput" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" accept=".xlsx, .csv" required onchange="handleFileSelect(this)">
+                    <div id="dropZoneContent">
+                        <i class="fa-solid fa-file-excel fa-4x text-success mb-3 animate-bounce"></i>
+                        <h5 class="fw-bold mb-1">ចុចទីនេះ ឬអូសទម្លាក់ឯកសារ Excel / CSV</h5>
+                        <p class="text-muted small mb-3">គាំទ្រទម្រង់ឯកសារ <strong>.xlsx</strong> ឬ <strong>.csv</strong></p>
+                        <span class="btn btn-outline-primary btn-sm px-3 fw-bold">
+                            <i class="fa-solid fa-folder-open me-1"></i> រកមើលឯកសារលើកុំព្យូទ័រ
+                        </span>
+                    </div>
+                    <div id="fileSelectedInfo" class="d-none">
+                        <i class="fa-solid fa-circle-check fa-3x text-success mb-2"></i>
+                        <h6 class="fw-bold text-dark mb-1" id="fileNameText">filename.xlsx</h6>
+                        <span class="badge bg-primary" id="fileSizeText">0 KB</span>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none" onclick="resetFileInput(event)">
+                                <i class="fa-solid fa-xmark me-1"></i> ជ្រើសរើសឯកសារផ្សេង
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Alert -->
+                <div class="alert alert-info py-2 px-3 small mb-4 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-primary"></i>
+                    <div>
+                        <strong>ចំណាំសំខាន់៖</strong> នៅពេល Import ជោគជ័យ ប្រព័ន្ធនឹង **បង្កើតគណនី Login ជូនគ្រូនីមួយៗដោយស្វ័យប្រវត្តិ** (Username ដូចទៅនឹង Teacher ID និង Password លំនាំដើមគឺ <code>password123</code>)។
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-6 shadow-sm" id="btnSubmit">
+                    <i class="fa-solid fa-file-import me-2"></i> ចាប់ផ្តើមបញ្ចូលទិន្នន័យ (Start Import)
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Download Templates & Guidelines -->
+    <div class="col-lg-5">
+        <!-- Download Templates Card -->
+        <div class="custom-card mb-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+            <h5 class="fw-bold mb-2 text-white">
+                <i class="fa-solid fa-download me-2"></i>ទាញយកទម្រង់គំរូ (Templates)
+            </h5>
+            <p class="small text-white-50 mb-3">ដើម្បីកុំឱ្យមានកំហុស សូមទាញយកឯកសារគំរូខាងក្រោម រួចបំពេញទិន្នន័យតាមជួរឈរនីមួយៗ៖</p>
+
+            <div class="d-flex flex-column gap-2">
+                <a href="{% url 'teacher_import_template_excel' %}" class="btn btn-light text-primary fw-bold text-start d-flex align-items-center justify-content-between p-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-file-excel fs-4 text-success"></i>
+                        <div>
+                            <div>ទម្រង់គំរូ Excel (.xlsx)</div>
+                            <small class="text-muted fw-normal">ណែនាំសម្រាប់ប្រើប្រាស់ (Recommended)</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-cloud-arrow-down fs-5"></i>
+                </a>
+
+                <a href="{% url 'teacher_import_template_csv' %}" class="btn btn-outline-light fw-bold text-start d-flex align-items-center justify-content-between p-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-file-csv fs-4 text-warning"></i>
+                        <div>
+                            <div>ទម្រង់គំរូ CSV (.csv)</div>
+                            <small class="text-white-50 fw-normal">ទម្រង់ UTF-8 with BOM</small>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-cloud-arrow-down fs-5"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Guidelines Card -->
+        <div class="custom-card">
+            <h6 class="fw-bold mb-3 text-dark">
+                <i class="fa-solid fa-list-check text-primary me-2"></i>ការណែនាំអំពីជួរឈរក្នុង Excel
+            </h6>
+            <ul class="list-unstyled small mb-0 text-muted d-flex flex-column gap-2">
+                <li><strong class="text-dark">1. Teacher ID *</strong> ៖ អត្តលេខគ្រូ (ឧ. <code>T-001</code>, <code>T-002</code>)</li>
+                <li><strong class="text-dark">2. Khmer Name *</strong> ៖ ឈ្មោះជាភាសាខ្មែរ (ឧ. <code>សុខ វិបុល</code>)</li>
+                <li><strong class="text-dark">3. Latin Name *</strong> ៖ ឈ្មោះជាអក្សរឡាតាំង (ឧ. <code>Sok Vibol</code>)</li>
+                <li><strong class="text-dark">4. Gender *</strong> ៖ ភេទ (<code>M</code> សម្រាប់ប្រុស, <code>F</code> សម្រាប់ស្រី)</li>
+                <li><strong class="text-dark">5. Phone *</strong> ៖ លេខទូរស័ព្ទ (ឧ. <code>012345678</code>)</li>
+                <li><strong class="text-dark">6. Specialization *</strong> ៖ ឯកទេសបង្រៀន (ឧ. <code>គណិតវិទ្យា</code>, <code>រូបវិទ្យា</code>, <code>ICT</code>)</li>
+                <li><strong class="text-dark">7. Max Weekly Hours</strong> ៖ ម៉ោងបង្រៀនអតិបរមា/សប្តាហ៍ (លំនាំដើម៖ <code>18</code> ម៉ោង)</li>
+                <li><strong class="text-dark">8. Base Salary</strong> ៖ ប្រាក់ខែគោល (ឧ. <code>500</code>)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        document.getElementById('fileNameText').innerText = file.name;
+        document.getElementById('fileSizeText').innerText = (file.size / 1024).toFixed(1) + ' KB';
+        document.getElementById('dropZoneContent').classList.add('d-none');
+        document.getElementById('fileSelectedInfo').classList.remove('d-none');
+    }
+}
+
+function resetFileInput(event) {
+    event.stopPropagation();
+    const input = document.getElementById('fileInput');
+    input.value = '';
+    document.getElementById('dropZoneContent').classList.remove('d-none');
+    document.getElementById('fileSelectedInfo').classList.add('d-none');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+        <p class="text-muted small mb-0">កំណត់ឈ្មោះថ្នាក់ បន្ទប់រៀន និងគ្រូបន្ទុកថ្នាក់</p>
+    </div>
+    <a href="{% url 'classroom_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="custom-card">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small">ឈ្មោះថ្នាក់រៀន *</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កូដថ្នាក់ (Code) *</label>
+                        {{ form.code }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កម្រិតថ្នាក់ (Grade Level) *</label>
+                        {{ form.grade_level }}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">ជំនាញសិក្សា / កម្មវិធី *</label>
+                            <a href="{% url 'grade_rules_manager' %}" class="small text-decoration-none" target="_blank" title="គ្រប់គ្រងជំនាញសិក្សា">
+                                <i class="fa-solid fa-gear"></i> កំណត់
+                            </a>
+                        </div>
+                        {{ form.track }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឆ្នាំសិក្សា *</label>
+                        {{ form.academic_year }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ទីតាំងបន្ទប់រៀន</label>
+                        {{ form.room_number }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">គ្រូបន្ទុកថ្នាក់ (Homeroom Teacher)</label>
+                        {{ form.homeroom_teacher }}
+                    </div>
+                </div>
+
+                <!-- Subjects Selection Section -->
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-primary">
+                                <i class="fa-solid fa-book-open-reader me-2"></i>មុខវិជ្ជាសិក្សាសម្រាប់ថ្នាក់នេះ (Subjects Assignment)
+                            </h5>
+                            <span class="text-muted small">គូសធីក (Tick) ជ្រើសរើសមុខវិជ្ជាណាដែលត្រូវបង្រៀន និងប្រឡងក្នុងថ្នាក់នេះ</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="toggleFormSubjects(true)">
+                                <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="toggleFormSubjects(false)">
+                                <i class="fa-solid fa-xmark me-1"></i> ដោះទាំងអស់
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        {% for s in all_subjects %}
+                        <div class="col-md-6 col-lg-4">
+                            <label class="custom-control-label d-block p-2 rounded-3 border cursor-pointer h-100 form-subject-label" id="form_sub_label_{{ s.id }}" style="background: #ffffff; transition: all 0.2s;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input 
+                                        type="checkbox" 
+                                        name="subject_ids" 
+                                        value="{{ s.id }}" 
+                                        class="form-check-input form-sub-check"
+                                        {% if not classroom or s.id in assigned_subject_ids %}checked{% endif %}
+                                        onchange="updateFormSubjectStyles()"
+                                    >
+                                    <span class="badge" style="background-color: {{ s.color_code|default:'#4f46e5' }}; color: #ffffff; font-size: 0.72rem;">
+                                        {{ s.code }}
+                                    </span>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small text-dark">{{ s.name_kh }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">{{ s.name_en }}</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                    <a href="{% url 'classroom_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function toggleFormSubjects(state) {
+        document.querySelectorAll('.form-sub-check').forEach(cb => cb.checked = state);
+        updateFormSubjectStyles();
+    }
+
+    function updateFormSubjectStyles() {
+        document.querySelectorAll('.form-sub-check').forEach(cb => {
+            const label = document.getElementById(`form_sub_label_${cb.value}`);
+            if (label) {
+                if (cb.checked) {
+                    label.style.borderColor = '#4f46e5';
+                    label.style.backgroundColor = '#f5f3ff';
+                } else {
+                    label.style.borderColor = '#e2e8f0';
+                    label.style.backgroundColor = '#ffffff';
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', updateFormSubjectStyles);
+</script>
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .form-subject-label:hover {
+        border-color: #6366f1 !important;
+    }
+</style>
+{% endblock %}
+{% endblock %}

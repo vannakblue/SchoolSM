@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}ស្កេន QR Code & Barcode (QR Scanner) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scanner-viewport {
+        border-radius: 20px;
+        overflow: hidden;
+        background: #0f172a;
+        min-height: 380px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    #qr-reader {
+        width: 100% !important;
+        border: none !important;
+    }
+    #qr-reader__scan_region video {
+        border-radius: 14px;
+        object-fit: cover;
+    }
+    .result-card {
+        background: #f8fafc;
+        border-radius: 16px;
+        border: 2px solid #e2e8f0;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">QR Scanner</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-camera text-primary me-2"></i>ស្កេន QR Code & Barcode (QR & Barcode Scanner)
+            </h2>
+            <p class="text-muted small mb-0">ស្កេន QR Code ឬ Barcode ដោយផ្ទាល់តាមរយៈកាមេរ៉ា ឬទាញយករូបភាពមកស្កេនបានយ៉ាងរហ័ស។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Scanner Viewport Column -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Mode Switch -->
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-primary" id="btnModeCamera" onclick="switchScanMode('camera')">
+                            <i class="fa-solid fa-camera me-1"></i> ស្កេនតាមកាមេរ៉ា (Live Camera)
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnModeFile" onclick="switchScanMode('file')">
+                            <i class="fa-solid fa-image me-1"></i> ស្កេនតាមរូបភាព (Image File)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Camera Viewport -->
+                <div id="cameraScannerSection">
+                    <div class="scanner-viewport mb-3">
+                        <div id="qr-reader"></div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="btnStartCamera" onclick="startCameraScanner()">
+                            <i class="fa-solid fa-play me-1"></i> ចាប់ផ្តើមកាមេរ៉ា
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" id="btnStopCamera" onclick="stopCameraScanner()" disabled>
+                            <i class="fa-solid fa-stop me-1"></i> បិទកាមេរ៉ា
+                        </button>
+                    </div>
+                </div>
+
+                <!-- File Upload Scanner -->
+                <div id="fileScannerSection" style="display: none;">
+                    <div class="p-5 text-center bg-light border border-2 border-dashed rounded-4 mb-3" onclick="document.getElementById('qrFileInput').click()" style="cursor: pointer;">
+                        <input type="file" id="qrFileInput" accept="image/*" class="d-none" onchange="scanImageFile(event)">
+                        <i class="fa-solid fa-qrcode display-3 text-primary mb-3"></i>
+                        <h5>ចុចដើម្បីជ្រើសរើសរូបថត QR Code ឬ Barcode</h5>
+                        <p class="text-muted small mb-0">គាំទ្ររូបភាព Screenshots ឬរូបថតទូរស័ព្ទ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Card Column -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-square-poll-vertical text-success me-2"></i>លទ្ធផលស្កេន (Scan Result)
+                </h5>
+
+                <div id="emptyResultPlaceholder" class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-expand display-4 mb-3 text-secondary"></i>
+                    <p class="small mb-0">មិនទាន់មានលទ្ធផលនៅឡើយ<br>សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code ដើម្បីស្កេន</p>
+                </div>
+
+                <div id="resultContentBox" style="display: none;">
+                    <div class="result-card mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-success rounded-pill" id="resultTypeBadge">QR Code</span>
+                            <small class="text-muted" id="scanTimestamp">ឥឡូវនេះ</small>
+                        </div>
+                        <div class="p-3 bg-white rounded-3 border text-break font-monospace small mb-3" id="resultDecodedText" style="max-height: 180px; overflow-y: auto;">
+                            -
+                        </div>
+
+                        <!-- Action Buttons based on type -->
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-primary rounded-pill" onclick="copyResultText()">
+                                <i class="fa-regular fa-copy me-1"></i> ចម្លងលទ្ធផល (Copy Text)
+                            </button>
+                            <a href="#" target="_blank" id="btnOpenUrl" class="btn btn-primary rounded-pill" style="display: none;">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកមើលតំណភ្ជាប់ (Open Link)
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-light w-100 rounded-pill" onclick="clearResultAndRescan()">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i> ស្កេនម្តងទៀត (Scan Again)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HTML5-QRCode Library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+    let html5QrCode = null;
+    let isScanning = false;
+
+    window.addEventListener('DOMContentLoaded', () => {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        startCameraScanner();
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (isScanning && html5QrCode) {
+            html5QrCode.stop().catch(() => {});
+        }
+    });
+
+    function switchScanMode(mode) {
+        if (mode === 'camera') {
+            document.getElementById('cameraScannerSection').style.display = 'block';
+            document.getElementById('fileScannerSection').style.display = 'none';
+            document.getElementById('btnModeCamera').className = 'btn btn-primary';
+            document.getElementById('btnModeFile').className = 'btn btn-outline-secondary';
+            startCameraScanner();
+        } else {
+            stopCameraScanner();
+            document.getElementById('cameraScannerSection').style.display = 'none';
+            document.getElementById('fileScannerSection').style.display = 'block';
+            document.getElementById('btnModeCamera').className = 'btn btn-outline-secondary';
+            document.getElementById('btnModeFile').className = 'btn btn-primary';
+        }
+    }
+
+    function startCameraScanner() {
+        if (isScanning) return;
+
+        Html5Qrcode.getCameras().then(cameras => {
+            if (cameras && cameras.length) {
+                const cameraId = cameras[cameras.length - 1].id; // prefer back camera
+                html5QrCode.start(
+                    cameraId,
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    (decodedText, decodedResult) => {
+                        onScanSuccess(decodedText);
+                    },
+                    (errorMessage) => {
+                        // ignore frame parse misses
+                    }
+                ).then(() => {
+                    isScanning = true;
+                    document.getElementById('btnStartCamera').disabled = true;
+                    document.getElementById('btnStopCamera').disabled = false;
+                }).catch(err => {
+                    console.error("Unable to start scanner", err);
+                });
+            } else {
+                Swal.fire('មិនមានកាមេរ៉ា!', 'ឧបករណ៍របស់អ្នកមិនមានកាមេរ៉ា ឬមិនទាន់បានអនុញ្ញាត Permission ឡើយ', 'warning');
+            }
+        }).catch(err => {
+            console.error("Camera access error", err);
+        });
+    }
+
+    function stopCameraScanner() {
+        if (isScanning && html5QrCode) {
+            html5QrCode.stop().then(() => {
+                isScanning = false;
+                document.getElementById('btnStartCamera').disabled = false;
+                document.getElementById('btnStopCamera').disabled = true;
+            }).catch(err => console.error(err));
+        }
+    }
+
+    function scanImageFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+        html5QrCode.scanFile(file, true)
+            .then(decodedText => {
+                onScanSuccess(decodedText);
+            })
+            .catch(err => {
+                Swal.fire('មិនអាចស្កេនបានទេ', 'មិនបានរកឃើញ QR Code ឬ Barcode ក្នុងរូបភាពនេះឡើយ', 'info');
+            });
+    }
+
+    function onScanSuccess(decodedText) {
+        document.getElementById('emptyResultPlaceholder').style.display = 'none';
+        document.getElementById('resultContentBox').style.display = 'block';
+        document.getElementById('resultDecodedText').innerText = decodedText;
+        document.getElementById('scanTimestamp').innerText = new Date().toLocaleTimeString('km-KH');
+
+        const btnOpen = document.getElementById('btnOpenUrl');
+        const badge = document.getElementById('resultTypeBadge');
+
+        if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+            badge.innerText = 'តំណភ្ជាប់ / Web Link';
+            badge.className = 'badge bg-primary rounded-pill';
+            btnOpen.href = decodedText;
+            btnOpen.style.display = 'block';
+        } else if (decodedText.startsWith('WIFI:')) {
+            badge.innerText = 'WiFi Network';
+            badge.className = 'badge bg-success rounded-pill';
+            btnOpen.style.display = 'none';
+        } else {
+            badge.innerText = 'អត្ថបទ / Text';
+            badge.className = 'badge bg-secondary rounded-pill';
+            btnOpen.style.display = 'none';
+        }
+
+        // Play subtle sound/beep feedback
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        } catch(e) {}
+    }
+
+    function copyResultText() {
+        const text = document.getElementById('resultDecodedText').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'បានចម្លងលទ្ធផលរួចរាល់!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+
+    function clearResultAndRescan() {
+        document.getElementById('emptyResultPlaceholder').style.display = 'block';
+        document.getElementById('resultContentBox').style.display = 'none';
+        if (!isScanning) startCameraScanner();
+    }
+</script>
+{% endblock %}

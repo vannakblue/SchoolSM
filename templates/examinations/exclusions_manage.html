@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡង (Exam Exclusions) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-user-slash me-2"></i>គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡង (Exam Exclusions)
+        </h2>
+        <p class="text-muted small mb-0">
+            កំណត់សិស្សដែលឈប់រៀន, ផ្អាកការសិក្សា, ឬមានបញ្ហាវិន័យ មិនឱ្យមានឈ្មោះប្រឡងតាមខែនីមួយៗ (ពិន្ទុ ០ ដោយស្វ័យប្រវត្តិ)
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_admin %}
+        <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createExclusionModal">
+            <i class="fa-solid fa-plus me-1"></i> កំណត់សិស្សមិនឱ្យប្រឡងថ្មី
+        </button>
+        {% endif %}
+        <a href="{% url 'exam_term_list' %}" class="btn btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-calendar-days me-1"></i> សម័យប្រឡងប្រចាំខែ
+        </a>
+        <a href="{% url 'standardized_exam_list' %}" class="btn btn-outline-primary fw-bold">
+            <i class="fa-solid fa-award me-1"></i> ប្រឡងតេស្តស្តង់ដា
+        </a>
+    </div>
+</div>
+
+<!-- Stats Counter Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-primary h-100 shadow-sm">
+            <div class="text-muted small fw-bold">កំណត់ត្រាសរុប</div>
+            <div class="display-6 fw-bold text-primary">{{ total_exclusions }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
+            <div class="text-muted small">ឆ្នាំសិក្សា៖ <strong>{{ target_year.name }}</strong></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-danger h-100 shadow-sm">
+            <div class="text-muted small fw-bold">កំពុងលើកលែង (Active)</div>
+            <div class="display-6 fw-bold text-danger">{{ active_exclusions }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
+            <div class="text-muted small">មិនអនុញ្ញាតឱ្យប្រឡង</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-success h-100 shadow-sm">
+            <div class="text-muted small fw-bold">អនុញ្ញាតឱ្យប្រឡងវិញ</div>
+            <div class="display-6 fw-bold text-success">{{ total_exclusions|add:"-"|add:active_exclusions }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
+            <div class="text-muted small">ចូលរៀនឡើងវិញ</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 border-start border-4 border-warning h-100 shadow-sm">
+            <div class="text-muted small fw-bold">ច្បាប់ពិន្ទុប្រឡង</div>
+            <div class="fs-5 fw-bold text-warning-emphasis mt-1">ពិន្ទុ ០ (សូន្យ)</div>
+            <div class="text-muted small">កែប្រែដោយ៖ <strong>Admin តែម្នាក់គត់</strong></div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm">
+    <form method="GET" class="row g-2 align-items-center">
+        <!-- Academic Year -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">ឆ្នាំសិក្សា</label>
+            <select name="academic_year" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if selected_year_id == y.id|stringformat:"s" %}selected{% endif %}>{{ y.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Term -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">សម័យប្រឡង</label>
+            <select name="term" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់សម័យប្រឡង --</option>
+                {% for t in exam_terms %}
+                <option value="{{ t.id }}" {% if selected_term_id == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Month -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">ខែប្រឡង</label>
+            <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ខែទាំងអស់ --</option>
+                {% for m_num, m_name in month_choices %}
+                <option value="{{ m_num }}" {% if selected_month == m_num|stringformat:"s" %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Classroom -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">ថ្នាក់រៀន</label>
+            <select name="classroom" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ថ្នាក់ --</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Reason -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">មូលហេតុ</label>
+            <select name="reason" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់មូលហេតុ --</option>
+                {% for r_code, r_label in reasons %}
+                <option value="{{ r_code }}" {% if selected_reason == r_code %}selected{% endif %}>{{ r_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Search -->
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">ស្វែងរក</label>
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" class="form-control" placeholder="ឈ្មោះ/អត្តលេខ..." value="{{ search_q }}">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Exclusions Table -->
+<div class="custom-card p-4 shadow-sm mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <h5 class="fw-bold text-primary mb-0">
+            <i class="fa-solid fa-list-check me-2"></i>បញ្ជីសិស្សដែលត្រូវបានលើកលែងមិនឱ្យប្រឡង ({{ exclusions.count }} នាក់)
+        </h5>
+        <div class="small text-muted">
+            <i class="fa-solid fa-shield-halved text-warning me-1"></i>សិស្សទាំងនេះទទួលបាន <strong>ពិន្ទុ ០ (សូន្យ)</strong> ដោយស្វ័យប្រវត្តិ
+        </div>
+    </div>
+
+    <div class="table-responsive border rounded-3">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-center" style="width: 50px;">ល.រ</th>
+                    <th style="width: 180px;">សិស្ស</th>
+                    <th style="width: 100px;">ថ្នាក់រៀន</th>
+                    <th style="width: 160px;">វិសាលភាពលើកលែង</th>
+                    <th style="width: 140px;">មូលហេតុ</th>
+                    <th>កំណត់សម្គាល់បន្ថែម</th>
+                    <th class="text-center" style="width: 130px;">ស្ថានភាព</th>
+                    <th style="width: 120px;">កំណត់ដោយ</th>
+                    <th class="text-center" style="width: 110px;">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exc in exclusions %}
+                <tr class="{% if not exc.is_active %}table-light text-muted opacity-75{% endif %}">
+                    <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ exc.student.khmer_name }}</div>
+                        <span class="text-muted small">{{ exc.student.student_id }}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ exc.student.classroom.name|default:"គ្មានថ្នាក់" }}</span>
+                    </td>
+                    <td>
+                        {% if exc.exam_term %}
+                        <span class="badge bg-primary-subtle text-primary border fw-bold">{{ exc.exam_term.name }}</span>
+                        {% elif exc.month %}
+                        <span class="badge bg-info-subtle text-dark border fw-bold">{{ exc.get_month_display }}</span>
+                        {% elif exc.standardized_exam %}
+                        <span class="badge bg-purple-subtle text-dark border fw-bold">{{ exc.standardized_exam.name }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">ពេញមួយឆ្នាំសិក្សា</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if exc.reason == 'DROPPED' %}
+                        <span class="badge bg-danger-subtle text-danger border"><i class="fa-solid fa-user-xmark me-1"></i>ឈប់រៀន</span>
+                        {% elif exc.reason == 'SUSPENDED' %}
+                        <span class="badge bg-warning-subtle text-dark border"><i class="fa-solid fa-pause me-1"></i>ផ្អាកការសិក្សា</span>
+                        {% elif exc.reason == 'DISCIPLINARY' %}
+                        <span class="badge bg-danger text-white border"><i class="fa-solid fa-gavel me-1"></i>បញ្ហាវិន័យ</span>
+                        {% elif exc.reason == 'HEALTH' %}
+                        <span class="badge bg-info-subtle text-dark border"><i class="fa-solid fa-heart-pulse me-1"></i>សុខភាព</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-dark border">{{ exc.get_reason_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="text-muted">{{ exc.notes|default:"-" }}</span>
+                    </td>
+                    <td class="text-center">
+                        {% if exc.is_active %}
+                        <span class="badge bg-danger px-2.5 py-1 shadow-xs">
+                            <i class="fa-solid fa-ban me-1"></i>កំពុងលើកលែង
+                        </span>
+                        {% else %}
+                        <span class="badge bg-success px-2.5 py-1 shadow-xs">
+                            <i class="fa-solid fa-check me-1"></i>អនុញ្ញាតវិញ
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small fw-semibold">{{ exc.excluded_by.username|default:"ប្រព័ន្ធ" }}</div>
+                        <div class="text-muted" style="font-size: 0.72rem;">{{ exc.created_at|date:"d/m/Y H:i" }}</div>
+                    </td>
+                    <td class="text-center">
+                        {% if is_admin %}
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <form method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="exclusion_id" value="{{ exc.id }}">
+                                <button type="submit" 
+                                        class="btn btn-sm {% if exc.is_active %}btn-outline-success{% else %}btn-outline-warning{% endif %} p-1 px-2"
+                                        title="{% if exc.is_active %}ចុចដើម្បីអនុញ្ញាតឱ្យសិស្សប្រឡងវិញ (ពេលចូលរៀនវិញ){% else %}ចុចដើម្បីលើកលែងឡើងវិញ{% endif %}">
+                                    {% if exc.is_active %}
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-ban"></i>
+                                    {% endif %}
+                                </button>
+                            </form>
+
+                            <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="exclusion_id" value="{{ exc.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger p-1 px-2" title="លុបកំណត់ត្រា">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted p-4">
+                        <i class="fa-solid fa-user-check display-6 opacity-50 mb-2"></i>
+                        <p class="mb-0">មិនមានសិស្សត្រូវបានលើកលែងមិនឱ្យប្រឡងតាមលក្ខខណ្ឌនេះឡើយ (សិស្សទាំងអស់ចូលប្រឡងធម្មតា)។</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Create New Exclusion -->
+{% if is_admin %}
+<div class="modal fade" id="createExclusionModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-user-slash me-2"></i>កំណត់សិស្សលើកលែងមិនឱ្យប្រឡង
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="modal-body p-4">
+                    <!-- 1. Select Classroom -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">១. ជ្រើសរើសថ្នាក់រៀន *</label>
+                        <select id="modal_classroom_select" class="form-select" onchange="loadStudentsForClass(this.value)" required>
+                            <option value="">-- ជ្រើសរើសថ្នាក់ --</option>
+                            {% for c in classrooms %}
+                            <option value="{{ c.id }}">{{ c.name }} ({{ c.get_track_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 2. Select Student -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">២. ជ្រើសរើសសិស្ស *</label>
+                        <select id="modal_student_select" name="student_id" class="form-select" required disabled>
+                            <option value="">-- សូមជ្រើសរើសថ្នាក់ជាមុនសិន --</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. Scope: Term or Month -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">៣. សម័យប្រឡង (ជម្រើសទី១)</label>
+                            <select name="exam_term_id" class="form-select">
+                                <option value="">-- មិនកំណត់សម័យ --</option>
+                                {% for t in exam_terms %}
+                                <option value="{{ t.id }}">{{ t.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">ខែប្រឡង (ជម្រើសទី២)</label>
+                            <select name="month" class="form-select">
+                                <option value="">-- គ្រប់ខែ / ទុកទទេ --</option>
+                                {% for m_num, m_name in month_choices %}
+                                <option value="{{ m_num }}">{{ m_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 4. Reason -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">៤. មូលហេតុនៃការលើកលែង *</label>
+                        <select name="reason" class="form-select" required>
+                            {% for r_code, r_label in reasons %}
+                            <option value="{{ r_code }}">{{ r_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 5. Notes -->
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-muted">៥. កំណត់សម្គាល់ / មូលហេតុលម្អិត</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="បញ្ជាក់ពីមូលហេតុនៃការមិនឱ្យប្រឡង..."></textarea>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small mt-3 mb-0 border-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        សិស្សដែលត្រូវបានកំណត់លើកលែង នឹងមិនមានឈ្មោះក្នុងបញ្ជីប្រឡងខែនោះទេ និងទទួលបាន <strong>ពិន្ទុ ០</strong> ដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-3">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុកការលើកលែង
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadStudentsForClass(classroomId) {
+    const studentSelect = document.getElementById('modal_student_select');
+    if (!classroomId) {
+        studentSelect.innerHTML = '<option value="">-- សូមជ្រើសរើសថ្នាក់ជាមុនសិន --</option>';
+        studentSelect.disabled = true;
+        return;
+    }
+
+    studentSelect.innerHTML = '<option value="">កំពុងទាញទិន្នន័យ...</option>';
+    studentSelect.disabled = true;
+
+    fetch(`/examinations/api/classroom/${classroomId}/students/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.students.length > 0) {
+                let options = '<option value="">-- ជ្រើសរើសសិស្ស (' + data.students.length + ' នាក់) --</option>';
+                data.students.forEach(s => {
+                    const statusText = s.status !== 'ACTIVE' ? ` [${s.status_display}]` : '';
+                    options += `<option value="${s.id}">${s.student_id} - ${s.khmer_name}${statusText}</option>`;
+                });
+                studentSelect.innerHTML = options;
+                studentSelect.disabled = false;
+            } else {
+                studentSelect.innerHTML = '<option value="">គ្មានសិស្សក្នុងថ្នាក់នេះទេ</option>';
+                studentSelect.disabled = true;
+            }
+        })
+        .catch(err => {
+            studentSelect.innerHTML = '<option value="">កំហុសក្នុងការទាញទិន្នន័យ</option>';
+            studentSelect.disabled = true;
+        });
+}
+</script>
+{% endif %}
+{% endblock %}

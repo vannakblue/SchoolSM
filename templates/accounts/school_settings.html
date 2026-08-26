@@ -1,0 +1,704 @@
+{% extends 'base.html' %}
+
+{% block title %}ការកំណត់ព័ត៌មានសាលារៀន | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+    #schoolMap {
+        height: 340px;
+        width: 100%;
+        border-radius: 14px;
+        border: 2px solid #e2e8f0;
+        z-index: 1;
+    }
+    .leaflet-popup-content-wrapper {
+        border-radius: 10px;
+        font-family: inherit;
+    }
+    .gps-badge {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        border-radius: 8px;
+        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        transition: all 0.2s ease;
+    }
+    .gps-badge:hover {
+        background: #dbeafe;
+        color: #1e40af;
+        transform: translateY(-1px);
+    }
+    .qr-preview-box {
+        background: #ffffff;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        display: inline-block;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .nav-pills .nav-link.active {
+        background-color: #1e3a8a;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-school-flag me-2"></i>ការកំណត់ព័ត៌មានសាលារៀន (School Profile & Settings)
+        </h2>
+        <p class="text-muted small mb-0">
+            កំណត់ និងកែប្រែឈ្មោះសាលា ឡូហ្គោ ត្រាផ្លូវការ លេខកូដសាលា (EMIS) ទីតាំងភូមិសាស្ត្រ GPS Google Maps និងព័ត៌មានទំនាក់ទំនង
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-success fw-bold btn-sm rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#locationQrModal">
+            <i class="fa-solid fa-qrcode me-1"></i> QR Code ទីតាំង
+        </button>
+        <a href="{% url 'moeys_reports' %}" class="btn btn-outline-primary fw-bold btn-sm rounded-pill px-3 shadow-xs">
+            <i class="fa-solid fa-file-waveform me-1"></i> មើលរបាយការណ៍ MoEYS
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Live School Identity Preview Card -->
+    <div class="col-lg-4">
+        <!-- Live Identity Card -->
+        <div class="custom-card p-4 mb-4 text-center border-top border-4 border-primary position-relative shadow-sm rounded-4 bg-white">
+            <div class="mb-3 d-flex justify-content-center">
+                {% if school_profile.logo %}
+                    <img src="{{ school_profile.logo.url }}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;">
+                {% else %}
+                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center border border-primary border-2 shadow-sm" style="width: 100px; height: 100px; font-size: 2.75rem;">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                {% endif %}
+            </div>
+
+            <h5 class="fw-bold text-dark mb-1">{{ school_profile.name_kh }}</h5>
+            <p class="text-muted small mb-2 fst-italic">{{ school_profile.name_en }}</p>
+            
+            <div class="d-flex justify-content-center gap-2 mb-3 flex-wrap">
+                <span class="badge bg-primary px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-barcode me-1"></i>កូដ: {{ school_profile.school_code }}
+                </span>
+                <span class="badge bg-secondary-subtle text-dark border px-2 py-1 rounded-pill">
+                    {{ school_profile.get_institution_type_display|default:school_profile.school_type }}
+                </span>
+            </div>
+
+            <!-- GPS Location Link Badge -->
+            <div class="mb-3">
+                <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="gps-badge text-decoration-none shadow-xs" title="ចុចដើម្បីបើកមើលផ្លូវលើ Google Maps">
+                    <i class="fa-solid fa-map-location-dot text-danger"></i>
+                    <span>GPS: {{ school_profile.latitude|floatformat:4 }}, {{ school_profile.longitude|floatformat:4 }}</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-muted ms-1" style="font-size: 0.75rem;"></i>
+                </a>
+            </div>
+
+            <div class="alert alert-light border py-2 px-3 mb-3 text-start small rounded-3">
+                <div class="mb-1 text-secondary">
+                    <i class="fa-solid fa-quote-left me-1 text-primary"></i>
+                    <strong>បាវចនា:</strong> <em>"{{ school_profile.motto }}"</em>
+                </div>
+                <div class="mb-1">
+                    <i class="fa-solid fa-building-columns text-info me-1"></i>
+                    <strong>មន្ទីរអប់រំ:</strong> {{ school_profile.poe_name }}
+                </div>
+                <div class="mb-1">
+                    <i class="fa-solid fa-location-dot text-danger me-1"></i>
+                    <strong>ទីតាំង:</strong> {{ school_profile.full_address }}
+                </div>
+                <div class="mb-1">
+                    <i class="fa-solid fa-user-tie text-success me-1"></i>
+                    <strong>នាយកសាលា:</strong> {{ school_profile.principal_name }}
+                </div>
+                <div class="mb-1">
+                    <i class="fa-solid fa-phone text-warning me-1"></i>
+                    <strong>ទូរស័ព្ទ:</strong> {{ school_profile.phone }}
+                </div>
+                <div>
+                    <i class="fa-solid fa-envelope text-primary me-1"></i>
+                    <strong>អ៊ីមែល:</strong> {{ school_profile.email }}
+                </div>
+            </div>
+
+            <!-- Official Seal & Signature Previews -->
+            <div class="row g-2 pt-2 border-top">
+                <div class="col-6 text-center">
+                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">ត្រាសាលា (Seal)</p>
+                    {% if school_profile.seal %}
+                        <img src="{{ school_profile.seal.url }}" alt="Official Seal" class="img-thumbnail" style="max-height: 60px; object-fit: contain;">
+                    {% else %}
+                        <div class="border rounded p-2 text-muted small bg-light" style="font-size: 0.7rem;">
+                            <i class="fa-solid fa-stamp d-block mb-1"></i>គ្មានត្រា
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-6 text-center">
+                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">ហត្ថលេខានាយក</p>
+                    {% if school_profile.principal_signature %}
+                        <img src="{{ school_profile.principal_signature.url }}" alt="Principal Signature" class="img-thumbnail" style="max-height: 60px; object-fit: contain;">
+                    {% else %}
+                        <div class="border rounded p-2 text-muted small bg-light" style="font-size: 0.7rem;">
+                            <i class="fa-solid fa-signature d-block mb-1"></i>គ្មានហត្ថលេខា
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-3 text-muted" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i>កែប្រែចុងក្រោយ: {{ school_profile.updated_at|date:"d-m-Y H:i" }}
+            </div>
+        </div>
+
+        <!-- Quick Help Alert -->
+        <div class="alert alert-info border-0 shadow-sm small rounded-4">
+            <h6 class="fw-bold"><i class="fa-solid fa-circle-info me-1"></i>ព័ត៌មានជំនួយ</h6>
+            <ul class="mb-0 ps-3">
+                <li>ព័ត៌មានដែលបានកែប្រែនៅទីនេះ នឹងធ្វើបច្ចុប្បន្នភាពដោយស្វ័យប្រវត្តិតាម Sidebar, ប័ណ្ណពិន្ទុ, វិក្កយបត្រ, កាតសិស្ស និងរបាយការណ៍ MoEYS។</li>
+                <li>កូអរដោនេ GPS នឹងជួយដល់ការបង្កើត QR Code ទីតាំង និងមុខងារស្រង់វត្តមានគ្រូតាមទូរស័ព្ទ (Geofencing)។</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Right Column: Settings Form -->
+    <div class="col-lg-8">
+        <div class="custom-card shadow-sm p-4 rounded-4 bg-white">
+            <form method="POST" enctype="multipart/form-data" id="schoolProfileForm">
+                {% csrf_token %}
+
+                <!-- Form Tabs Navigation -->
+                <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="schoolSettingsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold small py-2 px-3 rounded-pill" id="general-tab" data-bs-toggle="pill" data-bs-target="#tab-general" type="button" role="tab">
+                            <i class="fa-solid fa-school me-1"></i> ១. អត្តសញ្ញាណ & រដ្ឋបាល
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="location-tab" data-bs-toggle="pill" data-bs-target="#tab-location" type="button" role="tab">
+                            <i class="fa-solid fa-map-location-dot me-1"></i> ២. ទីតាំងភូមិសាស្ត្រ & ផែនទី
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="media-tab" data-bs-toggle="pill" data-bs-target="#tab-media" type="button" role="tab">
+                            <i class="fa-solid fa-image me-1"></i> ៣. ឡូហ្គោ & ត្រា
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="contact-tab" data-bs-toggle="pill" data-bs-target="#tab-contact" type="button" role="tab">
+                            <i class="fa-solid fa-address-book me-1"></i> ៤. ទំនាក់ទំនង & នាយក
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="schoolSettingsTabContent">
+                    
+                    <!-- TAB 1: General Identity & MoEYS Hierarchy -->
+                    <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-id-card me-1"></i>ព័ត៌មានអត្តសញ្ញាណសាលា</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold small">ឈ្មោះសាលា (ភាសាខ្មែរ) <span class="text-danger">*</span></label>
+                                {{ form.name_kh }}
+                                <div class="form-text small">ឧទាហរណ៍៖ វិទ្យាល័យអន្តរជាតិ សាលារៀន SM</div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small">ឈ្មោះកាត់សាលា <span class="text-danger">*</span></label>
+                                {{ form.short_name }}
+                                <div class="form-text small">សម្រាប់បង្ហាញលើ Sidebar (ឧ. សាលារៀន SM)</div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold small">ឈ្មោះសាលា (អង់គ្លេស / ឡាតាំង)</label>
+                                {{ form.name_en }}
+                                <div class="form-text small">ឧទាហរណ៍៖ SchoolSM International High School</div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small">លេខកូដសាលា (MoEYS EMIS Code) <span class="text-danger">*</span></label>
+                                {{ form.school_code }}
+                                <div class="form-text small">លេខកូដ ៦ ខ្ទង់តាមស្តង់ដារក្រសួង (ឧ. 080101)</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ប្រភេទគ្រឹះស្ថានសិក្សា (Institution Type)</label>
+                                {{ form.institution_type }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">កម្រិតសិក្សាដែលបើកបង្រៀន (Education Levels)</label>
+                                {{ form.education_levels }}
+                                <div class="form-text small">ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">កម្រិត/ប្រភេទសាលា</label>
+                                {{ form.school_type }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">បាវចនាសាលា (Motto)</label>
+                                {{ form.motto }}
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary mb-3 border-top pt-3"><i class="fa-solid fa-landmark me-1"></i>រចនាសម្ព័ន្ធក្រសួងសាមី និងរដ្ឋបាលអប់រំ</h6>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small">ក្រសួងសាមី</label>
+                                {{ form.ministry_name }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">មន្ទីរអប់រំ យុវជន និងកីឡា (រាជធានី/ខេត្ត)</label>
+                                {{ form.poe_name }}
+                                <div class="form-text small">ឧទាហរណ៍៖ មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ការិយាល័យអប់រំ យុវជន និងកីឡា (ក្រុង/ស្រុក/ខណ្ឌ)</label>
+                                {{ form.doe_name }}
+                                <div class="form-text small">ឧទាហរណ៍៖ ការិយាល័យអប់រំ យុវជន និងកីឡា ខណ្ឌដូនពេញ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: Geographic Location & Interactive Google Maps -->
+                    <div class="tab-pane fade" id="tab-location" role="tabpanel">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-map-pin me-1"></i>ទីតាំងភូមិសាស្ត្រ និងអាសយដ្ឋានសាលា</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">រាជធានី / ខេត្ត <span class="text-danger">*</span></label>
+                                {{ form.province }}
+                                <div class="form-text small">ឧ. រាជធានីភ្នំពេញ, ខេត្តកណ្តាល, ខេត្តសៀមរាប...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ក្រុង / ស្រុក / ខណ្ឌ <span class="text-danger">*</span></label>
+                                {{ form.district }}
+                                <div class="form-text small">ឧ. ខណ្ឌដូនពេញ, ស្រុកកណ្តាលស្ទឹង, ក្រុងតាខ្មៅ...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ឃុំ / សង្កាត់ <span class="text-danger">*</span></label>
+                                {{ form.commune }}
+                                <div class="form-text small">ឧ. សង្កាត់វត្តភ្នំ, ឃុំដើមឫស...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ភូមិ</label>
+                                {{ form.village }}
+                                <div class="form-text small">ឧ. ភូមិ១, ភូមិដើមពោធិ៍...</div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small">អាសយដ្ឋានលម្អិត / ផ្លូវ / ផ្ទះលេខ</label>
+                                {{ form.street_address }}
+                                <div class="form-text small">ឧ. មហាវិថីព្រះនរោត្តម សង្កាត់វត្តភ្នំ ខណ្ឌដូនពេញ</div>
+                            </div>
+                        </div>
+
+                        <!-- Interactive Map & GPS Geofencing Container -->
+                        <div class="card border-0 bg-light rounded-4 p-3 mb-3">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">
+                                        <i class="fa-solid fa-earth-asia text-primary me-2"></i>ផែនទីទីតាំង Google Maps & GPS (Interactive Map)
+                                    </h6>
+                                    <span class="text-muted small">ចុចលើផែនទី ឬអូស Pin ក្រហម ដើម្បីកំណត់កូអរដោនេ</span>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs" onclick="getCurrentLocation()">
+                                        <i class="fa-solid fa-crosshairs me-1"></i> ចាប់យកទីតាំងបច្ចុប្បន្ន (GPS)
+                                    </button>
+                                    <a href="{{ school_profile.google_maps_direct_url }}" id="btnOpenGmaps" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs">
+                                        <i class="fa-brands fa-google me-1"></i> បើកក្នុង Google Maps
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Map Canvas -->
+                            <div id="schoolMap" class="shadow-sm mb-3"></div>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">រយៈទទឹង (Latitude) <span class="text-danger">*</span></label>
+                                    {{ form.latitude }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">រយៈបណ្តោយ (Longitude) <span class="text-danger">*</span></label>
+                                    {{ form.longitude }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small text-muted">រង្វង់សុពលភាពវត្តមាន (Radius - Meters)</label>
+                                    {{ form.gps_radius_meters }}
+                                    <div class="form-text small" style="font-size: 0.72rem;">សម្រាប់ស្រង់វត្តមានតាមទូរស័ព្ទ (ឧ. 100m)</div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold small text-muted">Link ផែនទី Google Maps ផ្ទាល់ (Google Maps Share URL)</label>
+                                    {{ form.google_maps_url }}
+                                    <div class="form-text small">ឧទាហរណ៍៖ https://maps.app.goo.gl/... ឬ https://www.google.com/maps?q=...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: Media (Logos, Seals, Signature) -->
+                    <div class="tab-pane fade" id="tab-media" role="tabpanel">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-photo-film me-1"></i>រូបភាព ឡូហ្គោ ត្រាសាលា & ហត្ថលេខា</h6>
+                        
+                        <div class="row g-4">
+                            <!-- Logo -->
+                            <div class="col-md-12">
+                                <div class="border rounded-4 p-3 bg-light">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3 text-center mb-3 mb-md-0">
+                                            {% if school_profile.logo %}
+                                                <img src="{{ school_profile.logo.url }}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
+                                            {% else %}
+                                                <div class="border rounded bg-white p-3 text-muted">
+                                                    <i class="fa-solid fa-image fs-1 text-secondary"></i>
+                                                    <div class="small">គ្មាន Logo</div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-9">
+                                            <label class="form-label fw-bold small">រូបសញ្ញាសាលា (School Logo)</label>
+                                            {{ form.logo }}
+                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG (Background ថ្លា), JPG ទំហំអតិបរមា 2MB។ នឹងបង្ហាញលើ Sidebar, ប័ណ្ណពិន្ទុ, វិក្កយបត្រ។</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Seal -->
+                            <div class="col-md-12">
+                                <div class="border rounded-4 p-3 bg-light">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3 text-center mb-3 mb-md-0">
+                                            {% if school_profile.seal %}
+                                                <img src="{{ school_profile.seal.url }}" alt="Seal" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
+                                            {% else %}
+                                                <div class="border rounded bg-white p-3 text-muted">
+                                                    <i class="fa-solid fa-stamp fs-1 text-secondary"></i>
+                                                    <div class="small">គ្មានត្រា</div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-9">
+                                            <label class="form-label fw-bold small">ត្រាសាលាផ្លូវការ (Official Stamp & Seal)</label>
+                                            {{ form.seal }}
+                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG (Background ថ្លា)។ សម្រាប់បោះពុម្ពស្វ័យប្រវត្តលើបង្កាន់ដៃទទួលប្រាក់ ឬប័ណ្ណសរសើរ។</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Signature -->
+                            <div class="col-md-12">
+                                <div class="border rounded-4 p-3 bg-light">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3 text-center mb-3 mb-md-0">
+                                            {% if school_profile.principal_signature %}
+                                                <img src="{{ school_profile.principal_signature.url }}" alt="Signature" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
+                                            {% else %}
+                                                <div class="border rounded bg-white p-3 text-muted">
+                                                    <i class="fa-solid fa-signature fs-1 text-secondary"></i>
+                                                    <div class="small">គ្មានហត្ថលេខា</div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-9">
+                                            <label class="form-label fw-bold small">ហត្ថលេខានាយក/នាយិកាសាលា (Principal Signature)</label>
+                                            {{ form.principal_signature }}
+                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG ថ្លា សម្រាប់ដាក់នៅផ្នែកចុះហត្ថលេខាប័ណ្ណពិន្ទុ និងវិញ្ញាបនបត្រ។</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: Contact & Leadership -->
+                    <div class="tab-pane fade" id="tab-contact" role="tabpanel">
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-phone-volume me-1"></i>ព័ត៌មានទំនាក់ទំនង & គណៈគ្រប់គ្រង</h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ឈ្មោះនាយក/នាយិកាសាលា <span class="text-danger">*</span></label>
+                                {{ form.principal_name }}
+                                <div class="form-text small">ឧ. លោកបណ្ឌិត សុខ ចាន់ថន</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">លេខទូរស័ព្ទសាលា <span class="text-danger">*</span></label>
+                                {{ form.phone }}
+                                <div class="form-text small">ឧ. 023 888 999 / 012 345 678</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">អ៊ីមែលសាលា</label>
+                                {{ form.email }}
+                                <div class="form-text small">ឧ. info@schoolsm.edu.kh</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">គេហទំព័រ (Website)</label>
+                                {{ form.website }}
+                                <div class="form-text small">ឧ. https://schoolsm.edu.kh</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">ទំព័រហ្វេសប៊ុក (Facebook Page)</label>
+                                {{ form.facebook_page }}
+                                <div class="form-text small">ឧ. https://facebook.com/schoolsm</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Telegram Channel / Group ផ្លូវការ</label>
+                                {{ form.telegram_channel }}
+                                <div class="form-text small">ឧ. https://t.me/schoolsm_official</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Submit Button Bar -->
+                <div class="border-top pt-4 mt-4 d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">
+                        <i class="fa-solid fa-circle-check text-success me-1"></i>ចុចរក្សាទុកដើម្បី Update ទូទាំងប្រព័ន្ធ
+                    </span>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2 rounded-pill shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មានសាលារៀន (Save Changes)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Location QR Code -->
+<div class="modal fade" id="locationQrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+            <div class="modal-header border-0 pb-0 justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <div class="mb-3">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2">
+                        <i class="fa-solid fa-map-location-dot fs-2"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">QR Code ទីតាំងសាលារៀន</h5>
+                    <p class="text-muted small mb-0">{{ school_profile.name_kh }}</p>
+                </div>
+                
+                <div class="d-flex justify-content-center my-3">
+                    <div id="modalQrCodeBox" class="qr-preview-box p-3 bg-white border shadow-sm rounded-4"></div>
+                </div>
+
+                <div class="alert alert-light border small text-muted text-start mb-0">
+                    <i class="fa-solid fa-circle-info text-info me-1"></i>
+                    ស្កេន QR Code នេះតាមទូរស័ព្ទដៃ ដើម្បីបើកមើលផ្លូវធ្វើដំណើរលើ <strong>Google Maps</strong> ដោយផ្ទាល់។
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pt-0 gap-2">
+                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-xs" onclick="printLocationQr()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print QR)
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    let map = null;
+    let marker = null;
+    let circle = null;
+
+    const DEFAULT_LAT = parseFloat("{{ school_profile.latitude|default:'11.5564' }}") || 11.5564;
+    const DEFAULT_LNG = parseFloat("{{ school_profile.longitude|default:'104.9282' }}") || 104.9282;
+    const SCHOOL_NAME = "{{ school_profile.name_kh|escapejs }}";
+
+    function initSchoolMap() {
+        if (map) return;
+
+        const latInput = document.getElementById('input_latitude');
+        const lngInput = document.getElementById('input_longitude');
+
+        const initialLat = parseFloat(latInput ? latInput.value : DEFAULT_LAT) || DEFAULT_LAT;
+        const initialLng = parseFloat(lngInput ? lngInput.value : DEFAULT_LNG) || DEFAULT_LNG;
+
+        map = L.map('schoolMap').setView([initialLat, initialLng], 15);
+
+        // OpenStreetMap Layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Draggable Marker
+        marker = L.marker([initialLat, initialLng], {
+            draggable: true
+        }).addTo(map);
+
+        marker.bindPopup(`<b>${SCHOOL_NAME}</b><br><small>ទីតាំងសាលា</small>`).openPopup();
+
+        // Marker drag event
+        marker.on('dragend', function(e) {
+            const position = marker.getLatLng();
+            updateLatLngInputs(position.lat, position.lng);
+        });
+
+        // Map click event
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            marker.setLatLng([lat, lng]);
+            updateLatLngInputs(lat, lng);
+        });
+    }
+
+    function updateLatLngInputs(lat, lng) {
+        const latInput = document.getElementById('input_latitude');
+        const lngInput = document.getElementById('input_longitude');
+        const gmapsBtn = document.getElementById('btnOpenGmaps');
+        const gmapsInput = document.getElementById('input_google_maps_url');
+
+        if (latInput) latInput.value = lat.toFixed(6);
+        if (lngInput) lngInput.value = lng.toFixed(6);
+
+        const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+        if (gmapsBtn) gmapsBtn.href = mapsUrl;
+        if (gmapsInput) {
+            if (!gmapsInput.value || gmapsInput.value.includes('schoolsm_sample') || gmapsInput.value.includes('maps.google.com/?q=')) {
+                gmapsInput.value = mapsUrl;
+            }
+        }
+
+        generateLocationQr(mapsUrl);
+    }
+
+    // Capture Browser Geolocation
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            Swal.fire({
+                title: 'កំពុងចាប់យកទីតាំង GPS...',
+                text: 'សូមអនុញ្ញាត (Allow) ការប្រើប្រាស់ Location លើ Browser របស់អ្នក',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    Swal.close();
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    if (map && marker) {
+                        map.setView([lat, lng], 17);
+                        marker.setLatLng([lat, lng]);
+                        marker.bindPopup(`<b>${SCHOOL_NAME}</b><br><small>ទីតាំងបច្ចុប្បន្នត្រូវបានកំណត់</small>`).openPopup();
+                    }
+                    updateLatLngInputs(lat, lng);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ចាប់យកទីតាំងបានជោគជ័យ!',
+                        text: `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                function(error) {
+                    Swal.fire('កំហុស!', 'មិនអាចទាញយកទីតាំង GPS បានទេ: ' + error.message, 'warning');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            Swal.fire('មិនគាំទ្រ!', 'Browser របស់អ្នកមិនគាំទ្រ Geolocation ឡើយ', 'error');
+        }
+    }
+
+    // Generate QR Code
+    function generateLocationQr(url) {
+        const qrContainer = document.getElementById('modalQrCodeBox');
+        if (!qrContainer) return;
+        qrContainer.innerHTML = '';
+
+        const targetUrl = url || "{{ school_profile.google_maps_direct_url }}";
+
+        new QRCode(qrContainer, {
+            text: targetUrl,
+            width: 180,
+            height: 180,
+            colorDark: "#1e3a8a",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
+
+    function printLocationQr() {
+        const printContent = `
+            <div style="text-align: center; padding: 40px; font-family: 'Kantumruy Pro', sans-serif;">
+                <h2 style="color: #1e3a8a; margin-bottom: 5px;">${SCHOOL_NAME}</h2>
+                <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">QR Code ផែនទីទីតាំងសាលារៀន (Google Maps Location)</p>
+                <div style="display: inline-block; padding: 15px; border: 2px solid #e2e8f0; border-radius: 16px;">
+                    ${document.getElementById('modalQrCodeBox').innerHTML}
+                </div>
+                <p style="margin-top: 20px; font-size: 13px; color: #475569;">ស្កេនដើម្បីបើកមើលផ្លូវធ្វើដំណើរមកកាន់សាលារៀន</p>
+            </div>
+        `;
+        const printWindow = window.open('', '', 'width=600,height=600');
+        printWindow.document.write('<html><head><title>Print School Location QR</title></head><body>');
+        printWindow.document.write(printContent);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init QR Code
+        generateLocationQr("{{ school_profile.google_maps_direct_url }}");
+
+        // When Tab 2 is clicked, invalidate Leaflet size
+        const locationTabBtn = document.getElementById('location-tab');
+        if (locationTabBtn) {
+            locationTabBtn.addEventListener('shown.bs.tab', function() {
+                initSchoolMap();
+                if (map) {
+                    setTimeout(() => {
+                        map.invalidateSize();
+                    }, 200);
+                }
+            });
+        }
+
+        // Live input listeners for manual typing in lat/lng
+        const latInput = document.getElementById('input_latitude');
+        const lngInput = document.getElementById('input_longitude');
+
+        function onManualLatLngChange() {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng) && map && marker) {
+                map.setView([lat, lng], map.getZoom());
+                marker.setLatLng([lat, lng]);
+                updateLatLngInputs(lat, lng);
+            }
+        }
+
+        if (latInput) latInput.addEventListener('change', onManualLatLngChange);
+        if (lngInput) lngInput.addEventListener('change', onManualLatLngChange);
+    });
+</script>
+{% endblock %}

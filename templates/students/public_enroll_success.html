@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បង្កាន់ដៃចុះឈ្មោះសិស្ស (Digital Enrollment Slip) | {{ student.student_id }}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Moul&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Kantumruy Pro', 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 15px;
+        }
+        .receipt-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+            max-width: 650px;
+            width: 100%;
+            padding: 35px;
+            position: relative;
+        }
+        .khmer-moul {
+            font-family: 'Moul', 'Kantumruy Pro', serif;
+        }
+        .badge-id {
+            background: linear-gradient(135deg, #1e3a8a 0%, #4338ca 100%);
+            color: #ffffff;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            padding: 8px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+            display: inline-block;
+        }
+        .info-table td {
+            padding: 8px 12px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .info-table td:first-child {
+            color: #64748b;
+            font-weight: 500;
+            width: 40%;
+        }
+        .info-table td:last-child {
+            color: #0f172a;
+            font-weight: 600;
+        }
+        .credentials-box {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            .receipt-card {
+                box-shadow: none;
+                border: 2px solid #000000;
+                border-radius: 0;
+                padding: 20px;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-card">
+        <!-- Official Ministry / School Header -->
+        <div class="text-center mb-3">
+            <h6 class="khmer-moul text-dark mb-1" style="font-size: 1.1rem;">ព្រះរាជាណាចក្រកម្ពុជា</h6>
+            <h6 class="khmer-moul text-dark mb-2" style="font-size: 0.95rem;">ជាតិ សាសនា ព្រះមហាក្សត្រ</h6>
+            <div class="border-bottom border-2 mx-auto mb-3" style="width: 100px; border-color: #3b82f6 !important;"></div>
+            
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <i class="fa-solid fa-graduation-cap text-primary fs-4"></i>
+                <h4 class="fw-bold mb-0 text-primary">បង្កាន់ដៃចុះឈ្មោះសិស្ស (Enrollment Receipt)</h4>
+            </div>
+            <p class="text-muted small mb-0">ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (School Management System)</p>
+        </div>
+
+        <!-- Student ID Highlight Banner -->
+        <div class="text-center my-3 py-2 bg-light rounded-3">
+            <div class="small text-muted mb-1">កូដសម្គាល់សិស្ស (STUDENT ID)</div>
+            <div class="badge-id fw-bold">
+                {{ student.student_id }}
+            </div>
+        </div>
+
+        <!-- Student Details Table -->
+        <table class="table table-borderless info-table mb-3">
+            <tbody>
+                <tr>
+                    <td><i class="fa-solid fa-user me-1 text-primary"></i> ឈ្មោះសិស្ស (ខ្មែរ)</td>
+                    <td class="text-primary fs-6">{{ student.khmer_name }}</td>
+                </tr>
+                {% if student.latin_name %}
+                <tr>
+                    <td><i class="fa-solid fa-signature me-1"></i> ឈ្មោះឡាតាំង (Latin)</td>
+                    <td>{{ student.latin_name }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td><i class="fa-solid fa-venus-mars me-1"></i> ភេទ / Gender</td>
+                    <td>{{ student.get_gender_display }}</td>
+                </tr>
+                <tr>
+                    <td><i class="fa-solid fa-calendar me-1"></i> ថ្ងៃខែឆ្នាំកំណើត</td>
+                    <td>{{ student.date_of_birth|date:"d/m/Y"|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td><i class="fa-solid fa-chalkboard me-1 text-success"></i> ថ្នាក់រៀនដែលបានចុះ</td>
+                    <td><span class="badge bg-primary fs-6">{{ student.classroom.name|default:"ថ្នាក់ទូទៅ" }}</span></td>
+                </tr>
+                <tr>
+                    <td><i class="fa-solid fa-calendar-check me-1"></i> ឆ្នាំសិក្សា</td>
+                    <td>{{ student.academic_year.name|default:"2025-2026" }}</td>
+                </tr>
+                {% if student.phone or student.father_phone or student.mother_phone %}
+                <tr>
+                    <td><i class="fa-solid fa-phone me-1 text-info"></i> លេខទូរស័ព្ទទំនាក់ទំនង</td>
+                    <td>{{ student.phone|default:student.father_phone|default:student.mother_phone }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td><i class="fa-solid fa-clock me-1"></i> កាលបរិច្ឆេទចុះឈ្មោះ</td>
+                    <td>{{ student.created_at|date:"d/m/Y H:i" }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Student Portal Login Credentials Box -->
+        <div class="credentials-box mb-4">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-key text-warning fs-5"></i>
+                <h6 class="fw-bold mb-0 text-dark">គណនី Login សម្រាប់សិស្ស និងអាណាព្យាបាល</h6>
+            </div>
+            <div class="row g-2 small">
+                <div class="col-6">
+                    <span class="text-muted">Username:</span>
+                    <strong class="text-primary d-block">{{ username }}</strong>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted">Password ដំបូង:</span>
+                    <strong class="text-dark d-block"><code>{{ initial_password }}</code></strong>
+                </div>
+            </div>
+            <div class="text-muted mt-2" style="font-size: 0.75rem;">
+                * លោកអ្នកអាចប្រើប្រាស់គណនីនេះដើម្បីចូលមើលវត្តមាន តារាងពិន្ទុ និងកាលវិភាគសិក្សា។
+            </div>
+        </div>
+
+        <!-- Action Buttons (No-print) -->
+        <div class="no-print d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary flex-grow-1 py-2 fw-bold">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ពបង្កាន់ដៃ (Print)
+            </button>
+            <a href="{% url 'login' %}" class="btn btn-outline-secondary py-2 fw-bold">
+                <i class="fa-solid fa-right-to-bracket me-1"></i> ទៅកាន់ទំព័រ Login
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

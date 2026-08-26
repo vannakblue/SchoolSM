@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីសិស្សទាំងអស់ (Student Directory) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bulk-toolbar {
+        position: sticky;
+        top: 75px;
+        z-index: 1020;
+        background: #1e293b;
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        display: none;
+        transition: all 0.2s ease-in-out;
+    }
+    .badge-exam-eligible {
+        background-color: #e8f7ee;
+        color: #198754;
+        border: 1px solid rgba(25, 135, 84, 0.25);
+    }
+    .badge-exam-suspended {
+        background-color: #fee2e2;
+        color: #dc2626;
+        border: 1px solid rgba(220, 38, 38, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">បញ្ជីសិស្សទាំងអស់ (Student Directory)</h2>
+        <p class="text-muted small mb-0">សិស្សសរុប៖ <strong>{{ total_count }}</strong> នាក់</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'enrollment_qr_code' %}" class="btn btn-outline-info">
+            <i class="fa-solid fa-qrcode me-1"></i> QR ចុះឈ្មោះ Online
+        </a>
+        <a href="{% url 'student_import' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-file-import me-1"></i> Import Excel / CSV
+        </a>
+        {% if is_admin %}
+        <a href="{% url 'student_status_list' %}" class="btn btn-outline-secondary" title="គ្រប់គ្រងប្រភេទស្ថានភាពសិក្សា">
+            <i class="fa-solid fa-tags me-1"></i> ស្ថានភាពសិក្សា
+        </a>
+        {% endif %}
+        <a href="{% url 'student_enroll' %}" class="btn btn-primary">
+            <i class="fa-solid fa-user-plus me-1"></i> ចុះឈ្មោះសិស្សថ្មី
+        </a>
+        <a href="{% url 'export_students_excel' %}" class="btn btn-outline-success">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+        <a href="{% url 'export_students_csv' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរក ID, ឈ្មោះ...">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select name="academic_year" class="form-select border-primary" onchange="this.form.submit()">
+                <option value="">-- ឆ្នាំសិក្សាទាំងអស់ --</option>
+                {% for ay in academic_years %}
+                <option value="{{ ay.id }}" {% if selected_year == ay.id|stringformat:"i" %}selected{% endif %}>
+                    📅 {{ ay.name }}{% if ay.is_current %} (បច្ចុប្បន្ន){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="classroom" class="form-select">
+                <option value="">-- ថ្នាក់រៀនទាំងអស់ --</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select">
+                <option value="">-- ស្ថានភាពសិក្សាទាំងអស់ --</option>
+                {% for st in available_statuses %}
+                <option value="{{ st.code }}" {% if selected_status == st.code %}selected{% endif %}>
+                    {{ st.name }} ({{ st.name_en|default:st.code }})
+                </option>
+                {% empty %}
+                <option value="ACTIVE" {% if selected_status == 'ACTIVE' %}selected{% endif %}>🟢 កំពុងរៀន (Active)</option>
+                <option value="SUSPENDED" {% if selected_status == 'SUSPENDED' %}selected{% endif %}>🟡 ផ្អាកការសិក្សា (Suspended)</option>
+                <option value="DROPPED" {% if selected_status == 'DROPPED' %}selected{% endif %}>🔴 បោះបង់ / ឈប់រៀន (Dropped)</option>
+                <option value="TRANSFERRED" {% if selected_status == 'TRANSFERRED' %}selected{% endif %}>🔵 ផ្ទេរការសិក្សា (Transferred)</option>
+                <option value="GRADUATED" {% if selected_status == 'GRADUATED' %}selected{% endif %}>🎓 បញ្ចប់ការសិក្សា (Graduated)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="exam_status" class="form-select border-danger">
+                <option value="">-- សិទ្ធិប្រឡងទាំងអស់ --</option>
+                <option value="eligible" {% if selected_exam_status == 'eligible' %}selected{% endif %}>🟢 មានសិទ្ធិប្រឡង (Eligible)</option>
+                <option value="disqualified" {% if selected_exam_status == 'disqualified' %}selected{% endif %}>🔴 ដកសិទ្ធិប្រឡង (Disqualified)</option>
+            </select>
+        </div>
+        <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-primary w-100" title="Filter">
+                <i class="fa-solid fa-filter"></i>
+            </button>
+            <a href="{% url 'student_list' %}" class="btn btn-light" title="Reset">🔄</a>
+        </div>
+    </form>
+</div>
+
+<!-- Floating Bulk Actions Toolbar (Visible when 1+ checkboxes selected) -->
+{% if is_admin %}
+<div class="bulk-toolbar p-3 mb-3" id="bulkToolbar">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-check-double text-warning fs-5"></i>
+            <span>បានជ្រើសរើសសិស្សចំនួន <strong id="selectedCount" class="text-warning">0</strong> នាក់</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-danger btn-sm rounded-pill px-3" onclick="openBatchExamModal('suspend')">
+                <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡងជាក្រុម
+            </button>
+            <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="submitBatchExamAction('allow')">
+                <i class="fa-solid fa-circle-check me-1"></i> អនុញ្ញាតឱ្យប្រឡងឡើងវិញ
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-2" onclick="deselectAllStudents()">
+                <i class="fa-solid fa-xmark"></i> បោះបង់
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Student Table Card -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    {% if is_admin %}
+                    <th style="width: 40px;" class="text-center">
+                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                    </th>
+                    {% endif %}
+                    <th>កូដសិស្ស (ID)</th>
+                    <th>ឈ្មោះសិស្ស</th>
+                    <th>ភេទ</th>
+                    <th>ថ្ងៃខែឆ្នាំកំណើត</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th>អាណាព្យាបាល & ទូរស័ព្ទ</th>
+                    <th>ស្ថានភាពសិក្សា</th>
+                    <th>សិទ្ធិប្រឡង (Exam Status)</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    {% if is_admin %}
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input student-checkbox" value="{{ s.id }}" onchange="updateBulkSelection()">
+                    </td>
+                    {% endif %}
+                    <td class="fw-bold text-primary">{{ s.student_id }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                {{ s.khmer_name|slice:":1" }}
+                            </div>
+                            <div>
+                                <a href="{% url 'student_detail' s.id %}" class="fw-bold text-dark text-decoration-none hover-primary">
+                                    {{ s.khmer_name }}
+                                </a>
+                                <div class="text-muted small" style="font-size: 0.75rem;">{{ s.latin_name }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ s.get_gender_display }}</td>
+                    <td>{{ s.date_of_birth|date:"d/m/Y"|default:"-" }}</td>
+                    <td><span class="badge bg-light text-dark fw-bold">{{ s.classroom.name|default:"គ្មានថ្នាក់" }}</span></td>
+                    <td>
+                        <div class="small fw-bold">{{ s.father_name|default:s.mother_name|default:"-" }}</div>
+                        <div class="text-muted small" style="font-size: 0.75rem;"><i class="fa-solid fa-phone me-1"></i>{{ s.father_phone|default:s.phone|default:"-" }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ s.status_badge_color }} rounded-pill px-2 py-1"
+                              {% if is_admin %}role="button" onclick="openQuickStatusModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', '{{ s.status }}', '{{ s.fee_end_month|default:'' }}')"{% endif %}
+                              title="ចុចដើម្បីប្តូរស្ថានភាពសិស្សរហ័ស">
+                            {{ s.get_status_display }}
+                        </span>
+                        {% if s.fee_end_month %}
+                        <div class="text-muted small mt-1" style="font-size: 0.68rem;"><i class="fa-solid fa-calendar-xmark me-1"></i>ឈប់ត្រឹមខែ {{ s.fee_end_month }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.is_exam_suspended %}
+                            <span class="badge badge-exam-suspended rounded-pill px-2 py-1 fw-bold" 
+                                  {% if is_admin %}role="button" onclick="openExamModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', true, '{{ s.exam_suspension_reason|default:'DISCIPLINARY' }}', '{{ s.exam_suspension_notes|escapejs }}')"{% endif %}
+                                  title="{{ s.exam_suspension_notes|default:s.get_exam_suspension_reason_display }}">
+                                <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡង
+                            </span>
+                            <div class="text-danger small mt-1" style="font-size: 0.72rem;">
+                                {{ s.get_exam_suspension_reason_display }}
+                            </div>
+                        {% elif s.status != 'ACTIVE' %}
+                            <span class="badge bg-secondary rounded-pill px-2 py-1" title="ផ្អាកតាមស្ថានភាពសិស្ស">
+                                <i class="fa-solid fa-circle-xmark me-1"></i> មិនប្រឡង ({{ s.get_status_display }})
+                            </span>
+                        {% else %}
+                            <span class="badge badge-exam-eligible rounded-pill px-2 py-1 fw-bold"
+                                  {% if is_admin %}role="button" onclick="openExamModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', false, 'DISCIPLINARY', '')"{% endif %}>
+                                <i class="fa-solid fa-circle-check me-1"></i> មានសិទ្ធិប្រឡង
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            {% if is_admin %}
+                            <!-- Fast Exam Suspension Toggle Button -->
+                            <button type="button" class="btn btn-light {% if s.is_exam_suspended %}text-danger{% else %}text-secondary{% endif %}" 
+                                    onclick="openExamModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', {{ s.is_exam_suspended|yesno:'true,false' }}, '{{ s.exam_suspension_reason|default:'DISCIPLINARY' }}', '{{ s.exam_suspension_notes|escapejs }}')"
+                                    title="កំណត់ដកចេញពីការប្រឡង (Exam Suspension Settings)">
+                                <i class="fa-solid {% if s.is_exam_suspended %}fa-user-slash text-danger{% else %}fa-user-xmark{% endif %}"></i>
+                            </button>
+                            {% endif %}
+                            <a href="{% url 'student_detail' s.id %}" class="btn btn-light" title="មើលព័ត៌មានលម្អិត">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            <a href="{% url 'student_id_card' s.id %}" target="_blank" class="btn btn-light" title="កាតសិស្ស">
+                                <i class="fa-solid fa-id-card"></i>
+                            </a>
+                            {% if is_admin %}
+                            <a href="{% url 'student_edit' s.id %}" class="btn btn-light" title="កែប្រែ">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-users-slash fa-3x mb-3 text-secondary"></i>
+                        <h5>រកមិនឃើញទិន្នន័យសិស្សឡើយ</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal 1: Single Student Exam Exclusion Settings -->
+{% if is_admin %}
+<div class="modal fade" id="examExclusionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="singleExamStatusForm" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="fa-solid fa-ban me-2"></i>កំណត់ការដកសិទ្ធិប្រឡង (Exam Exclusion)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
+                            <div class="fw-bold fs-6 text-dark" id="modalStudentName">សិស្ស គំរូ</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">កូដសិស្ស (ID)៖</div>
+                            <div class="badge bg-primary fs-6" id="modalStudentID">STU001</div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Switch -->
+                    <div class="form-check form-switch p-3 border rounded-3 mb-3 bg-white">
+                        <input class="form-check-input fs-5 ms-0 me-3" type="checkbox" role="switch" id="modalIsSuspended" name="is_exam_suspended" onchange="toggleReasonField(this.checked)">
+                        <label class="form-check-label fw-bold text-dark" for="modalIsSuspended">
+                            ដកចេញពីការប្រឡង (Disqualify / Exclude from Exams)
+                        </label>
+                        <div class="text-muted small mt-1">
+                            នៅពេលបើក សិស្សនេះនឹងមិនត្រូវបានបញ្ចូលក្នុងបន្ទប់ប្រឡង ឬបញ្ជីពិន្ទុឡើយ (ពិន្ទុស្វ័យប្រវត្តិ 0.00)។
+                        </div>
+                    </div>
+
+                    <!-- Reason Dropdown -->
+                    <div id="reasonContainer" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">មូលហេតុដកសិទ្ធិប្រឡង (Reason)</label>
+                            <select name="exam_suspension_reason" id="modalReasonSelect" class="form-select rounded-3">
+                                {% for val, label in exam_reasons %}
+                                <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">កំណត់សម្គាល់បន្ថែម / កិច្ចសន្យា (Notes)</label>
+                            <textarea name="exam_suspension_notes" id="modalNotesTextarea" class="form-control rounded-3" rows="3" placeholder="បញ្ជាក់ពីមូលហេតុ ឬកិច្ចសន្យាវិន័យ..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Batch Exam Disqualification -->
+<div class="modal fade" id="batchExamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'student_batch_set_exam_status' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="student_ids" id="batchStudentIdsInput">
+                <input type="hidden" name="batch_action" value="suspend">
+
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="fa-solid fa-users-slash me-2"></i>ដកសិទ្ធិប្រឡងជាក្រុម (Bulk Disqualify)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="alert alert-warning border-0 small rounded-3 mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        លោកអ្នកកំពុងរៀបចំដកសិទ្ធិសិស្សចំនួន <strong id="batchModalCount">0</strong> នាក់មិនឱ្យចូលរួមការប្រឡង។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">មូលហេតុដកសិទ្ធិប្រឡង (Reason)</label>
+                        <select name="exam_suspension_reason" class="form-select rounded-3">
+                            {% for val, label in exam_reasons %}
+                            <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កំណត់សម្គាល់បន្ថែម (Notes)</label>
+                        <textarea name="exam_suspension_notes" class="form-control rounded-3" rows="2" placeholder="កំណត់សម្គាល់ដកសិទ្ធិជាក្រុម..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-ban me-1"></i> អនុវត្តដកសិទ្ធិ
+                    </button>
+                </div>
+            </form>
+<!-- Modal 3: Fast Student Academic Status Changer -->
+<div class="modal fade" id="quickStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="quickStatusForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="fa-solid fa-user-gear me-2"></i>ប្តូរស្ថានភាពសិក្សា (Change Status)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
+                            <div class="fw-bold fs-6 text-dark" id="quickStatusStudentName">-</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">កូដសិស្ស (ID)៖</div>
+                            <div class="badge bg-primary fs-6" id="quickStatusStudentID">-</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសស្ថានភាពថ្មី *</label>
+                        <select name="status" id="quickStatusSelect" class="form-select rounded-3 border-primary" onchange="toggleQuickFeeEndMonth()">
+                            {% for st in available_statuses %}
+                            <option value="{{ st.code }}">
+                                {{ st.name }} ({{ st.name_en|default:st.code }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="quickFeeEndMonthContainer">
+                        <label class="form-label fw-bold small text-dark">
+                            ខែបញ្ចប់/ផ្អាកការបង់ប្រាក់ (Fee End Month)
+                            <span class="text-muted fw-normal">(ករណីឈប់ ឬផ្អាក)</span>
+                        </label>
+                        <select name="fee_end_month" id="quickFeeEndMonthSelect" class="form-select rounded-3">
+                            <option value="none">-- គ្មាន (បង់ពេញមួយឆ្នាំ) --</option>
+                            <option value="1">ខែមករា (Month 1)</option>
+                            <option value="2">ខែកុម្ភៈ (Month 2)</option>
+                            <option value="3">ខែមីនា (Month 3)</option>
+                            <option value="4">ខែមេសា (Month 4)</option>
+                            <option value="5">ខែឧសភា (Month 5)</option>
+                            <option value="6">ខែមិថុនា (Month 6)</option>
+                            <option value="7">ខែកក្កដា (Month 7)</option>
+                            <option value="8">ខែសីហា (Month 8)</option>
+                            <option value="9">ខែកញ្ញា (Month 9)</option>
+                            <option value="10">ខែតុលា (Month 10)</option>
+                            <option value="11">ខែវិច្ឆិកា (Month 11)</option>
+                            <option value="12">ខែធ្នូ (Month 12)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Hidden Batch Form for "Allow" -->
+<form id="batchAllowForm" action="{% url 'student_batch_set_exam_status' %}" method="POST" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="student_ids" id="batchAllowIdsInput">
+    <input type="hidden" name="batch_action" value="allow">
+</form>
+
+<script>
+    function openQuickStatusModal(id, name, studentCode, currentStatus, feeEndMonth) {
+        document.getElementById('quickStatusStudentName').innerText = name;
+        document.getElementById('quickStatusStudentID').innerText = studentCode;
+        document.getElementById('quickStatusSelect').value = currentStatus || 'ACTIVE';
+        document.getElementById('quickFeeEndMonthSelect').value = feeEndMonth || 'none';
+
+        const form = document.getElementById('quickStatusForm');
+        form.action = `/students/${id}/quick-status/`;
+
+        toggleQuickFeeEndMonth();
+        new bootstrap.Modal(document.getElementById('quickStatusModal')).show();
+    }
+
+    function toggleQuickFeeEndMonth() {
+        const statusVal = document.getElementById('quickStatusSelect').value;
+        const container = document.getElementById('quickFeeEndMonthContainer');
+        if (statusVal === 'ACTIVE') {
+            container.style.opacity = '0.6';
+        } else {
+            container.style.opacity = '1.0';
+        }
+    }
+    let currentStudentId = null;
+
+    function openExamModal(id, name, studentCode, isSuspended, reason, notes) {
+        currentStudentId = id;
+        document.getElementById('modalStudentName').innerText = name;
+        document.getElementById('modalStudentID').innerText = studentCode;
+        
+        const toggle = document.getElementById('modalIsSuspended');
+        toggle.checked = isSuspended;
+        toggleReasonField(isSuspended);
+
+        if (reason) {
+            document.getElementById('modalReasonSelect').value = reason;
+        }
+        document.getElementById('modalNotesTextarea').value = notes || '';
+
+        const form = document.getElementById('singleExamStatusForm');
+        form.action = `/students/${id}/exam-status/`;
+
+        new bootstrap.Modal(document.getElementById('examExclusionModal')).show();
+    }
+
+    function toggleReasonField(isChecked) {
+        const container = document.getElementById('reasonContainer');
+        container.style.display = isChecked ? 'block' : 'none';
+    }
+
+    // Bulk selection logic
+    function getSelectedStudentIds() {
+        const checked = document.querySelectorAll('.student-checkbox:checked');
+        return Array.from(checked).map(cb => cb.value);
+    }
+
+    function updateBulkSelection() {
+        const ids = getSelectedStudentIds();
+        const toolbar = document.getElementById('bulkToolbar');
+        const countSpan = document.getElementById('selectedCount');
+
+        if (ids.length > 0) {
+            toolbar.style.display = 'block';
+            countSpan.innerText = ids.length;
+        } else {
+            toolbar.style.display = 'none';
+            document.getElementById('selectAllCheckbox').checked = false;
+        }
+    }
+
+    function toggleSelectAll(masterCb) {
+        document.querySelectorAll('.student-checkbox').forEach(cb => {
+            cb.checked = masterCb.checked;
+        });
+        updateBulkSelection();
+    }
+
+    function deselectAllStudents() {
+        document.querySelectorAll('.student-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('selectAllCheckbox').checked = false;
+        updateBulkSelection();
+    }
+
+    function openBatchExamModal() {
+        const ids = getSelectedStudentIds();
+        if (ids.length === 0) return;
+        document.getElementById('batchStudentIdsInput').value = ids.join(',');
+        document.getElementById('batchModalCount').innerText = ids.length;
+        new bootstrap.Modal(document.getElementById('batchExamModal')).show();
+    }
+
+    function submitBatchExamAction(action) {
+        const ids = getSelectedStudentIds();
+        if (ids.length === 0) return;
+
+        if (action === 'allow') {
+            if (confirm(`តើលោកអ្នកពិតជាចង់អនុញ្ញាតឱ្យសិស្សចំនួន ${ids.length} នាក់ចូលរួមការប្រឡងឡើងវិញមែនទេ?`)) {
+                const form = document.getElementById('batchAllowForm');
+                document.getElementById('batchAllowIdsInput').value = ids.join(',');
+                form.submit();
+            }
+        }
+    }
+</script>
+{% endif %}
+{% endblock %}

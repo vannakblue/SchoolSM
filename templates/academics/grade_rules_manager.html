@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងច្បាប់ពិន្ទុអតិបរមា (Scoring Rules Matrix) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-scale-balanced me-2"></i>ច្បាប់ពិន្ទុអតិបរមាតាមកម្រិតថ្នាក់ (MoEYS Scoring Rules Matrix)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងកម្រិតថ្នាក់ និងកំណត់ពិន្ទុអតិបរមាតាម ១៤ មុខវិជ្ជាផ្លូវការ (MoEYS Standard)</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <!-- Manage Academic Tracks Button -->
+        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#manageTracksModal">
+            <i class="fa-solid fa-layer-group me-1"></i> គ្រប់គ្រងជំនាញសិក្សា (Tracks)
+        </button>
+
+        <!-- Add New Grade Level Button (Opens Modal) -->
+        <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createGradeLevelModal">
+            <i class="fa-solid fa-plus me-1"></i> បង្កើតកម្រិតថ្នាក់ថ្មី
+        </button>
+
+        <!-- Save Current Config as Default Button -->
+        <form method="POST" action="{% url 'save_current_as_default' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់រក្សាទុកការកំណត់ច្បាប់ពិន្ទុបច្ចុប្បន្នជា Default សម្រាប់ប្រើប្រាស់ឡើងវិញមែនទេ?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកជា Default
+            </button>
+        </form>
+
+        {% if has_saved_custom %}
+        <a href="{% url 'restore_saved_custom_default' %}" class="btn btn-outline-primary fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុលំនាំដើមដែលបាន Save ទុកឡើងវិញមែនទេ?')">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> ស្តារតាមដែលបាន Save
+        </a>
+        {% endif %}
+
+        <a href="{% url 'reset_grade_rules_to_moeys' %}" class="btn btn-outline-success fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុទាំងអស់ឡើងវិញទៅតាមស្តង់ដារក្រសួងអប់រំ (MoEYS Standard Matrix) មែនទេ?')">
+            <i class="fa-solid fa-rotate-left me-1"></i> ស្តារច្បាប់ពិន្ទុ MoEYS
+        </a>
+
+        <a href="{% url 'master_restore_defaults' %}" class="btn btn-primary fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារប្រព័ន្ធទាំងមូល (១៤ មុខវិជ្ជា + ច្បាប់ពិន្ទុ ៨ កម្រិតថ្នាក់ + ថ្នាក់រៀនស្តង់ដារ) ឡើងវិញមែនទេ?')">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្តារប្រព័ន្ធទាំងមូល (Master Restore)
+        </a>
+
+        <form method="POST" action="{% url 'grade_rules_delete_all' %}" class="d-inline" onsubmit="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់លុបច្បាប់ពិន្ទុទាំងអស់ចេញពីប្រព័ន្ធមែនទេ?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger fw-bold">
+                <i class="fa-solid fa-trash-can me-1"></i> លុបច្បាប់ពិន្ទុទាំងអស់
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Info Banner -->
+<div class="alert alert-info py-3 mb-4 shadow-sm border-0 d-flex align-items-center gap-3">
+    <i class="fa-solid fa-circle-info fa-2x text-primary"></i>
+    <div class="small">
+        <strong>ចំណាំ៖</strong> Admin អាចបង្កើតកម្រិតថ្នាក់ថ្មី (ឧ. <strong>ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រ</strong>, <strong>ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រសង្គម</strong>...) ឬលុប និងកែប្រែឈ្មោះបានដោយសេរី។ មុខវិជ្ជាទាំង ១៤ ត្រូវបានតម្រៀបតាមលំដាប់លំដោយស្តង់ដារ MoEYS។
+    </div>
+</div>
+
+<!-- Scoring Rules Matrix Table -->
+<div class="custom-card p-0">
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="update_rules" value="1">
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center mb-0 small" style="min-width: 1300px;">
+                <thead class="table-dark" style="background: #0f172a; color: #ffffff;">
+                    <tr>
+                        <th class="text-start py-3 text-white" style="min-width: 250px; background: #0f172a;">
+                            <span class="fs-6 fw-bold text-white">កម្រិតថ្នាក់ / មុខវិជ្ជា</span>
+                        </th>
+                        {% for sub in subjects %}
+                        <th class="py-3 text-white" style="min-width: 90px; background: #0f172a;" title="{{ sub.name_kh }}">
+                            <div class="fw-bold py-1 text-white" style="font-size: 0.92rem; line-height: 1.3; color: #ffffff !important;">{{ sub.name_kh }}</div>
+                        </th>
+                        {% endfor %}
+                        <th class="bg-primary text-white py-3" style="min-width: 110px;">
+                            <span class="fs-6 fw-bold text-white">ពិន្ទុសរុបពេញ</span>
+                        </th>
+                        <th class="py-3 text-white" style="min-width: 80px; background: #0f172a;">
+                            <span class="fw-bold text-white">សកម្មភាព</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stream in streams_data %}
+                    <tr>
+                        <td class="text-start fw-bold py-3 bg-light">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <i class="fa-solid fa-graduation-cap text-primary me-1"></i>
+                                    <span class="fs-6">{{ stream.name }}</span>
+                                </div>
+                                <span class="badge bg-secondary" style="font-size: 0.68rem;">{{ stream.track }}</span>
+                            </div>
+                        </td>
+                        {% for item in stream.sub_scores %}
+                        <td class="{% if item.max_score %}bg-white{% else %}bg-light text-muted{% endif %}">
+                            <input 
+                                type="number" 
+                                step="1" 
+                                min="0" 
+                                max="200" 
+                                name="score_{{ stream.grade }}_{{ stream.track }}_{{ item.subject.id }}" 
+                                value="{% if item.max_score %}{{ item.max_score|floatformat:0 }}{% endif %}" 
+                                class="form-control form-control-sm text-center fw-bold {% if item.max_score %}text-primary border-primary{% else %}text-muted bg-light border-0{% endif %}"
+                                placeholder="-"
+                                style="font-size: 0.85rem;"
+                            >
+                        </td>
+                        {% endfor %}
+                        <td class="fw-bold fs-6 text-primary bg-light">
+                            {{ stream.total_max|floatformat:0 }}
+                        </td>
+                        <td class="bg-light">
+                            <div class="d-flex justify-content-center gap-1">
+                                <a href="{% url 'grade_level_edit' stream.id %}" class="btn btn-sm btn-light text-primary" title="កែប្រែឈ្មោះកម្រិតថ្នាក់">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-light text-danger" title="លុបកម្រិតថ្នាក់" onclick="deleteGradeLevel('{{ stream.id }}', '{{ stream.name }}')">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ subjects|length|add:'3' }}" class="text-center py-5 text-muted">
+                            <h5>មិនទាន់មានកម្រិតថ្នាក់នៅក្នុងប្រព័ន្ធឡើយ</h5>
+                            <button type="button" class="btn btn-primary mt-2 fw-bold" data-bs-toggle="modal" data-bs-target="#createGradeLevelModal">
+                                <i class="fa-solid fa-plus me-1"></i> បង្កើតកម្រិតថ្នាក់ថ្មីឥឡូវនេះ
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if streams_data %}
+        <div class="p-3 bg-light border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">ចុច "រក្សាទុកការកែប្រែ" បន្ទាប់ពីផ្លាស់ប្តូរលេខពិន្ទុក្នុងតារាង</span>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែច្បាប់ពិន្ទុ
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Modal: Create New Grade Level -->
+<div class="modal fade" id="createGradeLevelModal" tabindex="-1" aria-labelledby="createGradeLevelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="POST" action="{% url 'grade_level_create' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="createGradeLevelModalLabel">
+                        <i class="fa-solid fa-plus me-2"></i>បង្កើតកម្រិតថ្នាក់ថ្មី (Create Grade Level)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឈ្មោះកម្រិតថ្នាក់ (Grade Name) *</label>
+                        {{ gl_form.name }}
+                        <div class="form-text small">ឧ. ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រ, ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រសង្គម, ថ្នាក់ទី ៦...</div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">កម្រិតលេខ (Grade Number 1-12) *</label>
+                            {{ gl_form.grade_number }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">លំដាប់លំដោយ (Sort Order)</label>
+                            {{ gl_form.order }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">កម្មវិធី/ជំនាញសិក្សា (Track) *</label>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="openTrackQuickAdd()">
+                                <i class="fa-solid fa-plus-circle me-1"></i>+ បន្ថែមជំនាញថ្មី
+                            </button>
+                        </div>
+                        <div id="gl_track_container">
+                            {{ gl_form.track }}
+                        </div>
+                        <div class="form-text small">ជ្រើសរើសជំនាញសិក្សា (ទូទៅ, វិទ្យាសាស្ត្រ, សង្គម, ឬជំនាញផ្ទាល់ខ្លួនថ្មី)</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">
+                        <i class="fa-solid fa-check me-1"></i> បង្កើតកម្រិតថ្នាក់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Manage Academic Tracks (Add, Edit, Delete) -->
+<div class="modal fade" id="manageTracksModal" tabindex="-1" aria-labelledby="manageTracksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header text-white rounded-top-4" style="background: #1e3a8a;">
+                <h5 class="modal-title fw-bold" id="manageTracksModalLabel">
+                    <i class="fa-solid fa-layer-group me-2"></i>គ្រប់គ្រងកម្មវិធី & ជំនាញសិក្សា (Academic Tracks)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Add New Track Form -->
+                <div class="card border-0 shadow-xs rounded-3 bg-light p-3 mb-4">
+                    <h6 class="fw-bold text-primary mb-3">
+                        <i class="fa-solid fa-plus-circle me-1"></i> បង្កើតជំនាញសិក្សាថ្មី (Add New Track)
+                    </h6>
+                    <form id="createTrackForm" onsubmit="handleCreateTrack(event)">
+                        {% csrf_token %}
+                        <input type="hidden" name="is_ajax" value="1">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">កូដជំនាញ (Code) *</label>
+                                <input type="text" name="code" id="new_track_code" class="form-control form-control-sm" placeholder="e.g. TECH, ARTS, LANG" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">ឈ្មោះជំនាញ (ខ្មែរ) *</label>
+                                <input type="text" name="name_kh" id="new_track_name_kh" class="form-control form-control-sm" placeholder="e.g. ថ្នាក់បច្ចេកវិទ្យា & IT" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">ឈ្មោះ (អង់គ្លេស)</label>
+                                <input type="text" name="name_en" id="new_track_name_en" class="form-control form-control-sm" placeholder="e.g. IT & Tech Track">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                                    <i class="fa-solid fa-plus me-1"></i> បង្កើត
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Tracks List -->
+                <h6 class="fw-bold text-dark mb-2">
+                    <i class="fa-solid fa-list-check text-primary me-1"></i> បញ្ជីជំនាញសិក្សាក្នុងប្រព័ន្ធ
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%;">កូដ (Code)</th>
+                                <th>ឈ្មោះជំនាញ (ខ្មែរ)</th>
+                                <th>ឈ្មោះជំនាញ (អង់គ្លេស)</th>
+                                <th style="width: 15%;" class="text-center">ប្រភេទ</th>
+                                <th style="width: 15%;" class="text-center">សកម្មភាព</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tracksTableBody">
+                            {% for t in all_tracks %}
+                            <tr>
+                                <td class="fw-bold text-primary font-monospace">{{ t.code }}</td>
+                                <td class="fw-semibold">{{ t.name_kh }}</td>
+                                <td class="text-muted">{{ t.name_en|default:"-" }}</td>
+                                <td class="text-center">
+                                    {% if t.is_default %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">MoEYS ស្តង់ដារ</span>
+                                    {% else %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">ផ្ទាល់ខ្លួន (Custom)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="editTrackPrompt('{{ t.id }}', '{{ t.name_kh|escapejs }}', '{{ t.code|escapejs }}')" title="កែប្រែ">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        {% if not t.is_default %}
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteTrack('{{ t.id }}', '{{ t.name_kh|escapejs }}')" title="លុប">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-light btn-sm text-muted" disabled title="ជំនាញ MoEYS ស្តង់ដារ">
+                                            <i class="fa-solid fa-lock"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">មិនទាន់មានជំនាញនៅឡើយទេ</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បិទផ្ទាំង</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Single Delete Form Helper -->
+<form id="singleDeleteGradeLevelForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<form id="singleDeleteTrackForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+{% block extra_js %}
+<script>
+    function deleteGradeLevel(id, name) {
+        if (confirm(`តើលោកអ្នកពិតជាចង់លុបកម្រិតថ្នាក់ "${name}" និងច្បាប់ពិន្ទុទាំងអស់របស់វាចេញពីប្រព័ន្ធមែនទេ?`)) {
+            const form = document.getElementById('singleDeleteGradeLevelForm');
+            form.action = `/academics/grade-levels/${id}/delete/`;
+            form.submit();
+        }
+    }
+
+    function deleteTrack(id, name) {
+        if (confirm(`តើលោកអ្នកពិតជាចង់លុបជំនាញសិក្សា "${name}" ចេញពីប្រព័ន្ធមែនទេ?`)) {
+            const form = document.getElementById('singleDeleteTrackForm');
+            form.action = `/academics/tracks/${id}/delete/`;
+            form.submit();
+        }
+    }
+
+    function openTrackQuickAdd() {
+        const createModal = bootstrap.Modal.getInstance(document.getElementById('createGradeLevelModal'));
+        if (createModal) createModal.hide();
+        const tracksModal = new bootstrap.Modal(document.getElementById('manageTracksModal'));
+        tracksModal.show();
+    }
+
+    async function handleCreateTrack(e) {
+        e.preventDefault();
+        const form = document.getElementById('createTrackForm');
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch("{% url 'academic_track_create' %}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message || 'បានបង្កើតជំនាញសិក្សាថ្មី!',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                let errMsg = '';
+                if (data.errors) {
+                    for (const k in data.errors) {
+                        errMsg += `${k}: ${data.errors[k].join(', ')}\n`;
+                    }
+                }
+                Swal.fire('មានបញ្ហា!', errMsg || 'មិនអាចបង្កើតជំនាញបានទេ', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            form.submit();
+        }
+    }
+
+    function editTrackPrompt(id, name, code) {
+        Swal.fire({
+            title: 'កែប្រែឈ្មោះជំនាញសិក្សា',
+            input: 'text',
+            inputValue: name,
+            showCancelButton: true,
+            confirmButtonText: 'រក្សាទុក',
+            cancelButtonText: 'បោះបង់',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'សូមវាយបញ្ចូលឈ្មោះជំនាញ!';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                formData.append('code', code);
+                formData.append('name_kh', result.value);
+                
+                fetch(`/academics/tracks/${id}/edit/`, {
+                    method: 'POST',
+                    body: formData
+                }).then(() => {
+                    location.reload();
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}

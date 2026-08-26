@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}បង្រួម & បំលែងប្រភេទរូបភាព (Image Compressor) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone-box {
+        border: 2px dashed #6c757d;
+        border-radius: 16px;
+        background: #f8f9fa;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .dropzone-box:hover, .dropzone-box.dragover {
+        background: #e9ecef;
+        border-color: #495057;
+        transform: scale(1.01);
+    }
+    .compress-item-row {
+        background: #ffffff;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+    }
+    .compress-thumb {
+        width: 52px;
+        height: 52px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: #f1f5f9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Image Compressor & Converter</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-file-zipper text-secondary me-2"></i>បង្រួមទំហំ & បំលែងប្រភេទរូបភាព (Image Compressor & Converter)
+            </h2>
+            <p class="text-muted small mb-0">កាត់បន្ថយទំហំ File រូបភាពឱ្យស្រាលស្រួល Upload និងបំលែងប្រភេទរូបភាពរវាង PNG, JPG, WEBP។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Upload and Compressed List -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Dropzone Area -->
+                <div class="dropzone-box" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple accept="image/*" class="d-none" onchange="handleFileSelect(event)">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-images display-4 text-secondary"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">អូសទម្លាក់រូបភាពទីនេះ ឬចុចដើម្បីជ្រើសរើស</h5>
+                    <p class="text-muted small mb-2">អាចជ្រើសរើសរូបភាពច្រើនសន្លឹកក្នុងពេលតែមួយ (Batch Processing)</p>
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4">
+                        <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសរូបភាព
+                    </button>
+                </div>
+
+                <!-- Compressed Files List -->
+                <div class="mt-4" id="compressListContainer" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-list-check text-secondary me-2"></i>រូបភាពដែលបានបង្រួម (<span id="totalFilesCount">0</span>)
+                        </h6>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" onclick="clearAllFiles()">
+                                <i class="fa-solid fa-trash-can me-1"></i> សម្អាត
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="compressItemsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-sliders text-secondary me-2"></i>ការកំណត់គុណភាព & ប្រភេទ
+                </h5>
+
+                <!-- Quality Slider -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted d-flex justify-content-between">
+                        <span>កម្រិតគុណភាពរូបភាព (Quality)</span>
+                        <span class="text-primary fw-bold" id="qualityLabel">75%</span>
+                    </label>
+                    <input type="range" class="form-range" id="rngQuality" min="20" max="95" value="75" oninput="updateQuality()">
+                </div>
+
+                <!-- Max Dimension Resize -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ទំហំទទឹងអតិបរមា (Max Width Resize)</label>
+                    <select class="form-select" id="maxWidthSelect" onchange="reprocessAll()">
+                        <option value="0" selected>រក្សាទំហំដើម (Original Dimension)</option>
+                        <option value="1920">Full HD (1920 px)</option>
+                        <option value="1280">HD (1280 px - ស្តង់ដា Web)</option>
+                        <option value="800">Medium (800 px - ស្រាលបំផុត)</option>
+                    </select>
+                </div>
+
+                <!-- Format Conversion -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small text-muted">បំលែងជាប្រភេទ File</label>
+                    <select class="form-select" id="targetFormat" onchange="reprocessAll()">
+                        <option value="keep" selected>រក្សាប្រភេទដើម (Keep Original)</option>
+                        <option value="image/webp">WEBP (ទំហំស្រាលបំផុត ពេញនិយម)</option>
+                        <option value="image/jpeg">JPG / JPEG (ស្តង់ដា)</option>
+                        <option value="image/png">PNG</option>
+                    </select>
+                </div>
+
+                <!-- Reprocess Button -->
+                <button type="button" class="btn btn-secondary w-100 rounded-pill mb-2" onclick="reprocessAll()">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> អនុវត្តការកំណត់ឡើងវិញ
+                </button>
+
+                <!-- Download All Button -->
+                <button type="button" id="btnDownloadAll" class="btn btn-success btn-lg w-100 rounded-pill shadow-sm" onclick="downloadAllCompressed()" disabled>
+                    <i class="fa-solid fa-download me-2"></i> ទាញយករូបភាពទាំងអស់
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawFilesList = [];
+    let compressedResults = []; // { name, originalSize, compressedSize, dataUrl, format }
+
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+        if (files.length > 0) addFiles(files);
+    });
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+        if (files.length > 0) addFiles(files);
+        e.target.value = '';
+    }
+
+    function addFiles(files) {
+        files.forEach(f => rawFilesList.push(f));
+        reprocessAll();
+    }
+
+    function updateQuality() {
+        document.getElementById('qualityLabel').innerText = `${document.getElementById('rngQuality').value}%`;
+        reprocessAll();
+    }
+
+    async function reprocessAll() {
+        if (rawFilesList.length === 0) return;
+
+        const quality = parseInt(document.getElementById('rngQuality').value, 10) / 100;
+        const maxW = parseInt(document.getElementById('maxWidthSelect').value, 10);
+        const targetFmt = document.getElementById('targetFormat').value;
+
+        compressedResults = [];
+        for (const file of rawFilesList) {
+            const res = await compressSingleImage(file, quality, maxW, targetFmt);
+            compressedResults.push(res);
+        }
+
+        renderCompressedList();
+    }
+
+    function compressSingleImage(file, quality, maxWidth, targetFormatChoice) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width;
+                    let h = img.height;
+
+                    if (maxWidth > 0 && w > maxWidth) {
+                        h = Math.round((h * maxWidth) / w);
+                        w = maxWidth;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    let outFormat = targetFormatChoice === 'keep' ? file.type : targetFormatChoice;
+                    if (outFormat !== 'image/png' && outFormat !== 'image/jpeg' && outFormat !== 'image/webp') {
+                        outFormat = 'image/jpeg';
+                    }
+
+                    const dataUrl = canvas.toDataURL(outFormat, quality);
+                    const head = 'data:' + outFormat + ';base64,';
+                    const compressedSizeBytes = Math.round((dataUrl.length - head.length) * 3 / 4);
+
+                    let ext = outFormat === 'image/webp' ? '.webp' : outFormat === 'image/png' ? '.png' : '.jpg';
+                    let baseName = file.name.replace(/\.[^/.]+$/, "") + ext;
+
+                    resolve({
+                        name: baseName,
+                        originalSize: file.size,
+                        compressedSize: compressedSizeBytes,
+                        dataUrl: dataUrl,
+                        format: outFormat
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderCompressedList() {
+        const container = document.getElementById('compressListContainer');
+        const list = document.getElementById('compressItemsList');
+        const countSpan = document.getElementById('totalFilesCount');
+        const btnDownloadAll = document.getElementById('btnDownloadAll');
+
+        if (compressedResults.length === 0) {
+            container.style.display = 'none';
+            btnDownloadAll.disabled = true;
+            return;
+        }
+
+        container.style.display = 'block';
+        btnDownloadAll.disabled = false;
+        countSpan.innerText = compressedResults.length;
+
+        list.innerHTML = '';
+        compressedResults.forEach((item, index) => {
+            const origKB = (item.originalSize / 1024).toFixed(1);
+            const compKB = (item.compressedSize / 1024).toFixed(1);
+            const savedPct = Math.round(((item.originalSize - item.compressedSize) / item.originalSize) * 100);
+
+            const row = document.createElement('div');
+            row.className = 'compress-item-row';
+            row.innerHTML = `
+                <div class="d-flex align-items-center gap-3 overflow-hidden">
+                    <img src="${item.dataUrl}" class="compress-thumb" alt="${item.name}">
+                    <div class="text-truncate">
+                        <div class="fw-semibold text-dark text-truncate small" title="${item.name}">${item.name}</div>
+                        <div class="small">
+                            <span class="text-decoration-line-through text-muted me-2">${origKB} KB</span>
+                            <span class="fw-bold text-success">${compKB} KB</span>
+                            <span class="badge ${savedPct >= 0 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} ms-1">
+                                ${savedPct >= 0 ? '-' + savedPct + '%' : '+' + Math.abs(savedPct) + '%'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="${item.dataUrl}" download="${item.name}" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                        <i class="fa-solid fa-download me-1"></i> ទាញយក
+                    </a>
+                </div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    function clearAllFiles() {
+        rawFilesList = [];
+        compressedResults = [];
+        renderCompressedList();
+    }
+
+    function downloadAllCompressed() {
+        compressedResults.forEach((item, idx) => {
+            setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = item.dataUrl;
+                a.download = item.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, idx * 250);
+        });
+    }
+</script>
+{% endblock %}

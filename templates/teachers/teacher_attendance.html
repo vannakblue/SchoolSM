@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}ស្រង់វត្តមានគ្រូបង្រៀន (Teacher Attendance) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                <i class="fa-solid fa-user-clock me-1"></i> កត់ត្រាវត្តមានគ្រូ
+            </span>
+            {% if active_year %}
+            <span class="badge bg-secondary-subtle text-secondary fw-semibold px-2 py-1 rounded-pill">
+                <i class="fa-solid fa-calendar-days me-1"></i> ឆ្នាំ {{ active_year.name }}
+            </span>
+            {% endif %}
+        </div>
+        <h2 class="fw-bold mb-1">ស្រង់វត្តមានគ្រូបង្រៀន & បុគ្គលិក</h2>
+        <p class="text-muted small mb-0">
+            កំណត់ត្រាវត្តមានគ្រូ (QR Code Kiosk, Webcam Face AI, ម៉ាស៊ីន Biometric, និង Sync ពីវត្តមានសិស្ស)
+        </p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{% url 'teacher_kiosk_view' %}" class="btn btn-primary btn-sm fw-bold">
+            <i class="fa-solid fa-qrcode me-1"></i> QR Kiosk
+        </a>
+        <a href="{% url 'teacher_face_ai_kiosk' %}" class="btn btn-outline-info btn-sm fw-bold">
+            <i class="fa-solid fa-camera me-1"></i> Face AI
+        </a>
+        <a href="{% url 'biometric_hub' %}" class="btn btn-outline-warning btn-sm fw-bold">
+            <i class="fa-solid fa-fingerprint me-1"></i> Biometric
+        </a>
+        <a href="{% url 'teacher_punch_logs' %}" class="btn btn-light btn-sm border fw-bold">
+            <i class="fa-solid fa-list-check me-1"></i> Logs
+        </a>
+        <a href="{% url 'teacher_attendance_settings' %}" class="btn btn-secondary btn-sm" title="ការកំណត់">
+            <i class="fa-solid fa-gear"></i>
+        </a>
+        <a href="{% url 'teacher_attendance_report' %}?date={{ selected_date }}" class="btn btn-outline-primary btn-sm fw-bold">
+            <i class="fa-solid fa-chart-column me-1"></i> របាយការណ៍
+        </a>
+        <a href="{% url 'teacher_attendance' %}?date={{ selected_date }}&action=sync" class="btn btn-warning btn-sm text-dark fw-bold" onclick="return confirm('តើលោកអ្នកចង់ Sync វត្តមានគ្រូពីកំណត់ត្រាស្រង់វត្តមានសិស្សថ្ងៃនេះមែនទេ?');">
+            <i class="fa-solid fa-rotate me-1"></i> Sync សិស្ស
+        </a>
+    </div>
+</div>
+
+<!-- Summary Mini Cards -->
+{% if summary %}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 shadow-sm text-center">
+            <small class="text-muted text-uppercase fw-bold">គ្រូមានម៉ោងបង្រៀន</small>
+            <h4 class="fw-bold mb-0 text-primary mt-1">{{ summary.teachers_with_schedule }} <small class="text-muted fs-6">នាក់</small></h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 shadow-sm text-center">
+            <small class="text-muted text-uppercase fw-bold">ម៉ោងបង្រៀនសរុប</small>
+            <h4 class="fw-bold mb-0 text-indigo mt-1">{{ summary.total_scheduled_periods }} <small class="text-muted fs-6">ម៉ោង</small></h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 shadow-sm text-center">
+            <small class="text-muted text-uppercase fw-bold">បានចុះវត្តមានសិស្ស</small>
+            <h4 class="fw-bold mb-0 text-success mt-1">{{ summary.total_recorded_periods }} <small class="text-muted fs-6">ម៉ោង</small></h4>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="custom-card p-3 shadow-sm text-center">
+            <small class="text-muted text-uppercase fw-bold">មិនបានចុះ (អវត្តមាន)</small>
+            <h4 class="fw-bold mb-0 text-danger mt-1">{{ summary.total_unrecorded_periods }} <small class="text-muted fs-6">ម៉ោង</small></h4>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Date Filter & Search -->
+<div class="custom-card p-3 mb-4 shadow-sm">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-12 col-md-4 d-flex align-items-center gap-2">
+            <label class="fw-bold small mb-0 text-nowrap">កាលបរិច្ឆេទស្រង់វត្តមាន៖</label>
+            <input type="date" name="date" value="{{ selected_date }}" class="form-control form-control-sm" onchange="this.form.submit()">
+        </div>
+        <div class="col-12 col-md-5">
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាមឈ្មោះគ្រូ, កូដសម្គាល់, ឯកទេស...">
+                <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+        <div class="col-12 col-md-3 text-md-end">
+            <span class="badge bg-light text-dark border p-2">
+                <i class="fa-solid fa-calendar-day text-primary me-1"></i> {{ selected_date_obj|date:"l, d/m/Y" }}
+            </span>
+        </div>
+    </form>
+</div>
+
+<!-- Attendance Form Sheet -->
+<form method="POST">
+    {% csrf_token %}
+    <div class="custom-card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 45px;" class="text-center">ល.រ</th>
+                        <th style="width: 85px;">កូដគ្រូ</th>
+                        <th>ឈ្មោះគ្រូបង្រៀន</th>
+                        <th>ឯកទេស</th>
+                        <th style="min-width: 200px;">កាលវិភាគ & ស្ថានភាពចុះវត្តមានសិស្ស</th>
+                        <th style="min-width: 230px;">ស្ថានភាពវត្តមានគ្រូ</th>
+                        <th>កំណត់ចំណាំ / មូលហេតុ</th>
+                        <th style="width: 100px;" class="text-end">កាត់ប្រាក់</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in teacher_list_data %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td class="fw-bold text-primary">{{ item.teacher.teacher_id }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                            <small class="text-muted">{{ item.teacher.latin_name }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ item.teacher.specialization }}</span></td>
+                        <td>
+                            {% if item.scheduled_count > 0 %}
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if item.unrecorded_count == 0 %}
+                                        <span class="badge bg-success-subtle text-success border border-success fw-bold">
+                                            <i class="fa-solid fa-circle-check me-1"></i> បានចុះ {{ item.recorded_count }}/{{ item.scheduled_count }} ម៉ោង (គ្រប់)
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger fw-bold">
+                                            <i class="fa-solid fa-circle-xmark me-1"></i> ខកខាន {{ item.unrecorded_count }}/{{ item.scheduled_count }} ម៉ោង
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                        {% for slot in item.slots_list %}
+                                        <small class="badge bg-light text-dark border" style="font-size: 0.72rem;">
+                                            ម៉ោង {{ slot.period_number }}: {{ slot.classroom.code }}
+                                        </small>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">⚪ គ្មានម៉ោងបង្រៀន</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <input type="radio" class="btn-check" name="status_{{ item.teacher.id }}" id="status_p_{{ item.teacher.id }}" value="PRESENT" {% if item.status == 'PRESENT' %}checked{% endif %}>
+                                <label class="btn btn-outline-success" for="status_p_{{ item.teacher.id }}">
+                                    <i class="fa-solid fa-check me-1"></i> វត្តមាន
+                                </label>
+
+                                <input type="radio" class="btn-check" name="status_{{ item.teacher.id }}" id="status_l_{{ item.teacher.id }}" value="EXCUSED_LEAVE" {% if item.status == 'EXCUSED_LEAVE' %}checked{% endif %}>
+                                <label class="btn btn-outline-warning" for="status_l_{{ item.teacher.id }}">
+                                    <i class="fa-solid fa-envelope-open me-1"></i> ច្បាប់
+                                </label>
+
+                                <input type="radio" class="btn-check" name="status_{{ item.teacher.id }}" id="status_a_{{ item.teacher.id }}" value="UNEXCUSED_ABSENCE" {% if item.status == 'UNEXCUSED_ABSENCE' %}checked{% endif %}>
+                                <label class="btn btn-outline-danger" for="status_a_{{ item.teacher.id }}">
+                                    <i class="fa-solid fa-xmark me-1"></i> អវត្តមាន
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" name="notes_{{ item.teacher.id }}" value="{{ item.notes }}" class="form-control form-control-sm" placeholder="កំណត់ចំណាំ...">
+                        </td>
+                        <td class="text-end fw-bold {% if item.deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if item.deduction > 0 %}-${{ item.deduction }}{% else %}$0.00{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">ពុំមានទិន្នន័យគ្រូបង្រៀនឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-3 border-top d-flex align-items-center justify-content-between">
+            <div class="small text-muted">
+                <i class="fa-solid fa-lightbulb text-warning me-1"></i> 
+                ចុចប៊ូតុង "រក្សាទុកវត្តមានគ្រូ" ដើម្បីកត់ត្រាទិន្នន័យផ្លូវការចូលទៅកាន់ប្រព័ន្ធបើកប្រាក់ខែ (Payroll)។
+            </div>
+            <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកវត្តមានគ្រូ
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}

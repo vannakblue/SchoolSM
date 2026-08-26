@@ -1,0 +1,662 @@
+{% extends 'base.html' %}
+
+{% block title %}កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Navigation Sub-Menu Tabs */
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+    .nav-tabs-custom .nav-link {
+        font-weight: 700;
+        color: #64748b;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 18px;
+        transition: all 0.2s ease;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #4f46e5;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+        background: transparent;
+    }
+
+    /* Control & Filter Bar */
+    .filter-panel-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 24px;
+    }
+
+    .mode-btn-group .btn {
+        font-weight: 700;
+        padding: 8px 18px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    /* Printable Timetable Sheet Styling (Matches Official Cambodian MoEYS Layout) */
+    .timetable-sheet-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        align-items: center;
+    }
+
+    .timetable-sheet {
+        background: #ffffff;
+        width: 100%;
+        max-width: 860px;
+        padding: 36px 44px 30px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        color: #000000;
+        font-family: 'Kantumruy Pro', 'Battambang', 'Siemreap', sans-serif;
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    /* Header Section */
+    .tt-header {
+        text-align: center;
+        margin-bottom: 18px;
+    }
+    .tt-school-name {
+        font-size: 1.22rem;
+        font-weight: 800;
+        color: #000000;
+        margin-bottom: 4px;
+        letter-spacing: -0.3px;
+    }
+    .tt-main-title {
+        font-size: 1.42rem;
+        font-weight: 800;
+        color: #000000;
+        margin-bottom: 4px;
+        letter-spacing: -0.3px;
+    }
+    .tt-meta-line {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+
+    /* Timetable Grid Table */
+    .tt-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        border: 1.5px solid #000000;
+    }
+    .tt-table th, .tt-table td {
+        border: 1.2px solid #000000;
+        text-align: center;
+        vertical-align: middle;
+        padding: 4px 6px;
+        font-size: 0.88rem;
+    }
+    .tt-table thead th {
+        background-color: #ffffff;
+        font-weight: 700;
+        height: 34px;
+    }
+    .tt-table th.th-period, .tt-table td.td-period {
+        width: 72px;
+        min-width: 72px;
+        max-width: 72px;
+        font-weight: 700;
+        text-align: center;
+    }
+    .tt-table th.th-day, .tt-table td.cell-slot {
+        width: calc((100% - 72px) / 6);
+        text-align: center;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    .tt-table .cell-slot {
+        height: 38px;
+        line-height: 1.2;
+    }
+    .tt-table .sub-title {
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: #000000;
+    }
+    .tt-table .extra-info {
+        font-size: 0.76rem;
+        color: #1e293b;
+        margin-top: 1px;
+    }
+    .tt-table .session-divider-row td {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        text-align: center;
+        padding: 4px;
+        font-size: 0.86rem;
+        border: 1.2px solid #000000;
+        letter-spacing: 0.5px;
+    }
+
+    /* Signature & Footer Section */
+    .tt-footer {
+        margin-top: 18px;
+        font-size: 0.9rem;
+    }
+    .tt-sig-grid {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0 10px;
+    }
+    .tt-sig-col {
+        text-align: center;
+        min-width: 250px;
+    }
+    .tt-sig-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #000000;
+        margin-bottom: 2px;
+    }
+    .tt-sig-role {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #000000;
+        margin-bottom: 0;
+    }
+    .tt-sig-space {
+        height: 65px;
+    }
+    .tt-sig-name {
+        font-weight: 800;
+        font-size: 1rem;
+        color: #000000;
+    }
+    .lbl-lunar-date {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #000000;
+        line-height: 1.35;
+    }
+    .lbl-solar-date {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #000000;
+        line-height: 1.35;
+        margin-bottom: 6px;
+    }
+
+    /* Print Overrides */
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 8mm 10mm;
+        }
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: 10pt;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .app-sidebar, .app-header, .no-print, .nav-tabs-custom, .filter-panel-card {
+            display: none !important;
+        }
+        .app-main {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        .app-content {
+            padding: 0 !important;
+        }
+        .timetable-sheet-container {
+            gap: 0 !important;
+        }
+        .timetable-sheet {
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 10px 0 !important;
+            margin: 0 auto !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            page-break-after: always !important;
+        }
+        .timetable-sheet:last-child {
+            page-break-after: auto !important;
+        }
+        .tt-table, .tt-table th, .tt-table td {
+            border-color: #000000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .tt-table .session-divider-row td {
+            background-color: #f1f5f9 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Sub-Menu Navigation Tabs -->
+<ul class="nav nav-tabs-custom no-print">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'timetable_view' %}">
+            <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម (Master Timetable)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'timetable_daily_reports_view' %}">
+            <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'student_teacher_timetable_view' %}">
+            <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'subject_requirements_manager' %}">
+            <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា (Requirements Matrix)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'teacher_assignments_manager' %}">
+            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments)
+        </a>
+    </li>
+</ul>
+
+<!-- Control & Filter Action Panel -->
+<div class="filter-panel-card no-print">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <!-- Left: Mode Switcher -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group mode-btn-group" role="group">
+                <button type="button" class="btn btn-primary" id="btnModeClass" onclick="switchTimetableMode('class')">
+                    <i class="fa-solid fa-graduation-cap me-1.5"></i> កាលវិភាគសិស្ស (តាមថ្នាក់)
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btnModeTeacher" onclick="switchTimetableMode('teacher')">
+                    <i class="fa-solid fa-chalkboard-user me-1.5"></i> កាលវិភាគគ្រូបង្រៀន (តាមគ្រូ)
+                </button>
+            </div>
+        </div>
+
+        <!-- Middle: Dynamic Dropdown Filters -->
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <!-- Classroom Select Filter -->
+            <div id="classFilterWrapper" class="d-flex align-items-center gap-2">
+                <label for="selectClassroom" class="fw-bold small text-muted text-nowrap">ជ្រើសរើសថ្នាក់៖</label>
+                <select id="selectClassroom" class="form-select form-select-sm fw-bold border-primary" style="min-width: 170px;" onchange="filterClassTimetable(this.value)">
+                    <option value="all">-- ថ្នាក់ទាំងអស់ (All Classes) --</option>
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Teacher Select Filter (Hidden initially) -->
+            <div id="teacherFilterWrapper" class="d-flex align-items-center gap-2 d-none">
+                <label for="selectTeacher" class="fw-bold small text-muted text-nowrap">ជ្រើសរើសគ្រូ៖</label>
+                <select id="selectTeacher" class="form-select form-select-sm fw-bold border-primary" style="min-width: 200px;" onchange="filterTeacherTimetable(this.value)">
+                    <option value="all">-- គ្រូទាំងអស់ (All Teachers) --</option>
+                    {% for t in teachers %}
+                    <option value="{{ t.id }}">{% if t.gender == 'F' %}អ្នកគ្រូ{% else %}លោកគ្រូ{% endif %} {{ t.khmer_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Toggle Custom Date Panel -->
+            <button class="btn btn-sm btn-outline-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#customDateCollapse" title="កែប្រែកាលបរិច្ឆេទលើកាលវិភាគ">
+                <i class="fa-solid fa-calendar-pen me-1"></i> កែថ្ងៃខែ
+            </button>
+        </div>
+
+        <!-- Right: Print Action Buttons -->
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-dark btn-sm fw-bold px-3" onclick="window.print()">
+                <i class="fa-solid fa-print me-1.5"></i> បោះពុម្ព (Print)
+            </button>
+            <button type="button" class="btn btn-outline-dark btn-sm fw-bold" onclick="printAllCurrentMode()">
+                <i class="fa-solid fa-copy me-1.5"></i> ព្រីនទាំងអស់ (Print All)
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapsible Quick Date Editor -->
+    <div class="collapse mt-3 pt-3 border-top" id="customDateCollapse">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទចន្ទគតិ (ជួរទី ១)៖</label>
+                <input type="text" class="form-control form-control-sm" id="inputLunarDate" value="{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០" oninput="updateCustomDates()">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសុរិយគតិ (ជួរទី ២)៖</label>
+                <input type="text" class="form-control form-control-sm" id="inputSolarDate" value="{{ school_info.province|default:'កំពង់កណ្តួត' }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}" oninput="updateCustomDates()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Printable Sheet Container -->
+<div class="timetable-sheet-container">
+
+    <!-- 1. Classroom Timetables Container -->
+    <div id="classTimetablesContainer" class="w-100 d-flex flex-column gap-4 align-items-center">
+        {% for cls_item in classrooms_timetables %}
+        <div class="timetable-sheet sheet-class" data-class-id="{{ cls_item.classroom.id }}" id="sheet_cls_{{ cls_item.classroom.id }}">
+            <!-- Header Matching User Screenshot -->
+            <div class="tt-header">
+                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កណ្តួត" }}</div>
+                <div class="tt-main-title">{% if "ថ្នាក់" in cls_item.classroom.name %}កាលវិភាគសិក្សា {{ cls_item.classroom.name }}{% else %}កាលវិភាគសិក្សា ថ្នាក់ទី {{ cls_item.classroom.name }}{% endif %}</div>
+                <div class="tt-meta-line">ឆ្នាំសិក្សា៖ {{ cls_item.academic_year }}</div>
+                <div class="tt-meta-line">
+                    ឈ្មោះគ្រូបន្ទុកថ្នាក់៖ 
+                    {% if cls_item.homeroom_teacher %}
+                        {% if "លោកគ្រូ" in cls_item.homeroom_teacher.khmer_name or "អ្នកគ្រូ" in cls_item.homeroom_teacher.khmer_name %}
+                            {{ cls_item.homeroom_teacher.khmer_name }}
+                        {% else %}
+                            {% if cls_item.homeroom_teacher.gender == 'F' %}អ្នកគ្រូ{% else %}លោកគ្រូ{% endif %} {{ cls_item.homeroom_teacher.khmer_name }}
+                        {% endif %}
+                    {% else %}
+                        ..........................................
+                    {% endif %}
+                    (ទូរស័ព្ទ៖ {{ cls_item.homeroom_teacher.phone|default:"........................" }})
+                </div>
+            </div>
+
+            <!-- Timetable Table -->
+            <table class="tt-table">
+                <thead>
+                    <tr>
+                        <th class="th-period">ម៉ោងទី</th>
+                        {% for d in days %}
+                        <th class="th-day">{{ d.name_kh }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Morning Session Divider Row -->
+                    <tr class="session-divider-row">
+                        <td colspan="7">ពេលព្រឹក</td>
+                    </tr>
+
+                    <!-- Morning Session (Periods 1 to 4) -->
+                    {% for row in cls_item.morning_rows %}
+                    <tr>
+                        <td class="td-period">{{ row.period }}</td>
+                        {% for slot in row.slots %}
+                        <td class="cell-slot">
+                            {% if slot %}
+                                <div class="sub-title">{{ slot.subject_name }}</div>
+                                <div class="extra-info">({{ slot.teacher_display|default:slot.teacher_name }})</div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Afternoon Session Divider Row -->
+                    <tr class="session-divider-row">
+                        <td colspan="7">ពេលរសៀល</td>
+                    </tr>
+
+                    <!-- Afternoon Session (Periods 5 to 8) -->
+                    {% for row in cls_item.afternoon_rows %}
+                    <tr>
+                        <td class="td-period">{{ row.period }}</td>
+                        {% for slot in row.slots %}
+                        <td class="cell-slot">
+                            {% if slot %}
+                                <div class="sub-title">{{ slot.subject_name }}</div>
+                                <div class="extra-info">({{ slot.teacher_display|default:slot.teacher_name }})</div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+
+            <!-- Footer & Signatures Matching User Screenshot -->
+            <div class="tt-footer">
+                <div class="tt-sig-grid">
+                    <!-- Left: Principal -->
+                    <div class="tt-sig-col">
+                        <div style="height: 42px;"></div>
+                        <div class="tt-sig-title">បានឃើញ និងឯកភាព</div>
+                        <div class="tt-sig-role">នាយកសាលា</div>
+                        <div class="tt-sig-space"></div>
+                        <div class="tt-sig-name">{{ school_info.principal_name|default:"បណ្ឌិត សុខ ចាន់ថន" }}</div>
+                    </div>
+
+                    <!-- Right: Homeroom Teacher -->
+                    <div class="tt-sig-col">
+                        <div class="lbl-lunar-date">{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០</div>
+                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
+                        <div class="tt-sig-role">ហត្ថលេខាគ្រូបន្ទុកថ្នាក់</div>
+                        <div class="tt-sig-space" style="height: 87px;"></div>
+                        <div class="tt-sig-name">
+                            {% if cls_item.homeroom_teacher %}
+                                {{ cls_item.homeroom_teacher.khmer_name }}
+                            {% else %}
+                                ................................
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning text-center p-4">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> មិនទាន់មានទិន្នន័យថ្នាក់រៀននៅឡើយទេ។
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 2. Teacher Timetables Container (Hidden by default until Mode Switch) -->
+    <div id="teacherTimetablesContainer" class="w-100 d-flex flex-column gap-4 align-items-center d-none">
+        {% for tch_item in teachers_timetables %}
+        <div class="timetable-sheet sheet-teacher" data-teacher-id="{{ tch_item.teacher.id }}" id="sheet_tch_{{ tch_item.teacher.id }}">
+            <!-- Header Matching Teacher Screenshot -->
+            <div class="tt-header">
+                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កណ្តួត" }}</div>
+                <div class="tt-main-title">កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍</div>
+                <div class="tt-meta-line">ឈ្មោះគ្រូបង្រៀន៖ {{ tch_item.title }} {{ tch_item.teacher.khmer_name }}</div>
+                <div class="tt-meta-line">មុខវិជ្ជាបង្រៀន៖ {{ tch_item.subjects_display }} | ឆ្នាំសិក្សា៖ {{ tch_item.academic_year }}</div>
+            </div>
+
+            <!-- Timetable Table -->
+            <table class="tt-table">
+                <thead>
+                    <tr>
+                        <th class="th-period">ម៉ោងទី</th>
+                        {% for d in days %}
+                        <th class="th-day">{{ d.name_kh }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Morning Session Divider Row -->
+                    <tr class="session-divider-row">
+                        <td colspan="7">ពេលព្រឹក</td>
+                    </tr>
+
+                    <!-- Morning Session (Periods 1 to 4) -->
+                    {% for row in tch_item.morning_rows %}
+                    <tr>
+                        <td class="td-period">{{ row.period }}</td>
+                        {% for slot in row.slots %}
+                        <td class="cell-slot">
+                            {% if slot %}
+                                <div class="sub-title">{{ slot.subject_name }}</div>
+                                <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Afternoon Session Divider Row -->
+                    <tr class="session-divider-row">
+                        <td colspan="7">ពេលរសៀល</td>
+                    </tr>
+
+                    <!-- Afternoon Session (Periods 5 to 8) -->
+                    {% for row in tch_item.afternoon_rows %}
+                    <tr>
+                        <td class="td-period">{{ row.period }}</td>
+                        {% for slot in row.slots %}
+                        <td class="cell-slot">
+                            {% if slot %}
+                                <div class="sub-title">{{ slot.subject_name }}</div>
+                                <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Footer & Signatures -->
+            <div class="tt-footer">
+                <div class="tt-sig-grid">
+                    <!-- Left: Principal -->
+                    <div class="tt-sig-col">
+                        <div style="height: 42px;"></div>
+                        <div class="tt-sig-title">បានឃើញ និងឯកភាព</div>
+                        <div class="tt-sig-role">នាយកសាលា</div>
+                        <div class="tt-sig-space"></div>
+                        <div class="tt-sig-name">{{ school_info.principal_name|default:"បណ្ឌិត សុខ ចាន់ថន" }}</div>
+                    </div>
+
+                    <!-- Right: Teacher -->
+                    <div class="tt-sig-col">
+                        <div class="lbl-lunar-date">{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០</div>
+                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
+                        <div class="tt-sig-role">ហត្ថលេខាគ្រូ</div>
+                        <div class="tt-sig-space" style="height: 87px;"></div>
+                        <div class="tt-sig-name">{{ tch_item.teacher.khmer_name }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning text-center p-4">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> មិនទាន់មានទិន្នន័យគ្រូបង្រៀននៅឡើយទេ។
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentMode = 'class'; // 'class' or 'teacher'
+
+    function switchTimetableMode(mode) {
+        currentMode = mode;
+        const btnClass = document.getElementById('btnModeClass');
+        const btnTeacher = document.getElementById('btnModeTeacher');
+        const classFilter = document.getElementById('classFilterWrapper');
+        const teacherFilter = document.getElementById('teacherFilterWrapper');
+        const classContainer = document.getElementById('classTimetablesContainer');
+        const teacherContainer = document.getElementById('teacherTimetablesContainer');
+
+        if (mode === 'class') {
+            btnClass.className = 'btn btn-primary';
+            btnTeacher.className = 'btn btn-outline-primary';
+            classFilter.classList.remove('d-none');
+            teacherFilter.classList.add('d-none');
+            classContainer.classList.remove('d-none');
+            teacherContainer.classList.add('d-none');
+
+            // Apply current class filter
+            const selCls = document.getElementById('selectClassroom').value;
+            filterClassTimetable(selCls);
+        } else {
+            btnTeacher.className = 'btn btn-primary';
+            btnClass.className = 'btn btn-outline-primary';
+            teacherFilter.classList.remove('d-none');
+            classFilter.classList.add('d-none');
+            teacherContainer.classList.remove('d-none');
+            classContainer.classList.add('d-none');
+
+            // Apply current teacher filter
+            const selTch = document.getElementById('selectTeacher').value;
+            filterTeacherTimetable(selTch);
+        }
+    }
+
+    function filterClassTimetable(classId) {
+        const sheets = document.querySelectorAll('.sheet-class');
+        sheets.forEach(sheet => {
+            if (classId === 'all' || sheet.getAttribute('data-class-id') === String(classId)) {
+                sheet.style.display = 'block';
+            } else {
+                sheet.style.display = 'none';
+            }
+        });
+    }
+
+    function filterTeacherTimetable(teacherId) {
+        const sheets = document.querySelectorAll('.sheet-teacher');
+        sheets.forEach(sheet => {
+            if (teacherId === 'all' || sheet.getAttribute('data-teacher-id') === String(teacherId)) {
+                sheet.style.display = 'block';
+            } else {
+                sheet.style.display = 'none';
+            }
+        });
+    }
+
+    function printAllCurrentMode() {
+        if (currentMode === 'class') {
+            document.getElementById('selectClassroom').value = 'all';
+            filterClassTimetable('all');
+        } else {
+            document.getElementById('selectTeacher').value = 'all';
+            filterTeacherTimetable('all');
+        }
+        setTimeout(() => {
+            window.print();
+        }, 150);
+    }
+
+    function updateCustomDates() {
+        const lunarVal = document.getElementById('inputLunarDate').value;
+        const solarVal = document.getElementById('inputSolarDate').value;
+
+        document.querySelectorAll('.lbl-lunar-date').forEach(el => {
+            el.innerText = lunarVal;
+        });
+        document.querySelectorAll('.lbl-solar-date').forEach(el => {
+            el.innerText = solarVal;
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+
+{% block title %}PDF ទៅជា Word & Excel (PDF Converter) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone-box {
+        border: 2px dashed #0d6efd;
+        border-radius: 16px;
+        background: #f8faff;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .dropzone-box:hover, .dropzone-box.dragover {
+        background: #e7f1ff;
+        border-color: #0a58ca;
+        transform: scale(1.01);
+    }
+    .preview-box {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 20px;
+        max-height: 450px;
+        overflow-y: auto;
+        font-family: 'Kantumruy Pro', 'Inter', sans-serif;
+        font-size: 0.95rem;
+        line-height: 1.7;
+    }
+    .table-extracted {
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">PDF to Word & Excel</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-file-word text-primary me-2"></i>បំលែង PDF ទៅជា Word & Excel (PDF to Word/Excel Converter)
+            </h2>
+            <p class="text-muted small mb-0">ស្រង់អត្ថបទ កថាខណ្ឌ និងតារាងទិន្នន័យពី PDF ទៅជាឯកសារ Word (.docx) និង Excel (.xlsx) អាចកែសម្រួលបាន។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- PDF Upload & Content View -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Dropzone Area -->
+                <div class="dropzone-box" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept="application/pdf" class="d-none" onchange="handleFileSelect(event)">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-file-export display-4 text-primary"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">អូសទម្លាក់ឯកសារ PDF ទីនេះ ឬចុចដើម្បីជ្រើសរើស</h5>
+                    <p class="text-muted small mb-2">គាំទ្រឯកសារតារាងពិន្ទុ បញ្ជីឈ្មោះសិស្ស និងអត្ថបទមេរៀនគ្រប់ទម្រង់</p>
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-4">
+                        <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសឯកសារ PDF
+                    </button>
+                </div>
+
+                <!-- Preview Area (Shown after parsing) -->
+                <div id="previewContainer" style="display: none;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                        <div>
+                            <span class="fw-bold text-dark" id="currentFileName">Document.pdf</span>
+                            <span class="badge bg-primary ms-2" id="pagesBadge">0 ទំព័រ</span>
+                            <span class="badge bg-success ms-1" id="wordsBadge">0 ពាក្យ</span>
+                        </div>
+                        <button type="button" class="btn btn-light btn-sm text-danger" onclick="resetFile()">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> ជ្រើសរើសឯកសារថ្មី
+                        </button>
+                    </div>
+
+                    <!-- Nav Tabs for Preview -->
+                    <ul class="nav nav-tabs mb-3" id="previewTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold" id="text-tab" data-bs-toggle="tab" data-bs-target="#textPreview" type="button">
+                                <i class="fa-solid fa-align-left me-1"></i> អត្ថបទ (Word Preview)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="table-tab" data-bs-toggle="tab" data-bs-target="#tablePreview" type="button">
+                                <i class="fa-solid fa-table me-1"></i> ទិន្នន័យតារាង (Excel Preview)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="previewTabContent">
+                        <div class="tab-pane fade show active" id="textPreview">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm rounded-pill" onclick="autoFixKhmerPreview()">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ✨ ជួសជុល & សម្អាតអក្សរខ្មែរ (Auto-Fix Khmer)
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="copyAllText()">
+                                    <i class="fa-regular fa-copy me-1"></i> ចម្លងអត្ថបទទាំងអស់ (Copy All)
+                                </button>
+                            </div>
+                            <div class="preview-box" id="extractedTextContent"></div>
+                        </div>
+
+                        <div class="tab-pane fade" id="tablePreview">
+                            <div class="preview-box" id="extractedTableContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Actions Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-download text-primary me-2"></i>ជម្រើសទាញយកឯកសារ
+                </h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះឯកសារទាញយក</label>
+                    <input type="text" id="outputFileName" class="form-control" value="Converted_SchoolSM_File">
+                </div>
+
+                <!-- Word Download -->
+                <div class="card bg-light border-0 p-3 rounded-3 mb-3">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <i class="fa-solid fa-file-word text-primary fs-3"></i>
+                        <div>
+                            <div class="fw-bold text-dark">Microsoft Word (.docx)</div>
+                            <div class="text-muted small">រក្សាទម្រង់កថាខណ្ឌ អាចកែសម្រួលបាន</div>
+                        </div>
+                    </div>
+                    <button type="button" id="btnDownloadWord" class="btn btn-primary w-100 rounded-pill" onclick="downloadWordDoc()" disabled>
+                        <i class="fa-solid fa-download me-1"></i> ទាញយកជា Word (.docx)
+                    </button>
+                </div>
+
+                <!-- Excel Download -->
+                <div class="card bg-light border-0 p-3 rounded-3 mb-3">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <i class="fa-solid fa-file-excel text-success fs-3"></i>
+                        <div>
+                            <div class="fw-bold text-dark">Microsoft Excel (.xlsx)</div>
+                            <div class="text-muted small">ស្រង់ជួរដេក និងជួរឈរដាក់ក្នុងក្រឡាតារាង</div>
+                        </div>
+                    </div>
+                    <button type="button" id="btnDownloadExcel" class="btn btn-success w-100 rounded-pill" onclick="downloadExcelDoc()" disabled>
+                        <i class="fa-solid fa-file-excel me-1"></i> ទាញយកជា Excel (.xlsx)
+                    </button>
+                </div>
+
+                <!-- CSV Download -->
+                <div class="card bg-light border-0 p-3 rounded-3 mb-3">
+                    <button type="button" id="btnDownloadCsv" class="btn btn-outline-secondary w-100 rounded-pill" onclick="downloadCsvDoc()" disabled>
+                        <i class="fa-solid fa-file-csv me-1"></i> ទាញយកជា CSV
+                    </button>
+                </div>
+
+                <div class="alert alert-info border-0 small mb-0">
+                    <i class="fa-solid fa-lightbulb me-1"></i> <strong>គន្លឹះ៖</strong> ប្រសិនបើឯកសារមានទម្រង់ស្មុគស្មាញ ប្រព័ន្ធនឹងធ្វើការរៀបចំអត្ថបទតាមលំដាប់លំដោយទំព័រដោយស្វ័យប្រវត្តិ។
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF.js, SheetJS (XLSX), and Docx.js for instant zero-server extraction -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let extractedPages = []; // Array of { pageNum: 1, text: '', lines: [] }
+    let rawPdfFile = null;
+
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const file = Array.from(dt.files).find(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (file) parsePdfDocument(file);
+    });
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) parsePdfDocument(file);
+    }
+
+    async function parsePdfDocument(file) {
+        rawPdfFile = file;
+        try {
+            Swal.fire({
+                title: 'កំពុងស្រង់ទិន្នន័យពី PDF...',
+                text: 'សូមរង់ចាំបន្តិច ប្រព័ន្ធកំពុងវិភាគអត្ថបទ និងតារាង',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            document.getElementById('currentFileName').innerText = file.name;
+            const originalName = file.name.replace(/\.[^/.]+$/, "");
+            document.getElementById('outputFileName').value = originalName;
+
+            const arrayBuffer = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdfDoc = await loadingTask.promise;
+            const numPages = pdfDoc.numPages;
+
+            extractedPages = [];
+            let totalWords = 0;
+
+            for (let i = 1; i <= numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const textContent = await page.getTextContent();
+                
+                // Group items by vertical position Y to construct readable lines
+                let lineMap = new Map();
+                textContent.items.forEach(item => {
+                    const y = Math.round(item.transform[5]); // Y coordinate
+                    if (!lineMap.has(y)) {
+                        lineMap.set(y, []);
+                    }
+                    lineMap.get(y).push(item);
+                });
+
+                // Sort lines by Y descending (top to bottom)
+                const sortedY = Array.from(lineMap.keys()).sort((a, b) => b - a);
+                const pageLines = [];
+
+                sortedY.forEach(y => {
+                    const items = lineMap.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
+                    
+                    let lineText = '';
+                    for (let j = 0; j < items.length; j++) {
+                        const cur = items[j];
+                        if (j === 0) {
+                            lineText += cur.str;
+                        } else {
+                            const prev = items[j - 1];
+                            const prevWidth = prev.width || (prev.str.length * 6);
+                            const prevEnd = prev.transform[4] + prevWidth;
+                            const curStart = cur.transform[4];
+                            const gap = curStart - prevEnd;
+
+                            if (gap > 20) {
+                                // Table column separator
+                                lineText += '    ' + cur.str;
+                            } else if (gap > 4) {
+                                // Natural word boundary
+                                lineText += ' ' + cur.str;
+                            } else {
+                                // Same connected syllable / word - no broken space
+                                lineText += cur.str;
+                            }
+                        }
+                    }
+
+                    lineText = normalizeKhmerPdfText(lineText.trim());
+                    if (lineText) pageLines.push(lineText);
+                });
+
+                const fullPageText = pageLines.join('\n');
+                totalWords += fullPageText.split(/\s+/).filter(w => w.length > 0).length;
+
+                extractedPages.push({
+                    pageNum: i,
+                    text: fullPageText,
+                    lines: pageLines
+                });
+            }
+
+            document.getElementById('pagesBadge').innerText = `${numPages} ទំព័រ`;
+            document.getElementById('wordsBadge').innerText = `${totalWords} ពាក្យ`;
+
+            renderPreview();
+
+            document.getElementById('dropzone').style.display = 'none';
+            document.getElementById('previewContainer').style.display = 'block';
+
+            document.getElementById('btnDownloadWord').disabled = false;
+            document.getElementById('btnDownloadExcel').disabled = false;
+            document.getElementById('btnDownloadCsv').disabled = false;
+
+            Swal.close();
+        } catch (error) {
+            console.error(error);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចស្រង់ទិន្នន័យបានទេ៖ ' + error.message, 'error');
+        }
+    }
+
+    function renderPreview() {
+        const textContainer = document.getElementById('extractedTextContent');
+        const tableContainer = document.getElementById('extractedTableContent');
+
+        let textHtml = '';
+        let tableHtml = '<div class="table-responsive"><table class="table table-bordered table-striped table-hover table-extracted"><tbody>';
+
+        extractedPages.forEach(p => {
+            textHtml += `<div class="mb-4 pb-3 border-bottom"><h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-bookmark me-1"></i> ទំព័រទី ${p.pageNum}</h6>`;
+            p.lines.forEach(line => {
+                textHtml += `<p class="mb-1">${escapeHtml(line)}</p>`;
+            });
+            textHtml += `</div>`;
+
+            // Render table representation
+            tableHtml += `<tr class="table-primary"><th colspan="10" class="fw-bold">--- ទំព័រទី ${p.pageNum} ---</th></tr>`;
+            p.lines.forEach(line => {
+                const parts = line.split(/\s{2,}|\t/);
+                tableHtml += '<tr>';
+                parts.forEach(cell => {
+                    tableHtml += `<td>${escapeHtml(cell.trim())}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+        });
+
+        tableHtml += '</tbody></table></div>';
+
+        textContainer.innerHTML = textHtml;
+        tableContainer.innerHTML = tableHtml;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function copyAllText() {
+        const allText = extractedPages.map(p => `--- ទំព័រ ${p.pageNum} ---\n` + p.text).join('\n\n');
+        navigator.clipboard.writeText(allText).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'បានចម្លងអត្ថបទទាំងអស់រួចរាល់!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+
+    function resetFile() {
+        extractedPages = [];
+        rawPdfFile = null;
+        document.getElementById('dropzone').style.display = 'block';
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('btnDownloadWord').disabled = true;
+        document.getElementById('btnDownloadExcel').disabled = true;
+        document.getElementById('btnDownloadCsv').disabled = true;
+    }
+
+    // Download Word (.docx)
+    async function downloadWordDoc() {
+        try {
+            const baseName = (document.getElementById('outputFileName').value || 'Converted_Document').trim();
+            const { Document, Packer, Paragraph, HeadingLevel, TextRun } = docx;
+
+            const docChildren = [
+                new Paragraph({
+                    text: baseName,
+                    heading: HeadingLevel.TITLE,
+                }),
+                new Paragraph({
+                    text: `ឯកសារស្រង់ចេញពី SchoolSM | ចំនួនទំព័រ៖ ${extractedPages.length}`,
+                    spacing: { after: 300 }
+                })
+            ];
+
+            extractedPages.forEach(p => {
+                docChildren.push(
+                    new Paragraph({
+                        text: `ទំព័រទី ${p.pageNum}`,
+                        heading: HeadingLevel.HEADING_2,
+                        spacing: { before: 200, after: 100 }
+                    })
+                );
+
+                p.lines.forEach(line => {
+                    docChildren.push(
+                        new Paragraph({
+                            children: [new TextRun(line)],
+                            spacing: { after: 120 }
+                        })
+                    );
+                });
+            });
+
+            const doc = new Document({
+                sections: [{
+                    children: docChildren
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${baseName}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire('ទាញយកជោគជ័យ!', `ឯកសារ Word (${baseName}.docx) ត្រូវបានទាញយក។`, 'success');
+        } catch (e) {
+            console.error(e);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចបង្កើតឯកសារ Word បានទេ៖ ' + e.message, 'error');
+        }
+    }
+
+    // Download Excel (.xlsx)
+    function downloadExcelDoc() {
+        try {
+            const baseName = (document.getElementById('outputFileName').value || 'Converted_Data').trim();
+            const dataRows = [];
+            dataRows.push(["ឯកសារទិន្នន័យស្រង់ចេញពី PDF (SchoolSM)"]);
+            dataRows.push([]);
+
+            extractedPages.forEach(p => {
+                dataRows.push([`--- ទំព័រទី ${p.pageNum} ---`]);
+                p.lines.forEach(line => {
+                    const parts = line.split(/\s{2,}|\t/);
+                    dataRows.push(parts);
+                });
+                dataRows.push([]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(dataRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ExtractedData");
+            XLSX.writeFile(wb, `${baseName}.xlsx`);
+
+            Swal.fire('ទាញយកជោគជ័យ!', `ឯកសារ Excel (${baseName}.xlsx) ត្រូវបានទាញយក។`, 'success');
+        } catch (e) {
+            console.error(e);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចបង្កើតឯកសារ Excel បានទេ៖ ' + e.message, 'error');
+        }
+    }
+
+    // Download CSV
+    function downloadCsvDoc() {
+        try {
+            const baseName = (document.getElementById('outputFileName').value || 'Converted_Data').trim();
+            const dataRows = [];
+            extractedPages.forEach(p => {
+                p.lines.forEach(line => {
+                    const parts = line.split(/\s{2,}|\t/);
+                    dataRows.push(parts);
+                });
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(dataRows);
+            const csvOutput = XLSX.utils.sheet_to_csv(ws);
+            const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${baseName}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            Swal.fire('មានបញ្ហា!', 'មិនអាចបង្កើតឯកសារ CSV បានទេ៖ ' + e.message, 'error');
+        }
+    }
+
+    function normalizeKhmerPdfText(str) {
+        if (!str) return '';
+        // Fix Khmer pre-vowels misplaced before consonants (េ, ែ, ៃ, ោះ)
+        str = str.replace(/([\u17C1\u17C2\u17C3])([\u1780-\u17B3])/g, '$2$1');
+        // Fix spaces between consonants and coeng markers
+        str = str.replace(/\s+(\u17D2[\u1780-\u17B3])/g, '$1');
+        // Fix spaces between consonants and dependent vowels
+        str = str.replace(/([\u1780-\u17B3])\s+([\u17B6-\u17C5])/g, '$1$2');
+        return str;
+    }
+
+    function autoFixKhmerPreview() {
+        if (extractedPages.length === 0) return;
+        
+        extractedPages.forEach(p => {
+            p.lines = p.lines.map(line => normalizeKhmerPdfText(line));
+            p.text = p.lines.join('\n');
+        });
+
+        renderPreview();
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ជួសជុលអក្សរខ្មែរជោគជ័យ!',
+            text: 'បានតម្រៀបស្រៈ និងជើងអក្សរខ្មែរ Unicode ឡើងវិញត្រឹមត្រូវ។',
+            confirmButtonColor: '#10b981'
+        });
+    }
+</script>
+{% endblock %}

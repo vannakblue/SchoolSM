@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}ផ្ទាំងគណនេយ្យករ (Finance Dashboard) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ផ្ទាំងគ្រប់គ្រងគណនេយ្យ (Finance Dashboard)</h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងការបង់ថ្លៃសិក្សា វិក្កយបត្រ ចំណាយ និងប្រាក់ខែបុគ្គលិក</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'invoice_create' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> ចេញវិក្កយបត្រថ្មី
+        </a>
+        <a href="{% url 'invoice_batch_create' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-layer-group me-1"></i> ចេញវិក្កយបត្រតាមថ្នាក់
+        </a>
+        <a href="{% url 'export_finance_excel' %}" class="btn btn-outline-success">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+    </div>
+</div>
+
+<!-- Finance Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ month_collected|floatformat:2 }}</h3>
+                <p class="stat-label">ចំណូលប្រមូលបានខែនេះ</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ month_expense|floatformat:2 }}</h3>
+                <p class="stat-label">ចំណាយប្រតិបត្តិការខែនេះ</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-warning">
+                <i class="fa-solid fa-file-circle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ unpaid_invoices_count }}</h3>
+                <p class="stat-label">វិក្កយបត្រមិនទាន់បង់</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-purple">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ total_due_amount|floatformat:2 }}</h3>
+                <p class="stat-label">ទឹកប្រាក់នៅសល់ជំពាក់</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Outstanding / Due Fees and Recent Transactions -->
+<div class="row g-4">
+    <!-- Due Fees Table -->
+    <div class="col-lg-7">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <div>
+                    <h5 class="fw-bold mb-0 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> បញ្ជីសិស្សយឺតយ៉ាវការបង់ថ្លៃ (Due List)</h5>
+                    <span class="text-muted small">វិក្កយបត្រមិនទាន់បង់ និងហួសកាលកំណត់</span>
+                </div>
+                <a href="{% url 'due_fees_list' %}" class="btn btn-sm btn-outline-danger">មើលទាំងអស់</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>សិស្ស</th>
+                            <th>ថ្នាក់</th>
+                            <th>ប្រភេទកម្រៃ</th>
+                            <th>នៅជំពាក់</th>
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inv in due_invoices %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ inv.student.khmer_name }}</div>
+                                <span class="text-muted small">{{ inv.student.student_id }}</span>
+                            </td>
+                            <td>{{ inv.student.classroom.name|default:"-" }}</td>
+                            <td>{{ inv.fee_category.name }}</td>
+                            <td class="fw-bold text-danger">${{ inv.remaining_balance }}</td>
+                            <td>{{ inv.due_date|date:"d/m/Y" }}</td>
+                            <td>
+                                <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-primary py-1">
+                                    <i class="fa-solid fa-receipt me-1"></i> បង់ប្រាក់
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">គ្មានសិស្សជំពាក់ប្រាក់ឡើយ! 🎉</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="col-lg-5">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">ប្រតិបត្តិការបង់ប្រាក់ចុងក្រោយ</h5>
+                <a href="{% url 'invoice_list' %}" class="btn btn-sm btn-light">មើលវិក្កយបត្រ</a>
+            </div>
+
+            <div class="list-group list-group-flush">
+                {% for p in recent_transactions %}
+                <div class="list-group-item px-0 py-3 border-0 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold small">{{ p.invoice.student.khmer_name }}</div>
+                            <span class="text-muted" style="font-size: 0.75rem;">
+                                {{ p.receipt_number }} • {{ p.get_payment_method_display }}
+                            </span>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">+${{ p.amount }}</div>
+                            <a href="{% url 'official_receipt' p.id %}" class="small text-primary text-decoration-none">
+                                <i class="fa-solid fa-print"></i> បង្កាន់ដៃ
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-muted small">មិនទាន់មានប្រតិបត្តិការនៅឡើយទេ</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

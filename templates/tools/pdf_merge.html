@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}បញ្ចូលឯកសារ PDF ចូលគ្នា (PDF Merge) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone-box {
+        border: 2px dashed #dc3545;
+        border-radius: 16px;
+        background: #fff8f8;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .dropzone-box:hover, .dropzone-box.dragover {
+        background: #fde8e8;
+        border-color: #bb2d3b;
+        transform: scale(1.01);
+    }
+    .pdf-file-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        transition: transform 0.15s ease;
+    }
+    .pdf-file-card:hover {
+        border-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">PDF Merge</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-file-pdf text-danger me-2"></i>បញ្ចូលឯកសារ PDF ចូលគ្នា (PDF Merge & Combine)
+            </h2>
+            <p class="text-muted small mb-0">បញ្ចូលឯកសារ PDF ច្រើនចូលគ្នាជាឯកសារតែមួយដោយសុវត្ថិភាព និងលឿនបំផុត។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Upload & List Column -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Dropzone Area -->
+                <div class="dropzone-box" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple accept="application/pdf" class="d-none" onchange="handleFileSelect(event)">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-cloud-arrow-up display-4 text-danger"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">អូសទម្លាក់ឯកសារ PDF ទីនេះ ឬចុចដើម្បីជ្រើសរើស</h5>
+                    <p class="text-muted small mb-2">អាចជ្រើសរើសឯកសារ PDF លើសពីមួយក្នុងពេលតែមួយ (Drag & Drop multiple PDFs)</p>
+                    <button type="button" class="btn btn-danger btn-sm rounded-pill px-4">
+                        <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសឯកសារ PDF
+                    </button>
+                </div>
+
+                <!-- Selected Files List -->
+                <div class="mt-4" id="fileListContainer" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-list-ol text-danger me-2"></i>បញ្ជីឯកសារដែលបានជ្រើសរើស (<span id="fileCount">0</span>)
+                        </h6>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="clearAllFiles()">
+                            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់
+                        </button>
+                    </div>
+
+                    <div id="fileItemsList"></div>
+                    <small class="text-muted"><i class="fa-solid fa-circle-info me-1"></i> អាចប្រើប៊ូតុងព្រួញឡើងលើ/ចុះក្រោម ដើម្បីតម្រៀបលំដាប់ឯកសារតាមចិត្ត។</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Merge Settings Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-sliders text-danger me-2"></i>ការកំណត់ & ទាញយក
+                </h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះឯកសារលទ្ធផល (Output File Name)</label>
+                    <div class="input-group">
+                        <input type="text" id="outputFileName" class="form-control" value="SchoolSM_Merged_Document">
+                        <span class="input-group-text bg-light text-muted">.pdf</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border small text-muted mb-4">
+                    <i class="fa-solid fa-shield-check text-success me-1"></i> <strong>សុវត្ថិភាពខ្ពស់ 100%:</strong> ឯកសារត្រូវបានបញ្ចូលក្នុងកម្មវិធី Browser របស់លោកអ្នកផ្ទាល់ មិនមានការ Upload ឯកសារទៅខាងក្រៅឡើយ។
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress mb-3 d-none" id="progressBarContainer" style="height: 10px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" id="progressBar" style="width: 0%"></div>
+                </div>
+
+                <!-- Merge Button -->
+                <button type="button" id="btnMergePdf" class="btn btn-danger btn-lg w-100 rounded-pill shadow-sm" onclick="mergePdfs()" disabled>
+                    <i class="fa-solid fa-code-merge me-2"></i> បញ្ចូល PDF ចូលគ្នា (Merge PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF-lib for instant client-side merge -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.9/dist/pdf-lib.min.js"></script>
+
+<script>
+    let selectedPdfFiles = [];
+
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = Array.from(dt.files).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (files.length > 0) {
+            addFiles(files);
+        } else {
+            Swal.fire('សូមជ្រើសរើសឯកសារ PDF', 'សូមជ្រើសរើសតែឯកសារដែលមានទម្រង់ .pdf ប៉ុណ្ណោះ', 'warning');
+        }
+    });
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+        if (files.length > 0) {
+            addFiles(files);
+        }
+        e.target.value = '';
+    }
+
+    function addFiles(files) {
+        files.forEach(file => {
+            selectedPdfFiles.push(file);
+        });
+        renderFileList();
+    }
+
+    function renderFileList() {
+        const container = document.getElementById('fileListContainer');
+        const list = document.getElementById('fileItemsList');
+        const countSpan = document.getElementById('fileCount');
+        const btnMerge = document.getElementById('btnMergePdf');
+
+        if (selectedPdfFiles.length === 0) {
+            container.style.display = 'none';
+            btnMerge.disabled = true;
+            return;
+        }
+
+        container.style.display = 'block';
+        btnMerge.disabled = false;
+        countSpan.innerText = selectedPdfFiles.length;
+
+        list.innerHTML = '';
+        selectedPdfFiles.forEach((file, index) => {
+            const sizeKB = (file.size / 1024).toFixed(1);
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeStr = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+            const item = document.createElement('div');
+            item.className = 'pdf-file-card';
+            item.innerHTML = `
+                <div class="d-flex align-items-center gap-3 overflow-hidden">
+                    <span class="badge bg-danger rounded-circle p-2" style="width: 28px; height: 28px; display:flex; align-items:center; justify-content:center;">
+                        ${index + 1}
+                    </span>
+                    <i class="fa-solid fa-file-pdf text-danger fs-4"></i>
+                    <div class="text-truncate">
+                        <div class="fw-semibold text-dark text-truncate" title="${file.name}">${file.name}</div>
+                        <span class="text-muted small">${sizeStr}</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-light btn-sm text-secondary" title="ផ្លាស់ទីឡើងលើ" onclick="moveFile(${index}, -1)" ${index === 0 ? 'disabled' : ''}>
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm text-secondary" title="ផ្លាស់ទីចុះក្រោម" onclick="moveFile(${index}, 1)" ${index === selectedPdfFiles.length - 1 ? 'disabled' : ''}>
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm ms-2" title="លុបចេញ" onclick="removeFile(${index})">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function moveFile(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= selectedPdfFiles.length) return;
+        const temp = selectedPdfFiles[index];
+        selectedPdfFiles[index] = selectedPdfFiles[newIndex];
+        selectedPdfFiles[newIndex] = temp;
+        renderFileList();
+    }
+
+    function removeFile(index) {
+        selectedPdfFiles.splice(index, 1);
+        renderFileList();
+    }
+
+    function clearAllFiles() {
+        selectedPdfFiles = [];
+        renderFileList();
+    }
+
+    async function mergePdfs() {
+        if (selectedPdfFiles.length < 2) {
+            Swal.fire('សូមជ្រើសរើសយ៉ាងហោចណាស់ ២ ឯកសារ', 'ដើម្បីបញ្ចូលគ្នា សូមជ្រើសរើសឯកសារ PDF ចាប់ពី ២ ឡើងទៅ', 'info');
+            return;
+        }
+
+        const btn = document.getElementById('btnMergePdf');
+        const progressContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងបញ្ចូលឯកសារ...';
+        progressContainer.classList.remove('d-none');
+        progressBar.style.width = '20%';
+
+        try {
+            const mergedPdf = await PDFLib.PDFDocument.create();
+            const total = selectedPdfFiles.length;
+
+            for (let i = 0; i < total; i++) {
+                const file = selectedPdfFiles[i];
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach((page) => mergedPdf.addPage(page));
+
+                const pct = Math.round(((i + 1) / total) * 80) + 15;
+                progressBar.style.width = `${pct}%`;
+            }
+
+            const mergedPdfBytes = await mergedPdf.save();
+            progressBar.style.width = '100%';
+
+            // Download file
+            const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            let outName = (document.getElementById('outputFileName').value || 'SchoolSM_Merged_Document').trim();
+            if (!outName.toLowerCase().endsWith('.pdf')) outName += '.pdf';
+            a.href = url;
+            a.download = outName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'បញ្ចូលជោគជ័យ!',
+                text: `ឯកសារ "${outName}" ត្រូវបានបញ្ចូល និងទាញយករួចរាល់។`,
+                confirmButtonColor: '#dc3545',
+            });
+        } catch (error) {
+            console.error('Merge error:', error);
+            Swal.fire('មានបញ្ហា!', 'មិនអាចបញ្ចូលឯកសារបានឡើយ សូមពិនិត្យមើលថាតើ file មានលេខកូដសម្ងាត់ (Password) ឬអត់៖ ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-code-merge me-2"></i> បញ្ចូល PDF ចូលគ្នា (Merge PDF)';
+            setTimeout(() => {
+                progressContainer.classList.add('d-none');
+                progressBar.style.width = '0%';
+            }, 1000);
+        }
+    }
+</script>
+{% endblock %}

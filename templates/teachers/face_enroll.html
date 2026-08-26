@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ចុះឈ្មោះផ្ទៃមុខ (Face Enrollment) - {{ teacher.khmer_name }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 720px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                <i class="fa-solid fa-camera-retro me-1"></i> Facial AI Enrollment
+            </span>
+            <h3 class="fw-bold mb-0 mt-1">ចុះឈ្មោះផ្ទៃមុខគ្រូ</h3>
+        </div>
+        <a href="{% url 'teacher_detail' teacher.pk %}" class="btn btn-light btn-sm border">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅកាន់ប្រវត្តិរូប
+        </a>
+    </div>
+
+    <div class="custom-card p-4 shadow-sm mb-4">
+        
+        <!-- Teacher Profile Bar -->
+        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-light rounded-4">
+            {% if teacher.photo %}
+            <img src="{{ teacher.photo.url }}" class="rounded-circle border shadow-sm" width="60" height="60" style="object-fit: cover;">
+            {% else %}
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 60px; height: 60px;">
+                {{ teacher.khmer_name|slice:":1" }}
+            </div>
+            {% endif %}
+            <div>
+                <h5 class="fw-bold mb-1 text-dark">{{ teacher.khmer_name }} ({{ teacher.latin_name }})</h5>
+                <span class="text-muted small">Teacher ID: <strong>{{ teacher.teacher_id }}</strong> • {{ teacher.specialization }}</span>
+                <div class="mt-1">
+                    {% if bio_profile.is_enrolled_face %}
+                    <span class="badge bg-success rounded-pill px-2 py-1"><i class="fa-solid fa-check me-1"></i> បានចុះឈ្មោះមុខរួចរាល់</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="fa-solid fa-circle-exclamation me-1"></i> មិនទាន់ចុះឈ្មោះមុខ</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Enrollment Box -->
+        <div class="text-center mb-3">
+            <div class="position-relative d-inline-block bg-black rounded-4 overflow-hidden shadow mb-3" style="width: 100%; max-width: 480px; min-height: 320px;">
+                <video id="enrollVideo" autoplay playsinline muted style="width: 100%; height: auto; transform: scaleX(-1);"></video>
+                <canvas id="enrollCanvas" style="display: none;"></canvas>
+            </div>
+
+            <div class="d-flex justify-content-center gap-2">
+                <button type="button" onclick="startCamera()" class="btn btn-outline-primary rounded-pill px-3">
+                    <i class="fa-solid fa-camera me-1"></i> បើកកាមេរ៉ា
+                </button>
+                <button type="button" onclick="captureSnapshot()" class="btn btn-success rounded-pill px-4 fw-bold">
+                    <i class="fa-solid fa-camera-viewfinder me-1"></i> ថតរូប & ចុះឈ្មោះផ្ទៃមុខ
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview Snapshot -->
+        <div id="snapshotPreviewBox" class="p-3 bg-light rounded-4 text-center d-none mt-3">
+            <h6 class="fw-bold text-dark mb-2">រូបថតដែលបានថត៖</h6>
+            <img id="snapshotImg" src="" class="rounded-4 border shadow-sm mb-3" style="max-width: 240px; max-height: 240px;">
+            
+            <form method="POST" id="enrollForm">
+                {% csrf_token %}
+                <input type="hidden" name="photo_data" id="photoDataInput">
+                <input type="hidden" name="face_descriptor" id="faceDescriptorInput" value="[0.12, 0.45, -0.23, 0.78, 0.05, 0.33]">
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទិន្នន័យផ្ទៃមុខ
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let video = document.getElementById('enrollVideo');
+    let canvas = document.getElementById('enrollCanvas');
+
+    function startCamera() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 480 } })
+                .then((stream) => {
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    alert("❌ មិនអាចបើកកាមេរ៉ាបានទេ៖ " + err);
+                });
+        }
+    }
+
+    function captureSnapshot() {
+        canvas.width = video.videoWidth || 480;
+        canvas.height = video.videoHeight || 480;
+        let ctx = canvas.getContext('2d');
+        
+        // Mirror horizontally
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        let dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        document.getElementById('snapshotImg').src = dataUrl;
+        document.getElementById('photoDataInput').value = dataUrl;
+        document.getElementById('snapshotPreviewBox').classList.remove('d-none');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        startCamera();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}ព័ត៌មានគណនី (Profile) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ព័ត៌មានគណនីផ្ទាល់ខ្លួន (User Profile)</h2>
+        <p class="text-muted small mb-0">កែប្រែព័ត៌មានផ្ទាល់ខ្លួន និងរូបថតគណនី</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="custom-card">
+            <div class="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom">
+                <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 2rem;">
+                    {{ user_obj.username|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-1">{{ user_display_name }}</h4>
+                    <span class="badge bg-primary">{{ user_obj.get_role_display }}</span>
+                    <span class="text-muted small ms-2">Username: <strong>{{ user_obj.username }}</strong></span>
+                </div>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ</label>
+                        {{ form.khmer_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង</label>
+                        {{ form.latin_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">អ៊ីមែល (Email)</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទ</label>
+                        {{ form.phone }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">ប្តូររូបថតគណនី (Avatar)</label>
+                        {{ form.avatar }}
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មាន
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

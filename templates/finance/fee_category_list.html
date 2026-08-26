@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}ប្រភេទកម្រៃសិក្សា (Fee Categories) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ប្រភេទកម្រៃសិក្សា (Fee Categories)</h2>
+        <p class="text-muted small mb-0">ថ្លៃសិក្សា ថ្លៃចុះឈ្មោះ ឯកសណ្ឋាន សៀវភៅពុម្ព</p>
+    </div>
+    <a href="{% url 'invoice_list' %}" class="btn btn-light">
+        <i class="fa-solid fa-file-invoice me-1"></i> បញ្ជីវិក្កយបត្រ
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Form to add Category -->
+    <div class="col-lg-4">
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">បង្កើតប្រភេទកម្រៃថ្មី</h5>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ឈ្មោះកម្រៃ *</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">តម្លៃលំនាំដើម ($) *</label>
+                    {{ form.default_amount }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ការពិពណ៌នា</label>
+                    {{ form.description }}
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-plus me-1"></i> បង្កើត
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category list -->
+    <div class="col-lg-8">
+        <div class="custom-card">
+            <h5 class="fw-bold mb-3 border-bottom pb-2">បញ្ជីប្រភេទកម្រៃសិក្សា</h5>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>ឈ្មោះកម្រៃ</th>
+                            <th>តម្លៃលំនាំដើម ($)</th>
+                            <th>ការពិពណ៌នា</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in categories %}
+                        <tr>
+                            <td class="fw-bold fs-6 text-primary">{{ c.name }}</td>
+                            <td class="fw-bold text-success">${{ c.default_amount }}</td>
+                            <td class="text-muted">{{ c.description|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">មិនទាន់មានប្រភេទកម្រៃនៅឡើយទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

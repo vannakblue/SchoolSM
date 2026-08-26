@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}របាយការណ៍ស្ថិតិអប់រំ MoEYS | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-file-waveform me-2"></i>របាយការណ៍ស្ថិតិអប់រំផ្លូវការ (MoEYS EMIS Reporting)
+        </h2>
+        <p class="text-muted small mb-0">ទិន្នន័យស្ថិតិសិស្ស ថ្នាក់ទី៧ ដល់ទី១២ តាមស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'export_moeys_excel' %}" class="btn btn-success fw-bold">
+            <i class="fa-solid fa-file-excel me-1"></i> ទាញចេញរបាយការណ៍ Excel (MoEYS)
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-dark">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ព
+        </button>
+    </div>
+</div>
+
+<!-- Header Card / Official Emblem -->
+<div class="custom-card p-4 mb-4 text-center border-top border-4 border-primary">
+    <h5 class="fw-bold mb-1">ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ</h5>
+    <h6 class="text-muted mb-2">{{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }} | {{ school_info.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" }}</h6>
+    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+        {% if school_info and school_info.logo %}
+            <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 32px; width: 32px; object-fit: contain;">
+        {% endif %}
+        <span class="fs-5 fw-bold text-dark">{{ school_info.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }} (កូដសាលា: {{ school_info.school_code }})</span>
+    </div>
+    <h4 class="fw-bold text-primary mb-0">តារាងស្ថិតិអប់រំប្រចាំឆ្នាំសិក្សា {{ academic_year.name }}</h4>
+</div>
+
+<!-- Key Indicator Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ total_students }}</h3>
+                <p class="stat-label">សិស្សសរុប (Total)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-pink">
+                <i class="fa-solid fa-person-dress"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ female_students }} <small class="fs-6 text-muted">({{ female_percent }}%)</small></h3>
+                <p class="stat-label">សិស្សស្រី (Female)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+                <i class="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ total_teachers }}</h3>
+                <p class="stat-label">បុគ្គលិកបង្រៀន (ស្រី: {{ female_teachers }})</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+                <i class="fa-solid fa-user-xmark"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ dropout_count }}</h3>
+                <p class="stat-label">សិស្សបោះបង់ (Dropout)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table 1: Grade 7 to 12 Breakdown -->
+<div class="custom-card mb-4">
+    <div class="card-header-clean">
+        <h5 class="fw-bold mb-0"><i class="fa-solid fa-table me-2 text-primary"></i>១. ស្ថិតិសិស្សតាមកម្រិតថ្នាក់ (ទី៧ ដល់ ទី១២)</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>កម្រិតថ្នាក់</th>
+                    <th>ចំនួនបន្ទប់ថ្នាក់</th>
+                    <th>សិស្សសរុប</th>
+                    <th>ប្រុស</th>
+                    <th>ស្រី</th>
+                    <th>អត្រាសិស្សស្រី (%)</th>
+                    <th>ការបែងចែកជំនាញ (វិទ្យាសាស្ត្រ / សង្គម)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in grade_stats %}
+                <tr>
+                    <td class="fw-bold fs-6">{{ g.name }}</td>
+                    <td>{{ g.classes_count }} ថ្នាក់</td>
+                    <td class="fw-bold fs-6 text-primary">{{ g.total_students }} នាក់</td>
+                    <td>{{ g.male_count }} នាក់</td>
+                    <td class="text-danger fw-bold">{{ g.female_count }} នាក់</td>
+                    <td><span class="badge bg-light text-dark">{{ g.female_percent }}%</span></td>
+                    <td>
+                        {% if g.grade >= 11 %}
+                        <span class="badge bg-info text-dark">វិទ្យាសាស្ត្រ: {{ g.science_count }}</span>
+                        <span class="badge bg-warning text-dark ms-1">សង្គម: {{ g.social_count }}</span>
+                        {% else %}
+                        <span class="text-muted small">កម្មវិធីសិក្សាទូទៅ</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-light fw-bold">
+                    <td>សរុបរួម</td>
+                    <td>-</td>
+                    <td class="text-primary fs-6">{{ total_students }} នាក់</td>
+                    <td>{{ male_students }} នាក់</td>
+                    <td class="text-danger fs-6">{{ female_students }} នាក់</td>
+                    <td>{{ female_percent }}%</td>
+                    <td>-</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Row: Scholarships & Exam Performance -->
+<div class="row g-4 mb-4">
+    <!-- Scholarship Breakdown -->
+    <div class="col-lg-5">
+        <div class="custom-card h-100">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-hand-holding-heart me-2 text-info"></i>២. ស្ថិតិសមធម៌សង្គម & អាហារូបករណ៍</h5>
+            </div>
+            <div class="p-3">
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span>សិស្សបង់ថ្លៃសិក្សាពេញ (Full Pay)</span>
+                    <strong class="fs-6">{{ scholarship_stats.full_pay }} នាក់</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span>សិស្សទទួលអាហារូបករណ៍ 50%</span>
+                    <strong class="fs-6 text-primary">{{ scholarship_stats.sch_50 }} នាក់</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span>សិស្សទទួលអាហារូបករណ៍ 100% (ក្រីក្រ/ពូកែ)</span>
+                    <strong class="fs-6 text-success">{{ scholarship_stats.sch_100 }} នាក់</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span>សិស្សបង់រំលស់ដំណាក់កាល</span>
+                    <strong class="fs-6 text-warning">{{ scholarship_stats.installment }} នាក់</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Passing Rate -->
+    <div class="col-lg-7">
+        <div class="custom-card h-100">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-award me-2 text-success"></i>៣. ស្ថិតិលទ្ធផលប្រឡង (ជាប់/ធ្លាក់) តាមកម្រិតថ្នាក់</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table-custom small">
+                    <thead>
+                        <tr>
+                            <th>កម្រិតថ្នាក់</th>
+                            <th>សិស្សប្រឡង</th>
+                            <th>ជាប់ (Pass)</th>
+                            <th>ធ្លាក់ (Fail)</th>
+                            <th>អត្រាជាប់ (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ep in exam_perf %}
+                        <tr>
+                            <td class="fw-bold">{{ ep.grade }}</td>
+                            <td>{{ ep.tested }} នាក់</td>
+                            <td class="text-success fw-bold">{{ ep.passed }} នាក់</td>
+                            <td class="text-danger fw-bold">{{ ep.failed }} នាក់</td>
+                            <td>
+                                <span class="badge {% if ep.pass_rate >= 80 %}bg-success{% elif ep.pass_rate >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                    {{ ep.pass_rate }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3 text-muted">មិនទាន់មានលទ្ធផលប្រឡងផ្លូវការនៅឡើយ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

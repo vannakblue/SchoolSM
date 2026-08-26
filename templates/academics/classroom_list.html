@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងថ្នាក់រៀន (Classrooms) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងថ្នាក់រៀន (Classrooms Management)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងថ្នាក់រៀន និងកំណត់មុខវិជ្ជាសិក្សា (Tick Subjects) ដោយឡែកសម្រាប់ថ្នាក់នីមួយៗបានយ៉ាងងាយស្រួល</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_admin %}
+        <a href="{% url 'subject_list' %}" class="btn btn-outline-primary fw-bold">
+            <i class="fa-solid fa-book-bookmark me-1"></i> គ្រប់គ្រងមុខវិជ្ជា (Subjects)
+        </a>
+        <a href="{% url 'classroom_create' %}" class="btn btn-primary fw-bold shadow-sm">
+            <i class="fa-solid fa-plus me-1"></i> បង្កើតថ្នាក់ថ្មី
+        </a>
+        <a href="{% url 'classroom_restore_default' %}" class="btn btn-outline-success fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារថ្នាក់រៀនលំនាំដើម MoEYS ទាំង ៨ ថ្នាក់ (ថ្នាក់ទី៧ ដល់ទី១២) ឡើងវិញមែនទេ?')">
+            <i class="fa-solid fa-rotate-left me-1"></i> ស្តារថ្នាក់លំនាំដើម MoEYS
+        </a>
+        <form method="POST" action="{% url 'classroom_delete_all' %}" class="d-inline" onsubmit="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់លុបថ្នាក់រៀនទាំងអស់ចេញពីប្រព័ន្ធមែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយវិញបានទេ!')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger fw-bold">
+                <i class="fa-solid fa-trash-can me-1"></i> លុបថ្នាក់ទាំងអស់
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Academic Year Filter & Quick Stats -->
+<div class="custom-card p-3 mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <form method="GET" class="d-flex align-items-center gap-2">
+        <label class="fw-bold small mb-0 text-muted">ឆ្នាំសិក្សា៖</label>
+        <select name="year" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            {% for y in academic_years %}
+            <option value="{{ y.id }}" {% if selected_year == y.id|stringformat:"i" %}selected{% endif %}>{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
+            {% endfor %}
+        </select>
+    </form>
+    <div class="d-flex align-items-center gap-3 small">
+        <span class="badge bg-primary-soft text-primary fs-6 px-3 py-2">
+            <i class="fa-solid fa-layer-group me-1"></i> សរុប <strong>{{ classroom_items|length }}</strong> ថ្នាក់រៀន
+        </span>
+    </div>
+</div>
+
+<!-- Bulk Selection Form -->
+<form method="POST" action="{% url 'classroom_bulk_delete' %}" id="bulkClassForm">
+    {% csrf_token %}
+    
+    {% if is_admin and classroom_items %}
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-light p-2 rounded border">
+        <div class="form-check ms-2">
+            <input class="form-check-input" type="checkbox" id="selectAll">
+            <label class="form-check-label fw-bold small text-dark" for="selectAll">
+                ជ្រើសទាំងអស់ (Select All)
+            </label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('តើលោកអ្នកចង់លុបថ្នាក់រៀនដែលបានជ្រើសរើសទាំងអស់នេះមែនទេ?')">
+            <i class="fa-solid fa-trash-can me-1"></i> លុបថ្នាក់ដែលបានជ្រើស (Bulk Delete)
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Classrooms Grid Cards -->
+    <div class="row g-4">
+        {% for item in classroom_items %}
+        {% with c=item.classroom %}
+        <div class="col-md-6 col-xl-4">
+            <div class="custom-card h-100 position-relative d-flex flex-column justify-content-between">
+                {% if is_admin %}
+                <div class="position-absolute top-0 start-0 m-3 z-1">
+                    <input class="form-check-input class-checkbox" type="checkbox" name="classroom_ids" value="{{ c.id }}">
+                </div>
+                {% endif %}
+
+                <div>
+                    <div class="d-flex justify-content-between align-items-start mb-3 {% if is_admin %}ps-4{% endif %}">
+                        <div>
+                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                <span class="badge bg-light text-dark border px-2 py-1"><i class="fa-solid fa-calendar-days me-1 text-primary"></i>{{ c.academic_year.name }}</span>
+                                <span class="badge bg-primary px-2 py-1">ទី {{ c.grade_level }}</span>
+                                <span class="badge bg-secondary px-2 py-1">{{ c.get_track_display }}</span>
+                                <span class="badge bg-info text-white px-2 py-1">
+                                    <i class="fa-solid fa-book-bookmark me-1"></i>{{ item.active_subjects_count }} មុខវិជ្ជា
+                                </span>
+                            </div>
+                            <h4 class="fw-bold mb-1 text-primary">{{ c.name }}</h4>
+                            <span class="text-muted small"><i class="fa-solid fa-door-open me-1"></i>{{ c.room_number|default:"គ្មានបន្ទប់" }} (កូដ: {{ c.code }})</span>
+                        </div>
+                        <div class="text-end">
+                            <div class="display-6 fw-bold text-primary">{{ c.total_students }}</div>
+                            <span class="text-muted small">សិស្សសរុប (ស្រី: {{ c.female_students }})</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 mb-3 small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">គ្រូបន្ទុកថ្នាក់៖</span>
+                            <strong class="text-dark">{{ c.homeroom_teacher.khmer_name|default:"មិនទាន់ចាត់តាំង" }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">មុខវិជ្ជាសិក្សា៖</span>
+                            <span class="badge bg-primary-soft text-primary fw-bold">{{ item.active_subjects_count }} មុខវិជ្ជា</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">ពិន្ទុសរុបពេញ៖</span>
+                            <strong class="text-primary fs-6">{{ item.total_max_score|floatformat:0 }} ពិន្ទុ</strong>
+                        </div>
+                        
+                        <!-- Subject Pill Badges Preview -->
+                        <div class="pt-2 border-top d-flex flex-wrap gap-1 align-items-center">
+                            {% for sub_info in item.subjects_with_meta %}
+                                {% if sub_info.is_active %}
+                                <span class="badge" style="background-color: {{ sub_info.subject.color_code|default:'#4f46e5' }}; color: #fff; font-size: 0.72rem;" title="{{ sub_info.subject.name_kh }} ({{ sub_info.max_score|floatformat:0 }} ពិន្ទុ)">
+                                    {{ sub_info.subject.code }}
+                                </span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top gap-2">
+                    <div class="d-flex gap-1">
+                        <a href="{% url 'timetable_view' %}?classroom={{ c.id }}" class="btn btn-sm btn-outline-primary" title="កាលវិភាគ">
+                            <i class="fa-solid fa-calendar-days me-1"></i> កាលវិភាគ
+                        </a>
+                        <a href="{% url 'student_list' %}?classroom={{ c.id }}" class="btn btn-sm btn-light" title="មើលសិស្ស">
+                            <i class="fa-solid fa-users me-1"></i> សិស្ស
+                        </a>
+                    </div>
+                    <div class="d-flex gap-1">
+                        {% if is_admin %}
+                        <button type="button" class="btn btn-sm btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalClassSubjects{{ c.id }}" title="កំណត់មុខវិជ្ជាសម្រាប់ថ្នាក់នេះ">
+                            <i class="fa-solid fa-list-check me-1"></i> មុខវិជ្ជា
+                        </button>
+                        <a href="{% url 'classroom_edit' c.id %}" class="btn btn-sm btn-light text-primary" title="កែប្រែថ្នាក់">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-light text-danger" title="លុបថ្នាក់" onclick="deleteClassroom('{{ c.id }}', '{{ c.name }}')">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-school-circle-xmark fa-3x mb-3 text-secondary"></i>
+            <h5>មិនទាន់មានថ្នាក់រៀននៅក្នុងប្រព័ន្ធឡើយ</h5>
+            {% if is_admin %}
+            <p class="small">លោកអ្នកអាចចុចប៊ូតុងខាងក្រោមដើម្បីស្តារថ្នាក់រៀនលំនាំដើម MoEYS ទាំង ៨ ថ្នាក់ភ្លាមៗ៖</p>
+            <a href="{% url 'classroom_restore_default' %}" class="btn btn-success fw-bold">
+                <i class="fa-solid fa-rotate-left me-1"></i> ស្តារថ្នាក់រៀនលំនាំដើម MoEYS ឥឡូវនេះ
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</form>
+
+<!-- Single Delete Form Helper -->
+<form id="singleDeleteForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<!-- ================= SUBJECT ASSIGNMENT MODALS (PER CLASSROOM) ================= -->
+{% if is_admin %}
+{% for item in classroom_items %}
+{% with c=item.classroom %}
+<div class="modal fade" id="modalClassSubjects{{ c.id }}" tabindex="-1" aria-labelledby="modalLabel{{ c.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form method="POST" action="{% url 'classroom_manage_subjects' c.id %}" class="modal-content border-0 shadow" style="max-height: 90vh;">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-book-open-reader fs-4"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalLabel{{ c.id }}">
+                            កំណត់មុខវិជ្ជាសម្រាប់៖ {{ c.name }}
+                        </h5>
+                        <small class="text-white-50">កម្រិតថ្នាក់ទី {{ c.grade_level }} ({{ c.get_track_display }})</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4" style="overflow-y: auto; max-height: calc(90vh - 140px);">
+                <!-- Quick Actions Bar -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center p-3 bg-light rounded-3 mb-4 border">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="toggleAllSubjects('{{ c.id }}', true)">
+                            <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="toggleAllSubjects('{{ c.id }}', false)">
+                            <i class="fa-solid fa-xmark me-1"></i> ដោះទាំងអស់
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary fs-6 px-3 py-2" id="badgeCounter{{ c.id }}">
+                            បានជ្រើស <span id="cnt_{{ c.id }}">{{ item.active_subjects_count }}</span> មុខវិជ្ជា
+                        </span>
+                        <span class="badge bg-success-soft text-success fs-6 px-3 py-2 border border-success" id="badgeScore{{ c.id }}">
+                            ពិន្ទុពេញ៖ <span id="score_{{ c.id }}">{{ item.total_max_score|floatformat:0 }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                <p class="small text-muted mb-3">
+                    <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                    សូមគូសធីក (Tick) លើមុខវិជ្ជាណាដែលថ្នាក់ <strong>{{ c.name }}</strong> ត្រូវរៀន និងប្រឡង៖
+                </p>
+
+                <!-- Subjects Checkbox Grid -->
+                <div class="row g-3">
+                    {% for sub_info in item.subjects_with_meta %}
+                    <div class="col-md-6 col-lg-4">
+                        <label class="custom-control-label d-block p-3 rounded-3 border h-100 position-relative cursor-pointer subject-card-label" style="background: #ffffff; transition: all 0.2s;" id="label_{{ c.id }}_{{ sub_info.subject.id }}">
+                            <div class="d-flex align-items-center gap-3">
+                                <input 
+                                    type="checkbox" 
+                                    name="subject_ids" 
+                                    value="{{ sub_info.subject.id }}" 
+                                    class="form-check-input fs-5 mt-0 sub-check-{{ c.id }}"
+                                    {% if sub_info.is_active %}checked{% endif %}
+                                    data-class-id="{{ c.id }}"
+                                    data-score="{{ sub_info.max_score }}"
+                                    onchange="updateSubjectModalStats('{{ c.id }}')"
+                                >
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="badge" style="background-color: {{ sub_info.subject.color_code|default:'#4f46e5' }}; color: #ffffff; font-size: 0.75rem;">
+                                            {{ sub_info.subject.code }}
+                                        </span>
+                                        <span class="badge bg-light text-primary border" style="font-size: 0.75rem;">
+                                            ពេញ: {{ sub_info.max_score|floatformat:0 }}
+                                        </span>
+                                    </div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.92rem;">
+                                        {{ sub_info.subject.name_kh }}
+                                    </div>
+                                    <div class="text-muted small" style="font-size: 0.78rem;">
+                                        {{ sub_info.subject.name_en }}
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកមុខវិជ្ជា
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endwith %}
+{% endfor %}
+{% endif %}
+
+{% block extra_js %}
+<script>
+    // Select All Classrooms for bulk action
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = selectAll.checked);
+        });
+    }
+
+    // Single Delete Action
+    function deleteClassroom(id, name) {
+        if (confirm(`តើលោកអ្នកពិតជាចង់លុបថ្នាក់ "${name}" មែនទេ?`)) {
+            const form = document.getElementById('singleDeleteForm');
+            form.action = `/academics/classrooms/${id}/delete/`;
+            form.submit();
+        }
+    }
+
+    // Toggle All Subjects in a Classroom Modal
+    function toggleAllSubjects(classId, state) {
+        const checkboxes = document.querySelectorAll(`.sub-check-${classId}`);
+        checkboxes.forEach(cb => {
+            cb.checked = state;
+        });
+        updateSubjectModalStats(classId);
+    }
+
+    // Update real-time count & score summary in Subject Modal
+    function updateSubjectModalStats(classId) {
+        const checkboxes = document.querySelectorAll(`.sub-check-${classId}`);
+        let activeCount = 0;
+        let totalScore = 0;
+
+        checkboxes.forEach(cb => {
+            const label = document.getElementById(`label_${classId}_${cb.value}`);
+            if (cb.checked) {
+                activeCount++;
+                const score = parseFloat(cb.getAttribute('data-score')) || 0;
+                totalScore += score;
+                if (label) {
+                    label.style.borderColor = '#4f46e5';
+                    label.style.backgroundColor = '#f5f3ff';
+                }
+            } else {
+                if (label) {
+                    label.style.borderColor = '#e2e8f0';
+                    label.style.backgroundColor = '#ffffff';
+                }
+            }
+        });
+
+        const cntEl = document.getElementById(`cnt_${classId}`);
+        const scoreEl = document.getElementById(`score_${classId}`);
+        if (cntEl) cntEl.textContent = activeCount;
+        if (scoreEl) scoreEl.textContent = Math.round(totalScore);
+    }
+
+    // Initialize styling on modal load
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for item in classroom_items %}
+        updateSubjectModalStats('{{ item.classroom.id }}');
+        {% endfor %}
+    });
+</script>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .subject-card-label:hover {
+        border-color: #6366f1 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+</style>
+{% endblock %}
+{% endblock %}

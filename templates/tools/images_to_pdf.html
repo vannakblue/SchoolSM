@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}បំលែងរូបភាពជាឯកសារ PDF (Images to PDF) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dropzone-box {
+        border: 2px dashed #7e22ce;
+        border-radius: 16px;
+        background: #faf5ff;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .dropzone-box:hover, .dropzone-box.dragover {
+        background: #f3e8ff;
+        border-color: #6b21a8;
+        transform: scale(1.01);
+    }
+    .image-grid-card {
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 8px;
+        position: relative;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        transition: transform 0.15s ease;
+    }
+    .image-grid-card img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    .image-badge-order {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: #7e22ce;
+        color: white;
+        font-weight: bold;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Images to PDF</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-images text-purple me-2" style="color: #7e22ce;"></i>បំលែងរូបភាពជាឯកសារ PDF (Images to PDF Maker)
+            </h2>
+            <p class="text-muted small mb-0">បំលែងរូបថតកិច្ចការផ្ទះ ក្រដាសកិច្ចការ ឬរូបភាពឯកសារជាច្រើនសន្លឹក ទៅជាឯកសារ PDF តែមួយយ៉ាងងាយស្រួល។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Upload and Image Grid -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- Dropzone Area -->
+                <div class="dropzone-box" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple accept="image/*" class="d-none" onchange="handleFileSelect(event)">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <i class="fa-solid fa-file-image display-4" style="color: #7e22ce;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">អូសទម្លាក់រូបភាពទីនេះ ឬចុចដើម្បីជ្រើសរើស</h5>
+                    <p class="text-muted small mb-2">អាចជ្រើសរើសរូបភាព JPG, PNG, WEBP ច្រើនក្នុងពេលតែមួយ</p>
+                    <button type="button" class="btn text-white btn-sm rounded-pill px-4" style="background: #7e22ce;">
+                        <i class="fa-solid fa-photo-film me-1"></i> ជ្រើសរើសរូបភាព
+                    </button>
+                </div>
+
+                <!-- Selected Images List -->
+                <div class="mt-4" id="imagesContainer" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-images me-2" style="color: #7e22ce;"></i>រូបភាពដែលបានជ្រើស (<span id="imgCount">0</span>)
+                        </h6>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="document.getElementById('fileInput').click()">
+                                <i class="fa-solid fa-plus me-1"></i> បន្ថែមរូបភាព
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" onclick="clearAllImages()">
+                                <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3" id="imagesGrid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Settings -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-gear me-2" style="color: #7e22ce;"></i>ការកំណត់ទំព័រ PDF
+                </h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ទិសដៅទំព័រ (Orientation)</label>
+                    <select class="form-select" id="pageOrientation">
+                        <option value="portrait" selected>បញ្ឈរ (Portrait - ស្តង់ដា)</option>
+                        <option value="landscape">ផ្តេក (Landscape)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ទំហំក្រដាស (Page Size)</label>
+                    <select class="form-select" id="pageSize">
+                        <option value="A4" selected>A4 (ស្តង់ដា 210 x 297 mm)</option>
+                        <option value="Letter">US Letter</option>
+                        <option value="Fit">តម្រឹមស្មើតាមទំហំរូបភាព (Fit to Image)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">គែមទំព័រ (Margin)</label>
+                    <select class="form-select" id="pageMargin">
+                        <option value="none">គ្មានគែម (Zero Margin / ពេញទំព័រ)</option>
+                        <option value="small" selected>គែមតូច (Small Margin)</option>
+                        <option value="big">គែមធំ (Big Margin)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះឯកសារទាញយក</label>
+                    <div class="input-group">
+                        <input type="text" id="outputFileName" class="form-control" value="SchoolSM_Images_Document">
+                        <span class="input-group-text bg-light text-muted">.pdf</span>
+                    </div>
+                </div>
+
+                <!-- Convert and Download Button -->
+                <button type="button" id="btnConvertToPdf" class="btn text-white btn-lg w-100 rounded-pill shadow-sm" style="background: #7e22ce;" onclick="convertImagesToPdf()" disabled>
+                    <i class="fa-solid fa-file-pdf me-2"></i> បង្កើត & ទាញយក PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF-lib for instant image to pdf assembly -->
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.9/dist/pdf-lib.min.js"></script>
+
+<script>
+    let selectedImages = []; // Array of { file, dataUrl, name, size }
+
+    const dropzone = document.getElementById('dropzone');
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+        if (files.length > 0) addImageFiles(files);
+    });
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+        if (files.length > 0) addImageFiles(files);
+        e.target.value = '';
+    }
+
+    async function addImageFiles(files) {
+        for (const file of files) {
+            const dataUrl = await readFileAsDataUrl(file);
+            selectedImages.push({
+                file: file,
+                dataUrl: dataUrl,
+                name: file.name,
+                size: file.size
+            });
+        }
+        renderImagesGrid();
+    }
+
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderImagesGrid() {
+        const container = document.getElementById('imagesContainer');
+        const grid = document.getElementById('imagesGrid');
+        const countSpan = document.getElementById('imgCount');
+        const btnConvert = document.getElementById('btnConvertToPdf');
+
+        if (selectedImages.length === 0) {
+            container.style.display = 'none';
+            btnConvert.disabled = true;
+            return;
+        }
+
+        container.style.display = 'block';
+        btnConvert.disabled = false;
+        countSpan.innerText = selectedImages.length;
+
+        grid.innerHTML = '';
+        selectedImages.forEach((img, index) => {
+            const col = document.createElement('div');
+            col.className = 'col-sm-6 col-md-4';
+            col.innerHTML = `
+                <div class="image-grid-card">
+                    <div class="image-badge-order">${index + 1}</div>
+                    <img src="${img.dataUrl}" alt="${img.name}">
+                    <div class="d-flex align-items-center justify-content-between mt-2 px-1">
+                        <div class="text-truncate small fw-semibold text-muted" style="max-width: 110px;" title="${img.name}">
+                            ${img.name}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-light btn-sm text-secondary" title="ផ្លាស់ទីទៅឆ្វេង" onclick="moveImage(${index}, -1)" ${index === 0 ? 'disabled' : ''}>
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm text-secondary" title="ផ្លាស់ទីទៅស្តាំ" onclick="moveImage(${index}, 1)" ${index === selectedImages.length - 1 ? 'disabled' : ''}>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" title="លុបចេញ" onclick="removeImage(${index})">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(col);
+        });
+    }
+
+    function moveImage(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= selectedImages.length) return;
+        const temp = selectedImages[index];
+        selectedImages[index] = selectedImages[newIndex];
+        selectedImages[newIndex] = temp;
+        renderImagesGrid();
+    }
+
+    function removeImage(index) {
+        selectedImages.splice(index, 1);
+        renderImagesGrid();
+    }
+
+    function clearAllImages() {
+        selectedImages = [];
+        renderImagesGrid();
+    }
+
+    async function convertImagesToPdf() {
+        if (selectedImages.length === 0) return;
+
+        const btn = document.getElementById('btnConvertToPdf');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងបង្កើត PDF...';
+
+        try {
+            if (typeof PDFLib === 'undefined') {
+                await convertImagesToPdfBackend();
+                return;
+            }
+
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            const orientation = document.getElementById('pageOrientation').value;
+            const pageSizeChoice = document.getElementById('pageSize').value;
+            const marginChoice = document.getElementById('pageMargin').value;
+
+            // A4 dimensions in points: 595.28 x 841.89
+            let defaultWidth = 595.28;
+            let defaultHeight = 841.89;
+            if (pageSizeChoice === 'Letter') {
+                defaultWidth = 612;
+                defaultHeight = 792;
+            }
+            if (orientation === 'landscape') {
+                const temp = defaultWidth;
+                defaultWidth = defaultHeight;
+                defaultHeight = temp;
+            }
+
+            let margin = 0;
+            if (marginChoice === 'small') margin = 20;
+            if (marginChoice === 'big') margin = 40;
+
+            for (const item of selectedImages) {
+                const imgBytes = await item.file.arrayBuffer();
+                let embeddedImage;
+
+                if (item.file.type === 'image/png') {
+                    embeddedImage = await pdfDoc.embedPng(imgBytes);
+                } else {
+                    // Embed JPG or convert to JPG via canvas if webp
+                    try {
+                        embeddedImage = await pdfDoc.embedJpg(imgBytes);
+                    } catch (err) {
+                        const convertedJpgBytes = await convertImageToJpgBytes(item.dataUrl);
+                        embeddedImage = await pdfDoc.embedJpg(convertedJpgBytes);
+                    }
+                }
+
+                let pageWidth = defaultWidth;
+                let pageHeight = defaultHeight;
+
+                if (pageSizeChoice === 'Fit') {
+                    pageWidth = embeddedImage.width + (margin * 2);
+                    pageHeight = embeddedImage.height + (margin * 2);
+                }
+
+                const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                const availWidth = pageWidth - (margin * 2);
+                const availHeight = pageHeight - (margin * 2);
+
+                const imgAspect = embeddedImage.width / embeddedImage.height;
+                const pageAspect = availWidth / availHeight;
+
+                let drawWidth, drawHeight;
+                if (imgAspect > pageAspect) {
+                    drawWidth = availWidth;
+                    drawHeight = availWidth / imgAspect;
+                } else {
+                    drawHeight = availHeight;
+                    drawWidth = availHeight * imgAspect;
+                }
+
+                const x = margin + (availWidth - drawWidth) / 2;
+                const y = margin + (availHeight - drawHeight) / 2;
+
+                page.drawImage(embeddedImage, {
+                    x: x,
+                    y: y,
+                    width: drawWidth,
+                    height: drawHeight,
+                });
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            let outName = (document.getElementById('outputFileName').value || 'SchoolSM_Images_Document').trim();
+            if (!outName.toLowerCase().endsWith('.pdf')) outName += '.pdf';
+            a.href = url;
+            a.download = outName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'បង្កើត PDF ជោគជ័យ!',
+                text: `ឯកសារ "${outName}" ចំនួន ${selectedImages.length} រូបភាព ត្រូវបានទាញយក។`,
+                confirmButtonColor: '#7e22ce',
+            });
+        } catch (error) {
+            console.warn('Client PDFLib failed, using backend engine:', error);
+            try {
+                await convertImagesToPdfBackend();
+            } catch (backendErr) {
+                console.error('All PDF engines error:', backendErr);
+                Swal.fire('មានបញ្ហា!', 'មិនអាចបង្កើត PDF បានទេ៖ ' + backendErr.message, 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-file-pdf me-2"></i> បង្កើត & ទាញយក PDF';
+        }
+    }
+
+    async function convertImagesToPdfBackend() {
+        const formData = new FormData();
+        selectedImages.forEach(item => {
+            formData.append('images', item.file);
+        });
+        formData.append('orientation', document.getElementById('pageOrientation').value);
+        formData.append('pageSize', document.getElementById('pageSize').value.toLowerCase());
+        formData.append('margin', document.getElementById('pageMargin').value);
+        let outName = (document.getElementById('outputFileName').value || 'SchoolSM_Images_Document').trim();
+        formData.append('docTitle', outName);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        const response = await fetch("{% url 'api_tool_images_to_pdf' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'បរាជ័យក្នុងការបង្កើត PDF');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        if (!outName.toLowerCase().endsWith('.pdf')) outName += '.pdf';
+        a.href = url;
+        a.download = outName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'បង្កើត PDF ជោគជ័យ!',
+            text: `ឯកសារ "${outName}" ចំនួន ${selectedImages.length} រូបភាព ត្រូវបានទាញយក។`,
+            confirmButtonColor: '#7e22ce',
+        });
+    }
+
+    function convertImageToJpgBytes(dataUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((blob) => {
+                    blob.arrayBuffer().then(resolve).catch(reject);
+                }, 'image/jpeg', 0.92);
+            };
+            img.onerror = reject;
+            img.src = dataUrl;
+        });
+    }
+</script>
+{% endblock %}

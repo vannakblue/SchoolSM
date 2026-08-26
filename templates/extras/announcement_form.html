@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+        <p class="text-muted small mb-0">ផ្សព្វផ្សាយដំណឹងផ្លូវការ និងអាចផ្ញើជូនដំណឹងស្វ័យប្រវត្តិតាម Telegram ទៅកាន់អាណាព្យាបាល និងគ្រូ</p>
+    </div>
+    <a href="{% url 'announcement_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="custom-card">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ចំណងជើងសេចក្តីជូនដំណឹង *</label>
+                    {{ form.title }}
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ប្រភេទដំណឹង *</label>
+                        {{ form.category }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ក្រុមគោលដៅ *</label>
+                        {{ form.target_audience }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កម្រិតអាទិភាព *</label>
+                        {{ form.priority }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ខ្លឹមសារសេចក្តីជូនដំណឹង *</label>
+                    {{ form.content }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ឯកសារភ្ជាប់ (រូបភាព ឬ PDF)</label>
+                    {{ form.attachment }}
+                </div>
+
+                <div class="p-3 bg-light rounded-3 mb-4">
+                    <div class="form-check form-switch mb-2">
+                        {{ form.is_published }}
+                        <label class="form-check-label fw-bold small" for="{{ form.is_published.id_for_label }}">
+                            ផ្សាយជាសាធារណៈលើផ្ទាំង Notice Board
+                        </label>
+                    </div>
+                    <div class="form-check form-switch">
+                        {{ form.broadcast_telegram }}
+                        <label class="form-check-label fw-bold small text-info" for="{{ form.broadcast_telegram.id_for_label }}">
+                            <i class="fa-brands fa-telegram me-1"></i> ផ្ញើដំណឹងនេះតាម Telegram Bot ទៅកាន់អាណាព្យាបាល & គ្រូស្វ័យប្រវត្តិ
+                        </label>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្សព្វផ្សាយសេចក្តីជូនដំណឹង
+                    </button>
+                    <a href="{% url 'announcement_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

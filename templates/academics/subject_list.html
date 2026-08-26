@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីមុខវិជ្ជាទាំងអស់ (Subjects & Short Codes) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-book-bookmark me-2"></i>មុខវិជ្ជាសិក្សា & អក្សរកាត់ផ្លូវការ (MoEYS Subjects & Short Codes)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងមុខវិជ្ជា និងអក្សរកាត់ផ្លូវការ (R, D, K, I, G, H, M, Es, P, C, B, He, Ec, E)</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_admin %}
+        <a href="{% url 'classroom_list' %}" class="btn btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-school me-1"></i> ថ្នាក់រៀន (Classrooms)
+        </a>
+        <a href="{% url 'grade_rules_manager' %}" class="btn btn-outline-primary fw-bold">
+            <i class="fa-solid fa-scale-balanced me-1"></i> ច្បាប់ពិន្ទុ (Scoring Rules)
+        </a>
+        <a href="{% url 'subject_create' %}" class="btn btn-primary fw-bold">
+            <i class="fa-solid fa-plus me-1"></i> បង្កើតមុខវិជ្ជាថ្មី
+        </a>
+        <a href="{% url 'subject_restore_default' %}" class="btn btn-outline-success fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារឡើងវិញនូវបញ្ជី ១៤ មុខវិជ្ជា និងអក្សរកាត់លំនាំដើម MoEYS (R, D, K, I, G, H, M, Es, P, C, B, He, Ec, E) មែនទេ?')">
+            <i class="fa-solid fa-rotate-left me-1"></i> ស្តារមុខវិជ្ជា & អក្សរកាត់លំនាំដើម
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th class="text-center" width="100">អក្សរកាត់ (Code)</th>
+                    <th>ឈ្មោះមុខវិជ្ជា (ខ្មែរ)</th>
+                    <th>ឈ្មោះមុខវិជ្ជា (English)</th>
+                    <th class="text-center">ពណ៌សម្គាល់</th>
+                    {% if is_admin %}<th class="text-end">សកម្មភាព</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in subjects %}
+                <tr>
+                    <td class="text-center">
+                        <span class="badge fs-6 px-3 py-2" style="background-color: {{ s.color_code }}; color: #fff; min-width: 45px;">
+                            {{ s.code }}
+                        </span>
+                    </td>
+                    <td class="fw-bold fs-6">{{ s.name_kh }}</td>
+                    <td class="text-muted">{{ s.name_en }}</td>
+                    <td class="text-center">
+                        <span class="d-inline-block rounded-circle" style="width: 20px; height: 20px; background-color: {{ s.color_code }};"></span>
+                    </td>
+                    {% if is_admin %}
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <a href="{% url 'subject_edit' s.id %}" class="btn btn-sm btn-light text-primary" title="កែប្រែ">
+                                <i class="fa-solid fa-pen-to-square"></i> កែប្រែ
+                            </a>
+                            <button type="button" class="btn btn-sm btn-light text-danger" title="លុប" onclick="deleteSubject('{{ s.id }}', '{{ s.name_kh }}')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <h5>មិនទាន់មានមុខវិជ្ជានៅក្នុងប្រព័ន្ធឡើយ</h5>
+                        {% if is_admin %}
+                        <a href="{% url 'subject_restore_default' %}" class="btn btn-success mt-2 fw-bold">
+                            <i class="fa-solid fa-rotate-left me-1"></i> ស្តារមុខវិជ្ជាលំនាំដើម MoEYS
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Single Delete Form Helper -->
+<form id="singleDeleteForm" method="POST" style="display: none;">
+    {% csrf_token %}
+</form>
+
+{% block extra_js %}
+<script>
+    function deleteSubject(id, name) {
+        if (confirm(`តើលោកអ្នកពិតជាចង់លុបមុខវិជ្ជា "${name}" មែនទេ?`)) {
+            const form = document.getElementById('singleDeleteForm');
+            form.action = `/academics/subjects/${id}/delete/`;
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %}

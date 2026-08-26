@@ -1,0 +1,714 @@
+{% extends 'base.html' %}
+
+{% block title %}ស្រង់អវត្តមានសិស្ស (Student Attendance) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timetable-locked-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+    }
+    .timetable-locked-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 6px;
+        height: 100%;
+        background: linear-gradient(to bottom, #3b82f6, #6366f1);
+    }
+    .timing-banner {
+        border-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .slot-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        color: #e2e8f0;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .slot-chip:hover, .slot-chip.active {
+        background: #3b82f6;
+        border-color: #60a5fa;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+    .row-absent {
+        background-color: #fff5f5 !important;
+        border-left: 4px solid #ef4444 !important;
+    }
+    .row-permission {
+        background-color: #fffbeb !important;
+        border-left: 4px solid #f59e0b !important;
+    }
+    .row-late {
+        background-color: #eff6ff !important;
+        border-left: 4px solid #3b82f6 !important;
+    }
+    .student-absent-check {
+        width: 1.35rem;
+        height: 1.35rem;
+        cursor: pointer;
+    }
+    .status-btn-group .btn-check:checked + .btn-outline-danger {
+        background-color: #ef4444;
+        color: white;
+        border-color: #ef4444;
+    }
+    .status-btn-group .btn-check:checked + .btn-outline-warning {
+        background-color: #f59e0b;
+        color: white;
+        border-color: #f59e0b;
+    }
+    .status-btn-group .btn-check:checked + .btn-outline-info {
+        background-color: #0ea5e9;
+        color: white;
+        border-color: #0ea5e9;
+    }
+    .counter-badge {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1 text-dark">
+            <i class="fa-solid fa-clipboard-user text-primary me-2"></i>ស្រង់អវត្តមានសិស្ស (Student Attendance)
+        </h3>
+        <p class="text-muted small mb-0">ប្រព័ន្ធស្រង់វត្តមានឆ្លាតវៃ ស្វ័យប្រវត្តិតាមកាលវិភាគបង្រៀន និងរក្សាទុកតែសិស្សអវត្តមាន</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if selected_class %}
+        <button type="button" class="btn btn-info text-white shadow-sm fw-bold" onclick="openClassTelegramModal()">
+            <i class="fa-brands fa-telegram me-1"></i> ផ្ញើទៅ Telegram ថ្នាក់
+        </button>
+        {% endif %}
+        {% if request.user.role == 'ADMIN' %}
+        <a href="{% url 'attendance_admin_hub' %}" class="btn btn-dark shadow-sm fw-bold">
+            <i class="fa-solid fa-sliders me-1"></i> Admin Hub
+        </a>
+        {% endif %}
+        <a href="{% url 'attendance_report' %}" class="btn btn-outline-primary shadow-sm">
+            <i class="fa-solid fa-chart-pie me-1"></i> របាយការណ៍វត្តមាន
+        </a>
+    </div>
+</div>
+
+
+<!-- Timetable Auto-Detection & Information Card -->
+{% if is_timetable_locked and detected_slot_info %}
+<div class="timetable-locked-card p-4 mb-4 shadow-sm">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success px-2.5 py-1.5 fw-bold">
+                    <i class="fa-solid fa-lock me-1"></i> ចាក់សោតាមកាលវិភាគ (Timetable Auto-Locked)
+                </span>
+                <span class="badge bg-primary px-2.5 py-1.5 fw-bold">
+                    <i class="fa-solid fa-calendar-day me-1"></i> {{ selected_date }}
+                </span>
+            </div>
+            <h4 class="fw-bold text-white mb-1">
+                {{ selected_class.name }} &bull; ម៉ោងទី {{ selected_period }}
+                {% if selected_subject %}<span class="text-info">({{ selected_subject.name_kh|default:selected_subject.name_en }})</span>{% endif %}
+            </h4>
+            <div class="text-white-50 small">
+                វេនសិក្សា៖ <span class="text-white fw-bold">{{ detected_slot_info.session_name }}</span> | 
+                គ្រូបង្រៀន៖ <span class="text-white fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
+            </div>
+        </div>
+
+        {% if today_slots %}
+        <div class="d-flex flex-column align-items-sm-end gap-1">
+            <span class="text-white-50 small mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i> ម៉ោងបង្រៀនរបស់អ្នកថ្ងៃនេះ៖</span>
+            <div class="d-flex flex-wrap gap-1.5">
+                {% for sl in today_slots %}
+                <a href="?classroom={{ sl.classroom.id }}&period={{ sl.period_number }}&date={{ selected_date }}" 
+                   class="slot-chip {% if sl.period_number == selected_period and sl.classroom.id == selected_class.id %}active{% endif %}">
+                    ម៉ោងទី {{ sl.period_number }} ({{ sl.classroom.code }})
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Admin / Manual Filter Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm border-0">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្នាក់រៀន *</label>
+            <select name="classroom" class="form-select" onchange="this.form.submit()">
+                <option value="">-- ជ្រើសរើសថ្នាក់រៀន --</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទ *</label>
+            <input type="date" name="date" value="{{ selected_date }}" class="form-control" onchange="this.form.submit()">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-bold small text-muted">វេនសិក្សា</label>
+            <select name="session" class="form-select" onchange="this.form.submit()">
+                {% for s_val, s_name in sessions %}
+                <option value="{{ s_val }}" {% if selected_session == s_val %}selected{% endif %}>{{ s_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-bold small text-muted">ម៉ោងទី (Period)</label>
+            <select name="period" class="form-select" onchange="this.form.submit()">
+                {% for p in "12345678"|make_list %}
+                <option value="{{ p }}" {% if selected_period|stringformat:"s" == p %}selected{% endif %}>ម៉ោងទី {{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> ផ្ទុកបញ្ជីសិស្ស
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- Teacher Schedule Alert Banner -->
+{% if teacher_schedule_alert %}
+<div class="alert {{ teacher_schedule_alert.bg_color }} border d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm">
+    <div class="d-flex align-items-center gap-3">
+        <i class="fa-solid {{ teacher_schedule_alert.icon }} {{ teacher_schedule_alert.icon_color }} fa-2x"></i>
+        <div>
+            <div class="fw-bold text-dark">{{ teacher_schedule_alert.title }}</div>
+            <div class="small text-muted">{{ teacher_schedule_alert.message|safe }}</div>
+        </div>
+    </div>
+    {% if teacher_schedule_alert.show_modal %}
+    <button type="button" class="btn btn-sm btn-outline-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#teacherScheduleModal">
+        <i class="fa-solid fa-circle-info me-1"></i> មើលព័ត៌មានលម្អិត
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Timing Window Rules Alert Banner -->
+{% if timing_eval %}
+<div class="mb-4">
+    {% if timing_eval.status_code == 'OPEN_MULTIPLE' %}
+    <div class="timing-banner bg-success bg-opacity-10 text-success border border-success-subtle">
+        <i class="fa-solid fa-circle-check fa-lg text-success"></i>
+        <div>
+            <div class="fw-bold">{{ timing_eval.status_label }}</div>
+            <div class="small">{{ timing_eval.status_message }}</div>
+        </div>
+    </div>
+    {% elif timing_eval.status_code == 'OPEN_ONCE' %}
+    <div class="timing-banner bg-warning bg-opacity-10 text-dark border border-warning-subtle">
+        <i class="fa-solid fa-triangle-exclamation fa-lg text-warning"></i>
+        <div>
+            <div class="fw-bold text-dark">{{ timing_eval.status_label }}</div>
+            <div class="small">{{ timing_eval.status_message }}</div>
+        </div>
+    </div>
+    {% elif timing_eval.status_code == 'ADMIN_OVERRIDE' %}
+    <div class="timing-banner bg-primary bg-opacity-10 text-primary border border-primary-subtle">
+        <i class="fa-solid fa-crown fa-lg text-primary"></i>
+        <div>
+            <div class="fw-bold">{{ timing_eval.status_label }}</div>
+            <div class="small">{{ timing_eval.status_message }}</div>
+        </div>
+    </div>
+    {% else %}
+    <div class="timing-banner bg-danger bg-opacity-10 text-danger border border-danger-subtle">
+        <i class="fa-solid fa-lock fa-lg text-danger"></i>
+        <div>
+            <div class="fw-bold">{{ timing_eval.status_label }}</div>
+            <div class="small">{{ timing_eval.status_message }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if selected_class %}
+
+<form method="POST" id="attendanceForm">
+    {% csrf_token %}
+    <input type="hidden" name="classroom" value="{{ selected_class.id }}">
+    <input type="hidden" name="date" value="{{ selected_date }}">
+    <input type="hidden" name="session" value="{{ selected_session }}">
+    <input type="hidden" name="period" value="{{ selected_period|default:'' }}">
+    {% if selected_subject %}
+    <input type="hidden" name="subject" value="{{ selected_subject.id }}">
+    {% endif %}
+
+    <div class="custom-card mb-4 shadow-sm border-0">
+        <!-- Action Header & Counters -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-bottom bg-light bg-opacity-50 rounded-top">
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-users text-primary me-2"></i>បញ្ជីឈ្មោះសិស្ស៖ {{ selected_class.name }}
+                    </h5>
+                    <span class="text-muted small">
+                        សរុប៖ <strong class="text-dark">{{ total_students_count }} នាក់</strong> | 
+                        កាលបរិច្ឆេទ៖ <strong>{{ selected_date }}</strong>
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="counter-badge bg-danger bg-opacity-10 text-danger border border-danger-subtle" id="badgeAbsentCount">
+                        <i class="fa-solid fa-user-xmark me-1"></i> អវត្តមាន៖ <span id="countAbsentText">{{ absent_students_count }}</span> នាក់
+                    </span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="markAllAbsent()" {% if is_form_disabled %}disabled{% endif %}>
+                    <i class="fa-solid fa-check-square me-1"></i> Tick អវត្តមានទាំងអស់
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="markAllPresent()" {% if is_form_disabled %}disabled{% endif %}>
+                    <i class="fa-solid fa-square me-1"></i> មានវត្តមានទាំងអស់ (ដោះ Tick)
+                </button>
+            </div>
+        </div>
+
+        <!-- Students Table -->
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 60px;">
+                            <div class="form-check d-flex justify-content-center m-0">
+                                <input type="checkbox" class="form-check-input student-absent-check" id="masterCheck" onchange="toggleMasterCheck(this)" title="Tick សិស្សអវត្តមានទាំងអស់" {% if is_form_disabled %}disabled{% endif %}>
+                            </div>
+                        </th>
+                        <th style="width: 120px;">កូដសិស្ស</th>
+                        <th>ឈ្មោះសិស្ស</th>
+                        <th style="width: 90px;">ភេទ</th>
+                        <th style="width: 320px;">ស្ថានភាពអវត្តមាន (ពេល Tick)</th>
+                        <th>មូលហេតុ / កំណត់ចំណាំ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in students_data %}
+                    <tr id="row_{{ item.student.id }}" class="{% if item.is_absent %}{% if item.status == 'PERMISSION' %}row-permission{% elif item.status == 'LATE' %}row-late{% else %}row-absent{% endif %}{% endif %}">
+                        <!-- Checkbox Column -->
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center m-0">
+                                <input type="checkbox" 
+                                       name="is_absent_{{ item.student.id }}" 
+                                       id="chk_{{ item.student.id }}" 
+                                       value="1" 
+                                       class="form-check-input student-absent-check absent-single-check"
+                                       {% if item.is_absent %}checked{% endif %}
+                                       {% if is_form_disabled %}disabled{% endif %}
+                                       onchange="toggleStudentRow('{{ item.student.id }}')">
+                            </div>
+                        </td>
+
+                        <!-- Student ID -->
+                        <td class="fw-bold text-primary font-monospace">{{ item.student.student_id }}</td>
+
+                        <!-- Student Names -->
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.student.khmer_name }}</div>
+                            <small class="text-muted">{{ item.student.latin_name }}</small>
+                        </td>
+
+                        <!-- Gender -->
+                        <td>
+                            {% if item.student.gender == 'F' %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1">ស្រី</span>
+                            {% else %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1">ប្រុស</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Status Options (Enabled ONLY when ticked) -->
+                        <td>
+                            <!-- Present Badge (when unchecked) -->
+                            <div id="present_badge_{{ item.student.id }}" class="{% if item.is_absent %}d-none{% endif %}">
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-3 py-2 fw-semibold">
+                                    <i class="fa-solid fa-circle-check me-1"></i> មានវត្តមាន (Present)
+                                </span>
+                            </div>
+
+                            <!-- Radio Button Group (when checked) -->
+                            <div id="status_group_{{ item.student.id }}" class="btn-group btn-group-sm status-btn-group {% if not item.is_absent %}d-none{% endif %}" role="group">
+                                <input type="radio" class="btn-check status-radio-{{ item.student.id }}" 
+                                       name="status_{{ item.student.id }}" 
+                                       id="perm_{{ item.student.id }}" 
+                                       value="PERMISSION" 
+                                       {% if item.status == 'PERMISSION' %}checked{% endif %}
+                                       {% if not item.is_absent or is_form_disabled %}disabled{% endif %}
+                                       onchange="updateRowStyle('{{ item.student.id }}')">
+                                <label class="btn btn-outline-warning fw-bold px-2.5" for="perm_{{ item.student.id }}" title="សុំច្បាប់ត្រឹមត្រូវ">
+                                    <i class="fa-solid fa-envelope-open-text me-1"></i> ច្បាប់
+                                </label>
+
+                                <input type="radio" class="btn-check status-radio-{{ item.student.id }}" 
+                                       name="status_{{ item.student.id }}" 
+                                       id="abs_{{ item.student.id }}" 
+                                       value="ABSENT" 
+                                       {% if item.status == 'ABSENT' or not item.status %}checked{% endif %}
+                                       {% if not item.is_absent or is_form_disabled %}disabled{% endif %}
+                                       onchange="updateRowStyle('{{ item.student.id }}')">
+                                <label class="btn btn-outline-danger fw-bold px-2.5" for="abs_{{ item.student.id }}" title="អវត្តមានឥតច្បាប់">
+                                    <i class="fa-solid fa-xmark me-1"></i> ឥតច្បាប់
+                                </label>
+
+                                <input type="radio" class="btn-check status-radio-{{ item.student.id }}" 
+                                       name="status_{{ item.student.id }}" 
+                                       id="late_{{ item.student.id }}" 
+                                       value="LATE" 
+                                       {% if item.status == 'LATE' %}checked{% endif %}
+                                       {% if not item.is_absent or is_form_disabled %}disabled{% endif %}
+                                       onchange="updateRowStyle('{{ item.student.id }}')">
+                                <label class="btn btn-outline-info fw-bold px-2.5" for="late_{{ item.student.id }}" title="មកយឺត">
+                                    <i class="fa-solid fa-clock me-1"></i> យឺត
+                                </label>
+                            </div>
+                        </td>
+
+                        <!-- Notes / Reasons Input (Enabled ONLY when ticked) -->
+                        <td>
+                            <input type="text" 
+                                   name="notes_{{ item.student.id }}" 
+                                   id="notes_{{ item.student.id }}" 
+                                   value="{{ item.notes }}" 
+                                   class="form-control form-control-sm border-secondary-subtle" 
+                                   placeholder="មូលហេតុ (ឧ. ឈឺ, ធុរៈគ្រួសារ)..."
+                                   {% if not item.is_absent or is_form_disabled %}disabled{% endif %}>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-user-graduate fa-2x mb-2 text-secondary opacity-50"></i>
+                            <div>ពុំមានទិន្នន័យសិស្សនៅក្នុងថ្នាក់នេះឡើយ</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer / Save Section -->
+        <div class="p-3 border-top bg-light bg-opacity-50 rounded-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" name="notify_parents" value="1" id="notifySwitch" checked {% if is_form_disabled %}disabled{% endif %}>
+                <label class="form-check-label fw-bold small text-dark" for="notifySwitch">
+                    <i class="fa-brands fa-telegram text-info me-1"></i> ផ្ញើសារជូនដំណឹង Telegram ស្វ័យប្រវត្តិកាន់អាណាព្យាបាលប្រសិនបើសិស្ស "អវត្តមានឥតច្បាប់"
+                </label>
+            </div>
+            {% if is_form_disabled %}
+            <button type="button" class="btn btn-secondary btn-lg px-4 fw-bold shadow-sm" disabled>
+                <i class="fa-solid fa-lock me-2"></i> បានចាក់សោ (Locked)
+            </button>
+            {% else %}
+            <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកការស្រង់អវត្តមាន
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</form>
+{% endif %}
+
+{% block extra_js %}
+<script>
+    function toggleStudentRow(studentId) {
+        const chk = document.getElementById(`chk_${studentId}`);
+        const row = document.getElementById(`row_${studentId}`);
+        const presentBadge = document.getElementById(`present_badge_${studentId}`);
+        const statusGroup = document.getElementById(`status_group_${studentId}`);
+        const notesInput = document.getElementById(`notes_${studentId}`);
+        const radios = document.querySelectorAll(`.status-radio-${studentId}`);
+
+        if (chk && chk.checked) {
+            // Checked -> Enable Absence options
+            if (presentBadge) presentBadge.classList.add('d-none');
+            if (statusGroup) statusGroup.classList.remove('d-none');
+            
+            radios.forEach(r => r.disabled = false);
+            if (notesInput) notesInput.disabled = false;
+
+            // Ensure at least one radio is selected (default to ABSENT)
+            const anyChecked = Array.from(radios).some(r => r.checked);
+            if (!anyChecked) {
+                const absRadio = document.getElementById(`abs_${studentId}`);
+                if (absRadio) absRadio.checked = true;
+            }
+
+            updateRowStyle(studentId);
+        } else {
+            // Unchecked -> Present (Disabled options)
+            if (presentBadge) presentBadge.classList.remove('d-none');
+            if (statusGroup) statusGroup.classList.add('d-none');
+            
+            radios.forEach(r => r.disabled = true);
+            if (notesInput) notesInput.disabled = true;
+
+            if (row) {
+                row.classList.remove('row-absent', 'row-permission', 'row-late');
+            }
+        }
+
+        updateAbsentCounter();
+        syncMasterCheckState();
+    }
+
+    function updateRowStyle(studentId) {
+        const row = document.getElementById(`row_${studentId}`);
+        if (!row) return;
+
+        const permRadio = document.getElementById(`perm_${studentId}`);
+        const lateRadio = document.getElementById(`late_${studentId}`);
+
+        row.classList.remove('row-absent', 'row-permission', 'row-late');
+
+        if (permRadio && permRadio.checked) {
+            row.classList.add('row-permission');
+        } else if (lateRadio && lateRadio.checked) {
+            row.classList.add('row-late');
+        } else {
+            row.classList.add('row-absent');
+        }
+    }
+
+    function toggleMasterCheck(masterChk) {
+        const checks = document.querySelectorAll('.absent-single-check');
+        checks.forEach(chk => {
+            chk.checked = masterChk.checked;
+            const studentId = chk.id.replace('chk_', '');
+            toggleStudentRow(studentId);
+        });
+    }
+
+    function markAllAbsent() {
+        const master = document.getElementById('masterCheck');
+        if (master) master.checked = true;
+        toggleMasterCheck({ checked: true });
+    }
+
+    function markAllPresent() {
+        const master = document.getElementById('masterCheck');
+        if (master) master.checked = false;
+        toggleMasterCheck({ checked: false });
+    }
+
+    function updateAbsentCounter() {
+        const checkedCount = document.querySelectorAll('.absent-single-check:checked').length;
+        const textEl = document.getElementById('countAbsentText');
+        if (textEl) textEl.textContent = checkedCount;
+    }
+
+    function syncMasterCheckState() {
+        const allChecks = document.querySelectorAll('.absent-single-check');
+        const checkedChecks = document.querySelectorAll('.absent-single-check:checked');
+        const master = document.getElementById('masterCheck');
+        if (master && allChecks.length > 0) {
+            master.checked = (allChecks.length === checkedChecks.length);
+            master.indeterminate = (checkedChecks.length > 0 && checkedChecks.length < allChecks.length);
+        }
+    }
+
+    function openClassTelegramModal() {
+        const modalEl = document.getElementById('sendClassTelegramModal');
+        if (modalEl) {
+            document.getElementById('classTelegramResult').classList.add('d-none');
+            new bootstrap.Modal(modalEl).show();
+        }
+    }
+
+    function submitClassTelegram(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitClassTelegram');
+        const form = document.getElementById('formClassTelegram');
+        const resultDiv = document.getElementById('classTelegramResult');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបញ្ជូន...';
+
+        const formData = new FormData(form);
+
+        fetch("{% url 'send_class_attendance_telegram' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+            if (data.success) {
+                resultDiv.classList.add('alert-success');
+                resultDiv.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
+            } else {
+                resultDiv.classList.add('alert-danger');
+                resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> ' + data.message;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ';
+            resultDiv.classList.remove('d-none', 'alert-success');
+            resultDiv.classList.add('alert-danger');
+            resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> កំហុសក្នុងការផ្ញើ៖ ' + err;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        syncMasterCheckState();
+        updateAbsentCounter();
+
+        {% if teacher_schedule_alert and teacher_schedule_alert.show_modal %}
+        const schedModalEl = document.getElementById('teacherScheduleModal');
+        if (schedModalEl && typeof bootstrap !== 'undefined') {
+            const schedModal = new bootstrap.Modal(schedModalEl);
+            schedModal.show();
+        }
+        {% endif %}
+    });
+</script>
+
+{% if selected_class %}
+<!-- Modal: Send Class Attendance to Telegram -->
+<div class="modal fade" id="sendClassTelegramModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-info text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-brands fa-telegram me-2"></i> ផ្ញើវត្តមានថ្នាក់ {{ selected_class.name }} ទៅ Telegram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formClassTelegram" onsubmit="submitClassTelegram(event)">
+                {% csrf_token %}
+                <input type="hidden" name="classroom_id" value="{{ selected_class.id }}">
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                <input type="hidden" name="session" value="{{ selected_session }}">
+                <input type="hidden" name="period" value="{{ selected_period|default:'' }}">
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">ថ្នាក់រៀន៖</span>
+                            <span class="fw-bold text-dark">{{ selected_class.name }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">កាលបរិច្ឆេទ៖</span>
+                            <span class="fw-bold text-primary">{{ selected_date }} ({{ selected_session }}{% if selected_period %} • ម៉ោងទី {{ selected_period }}{% endif %})</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">អវត្តមានសរុប៖</span>
+                            <span class="badge bg-danger">{{ absent_students_count }} នាក់</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Group / Chat ID (ស្រង់តាមថ្នាក់ដោយស្វ័យប្រវត្តិ)៖</label>
+                        <input type="text" name="custom_chat_id" class="form-control font-monospace" 
+                               value="{{ selected_class.telegram_chat_id|default:'' }}" 
+                               placeholder="ឧ. -1001234567890 (បើទុកទំនេរ នឹងប្រើ Chat ID របស់ថ្នាក់)">
+                    </div>
+
+                    <div id="classTelegramResult" class="alert d-none mb-0"></div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold px-4" id="btnSubmitClassTelegram">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារ Telegram ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+{% if teacher_schedule_alert and teacher_schedule_alert.show_modal %}
+<!-- Teacher Schedule Notification Modal -->
+<div class="modal fade" id="teacherScheduleModal" tabindex="-1" aria-labelledby="teacherScheduleModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+            <div class="modal-body text-center p-4 p-md-5">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle p-4 mb-3 {{ teacher_schedule_alert.bg_color }}" style="width: 84px; height: 84px;">
+                    <i class="fa-solid {{ teacher_schedule_alert.icon }} {{ teacher_schedule_alert.icon_color }} fa-3x"></i>
+                </div>
+                
+                <div class="mb-2">
+                    <span class="badge {{ teacher_schedule_alert.bg_color }} {{ teacher_schedule_alert.icon_color }} px-3 py-1.5 fw-bold rounded-pill">
+                        {{ teacher_schedule_alert.badge_text }}
+                    </span>
+                </div>
+
+                <h4 class="fw-bold text-dark mb-2" id="teacherScheduleModalLabel">
+                    {{ teacher_schedule_alert.title }}
+                </h4>
+                
+                <p class="text-muted small mb-4" style="line-height: 1.6;">
+                    {{ teacher_schedule_alert.message|safe }}
+                </p>
+
+                {% if teacher_schedule_alert.other_slots %}
+                <div class="p-3 bg-light rounded-3 text-start mb-4 border">
+                    <div class="small fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-clock-rotate-left text-primary me-1"></i> កាលវិភាគបង្រៀនរបស់លោកគ្រូ-អ្នកគ្រូថ្ងៃនេះ៖
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for sl in teacher_schedule_alert.other_slots %}
+                        <a href="?classroom={{ sl.classroom.id }}&period={{ sl.period_number }}&date={{ selected_date }}" 
+                           class="btn btn-sm btn-outline-primary fw-bold">
+                            ម៉ោងទី {{ sl.period_number }}: {{ sl.classroom.code }} ({{ sl.subject.name_kh }})
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="d-grid gap-2">
+                    {% if teacher_schedule_alert.has_classes_today %}
+                    <button type="button" class="btn btn-primary fw-bold py-2" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-calendar-check me-1"></i> ជ្រើសរើសម៉ោងបង្រៀនថ្ងៃនេះ
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'student_teacher_timetable_view' %}" class="btn btn-outline-secondary fw-semibold py-2">
+                        <i class="fa-solid fa-calendar-days me-1"></i> មើលកាលវិភាគបង្រៀនពេញលេញ
+                    </a>
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-light text-muted py-1.5">
+                        <i class="fa-solid fa-house me-1"></i> ត្រឡប់ទៅផ្ទាំង Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% endblock %}
+

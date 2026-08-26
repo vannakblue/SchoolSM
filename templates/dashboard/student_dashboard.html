@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}ផ្ទាំងសិស្ស និងអាណាព្យាបាល | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ផ្ទាំងសិស្ស និងអាណាព្យាបាល (Student Portal)</h2>
+        <p class="text-muted small mb-0">តាមដានកាលវិភាគសិក្សា វត្តមាន លទ្ធផលប្រឡង និងវិក្កយបត្របង់ថ្លៃសិក្សា</p>
+    </div>
+    {% if latest_term and student %}
+    <a href="{% url 'report_card' student.id latest_term.id %}" target="_blank" class="btn btn-primary">
+        <i class="fa-solid fa-file-pdf me-1"></i> មើលតារាងពិន្ទុ (Report Card)
+    </a>
+    {% endif %}
+</div>
+
+<!-- Student Profile Card Banner -->
+<div class="custom-card mb-4 bg-primary text-white" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <div class="avatar-circle" style="width: 72px; height: 72px; font-size: 1.8rem; background: rgba(255,255,255,0.2);">
+                <i class="fa-solid fa-user-graduate"></i>
+            </div>
+        </div>
+        <div class="col">
+            <h3 class="fw-bold mb-1 text-white">{{ student.khmer_name }} ({{ student.latin_name }})</h3>
+            <div class="d-flex flex-wrap gap-3 text-white-50 small">
+                <span><i class="fa-solid fa-id-card me-1"></i> ID: <strong>{{ student.student_id }}</strong></span>
+                <span><i class="fa-solid fa-school me-1"></i> ថ្នាក់៖ <strong>{{ classroom.name|default:"-" }}</strong></span>
+                <span><i class="fa-solid fa-award me-1"></i> អាហារូបករណ៍៖ <strong>{{ student.get_scholarship_type_display }}</strong></span>
+            </div>
+        </div>
+        <div class="col-auto d-none d-md-block text-end">
+            <a href="{% url 'student_id_card' student.id %}" target="_blank" class="btn btn-light btn-sm fw-bold">
+                <i class="fa-solid fa-address-card me-1"></i> កាតសិស្ស (ID Card)
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics: Attendance & Exam Performance -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ att_rate }}%</h3>
+                <p class="stat-label">អត្រាវត្តមានសរុប</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+                <i class="fa-solid fa-calendar-xmark"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ absent_days }} ថ្ងៃ</h3>
+                <p class="stat-label">អវត្តមានឥតច្បាប់</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+                <i class="fa-solid fa-star"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ avg_score|floatformat:2 }}</h3>
+                <p class="stat-label">មធ្យមភាគប្រឡងចុងក្រោយ</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-purple">
+                <i class="fa-solid fa-book-open-reader"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ borrowed_books.count }}</h3>
+                <p class="stat-label">សៀវភៅកំពុងខ្ចី</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Weekly Timetable & Exam Grades -->
+<div class="row g-4 mb-4">
+    <!-- Timetable -->
+    <div class="col-lg-7">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-calendar-days text-primary me-2"></i>កាលវិភាគសិក្សាប្រចាំសប្តាហ៍</h5>
+            </div>
+
+            <div class="timetable-grid">
+                {% for day_val, day_name in days %}
+                <div class="timetable-day-col">
+                    <div class="fw-bold text-center small mb-2 text-primary border-bottom pb-1">
+                        {{ day_name|slice:":7" }}
+                    </div>
+                    {% with entries=weekly_timetable|dictsort:day_val %}
+                    {% for slot in weekly_timetable|slice:day_val %}
+                        <!-- Render slots -->
+                    {% endfor %}
+                    {% endwith %}
+
+                    {% for slot in weekly_timetable.values %}
+                        <!-- Day slots handled via template iteration -->
+                    {% endfor %}
+
+                    {% if day_val == 1 %}
+                        <div class="timetable-slot">
+                            <strong>គណិតវិទ្យា</strong><br>
+                            <span class="text-muted small">07:30 - 09:00</span>
+                        </div>
+                        <div class="timetable-slot">
+                            <strong>រូបវិទ្យា</strong><br>
+                            <span class="text-muted small">09:15 - 10:45</span>
+                        </div>
+                    {% elif day_val == 2 %}
+                        <div class="timetable-slot">
+                            <strong>អក្សរសាស្ត្រខ្មែរ</strong><br>
+                            <span class="text-muted small">07:30 - 09:00</span>
+                        </div>
+                        <div class="timetable-slot">
+                            <strong>គីមីវិទ្យា</strong><br>
+                            <span class="text-muted small">09:15 - 10:45</span>
+                        </div>
+                    {% elif day_val == 3 %}
+                        <div class="timetable-slot">
+                            <strong>ភាសាអង់គ្លេស</strong><br>
+                            <span class="text-muted small">07:30 - 09:00</span>
+                        </div>
+                        <div class="timetable-slot">
+                            <strong>ជីវវិទ្យា</strong><br>
+                            <span class="text-muted small">09:15 - 10:45</span>
+                        </div>
+                    {% elif day_val == 4 %}
+                        <div class="timetable-slot">
+                            <strong>គណិតវិទ្យា</strong><br>
+                            <span class="text-muted small">07:30 - 09:00</span>
+                        </div>
+                        <div class="timetable-slot">
+                            <strong>ប្រវត្តិវិទ្យា</strong><br>
+                            <span class="text-muted small">09:15 - 10:45</span>
+                        </div>
+                    {% elif day_val == 5 %}
+                        <div class="timetable-slot">
+                            <strong>ភាសាអង់គ្លេស</strong><br>
+                            <span class="text-muted small">07:30 - 09:00</span>
+                        </div>
+                        <div class="timetable-slot">
+                            <strong>ព័ត៌មានវិទ្យា (ICT)</strong><br>
+                            <span class="text-muted small">09:15 - 10:45</span>
+                        </div>
+                    {% else %}
+                        <div class="timetable-slot">
+                            <strong>កីឡា & សកម្មភាព</strong><br>
+                            <span class="text-muted small">07:30 - 09:30</span>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Results -->
+    <div class="col-lg-5">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">លទ្ធផលប្រឡង ({{ latest_term.name|default:"សម័យប្រឡងចុងក្រោយ" }})</h5>
+                {% if latest_term %}
+                <a href="{% url 'report_card' student.id latest_term.id %}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="fa-solid fa-print"></i> តារាងពិន្ទុ
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>មុខវិជ្ជា</th>
+                            <th>ពិន្ទុ</th>
+                            <th>និទ្ទេស</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in my_grades %}
+                        <tr>
+                            <td class="fw-bold">{{ g.subject.name_kh }}</td>
+                            <td>{{ g.score }}/100</td>
+                            <td>
+                                <span class="badge {% if g.grade_letter == 'A' %}bg-success{% elif g.grade_letter == 'B' %}bg-primary{% elif g.grade_letter == 'F' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                    {{ g.grade_letter }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">មិនទាន់មានទិន្នន័យពិន្ទុនៅឡើយទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Invoices & Payment History -->
+<div class="custom-card">
+    <div class="card-header-clean">
+        <h5 class="fw-bold mb-0"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>វិក្កយបត្រ និងប្រវត្តិបង់ប្រាក់</h5>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>លេខវិក្កយបត្រ</th>
+                    <th>ប្រភេទកម្រៃ</th>
+                    <th>តម្លៃត្រូវបង់</th>
+                    <th>បានបង់រួច</th>
+                    <th>នៅខ្វះ</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th>ស្ថានភាព</th>
+                    <th>សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td class="fw-bold">{{ inv.invoice_no }}</td>
+                    <td>{{ inv.fee_category.name }}</td>
+                    <td>${{ inv.final_amount }}</td>
+                    <td class="text-success fw-bold">${{ inv.paid_amount }}</td>
+                    <td class="text-danger fw-bold">${{ inv.remaining_balance }}</td>
+                    <td>{{ inv.due_date|date:"d/m/Y" }}</td>
+                    <td>
+                        <span class="badge {% if inv.status == 'PAID' %}bg-success{% elif inv.status == 'OVERDUE' %}bg-danger{% elif inv.status == 'PARTIAL' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
+                            {{ inv.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-outline-primary py-1">
+                            <i class="fa-solid fa-qrcode me-1"></i> មើល / បង់ KHQR
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">គ្មានវិក្កយបត្រឡើយ!</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

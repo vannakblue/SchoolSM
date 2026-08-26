@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .teacher-item {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 8px;
+        color: inherit;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+    .teacher-item:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .teacher-item.active {
+        background: #eef2ff;
+        border-color: #6366f1;
+        color: #4338ca;
+    }
+    .table-assign th, .table-assign td {
+        text-align: center;
+        vertical-align: middle;
+        padding: 8px 4px;
+    }
+    .assign-check {
+        width: 19px;
+        height: 19px;
+        cursor: pointer;
+        accent-color: #4f46e5;
+    }
+    .other-teacher-tag {
+        font-size: 0.65rem;
+        color: #dc2626;
+        display: block;
+        margin-top: 2px;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 65px;
+    }
+    .custom-card {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+    .nav-tabs-custom .nav-link {
+        font-weight: 700;
+        color: #64748b;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 18px;
+        transition: all 0.2s ease;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #4f46e5;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+        background: transparent;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Timetable Module Unified Sub-Menu Navigation Tabs -->
+<ul class="nav nav-tabs-custom">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'timetable_view' %}">
+            <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម (Master Timetable)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'timetable_daily_reports_view' %}">
+            <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'student_teacher_timetable_view' %}">
+            <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'subject_requirements_manager' %}">
+            <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា (Requirements Matrix)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'teacher_assignments_manager' %}">
+            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments)
+        </a>
+    </li>
+</ul>
+
+<!-- Page Header Title -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-user-check me-2"></i>ចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់ និងមុខវិជ្ជា
+        </h2>
+        <p class="text-muted small mb-0">ជ្រើសរើសគ្រូនីមួយៗ រួច Tick ថ្នាក់រៀន និងមុខវិជ្ជាដែលគាត់ត្រូវទទួលបន្ទុកបង្រៀន (ប្រព័ន្ធនឹងគណនាម៉ោងសរុបស្វ័យប្រវត្តិតាមមុខវិជ្ជា និងថ្នាក់)</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'teacher_create' %}" class="btn btn-primary btn-sm fw-bold">
+            <i class="fa-solid fa-plus me-1"></i> បន្ថែមគ្រូថ្មី
+        </a>
+        <a href="{% url 'teacher_import' %}" class="btn btn-outline-primary btn-sm fw-bold">
+            <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូ (Import)
+        </a>
+        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success btn-sm fw-bold">
+            <i class="fa-solid fa-file-excel me-1"></i> នាំចេញ Excel
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Teacher Selection List -->
+    <div class="col-lg-3">
+        <div class="custom-card p-3 shadow-sm mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-users me-1 text-primary"></i> ជ្រើសរើសគ្រូបង្រៀន ({{ teachers.count }})
+                </h6>
+            </div>
+
+            <!-- Search Teacher Input -->
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="searchTeacherInput" class="form-control border-start-0" placeholder="ស្វែងរកឈ្មោះគ្រូ..." onkeyup="filterTeachers()">
+            </div>
+
+            <!-- Teachers List -->
+            <div style="max-height: 600px; overflow-y: auto; padding-right: 4px;" id="teacherListContainer">
+                {% for item in teacher_stats %}
+                <a href="?teacher={{ item.teacher.id }}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name }} {{ item.teacher.specialization }}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; font-size: 0.85rem;">
+                                {{ item.teacher.khmer_name|slice:":1" }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark small">{{ item.teacher.khmer_name }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{{ item.teacher.specialization }}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if item.is_over %}bg-warning text-dark border border-warning{% elif item.assigned_hours > 0 %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size: 0.72rem;">
+                                {{ item.assigned_hours }}/{{ item.max_weekly_hours }} ម៉ោង
+                            </span>
+                            <div class="text-muted" style="font-size: 0.68rem;">{{ item.assigned_count }} ថ្នាក់</div>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="text-center text-muted small py-4">គ្មានទិន្នន័យគ្រូបង្រៀន</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Checkbox Assignment Matrix -->
+    <div class="col-lg-9">
+        {% if selected_teacher %}
+        <form method="POST" id="assignmentForm">
+            {% csrf_token %}
+
+            <!-- Selected Teacher Info Banner with Max Hours Setting & Live Summary -->
+            <div class="alert alert-primary shadow-sm border-0 mb-3 p-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom border-primary-subtle">
+                    <!-- Teacher Profile & Codes -->
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center shadow-sm" style="width: 52px; height: 52px; font-size: 1.6rem;">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name }} ({{ selected_teacher.latin_name }})</h5>
+                            <div class="small text-dark mt-1 d-flex flex-wrap align-items-center gap-1">
+                                <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id }}</span>
+                                <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization }}</span>
+                                {% if selected_teacher_codes %}
+                                <span class="badge bg-purple-subtle text-purple border"><i class="fa-solid fa-tag me-1"></i>កូដមុខវិជ្ជា៖ {{ selected_teacher_codes }}</span>
+                                {% endif %}
+                                <span class="badge bg-success text-white" id="badgeAssignedClassCount"><i class="fa-solid fa-check-circle me-1"></i>កំពុងចាត់តាំង៖ {{ selected_assigned_count }} ថ្នាក់-មុខវិជ្ជា</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Action Button -->
+                    <div>
+                        <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4 py-2">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការចាត់តាំង
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Max Hours Setting Controls & Real-Time Summary Badges -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <!-- Left: Max Hours Inputs -->
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="small fw-bold text-dark"><i class="fa-solid fa-clock-rotate-left text-primary me-1"></i> ម៉ោងបង្រៀនអតិបរមា៖</span>
+                        <div class="input-group input-group-sm" style="width: 140px;">
+                            <input type="number" name="max_weekly_hours" id="inputTeacherMaxHours" class="form-control fw-bold text-center border-primary" value="{{ selected_max_hours }}" min="1" max="60" oninput="recalculateAssignedHours()">
+                            <span class="input-group-text bg-white fw-bold">ម៉ោង/សប្តាហ៍</span>
+                        </div>
+                        <label class="form-check-label small fw-bold text-muted cursor-pointer ms-2" title="ធីកដើម្បីកំណត់ចំនួនម៉ោងអតិបរមានេះទៅគ្រូទាំងអស់ទូទាំងសាលា">
+                            <input type="checkbox" name="apply_to_all_teachers" id="checkApplyAllTeachers" class="form-check-input me-1"> កំណត់ទៅគ្រប់គ្រូទាំងអស់
+                        </label>
+                    </div>
+
+                    <!-- Right: Live Real-Time Hours Calculation Display -->
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-white text-dark border px-3 py-2 fs-6 shadow-sm" id="badgeAssignedHoursSummary">
+                            <i class="fa-solid fa-calculator text-primary me-1"></i> សរុបបច្ចុប្បន្ន៖ <strong id="valAssignedHours" class="text-primary">{{ selected_assigned_hours }}</strong> / <span id="valMaxHours">{{ selected_max_hours }}</span> ម៉ោង
+                        </span>
+                        <span id="badgeOverWarning" class="badge bg-warning text-dark border border-warning px-2.5 py-2 fs-7 {% if selected_assigned_hours <= selected_max_hours %}d-none{% endif %}">
+                            <i class="fa-solid fa-triangle-exclamation me-1 text-danger"></i> លើស <strong id="valOverDiff">0</strong> ម៉ោង!
+                        </span>
+                        <span id="badgeUnderWarning" class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-2 fs-7 {% if selected_assigned_hours > selected_max_hours %}d-none{% endif %}">
+                            <i class="fa-solid fa-check-circle me-1"></i> មិនលើសកំណត់
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Checkbox Matrix Table -->
+            <div class="custom-card p-0 shadow-sm border mb-4">
+                <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="small fw-bold text-muted">
+                        <i class="fa-solid fa-hand-pointer text-primary me-1"></i> Tick លើប្រអប់ Checkbox ដើម្បីចាត់តាំងមុខវិជ្ជា និងថ្នាក់ដែលគ្រូនេះបង្រៀន
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllCheckboxes(true)">
+                            <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllCheckboxes(false)">
+                            <i class="fa-solid fa-xmark me-1"></i> ដោះការជ្រើសរើស
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 580px; overflow-y: auto;">
+                    <table class="table table-bordered table-assign align-middle mb-0">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th style="width: 140px; text-align: left; padding-left: 15px;" class="bg-dark text-white">
+                                    ថ្នាក់រៀន \ មុខវិជ្ជា
+                                </th>
+                                {% for sub in subjects %}
+                                <th title="{{ sub.name_kh }}">
+                                    <div class="fw-bold" style="font-size: 0.82rem;">{{ sub.name_kh }}</div>
+                                    <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ sub.code }}</span>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in matrix_grid %}
+                            <tr>
+                                <!-- Classroom Name -->
+                                <td class="text-start ps-3 fw-bold bg-light" style="font-size: 0.9rem;">
+                                    <i class="fa-solid fa-school text-primary me-1"></i>
+                                    {{ row.classroom.name }}
+                                </td>
+
+                                <!-- Subject Checkboxes for this Classroom -->
+                                {% for cell in row.cells %}
+                                <td class="{% if cell.is_checked %}bg-primary-subtle{% endif %}">
+                                    <div class="d-flex flex-column align-items-center justify-content-center">
+                                        <input 
+                                            type="checkbox" 
+                                            name="{{ cell.input_name }}" 
+                                            class="assign-check"
+                                            data-subject-id="{{ cell.subject.id }}"
+                                            data-hours="{{ cell.hours_required }}"
+                                            {% if cell.is_checked %}checked{% endif %}
+                                            onchange="onCheckboxChange(this)"
+                                            title="{{ row.classroom.name }} - {{ cell.subject.name_kh }} ({{ cell.hours_required }} ម៉ោង/សប្តាហ៍)"
+                                        >
+                                        {% if cell.hours_required > 0 %}
+                                        <span class="text-muted" style="font-size: 0.65rem; line-height: 1;">{{ cell.hours_required }}h</span>
+                                        {% else %}
+                                        <span class="text-muted opacity-25" style="font-size: 0.65rem; line-height: 1;">-</span>
+                                        {% endif %}
+                                        {% if cell.other_teacher %}
+                                        <span class="other-teacher-tag" title="កំពុងបង្រៀនដោយ៖ {{ cell.other_teacher.khmer_name }}">
+                                            {{ cell.other_teacher.khmer_name }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="15" class="text-center py-5 text-muted">
+                                    មិនទាន់មានថ្នាក់រៀនណាមួយត្រូវបានបង្កើតនៅឡើយទេ។
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                        <!-- Summary Row by Subject Column -->
+                        <tfoot class="table-dark sticky-bottom text-center">
+                            <tr class="fw-bold">
+                                <td class="text-start ps-3 bg-dark text-white" style="font-size: 0.85rem;">
+                                    <i class="fa-solid fa-calculator text-warning me-1"></i> សរុបម៉ោងតាមមុខវិជ្ជា
+                                </td>
+                                {% for sub in subjects %}
+                                <td class="text-center bg-dark text-white py-2" id="col_total_{{ sub.id }}">
+                                    <span class="badge bg-primary px-2 py-1" style="font-size: 0.75rem;" id="badge_col_total_{{ sub.id }}">0 ម៉ោង</span>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Footer Save Button -->
+                <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="text-muted small">
+                        <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                        នៅពេលលោកអ្នកចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពម៉ោងបង្រៀនអតិបរមា និង Sync ចូលទៅក្នុងកាលវិភាគសិក្សាស្វ័យប្រវត្តិនៃថ្នាក់នីមួយៗភ្លាមៗ!
+                    </div>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2 shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការចាត់តាំង (Save Assignments)
+                    </button>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        <div class="custom-card p-5 text-center text-muted">
+            <i class="fa-solid fa-chalkboard-user fa-3x mb-3 text-secondary"></i>
+            <h5>សូមជ្រើសរើសគ្រូបង្រៀនណាម្នាក់ពីបញ្ជីខាងឆ្វេង</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function filterTeachers() {
+        const input = document.getElementById('searchTeacherInput').value.toLowerCase();
+        const items = document.querySelectorAll('#teacherListContainer .teacher-item');
+        items.forEach(item => {
+            const text = item.getAttribute('data-name').toLowerCase();
+            if (text.includes(input)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function toggleAllCheckboxes(checked) {
+        const checkboxes = document.querySelectorAll('.assign-check');
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+            const td = cb.closest('td');
+            if (td) {
+                if (checked) {
+                    td.classList.add('bg-primary-subtle');
+                } else {
+                    td.classList.remove('bg-primary-subtle');
+                }
+            }
+        });
+        recalculateAssignedHours();
+    }
+
+    function onCheckboxChange(el) {
+        const td = el.closest('td');
+        if (td) {
+            if (el.checked) {
+                td.classList.add('bg-primary-subtle');
+            } else {
+                td.classList.remove('bg-primary-subtle');
+            }
+        }
+        recalculateAssignedHours();
+    }
+
+    function recalculateAssignedHours() {
+        const checkboxes = document.querySelectorAll('.assign-check');
+        const subjectTotals = {};
+        let totalAssigned = 0;
+        let totalCheckedCount = 0;
+
+        checkboxes.forEach(cb => {
+            const subId = cb.getAttribute('data-subject-id');
+            const hours = parseInt(cb.getAttribute('data-hours')) || 0;
+
+            if (!subjectTotals[subId]) subjectTotals[subId] = 0;
+
+            if (cb.checked) {
+                subjectTotals[subId] += hours;
+                totalAssigned += hours;
+                totalCheckedCount++;
+            }
+        });
+
+        // Update Column Badges in tfoot
+        for (const [subId, sumHours] of Object.entries(subjectTotals)) {
+            const badge = document.getElementById(`badge_col_total_${subId}`);
+            if (badge) {
+                badge.innerText = `${sumHours} ម៉ោង`;
+                if (sumHours > 0) {
+                    badge.className = 'badge bg-primary px-2 py-1';
+                } else {
+                    badge.className = 'badge bg-secondary-subtle text-secondary px-2 py-1';
+                }
+            }
+        }
+
+        // Update Total Summary
+        const valEl = document.getElementById('valAssignedHours');
+        if (valEl) valEl.innerText = totalAssigned;
+
+        const maxInput = document.getElementById('inputTeacherMaxHours');
+        const maxVal = maxInput ? (parseInt(maxInput.value) || 18) : 18;
+
+        const valMaxEl = document.getElementById('valMaxHours');
+        if (valMaxEl) valMaxEl.innerText = maxVal;
+
+        const badgeAssignedCount = document.getElementById('badgeAssignedClassCount');
+        if (badgeAssignedCount) {
+            badgeAssignedCount.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i>កំពុងចាត់តាំង៖ ${totalCheckedCount} ថ្នាក់-មុខវិជ្ជា`;
+        }
+
+        const badgeSummary = document.getElementById('badgeAssignedHoursSummary');
+        const badgeOver = document.getElementById('badgeOverWarning');
+        const badgeUnder = document.getElementById('badgeUnderWarning');
+        const valOverDiff = document.getElementById('valOverDiff');
+
+        if (totalAssigned > maxVal) {
+            const diff = totalAssigned - maxVal;
+            if (valOverDiff) valOverDiff.innerText = diff;
+            if (badgeOver) badgeOver.classList.remove('d-none');
+            if (badgeUnder) badgeUnder.classList.add('d-none');
+            if (badgeSummary) badgeSummary.className = 'badge bg-warning-subtle text-dark border border-warning px-3 py-2 fs-6 shadow-sm';
+        } else {
+            if (badgeOver) badgeOver.classList.add('d-none');
+            if (badgeUnder) badgeUnder.classList.remove('d-none');
+            if (badgeSummary) badgeSummary.className = 'badge bg-white text-dark border px-3 py-2 fs-6 shadow-sm';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        recalculateAssignedHours();
+    });
+</script>
+{% endblock %}

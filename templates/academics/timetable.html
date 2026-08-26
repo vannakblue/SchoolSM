@@ -1,0 +1,2461 @@
+{% extends 'base.html' %}
+
+{% block title %}កាលវិភាគរួម (Master Timetable Matrix) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+    .nav-tabs-custom .nav-link {
+        font-weight: 700;
+        color: #64748b;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 18px;
+        transition: all 0.2s ease;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #4f46e5;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+        background: transparent;
+    }
+
+    /* Master Matrix Action Bar */
+    .master-action-bar {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 16px;
+    }
+    .matrix-title {
+        font-weight: 800;
+        font-size: 1.45rem;
+        color: #3b0764;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    /* Action Buttons */
+    .btn-undo-redo {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #334155;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        transition: all 0.15s ease;
+    }
+    .btn-undo-redo:hover:not(:disabled) {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+    .btn-undo-redo:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+
+    .btn-action-custom {
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 8px 13px;
+        border-radius: 8px;
+        border: none;
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .btn-action-custom:hover {
+        opacity: 0.92;
+        transform: translateY(-1px);
+        color: #ffffff;
+    }
+    .btn-fullscreen { background: #334155; }
+    .btn-report { background: #4f46e5; }
+    .btn-excel { background: #10b981; }
+    .btn-export { background: #0284c7; }
+    .btn-import { background: #0d9488; }
+    .btn-clear { background: #ef4444; }
+    .btn-autogen { background: #8b5cf6; }
+    .btn-save { background: #581c87; }
+
+    /* Master Matrix Table */
+    .matrix-wrapper {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: auto;
+        max-height: calc(100vh - 230px);
+        position: relative;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .table-matrix {
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 2200px;
+        margin-bottom: 0;
+        font-size: 0.82rem;
+    }
+    .table-matrix thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #ffffff;
+        border-bottom: 1px solid #cbd5e1;
+        border-right: 1px solid #e2e8f0;
+        text-align: center;
+        padding: 6px 4px;
+        font-weight: 700;
+    }
+    .table-matrix thead tr:first-child th {
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.88rem;
+        border-bottom: 2px solid #cbd5e1;
+    }
+    .table-matrix thead tr:nth-child(2) th {
+        top: 36px;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 0.78rem;
+    }
+
+    /* Fixed Left Column (Classroom) */
+    .table-matrix th.sticky-col, .table-matrix td.sticky-col {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: #ffffff;
+        border-right: 2px solid #cbd5e1;
+        width: 90px;
+        min-width: 90px;
+        max-width: 90px;
+        text-align: center;
+        padding: 6px 2px;
+    }
+    .table-matrix thead th.sticky-col {
+        z-index: 15;
+        background: #f8fafc;
+    }
+
+    /* Classroom Row */
+    .table-matrix tbody tr {
+        cursor: pointer;
+        transition: background-color 0.1s ease;
+    }
+    .table-matrix tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .table-matrix tbody tr:hover .sticky-col {
+        background-color: #f8fafc;
+    }
+
+    /* Selected Row Highlight (Purple/Lavender highlight matching screenshot) */
+    .table-matrix tbody tr.row-selected,
+    .table-matrix tbody tr.row-selected .sticky-col {
+        background-color: #f3e8ff !important;
+    }
+    .table-matrix tbody tr.row-selected td {
+        background-color: #f3e8ff;
+    }
+
+    /* Cell Slots */
+    .table-matrix tbody td {
+        border-right: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 4px;
+        text-align: center;
+        height: 52px;
+        vertical-align: middle;
+        position: relative;
+    }
+    .table-matrix tbody td:nth-child(8n+2) {
+        border-left: 2px solid #cbd5e1;
+    }
+
+    /* Color Picker Inputs in Legend Bar (ដូចក្នុងរូបភាពរបស់អ្នកប្រើប្រាស់) */
+    .color-picker-box {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 44px;
+        height: 24px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 0;
+        background: transparent;
+        transition: all 0.2s ease;
+        vertical-align: middle;
+    }
+    .color-picker-box:hover {
+        transform: scale(1.06);
+        border-color: #4f46e5;
+        box-shadow: 0 2px 5px rgba(79, 70, 229, 0.2);
+    }
+    .color-picker-box::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+    .color-picker-box::-webkit-color-swatch {
+        border: none;
+        border-radius: 3px;
+    }
+    .color-picker-box::-moz-color-swatch {
+        border: none;
+        border-radius: 3px;
+    }
+
+    /* Slot Badges */
+    .slot-pill {
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        width: 100%;
+        height: 38px;
+        transition: all 0.15s ease;
+        user-select: none;
+        letter-spacing: 0.3px;
+    }
+
+    /* 1. ពណ៌ខៀវ (Blue): កំណត់គ្រូ និងម៉ោងត្រឹមត្រូវ (Exact Required Hours) */
+    .slot-pill.status-exact {
+        background: var(--color-exact-bg, #eff6ff) !important;
+        border: 1.5px solid var(--color-exact-border, #93c5fd) !important;
+        color: var(--color-exact-text, #1d4ed8) !important;
+    }
+    .slot-pill.status-exact:hover {
+        border-color: var(--color-exact-text, #3b82f6) !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 2. ពណ៌ក្រហម (Red): គ្រូមានថ្នាក់ជាន់គ្នា (Teacher Collision / Clash) */
+    .slot-pill.status-conflict {
+        background: var(--color-conflict-bg, #fef2f2) !important;
+        border: 1.5px solid var(--color-conflict-border, #ef4444) !important;
+        color: var(--color-conflict-text, #b91c1c) !important;
+        animation: pulseWarning 1.5s infinite;
+    }
+
+    /* 3. ពណ៌លឿង (Yellow): គ្រូដែលលើសម៉ោងកំណត់ក្នុងថ្នាក់នោះ ឬលើសម៉ោងបង្រៀនសរុប (Over Hours) */
+    .slot-pill.status-over {
+        background: var(--color-over-bg, #fefce8) !important;
+        border: 1.5px solid var(--color-over-border, #facc15) !important;
+        color: var(--color-over-text, #854d0e) !important;
+    }
+    .slot-pill.status-over:hover {
+        border-color: var(--color-over-text, #eab308) !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 4. ពណ៌បៃតង (Green): គ្រូដែលខ្វះម៉ោងក្នុងថ្នាក់នោះ ឬមិនទាន់គ្រប់ម៉ោង (Under Hours) */
+    .slot-pill.status-under {
+        background: var(--color-under-bg, #ecfdf5) !important;
+        border: 1.5px solid var(--color-under-border, #a7f3d0) !important;
+        color: var(--color-under-text, #065f46) !important;
+    }
+    .slot-pill.status-under:hover {
+        border-color: var(--color-under-text, #10b981) !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 5. ពណ៌ស្វាយចាស់ (Violet / Purple): គ្រូដែលចាត់តាំងលើសម៉ោងកំណត់គោល ហើយបង្រៀនគ្រប់ម៉ោងចាត់តាំង (Overload Full) */
+    .slot-pill.status-overload {
+        background: var(--color-overload-bg, #f5f3ff) !important;
+        border: 1.5px solid var(--color-overload-border, #a855f7) !important;
+        color: var(--color-overload-text, #6b21a8) !important;
+    }
+    .slot-pill.status-overload:hover {
+        border-color: var(--color-overload-text, #7c3aed) !important;
+        box-shadow: 0 2px 5px rgba(124, 58, 237, 0.2);
+    }
+
+    /* Slot Blocked from Auto-Gen */
+    .slot-pill.slot-blocked {
+        background: #f1f5f9 !important;
+        border: 1.5px dashed #94a3b8 !important;
+        color: #475569 !important;
+    }
+
+    @keyframes pulseWarning {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+    }
+
+    .empty-slot-btn {
+        width: 100%;
+        height: 38px;
+        border: 1px dashed transparent;
+        background: transparent;
+        border-radius: 6px;
+        color: #94a3b8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        transition: all 0.15s ease;
+    }
+    .empty-slot-btn:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #4f46e5;
+    }
+
+    /* Hours Badge under class */
+    .class-hours-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        display: block;
+        margin-top: 2px;
+        padding: 1px 4px;
+        border-radius: 4px;
+    }
+    .hours-ok { background: #dcfce7; color: #15803d; }
+    .hours-under { background: #fef3c7; color: #b45309; }
+    .hours-over { background: #fee2e2; color: #b91c1c; }
+
+    /* Popover Selector Menu (Inside container with highest z-index) */
+    .slot-picker-menu {
+        position: fixed;
+        z-index: 999999 !important;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        box-shadow: 0 12px 30px -5px rgba(0,0,0,0.3);
+        width: 270px;
+        max-height: 360px;
+        overflow-y: auto;
+        padding: 8px;
+        display: none;
+    }
+    .picker-item {
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.82rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background-color 0.15s ease;
+        margin-bottom: 2px;
+    }
+    .picker-item:hover {
+        background: #f1f5f9;
+        color: #4f46e5;
+    }
+
+    /* Sortable Table Header Styling */
+    th.cursor-pointer {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    th.cursor-pointer:hover {
+        background-color: #e2e8f0 !important;
+        color: #1e293b !important;
+    }
+
+    /* Session Header (Morning / Afternoon 1-click toggle) */
+    .session-hdr {
+        font-size: 0.74rem;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 3px 4px !important;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+    .session-hdr.morning-hdr {
+        background-color: #fefce8 !important;
+        color: #854d0e !important;
+        border-bottom: 2px solid #fde047;
+    }
+    .session-hdr.morning-hdr:hover {
+        background-color: #fef08a !important;
+    }
+    .session-hdr.afternoon-hdr {
+        background-color: #f0f9ff !important;
+        color: #0369a1 !important;
+        border-bottom: 2px solid #7dd3fc;
+    }
+    .session-hdr.afternoon-hdr:hover {
+        background-color: #e0f2fe !important;
+    }
+    .badge-block-tag {
+        font-size: 0.65rem;
+        background: #ef4444;
+        color: white;
+        padding: 1px 4px;
+        border-radius: 3px;
+        margin-left: 3px;
+    }
+
+    /* Native & CSS Fallback Fullscreen Layout (Ensures bottom horizontal scrollbar is ALWAYS visible & accessible) */
+    #masterTimetableContainer:fullscreen,
+    #masterTimetableContainer:-webkit-full-screen,
+    #masterTimetableContainer.is-fullscreen {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        z-index: 99999 !important;
+        background: #f8fafc !important;
+        padding: 10px 14px !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    #masterTimetableContainer:fullscreen .nav-tabs-custom,
+    #masterTimetableContainer:-webkit-full-screen .nav-tabs-custom,
+    #masterTimetableContainer.is-fullscreen .nav-tabs-custom {
+        display: none !important;
+    }
+
+    #masterTimetableContainer:fullscreen .matrix-wrapper,
+    #masterTimetableContainer:-webkit-full-screen .matrix-wrapper,
+    #masterTimetableContainer.is-fullscreen .matrix-wrapper {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        height: 100% !important;
+        overflow: auto !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Custom Sleek Scrollbar (Accessible, clearly visible and smooth to scroll) */
+    .matrix-wrapper::-webkit-scrollbar {
+        width: 10px;
+        height: 12px;
+    }
+    .matrix-wrapper::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 6px;
+    }
+    .matrix-wrapper::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 6px;
+        border: 2px solid #f1f5f9;
+    }
+    .matrix-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="masterTimetableContainer">
+    <!-- Sub-Menu Navigation Tabs -->
+    <ul class="nav nav-tabs-custom no-print">
+        <li class="nav-item">
+            <a class="nav-link active" href="{% url 'timetable_view' %}">
+                <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម (Master Timetable)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'timetable_daily_reports_view' %}">
+                <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'student_teacher_timetable_view' %}">
+                <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'subject_requirements_manager' %}">
+                <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា (Requirements Matrix)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'teacher_assignments_manager' %}">
+                <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments)
+            </a>
+        </li>
+    </ul>
+
+    <!-- Top Action Bar Matching User Screenshot -->
+    <div class="master-action-bar d-flex flex-wrap align-items-center justify-content-between gap-3 no-print">
+        <!-- Title & Undo/Redo & Auto-Save Status -->
+        <div class="d-flex align-items-center gap-3">
+            <div class="matrix-title">
+                <i class="fa-solid fa-table-cells-large text-primary"></i> កាលវិភាគរួម
+            </div>
+            
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn-undo-redo" id="btnUndo" title="Undo (Ctrl+Z)" onclick="undoAction()" disabled>
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button type="button" class="btn-undo-redo" id="btnRedo" title="Redo (Ctrl+Y)" onclick="redoAction()" disabled>
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Auto-Save Status Indicator Badge -->
+            <div id="autoSaveStatusBadge" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.72rem;">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i> រក្សាទុកស្វ័យប្រវត្តិ (Auto-Saved)
+            </div>
+        </div>
+
+        <!-- Action Buttons Matching Exact Captions and Colors in Screenshot -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Full Screen -->
+            <button type="button" class="btn-action-custom btn-fullscreen" id="btnToggleFullscreen" onclick="toggleFullScreen()">
+                <i class="fa-solid fa-expand"></i> Full Screen
+            </button>
+
+            <!-- របាយការណ៍ម៉ោង -->
+            <button type="button" class="btn-action-custom btn-report" data-bs-toggle="modal" data-bs-target="#hoursReportModal">
+                <i class="fa-solid fa-chart-column"></i> របាយការណ៍ម៉ោង
+            </button>
+
+            <!-- បិទពេលសិក្សា (Session Blocking Manager) -->
+            <button type="button" class="btn-action-custom" style="background: #334155; color: #fff;" data-bs-toggle="modal" data-bs-target="#sessionBlockModal" title="កំណត់បិទពេលព្រឹក ឬពេលរសៀល មិនឱ្យ Auto-Gen រៀបចំ">
+                <i class="fa-solid fa-ban text-danger me-1"></i> បិទពេលសិក្សា
+            </button>
+
+            <!-- នាំចេញ Excel -->
+            <a href="{% url 'timetable_export_excel' %}" class="btn-action-custom btn-excel">
+                <i class="fa-solid fa-file-excel"></i> នាំចេញ Excel
+            </a>
+
+            <!-- នាំចេញកាលវិភាគ (Backup) -->
+            <button type="button" class="btn-action-custom btn-export" onclick="exportTimetableBackup()" title="ទាញយកឯកសារ Backup (.json) នៃកាលវិភាគទៅរក្សាទុក">
+                <i class="fa-solid fa-download"></i> នាំចេញកាលវិភាគ
+            </button>
+
+            <!-- បញ្ចូលកាលវិភាគចាស់ (Restore Backup) -->
+            <button type="button" class="btn-action-custom btn-import" onclick="document.getElementById('timetableBackupFileInput').click()" title="ជ្រើសរើសឯកសារ Backup (.json) ដើម្បីទាញទិន្នន័យមកដាក់បញ្ចូលវិញ">
+                <i class="fa-solid fa-upload"></i> បញ្ចូលកាលវិភាគចាស់
+            </button>
+            <input type="file" id="timetableBackupFileInput" accept=".json,application/json" style="display: none;" onchange="importTimetableBackup(event)">
+
+            <!-- លុបទិន្នន័យ -->
+            <button type="button" class="btn-action-custom btn-clear" onclick="clearAllTimetable()">
+                <i class="fa-solid fa-trash-can"></i> លុបទិន្នន័យ
+            </button>
+
+            <!-- រៀបចំស្វ័យប្រវត្តិ (Random) -->
+            <button type="button" class="btn-action-custom btn-autogen" onclick="runAutoGeneration()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> រៀបចំស្វ័យប្រវត្តិ (Random)
+            </button>
+
+            <!-- រក្សាទុកការកែប្រែ -->
+            <button type="button" class="btn-action-custom btn-save" id="btnSaveMatrix" onclick="saveMasterMatrix(true)">
+                <i class="fa-solid fa-floppy-disk"></i> រក្សាទុកការកែប្រែ
+            </button>
+        </div>
+    </div>
+
+    <!-- Conflict Warning Banner (Hidden by default, shown if clashes exist) -->
+    <div id="conflictAlertBanner" class="alert alert-danger shadow-sm border-0 py-2 px-3 mb-2 d-none align-items-center justify-content-between">
+        <div class="small fw-bold">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <span id="conflictCountText">រកឃើញការជាន់ម៉ោងគ្នារបស់គ្រូបង្រៀន!</span>
+        </div>
+        <div class="small text-danger fw-bold">សូមពិនិត្យមើលក្រឡាដែលមានពណ៌ក្រហម</div>
+    </div>
+
+    <!-- Color Code Legend Bar (សម្គាល់ពណ៌ ៤ ប្រភេទ ជាមួយប្រអប់ជ្រើសរើសពណ៌ដូចរូបភាព) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 px-3 py-2 mb-3 bg-white rounded-3 border shadow-sm small no-print">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="text-dark fw-bold d-flex align-items-center gap-1">
+                <i class="fa-solid fa-palette text-primary"></i> សម្គាល់ពណ៌ក្រឡា៖
+            </span>
+            
+            <!-- 1. ត្រឹមត្រូវតាមការកំណត់ (Blue) -->
+            <label class="d-inline-flex align-items-center gap-2 mb-0 cursor-pointer" title="ចុចលើប្រអប់ដើម្បីប្តូរពណ៌តាមចិត្ត">
+                <input type="color" id="pickerColorExact" value="#3b82f6" class="color-picker-box" onchange="updateCustomColor('exact', this.value)">
+                <span class="text-dark fw-bold">ត្រឹមត្រូវតាមការកំណត់</span>
+            </label>
+
+            <!-- 2. ខ្វះម៉ោងក្នុងថ្នាក់ (Green) -->
+            <label class="d-inline-flex align-items-center gap-2 mb-0 cursor-pointer" title="ចុចលើប្រអប់ដើម្បីប្តូរពណ៌តាមចិត្ត">
+                <input type="color" id="pickerColorUnder" value="#10b981" class="color-picker-box" onchange="updateCustomColor('under', this.value)">
+                <span class="text-dark fw-bold">ខ្វះម៉ោងក្នុងថ្នាក់</span>
+            </label>
+
+            <!-- 3. លើសម៉ោងកំណត់ (Yellow) -->
+            <label class="d-inline-flex align-items-center gap-2 mb-0 cursor-pointer" title="ចុចលើប្រអប់ដើម្បីប្តូរពណ៌តាមចិត្ត">
+                <input type="color" id="pickerColorOver" value="#eab308" class="color-picker-box" onchange="updateCustomColor('over', this.value)">
+                <span class="text-dark fw-bold">លើសម៉ោងកំណត់</span>
+            </label>
+
+            <!-- 4. គ្រប់ម៉ោងចាត់តាំងបន្ថែម (Violet / Purple) -->
+            <label class="d-inline-flex align-items-center gap-2 mb-0 cursor-pointer" title="ចុចលើប្រអប់ដើម្បីប្តូរពណ៌តាមចិត្ត">
+                <input type="color" id="pickerColorOverload" value="#7c3aed" class="color-picker-box" onchange="updateCustomColor('overload', this.value)">
+                <span class="text-dark fw-bold" style="color: #6b21a8 !important;">គ្រប់ម៉ោងចាត់តាំងបន្ថែម</span>
+            </label>
+
+            <!-- 5. គ្រូបង្រៀនជាន់ថ្នាក់គ្នា (Red) -->
+            <label class="d-inline-flex align-items-center gap-2 mb-0 cursor-pointer" title="ចុចលើប្រអប់ដើម្បីប្តូរពណ៌តាមចិត្ត">
+                <input type="color" id="pickerColorConflict" value="#ef4444" class="color-picker-box" onchange="updateCustomColor('conflict', this.value)">
+                <span class="text-danger fw-bold">គ្រូបង្រៀនជាន់ថ្នាក់គ្នា</span>
+            </label>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 fw-bold" onclick="resetColorPalette()" title="កំណត់ពណ៌ដើមឡើងវិញ" style="font-size: 0.76rem;">
+                <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ពណ៌ដើម
+            </button>
+        </div>
+    </div>
+
+    <!-- Master Timetable Matrix Table -->
+    <div class="matrix-wrapper">
+        <table class="table table-bordered table-matrix" id="masterTimetableTable">
+            <thead>
+                <!-- Row 1: Days of Week Header -->
+                <tr>
+                    <th class="sticky-col" rowspan="2">ថ្នាក់</th>
+                    {% for d in days %}
+                    <th colspan="8" class="text-center py-1">{{ d.name_kh }}</th>
+                    {% endfor %}
+                </tr>
+                <!-- Row 2: Sessions Sub-Header (ព្រឹក / រសៀល) with 1-Click Toggle for Auto-Gen Blocking -->
+                <tr>
+                    {% for d in days %}
+                    <th colspan="4" class="text-center session-hdr morning-hdr cursor-pointer" onclick="toggleSessionBlock('{{ d.num }}', 'morning')" title="ចុចដើម្បី បិទ/បើក ពេលព្រឹក {{ d.name_kh }} (ម៉ោង ១ ដល់ ៤)">
+                        <i class="fa-regular fa-sun text-warning me-1"></i>ព្រឹក <span class="badge-block-tag d-none" id="tag_blk_{{ d.num }}_m">បិទ</span>
+                    </th>
+                    <th colspan="4" class="text-center session-hdr afternoon-hdr cursor-pointer" onclick="toggleSessionBlock('{{ d.num }}', 'afternoon')" title="ចុចដើម្បី បិទ/បើក ពេលរសៀល {{ d.name_kh }} (ម៉ោង ៥ ដល់ ៨)">
+                        <i class="fa-solid fa-moon text-info me-1"></i>រសៀល <span class="badge-block-tag d-none" id="tag_blk_{{ d.num }}_a">បិទ</span>
+                    </th>
+                    {% endfor %}
+                </tr>
+                <!-- Row 3: Period Numbers 1 to 8 -->
+                <tr>
+                    <th class="sticky-col text-muted small">ម៉ោង \ ថ្ងៃ</th>
+                    {% for d in days %}
+                        {% for p in periods %}
+                        <th>{{ p }}</th>
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in classrooms_data %}
+                <tr id="row_cls_{{ row.classroom.id }}" onclick="selectClassRow('{{ row.classroom.id }}')">
+                    <!-- Sticky Classroom Name & Hours Counter -->
+                    <td class="sticky-col fw-bold">
+                        <div class="text-dark">{{ row.classroom.name }}</div>
+                        <span 
+                            class="class-hours-badge {% if row.hours_diff == 0 %}hours-ok{% elif row.hours_diff < 0 %}hours-under{% else %}hours-over{% endif %}"
+                            id="badge_hours_{{ row.classroom.id }}"
+                            title="បានរៀបចំ៖ {{ row.scheduled_hours }} / ម៉ោងកំណត់៖ {{ row.required_hours }}"
+                        >
+                            {{ row.scheduled_hours }}/{{ row.required_hours }}
+                        </span>
+                    </td>
+
+                    <!-- Matrix Cells for Mon-Sat x Periods 1-8 -->
+                    {% for d in days %}
+                        {% for p in periods %}
+                        <td 
+                            id="cell_{{ row.classroom.id }}_{{ d.num }}_{{ p }}"
+                            data-class-id="{{ row.classroom.id }}"
+                            data-day="{{ d.num }}"
+                            data-period="{{ p }}"
+                            onclick="openSlotPicker(event, '{{ row.classroom.id }}', '{{ d.num }}', '{{ p }}')"
+                        >
+                            <!-- Populated via JS / Render -->
+                            <button type="button" class="empty-slot-btn">
+                                <i class="fa-solid fa-chevron-down opacity-50"></i>
+                            </button>
+                        </td>
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Inline Slot Picker Popover (Inside Container to work perfectly in Fullscreen!) -->
+    <div id="slotPickerPopover" class="slot-picker-menu">
+        <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-2 px-1">
+            <span class="fw-bold small text-primary" id="pickerTitle">ជ្រើសរើសមុខវិជ្ជា/គ្រូ</span>
+            <button type="button" class="btn-close btn-sm" onclick="closeSlotPicker()"></button>
+        </div>
+        <div id="pickerOptionsContainer">
+            <!-- Options populated dynamically -->
+        </div>
+        <div class="border-top pt-2 mt-2 d-flex flex-column gap-1">
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-warning flex-fill fw-bold" id="btnToggleLockSlot" onclick="toggleLockCurrentSlot()" title="ចាក់សោមិនឱ្យ Auto-Gen រៀបចំលើម៉ោងនេះ">
+                    <i class="fa-solid fa-lock me-1"></i> <span id="lockBtnText">ចាក់សោ</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-fill fw-bold" onclick="blockCurrentSlot()" title="បិទម៉ោងនេះពី Auto-Gen">
+                    <i class="fa-solid fa-ban me-1"></i> បិទម៉ោងនេះ
+                </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger w-100 fw-bold mt-1" onclick="clearCurrentSlot()">
+                <i class="fa-solid fa-trash-can me-1"></i> សម្អាតម៉ោងនេះ
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Session Blocking Manager (បិទ/បើកពេលសិក្សាសម្រាប់ Auto-Gen ដូចជាព្រឹក/រសៀល) -->
+<div class="modal fade" id="sessionBlockModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-ban text-danger me-2"></i>កំណត់បិទពេលសិក្សាពី Auto-Gen (Session Blocking Manager)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small mb-3 border-0">
+                    <i class="fa-solid fa-circle-info me-1 text-primary"></i>
+                    <strong>កំណត់ចំណាំ៖</strong> នៅពេលលោកអ្នកបិទពេលណាមួយ (ឧ. ពេលព្រឹក ឬពេលរសៀល នៃថ្ងៃណាមួយ) ប្រព័ន្ធ Auto-Generation នឹងរំលងមិនដាក់ម៉ោងចូលក្នុងពេលនោះឡើយ។ ប៉ុន្តែលោកអ្នក<strong>នៅតែមានសិទ្ធិជ្រើសរើសមុខវិជ្ជា និងគ្រូដោយដៃធម្មតាបានគ្រប់ពេល</strong>។
+                </div>
+
+                <!-- Scope Selection -->
+                <div class="mb-3 p-2 bg-light rounded border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <span class="fw-bold small text-dark"><i class="fa-solid fa-filter me-1 text-primary"></i>អនុវត្តទៅលើ៖</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <label class="form-check-label small fw-bold">
+                            <input class="form-check-input me-1" type="radio" name="blockScope" id="scopeAllClasses" value="all" checked onchange="updateSessionBlockUI()">
+                            គ្រប់ថ្នាក់ទាំងអស់ទូទាំងសាលា
+                        </label>
+                        <label class="form-check-label small fw-bold">
+                            <input class="form-check-input me-1" type="radio" name="blockScope" id="scopeSelectedClass" value="selected" onchange="updateSessionBlockUI()">
+                            តែថ្នាក់ដែលកំពុងជ្រើសរើស (<span id="scopeSelectedClassName" class="text-primary">គ្រប់ថ្នាក់</span>)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="small fw-bold text-muted d-flex align-items-center">ជម្រើសរហ័ស៖</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSessionBlockPreset('thu_sat_afternoon')">
+                        បិទរសៀលថ្ងៃព្រហស្បតិ៍ & សៅរ៍
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSessionBlockPreset('all_afternoon')">
+                        បិទពេលរសៀលទាំងអស់
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setSessionBlockPreset('clear_all')">
+                        <i class="fa-solid fa-rotate-left me-1"></i> ដោះការបិទទាំងអស់
+                    </button>
+                </div>
+
+                <!-- Session Grid Form: Mon to Sat x Morning/Afternoon -->
+                <div class="table-responsive border rounded-3">
+                    <table class="table table-bordered align-middle text-center mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 140px;" class="text-start ps-3">ថ្ងៃនៃសប្តាហ៍</th>
+                                <th class="bg-warning-subtle text-dark">
+                                    <i class="fa-regular fa-sun text-warning me-1"></i>ពេលព្រឹក (ម៉ោង ១ ដល់ ៤)
+                                </th>
+                                <th class="bg-info-subtle text-dark">
+                                    <i class="fa-solid fa-moon text-info me-1"></i>ពេលរសៀល (ម៉ោង ៥ ដល់ ៨)
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in days %}
+                            <tr>
+                                <td class="text-start ps-3 fw-bold text-dark">{{ d.name_kh }}</td>
+                                <td>
+                                    <div class="form-check form-switch d-inline-block">
+                                        <input class="form-check-input cursor-pointer session-block-chk" type="checkbox" id="chk_block_{{ d.num }}_m" data-day="{{ d.num }}" data-session="morning">
+                                        <label class="form-check-label ms-1 cursor-pointer" for="chk_block_{{ d.num }}_m">បិទពេលព្រឹក</label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-check form-switch d-inline-block">
+                                        <input class="form-check-input cursor-pointer session-block-chk" type="checkbox" id="chk_block_{{ d.num }}_a" data-day="{{ d.num }}" data-session="afternoon">
+                                        <label class="form-check-label ms-1 cursor-pointer" for="chk_block_{{ d.num }}_a">បិទពេលរសៀល</label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="clearAllSessionBlocks()">
+                    <i class="fa-solid fa-trash-can me-1"></i> ដោះការបិទពេលទាំងអស់
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="applySessionBlockSettings()">
+                        <i class="fa-solid fa-check me-1"></i> អនុវត្តការកំណត់
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Hours Report Modal (បែងចែកជា ២ ផ្ទាំង៖ ១. ម៉ោងតាមថ្នាក់ និងមុខវិជ្ជា ២. ម៉ោងបង្រៀនរបស់គ្រូ) -->
+<div class="modal fade" id="hoursReportModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-chart-pie me-2"></i>របាយការណ៍ម៉ោងសិក្សា & ម៉ោងបង្រៀន (Teaching & Classroom Hours Report)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Nav Tabs for 2 Report Types -->
+                <ul class="nav nav-pills mb-4 p-1 bg-light rounded-3 border" id="reportTabs" role="tablist">
+                    <li class="nav-item flex-fill text-center" role="presentation">
+                        <button class="nav-link active fw-bold py-2.5 w-100" id="tab-class-subject-btn" data-bs-toggle="pill" data-bs-target="#tab-class-subject-pane" type="button" role="tab">
+                            <i class="fa-solid fa-table-cells me-2"></i>១. ម៉ោងតាមថ្នាក់ និងតាមមុខវិជ្ជា (Class & Subject Matrix)
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center" role="presentation">
+                        <button class="nav-link fw-bold py-2.5 w-100" id="tab-teacher-hours-btn" data-bs-toggle="pill" data-bs-target="#tab-teacher-hours-pane" type="button" role="tab">
+                            <i class="fa-solid fa-chalkboard-user me-2"></i>២. របាយការណ៍ម៉ោងបង្រៀន (Teaching Hours & Code Directory)
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="reportTabsContent">
+                    <!-- Tab 1: Class & Subject Matrix Report -->
+                    <div class="tab-pane fade show active" id="tab-class-subject-pane" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-list-check text-primary me-2"></i>តារាងម៉ោងតាមថ្នាក់ និងមុខវិជ្ជា ព្រមទាំងសរុបម៉ោង៖
+                            </h6>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                <i class="fa-solid fa-calculator me-1"></i> គណនាស្វ័យប្រវត្តិតាមកាលវិភាគជាក់ស្តែង
+                            </span>
+                        </div>
+
+                        <div class="table-responsive border rounded-3" style="max-height: 520px; overflow-y: auto;">
+                            <table class="table table-bordered table-hover align-middle mb-0 small text-center" id="tableClassSubjectReport">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th style="min-width: 120px; text-align: left; padding-left: 12px;">ថ្នាក់រៀន</th>
+                                        {% for s in subjects %}
+                                        <th title="{{ s.name_kh }}">
+                                            <div>{{ s.code }}</div>
+                                            <div class="fw-normal" style="font-size: 0.68rem; opacity: 0.85;">{{ s.name_kh|slice:":5" }}</div>
+                                        </th>
+                                        {% endfor %}
+                                        <th style="min-width: 100px;" class="bg-primary text-white">សរុប/ថ្នាក់</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyClassSubjectReport">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                                <tfoot class="table-secondary fw-bold sticky-bottom" id="tfootClassSubjectReport">
+                                    <!-- Populated dynamically via JS -->
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Teacher Teaching Hours & Directory with Table Sorting -->
+                    <div class="tab-pane fade" id="tab-teacher-hours-pane" role="tabpanel">
+                        <!-- Table 1: Teaching Hours per Teacher -->
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-chalkboard-user text-primary me-2"></i>ម៉ោងបង្រៀនសរុបតាមគ្រូនីមួយៗ (ចុចលើក្បាលតារាងដើម្បី Sort)៖
+                            </h6>
+                            <span class="text-muted small"><i class="fa-solid fa-arrow-down-a-z me-1"></i> ចុចក្បាលតារាងដើម្បីតម្រៀប</span>
+                        </div>
+
+                        <div class="table-responsive mb-4 border rounded-3">
+                            <table class="table table-bordered table-hover align-middle mb-0 small" id="tableTeacherHoursReport">
+                                <thead class="table-light">
+                                    <tr class="user-select-none">
+                                        <th class="cursor-pointer" onclick="sortTable('tableTeacherHoursReport', 0, 'str')">
+                                            <span>ឈ្មោះគ្រូបង្រៀន</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                        </th>
+                                        <th class="cursor-pointer" onclick="sortTable('tableTeacherHoursReport', 1, 'str')">
+                                            <span>ឯកទេស</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                        </th>
+                                        <th class="text-center cursor-pointer" onclick="sortTable('tableTeacherHoursReport', 2, 'str')">
+                                            <span>កូដមុខវិជ្ជាបង្រៀន</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                        </th>
+                                        <th class="text-center cursor-pointer" onclick="sortTable('tableTeacherHoursReport', 3, 'num')">
+                                            <span>ម៉ោងក្នុងកាលវិភាគ</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                        </th>
+                                        <th class="text-center cursor-pointer" onclick="sortTable('tableTeacherHoursReport', 4, 'str')">
+                                            <span>ស្ថានភាព</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tr in teacher_hours_report %}
+                                    <tr>
+                                        <td class="fw-bold">{{ tr.teacher.khmer_name }} ({{ tr.teacher.latin_name }})</td>
+                                        <td>{{ tr.teacher.specialization }}</td>
+                                        <td class="text-center"><span class="badge bg-secondary-subtle text-dark border">{{ tr.codes }}</span></td>
+                                        <td class="text-center fw-bold text-primary">{{ tr.scheduled_hours }} ម៉ោង/សប្តាហ៍</td>
+                                        <td class="text-center">
+                                            {% if tr.scheduled_hours >= 18 %}
+                                            <span class="badge bg-success">ពេញបន្ទុក</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">មធ្យម</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Table 2: Teacher Subject Code Directory -->
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-list-ol text-primary me-2"></i>តារាងលេខកូដសម្គាល់គ្រូតាមមុខវិជ្ជា (ចុចលើក្បាលតារាងដើម្បី Sort)៖
+                                </h6>
+                                <span class="text-muted small"><i class="fa-solid fa-arrow-down-a-z me-1"></i> ចុចក្បាលតារាងដើម្បីតម្រៀប</span>
+                            </div>
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-sm table-bordered table-hover align-middle mb-0 small" id="tableTeacherCodesDirectory">
+                                    <thead class="table-light">
+                                        <tr class="user-select-none">
+                                            <th style="width: 100px;" class="text-center cursor-pointer" onclick="sortTable('tableTeacherCodesDirectory', 0, 'code')">
+                                                <span>លេខកូដ</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                            </th>
+                                            <th class="cursor-pointer" onclick="sortTable('tableTeacherCodesDirectory', 1, 'str')">
+                                                <span>មុខវិជ្ជា</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                            </th>
+                                            <th class="cursor-pointer" onclick="sortTable('tableTeacherCodesDirectory', 2, 'str')">
+                                                <span>គ្រូបង្រៀន</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                            </th>
+                                            <th class="cursor-pointer" onclick="sortTable('tableTeacherCodesDirectory', 3, 'str')">
+                                                <span>ឯកទេស</span> <i class="fa-solid fa-sort text-muted ms-1"></i>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for tc in teacher_code_directory %}
+                                        <tr>
+                                            <td class="text-center fw-bold"><span class="badge bg-dark-subtle text-dark border px-2 py-1">{{ tc.code }}</span></td>
+                                            <td class="fw-bold">{{ tc.subject.name_kh }} ({{ tc.subject.code }})</td>
+                                            <td>{{ tc.teacher.khmer_name }} ({{ tc.teacher.latin_name }})</td>
+                                            <td class="text-muted">{{ tc.teacher.specialization }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted p-3">មិនទាន់មានទិន្នន័យចាត់តាំងគ្រូនៅឡើយទេ</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Embedded JSON Data & Master Engine -->
+<script>
+    const CLASS_OPTIONS = {{ class_options_json|safe }};
+    const CLASS_REQUIREMENTS = {{ class_requirements_json|safe }};
+    const TEACHER_REQUIREMENTS = {{ teacher_requirements_json|safe }};
+    const TEACHER_MAX_HOURS = {{ teacher_max_hours_json|safe }};
+    const TEACHER_ASSIGNED_HOURS = {{ teacher_assigned_hours_json|safe }};
+    const SUBJECTS_LIST = {{ subjects_json|safe }};
+    const CLASSROOMS_LIST = {{ classrooms_json|safe }};
+    let MATRIX_STATE = {{ matrix_state_json|safe }};
+    const LOCAL_STORAGE_KEY = 'schoolsm_timetable_draft_v2';
+    const COLOR_STORAGE_KEY = 'schoolsm_timetable_custom_palette';
+    const BLOCKED_STORAGE_KEY = 'schoolsm_timetable_blocked_' + ({{ active_academic_year.id|default:0 }});
+
+    const DEFAULT_PALETTE = {
+        exact: '#3b82f6',
+        under: '#10b981',
+        over: '#eab308',
+        overload: '#7c3aed',
+        conflict: '#ef4444'
+    };
+    
+    // Undo & Redo History Stacks
+    const historyStack = [];
+    const redoStack = [];
+
+    let currentPickingCell = null;
+    let autoSaveTimer = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Restore Custom Colors
+        applyCustomPalette(loadCustomPalette());
+
+        // 2. Restore and merge any saved blocked slots for this academic year
+        try {
+            const savedBlocked = localStorage.getItem(BLOCKED_STORAGE_KEY);
+            if (savedBlocked) {
+                const parsedBlocked = JSON.parse(savedBlocked);
+                if (Array.isArray(parsedBlocked)) {
+                    parsedBlocked.forEach(blk => {
+                        const key = `${blk.classroom_id}_${blk.day_of_week}_${blk.period_number}`;
+                        if (!MATRIX_STATE[key] || !MATRIX_STATE[key].subject_id) {
+                            MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Error loading blocked slots from localStorage', e);
+        }
+
+        // 3. Always sync authoritative state to local storage mirror
+        saveToLocalStorage();
+
+        // 4. Render Matrix directly from database & restored blocked state
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+
+
+        // 4. Hook Report Modal Show Event
+        const modalEl = document.getElementById('hoursReportModal');
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', () => {
+                renderClassSubjectReportModal();
+            });
+        }
+
+        // Hook Session Block Modal Show Event
+        const blockModalEl = document.getElementById('sessionBlockModal');
+        if (blockModalEl) {
+            blockModalEl.addEventListener('show.bs.modal', () => {
+                updateSessionBlockUI();
+            });
+        }
+
+        // 5. Keyboard shortcuts: Ctrl+Z, Ctrl+Y
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undoAction();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                redoAction();
+            }
+        });
+
+        // 6. Close picker on outside click
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('slotPickerPopover');
+            if (picker && !picker.contains(e.target) && !e.target.closest('[data-class-id]')) {
+                closeSlotPicker();
+            }
+        });
+
+        // 7. Handle native fullscreen change
+        document.addEventListener('fullscreenchange', handleNativeFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleNativeFullscreenChange);
+    });
+
+    // Custom Color Palette Functions
+    function hexToRgba(hex, alpha) {
+        let r = 0, g = 0, b = 0;
+        if (!hex) return `rgba(0,0,0,${alpha})`;
+        if (hex.length === 4) {
+            r = parseInt(hex[1] + hex[1], 16);
+            g = parseInt(hex[2] + hex[2], 16);
+            b = parseInt(hex[3] + hex[3], 16);
+        } else if (hex.length === 7) {
+            r = parseInt(hex.slice(1, 3), 16);
+            g = parseInt(hex.slice(3, 5), 16);
+            b = parseInt(hex.slice(5, 7), 16);
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function applyCustomPalette(palette) {
+        const root = document.getElementById('masterTimetableContainer') || document.documentElement;
+        
+        // Exact
+        root.style.setProperty('--color-exact-bg', hexToRgba(palette.exact, 0.12));
+        root.style.setProperty('--color-exact-border', hexToRgba(palette.exact, 0.5));
+        root.style.setProperty('--color-exact-text', palette.exact);
+
+        // Under
+        root.style.setProperty('--color-under-bg', hexToRgba(palette.under, 0.12));
+        root.style.setProperty('--color-under-border', hexToRgba(palette.under, 0.5));
+        root.style.setProperty('--color-under-text', palette.under);
+
+        // Over
+        root.style.setProperty('--color-over-bg', hexToRgba(palette.over, 0.15));
+        root.style.setProperty('--color-over-border', hexToRgba(palette.over, 0.6));
+        root.style.setProperty('--color-over-text', palette.over);
+
+        // Overload (Dark Violet / Purple)
+        root.style.setProperty('--color-overload-bg', hexToRgba(palette.overload || '#7c3aed', 0.14));
+        root.style.setProperty('--color-overload-border', hexToRgba(palette.overload || '#7c3aed', 0.6));
+        root.style.setProperty('--color-overload-text', palette.overload || '#6b21a8');
+
+        // Conflict
+        root.style.setProperty('--color-conflict-bg', hexToRgba(palette.conflict, 0.12));
+        root.style.setProperty('--color-conflict-border', hexToRgba(palette.conflict, 0.8));
+        root.style.setProperty('--color-conflict-text', palette.conflict);
+
+        // Update color picker inputs
+        if (document.getElementById('pickerColorExact')) document.getElementById('pickerColorExact').value = palette.exact;
+        if (document.getElementById('pickerColorUnder')) document.getElementById('pickerColorUnder').value = palette.under;
+        if (document.getElementById('pickerColorOver')) document.getElementById('pickerColorOver').value = palette.over;
+        if (document.getElementById('pickerColorOverload')) document.getElementById('pickerColorOverload').value = palette.overload || '#7c3aed';
+        if (document.getElementById('pickerColorConflict')) document.getElementById('pickerColorConflict').value = palette.conflict;
+    }
+
+    function updateCustomColor(type, hex) {
+        const palette = loadCustomPalette();
+        palette[type] = hex;
+        try {
+            localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(palette));
+        } catch (e) {}
+        applyCustomPalette(palette);
+    }
+
+    function loadCustomPalette() {
+        try {
+            const saved = localStorage.getItem(COLOR_STORAGE_KEY);
+            if (saved) return { ...DEFAULT_PALETTE, ...JSON.parse(saved) };
+        } catch (e) {}
+        return { ...DEFAULT_PALETTE };
+    }
+
+    function resetColorPalette() {
+        try {
+            localStorage.removeItem(COLOR_STORAGE_KEY);
+        } catch (e) {}
+        applyCustomPalette(DEFAULT_PALETTE);
+    }
+
+    function restoreLocalStorageDraftIfExists() {
+        // Sync database state to local storage mirror
+        try {
+            saveToLocalStorage();
+        } catch (e) {
+            console.error('LocalStorage sync error', e);
+        }
+    }
+
+    function saveToLocalStorage() {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(MATRIX_STATE));
+        } catch (e) {
+            console.error('LocalStorage save error', e);
+        }
+    }
+
+    function triggerAutoSave() {
+        saveToLocalStorage();
+        showAutoSaveBadge('⏳ កំពុងរក្សាទុកស្វ័យប្រវត្តិ...', 'warning');
+
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+            saveMasterMatrix(false); // Silent background auto-save to server
+        }, 2000);
+    }
+
+    function showAutoSaveBadge(text, type = 'success') {
+        const badge = document.getElementById('autoSaveStatusBadge');
+        if (!badge) return;
+        if (type === 'warning') {
+            badge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1';
+            badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> ${text}`;
+        } else if (type === 'danger') {
+            badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1';
+            badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> ${text}`;
+        } else {
+            badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-2 py-1';
+            badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up me-1"></i> ${text}`;
+        }
+    }
+
+    function pushHistoryState() {
+        historyStack.push(JSON.stringify(MATRIX_STATE));
+        redoStack.length = 0; // Clear redo
+        updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+        document.getElementById('btnUndo').disabled = (historyStack.length === 0);
+        document.getElementById('btnRedo').disabled = (redoStack.length === 0);
+    }
+
+    function undoAction() {
+        if (historyStack.length === 0) return;
+        redoStack.push(JSON.stringify(MATRIX_STATE));
+        MATRIX_STATE = JSON.parse(historyStack.pop());
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        updateUndoRedoButtons();
+        triggerAutoSave();
+    }
+
+    function redoAction() {
+        if (redoStack.length === 0) return;
+        historyStack.push(JSON.stringify(MATRIX_STATE));
+        MATRIX_STATE = JSON.parse(redoStack.pop());
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        updateUndoRedoButtons();
+        triggerAutoSave();
+    }
+
+    function renderAllMatrixCells() {
+        // 1. Calculate scheduled hours per class per subject AND teacher total scheduled hours across school
+        const classSubjectCounts = {};
+        const teacherScheduledCounts = {};
+
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.subject_id) {
+                const parts = key.split('_');
+                const classId = parseInt(parts[0]);
+                const subId = parseInt(slot.subject_id);
+                const tchId = slot.teacher_id ? parseInt(slot.teacher_id) : null;
+
+                if (!classSubjectCounts[classId]) classSubjectCounts[classId] = {};
+                classSubjectCounts[classId][subId] = (classSubjectCounts[classId][subId] || 0) + 1;
+
+                if (tchId) {
+                    teacherScheduledCounts[tchId] = (teacherScheduledCounts[tchId] || 0) + 1;
+                }
+            }
+        }
+
+        // 2. Find teacher clashes across all classes for same (day, period)
+        const occupancy = {};
+        const clashKeys = new Set();
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.teacher_id && !slot.is_blocked) {
+                const parts = key.split('_');
+                const day = parts[1];
+                const period = parts[2];
+                const occKey = `${slot.teacher_id}_${day}_${period}`;
+                if (!occupancy[occKey]) occupancy[occKey] = [];
+                occupancy[occKey].push(key);
+            }
+        }
+        for (const [occKey, list] of Object.entries(occupancy)) {
+            if (list.length > 1) {
+                list.forEach(k => clashKeys.add(k));
+            }
+        }
+
+        // 3. Render each cell with the exact 4 color rules & dual-level over-hours evaluation:
+        const cells = document.querySelectorAll('[data-class-id]');
+        cells.forEach(td => {
+            const classId = parseInt(td.getAttribute('data-class-id'));
+            const day = td.getAttribute('data-day');
+            const period = td.getAttribute('data-period');
+            const key = `${classId}_${day}_${period}`;
+            const slot = MATRIX_STATE[key];
+
+            if (slot && slot.is_blocked) {
+                // Blocked from auto-gen
+                td.innerHTML = `
+                    <div class="slot-pill slot-blocked" title="ម៉ោងនេះត្រូវបានបិទមិនឱ្យរៀបចំដោយ Auto-Gen (លោកអ្នកអាចជ្រើសមុខវិជ្ជាដោយដៃបាន)">
+                        <span><i class="fa-solid fa-ban text-secondary me-1"></i>បិទ</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem;"></i>
+                    </div>
+                `;
+            } else if (slot && slot.subject_id) {
+                const subId = parseInt(slot.subject_id);
+                const tchId = slot.teacher_id ? parseInt(slot.teacher_id) : null;
+                const displayCode = slot.slot_code || slot.subject_code || '';
+                const scheduledCount = (classSubjectCounts[classId] && classSubjectCounts[classId][subId]) || 0;
+                
+                // Class subject quota
+                const classReqs = CLASS_REQUIREMENTS[classId] || {};
+                const reqHours = classReqs[subId] !== undefined ? classReqs[subId] : 0;
+
+                // Teacher assigned total across school vs configured max quota
+                const teacherAssigned = (tchId && TEACHER_ASSIGNED_HOURS[tchId] !== undefined) ? TEACHER_ASSIGNED_HOURS[tchId] : 0;
+                const teacherMax = (tchId && TEACHER_MAX_HOURS[tchId] !== undefined) ? TEACHER_MAX_HOURS[tchId] : 18;
+                const teacherScheduled = (tchId && teacherScheduledCounts[tchId]) ? teacherScheduledCounts[tchId] : 0;
+
+                const isClassOver = reqHours > 0 ? (scheduledCount > reqHours) : (scheduledCount > 0);
+                const isTeacherOverAssigned = teacherAssigned > 0 ? (teacherScheduled > teacherAssigned) : (teacherScheduled > 0 && teacherAssigned === 0);
+                const isTeacherOverloadExact = (teacherAssigned > teacherMax) && (teacherScheduled === teacherAssigned) && (scheduledCount === reqHours);
+                const isClassUnder = reqHours > 0 && scheduledCount < reqHours;
+                const isTeacherUnder = teacherAssigned > 0 && teacherScheduled < teacherAssigned;
+
+                let statusClass = 'status-exact'; // Default Blue (ត្រឹមត្រូវ)
+                let statusTitle = `ត្រឹមត្រូវ (${scheduledCount}/${reqHours} ម៉ោង)`;
+
+                if (clashKeys.has(key)) {
+                    statusClass = 'status-conflict'; // Red (ជាន់ម៉ោងគ្នា)
+                    statusTitle = `⚠️ ជាន់ម៉ោងគ្រូ៖ គ្រូ ${slot.teacher_name} កំពុងបង្រៀនលើសពី ១ ថ្នាក់ក្នុងពេលតែមួយ!`;
+                } else if (isTeacherOverAssigned || isClassOver) {
+                    statusClass = 'status-over'; // Light Yellow (លើសម៉ោងកំណត់)
+                    if (isTeacherOverAssigned) {
+                        statusTitle = `លើសម៉ោងចាត់តាំង៖ គ្រូ ${slot.teacher_name} បានបង្រៀន ${teacherScheduled} ម៉ោង (លើសពីម៉ោងចាត់តាំង ${teacherAssigned} ម៉ោង)!`;
+                    } else {
+                        statusTitle = `លើសម៉ោងកំណត់ក្នុងថ្នាក់៖ មុខវិជ្ជា ${slot.subject_name} បានរៀបចំ ${scheduledCount} ម៉ោង (លើសពីម៉ោងកំណត់ ${reqHours} ម៉ោង ក្នុងថ្នាក់នេះ)!`;
+                    }
+                } else if (isTeacherOverloadExact) {
+                    statusClass = 'status-overload'; // Dark Violet / Purple (គ្រប់ម៉ោងចាត់តាំង 18 ម៉ោង ដែលលើសកូតា 16 ម៉ោង)
+                    statusTitle = `គ្រប់ម៉ោងចាត់តាំងបន្ថែម៖ គ្រូ ${slot.teacher_name} បានបង្រៀនគ្រប់ ${teacherScheduled} ម៉ោង (លើសពីម៉ោងកំណត់គោល ${teacherMax} ម៉ោង)!`;
+                } else if (isClassUnder || isTeacherUnder) {
+                    statusClass = 'status-under'; // Green (មិនទាន់គ្រប់ / ខ្វះម៉ោង)
+                    statusTitle = `ខ្វះម៉ោង៖ បានរៀបចំ ${scheduledCount}/${reqHours} ម៉ោងក្នុងថ្នាក់ (គ្រូបង្រៀនសរុប ${teacherScheduled}/${teacherAssigned} ម៉ោង)`;
+                } else {
+                    statusClass = 'status-exact'; // Blue (ត្រឹមត្រូវ)
+                    statusTitle = `ត្រឹមត្រូវ៖ បានរៀបចំ ${scheduledCount}/${reqHours} ម៉ោង`;
+                }
+
+                const lockIcon = slot.is_locked ? `<i class="fa-solid fa-lock me-1" style="font-size: 0.68rem; opacity: 0.8;" title="បានចាក់សោ"></i>` : '';
+
+                td.innerHTML = `
+                    <div class="slot-pill ${statusClass}" title="${slot.subject_name} (${displayCode}) - គ្រូ ${slot.teacher_name} [${statusTitle}]">
+                        <span>${lockIcon}${displayCode}</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem;"></i>
+                    </div>
+                `;
+            } else {
+                td.innerHTML = `
+                    <button type="button" class="empty-slot-btn">
+                        <i class="fa-solid fa-chevron-down opacity-50"></i>
+                    </button>
+                `;
+            }
+        });
+
+        // 4. Update clash banner
+        const banner = document.getElementById('conflictAlertBanner');
+        if (clashKeys.size > 0) {
+            banner.classList.remove('d-none');
+            banner.classList.add('d-flex');
+            document.getElementById('conflictCountText').innerText = `រកឃើញការជាន់ម៉ោងគ្នារបស់គ្រូបង្រៀនចំនួន ${clashKeys.size} ម៉ោង!`;
+        } else {
+            banner.classList.add('d-none');
+            banner.classList.remove('d-flex');
+        }
+
+        // 5. Update session block badges on table header
+        updateHeaderSessionBlockBadges();
+    }
+
+    let currentSelectedClassId = null;
+
+    function selectClassRow(classId) {
+        document.querySelectorAll('.table-matrix tbody tr').forEach(tr => tr.classList.remove('row-selected'));
+        const targetRow = document.getElementById(`row_cls_${classId}`);
+        if (targetRow) {
+            targetRow.classList.add('row-selected');
+            currentSelectedClassId = parseInt(classId);
+            const foundCls = Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.find(c => c.id === currentSelectedClassId) : null;
+            const scopeNameEl = document.getElementById('scopeSelectedClassName');
+            if (scopeNameEl && foundCls) {
+                scopeNameEl.innerText = foundCls.name;
+            }
+        }
+    }
+
+    function openSlotPicker(event, classId, day, period) {
+        event.stopPropagation();
+        selectClassRow(classId);
+
+        currentPickingCell = { classId, day, period };
+        const picker = document.getElementById('slotPickerPopover');
+        const container = document.getElementById('pickerOptionsContainer');
+        container.innerHTML = '';
+
+        const key = `${classId}_${day}_${period}`;
+        const currentSlot = MATRIX_STATE[key];
+
+        // Update Lock button caption
+        const lockBtnText = document.getElementById('lockBtnText');
+        if (lockBtnText) {
+            lockBtnText.innerText = (currentSlot && currentSlot.is_locked) ? 'ដោះសោ' : 'ចាក់សោ';
+        }
+
+        const options = CLASS_OPTIONS[classId] || [];
+
+        if (options.length === 0) {
+            container.innerHTML = `
+                <div class="text-muted small p-3 text-center">
+                    មិនទាន់មានមុខវិជ្ជា និងគ្រូត្រូវបានចាត់តាំងក្នុងថ្នាក់នេះនៅឡើយទេ។<br>
+                    <a href="/academics/teacher-assignments/?teacher=" class="btn btn-sm btn-link mt-2 fw-bold">
+                        <i class="fa-solid fa-chalkboard-user me-1"></i> ទៅកាន់ចាត់តាំងគ្រូ
+                    </a>
+                </div>
+            `;
+        } else {
+            options.forEach(opt => {
+                const item = document.createElement('div');
+                item.className = 'picker-item';
+                const catBadge = opt.category === 'SCIENCE' ? '<span class="badge bg-primary-subtle text-primary">វិទ្យាសាស្ត្រ</span>' : (opt.category === 'SOCIAL' ? '<span class="badge bg-warning-subtle text-warning-emphasis">សង្គម</span>' : '');
+                const optCode = opt.slot_code || opt.subject_code;
+
+                item.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-dark-subtle text-dark border px-2 py-1 fw-bold" style="font-size: 0.8rem; min-width: 34px; text-align: center;">${optCode}</span>
+                        <div>
+                            <div class="fw-bold text-dark">${opt.subject_name}</div>
+                            <div class="text-muted" style="font-size: 0.74rem;"><i class="fa-solid fa-user-tie me-1 text-secondary"></i>${opt.teacher_name}</div>
+                        </div>
+                    </div>
+                    ${catBadge}
+                `;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    selectSlotOption(opt);
+                };
+                container.appendChild(item);
+            });
+        }
+
+        // Compute positioning relative to viewport
+        const rect = event.currentTarget.getBoundingClientRect();
+        const pickerWidth = 280;
+        const pickerHeight = 340;
+
+        let top = rect.bottom + 4;
+        let left = rect.left;
+
+        if (top + pickerHeight > window.innerHeight) {
+            top = Math.max(10, rect.top - pickerHeight - 4);
+        }
+        if (left + pickerWidth > window.innerWidth) {
+            left = Math.max(10, window.innerWidth - pickerWidth - 20);
+        }
+
+        picker.style.top = `${top}px`;
+        picker.style.left = `${left}px`;
+        picker.style.display = 'block';
+    }
+
+    function closeSlotPicker() {
+        const picker = document.getElementById('slotPickerPopover');
+        if (picker) picker.style.display = 'none';
+        currentPickingCell = null;
+    }
+
+    // Close Popup on Esc key or Outside Click
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27) {
+            closeSlotPicker();
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        const picker = document.getElementById('slotPickerPopover');
+        if (picker && picker.style.display === 'block') {
+            const isInsidePicker = picker.contains(event.target);
+            const isClickOnCell = event.target.closest('td[id^="cell_"]');
+            if (!isInsidePicker && !isClickOnCell) {
+                closeSlotPicker();
+            }
+        }
+    });
+
+    function selectSlotOption(opt) {
+        if (!currentPickingCell) return;
+        pushHistoryState();
+
+        const { classId, day, period } = currentPickingCell;
+        const key = `${classId}_${day}_${period}`;
+
+        MATRIX_STATE[key] = {
+            subject_id: opt.subject_id,
+            subject_code: opt.subject_code,
+            slot_code: opt.slot_code || opt.subject_code,
+            subject_name: opt.subject_name,
+            subject_color: opt.subject_color,
+            category: opt.category,
+            teacher_id: opt.teacher_id,
+            teacher_name: opt.teacher_name,
+            teacher_short: opt.teacher_short,
+            is_locked: false,
+            is_blocked: false,
+        };
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        closeSlotPicker();
+        triggerAutoSave();
+    }
+
+    function toggleLockCurrentSlot() {
+        if (!currentPickingCell) return;
+        pushHistoryState();
+
+        const { classId, day, period } = currentPickingCell;
+        const key = `${classId}_${day}_${period}`;
+        
+        if (MATRIX_STATE[key]) {
+            MATRIX_STATE[key].is_locked = !MATRIX_STATE[key].is_locked;
+        } else {
+            // Lock empty slot
+            MATRIX_STATE[key] = { is_locked: true, is_blocked: true };
+        }
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        closeSlotPicker();
+        triggerAutoSave();
+    }
+
+    function blockCurrentSlot() {
+        if (!currentPickingCell) return;
+        pushHistoryState();
+
+        const { classId, day, period } = currentPickingCell;
+        const key = `${classId}_${day}_${period}`;
+        
+        MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        closeSlotPicker();
+        triggerAutoSave();
+    }
+
+    function clearCurrentSlot() {
+        if (!currentPickingCell) return;
+        pushHistoryState();
+
+        const { classId, day, period } = currentPickingCell;
+        const key = `${classId}_${day}_${period}`;
+        delete MATRIX_STATE[key];
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        closeSlotPicker();
+        triggerAutoSave();
+    }
+
+    function updateAllHoursCounters() {
+        const classCount = {};
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.subject_id && !slot.is_blocked) {
+                const classId = key.split('_')[0];
+                classCount[classId] = (classCount[classId] || 0) + 1;
+            }
+        }
+
+        document.querySelectorAll('[id^="badge_hours_"]').forEach(badge => {
+            const classId = badge.id.replace('badge_hours_', '');
+            const count = classCount[classId] || 0;
+            const textParts = badge.innerText.split('/');
+            const required = textParts[1] ? textParts[1].trim() : '30';
+            const reqNum = parseInt(required) || 30;
+
+            badge.innerText = `${count}/${required}`;
+            badge.className = 'class-hours-badge ' + (count === reqNum ? 'hours-ok' : (count < reqNum ? 'hours-under' : 'hours-over'));
+        });
+    }
+
+    async function saveMasterMatrix(showPrompt = true) {
+        const saveBtn = document.getElementById('btnSaveMatrix');
+        if (showPrompt && saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+        }
+
+        const matrixArray = [];
+        const blockedArray = [];
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            const parts = key.split('_');
+            if (slot && slot.is_blocked) {
+                blockedArray.push({
+                    classroom_id: parseInt(parts[0]),
+                    day_of_week: parseInt(parts[1]),
+                    period_number: parseInt(parts[2]),
+                    is_blocked: true,
+                });
+            } else if (slot && slot.subject_id && slot.teacher_id) {
+                matrixArray.push({
+                    classroom_id: parseInt(parts[0]),
+                    day_of_week: parseInt(parts[1]),
+                    period_number: parseInt(parts[2]),
+                    subject_id: slot.subject_id,
+                    teacher_id: slot.teacher_id,
+                });
+            }
+        }
+
+        // Sync blocked slots in localStorage
+        try {
+            localStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(blockedArray));
+        } catch (e) {}
+
+        try {
+            const res = await fetch('/academics/timetable/save-matrix/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ 
+                    matrix: matrixArray,
+                    blocked_slots: blockedArray
+                }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                saveToLocalStorage();
+                showAutoSaveBadge('✅ រក្សាទុកស្វ័យប្រវត្តិរួចរាល់ (Saved)');
+                if (showPrompt) alert('✅ ' + data.message);
+            } else {
+                showAutoSaveBadge('⚠️ បរាជ័យក្នុងការ Save', 'danger');
+                if (showPrompt) alert('⚠️ បរាជ័យ៖ ' + data.message);
+            }
+        } catch (err) {
+            showAutoSaveBadge('⚠️ បាត់បង់ការតភ្ជាប់ (Draft ត្រូវបាន Save ក្នុងម៉ាស៊ីន)', 'warning');
+            if (showPrompt) alert('⚠️ មានបញ្ហាក្នុងការតភ្ជាប់បណ្តាញ! ទិន្នន័យត្រូវបានរក្សាទុកក្នុងម៉ាស៊ីនរបស់អ្នករួចរាល់។');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> រក្សាទុកការកែប្រែ`;
+            }
+        }
+    }
+
+    async function runAutoGeneration() {
+        if (!confirm('⚡ តើលោកអ្នកចង់ឱ្យប្រព័ន្ធរៀបចំកាលវិភាគស្វ័យប្រវត្តិតាមការកំណត់ម៉ោង និងគ្រូបង្រៀនមែនទេ? (ម៉ោងដែលបានបិទ/ចាក់សោ នឹងត្រូវបានរក្សាទុកដដែល ដោយមិនបាត់បង់ឡើយ)')) return;
+        
+        const saveBtn = document.getElementById('btnSaveMatrix');
+        if (saveBtn) saveBtn.disabled = true;
+
+        // Gather locked and blocked slots
+        const lockedList = [];
+        const blockedOnly = [];
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && (slot.is_locked || slot.is_blocked)) {
+                const parts = key.split('_');
+                const slotObj = {
+                    classroom_id: parseInt(parts[0]),
+                    day_of_week: parseInt(parts[1]),
+                    period_number: parseInt(parts[2]),
+                    subject_id: slot.subject_id || null,
+                    teacher_id: slot.teacher_id || null,
+                    is_blocked: !!slot.is_blocked,
+                    is_locked: !!slot.is_locked
+                };
+                lockedList.push(slotObj);
+                if (slot.is_blocked) {
+                    blockedOnly.push(slotObj);
+                }
+            }
+        }
+
+        // CRITICAL: Preserve blocked slots in localStorage across page reloads
+        try {
+            localStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(blockedOnly));
+        } catch (e) {}
+
+        try {
+            const res = await fetch('/academics/timetable/auto-generate/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ 
+                    clear_existing: true,
+                    locked_slots: lockedList
+                }),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('✅ ' + data.message);
+                window.location.reload();
+            } else {
+                alert('⚠️ បរាជ័យ៖ ' + (data.message || 'Auto-generation error'));
+            }
+        } catch (err) {
+            window.location.reload();
+        }
+    }
+
+    function clearAllTimetable() {
+        if (!confirm('⚠️ តើលោកអ្នកប្រាកដជាចង់លុបទិន្នន័យកាលវិភាគទាំងអស់ចេញពីប្រព័ន្ធមែនទេ? (រួមទាំងការបិទពេលសិក្សាទាំងអស់)')) return;
+        pushHistoryState();
+        MATRIX_STATE = {};
+        try {
+            localStorage.removeItem(BLOCKED_STORAGE_KEY);
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        } catch (e) {}
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        saveMasterMatrix(false);
+    }
+
+
+    // Backup & Export Timetable to JSON File
+    function exportTimetableBackup() {
+        try {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}_${hour}${minute}`;
+            
+            const totalSlots = Object.values(MATRIX_STATE).filter(s => s && s.subject_id).length;
+
+            const backupData = {
+                app: 'SchoolSM',
+                type: 'timetable_backup',
+                version: '2.0',
+                export_date: now.toISOString(),
+                export_formatted: `${day}/${month}/${year} ${hour}:${minute}`,
+                total_slots: totalSlots,
+                custom_palette: (typeof loadCustomPalette === 'function') ? loadCustomPalette() : null,
+                matrix_state: MATRIX_STATE,
+            };
+
+            const jsonStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SchoolSM_Timetable_Backup_${formattedDate}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showAutoSaveBadge('✅ បាននាំចេញ File Backup កាលវិភាគជោគជ័យ');
+            
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'នាំចេញ Backup ជោគជ័យ!',
+                    text: `ឯកសារ Backup "${a.download}" ត្រូវបានទាញយករួចរាល់ (${totalSlots} ម៉ោងសិក្សា)។ លោកអ្នកអាចរក្សាទុកឯកសារនេះនៅកន្លែងណាមួយសម្រាប់ Restore ពេលក្រោយ។`,
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'យល់ព្រម'
+                });
+            } else {
+                alert(`✅ បាននាំចេញ File Backup "${a.download}" (${totalSlots} ម៉ោងសិក្សា) ដោយជោគជ័យ!`);
+            }
+        } catch (err) {
+            console.error('Export Backup Error:', err);
+            alert('⚠️ មានបញ្ហាក្នុងការនាំចេញ Backup៖ ' + err.message);
+        }
+    }
+
+    // Import & Restore Timetable from JSON Backup File
+    function importTimetableBackup(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                const parsed = JSON.parse(content);
+
+                let newMatrixState = null;
+                let customPalette = null;
+
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.matrix_state && typeof parsed.matrix_state === 'object') {
+                        newMatrixState = parsed.matrix_state;
+                        customPalette = parsed.custom_palette;
+                    } else if (!parsed.app && !parsed.version) {
+                        // Support direct matrix_state JSON
+                        newMatrixState = parsed;
+                    }
+                }
+
+                if (!newMatrixState || typeof newMatrixState !== 'object') {
+                    throw new Error('ទម្រង់ទិន្នន័យក្នុងឯកសារមិនត្រឹមត្រូវ (Invalid backup format)');
+                }
+
+                // 1. Analyze discrepancies between imported backup and current Academic Year teacher assignments
+                let discrepancies = [];
+                let unassignedSubjects = [];
+                let remappedMatrixState = JSON.parse(JSON.stringify(newMatrixState));
+                let remappedCount = 0;
+
+                for (const [key, slot] of Object.entries(remappedMatrixState)) {
+                    if (slot && slot.subject_id) {
+                        const parts = key.split('_');
+                        const classId = parseInt(parts[0]);
+                        const subId = parseInt(slot.subject_id);
+                        const oldTeacherId = slot.teacher_id;
+
+                        const classOpts = (typeof CLASS_OPTIONS !== 'undefined' && CLASS_OPTIONS[classId]) ? CLASS_OPTIONS[classId] : [];
+                        const activeOpt = classOpts.find(opt => opt.subject_id === subId);
+
+                        if (activeOpt) {
+                            if (activeOpt.teacher_id !== oldTeacherId) {
+                                discrepancies.push({
+                                    classId,
+                                    subjectName: activeOpt.subject_name,
+                                    oldTeacherId,
+                                    newTeacherId: activeOpt.teacher_id,
+                                    newTeacherName: activeOpt.teacher_name,
+                                    newSlotCode: activeOpt.slot_code
+                                });
+                                // Auto-align to newly assigned teacher
+                                slot.teacher_id = activeOpt.teacher_id;
+                                slot.teacher_name = activeOpt.teacher_name;
+                                slot.slot_code = activeOpt.slot_code;
+                                remappedCount++;
+                            }
+                        } else {
+                            unassignedSubjects.push({
+                                classId,
+                                subjectName: slot.subject_name || `មុខវិជ្ជា #${subId}`
+                            });
+                        }
+                    }
+                }
+
+                const executeImport = (targetState, isAutoRemapped = false) => {
+                    pushHistoryState();
+                    MATRIX_STATE = targetState;
+
+                    if (customPalette && typeof applyCustomPalette === 'function') {
+                        applyCustomPalette(customPalette);
+                        try {
+                            localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(customPalette));
+                        } catch (err) {}
+                    }
+
+                    renderAllMatrixCells();
+                    updateAllHoursCounters();
+                    triggerAutoSave();
+
+                    let detailMsg = `បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន ${slotCount} ម៉ោង និងបានរក្សាទុកក្នុង Database រួចរាល់!`;
+                    if (isAutoRemapped && remappedCount > 0) {
+                        detailMsg += `\n✨ ប្រព័ន្ធបានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន ${remappedCount} ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីក្នុងឆ្នាំសិក្សានេះដោយស្វ័យប្រវត្តិ!`;
+                    }
+                    if (unassignedSubjects.length > 0) {
+                        detailMsg += `\n⚠️ ចំណាំ៖ មាន ${unassignedSubjects.length} ម៉ោង ដែលមុខវិជ្ជានោះមិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មីនៅឡើយ (សូមពិនិត្យមើលផ្ទាំង «គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់»)។`;
+                    }
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'បញ្ចូលទិន្នន័យជោគជ័យ!',
+                            html: `
+                                <div class="text-start small">
+                                    <p class="mb-2">✅ បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន <strong>${slotCount}</strong> ម៉ោងសិក្សា។</p>
+                                    ${remappedCount > 0 ? `<div class="alert alert-success py-2 px-3 mb-2"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> បានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន <strong>${remappedCount}</strong> ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីដោយស្វ័យប្រវត្តិ!</div>` : ''}
+                                    ${unassignedSubjects.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> មាន <strong>${unassignedSubjects.length}</strong> ម៉ោង មិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មី។</div>` : ''}
+                                </div>
+                            `,
+                            confirmButtonColor: '#4f46e5',
+                            confirmButtonText: 'យល់ព្រម'
+                        });
+                    } else {
+                        alert(`✅ ${detailMsg}`);
+                    }
+                };
+
+                if (discrepancies.length > 0 && typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'រកឃើញការផ្លាស់ប្តូរគ្រូបង្រៀន!',
+                        html: `
+                            <div class="text-start small">
+                                <p class="mb-2">ឯកសារកាលវិភាគចាស់មាន <strong>${slotCount}</strong> ម៉ោងសិក្សា។</p>
+                                <div class="alert alert-info py-2 px-3 mb-3">
+                                    <i class="fa-solid fa-circle-info me-1"></i> រកឃើញមាន <strong>${remappedCount}</strong> ម៉ោង ដែលគ្រូបង្រៀនត្រូវបានផ្លាស់ប្តូរក្នុងឆ្នាំសិក្សាថ្មីនេះ (ឧ. គីមីវិទ្យា, ជីវវិទ្យា...)។
+                                </div>
+                                <p class="fw-bold mb-1 text-dark">តើលោកអ្នកចង់ឱ្យប្រព័ន្ធធ្វើដូចម្តេច?</p>
+                            </div>
+                        `,
+                        icon: 'question',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonColor: '#10b981',
+                        denyButtonColor: '#3b82f6',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> ផ្ទេរទៅគ្រូថ្មីស្វ័យប្រវត្តិ (Auto-Align)',
+                        denyButtonText: '<i class="fa-solid fa-clock-rotate-left me-1"></i> រក្សាទុកតាម File ចាស់',
+                        cancelButtonText: 'បោះបង់'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            executeImport(remappedMatrixState, true);
+                        } else if (result.isDenied) {
+                            executeImport(newMatrixState, false);
+                        }
+                    });
+                } else if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'បញ្ជាក់ការបញ្ចូលទិន្នន័យ',
+                        text: `តើលោកអ្នកចង់បញ្ចូលទិន្នន័យកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោងសិក្សា) មកជំនួសកាលវិភាគបច្ចុប្បន្នមែនទេ?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: 'យល់ព្រមបញ្ចូល',
+                        cancelButtonText: 'បោះបង់'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            executeImport(newMatrixState, false);
+                        }
+                    });
+                } else {
+                    if (confirm(`តើលោកអ្នកចង់បញ្ចូលទិន្នន័យកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោងសិក្សា) មែនទេ?`)) {
+                        executeImport(remappedMatrixState, true);
+                    }
+                }
+
+            } catch (err) {
+                console.error('Import Backup Error:', err);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'បរាជ័យក្នុងការបញ្ចូល File Backup',
+                        text: 'File មិនត្រឹមត្រូវ ឬខូចខាត! សូមជ្រើសរើស File Backup (.json) ដែលបាននាំចេញពីប្រព័ន្ធ SchoolSM។',
+                        confirmButtonColor: '#ef4444'
+                    });
+                } else {
+                    alert('⚠️ File មិនត្រឹមត្រូវ! សូមជ្រើសរើស File Backup (.json) ដែលបាននាំចេញពីប្រព័ន្ធ SchoolSM។');
+                }
+            } finally {
+                // Reset file input so user can re-import same file if needed
+                event.target.value = '';
+            }
+        };
+
+        reader.onerror = function() {
+            alert('⚠️ មិនអាចអានឯកសារបានទេ!');
+            event.target.value = '';
+        };
+
+        reader.readAsText(file);
+    }
+
+    function toggleFullScreen() {
+        const container = document.getElementById('masterTimetableContainer');
+        if (!container) return;
+
+        const isNative = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const isCSSFull = container.classList.contains('is-fullscreen');
+
+        if (!isNative && !isCSSFull) {
+            // Enter Fullscreen
+            if (container.requestFullscreen) {
+                container.requestFullscreen().catch(() => {
+                    container.classList.add('is-fullscreen');
+                    updateFullscreenUI(true);
+                });
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else {
+                container.classList.add('is-fullscreen');
+                updateFullscreenUI(true);
+            }
+        } else {
+            // Exit Fullscreen
+            if (isNative) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {
+                        container.classList.remove('is-fullscreen');
+                        updateFullscreenUI(false);
+                    });
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+            container.classList.remove('is-fullscreen');
+            updateFullscreenUI(false);
+        }
+    }
+
+    function handleNativeFullscreenChange() {
+        const container = document.getElementById('masterTimetableContainer');
+        const isNativeFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (container) {
+            if (isNativeFull) {
+                container.classList.add('is-fullscreen');
+            } else {
+                container.classList.remove('is-fullscreen');
+            }
+        }
+        updateFullscreenUI(isNativeFull);
+    }
+
+    function updateFullscreenUI(isFull) {
+        const btn = document.getElementById('btnToggleFullscreen') || document.getElementById('btnFullScreenToggle');
+        if (btn) {
+            btn.innerHTML = isFull 
+                ? '<i class="fa-solid fa-compress me-1"></i> Exit Full Screen' 
+                : '<i class="fa-solid fa-expand me-1"></i> Full Screen';
+        }
+    }
+
+    // ==========================================
+    // 1. Class & Subject Hours Matrix Report Engine
+    // ==========================================
+    function renderClassSubjectReportModal() {
+        const tbody = document.getElementById('tbodyClassSubjectReport');
+        const tfoot = document.getElementById('tfootClassSubjectReport');
+        if (!tbody || !tfoot) return;
+
+        tbody.innerHTML = '';
+        tfoot.innerHTML = '';
+
+        // 1. Calculate scheduled counts per class per subject: counts[classId][subjectId]
+        const classSubjectCounts = {};
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.subject_id && !slot.is_blocked) {
+                const parts = key.split('_');
+                const classId = parseInt(parts[0]);
+                const subId = parseInt(slot.subject_id);
+                if (!classSubjectCounts[classId]) classSubjectCounts[classId] = {};
+                classSubjectCounts[classId][subId] = (classSubjectCounts[classId][subId] || 0) + 1;
+            }
+        }
+
+        const subjectColumnTotals = {};
+        const subjectColumnReqTotals = {};
+        let grandScheduledTotal = 0;
+        let grandRequiredTotal = 0;
+
+        if (Array.isArray(SUBJECTS_LIST)) {
+            SUBJECTS_LIST.forEach(s => {
+                subjectColumnTotals[s.id] = 0;
+                subjectColumnReqTotals[s.id] = 0;
+            });
+        }
+
+        // 2. Build rows for each classroom
+        if (Array.isArray(CLASSROOMS_LIST)) {
+            CLASSROOMS_LIST.forEach(cls => {
+                const tr = document.createElement('tr');
+                const classReqs = (CLASS_REQUIREMENTS && CLASS_REQUIREMENTS[cls.id]) || {};
+
+                let classSchedSum = 0;
+                let classReqSum = 0;
+
+                let rowHtml = `<td class="text-start ps-3 fw-bold text-dark"><i class="fa-solid fa-school text-primary me-1"></i>${cls.name}</td>`;
+
+                if (Array.isArray(SUBJECTS_LIST)) {
+                    SUBJECTS_LIST.forEach(s => {
+                        const scheduled = (classSubjectCounts[cls.id] && classSubjectCounts[cls.id][s.id]) || 0;
+                        const required = classReqs[s.id] || 0;
+
+                        classSchedSum += scheduled;
+                        classReqSum += required;
+
+                        subjectColumnTotals[s.id] = (subjectColumnTotals[s.id] || 0) + scheduled;
+                        subjectColumnReqTotals[s.id] = (subjectColumnReqTotals[s.id] || 0) + required;
+
+                        if (scheduled === 0 && required === 0) {
+                            rowHtml += `<td class="text-muted opacity-50">-</td>`;
+                        } else if (scheduled === required && required > 0) {
+                            rowHtml += `<td><span class="badge bg-primary-subtle text-primary border px-2 py-1">${scheduled}/${required}</span></td>`;
+                        } else if (scheduled < required) {
+                            rowHtml += `<td><span class="badge bg-success-subtle text-success border px-2 py-1" title="ខ្វះ ${required - scheduled} ម៉ោង">${scheduled}/${required}</span></td>`;
+                        } else if (scheduled > required) {
+                            rowHtml += `<td><span class="badge bg-warning-subtle text-warning-emphasis border px-2 py-1" title="លើស ${scheduled - required} ម៉ោង">${scheduled}/${required}</span></td>`;
+                        } else {
+                            rowHtml += `<td><span class="badge bg-light text-dark border px-2 py-1">${scheduled}</span></td>`;
+                        }
+                    });
+                }
+
+                grandScheduledTotal += classSchedSum;
+                grandRequiredTotal += classReqSum;
+
+                const diff = classSchedSum - classReqSum;
+                const badgeClass = diff === 0 ? 'bg-primary' : (diff < 0 ? 'bg-success' : 'bg-warning text-dark');
+
+                rowHtml += `<td><span class="badge ${badgeClass} fs-7 px-2 py-1">${classSchedSum}/${classReqSum}</span></td>`;
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 3. Build footer row for totals per subject across all classrooms
+        let footerHtml = `<tr><td class="text-start ps-3 fw-bold bg-dark text-white"><i class="fa-solid fa-sigma me-1"></i>សរុបម៉ោងតាមមុខវិជ្ជា</td>`;
+        if (Array.isArray(SUBJECTS_LIST)) {
+            SUBJECTS_LIST.forEach(s => {
+                const schedTot = subjectColumnTotals[s.id] || 0;
+                const reqTot = subjectColumnReqTotals[s.id] || 0;
+                footerHtml += `<td class="fw-bold bg-dark-subtle text-dark border">${schedTot}/${reqTot}</td>`;
+            });
+        }
+        footerHtml += `<td class="fw-bold bg-primary text-white fs-6">${grandScheduledTotal}/${grandRequiredTotal}</td></tr>`;
+        tfoot.innerHTML = footerHtml;
+    }
+
+    // ==========================================
+    // 2. Interactive Column Sorting for Tables
+    // ==========================================
+    const sortStates = {};
+
+    function sortTable(tableId, colIndex, type = 'str') {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (rows.length <= 1) return;
+
+        const sortKey = `${tableId}_${colIndex}`;
+        const currentDir = sortStates[sortKey] === 'asc' ? 'desc' : 'asc';
+        sortStates[sortKey] = currentDir;
+
+        // Reset all sort icons in this table's thead
+        table.querySelectorAll('thead th i').forEach(icon => {
+            icon.className = 'fa-solid fa-sort text-muted ms-1';
+        });
+
+        // Update active column icon
+        const activeHeader = table.querySelectorAll('thead th')[colIndex];
+        if (activeHeader) {
+            const icon = activeHeader.querySelector('i');
+            if (icon) {
+                icon.className = currentDir === 'asc' 
+                    ? 'fa-solid fa-sort-up text-primary ms-1' 
+                    : 'fa-solid fa-sort-down text-primary ms-1';
+            }
+        }
+
+        rows.sort((a, b) => {
+            const cellA = a.children[colIndex] ? a.children[colIndex].innerText.trim() : '';
+            const cellB = b.children[colIndex] ? b.children[colIndex].innerText.trim() : '';
+
+            if (type === 'num') {
+                const numA = parseFloat(cellA.replace(/[^0-9.-]+/g, '')) || 0;
+                const numB = parseFloat(cellB.replace(/[^0-9.-]+/g, '')) || 0;
+                return currentDir === 'asc' ? numA - numB : numB - numA;
+            } else if (type === 'code') {
+                // Alphanumeric sort e.g. K1, K2, M1, M10, P1
+                const regex = /^([a-zA-Z]+)(\d*)$/;
+                const matchA = cellA.match(regex);
+                const matchB = cellB.match(regex);
+                if (matchA && matchB) {
+                    const prefixCmp = matchA[1].localeCompare(matchB[1]);
+                    if (prefixCmp !== 0) return currentDir === 'asc' ? prefixCmp : -prefixCmp;
+                    const numA = parseInt(matchA[2], 10) || 0;
+                    const numB = parseInt(matchB[2], 10) || 0;
+                    return currentDir === 'asc' ? numA - numB : numB - numA;
+                }
+                return currentDir === 'asc' ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+            } else {
+                // String collation with Khmer locale support
+                const cmp = cellA.localeCompare(cellB, 'km', { numeric: true, sensitivity: 'base' });
+                return currentDir === 'asc' ? cmp : -cmp;
+            }
+        });
+
+        // Re-append sorted rows
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // ==========================================
+    // 3. School-wide & Class-level Session Blocking Engine
+    // ==========================================
+    function toggleSessionBlock(dayNum, sessionType) {
+        dayNum = parseInt(dayNum);
+        const periods = sessionType === 'morning' ? [1, 2, 3, 4] : [5, 6, 7, 8];
+        const targetClasses = (currentSelectedClassId && document.getElementById(`row_cls_${currentSelectedClassId}`)?.classList.contains('row-selected'))
+            ? (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.filter(c => c.id === currentSelectedClassId) : [])
+            : (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST : []);
+
+        if (!targetClasses || targetClasses.length === 0) return;
+
+        // Check if all slots in this session across target classes are currently blocked
+        let allBlocked = true;
+        for (const cls of targetClasses) {
+            for (const p of periods) {
+                const key = `${cls.id}_${dayNum}_${p}`;
+                const slot = MATRIX_STATE[key];
+                if (!slot || !slot.is_blocked) {
+                    allBlocked = false;
+                    break;
+                }
+            }
+            if (!allBlocked) break;
+        }
+
+        pushHistoryState();
+
+        if (allBlocked) {
+            // Unblock all slots in this session
+            for (const cls of targetClasses) {
+                for (const p of periods) {
+                    const key = `${cls.id}_${dayNum}_${p}`;
+                    const slot = MATRIX_STATE[key];
+                    if (slot) {
+                        if (slot.subject_id) {
+                            slot.is_blocked = false;
+                            slot.is_locked = false;
+                        } else {
+                            delete MATRIX_STATE[key];
+                        }
+                    }
+                }
+            }
+        } else {
+            // Block all slots in this session
+            for (const cls of targetClasses) {
+                for (const p of periods) {
+                    const key = `${cls.id}_${dayNum}_${p}`;
+                    const slot = MATRIX_STATE[key];
+                    if (slot && slot.subject_id) {
+                        slot.is_blocked = true;
+                        slot.is_locked = true;
+                    } else {
+                        MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+                    }
+                }
+            }
+        }
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        triggerAutoSave();
+    }
+
+    function updateHeaderSessionBlockBadges() {
+        if (!Array.isArray(CLASSROOMS_LIST) || CLASSROOMS_LIST.length === 0) return;
+
+        for (let d = 1; d <= 6; d++) {
+            const morningPeriods = [1, 2, 3, 4];
+            const afternoonPeriods = [5, 6, 7, 8];
+
+            // Morning check across all classrooms
+            let mAllBlocked = true;
+            for (const cls of CLASSROOMS_LIST) {
+                for (const p of morningPeriods) {
+                    const key = `${cls.id}_${d}_${p}`;
+                    const slot = MATRIX_STATE[key];
+                    if (!slot || !slot.is_blocked) {
+                        mAllBlocked = false;
+                        break;
+                    }
+                }
+                if (!mAllBlocked) break;
+            }
+            const tagM = document.getElementById(`tag_blk_${d}_m`);
+            if (tagM) {
+                if (mAllBlocked) tagM.classList.remove('d-none');
+                else tagM.classList.add('d-none');
+            }
+
+            // Afternoon check across all classrooms
+            let aAllBlocked = true;
+            for (const cls of CLASSROOMS_LIST) {
+                for (const p of afternoonPeriods) {
+                    const key = `${cls.id}_${d}_${p}`;
+                    const slot = MATRIX_STATE[key];
+                    if (!slot || !slot.is_blocked) {
+                        aAllBlocked = false;
+                        break;
+                    }
+                }
+                if (!aAllBlocked) break;
+            }
+            const tagA = document.getElementById(`tag_blk_${d}_a`);
+            if (tagA) {
+                if (aAllBlocked) tagA.classList.remove('d-none');
+                else tagA.classList.add('d-none');
+            }
+        }
+    }
+
+    function updateSessionBlockUI() {
+        const scopeRadio = document.querySelector('input[name="blockScope"]:checked');
+        const isSelected = scopeRadio && scopeRadio.value === 'selected';
+        const targetClasses = (isSelected && currentSelectedClassId)
+            ? (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.filter(c => c.id === currentSelectedClassId) : [])
+            : (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST : []);
+
+        for (let d = 1; d <= 6; d++) {
+            const chkM = document.getElementById(`chk_block_${d}_m`);
+            const chkA = document.getElementById(`chk_block_${d}_a`);
+
+            if (chkM) {
+                let mBlocked = targetClasses.length > 0;
+                for (const cls of targetClasses) {
+                    for (let p = 1; p <= 4; p++) {
+                        const key = `${cls.id}_${d}_${p}`;
+                        const slot = MATRIX_STATE[key];
+                        if (!slot || !slot.is_blocked) {
+                            mBlocked = false;
+                            break;
+                        }
+                    }
+                    if (!mBlocked) break;
+                }
+                chkM.checked = mBlocked;
+            }
+
+            if (chkA) {
+                let aBlocked = targetClasses.length > 0;
+                for (const cls of targetClasses) {
+                    for (let p = 5; p <= 8; p++) {
+                        const key = `${cls.id}_${d}_${p}`;
+                        const slot = MATRIX_STATE[key];
+                        if (!slot || !slot.is_blocked) {
+                            aBlocked = false;
+                            break;
+                        }
+                    }
+                    if (!aBlocked) break;
+                }
+                chkA.checked = aBlocked;
+            }
+        }
+    }
+
+    function setSessionBlockPreset(preset) {
+        for (let d = 1; d <= 6; d++) {
+            const chkM = document.getElementById(`chk_block_${d}_m`);
+            const chkA = document.getElementById(`chk_block_${d}_a`);
+            if (chkM) chkM.checked = false;
+            if (chkA) chkA.checked = false;
+        }
+
+        if (preset === 'thu_sat_afternoon') {
+            const chkThuA = document.getElementById('chk_block_4_a');
+            const chkSatA = document.getElementById('chk_block_6_a');
+            if (chkThuA) chkThuA.checked = true;
+            if (chkSatA) chkSatA.checked = true;
+        } else if (preset === 'all_afternoon') {
+            for (let d = 1; d <= 6; d++) {
+                const chkA = document.getElementById(`chk_block_${d}_a`);
+                if (chkA) chkA.checked = true;
+            }
+        }
+    }
+
+    function applySessionBlockSettings() {
+        const scopeRadio = document.querySelector('input[name="blockScope"]:checked');
+        const isSelected = scopeRadio && scopeRadio.value === 'selected';
+        const targetClasses = (isSelected && currentSelectedClassId)
+            ? (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.filter(c => c.id === currentSelectedClassId) : [])
+            : (Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST : []);
+
+        if (!targetClasses || targetClasses.length === 0) return;
+
+        pushHistoryState();
+
+        for (let d = 1; d <= 6; d++) {
+            const chkM = document.getElementById(`chk_block_${d}_m`);
+            const chkA = document.getElementById(`chk_block_${d}_a`);
+
+            const blockMorning = chkM && chkM.checked;
+            const blockAfternoon = chkA && chkA.checked;
+
+            // Apply morning (1-4)
+            for (const cls of targetClasses) {
+                for (let p = 1; p <= 4; p++) {
+                    const key = `${cls.id}_${d}_${p}`;
+                    if (blockMorning) {
+                        const slot = MATRIX_STATE[key];
+                        if (slot && slot.subject_id) {
+                            slot.is_blocked = true;
+                            slot.is_locked = true;
+                        } else {
+                            MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+                        }
+                    } else {
+                        const slot = MATRIX_STATE[key];
+                        if (slot && slot.is_blocked) {
+                            if (slot.subject_id) {
+                                slot.is_blocked = false;
+                                slot.is_locked = false;
+                            } else {
+                                delete MATRIX_STATE[key];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply afternoon (5-8)
+            for (const cls of targetClasses) {
+                for (let p = 5; p <= 8; p++) {
+                    const key = `${cls.id}_${d}_${p}`;
+                    if (blockAfternoon) {
+                        const slot = MATRIX_STATE[key];
+                        if (slot && slot.subject_id) {
+                            slot.is_blocked = true;
+                            slot.is_locked = true;
+                        } else {
+                            MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+                        }
+                    } else {
+                        const slot = MATRIX_STATE[key];
+                        if (slot && slot.is_blocked) {
+                            if (slot.subject_id) {
+                                slot.is_blocked = false;
+                                slot.is_locked = false;
+                            } else {
+                                delete MATRIX_STATE[key];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        triggerAutoSave();
+
+        const modalEl = document.getElementById('sessionBlockModal');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+    }
+
+    function clearAllSessionBlocks() {
+        if (!confirm('តើលោកអ្នកចង់ដោះការបិទពេលសិក្សាទាំងអស់ចេញមែនទេ?')) return;
+        pushHistoryState();
+
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.is_blocked) {
+                if (slot.subject_id) {
+                    slot.is_blocked = false;
+                    slot.is_locked = false;
+                } else {
+                    delete MATRIX_STATE[key];
+                }
+            }
+        }
+
+        renderAllMatrixCells();
+        updateAllHoursCounters();
+        triggerAutoSave();
+
+        const modalEl = document.getElementById('sessionBlockModal');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}បំលែងលេខទៅជាអក្សរខ្មែរ (Khmer Number to Words) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-display-card {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(30, 60, 114, 0.2);
+    }
+    .khmer-words-output {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.6;
+        color: #fef08a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Khmer Number Converter</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-money-check-dollar text-success me-2"></i>បំលែងលេខទៅជាអក្សរខ្មែរ (Khmer Number to Words)
+            </h2>
+            <p class="text-muted small mb-0">បំលែងលេខពិន្ទុ និងចំនួនទឹកប្រាក់ទៅជាអក្សរខ្មែរផ្លូវការ សម្រាប់វិក្កយបត្រ បង្កាន់ដៃ និងលិខិតសរសើរ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Input Form Column -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-calculator text-primary me-2"></i>បញ្ចូលចំនួនលេខ</h5>
+
+                <!-- Mode Selection -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">ប្រភេទការបំលែង (Conversion Mode)</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="convMode" id="modeRiel" value="riel" checked onchange="convertKhmerNumber()">
+                        <label class="btn btn-outline-success py-2" for="modeRiel">
+                            <i class="fa-solid fa-money-bill-wave me-1"></i> ប្រាក់រៀល (៛)
+                        </label>
+
+                        <input type="radio" class="btn-check" name="convMode" id="modeDollar" value="usd" onchange="convertKhmerNumber()">
+                        <label class="btn btn-outline-primary py-2" for="modeDollar">
+                            <i class="fa-solid fa-dollar-sign me-1"></i> ប្រាក់ដុល្លារ ($)
+                        </label>
+
+                        <input type="radio" class="btn-check" name="convMode" id="modeGeneral" value="general" onchange="convertKhmerNumber()">
+                        <label class="btn btn-outline-secondary py-2" for="modeGeneral">
+                            <i class="fa-solid fa-hashtag me-1"></i> លេខទូទៅ / ពិន្ទុ
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Number Input Box -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small text-muted">វាយបញ្ចូលលេខ (គាំទ្រទាំងលេខ 123 និងលេខខ្មែរ ១២៣)</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-light fw-bold" id="currencyPrefix">៛</span>
+                        <input type="text" id="numberInput" class="form-control fw-bold fs-4" placeholder="ឧ. 1,250,000" value="1250000" oninput="convertKhmerNumber()" autofocus>
+                    </div>
+                    <div class="form-text">អាចបញ្ចូលលេខមានក្បៀស ឬចុច (ឧ. 150.50 ឬ 1,250,000)</div>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small text-muted">លេខសាកល្បងរហ័ស (Quick Samples)</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-light btn-sm border" onclick="setSample('50000')">50,000</button>
+                        <button type="button" class="btn btn-light btn-sm border" onclick="setSample('150000')">150,000</button>
+                        <button type="button" class="btn btn-light btn-sm border" onclick="setSample('2450000')">2,450,000</button>
+                        <button type="button" class="btn btn-light btn-sm border" onclick="setSample('150.75')">150.75</button>
+                        <button type="button" class="btn btn-light btn-sm border" onclick="setSample('98.5')">98.5</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Display Column -->
+        <div class="col-lg-6">
+            <div class="result-display-card sticky-top" style="top: 85px;">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-white border-opacity-25">
+                    <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold">លទ្ធផលជាអក្សរខ្មែរ</span>
+                    <button type="button" class="btn btn-light btn-sm rounded-pill px-3 shadow-sm" onclick="copyWords()">
+                        <i class="fa-regular fa-copy me-1 text-primary"></i> ចម្លង (Copy)
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <div class="small text-white-50 mb-1">អក្សរខ្មែរផ្លូវការ (Khmer Spellout Words):</div>
+                    <div class="khmer-words-output" id="khmerWordsResult">
+                        មួយលានពីររយហាសិបពាន់រៀលគត់
+                    </div>
+                </div>
+
+                <div class="p-3 bg-white bg-opacity-15 rounded-3 mb-2">
+                    <div class="d-flex justify-content-between small text-white-50 mb-1">
+                        <span>លេខជាទម្រង់ខ្មែរ (Khmer Digits):</span>
+                        <strong class="text-white" id="khmerDigitsDisplay">១,២៥០,០០០</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-white-50">
+                        <span>លេខជាទម្រង់ឡាតាំង (Standard):</span>
+                        <strong class="text-white" id="latinDigitsDisplay">1,250,000</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KHMER_DIGITS = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+    const ONES = ['', 'មួយ', 'ពីរ', 'បី', 'បួន', 'ប្រាំ'];
+    const TENS = ['', 'ដប់', 'ម្ភៃ', 'សាមសិប', 'សែសិប', 'ហាសិប', 'ហុកសិប', 'ចិតសិប', 'ប៉ែតសិប', 'កៅសិប'];
+
+    function toLatinDigits(str) {
+        let result = '';
+        for (let ch of str) {
+            const idx = KHMER_DIGITS.indexOf(ch);
+            if (idx !== -1) result += idx;
+            else if (ch !== ',') result += ch;
+        }
+        return result.trim();
+    }
+
+    function toKhmerDigits(numStr) {
+        let res = '';
+        for (let ch of numStr) {
+            if (ch >= '0' && ch <= '9') {
+                res += KHMER_DIGITS[parseInt(ch, 10)];
+            } else {
+                res += ch;
+            }
+        }
+        return res;
+    }
+
+    function spellGroup(num) {
+        if (num === 0) return '';
+        let res = '';
+        const hundreds = Math.floor(num / 100);
+        const remainder = num % 100;
+        const tens = Math.floor(remainder / 10);
+        const ones = remainder % 10;
+
+        if (hundreds > 0) {
+            res += (hundreds === 1 ? 'មួយរយ' : (hundreds <= 5 ? ONES[hundreds] + 'រយ' : (hundreds === 6 ? 'ប្រាំមួយរយ' : (hundreds === 7 ? 'ប្រាំពីររយ' : (hundreds === 8 ? 'ប្រាំបីរយ' : 'ប្រាំបួនរយ')))));
+        }
+
+        if (tens > 0) {
+            res += TENS[tens];
+        }
+
+        if (ones > 0) {
+            if (ones <= 5) res += ONES[ones];
+            else if (ones === 6) res += 'ប្រាំមួយ';
+            else if (ones === 7) res += 'ប្រាំពីរ';
+            else if (ones === 8) res += 'ប្រាំបី';
+            else if (ones === 9) res += 'ប្រាំបួន';
+        }
+
+        return res;
+    }
+
+    function convertIntegerToKhmerWords(n) {
+        if (n === 0) return 'សូន្យ';
+        let str = n.toString();
+        let len = str.length;
+
+        const UNITS = ['', 'ពាន់', 'លាន', 'ប៊ីលាន', 'ទ្រីលាន'];
+        let parts = [];
+
+        while (str.length > 0) {
+            let chunk = str.length > 3 ? str.substring(str.length - 3) : str;
+            str = str.substring(0, Math.max(0, str.length - 3));
+            parts.push(parseInt(chunk, 10));
+        }
+
+        let words = '';
+        for (let i = parts.length - 1; i >= 0; i--) {
+            let val = parts[i];
+            if (val > 0) {
+                let spelled = spellGroup(val);
+                if (i === 1 && val === 1 && words === '') {
+                    // special case for 1,000 -> មួយពាន់
+                    words += 'មួយពាន់';
+                } else {
+                    words += spelled + (UNITS[i] ? UNITS[i] : '');
+                }
+            }
+        }
+
+        return words;
+    }
+
+    function convertKhmerNumber() {
+        const rawInput = document.getElementById('numberInput').value;
+        const latinClean = toLatinDigits(rawInput).replace(/,/g, '');
+        const mode = document.querySelector('input[name="convMode"]:checked').value;
+
+        const prefixSpan = document.getElementById('currencyPrefix');
+        if (mode === 'riel') prefixSpan.innerText = '៛';
+        else if (mode === 'usd') prefixSpan.innerText = '$';
+        else prefixSpan.innerText = '#';
+
+        if (!latinClean || isNaN(latinClean)) {
+            document.getElementById('khmerWordsResult').innerText = '...';
+            document.getElementById('khmerDigitsDisplay').innerText = '-';
+            document.getElementById('latinDigitsDisplay').innerText = '-';
+            return;
+        }
+
+        const parts = latinClean.split('.');
+        const integerPart = parseInt(parts[0], 10) || 0;
+        const decimalPart = parts.length > 1 ? parts[1] : null;
+
+        let words = convertIntegerToKhmerWords(integerPart);
+
+        if (mode === 'riel') {
+            words += 'រៀលគត់';
+        } else if (mode === 'usd') {
+            if (decimalPart && parseInt(decimalPart, 10) > 0) {
+                const decVal = parseInt(decimalPart.substring(0, 2).padEnd(2, '0'), 10);
+                const decWords = convertIntegerToKhmerWords(decVal);
+                words += 'ដុល្លារអាមេរិក និង' + decWords + 'សេន';
+            } else {
+                words += 'ដុល្លារអាមេរិកគត់';
+            }
+        } else {
+            if (decimalPart) {
+                words += 'ក្បៀស';
+                for (let ch of decimalPart) {
+                    const digit = parseInt(ch, 10);
+                    words += digit === 0 ? 'សូន្យ' : (digit <= 5 ? ONES[digit] : (digit === 6 ? 'ប្រាំមួយ' : (digit === 7 ? 'ប្រាំពីរ' : (digit === 8 ? 'ប្រាំបី' : 'ប្រាំបួន'))));
+                }
+            }
+        }
+
+        // Format formatted digits with commas
+        const formattedLatin = Number(parts[0]).toLocaleString('en-US') + (decimalPart !== null ? '.' + decimalPart : '');
+        const formattedKhmer = toKhmerDigits(formattedLatin);
+
+        document.getElementById('khmerWordsResult').innerText = words;
+        document.getElementById('khmerDigitsDisplay').innerText = formattedKhmer + (mode === 'riel' ? ' ៛' : (mode === 'usd' ? ' $' : ''));
+        document.getElementById('latinDigitsDisplay').innerText = formattedLatin + (mode === 'riel' ? ' Riel' : (mode === 'usd' ? ' USD' : ''));
+    }
+
+    function setSample(val) {
+        document.getElementById('numberInput').value = val;
+        convertKhmerNumber();
+    }
+
+    function copyWords() {
+        const text = document.getElementById('khmerWordsResult').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'បានចម្លងអក្សរខ្មែររួចរាល់!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        convertKhmerNumber();
+    });
+</script>
+{% endblock %}

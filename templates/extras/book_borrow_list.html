@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}ការខ្ចី-សងសៀវភៅ (Book Borrowings) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ការខ្ចី និងសងសៀវភៅបណ្ណាល័យ</h2>
+        <p class="text-muted small mb-0">កត់ត្រាការខ្ចីសៀវភៅរបស់សិស្ស និងគ្រូបង្រៀន ព្រមទាំងតាមដានការសង</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'book_list' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-book me-1"></i> កាតាឡុកសៀវភៅ
+        </a>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#borrowBookModal">
+            <i class="fa-solid fa-plus me-1"></i> កត់ត្រាការខ្ចីថ្មី
+        </button>
+    </div>
+</div>
+
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>សៀវភៅ</th>
+                    <th>អ្នកខ្ចី (សិស្ស / គ្រូ)</th>
+                    <th>ថ្ងៃខ្ចី</th>
+                    <th>ថ្ងៃត្រូវសង</th>
+                    <th>ថ្ងៃបានសង</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in borrowings %}
+                <tr>
+                    <td class="fw-bold">{{ b.book.title }}</td>
+                    <td>
+                        {% if b.student %}
+                        <div class="fw-bold text-primary">{{ b.student.khmer_name }} (សិស្ស)</div>
+                        <span class="text-muted small">{{ b.student.classroom.name|default:"" }}</span>
+                        {% elif b.teacher %}
+                        <div class="fw-bold text-success">{{ b.teacher.khmer_name }} (គ្រូ)</div>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ b.borrow_date|date:"d/m/Y" }}</td>
+                    <td>{{ b.due_date|date:"d/m/Y" }}</td>
+                    <td>{{ b.return_date|date:"d/m/Y"|default:"-" }}</td>
+                    <td>
+                        <span class="badge {% if b.status == 'RETURNED' %}bg-success{% elif b.status == 'OVERDUE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ b.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        {% if b.status != 'RETURNED' %}
+                        <a href="{% url 'book_return' b.id %}" class="btn btn-sm btn-success" onclick="return confirm('តើលោកអ្នកចង់កត់ត្រាទទួលសៀវភៅមកវិញមែនទេ?')">
+                            <i class="fa-solid fa-rotate-left me-1"></i> ទទួលសង
+                        </a>
+                        {% else %}
+                        <span class="text-muted small"><i class="fa-solid fa-circle-check text-success"></i> សងរួចរាល់</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">មិនទាន់មានកំណត់ត្រាខ្ចីសៀវភៅឡើយ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Borrow Book -->
+<div class="modal fade" id="borrowBookModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">កត់ត្រាការខ្ចីសៀវភៅ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ជ្រើសរើសសៀវភៅ *</label>
+                        {{ form.book }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">សិស្សខ្ចី</label>
+                        {{ form.student }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">គ្រូខ្ចី (បើជាគ្រូ)</label>
+                        {{ form.teacher }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">កាលបរិច្ឆេទត្រូវសង *</label>
+                        {{ form.due_date }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">កំណត់ចំណាំ</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary">កត់ត្រាការខ្ចី</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

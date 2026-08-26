@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}ផ្ទេរសិស្ស & ឡើងថ្នាក់ (Student Promotion) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ឧបករណ៍ផ្ទេរ និងឡើងថ្នាក់សិស្ស (Student Promotion)</h2>
+        <p class="text-muted small mb-0">មុខងារសម្រាប់បញ្ជូនសិស្សពីឆ្នាំចាស់ ទៅឆ្នាំសិក្សាថ្មី (ឡើងថ្នាក់ទាំងមូល ឬសិស្សធ្លាក់រៀនត្រួតថ្នាក់)</p>
+    </div>
+    <a href="{% url 'classroom_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<!-- Step 1: Select Source Class -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-8">
+            <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្នាក់ប្រភព (Source Class to Transfer From)</label>
+            <select name="source_class" class="form-select form-select-lg" onchange="this.form.submit()">
+                <option value="">-- សូមជ្រើសរើសថ្នាក់រៀន --</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if source_class_id == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }} [{{ c.academic_year.name }}] (សិស្ស: {{ c.total_students }} នាក់)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+                <i class="fa-solid fa-list-check me-1"></i> ទាញយកបញ្ជីសិស្ស
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if source_class %}
+<form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="source_class" value="{{ source_class.id }}">
+
+    <!-- Step 2: Target Academic Year & Target Class -->
+    <div class="custom-card mb-4 bg-light border-primary">
+        <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-bullseye me-2"></i>គោលដៅផ្ទេរសិស្ស (Target Destination)</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">សកម្មភាពផ្ទេរ (Action) *</label>
+                <select name="promotion_action" class="form-select fw-bold">
+                    <option value="PROMOTE">✅ ឡើងថ្នាក់បន្ទាប់ (Promote to Next Grade)</option>
+                    <option value="RETAIN">⚠️ រៀនត្រួតថ្នាក់ដដែល (Retain in Same Grade)</option>
+                    <option value="GRADUATE">🎓 បញ្ចប់ការសិក្សា (Graduated)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">ឆ្នាំសិក្សាថ្មី (Target Academic Year) *</label>
+                <select name="target_year" class="form-select">
+                    {% for y in academic_years %}
+                    <option value="{{ y.id }}">{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">ថ្នាក់រៀនថ្មី (Target Class) *</label>
+                <select name="target_class" class="form-select">
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}">{{ c.name }} [{{ c.academic_year.name }}]</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Student List with Checkboxes -->
+    <div class="custom-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">បញ្ជីសិស្សក្នុងថ្នាក់៖ {{ source_class.name }} ({{ students.count }} នាក់)</h5>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAllStudents" checked onclick="toggleSelectAll(this, 'student-cb')">
+                <label class="form-check-label fw-bold small" for="selectAllStudents">
+                    ជ្រើសរើសទាំងអស់ (Select All)
+                </label>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th width="40"></th>
+                        <th>កូដសិស្ស</th>
+                        <th>ឈ្មោះសិស្ស</th>
+                        <th>ភេទ</th>
+                        <th>ស្ថានភាពបច្ចុប្បន្ន</th>
+                        <th>កម្រៃសិក្សា</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td>
+                            <input class="form-check-input student-cb" type="checkbox" name="student_ids" value="{{ s.id }}" checked>
+                        </td>
+                        <td class="fw-bold text-primary">{{ s.student_id }}</td>
+                        <td>
+                            <div class="fw-bold">{{ s.khmer_name }}</div>
+                            <span class="text-muted small">{{ s.latin_name }}</span>
+                        </td>
+                        <td>{{ s.get_gender_display }}</td>
+                        <td><span class="badge bg-success">{{ s.get_status_display }}</span></td>
+                        <td>{{ s.get_scholarship_type_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">គ្មានសិស្សនៅក្នុងថ្នាក់នេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if students %}
+        <div class="mt-4 pt-3 border-top text-end">
+            <button type="submit" class="btn btn-warning btn-lg px-4 fw-bold" onclick="return confirm('តើលោកអ្នកប្រាកដជាចង់ដំណើរការផ្ទេរ/ឡើងថ្នាក់សម្រាប់សិស្សដែលបានជ្រើសរើសមែនទេ?')">
+                <i class="fa-solid fa-arrow-up-right-dots me-2"></i> អនុវត្តការផ្ទេរ/ឡើងថ្នាក់ឥឡូវនេះ
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,839 @@
+{% extends 'base.html' %}
+
+{% block title %}កំណត់សិទ្ធិ Menu & Submenu | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-nav-tab {
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        border: 2px solid transparent;
+        color: #4b5563;
+        background: #f3f4f6;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .role-nav-tab:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+        transform: translateY(-1px);
+    }
+    .role-nav-tab.active {
+        background: #1e3a8a;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+        border-color: #1e3a8a;
+    }
+    .section-card {
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 20px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    .section-card:hover {
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+    }
+    .section-header-bar {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .menu-item-row {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.15s ease;
+    }
+    .menu-item-row:last-child {
+        border-bottom: none;
+    }
+    .menu-item-row:hover {
+        background: #f8fafc;
+    }
+    .menu-icon-box {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        background: #f1f5f9;
+        color: #475569;
+        flex-shrink: 0;
+    }
+    .form-switch .form-check-input {
+        width: 2.8em;
+        height: 1.4em;
+        cursor: pointer;
+    }
+    .status-badge-allowed {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        font-weight: 600;
+    }
+    .status-badge-denied {
+        background-color: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+        font-weight: 600;
+    }
+    .stat-pill {
+        border-radius: 10px;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-shield-halved"></i> សិទ្ធិគ្រប់គ្រងដោយ Admin
+                </span>
+                <span class="badge bg-light text-secondary border">Role-Based Access</span>
+            </div>
+            <h2 class="fw-bold mb-1 text-dark">
+                <i class="fa-solid fa-user-shield text-danger me-2"></i>កំណត់សិទ្ធិ Menu & Submenu តាមតួនាទី
+            </h2>
+            <p class="text-muted mb-0 small">
+                អនុញ្ញាតឱ្យ Admin កំណត់រាល់ Menu ឬ Submenu ណាខ្លះដែលអនុញ្ញាតឱ្យ <strong>គ្រូបង្រៀន</strong>, <strong>សិស្ស និងអាណាព្យាបាល</strong>, ឬ <strong>គណនេយ្យករ</strong> អាចមើលឃើញលើ Sidebar និងចូលប្រើប្រាស់បាន។
+            </p>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-xs">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+            </a>
+            <button type="button" onclick="confirmResetDefaults()" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-xs">
+                <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ដូចដើម (Reset)
+            </button>
+        </div>
+    </div>
+
+    <!-- Role Selection Tabs Bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <!-- Role Tabs -->
+                <div class="d-flex flex-wrap gap-2">
+                    {% for r_code, r_label, r_icon, r_color in available_roles %}
+                    <a href="?role={{ r_code }}" class="role-nav-tab {% if active_role == r_code %}active{% endif %}">
+                        <i class="{{ r_icon }} text-{{ r_color }}"></i>
+                        <span>{{ r_label }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <!-- Statistics for Active Role -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="stat-pill shadow-xs">
+                        <span class="text-muted small">សរុបទាំងអស់៖</span>
+                        <strong class="text-dark">{{ total_items }}</strong>
+                    </div>
+                    <div class="stat-pill shadow-xs border-success-subtle bg-success-subtle bg-opacity-25">
+                        <span class="text-success small"><i class="fa-solid fa-circle-check me-1"></i>អនុញ្ញាត៖</span>
+                        <strong class="text-success" id="statAllowedCount">{{ allowed_count }}</strong>
+                    </div>
+                    <div class="stat-pill shadow-xs border-danger-subtle bg-danger-subtle bg-opacity-25">
+                        <span class="text-danger small"><i class="fa-solid fa-circle-xmark me-1"></i>បានបិទ៖</span>
+                        <strong class="text-danger" id="statDeniedCount">{{ disallowed_count }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar & Action Bar -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+        <!-- Search filter -->
+        <div class="position-relative" style="max-width: 360px; width: 100%;">
+            <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <input type="text" id="menuSearchInput" class="form-control rounded-pill ps-5 shadow-xs" placeholder="ស្វែងរក Menu ឬ Submenu..." onkeyup="filterMenuCards()">
+        </div>
+
+        <!-- Bulk Action & Add Buttons -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs" onclick="openAddMenuModal()">
+                <i class="fa-solid fa-plus me-1"></i> បន្ថែម Menu ថ្មី (Add Submenu)
+            </button>
+            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 shadow-xs" onclick="bulkUpdateAction('allow_all')">
+                <i class="fa-solid fa-check-double me-1"></i> បើកទាំងអស់ (Allow All)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" onclick="bulkUpdateAction('disallow_all')">
+                <i class="fa-solid fa-ban me-1"></i> បិទទាំងអស់ (Disallow All)
+            </button>
+            <button type="submit" form="menuPermissionsForm" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក (Save)
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Menu Sections Form -->
+    <form method="POST" id="menuPermissionsForm">
+        {% csrf_token %}
+        <input type="hidden" name="target_role" value="{{ active_role }}">
+
+        <div class="row" id="menuSectionsContainer">
+            {% for section in catalog %}
+            <div class="col-12 menu-section-block" data-section-key="{{ section.key }}">
+                <div class="section-card">
+                    <!-- Section Header -->
+                    <div class="section-header-bar">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="menu-icon-box bg-{{ section.color }}-subtle text-{{ section.color }}">
+                                <i class="{{ section.icon }}"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">{{ section.name_kh }}</h5>
+                                <span class="text-muted small">{{ section.name_en }} &bull; <span class="badge bg-light text-secondary border">{{ section.items|length }} Submenus</span></span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;" onclick="openAddMenuModal('{{ section.id }}')">
+                                <i class="fa-solid fa-plus me-1"></i> បន្ថែមក្នុងផ្នែកនេះ
+                            </button>
+                            <!-- Section Toggle Switch -->
+                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                <label class="form-check-label small fw-bold text-muted cursor-pointer" for="sec_switch_{{ section.key }}">
+                                    បើកផ្នែកនេះ (Section)
+                                </label>
+                                <input class="form-check-input section-master-switch" 
+                                       type="checkbox" 
+                                       role="switch" 
+                                       name="{{ section.key }}" 
+                                       id="sec_switch_{{ section.key }}"
+                                       data-section-key="{{ section.key }}"
+                                       {% if section.is_allowed %}checked{% endif %}
+                                       onchange="toggleSectionSwitch(this, '{{ section.key }}')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submenu Items List -->
+                    <div class="menu-items-list" id="items_list_{{ section.key }}">
+                        {% for item in section.items %}
+                        <div class="menu-item-row" data-item-name="{{ item.name_kh }} {{ item.name_en }}" data-item-key="{{ item.key }}" id="menu_row_{{ item.id }}">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="menu-icon-box" style="width: 34px; height: 34px; font-size: 0.95rem;">
+                                    <i class="{{ item.icon }}"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark item-title-kh" id="name_kh_{{ item.id }}">{{ item.name_kh }}</span>
+                                        {% if item.is_admin_only %}
+                                        <span class="badge bg-dark-subtle text-dark small" style="font-size: 0.68rem;">Admin Only</span>
+                                        {% endif %}
+                                        {% if not item.is_system %}
+                                        <span class="badge bg-info-subtle text-info small" style="font-size: 0.68rem;">Custom</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-muted small" style="font-size: 0.78rem;">
+                                        <code>{{ item.key }}</code> &bull; <span id="name_en_{{ item.id }}">{{ item.name_en }}</span>
+                                        {% if item.custom_url %}
+                                        &bull; <span class="text-primary">{{ item.custom_url }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Edit Button -->
+                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center" 
+                                        style="width: 28px; height: 28px;" 
+                                        title="កែប្រែ Menu"
+                                        onclick="openEditMenuModal('{{ item.id }}', '{{ item.name_kh|escapejs }}', '{{ item.name_en|escapejs }}', '{{ item.icon|escapejs }}', '{{ item.url_name|default:''|escapejs }}', '{{ item.custom_url|default:''|escapejs }}', {{ item.is_admin_only|yesno:'true,false' }})">
+                                    <i class="fa-solid fa-pen-to-square" style="font-size: 0.75rem;"></i>
+                                </button>
+
+                                <!-- Delete Button (for Custom Items or any item admin wants to delete) -->
+                                {% if not item.is_system %}
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center" 
+                                        style="width: 28px; height: 28px;" 
+                                        title="លុប Menu"
+                                        onclick="confirmDeleteMenuItem('{{ item.id }}', '{{ item.name_kh|escapejs }}')">
+                                    <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
+                                </button>
+                                {% endif %}
+
+                                <!-- Status Badge -->
+                                <span class="badge rounded-pill px-2 py-1 item-status-badge ms-2 {% if item.is_allowed %}status-badge-allowed{% else %}status-badge-denied{% endif %}" id="badge_{{ item.key }}">
+                                    {% if item.is_allowed %}
+                                        <i class="fa-solid fa-check me-1"></i> អនុញ្ញាត
+                                    {% else %}
+                                        <i class="fa-solid fa-xmark me-1"></i> បានបិទ
+                                    {% endif %}
+                                </span>
+
+                                <!-- Toggle Switch -->
+                                <div class="form-check form-switch mb-0 ms-1">
+                                    <input class="form-check-input item-switch" 
+                                           type="checkbox" 
+                                           role="switch" 
+                                           name="{{ item.key }}" 
+                                           id="switch_{{ item.key }}"
+                                           data-menu-key="{{ item.key }}"
+                                           data-section-key="{{ section.key }}"
+                                           {% if item.is_allowed %}checked{% endif %}
+                                           onchange="toggleMenuPermissionAjax('{{ active_role }}', '{{ item.key }}', this.checked)">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Sticky Bottom Save Bar -->
+        <div class="card border-0 shadow-lg rounded-4 mt-3 mb-5 bg-white border-top border-primary sticky-bottom" style="z-index: 100;">
+            <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-primary fs-5"></i>
+                    <span class="text-muted small">
+                        រាល់ការបន្ថែម កែប្រែ លុប និងបិទ/បើកសិទ្ធិ ត្រូវបានធ្វើបច្ចុប្បន្នភាព និងរក្សាទុកក្នុង Database ដោយស្វ័យប្រវត្តិ។
+                    </span>
+                </div>
+                <button type="submit" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទាំងអស់ (Save All)
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal: Add New Submenu -->
+<div class="modal fade" id="addMenuModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-plus-circle text-primary me-2"></i>បន្ថែម Menu / Submenu ថ្មី
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addMenuForm" onsubmit="submitAddMenuItem(event)">
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ផ្នែកម៉ឺនុយ (Section) <span class="text-danger">*</span></label>
+                        <select class="form-select rounded-3" id="add_section_id" required>
+                            {% for section in catalog %}
+                            <option value="{{ section.id }}">{{ section.name_kh }} ({{ section.name_en }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ឈ្មោះជាភាសាខ្មែរ (Khmer Name) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="add_name_kh" placeholder="ឧ. របាយការណ៍សិស្សពិសេស" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ឈ្មោះជាភាសាអង់គ្លេស (English Name)</label>
+                        <input type="text" class="form-control rounded-3" id="add_name_en" placeholder="ឧ. Special Student Report">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">កូដសម្គាល់ (Menu Code) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-3" id="add_code" placeholder="ឧ. special_report" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">រូបតំណាង (FontAwesome Icon)</label>
+                            <input type="text" class="form-control rounded-3" id="add_icon" value="fa-solid fa-circle-dot">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">URL / Link ផ្ទាល់ (Custom URL or Route)</label>
+                        <input type="text" class="form-control rounded-3" id="add_custom_url" placeholder="ឧ. /reports/special/ ឬ https://...">
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="add_is_admin_only">
+                        <label class="form-check-label small fw-bold text-muted" for="add_is_admin_only">សម្រាប់តែ Admin (Admin Only)</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4" id="btnAddMenuSubmit">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកក្នុង Database
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Submenu -->
+<div class="modal fade" id="editMenuModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>កែប្រែ Menu / Submenu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editMenuForm" onsubmit="submitEditMenuItem(event)">
+                <input type="hidden" id="edit_item_id">
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ឈ្មោះជាភាសាខ្មែរ (Khmer Name) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="edit_name_kh" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ឈ្មោះជាភាសាអង់គ្លេស (English Name)</label>
+                        <input type="text" class="form-control rounded-3" id="edit_name_en">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">រូបតំណាង (FontAwesome Icon)</label>
+                        <input type="text" class="form-control rounded-3" id="edit_icon">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">URL / Link ផ្ទាល់ (Custom URL)</label>
+                        <input type="text" class="form-control rounded-3" id="edit_custom_url">
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="edit_is_admin_only">
+                        <label class="form-check-label small fw-bold text-muted" for="edit_is_admin_only">សម្រាប់តែ Admin (Admin Only)</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4" id="btnEditMenuSubmit">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    const ACTIVE_ROLE = '{{ active_role }}';
+
+    // 1. AJAX Toggle Individual Permission
+    function toggleMenuPermissionAjax(role, menuKey, isAllowed) {
+        const badge = document.getElementById('badge_' + menuKey);
+        
+        fetch("{% url 'api_toggle_menu_permission' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN
+            },
+            body: JSON.stringify({
+                role: role,
+                menu_key: menuKey,
+                is_allowed: isAllowed
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (badge) {
+                    if (isAllowed) {
+                        badge.className = 'badge rounded-pill px-2 py-1 item-status-badge ms-2 status-badge-allowed';
+                        badge.innerHTML = '<i class="fa-solid fa-check me-1"></i> អនុញ្ញាត';
+                    } else {
+                        badge.className = 'badge rounded-pill px-2 py-1 item-status-badge ms-2 status-badge-denied';
+                        badge.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> បានបិទ';
+                    }
+                }
+                updateCounters();
+                
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: isAllowed ? 'បានបើកសិទ្ធិជោគជ័យ' : 'បានបិទសិទ្ធិជោគជ័យ'
+                });
+            } else {
+                Swal.fire('កំហុស!', data.message || 'មានបញ្ហាក្នុងការរក្សាទុក', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire('កំហុស!', 'មិនអាចតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើបានទេ!', 'error');
+        });
+    }
+
+    // 2. Toggle Section Master Switch
+    function toggleSectionSwitch(secSwitch, secKey) {
+        const isAllowed = secSwitch.checked;
+        toggleMenuPermissionAjax(ACTIVE_ROLE, secKey, isAllowed);
+        
+        const sectionContainer = document.getElementById('items_list_' + secKey);
+        if (sectionContainer) {
+            const childSwitches = sectionContainer.querySelectorAll('.item-switch');
+            childSwitches.forEach(sw => {
+                sw.checked = isAllowed;
+                const mKey = sw.getAttribute('data-menu-key');
+                toggleMenuPermissionAjax(ACTIVE_ROLE, mKey, isAllowed);
+            });
+        }
+    }
+
+    // 3. Bulk Update Actions (Allow All, Disallow All)
+    function bulkUpdateAction(action) {
+        let actionTitle = action === 'allow_all' ? 'បើកសិទ្ធិគ្រប់ Menu ទាំងអស់?' : 'បិទសិទ្ធិគ្រប់ Menu ទាំងអស់?';
+        let confirmBtnText = action === 'allow_all' ? 'បាទ/ចាស បើកទាំងអស់' : 'បាទ/ចាស បិទទាំងអស់';
+        let confirmBtnColor = action === 'allow_all' ? '#10b981' : '#6b7280';
+
+        Swal.fire({
+            title: actionTitle,
+            text: 'ការកែប្រែនេះនឹងអនុវត្តលើរាល់ Menu និង Submenu ទាំងអស់សម្រាប់តួនាទីនេះ។',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: confirmBtnColor,
+            cancelButtonColor: '#d33',
+            confirmButtonText: confirmBtnText,
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.showLoading();
+                fetch("{% url 'api_bulk_menu_permission' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        role: ACTIVE_ROLE,
+                        action: action
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ជោគជ័យ!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('កំហុស!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('កំហុស!', 'មានបញ្ហាក្នុងការតភ្ជាប់', 'error');
+                });
+            }
+        });
+    }
+
+    // 4. Confirm Reset Defaults
+    function confirmResetDefaults() {
+        Swal.fire({
+            title: 'កំណត់ឡើងវិញតាមលំនាំដើម?',
+            text: 'រាល់ការកំណត់ពិសេស (Custom Overrides) ទាំងអស់នឹងត្រូវលុប ហើយត្រឡប់ទៅជា Default ដូចដើម។',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'បាទ/ចាស កំណត់ឡើងវិញ',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.showLoading();
+                fetch("{% url 'api_bulk_menu_permission' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        role: ACTIVE_ROLE,
+                        action: 'reset_default'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'បានកំណត់ដូចដើមជោគជ័យ!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('កំហុស!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('កំហុស!', 'មានបញ្ហាក្នុងការតភ្ជាប់', 'error');
+                });
+            }
+        });
+    }
+
+    // 5. Live Search Filter
+    function filterMenuCards() {
+        const query = document.getElementById('menuSearchInput').value.toLowerCase().trim();
+        const sectionBlocks = document.querySelectorAll('.menu-section-block');
+
+        sectionBlocks.forEach(sec => {
+            const itemRows = sec.querySelectorAll('.menu-item-row');
+            let visibleCount = 0;
+
+            itemRows.forEach(row => {
+                const name = row.getAttribute('data-item-name').toLowerCase();
+                const key = row.getAttribute('data-item-key').toLowerCase();
+                if (name.includes(query) || key.includes(query)) {
+                    row.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if (visibleCount > 0 || query === '') {
+                sec.style.display = 'block';
+            } else {
+                sec.style.display = 'none';
+            }
+        });
+    }
+
+    // 6. Update Client Stat Counters
+    function updateCounters() {
+        const allSwitches = document.querySelectorAll('.item-switch');
+        let allowed = 0;
+        allSwitches.forEach(sw => {
+            if (sw.checked) allowed++;
+        });
+        const total = allSwitches.length;
+        const denied = total - allowed;
+
+        const allowedEl = document.getElementById('statAllowedCount');
+        const deniedEl = document.getElementById('statDeniedCount');
+        if (allowedEl) allowedEl.innerText = allowed;
+        if (deniedEl) deniedEl.innerText = denied;
+    }
+
+    // 7. Modals: Add Menu Item
+    function openAddMenuModal(sectionId) {
+        document.getElementById('addMenuForm').reset();
+        if (sectionId) {
+            document.getElementById('add_section_id').value = sectionId;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('addMenuModal'));
+        modal.show();
+    }
+
+    function submitAddMenuItem(e) {
+        e.preventDefault();
+        const sectionId = document.getElementById('add_section_id').value;
+        const nameKh = document.getElementById('add_name_kh').value.trim();
+        const nameEn = document.getElementById('add_name_en').value.trim();
+        const code = document.getElementById('add_code').value.trim();
+        const icon = document.getElementById('add_icon').value.trim() || 'fa-solid fa-circle-dot';
+        const customUrl = document.getElementById('add_custom_url').value.trim();
+        const isAdminOnly = document.getElementById('add_is_admin_only').checked;
+
+        const btn = document.getElementById('btnAddMenuSubmit');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
+
+        fetch("{% url 'api_create_menu_item' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN
+            },
+            body: JSON.stringify({
+                section_id: sectionId,
+                name_kh: nameKh,
+                name_en: nameEn,
+                code: code,
+                icon: icon,
+                custom_url: customUrl,
+                is_admin_only: isAdminOnly
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកក្នុង Database';
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('កំហុស!', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកក្នុង Database';
+            Swal.fire('កំហុស!', 'មានបញ្ហាក្នុងការរក្សាទុកទិន្នន័យ', 'error');
+        });
+    }
+
+    // 8. Modals: Edit Menu Item
+    function openEditMenuModal(id, nameKh, nameEn, icon, urlName, customUrl, isAdminOnly) {
+        document.getElementById('edit_item_id').value = id;
+        document.getElementById('edit_name_kh').value = nameKh;
+        document.getElementById('edit_name_en').value = nameEn;
+        document.getElementById('edit_icon').value = icon;
+        document.getElementById('edit_custom_url').value = customUrl || '';
+        document.getElementById('edit_is_admin_only').checked = isAdminOnly;
+
+        const modal = new bootstrap.Modal(document.getElementById('editMenuModal'));
+        modal.show();
+    }
+
+    function submitEditMenuItem(e) {
+        e.preventDefault();
+        const itemId = document.getElementById('edit_item_id').value;
+        const nameKh = document.getElementById('edit_name_kh').value.trim();
+        const nameEn = document.getElementById('edit_name_en').value.trim();
+        const icon = document.getElementById('edit_icon').value.trim() || 'fa-solid fa-circle-dot';
+        const customUrl = document.getElementById('edit_custom_url').value.trim();
+        const isAdminOnly = document.getElementById('edit_is_admin_only').checked;
+
+        const btn = document.getElementById('btnEditMenuSubmit');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងកែប្រែ...';
+
+        const editUrl = "/accounts/api/menu-items/" + itemId + "/edit/";
+
+        fetch(editUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN
+            },
+            body: JSON.stringify({
+                name_kh: nameKh,
+                name_en: nameEn,
+                icon: icon,
+                custom_url: customUrl,
+                is_admin_only: isAdminOnly
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
+            if (data.status === 'success') {
+                // Update live text in row
+                const khEl = document.getElementById('name_kh_' + itemId);
+                const enEl = document.getElementById('name_en_' + itemId);
+                if (khEl) khEl.innerText = nameKh;
+                if (enEl) enEl.innerText = nameEn;
+
+                const editModalEl = document.getElementById('editMenuModal');
+                const modalInstance = bootstrap.Modal.getInstance(editModalEl);
+                if (modalInstance) modalInstance.hide();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'បានកែប្រែជោគជ័យ!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('កំហុស!', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
+            Swal.fire('កំហុស!', 'មានបញ្ហាក្នុងការកែប្រែទិន្នន័យ', 'error');
+        });
+    }
+
+    // 9. Delete Menu Item
+    function confirmDeleteMenuItem(itemId, itemName) {
+        Swal.fire({
+            title: 'លុប Menu នេះចេញពី Database?',
+            text: `តើអ្នកពិតជាចង់លុប "${itemName}" មែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់ក្រោយបានឡើយ។`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'បាទ/ចាស លុបចេញ',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.showLoading();
+                const deleteUrl = "/accounts/api/menu-items/" + itemId + "/delete/";
+                fetch(deleteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const row = document.getElementById('menu_row_' + itemId);
+                        if (row) row.remove();
+                        updateCounters();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'បានលុបជោគជ័យ!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('កំហុស!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('កំហុស!', 'មានបញ្ហាក្នុងការតភ្ជាប់', 'error');
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}

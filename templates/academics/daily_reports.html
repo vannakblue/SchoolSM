@@ -1,0 +1,509 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ & របាយការណ៍ | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+    .nav-tabs-custom .nav-link {
+        font-weight: 700;
+        color: #64748b;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 18px;
+        transition: all 0.2s ease;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #4f46e5;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
+        background: transparent;
+    }
+
+    .report-sub-tabs .nav-link {
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.88rem;
+        padding: 8px 16px;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+    .report-sub-tabs .nav-link:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+    .report-sub-tabs .nav-link.active {
+        background: #4f46e5;
+        color: #fff;
+        border-color: #4f46e5;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Duty Sheet Paper Container */
+    .duty-sheet-paper {
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 30px 35px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .duty-sheet-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .duty-sheet-table th, .duty-sheet-table td {
+        border: 1px solid #334155 !important;
+        padding: 7px 6px;
+        font-size: 0.86rem;
+        vertical-align: middle;
+    }
+    .duty-sheet-table th {
+        background-color: #f8fafc;
+        font-weight: 700;
+        text-align: center;
+    }
+    .duty-sheet-table td {
+        height: 38px;
+    }
+
+    .signature-box {
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    /* Print Styles */
+    @media print {
+        .no-print, .main-header, .sidebar, .nav-tabs-custom, .filter-toolbar, footer {
+            display: none !important;
+        }
+        body {
+            background: #fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .duty-sheet-paper {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 10px 0 !important;
+            margin-bottom: 0 !important;
+            page-break-after: always;
+        }
+        .duty-sheet-table th, .duty-sheet-table td {
+            border: 1px solid #000 !important;
+            font-size: 8.5pt !important;
+            padding: 4px 3px !important;
+        }
+        .duty-sheet-table th {
+            background-color: #f0f0f0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Timetable Module Unified Sub-Menu Navigation Tabs -->
+<ul class="nav nav-tabs-custom no-print">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'timetable_view' %}">
+            <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម (Master Timetable)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'timetable_daily_reports_view' %}">
+            <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'student_teacher_timetable_view' %}">
+            <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'subject_requirements_manager' %}">
+            <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា (Requirements Matrix)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'teacher_assignments_manager' %}">
+            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments)
+        </a>
+    </li>
+</ul>
+
+<!-- Top Action Bar Matching User Screenshot -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary d-flex align-items-center gap-2">
+            <i class="fa-solid fa-file-signature text-purple"></i>
+            <span>បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ</span>
+        </h2>
+        <div class="text-muted small fw-bold" style="letter-spacing: 0.5px;">DAILY DUTY SIGN-IN SHEETS GENERATOR & TIMETABLE REPORTS</div>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <!-- Excel Export -->
+        <a href="{% url 'timetable_daily_reports_export_excel' %}?day={{ selected_day }}&session={{ selected_session }}" class="btn btn-warning fw-bold text-white shadow-sm px-3 py-2" title="ទាញយកឯកសារ Excel (.xlsx) ទាំង ១២ ថស">
+            <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (១២ ថស)
+        </a>
+
+        <!-- Print Preview / Direct Print -->
+        <button type="button" class="btn btn-purple fw-bold text-white shadow-sm px-4 py-2" style="background-color: #6366f1;" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> Print Preview (Print ផ្ទាល់)
+        </button>
+    </div>
+</div>
+
+<!-- Filter Toolbar (Day & Session Selectors) -->
+<div class="card border-0 shadow-sm rounded-3 mb-4 no-print filter-toolbar" style="background: #f8fafc; border: 1px solid #e2e8f0 !important;">
+    <div class="card-body p-3">
+        <form method="GET" id="reportFilterForm" class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <input type="hidden" name="tab" id="inputTab" value="{{ selected_tab }}">
+            
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <!-- Day Dropdown -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small fw-bold text-dark mb-0 d-flex align-items-center gap-1">
+                        <i class="fa-solid fa-calendar-day text-primary"></i> ជ្រើសរើសថ្ងៃ៖
+                    </label>
+                    <select name="day" class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: 170px;" onchange="this.form.submit()">
+                        <option value="all" {% if selected_day == 'all' %}selected{% endif %}>គ្រប់ថ្ងៃ (ចន្ទ-សៅរ៍)</option>
+                        {% for d in days %}
+                        <option value="{{ d.num }}" {% if selected_day == d.num|stringformat:"s" %}selected{% endif %}>ថ្ងៃ {{ d.name_kh }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Session Dropdown -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="small fw-bold text-dark mb-0 d-flex align-items-center gap-1">
+                        <i class="fa-solid fa-clock text-info"></i> ជ្រើសរើសពេល៖
+                    </label>
+                    <select name="session" class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: 180px;" onchange="this.form.submit()">
+                        <option value="all" {% if selected_session == 'all' %}selected{% endif %}>ទាំង២ពេល (ព្រឹក & រសៀល)</option>
+                        <option value="morning" {% if selected_session == 'morning' %}selected{% endif %}>ពេលព្រឹក (ម៉ោង ១-៤)</option>
+                        <option value="afternoon" {% if selected_session == 'afternoon' %}selected{% endif %}>ពេលរសៀល (ម៉ោង ៥-៨)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Report Navigation Sub-Tabs -->
+            <ul class="nav report-sub-tabs mb-0" id="reportTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link {% if selected_tab == 'duty_sheets' %}active{% endif %}" type="button" onclick="switchReportTab('duty_sheets')">
+                        <i class="fa-solid fa-clipboard-user me-1"></i> បញ្ជីវត្តមានប្រចាំថ្ងៃ
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link {% if selected_tab == 'teacher_load' %}active{% endif %}" type="button" onclick="switchReportTab('teacher_load')">
+                        <i class="fa-solid fa-chart-column me-1"></i> បន្ទុកបង្រៀនរបស់គ្រូ
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link {% if selected_tab == 'subject_codes' %}active{% endif %}" type="button" onclick="switchReportTab('subject_codes')">
+                        <i class="fa-solid fa-tags me-1"></i> កូដគ្រូ-មុខវិជ្ជា
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link {% if selected_tab == 'class_summary' %}active{% endif %}" type="button" onclick="switchReportTab('class_summary')">
+                        <i class="fa-solid fa-school me-1"></i> ម៉ោងតាមថ្នាក់
+                    </button>
+                </li>
+            </ul>
+        </form>
+    </div>
+</div>
+
+<!-- ================== TAB 1: DAILY DUTY SIGN-IN SHEETS ================== -->
+<div id="pane_duty_sheets" class="{% if selected_tab != 'duty_sheets' %}d-none{% endif %}">
+    {% for sheet in duty_sheets %}
+    <div class="duty-sheet-paper">
+        <!-- School Header -->
+        <div class="text-center mb-3">
+            <h4 class="fw-bold text-dark mb-1" style="font-family: 'Khmer OS Muol Light', serif; letter-spacing: 0.5px;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត</h4>
+            <h5 class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif;">
+                បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ {{ sheet.session_name }}
+            </h5>
+            <div class="text-dark small fw-bold">
+                ថ្ងៃ {{ sheet.day_name }} | ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៤-២០២៥" }}
+            </div>
+        </div>
+
+        <!-- Sheet Table -->
+        <table class="duty-sheet-table">
+            <thead>
+                <tr>
+                    <th style="width: 45px;">ល.រ</th>
+                    <th style="width: 110px;">អត្តលេខ</th>
+                    <th style="width: 190px; text-align: left; padding-left: 10px;">ឈ្មោះគ្រូបង្រៀន</th>
+                    {% for p_lbl in sheet.period_labels %}
+                    <th style="width: 95px;">{{ p_lbl }}</th>
+                    {% endfor %}
+                    <th style="width: 105px;">ហត្ថលេខាចូល</th>
+                    <th style="width: 105px;">ហត្ថលេខាចេញ</th>
+                    <th style="width: 90px;">ផ្សេងៗ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sheet.rows %}
+                <tr>
+                    <td class="text-center fw-bold">{{ row.no }}</td>
+                    <td class="text-center">{{ row.teacher_id }}</td>
+                    <td class="text-start ps-2 fw-bold text-dark">{{ row.teacher_name }}</td>
+                    <td class="text-center fw-bold text-primary">{{ row.p1 }}</td>
+                    <td class="text-center fw-bold text-primary">{{ row.p2 }}</td>
+                    <td class="text-center fw-bold text-primary">{{ row.p3 }}</td>
+                    <td class="text-center fw-bold text-primary">{{ row.p4 }}</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-center text-muted small"></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-4 text-muted">
+                        មិនមានម៉ោងបង្រៀនណាមួយត្រូវបានរៀបចំក្នុងពេលនេះឡើយ។
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Signatures & Dates -->
+        <div class="row mt-4 pt-2">
+            <!-- Left: Principal Signature -->
+            <div class="col-6 text-center">
+                <div style="height: 38px;"></div>
+                <div class="fw-bold" style="font-size: 0.95rem;">បានឃើញ និងឯកភាព</div>
+                <div class="fw-bold" style="font-size: 0.95rem;">នាយកសាលា</div>
+            </div>
+
+            <!-- Right: Reporter Signature -->
+            <div class="col-6 text-center">
+                <div class="text-dark small mb-1">
+                    {{ today_kh_dow }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}
+                </div>
+                <div class="fw-bold" style="font-size: 0.95rem;">អ្នករៀបចំរបាយការណ៍</div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card p-5 text-center text-muted border-0 shadow-sm">
+        <i class="fa-solid fa-file-excel fa-3x mb-3 text-secondary"></i>
+        <h5>គ្មានទិន្នន័យសម្រាប់ថ្ងៃ ឬពេលដែលបានជ្រើសរើសឡើយ</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ================== TAB 2: TEACHER TEACHING HOURS LOAD REPORT ================== -->
+<div id="pane_teacher_load" class="{% if selected_tab != 'teacher_load' %}d-none{% endif %}">
+    <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+                <i class="fa-solid fa-chart-column me-2"></i>របាយការណ៍បន្ទុកម៉ោងបង្រៀនសរុបរបស់គ្រូ (Teacher Teaching Hours Load)
+            </h5>
+            <span class="badge bg-primary fs-7">សរុបគ្រូ៖ {{ teacher_load_report|length }} នាក់</span>
+        </div>
+
+        <div class="table-responsive border rounded-3">
+            <table class="table table-bordered table-hover align-middle mb-0 small">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 50px;">ល.រ</th>
+                        <th style="width: 110px;">អត្តលេខ</th>
+                        <th style="text-align: left;">ឈ្មោះគ្រូបង្រៀន</th>
+                        <th>ឯកទេស</th>
+                        <th>កូដមុខវិជ្ជា</th>
+                        <th style="width: 110px;">ម៉ោងកំណត់គោល</th>
+                        <th style="width: 110px;">ម៉ោងចាត់តាំង</th>
+                        <th style="width: 120px;">រៀបចំក្នុងកាលវិភាគ</th>
+                        <th style="width: 90px;">ខុសគ្នា</th>
+                        <th style="width: 160px;">ស្ថានភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in teacher_load_report %}
+                    <tr>
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td class="text-center font-monospace">{{ item.teacher.teacher_id }}</td>
+                        <td class="fw-bold text-dark">{{ item.teacher.khmer_name }} ({{ item.teacher.latin_name }})</td>
+                        <td>{{ item.teacher.specialization }}</td>
+                        <td class="text-center"><span class="badge bg-secondary-subtle text-dark border">{{ item.codes }}</span></td>
+                        <td class="text-center fw-bold">{{ item.max_hours }} ម៉ោង</td>
+                        <td class="text-center fw-bold text-primary">{{ item.assigned_hours }} ម៉ោង</td>
+                        <td class="text-center fw-bold fs-7 {% if item.diff > 0 %}text-warning{% elif item.diff == 0 %}text-success{% else %}text-muted{% endif %}">
+                            {{ item.scheduled_hours }} ម៉ោង
+                        </td>
+                        <td class="text-center fw-bold">
+                            {% if item.diff > 0 %}
+                            <span class="text-warning">+{{ item.diff }}</span>
+                            {% elif item.diff < 0 %}
+                            <span class="text-danger">{{ item.diff }}</span>
+                            {% else %}
+                            <span class="text-success">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {{ item.status_badge }} px-2 py-1">{{ item.status_text }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted">គ្មានទិន្នន័យគ្រូបង្រៀន</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ================== TAB 3: TEACHER SUBJECT CODES DIRECTORY ================== -->
+<div id="pane_subject_codes" class="{% if selected_tab != 'subject_codes' %}d-none{% endif %}">
+    <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+                <i class="fa-solid fa-tags me-2"></i>បញ្ជីកូដគ្រូបង្រៀន និងមុខវិជ្ជា (Teacher Subject Codes Directory)
+            </h5>
+            <span class="badge bg-purple-subtle text-purple border fs-7">សរុបកូដ៖ {{ teacher_code_directory|length }}</span>
+        </div>
+
+        <div class="table-responsive border rounded-3">
+            <table class="table table-bordered table-hover align-middle mb-0 small">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 50px;">ល.រ</th>
+                        <th style="width: 100px;">កូដសម្គាល់</th>
+                        <th style="width: 180px;">មុខវិជ្ជាបង្រៀន</th>
+                        <th style="width: 200px;">គ្រូទទួលបន្ទុក</th>
+                        <th style="text-align: left;">ថ្នាក់ដែលត្រូវបង្រៀន</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in teacher_code_directory %}
+                    <tr>
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-primary px-3 py-1.5 fs-7">{{ item.code }}</span>
+                        </td>
+                        <td class="text-center fw-bold">{{ item.subject.name_kh }}</td>
+                        <td class="text-center fw-bold text-dark">{{ item.teacher.khmer_name }}</td>
+                        <td class="text-start ps-3">{{ item.classes }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">មិនទាន់មានកូដមុខវិជ្ជាត្រូវបានចាត់តាំងនៅឡើយទេ។</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ================== TAB 4: CLASSROOMS SUMMARY ================== -->
+<div id="pane_class_summary" class="{% if selected_tab != 'class_summary' %}d-none{% endif %}">
+    <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0">
+                <i class="fa-solid fa-school me-2"></i>របាយការណ៍ម៉ោងតាមថ្នាក់រៀន (Classrooms Timetable Allocation Summary)
+            </h5>
+            <span class="badge bg-success fs-7">សរុបថ្នាក់៖ {{ classrooms_summary|length }} ថ្នាក់</span>
+        </div>
+
+        <div class="table-responsive border rounded-3">
+            <table class="table table-bordered table-hover align-middle mb-0 small">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th style="width: 50px;">ល.រ</th>
+                        <th>ឈ្មោះថ្នាក់</th>
+                        <th>កម្រិតថ្នាក់</th>
+                        <th>ផ្នែក/Track</th>
+                        <th>គ្រូបន្ទុកថ្នាក់</th>
+                        <th style="width: 120px;">ម៉ោងកំណត់ក្នុងថ្នាក់</th>
+                        <th style="width: 120px;">ម៉ោងរៀបចំជាក់ស្តែង</th>
+                        <th style="width: 100px;">ខុសគ្នា</th>
+                        <th style="width: 140px;">ស្ថានភាព</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in classrooms_summary %}
+                    <tr>
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td class="text-center fw-bold text-primary fs-7">{{ item.classroom.name }}</td>
+                        <td class="text-center">ថ្នាក់ទី {{ item.classroom.grade_level }}</td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ item.classroom.get_track_display|default:item.classroom.track }}</span></td>
+                        <td class="text-center">
+                            {% if item.classroom.homeroom_teacher %}
+                            {{ item.classroom.homeroom_teacher.khmer_name }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">{{ item.required_hours }} ម៉ោង</td>
+                        <td class="text-center fw-bold text-primary">{{ item.scheduled_hours }} ម៉ោង</td>
+                        <td class="text-center fw-bold">
+                            {% if item.diff > 0 %}
+                            <span class="text-warning">+{{ item.diff }}</span>
+                            {% elif item.diff < 0 %}
+                            <span class="text-danger">{{ item.diff }}</span>
+                            {% else %}
+                            <span class="text-success">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ item.status_class }} px-2 py-1">{{ item.status_text }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">គ្មានទិន្នន័យថ្នាក់រៀន</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchReportTab(tabName) {
+        document.getElementById('inputTab').value = tabName;
+        
+        // Hide all panes
+        document.getElementById('pane_duty_sheets').classList.add('d-none');
+        document.getElementById('pane_teacher_load').classList.add('d-none');
+        document.getElementById('pane_subject_codes').classList.add('d-none');
+        document.getElementById('pane_class_summary').classList.add('d-none');
+
+        // Show active pane
+        const activePane = document.getElementById(`pane_${tabName}`);
+        if (activePane) activePane.classList.remove('d-none');
+
+        // Update active sub-tab button
+        const buttons = document.querySelectorAll('#reportTabs .nav-link');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        const activeBtn = Array.from(buttons).find(btn => btn.getAttribute('onclick').includes(tabName));
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+</script>
+{% endblock %}

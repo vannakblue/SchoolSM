@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}របាយការណ៍វត្តមានសិស្ស | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-card {
+        background: #fff;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 1.25rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .filter-btn-group .btn {
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.4rem 0.85rem;
+    }
+    .filter-btn-group .btn.active {
+        background-color: #3b82f6;
+        color: #fff;
+        border-color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1 text-dark">
+            <i class="fa-solid fa-chart-pie text-primary me-2"></i>របាយការណ៍វត្តមានសិស្ស (Attendance Report)
+        </h3>
+        <p class="text-muted small mb-0">សង្ខេបវត្តមាន ច្បាប់ អវត្តមាន (គណនាត្រឹម ១ ដងក្នុងមួយវេនសិក្សា) និងអត្រាវត្តមាន (%)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary shadow-sm" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print)
+        </button>
+        <a href="{% url 'student_attendance_grid' %}" class="btn btn-primary shadow-sm">
+            <i class="fa-solid fa-clipboard-check me-1"></i> ស្រង់វត្តមានប្រចាំថ្ងៃ
+        </a>
+    </div>
+</div>
+
+<!-- Quick Switcher: Student Report vs Teacher Report -->
+<div class="d-flex align-items-center gap-2 mb-4 p-2 bg-white rounded-3 border no-print shadow-sm">
+    <span class="text-muted small fw-bold px-2">ផ្លាស់ប្តូររបាយការណ៍៖</span>
+    <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-primary active fw-bold">
+        <i class="fa-solid fa-users me-1"></i> របាយការណ៍វត្តមានសិស្ស (Student Attendance)
+    </a>
+    <a href="{% url 'teacher_attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-chalkboard-user me-1"></i> របាយការណ៍វត្តមានគ្រូ (Teacher Attendance)
+    </a>
+    <a href="{% url 'at_risk_attendance' %}" class="btn btn-sm btn-outline-danger ms-auto">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i> សិស្សអវត្តមានច្រើន (At-Risk)
+    </a>
+</div>
+
+<!-- Filters Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm border-0">
+
+    <form method="GET" id="reportFilterForm">
+        <div class="row g-3 align-items-end">
+            <!-- Classroom Selector -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្នាក់រៀន *</label>
+                <select name="classroom" class="form-select" onchange="document.getElementById('reportFilterForm').submit()">
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filter Type Selector -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted">ប្រភេទចន្លោះពេល (Filter By) *</label>
+                <select name="filter_type" id="filterTypeSelect" class="form-select" onchange="handleFilterTypeChange(this.value)">
+                    <option value="today" {% if filter_type == 'today' %}selected{% endif %}>📅 ថ្ងៃនេះ (Today)</option>
+                    <option value="week" {% if filter_type == 'week' %}selected{% endif %}>📆 សប្តាហ៍ (Week)</option>
+                    <option value="month" {% if filter_type == 'month' %}selected{% endif %}>🗓️ ប្រចាំខែ (Month)</option>
+                    <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>⚙️ ចន្លោះថ្ងៃជាក់លាក់ (Custom Range)</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Input: Month -->
+            <div class="col-md-4 filter-input-box" id="box_month" style="{% if filter_type != 'month' %}display: none;{% endif %}">
+                <label class="form-label fw-bold small text-muted">ជ្រើសរើសខែ *</label>
+                <input type="month" name="month" value="{{ month_str }}" class="form-control" onchange="document.getElementById('reportFilterForm').submit()">
+            </div>
+
+            <!-- Dynamic Input: Week -->
+            <div class="col-md-4 filter-input-box" id="box_week" style="{% if filter_type != 'week' %}display: none;{% endif %}">
+                <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្ងៃក្នុងសប្តាហ៍ *</label>
+                <input type="date" name="week_date" value="{{ week_date_str }}" class="form-control" onchange="document.getElementById('reportFilterForm').submit()">
+            </div>
+
+            <!-- Dynamic Input: Custom Range -->
+            <div class="col-md-4 filter-input-box" id="box_custom" style="{% if filter_type != 'custom' %}display: none;{% endif %}">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-muted">ចាប់ពីថ្ងៃ</label>
+                        <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-muted">ដល់ថ្ងៃ</label>
+                        <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> ទាញទិន្នន័យ
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if selected_class %}
+<!-- Summary Metric KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="kpi-card border-start border-4 border-primary">
+            <div class="text-muted small fw-bold">សិស្សសរុប</div>
+            <div class="h3 fw-bold text-dark my-1">{{ summary_stats.total_students }} <span class="fs-6 text-muted font-monospace">នាក់</span></div>
+            <small class="text-muted"><i class="fa-solid fa-users text-primary me-1"></i>ក្នុងថ្នាក់ {{ selected_class.name }}</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card border-start border-4 border-info">
+            <div class="text-muted small fw-bold">វេនសិក្សាបានស្រង់</div>
+            <div class="h3 fw-bold text-info my-1">{{ summary_stats.total_sessions_held }} <span class="fs-6 text-muted">ពេល</span></div>
+            <small class="text-muted"><i class="fa-solid fa-clock text-info me-1"></i>ព្រឹក / រសៀល</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card border-start border-4 border-danger">
+            <div class="text-muted small fw-bold">អវត្តមានសរុប (ឥតច្បាប់)</div>
+            <div class="h3 fw-bold text-danger my-1">{{ summary_stats.total_absent_sessions }} <span class="fs-6 text-muted">ពេល</span></div>
+            <small class="text-muted"><i class="fa-solid fa-user-xmark text-danger me-1"></i>គិតត្រឹម ១ ដង/វេន</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="kpi-card border-start border-4 border-success">
+            <div class="text-muted small fw-bold">អត្រាវត្តមានមធ្យម</div>
+            <div class="h3 fw-bold text-success my-1">{{ summary_stats.avg_attendance_rate }}%</div>
+            <small class="text-muted"><i class="fa-solid fa-chart-line text-success me-1"></i>មធ្យមភាគទូទាំងថ្នាក់</small>
+        </div>
+    </div>
+</div>
+
+<!-- Report Table Card -->
+<div class="custom-card mb-4 shadow-sm border-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-bottom bg-light bg-opacity-50 rounded-top">
+        <div>
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-calendar-check text-primary me-2"></i>របាយការណ៍វត្តមាន៖ {{ selected_class.name }}
+            </h5>
+            <span class="text-muted small">
+                ចន្លោះពេល៖ <strong class="text-primary">{{ filter_label }}</strong> | 
+                គិតសរុប៖ <strong class="text-dark">{{ summary_stats.total_sessions_held }} វេនសិក្សា</strong>
+            </span>
+        </div>
+        <div>
+            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-3 py-2">
+                <i class="fa-solid fa-circle-info me-1"></i> សិស្សអវត្តមានច្រើនម៉ោងក្នុងវេនតែមួយ ត្រូវបានរាប់ត្រឹមតែ ១ លើក
+            </span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table align-middle table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 120px;">កូដសិស្ស</th>
+                    <th>ឈ្មោះសិស្ស</th>
+                    <th style="width: 90px;">ភេទ</th>
+                    <th class="text-center" style="width: 140px;">វត្តមាន (Present)</th>
+                    <th class="text-center" style="width: 140px;">ច្បាប់ (Permission)</th>
+                    <th class="text-center" style="width: 140px;">អវត្តមាន (Absent)</th>
+                    <th class="text-center" style="width: 110px;">មកយឺត (Late)</th>
+                    <th class="text-center" style="width: 110px;">វេនសរុប</th>
+                    <th style="width: 200px;">អត្រាវត្តមាន (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in report_data %}
+                <tr>
+                    <td class="fw-bold text-primary font-monospace">{{ r.student.student_id }}</td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ r.student.khmer_name }}</div>
+                        <small class="text-muted">{{ r.student.latin_name }}</small>
+                    </td>
+                    <td>
+                        {% if r.student.gender == 'F' %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2 py-1">ស្រី</span>
+                        {% else %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1">ប្រុស</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold text-success">{{ r.present }}</span> <small class="text-muted">ពេល</small>
+                    </td>
+                    <td class="text-center">
+                        <span class="fw-bold text-warning">{{ r.permission }}</span> <small class="text-muted">ពេល</small>
+                    </td>
+                    <td class="text-center">
+                        {% if r.absent > 0 %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle px-2.5 py-1.5 fw-bold">
+                            {{ r.absent }} ពេល
+                        </span>
+                        {% else %}
+                        <span class="text-muted">0 ពេល</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if r.late > 0 %}
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle px-2 py-1">
+                            {{ r.late }}
+                        </span>
+                        {% else %}
+                        <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-bold text-dark">{{ r.total }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px; border-radius: 4px;">
+                                <div class="progress-bar {% if r.rate >= 80 %}bg-success{% elif r.rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ r.rate }}%;" 
+                                     aria-valuenow="{{ r.rate }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                            <strong class="small {% if r.rate >= 80 %}text-success{% elif r.rate >= 50 %}text-warning{% else %}text-danger{% endif %} font-monospace">
+                                {{ r.rate }}%
+                            </strong>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-folder-open fa-2x mb-2 text-secondary opacity-50"></i>
+                        <div>មិនទាន់មានទិន្នន័យវត្តមានសម្រាប់ចន្លោះពេលនេះឡើយ</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% block extra_js %}
+<script>
+    function handleFilterTypeChange(type) {
+        document.querySelectorAll('.filter-input-box').forEach(box => box.style.display = 'none');
+        if (type === 'today') {
+            document.getElementById('reportFilterForm').submit();
+        } else if (type === 'week') {
+            document.getElementById('box_week').style.display = 'block';
+        } else if (type === 'month') {
+            document.getElementById('box_month').style.display = 'block';
+        } else if (type === 'custom') {
+            document.getElementById('box_custom').style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %}

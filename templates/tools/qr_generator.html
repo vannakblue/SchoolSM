@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}បង្កើត QR Code គ្រប់ប្រភេទ (Advanced QR Generator) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qr-preview-wrapper {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 20px;
+        padding: 30px;
+        min-height: 420px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .qr-frame-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border: 2px solid #1e3c72;
+        text-align: center;
+        display: inline-block;
+        max-width: 320px;
+    }
+    #qrCanvasContainer {
+        display: inline-block;
+        margin: 10px 0;
+        position: relative;
+    }
+    .qr-type-btn {
+        border-radius: 12px;
+        padding: 12px 14px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #334155;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .qr-type-btn:hover, .qr-type-btn.active {
+        border-color: #1e3c72;
+        background: #f0f7ff;
+        color: #1e3c72;
+        box-shadow: 0 4px 12px rgba(30, 60, 114, 0.12);
+    }
+    .qr-type-btn.active {
+        border-width: 2px;
+    }
+
+    /* Strict A4 Print Styling */
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        body, html, .app-wrapper, .app-main {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+        .app-sidebar,
+        .app-header,
+        .sidebar-backdrop,
+        nav,
+        .breadcrumb,
+        .col-lg-7,
+        .btn,
+        .no-print,
+        h2,
+        .alert,
+        .d-grid {
+            display: none !important;
+        }
+        .col-lg-5 {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .card h5 {
+            display: none !important;
+        }
+        .qr-preview-wrapper {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            min-height: auto !important;
+            margin: 20px auto !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .qr-frame-card {
+            box-shadow: none !important;
+            border: 4px solid #1e3c72 !important;
+            border-radius: 20px !important;
+            padding: 40px 30px !important;
+            max-width: 460px !important;
+            width: 460px !important;
+            margin: 20px auto !important;
+            page-break-inside: avoid !important;
+        }
+        #displayFrameHeader {
+            font-size: 26px !important;
+            margin-bottom: 8px !important;
+        }
+        #qrcodeDiv canvas {
+            width: 260px !important;
+            height: 260px !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">QR Code Generator</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-qrcode text-dark me-2"></i>បង្កើត QR Code គ្រប់ប្រភេទ (Advanced QR Generator)
+            </h2>
+            <p class="text-muted small mb-0">បង្កើត QR Code សម្រាប់ Link ថ្នាក់រៀន, WiFi សាលា, vCard គ្រូ, Telegram ជាមួយឡូហ្គោសាលា និង Frame បោះពុម្ពស្អាតៗ។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Content Input & Configuration Column -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <!-- QR Type Selector -->
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list-check text-primary me-2"></i>ជ្រើសរើសប្រភេទ QR Code (QR Type)</h6>
+                <div class="row g-2 mb-4">
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100 active" onclick="switchQrType('url', this)">
+                            <i class="fa-solid fa-link text-primary fs-5"></i>
+                            <span>Link / Website</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100" onclick="switchQrType('wifi', this)">
+                            <i class="fa-solid fa-wifi text-success fs-5"></i>
+                            <span>WiFi សាលារៀន</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100" onclick="switchQrType('telegram', this)">
+                            <i class="fa-brands fa-telegram text-info fs-5"></i>
+                            <span>Telegram Link</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100" onclick="switchQrType('vcard', this)">
+                            <i class="fa-solid fa-address-card text-warning fs-5"></i>
+                            <span>Contact vCard</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100" onclick="switchQrType('text', this)">
+                            <i class="fa-solid fa-align-left text-secondary fs-5"></i>
+                            <span>អត្ថបទ / Text</span>
+                        </button>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="qr-type-btn w-100" onclick="switchQrType('phone', this)">
+                            <i class="fa-solid fa-phone text-danger fs-5"></i>
+                            <span>លេខទូរស័ព្ទ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Dynamic Form Inputs -->
+                <div id="formFieldsContainer">
+                    <!-- URL Fields -->
+                    <div class="qr-form-field" id="field-url">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">តំណភ្ជាប់ / URL (Google Classroom, Zoom, YouTube, Drive...)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-globe text-primary"></i></span>
+                                <input type="url" id="inputUrl" class="form-control" placeholder="https://t.me/your_class_group" value="https://school.edu.kh" oninput="generateQrCode()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WiFi Fields -->
+                    <div class="qr-form-field" id="field-wifi" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">ឈ្មោះបណ្តាញ WiFi (SSID)</label>
+                            <input type="text" id="wifiSsid" class="form-control" placeholder="School_Lab_WiFi" value="SchoolSM_WiFi" oninput="generateQrCode()">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">លេខសម្ងាត់ WiFi (Password)</label>
+                            <input type="text" id="wifiPassword" class="form-control" placeholder="wifi password" value="12345678" oninput="generateQrCode()">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">ប្រភេទសុវត្ថិភាព (Encryption)</label>
+                            <select class="form-select" id="wifiEncryption" onchange="generateQrCode()">
+                                <option value="WPA" selected>WPA / WPA2 (ស្តង់ដា)</option>
+                                <option value="WPA3">WPA3</option>
+                                <option value="nopass">គ្មានលេខសម្ងាត់ (Open)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Telegram Fields -->
+                    <div class="qr-form-field" id="field-telegram" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">Telegram Username ឬ Group Link</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-info"><i class="fa-brands fa-telegram"></i></span>
+                                <input type="text" id="inputTelegram" class="form-control" placeholder="t.me/my_class_group ឬ @username" value="https://t.me/schoolsm" oninput="generateQrCode()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- vCard Fields -->
+                    <div class="qr-form-field" id="field-vcard" style="display: none;">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-muted">ឈ្មោះ (Full Name)</label>
+                                <input type="text" id="vcardName" class="form-control" placeholder="លោកគ្រូ សុខ ពិសិដ្ឋ" value="លោកគ្រូ សុខ ពិសិដ្ឋ" oninput="generateQrCode()">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-muted">លេខទូរស័ព្ទ (Phone)</label>
+                                <input type="tel" id="vcardPhone" class="form-control" placeholder="012 345 678" value="012 345 678" oninput="generateQrCode()">
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-muted">តួនាទី / មុខវិជ្ជា (Role)</label>
+                                <input type="text" id="vcardRole" class="form-control" placeholder="គ្រូបង្រៀនគណិតវិទ្យា" value="គ្រូបង្រៀនគណិតវិទ្យា" oninput="generateQrCode()">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-muted">អ៊ីមែល (Email)</label>
+                                <input type="email" id="vcardEmail" class="form-control" placeholder="teacher@school.edu.kh" value="teacher@school.edu.kh" oninput="generateQrCode()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plain Text Fields -->
+                    <div class="qr-form-field" id="field-text" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">អត្ថបទ / សេចក្តីជូនដំណឹង / កិច្ចការផ្ទះ</label>
+                            <textarea id="inputText" class="form-control" rows="3" placeholder="សូមសិស្សានុសិស្សធ្វើលំហាត់ទំព័រ ៤៥ ឱ្យបានរួចរាល់..." oninput="generateQrCode()">សូមស្វាគមន៍មកកាន់ប្រព័ន្ធ SchoolSM</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Phone Fields -->
+                    <div class="qr-form-field" id="field-phone" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">លេខទូរស័ព្ទហៅចេញ</label>
+                            <input type="tel" id="inputPhone" class="form-control" placeholder="+855 12 345 678" value="012345678" oninput="generateQrCode()">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Color & Frame Styling Customization -->
+                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-palette text-warning me-2"></i>ការរចនា & ស៊ុមបោះពុម្ព (Styling & Frame)</h6>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label fw-semibold small text-muted">ពណ៌ QR (Foreground)</label>
+                        <input type="color" id="qrFgColor" class="form-control form-control-color w-100" value="#1e3c72" onchange="generateQrCode()">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-semibold small text-muted">ពណ៌ផ្ទៃក្រោយ (Background)</label>
+                        <input type="color" id="qrBgColor" class="form-control form-control-color w-100" value="#ffffff" onchange="generateQrCode()">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-semibold small text-muted">ឡូហ្គោចំកណ្តាល (Center Icon/Logo)</label>
+                        <select class="form-select" id="qrCenterLogo" onchange="generateQrCode()">
+                            <option value="none">គ្មានឡូហ្គោ (None)</option>
+                            <option value="school" selected>🎓 និមិត្តសញ្ញាសាលារៀន (School)</option>
+                            <option value="telegram">✈️ Telegram Icon</option>
+                            <option value="wifi">📶 WiFi Icon</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-semibold small text-muted">ស៊ុមអក្សរបោះពុម្ព (Print Frame Header)</label>
+                        <input type="text" id="frameHeader" class="form-control" value="ស្កេនដើម្បីចូលរៀន" oninput="updateFrameHeader()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live QR Preview & Download Column -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top text-center" style="top: 85px;">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-eye text-primary me-2"></i>គំរូ QR Code ផ្ទាល់ (Live Preview)
+                </h5>
+
+                <div class="qr-preview-wrapper mb-3" id="printableQrWrapper">
+                    <div class="qr-frame-card" id="qrFrameCard">
+                        <h6 class="fw-bold mb-1" id="displayFrameHeader" style="color: #1e3c72;">ស្កេនដើម្បីចូលរៀន</h6>
+                        <small class="text-muted d-block mb-2">SchoolSM Smart System</small>
+                        <div id="qrCanvasContainer">
+                            <canvas id="qrMainCanvas" width="220" height="220" style="display: block; margin: 0 auto; border-radius: 8px;"></canvas>
+                        </div>
+                        <div class="small fw-semibold text-muted mt-1" id="displaySubtitle">SCAN ME WITH CAMERA</div>
+                    </div>
+                </div>
+
+                <!-- Download Actions -->
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary btn-lg rounded-pill shadow-sm" onclick="downloadQrImage('png')">
+                        <i class="fa-solid fa-download me-2"></i> ទាញយកជារូបភាព (Download PNG)
+                    </button>
+                    <button type="button" class="btn btn-outline-dark rounded-pill" onclick="printQrFrame()">
+                        <i class="fa-solid fa-print me-2"></i> បោះពុម្ពស៊ុម QR (Print Frame)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QRCode Generator (Universal UTF-8, Khmer Unicode & large vCard support) -->
+<script src="{% static 'js/qrcode-generator.min.js' %}"></script>
+<script>
+    // Fallback if static fails to load
+    if (typeof qrcode === 'undefined') {
+        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"><\/script>');
+    }
+</script>
+
+<script>
+    let currentType = 'url';
+
+    window.addEventListener('DOMContentLoaded', () => {
+        generateQrCode();
+    });
+
+    function switchQrType(type, btn) {
+        currentType = type;
+        document.querySelectorAll('.qr-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.qr-form-field').forEach(el => el.style.display = 'none');
+        const activeField = document.getElementById(`field-${type}`);
+        if (activeField) activeField.style.display = 'block';
+
+        // Auto update default frame header
+        const headerInput = document.getElementById('frameHeader');
+        if (type === 'wifi') headerInput.value = 'ស្កេនដើម្បីភ្ជាប់ WIFI សាលា';
+        else if (type === 'telegram') headerInput.value = 'ស្កេនដើម្បីចូល Telegram Group';
+        else if (type === 'vcard') headerInput.value = 'ស្កេនដើម្បីរក្សាទុក Contact គ្រូ';
+        else if (type === 'url') headerInput.value = 'ស្កេនដើម្បីចូលរៀន';
+        else headerInput.value = 'ស្កេន QR Code';
+
+        updateFrameHeader();
+        generateQrCode();
+    }
+
+    function updateFrameHeader() {
+        document.getElementById('displayFrameHeader').innerText = document.getElementById('frameHeader').value || 'SCAN ME';
+    }
+
+    function getQrPayload() {
+        if (currentType === 'url') {
+            return document.getElementById('inputUrl').value.trim() || 'https://school.edu.kh';
+        } else if (currentType === 'wifi') {
+            const ssid = document.getElementById('wifiSsid').value.trim() || 'WiFi';
+            const pass = document.getElementById('wifiPassword').value.trim();
+            const enc = document.getElementById('wifiEncryption').value;
+            return `WIFI:S:${ssid};T:${enc};P:${pass};;`;
+        } else if (currentType === 'telegram') {
+            let tg = document.getElementById('inputTelegram').value.trim();
+            if (tg.startsWith('@')) tg = 'https://t.me/' + tg.substring(1);
+            else if (!tg.startsWith('http')) tg = 'https://t.me/' + tg;
+            return tg;
+        } else if (currentType === 'vcard') {
+            const name = document.getElementById('vcardName').value.trim();
+            const phone = document.getElementById('vcardPhone').value.trim();
+            const role = document.getElementById('vcardRole').value.trim();
+            const email = document.getElementById('vcardEmail').value.trim();
+            return `BEGIN:VCARD\nVERSION:3.0\nN:${name}\nFN:${name}\nORG:SchoolSM\nTITLE:${role}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+        } else if (currentType === 'text') {
+            return document.getElementById('inputText').value.trim() || 'SchoolSM';
+        } else if (currentType === 'phone') {
+            const phone = document.getElementById('inputPhone').value.trim();
+            return `tel:${phone}`;
+        }
+        return 'SchoolSM';
+    }
+
+    function generateQrCode() {
+        const payload = getQrPayload();
+        const fgColor = document.getElementById('qrFgColor').value || '#1e3c72';
+        const bgColor = document.getElementById('qrBgColor').value || '#ffffff';
+        const canvas = document.getElementById('qrMainCanvas');
+
+        if (!canvas || typeof qrcode === 'undefined') return;
+
+        try {
+            // Enable UTF-8 for Khmer Unicode
+            if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) {
+                qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+            }
+
+            // typeNumber: 0 (auto-detect version from 1 to 40), error correction: 'M'
+            let qr = qrcode(0, 'M');
+            qr.addData(payload);
+            qr.make();
+
+            renderQrToCanvas(qr, canvas, fgColor, bgColor, 2);
+            drawCenterLogo(canvas, fgColor, bgColor);
+        } catch (e) {
+            console.warn('QR generate with Level M failed, falling back to Level L:', e);
+            try {
+                let qr = qrcode(0, 'L');
+                qr.addData(payload);
+                qr.make();
+                renderQrToCanvas(qr, canvas, fgColor, bgColor, 2);
+                drawCenterLogo(canvas, fgColor, bgColor);
+            } catch (err) {
+                console.error("QR generation fatal error:", err);
+            }
+        }
+    }
+
+    function renderQrToCanvas(qr, canvas, fgColor, bgColor, margin = 2) {
+        const moduleCount = qr.getModuleCount();
+        const size = canvas.width;
+        const totalModules = moduleCount + margin * 2;
+        const cellSize = size / totalModules;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.fillStyle = fgColor;
+        for (let r = 0; r < moduleCount; r++) {
+            for (let c = 0; c < moduleCount; c++) {
+                if (qr.isDark(r, c)) {
+                    ctx.fillRect(
+                        (c + margin) * cellSize,
+                        (r + margin) * cellSize,
+                        cellSize + 0.5,
+                        cellSize + 0.5
+                    );
+                }
+            }
+        }
+    }
+
+    function drawCenterLogo(canvas, fgColor, bgColor) {
+        const logoType = document.getElementById('qrCenterLogo').value;
+        if (logoType !== 'none') {
+            const ctx = canvas.getContext('2d');
+            const centerSize = 44;
+
+            // Circular background badge behind logo
+            ctx.fillStyle = bgColor;
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, centerSize / 2 + 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = fgColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw emoji / icon text
+            ctx.font = '24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (logoType === 'school') ctx.fillText('🎓', canvas.width / 2, canvas.height / 2);
+            else if (logoType === 'telegram') ctx.fillText('✈️', canvas.width / 2, canvas.height / 2);
+            else if (logoType === 'wifi') ctx.fillText('📶', canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function downloadQrImage() {
+        const canvas = document.getElementById('qrMainCanvas');
+        if (!canvas) return;
+
+        // Render entire frame onto high-res canvas
+        const frameCanvas = document.createElement('canvas');
+        frameCanvas.width = 600;
+        frameCanvas.height = 760;
+        const ctx = frameCanvas.getContext('2d');
+
+        // White card background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, frameCanvas.width, frameCanvas.height);
+
+        // Border
+        const fgColor = document.getElementById('qrFgColor').value || '#1e3c72';
+        ctx.strokeStyle = fgColor;
+        ctx.lineWidth = 8;
+        ctx.strokeRect(20, 20, frameCanvas.width - 40, frameCanvas.height - 40);
+
+        // Header Text
+        ctx.fillStyle = fgColor;
+        ctx.font = 'bold 36px "Kantumruy Pro", sans-serif';
+        ctx.textAlign = 'center';
+        const title = document.getElementById('displayFrameHeader').innerText;
+        ctx.fillText(title, frameCanvas.width / 2, 90);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '20px "Kantumruy Pro", sans-serif';
+        ctx.fillText('SchoolSM Smart Educational System', frameCanvas.width / 2, 130);
+
+        // Draw QR Code
+        ctx.drawImage(canvas, 90, 170, 420, 420);
+
+        // Bottom Subtitle
+        ctx.fillStyle = '#475569';
+        ctx.font = 'bold 22px "Kantumruy Pro", sans-serif';
+        ctx.fillText('SCAN WITH CAMERA / ស្កេនតាមកាមេរ៉ា', frameCanvas.width / 2, 650);
+
+        const a = document.createElement('a');
+        a.href = frameCanvas.toDataURL('image/png');
+        a.download = `QRCode_SchoolSM_${currentType}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'ទាញយក QR Code ជោគជ័យ!',
+            confirmButtonColor: '#1e3c72'
+        });
+    }
+
+    function printQrFrame() {
+        const canvas = document.getElementById('qrMainCanvas');
+        if (!canvas) {
+            Swal.fire('សូមរង់ចាំ', 'QR Code កំពុងដំណើរការ...', 'info');
+            return;
+        }
+
+        const qrDataUrl = canvas.toDataURL('image/png');
+        const headerTitle = document.getElementById('displayFrameHeader').innerText || 'ស្កេន QR Code';
+        const fgColor = document.getElementById('qrFgColor').value || '#1e3c72';
+
+        // Create an isolated printable iframe for flawless single-page print
+        let iframe = document.getElementById('qrPrintIframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'qrPrintIframe';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+        }
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html lang="km">
+            <head>
+                <meta charset="UTF-8">
+                <title>${headerTitle} - Print Frame</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700;800&display=swap" rel="stylesheet">
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 15mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    body {
+                        font-family: 'Kantumruy Pro', sans-serif;
+                        background: #ffffff;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                    }
+                    .print-stand {
+                        width: 480px;
+                        border: 4px solid ${fgColor};
+                        border-radius: 24px;
+                        padding: 40px 30px;
+                        text-align: center;
+                        background: #ffffff;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+                        page-break-inside: avoid;
+                    }
+                    .school-brand {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        margin-bottom: 20px;
+                    }
+                    .school-logo-icon {
+                        font-size: 28px;
+                    }
+                    .school-name {
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: #64748b;
+                        letter-spacing: 0.5px;
+                        text-transform: uppercase;
+                    }
+                    .frame-header {
+                        font-size: 28px;
+                        font-weight: 800;
+                        color: ${fgColor};
+                        margin-bottom: 6px;
+                        line-height: 1.3;
+                    }
+                    .frame-sub {
+                        font-size: 14px;
+                        color: #64748b;
+                        margin-bottom: 24px;
+                    }
+                    .qr-image-box {
+                        display: inline-block;
+                        padding: 14px;
+                        border-radius: 16px;
+                        background: #ffffff;
+                        border: 2px solid #e2e8f0;
+                        margin-bottom: 24px;
+                    }
+                    .qr-image-box img {
+                        width: 260px;
+                        height: 260px;
+                        display: block;
+                    }
+                    .instruction-badge {
+                        display: inline-block;
+                        padding: 8px 24px;
+                        background: #f1f5f9;
+                        border-radius: 30px;
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #334155;
+                        letter-spacing: 0.5px;
+                    }
+                    .footer-note {
+                        font-size: 11px;
+                        color: #94a3b8;
+                        margin-top: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="print-stand">
+                    <div class="school-brand">
+                        <span class="school-logo-icon">🎓</span>
+                        <span class="school-name">School Management System (SchoolSM)</span>
+                    </div>
+
+                    <h1 class="frame-header">${headerTitle}</h1>
+                    <div class="frame-sub">សូមស្កេន QR Code ខាងក្រោមដើម្បីដំណើរការ</div>
+
+                    <div class="qr-image-box">
+                        <img src="${qrDataUrl}" alt="QR Code">
+                    </div>
+
+                    <div>
+                        <div class="instruction-badge">📷 SCAN WITH CAMERA / ស្កេនតាមកាមេរ៉ា</div>
+                    </div>
+
+                    <div class="footer-note">
+                        ប្រព័ន្ធឌីជីថលសាលារៀនកម្ពុជា • SchoolSM Smart Educational Platform
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 300);
+    }
+</script>
+{% endblock %}

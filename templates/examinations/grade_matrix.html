@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}បញ្ចូលពិន្ទុសិស្ស (Grade Entry Matrix) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-pen-to-square me-2"></i>បញ្ចូលពិន្ទុសិស្សតាមមុខវិជ្ជា (Grade Entry Matrix)
+        </h2>
+        <p class="text-muted small mb-0">គ្រូបង្រៀនបញ្ចូលពិន្ទុតាមច្បាប់ពិន្ទុអតិបរមារបស់ថ្នាក់នីមួយៗ (MoEYS Standard)</p>
+    </div>
+    {% if selected_term and selected_class %}
+    <div class="d-flex gap-2">
+        <a href="{% url 'grade_summary' %}?term={{ selected_term.id }}&classroom={{ selected_class.id }}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-ranking-star me-1"></i> មើលតារាងចំណាត់ថ្នាក់
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filters: Select Term & Class -->
+<div class="custom-card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-5">
+            <label class="form-label fw-bold small text-muted">សម័យប្រឡង (Exam Term) *</label>
+            <select name="term" class="form-select" onchange="this.form.submit()">
+                {% for t in terms %}
+                <option value="{{ t.id }}" {% if selected_term and selected_term.id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label fw-bold small text-muted">ថ្នាក់រៀន (Classroom) *</label>
+            <select name="classroom" class="form-select" onchange="this.form.submit()">
+                {% for c in classrooms %}
+                <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.get_track_display }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">ផ្ទុកតារាង</button>
+        </div>
+    </form>
+</div>
+
+<!-- Matrix Table Form -->
+{% if selected_term and selected_class %}
+
+{% if selected_term.scoring_mode == 'STANDARDIZED_ROOM' %}
+<div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-warning fs-3"></i>
+        <div>
+            <h6 class="fw-bold mb-0 text-dark">សម័យប្រឡងនេះត្រូវបានកំណត់ឱ្យ «បញ្ចូលតាមបន្ទប់ប្រឡង (Rooms 1-25)»</h6>
+            <span class="small text-muted">សម័យប្រឡងនេះមានការរៀបចំបន្ទប់ប្រឡង និងបេក្ខជនតាមលេខតុ (Standardized Exam Rooms)។</span>
+        </div>
+    </div>
+    <a href="{% url 'standardized_exam_list' %}" class="btn btn-warning fw-bold btn-sm rounded-pill px-3 shadow-xs">
+        <i class="fa-solid fa-door-open me-1"></i> ទៅកាន់ទំព័របញ្ចូលពិន្ទុតាមបន្ទប់
+    </a>
+</div>
+{% endif %}
+
+<form method="POST">
+    {% csrf_token %}
+    <div class="custom-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+                <h5 class="fw-bold mb-0 text-primary">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>បញ្ចូលពិន្ទុ៖ {{ selected_class.name }} ({{ selected_term.name }})
+                </h5>
+                <span class="badge bg-light text-dark mt-1">{{ selected_class.get_track_display }} | ពិន្ទុសរុបពេញ៖ {{ selected_class.get_total_max_score|floatformat:0 }} ពិន្ទុ</span>
+            </div>
+            <button type="submit" class="btn btn-success fw-bold">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុទាំងអស់
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th style="min-width: 180px;">សិស្ស</th>
+                        {% for rule in subject_rules %}
+                        <th class="text-center" style="min-width: 115px;">
+                            <div>
+                                <div class="fw-bold fs-6">{{ rule.subject.name_kh }}</div>
+                            </div>
+                            <div class="badge bg-primary-soft text-primary small mt-1" style="font-size: 0.72rem;">
+                                អតិបរមា {{ rule.max_score|floatformat:0 }}
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in matrix_data %}
+                    <tr class="{% if row.is_excluded %}table-light opacity-85{% endif %}">
+                        <td>
+                            <div class="fw-bold {% if row.is_excluded %}text-secondary{% endif %}">
+                                {{ row.student.khmer_name }}
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-1 mt-0.5">
+                                <span class="text-muted small">{{ row.student.student_id }}</span>
+                                {% if row.is_excluded %}
+                                <span class="badge bg-danger-subtle text-danger border" style="font-size: 0.68rem;">
+                                    <i class="fa-solid fa-ban me-1"></i>{{ row.exclusion_reason|default:"លើកលែងមិនឱ្យប្រឡង" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% for score_item in row.scores %}
+                        <td class="text-center">
+                            {% if row.can_edit %}
+                            <input type="number" step="0.5" min="0" max="{{ score_item.max_score }}" 
+                                   name="score_{{ row.student.id }}_{{ score_item.subject.id }}" 
+                                   value="{{ score_item.score }}" 
+                                   class="form-control form-control-sm text-center fw-bold {% if row.is_excluded %}border-warning bg-warning-subtle text-dark{% endif %}"
+                                   placeholder="0 - {{ score_item.max_score|floatformat:0 }}"
+                                   {% if row.is_excluded %}title="សិស្សត្រូវបានលើកលែង (Admin Override)"{% endif %}>
+                            {% else %}
+                            <div class="input-group input-group-sm">
+                                <input type="text" 
+                                       value="0.00" 
+                                       readonly 
+                                       disabled 
+                                       class="form-control form-control-sm text-center bg-light text-muted fw-bold"
+                                       title="សិស្សមិនបានប្រឡង/ត្រូវបានលើកលែង (ពិន្ទុ ០ ស្វ័យប្រវត្តិ - មានតែ Admin ទើបអាចកែបាន)">
+                            </div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ subject_rules|length|add:'1' }}" class="text-center py-4 text-muted">គ្មានសិស្សនៅក្នុងថ្នាក់នេះឡើយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="small text-muted">
+                <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                សិស្សដែលមិនបានប្រឡង ឬត្រូវបានលើកលែង ទទួលបានពិន្ទុ <strong>០.០០ ដោយស្វ័យប្រវត្តិ</strong> (មានតែ Admin ទេដែលអាចកែប្រែពិន្ទុបាន)។
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកពិន្ទុទាំងអស់
+            </button>
+        </div>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,388 @@
+{% extends 'base.html' %}
+
+{% block title %}QR Code ចុះឈ្មោះសិស្សតាមកម្រិតថ្នាក់ & ថ្នាក់រៀន (Admission QR Posters) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2 no-print">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-qrcode text-primary me-2"></i>QR Code ចុះឈ្មោះសិស្សតាមកម្រិតថ្នាក់ & ថ្នាក់រៀន
+        </h2>
+        <p class="text-muted small mb-0">បង្កើត និងបោះពុម្ពបដា QR Code សម្រាប់បិទនៅក្លោងទ្វារសាលា តាមអគារ ឬមុខបន្ទប់រៀននីមួយៗ</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'student_list' %}" class="btn btn-light">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពបដា (Print Poster)
+        </button>
+        <button type="button" class="btn btn-outline-success" id="btnToggleBatch">
+            <i class="fa-solid fa-layer-group me-1"></i> បោះពុម្ពគ្រប់ថ្នាក់ទាំងអស់ (Batch Print)
+        </button>
+    </div>
+</div>
+
+<!-- Selection Controls Card (No-print) -->
+<div class="custom-card mb-4 p-3 no-print" id="selectorControls">
+    <div class="row g-3 align-items-center">
+        <!-- 1. Poster Type Selector -->
+        <div class="col-md-4">
+            <label class="form-label fw-bold small text-muted mb-1">១. ជ្រើសរើសប្រភេទបដា (Poster Type)</label>
+            <select id="posterTypeSelect" class="form-select">
+                <option value="GRADE" selected>-- QR Code តាមកម្រិតថ្នាក់ (Grade Level: ថ្នាក់ទី ៧, ៨, ៩...) --</option>
+                <option value="CLASSROOM">-- QR Code តាមថ្នាក់រៀនជាក់លាក់ (Classroom: 7A, 8A, 10A...) --</option>
+                <option value="GENERAL">-- QR Code ទូទៅ (គ្រប់កម្រិតថ្នាក់ / All Grades) --</option>
+            </select>
+        </div>
+
+        <!-- 2A. Grade Level Selector (Shown when type === 'GRADE') -->
+        <div class="col-md-5" id="gradeSelectWrapper">
+            <label class="form-label fw-bold small text-primary mb-1">២. ជ្រើសរើសកម្រិតថ្នាក់ (Target Grade Level) *</label>
+            <select id="gradeSelect" class="form-select border-primary">
+                {% for g in grade_data %}
+                <option value="{{ g.grade_level }}" 
+                        data-name="{{ g.name }}" 
+                        data-track="{{ g.track }}"
+                        data-classes="{{ g.class_codes }}"
+                        data-count="{{ g.classes_count }}"
+                        data-url="{{ g.url }}"
+                        data-qr="{{ g.qr_src }}">
+                    {{ g.name }} {% if g.class_codes %}(ថ្នាក់៖ {{ g.class_codes }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 2B. Classroom Selector (Shown when type === 'CLASSROOM') -->
+        <div class="col-md-5" id="classroomSelectWrapper" style="display: none;">
+            <label class="form-label fw-bold small text-primary mb-1">២. ជ្រើសរើសថ្នាក់រៀនជាក់លាក់ (Target Classroom) *</label>
+            <select id="classroomSelect" class="form-select border-primary">
+                {% for c in classroom_data %}
+                <option value="{{ c.id }}" 
+                        data-code="{{ c.code }}" 
+                        data-name="{{ c.name }}" 
+                        data-room="{{ c.room_number }}"
+                        data-grade="{{ c.grade_level }}"
+                        data-url="{{ c.url }}"
+                        data-qr="{{ c.qr_src }}">
+                    {{ c.name }} ({{ c.code }}) {% if c.room_number %}- {{ c.room_number }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 3. Server URL Input -->
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted mb-1">៣. អាសយដ្ឋាន Server (URL Base)</label>
+            <input type="text" id="customUrlBase" class="form-control form-control-sm bg-light" value="{{ base_url }}" title="អាចកែប្រែជា Domain សាលា ឧ. https://myschool.edu.kh/students/enroll/online/">
+        </div>
+    </div>
+</div>
+
+<!-- SINGLE POSTER VIEW -->
+<div id="singlePosterView">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9">
+            <!-- Printable QR Poster Card -->
+            <div class="card border shadow-sm p-4 text-center bg-white rounded-4 printable-poster" style="border-color: #cbd5e1 !important;">
+                
+                <!-- School & Ministry Header -->
+                <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
+                    <div class="brand-icon bg-primary text-white rounded-circle shadow-sm d-flex align-items-center justify-content-center flex-shrink-0" style="width: 56px; height: 56px; font-size: 26px;">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div class="text-start">
+                        <h4 class="fw-bold text-dark mb-0">ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)</h4>
+                        <div class="text-muted small">ពាក្យសុំចុះឈ្មោះចូលរៀនតាម Online (Student Admission)</div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Dynamic Classroom / Grade Header -->
+                <div class="my-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-1 rounded-pill fw-bold mb-2" id="posterBadge" style="font-size: 0.9rem;">
+                        កម្រិតថ្នាក់
+                    </span>
+                    <h2 class="fw-bold text-primary mb-1" id="posterTitle">
+                        ចុះឈ្មោះចូលរៀន ថ្នាក់ទី ៧
+                    </h2>
+                    <h5 class="text-secondary fw-bold mb-2" id="posterSubtitle">
+                        ថ្នាក់រៀនក្នុងកម្រិតនេះ៖ 7A, 7B, 7C
+                    </h5>
+                </div>
+                
+                <p class="text-muted small mb-3">
+                    សូមប្រើប្រាស់ Camera ទូរស័ព្ទដៃ (iPhone / Android) របស់អ្នកដើម្បី <strong>Scan QR Code</strong> ខាងក្រោម ដើម្បីចុះឈ្មោះចូលរៀនដោយផ្ទាល់៖
+                </p>
+
+                <!-- High Quality QR Code Image -->
+                <div class="p-3 bg-light rounded-4 border d-inline-block mx-auto mb-3 shadow-sm">
+                    <img id="qrCodeImg" 
+                         src="" 
+                         alt="Admission QR Code" 
+                         class="img-fluid rounded-3"
+                         style="width: 240px; height: 240px;">
+                </div>
+
+                <!-- Direct URL Box with Copy Button (No-print) -->
+                <div class="input-group mb-2 mx-auto no-print" style="max-width: 520px;">
+                    <input type="text" id="regUrlInput" class="form-control text-center small fw-bold bg-light" value="">
+                    <button class="btn btn-outline-primary fw-bold" type="button" id="copyUrlBtn" onclick="copyLink()">
+                        <i class="fa-solid fa-copy me-1"></i> ចម្លង Link
+                    </button>
+                </div>
+
+                <div class="text-muted small mb-3 no-print" style="font-size: 0.78rem;">
+                    <i class="fa-solid fa-wifi text-success me-1"></i> <strong>សម្រាប់តេស្តលើទូរស័ព្ទក្នុងបណ្ដាញ Wi-Fi តែមួយ៖</strong> ប្រើ IP <code>{{ local_ip }}</code> (ទូរស័ព្ទ និងកុំព្យូទ័រត្រូវភ្ជាប់ Wi-Fi ជាមួយគ្នា)។
+                </div>
+
+                <div class="p-3 bg-primary bg-opacity-10 border border-primary rounded-3 text-start mb-0">
+                    <div class="fw-bold text-primary small mb-1">
+                        <i class="fa-solid fa-circle-check me-1"></i> អត្ថប្រយោជន៍៖
+                    </div>
+                    <ul class="small text-muted mb-0 ps-3">
+                        <li>ប្រព័ន្ធកំណត់កម្រិតថ្នាក់/ថ្នាក់រៀនស្វ័យប្រវត្តិ ការពារកុំឱ្យសិស្សចុះឈ្មោះច្រឡំថ្នាក់</li>
+                        <li>ចេញលេខកូដសិស្ស (Student ID: <code>260001</code>) និងបង្កាន់ដៃចុះឈ្មោះភ្លាមៗ</li>
+                        <li>មិនបាច់ដំឡើង App ដំណើរការលើ Safari / Chrome បានភ្លាម</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4 pt-3 border-top text-muted small">
+                    ឆ្នាំសិក្សា <strong>{{ current_year.name|default:"2025-2026" }}</strong> | School Management System
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BATCH PRINT VIEW (ALL GRADES & CLASSROOMS) -->
+<div id="batchPrintView" style="display: none;">
+    <div class="alert alert-info py-2 px-3 mb-4 no-print d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fa-solid fa-layer-group me-2"></i><strong>ទម្រង់បោះពុម្ពគ្រប់ថ្នាក់ទាំងអស់ (Batch Print View)៖</strong> ប្រព័ន្ធបានរៀបចំបដាសម្រាប់កម្រិតថ្នាក់ និងថ្នាក់រៀននីមួយៗរួចជាស្រេច លោកអ្នកអាចចុច <strong>Print Poster</strong> ដើម្បីបោះពុម្ពបដាគ្រប់ថ្នាក់ទាំងអស់។
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-dark" id="btnBackToSingle">
+            <i class="fa-solid fa-arrow-left me-1"></i> មើលបដាតែមួយ
+        </button>
+    </div>
+
+    <!-- Batch Section 1: All Grade Levels -->
+    <div class="mb-4">
+        <h5 class="fw-bold text-primary border-bottom pb-2 mb-3 no-print">
+            <i class="fa-solid fa-layer-group me-2"></i>១. បដា QR Code តាមកម្រិតថ្នាក់ (Grade Level Posters)
+        </h5>
+        <div class="row g-4">
+            {% for g in grade_data %}
+            <div class="col-md-6 mb-4 poster-page-break">
+                <div class="card border shadow-sm p-4 text-center bg-white rounded-4 printable-poster h-100">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <i class="fa-solid fa-graduation-cap text-primary fs-3"></i>
+                        <h5 class="fw-bold text-dark mb-0">ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)</h5>
+                    </div>
+                    <hr class="my-2">
+                    <div class="my-2">
+                        <span class="badge bg-primary px-3 py-1 rounded-pill fw-bold mb-1" style="font-size: 0.85rem;">
+                            កម្រិតថ្នាក់ទី {{ g.grade_level }}
+                        </span>
+                        <h3 class="fw-bold text-primary mb-1">{{ g.name }}</h3>
+                        {% if g.class_codes %}<h6 class="text-secondary fw-bold mb-2">ថ្នាក់រៀន៖ {{ g.class_codes }}</h6>{% endif %}
+                    </div>
+                    <p class="text-muted small mb-2">Scan QR Code ខាងក្រោមដើម្បីចុះឈ្មោះចូលរៀន៖</p>
+                    <div class="p-2 bg-light rounded-3 border d-inline-block mx-auto mb-2">
+                        <img src="{{ g.qr_src }}" alt="{{ g.name }}" style="width: 180px; height: 180px;">
+                    </div>
+                    <div class="text-muted small mb-0" style="font-size: 0.75rem;">
+                        ឆ្នាំសិក្សា {{ current_year.name|default:"2025-2026" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Batch Section 2: All Classrooms -->
+    <div>
+        <h5 class="fw-bold text-success border-bottom pb-2 mb-3 no-print">
+            <i class="fa-solid fa-chalkboard-user me-2"></i>២. បដា QR Code តាមថ្នាក់រៀនជាក់លាក់ (Classroom Posters)
+        </h5>
+        <div class="row g-4">
+            {% for c in classroom_data %}
+            <div class="col-md-6 mb-4 poster-page-break">
+                <div class="card border shadow-sm p-4 text-center bg-white rounded-4 printable-poster h-100">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <i class="fa-solid fa-graduation-cap text-success fs-3"></i>
+                        <h5 class="fw-bold text-dark mb-0">ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)</h5>
+                    </div>
+                    <hr class="my-2">
+                    <div class="my-2">
+                        <span class="badge bg-success px-3 py-1 rounded-pill fw-bold mb-1" style="font-size: 0.85rem;">
+                            កូដថ្នាក់៖ {{ c.code }}
+                        </span>
+                        <h3 class="fw-bold text-success mb-1">{{ c.name }}</h3>
+                        {% if c.room_number %}<h6 class="text-secondary fw-bold mb-2">{{ c.room_number }}</h6>{% endif %}
+                    </div>
+                    <p class="text-muted small mb-2">Scan QR Code ខាងក្រោមដើម្បីចុះឈ្មោះចូលរៀន៖</p>
+                    <div class="p-2 bg-light rounded-3 border d-inline-block mx-auto mb-2">
+                        <img src="{{ c.qr_src }}" alt="{{ c.name }}" style="width: 180px; height: 180px;">
+                    </div>
+                    <div class="text-muted small mb-0" style="font-size: 0.75rem;">
+                        ឆ្នាំសិក្សា {{ current_year.name|default:"2025-2026" }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print, .sidebar, .topbar, .navbar, footer {
+        display: none !important;
+    }
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+    }
+    .printable-poster {
+        box-shadow: none !important;
+        border: 2px solid #000000 !important;
+        padding: 30px !important;
+        page-break-inside: avoid;
+    }
+    .poster-page-break {
+        page-break-after: always;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const posterTypeSelect = document.getElementById('posterTypeSelect');
+    const gradeSelect = document.getElementById('gradeSelect');
+    const gradeSelectWrapper = document.getElementById('gradeSelectWrapper');
+    const classroomSelect = document.getElementById('classroomSelect');
+    const classroomSelectWrapper = document.getElementById('classroomSelectWrapper');
+    const customUrlBase = document.getElementById('customUrlBase');
+    
+    const posterTitle = document.getElementById('posterTitle');
+    const posterSubtitle = document.getElementById('posterSubtitle');
+    const posterBadge = document.getElementById('posterBadge');
+    const qrCodeImg = document.getElementById('qrCodeImg');
+    const regUrlInput = document.getElementById('regUrlInput');
+
+    const singlePosterView = document.getElementById('singlePosterView');
+    const batchPrintView = document.getElementById('batchPrintView');
+    const btnToggleBatch = document.getElementById('btnToggleBatch');
+    const btnBackToSingle = document.getElementById('btnBackToSingle');
+
+    function updatePoster() {
+        const type = posterTypeSelect.value;
+        let baseUrl = customUrlBase.value.trim();
+        if (!baseUrl.endsWith('/')) baseUrl += '/';
+        baseUrl = baseUrl.split('?')[0];
+
+        if (type === 'GENERAL') {
+            gradeSelectWrapper.style.display = 'none';
+            classroomSelectWrapper.style.display = 'none';
+
+            posterBadge.textContent = 'ពាក្យសុំទូទៅ (គ្រប់កម្រិតថ្នាក់)';
+            posterBadge.className = 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-1 rounded-pill fw-bold mb-2';
+            posterTitle.textContent = 'ពាក្យសុំចុះឈ្មោះចូលរៀន (Online Admission)';
+            posterSubtitle.textContent = 'សិស្សអាចជ្រើសរើសថ្នាក់រៀនដោយខ្លួនឯង';
+
+            const finalUrl = baseUrl;
+            regUrlInput.value = finalUrl;
+            qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(finalUrl)}`;
+        } 
+        else if (type === 'GRADE') {
+            gradeSelectWrapper.style.display = 'block';
+            classroomSelectWrapper.style.display = 'none';
+
+            const opt = gradeSelect.options[gradeSelect.selectedIndex];
+            if (opt) {
+                const gradeNum = opt.value;
+                const gradeName = opt.dataset.name;
+                const gradeTrack = opt.dataset.track;
+                const classCodes = opt.dataset.classes;
+
+                posterBadge.textContent = `កម្រិតថ្នាក់ទី ${gradeNum}`;
+                posterBadge.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-1 rounded-pill fw-bold mb-2';
+                posterTitle.textContent = `ចុះឈ្មោះចូលរៀន ${gradeName}`;
+                posterSubtitle.textContent = classCodes ? `ថ្នាក់រៀនក្នុងកម្រិតនេះ៖ ${classCodes}` : `កម្រិតថ្នាក់ទី ${gradeNum}`;
+
+                let finalUrl = `${baseUrl}?grade=${gradeNum}`;
+                if (gradeTrack && gradeTrack !== 'GENERAL') {
+                    finalUrl += `&track=${gradeTrack}`;
+                }
+                regUrlInput.value = finalUrl;
+                qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(finalUrl)}`;
+            }
+        } 
+        else if (type === 'CLASSROOM') {
+            gradeSelectWrapper.style.display = 'none';
+            classroomSelectWrapper.style.display = 'block';
+
+            const opt = classroomSelect.options[classroomSelect.selectedIndex];
+            if (opt) {
+                const classId = opt.value;
+                const className = opt.dataset.name;
+                const classCode = opt.dataset.code;
+                const classRoom = opt.dataset.room;
+
+                posterBadge.textContent = `កូដថ្នាក់៖ ${classCode}`;
+                posterBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success px-3 py-1 rounded-pill fw-bold mb-2';
+                posterTitle.textContent = `ចុះឈ្មោះចូលរៀន ${className}`;
+                posterSubtitle.textContent = classRoom ? `បន្ទប់រៀន៖ ${classRoom}` : `ថ្នាក់រៀន ${classCode}`;
+
+                const finalUrl = `${baseUrl}?classroom=${classId}`;
+                regUrlInput.value = finalUrl;
+                qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(finalUrl)}`;
+            }
+        }
+    }
+
+    posterTypeSelect.addEventListener('change', updatePoster);
+    gradeSelect.addEventListener('change', updatePoster);
+    classroomSelect.addEventListener('change', updatePoster);
+    customUrlBase.addEventListener('input', updatePoster);
+
+    // Initial render
+    updatePoster();
+
+    // Toggle Batch Print
+    btnToggleBatch.addEventListener('click', function() {
+        singlePosterView.style.display = 'none';
+        batchPrintView.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    btnBackToSingle.addEventListener('click', function() {
+        batchPrintView.style.display = 'none';
+        singlePosterView.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+});
+
+function copyLink() {
+    const regUrlInput = document.getElementById("regUrlInput");
+    regUrlInput.select();
+    regUrlInput.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(regUrlInput.value);
+    
+    const btn = document.getElementById("copyUrlBtn");
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> បានចម្លង!`;
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('btn-success');
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-primary');
+    }, 2000);
+}
+</script>
+{% endblock %}

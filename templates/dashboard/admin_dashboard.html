@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}ផ្ទាំងគ្រប់គ្រងទូទៅ (Super Admin Dashboard) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">ផ្ទាំងគ្រប់គ្រងទូទៅ (Super Admin Dashboard)</h2>
+        <p class="text-muted small mb-0">ទិដ្ឋភាពទូទៅនៃដំណើរការសាលារៀន ស្ថិតិសិស្ស វត្តមាន និងហិរញ្ញវត្ថុ</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'school_profile_settings' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-school-flag me-1"></i> កំណត់ព័ត៌មានសាលា
+        </a>
+        <a href="{% url 'student_enroll' %}" class="btn btn-primary">
+            <i class="fa-solid fa-user-plus me-1"></i> ចុះឈ្មោះសិស្សថ្មី
+        </a>
+        <a href="{% url 'invoice_create' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-file-invoice-dollar me-1"></i> ចេញវិក្កយបត្រ
+        </a>
+    </div>
+</div>
+
+<!-- Pending Teacher Leaves Alert Banner (លោតដំណឹងពេលបើក App) -->
+{% if pending_leaves %}
+<div class="custom-card p-3 mb-4 border border-warning border-opacity-50 bg-warning bg-opacity-10 shadow-sm">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning text-dark rounded-circle p-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 46px; height: 46px;">
+                <i class="fa-solid fa-envelope-open-text fs-5"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark rounded-pill fw-bold">ពាក្យសុំច្បាប់រង់ចាំការអនុម័ត ({{ pending_leaves.count }})</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-0 mt-1">
+                    មានលោកគ្រូ/អ្នកគ្រូចំនួន <strong class="text-danger">{{ pending_leaves.count }} នាក់</strong> បានដាក់ពាក្យសុំច្បាប់ឈប់សម្រាករង់ចាំការពិនិត្យពីគណៈគ្រប់គ្រង
+                </h6>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'teacher_leave_list' %}?status=PENDING" class="btn btn-warning btn-sm fw-bold px-3 shadow-xs">
+                <i class="fa-solid fa-list-check me-1"></i> ពិនិត្យ និងអនុម័តភ្លាមៗ
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 4 Key Stat Metric Cards -->
+<div class="row g-3 mb-4">
+
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-primary">
+                <i class="fa-solid fa-user-graduate"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ total_students }}</h3>
+                <p class="stat-label">សិស្សសរុបកំពុងសិក្សា</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-success">
+                <i class="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">{{ total_teachers }}</h3>
+                <p class="stat-label">គ្រូបង្រៀនសរុប</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-purple">
+                <i class="fa-solid fa-dollar-sign"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ month_revenue|floatformat:2 }}</h3>
+                <p class="stat-label">ចំណូលប្រចាំខែនេះ</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper stat-icon-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="stat-value">${{ total_due_amount|floatformat:2 }}</h3>
+                <p class="stat-label">ថ្លៃសិក្សាជំពាក់សរុប (Due)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Charts and Today Attendance -->
+<div class="row g-4 mb-4">
+    <!-- Chart: Revenue vs Expense -->
+    <div class="col-lg-8">
+        <div class="custom-card h-100">
+            <div class="card-header-clean">
+                <div>
+                    <h5 class="fw-bold mb-0">ស្ថិតិចំណូល និងចំណាយ (Revenue vs Expenses)</h5>
+                    <span class="text-muted small">ទិន្នន័យប្រចាំ ៦ ខែចុងក្រោយ</span>
+                </div>
+                <div class="badge badge-pill-custom badge-primary-soft">
+                    <i class="fa-solid fa-chart-simple me-1"></i> Financial Overview
+                </div>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="revenueExpenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Today Status -->
+    <div class="col-lg-4">
+        <div class="custom-card h-100">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">វត្តមានសិស្សថ្ងៃនេះ</h5>
+                <a href="{% url 'student_attendance_grid' %}" class="btn btn-sm btn-outline-primary">ស្រង់វត្តមាន</a>
+            </div>
+            
+            <div class="text-center my-3">
+                <div class="display-5 fw-bold text-primary">{{ today_att_rate }}%</div>
+                <p class="text-muted small">អត្រាវត្តមានសរុបថ្ងៃនេះ</p>
+            </div>
+
+            <div class="d-flex justify-content-between p-3 bg-light rounded-3 mb-2">
+                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i> វត្តមាន (Present)</span>
+                <span class="fw-bold">{{ today_present }} នាក់</span>
+            </div>
+            <div class="d-flex justify-content-between p-3 bg-light rounded-3">
+                <span class="text-danger fw-bold"><i class="fa-solid fa-circle-xmark me-1"></i> អវត្តមាន (Absent)</span>
+                <span class="fw-bold">{{ today_absent }} នាក់</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Class Distribution & Recent Notifications -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">ចំនួនសិស្សតាមថ្នាក់រៀន</h5>
+                <a href="{% url 'classroom_list' %}" class="btn btn-sm btn-light">មើលថ្នាក់ទាំងអស់</a>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="classDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="custom-card">
+            <div class="card-header-clean">
+                <h5 class="fw-bold mb-0">សេចក្តីជូនដំណឹងចុងក្រោយ (Telegram Logs)</h5>
+                <a href="{% url 'telegram_settings' %}" class="btn btn-sm btn-light">កំណត់ Telegram</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for log in recent_logs %}
+                    <div class="list-group-item px-0 py-2 border-0 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-dark small"><i class="fa-brands fa-telegram text-info me-1"></i> {{ log.title }}</span>
+                            <span class="badge bg-light text-muted" style="font-size: 0.7rem;">{{ log.created_at|date:"H:i, d/m" }}</span>
+                        </div>
+                        <p class="text-muted small mb-0 text-truncate">{{ log.message }}</p>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-4 text-muted small">
+                        <i class="fa-solid fa-bell-slash fa-2x mb-2"></i>
+                        <div>មិនទាន់មានការជូនដំណឹងនៅឡើយទេ</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 1. Revenue vs Expense Chart
+    const revCtx = document.getElementById('revenueExpenseChart').getContext('2d');
+    new Chart(revCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ months_labels_json|safe }},
+            datasets: [
+                {
+                    label: 'ចំណូល ($)',
+                    data: {{ revenue_chart_json|safe }},
+                    backgroundColor: '#4f46e5',
+                    borderRadius: 6
+                },
+                {
+                    label: 'ចំណាយ ($)',
+                    data: {{ expense_chart_json|safe }},
+                    backgroundColor: '#ef4444',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // 2. Class Distribution Chart
+    const classCtx = document.getElementById('classDistributionChart').getContext('2d');
+    new Chart(classCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ class_labels_json|safe }},
+            datasets: [{
+                label: 'ចំនួនសិស្ស',
+                data: {{ class_counts_json|safe }},
+                backgroundColor: '#0ea5e9',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+</script>
+{% endblock %}

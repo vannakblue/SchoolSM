@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">{{ title }}</h2>
+        <p class="text-muted small mb-0">បញ្ចូលព័ត៌មានផ្ទាល់ខ្លួន ឯកទេសបង្រៀន និងប្រាក់ខែគោល</p>
+    </div>
+    <a href="{% url 'teacher_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="custom-card">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កូដសម្គាល់គ្រូ (Teacher ID) *</label>
+                        {{ form.teacher_id }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                        {{ form.khmer_name }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង *</label>
+                        {{ form.latin_name }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">ភេទ *</label>
+                        {{ form.gender }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត</label>
+                        {{ form.date_of_birth }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទ *</label>
+                        {{ form.phone }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">អ៊ីមែល (Email)</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឯកទេសបង្រៀន (Specialization) *</label>
+                        {{ form.specialization }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">កម្រិតវប្បធម៌ / សញ្ញាបត្រ</label>
+                        {{ form.qualification }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ប្រាក់ខែគោល ($) *</label>
+                        {{ form.base_salary }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">កាលបរិច្ឆេទចូលបម្រើការ</label>
+                        {{ form.hire_date }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ស្ថានភាព</label>
+                        {{ form.status }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">អាសយដ្ឋានបច្ចុប្បន្ន</label>
+                        {{ form.address }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">រូបថត (Photo)</label>
+                        {{ form.photo }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឯកសារ CV / Resume</label>
+                        {{ form.resume }}
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទិន្នន័យគ្រូ
+                    </button>
+                    <a href="{% url 'teacher_list' %}" class="btn btn-light">បោះបង់</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}ចាប់ឆ្នោតសិស្ស & ចែកក្រុមរៀន (Classroom Lucky Draw) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wheel-canvas-container {
+        position: relative;
+        width: 380px;
+        height: 380px;
+        margin: 0 auto;
+    }
+    #wheelCanvas {
+        width: 380px;
+        height: 380px;
+        border-radius: 50%;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .wheel-pointer {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 18px solid transparent;
+        border-right: 18px solid transparent;
+        border-top: 30px solid #dc3545;
+        z-index: 10;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    .wheel-center-btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 4px solid #1e3c72;
+        color: #1e3c72;
+        font-weight: 800;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: transform 0.15s ease;
+        z-index: 5;
+    }
+    .wheel-center-btn:hover {
+        transform: translate(-50%, -50%) scale(1.08);
+        background: #1e3c72;
+        color: #ffffff;
+    }
+    .timer-display {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 5.5rem;
+        font-weight: 800;
+        letter-spacing: 4px;
+        color: #1e3c72;
+        line-height: 1;
+    }
+    .team-card {
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Classroom Lucky Draw & Team Builder</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-dharmachakra text-warning me-2"></i>ចាប់ឆ្នោតសិស្ស & ចែកក្រុមរៀន (Classroom Lucky Draw & Team Splitter)
+            </h2>
+            <p class="text-muted small mb-0">កង់បង្វិលចាប់ឆ្នោតឈ្មោះសិស្ស 🎉 + ចែកក្រុមរៀនស្វ័យប្រវត្តិ + នាឡិការោទិ៍ប្រឡង & រាប់ថយក្រោយក្នុងថ្នាក់។</p>
+        </div>
+        <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+        </a>
+    </div>
+
+    <!-- Mode Tabs -->
+    <ul class="nav nav-pills nav-fill gap-2 mb-4 bg-light p-1 rounded-4" id="modeTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-wheel" type="button">
+                <i class="fa-solid fa-dharmachakra me-2 text-warning"></i> កង់បង្វិលចាប់ឆ្នោត (Lucky Wheel)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-teams" type="button">
+                <i class="fa-solid fa-users-rays me-2 text-primary"></i> ចែកក្រុមរៀនស្វ័យប្រវត្តិ (Team Splitter)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-timer" type="button">
+                <i class="fa-solid fa-stopwatch me-2 text-danger"></i> នាឡិការោទិ៍ & ប្រឡង (Classroom Timer)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab 1: Wheel of Fortune Lucky Draw -->
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-wheel">
+            <div class="row g-4">
+                <!-- Wheel Canvas Column -->
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 text-center mb-4">
+                        <div class="wheel-canvas-container mb-4">
+                            <div class="wheel-pointer"></div>
+                            <canvas id="wheelCanvas" width="500" height="500"></canvas>
+                            <button type="button" class="wheel-center-btn" id="btnSpin" onclick="spinWheel()">
+                                បង្វិល!
+                            </button>
+                        </div>
+
+                        <!-- Current Winner Alert Box -->
+                        <div id="winnerAlertBox" class="alert alert-success d-inline-block px-4 py-3 rounded-pill shadow-sm" style="display: none;">
+                            <span class="fs-5">🎉 អ្នកឈ្នះគឺ៖ <strong class="text-danger fs-4" id="winnerNameText">-</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Names List & Classroom Select Column -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                        <h5 class="fw-bold text-dark mb-3">
+                            <i class="fa-solid fa-users text-primary me-2"></i>ជ្រើសរើសឈ្មោះសិស្ស
+                        </h5>
+
+                        <!-- Load from Classroom DB -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">ទាញយកពីបញ្ជីថ្នាក់រៀនជាក់ស្តែង</label>
+                            <div class="input-group">
+                                <select class="form-select" id="classroomSelect" onchange="loadStudentsFromClassroom(this.value)">
+                                    <option value="">-- ជ្រើសរើសថ្នាក់រៀន --</option>
+                                    {% for c in classrooms %}
+                                        <option value="{{ c.id }}">{{ c.name }} (ថ្នាក់ទី {{ c.grade_level }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Custom Names Textarea -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted d-flex justify-content-between">
+                                <span>បញ្ជីឈ្មោះ (១ ជួរឈ្មោះ ១)</span>
+                                <span class="badge bg-primary rounded-pill" id="namesCountBadge">0 នាក់</span>
+                            </label>
+                            <textarea id="namesTextarea" class="form-control" rows="8" placeholder="សុខ ពិសិដ្ឋ&#10;ចាន់ ថាវី&#10;កែវ សុផល&#10;លឹម ហុង" oninput="updateNamesFromTextarea()"></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" class="btn btn-warning w-100 rounded-pill fw-bold text-dark" onclick="spinWheel()">
+                                <i class="fa-solid fa-play me-1"></i> បង្វិលកង់ចាប់ឆ្នោត
+                            </button>
+                        </div>
+
+                        <!-- History of Drawn Names -->
+                        <h6 class="fw-bold text-dark small mb-2"><i class="fa-solid fa-trophy text-warning me-1"></i> ប្រវត្តិអ្នកឈ្នះ (Winners History)</h6>
+                        <div id="winnersList" class="p-2 bg-light rounded-3 small" style="max-height: 120px; overflow-y: auto;">
+                            <span class="text-muted fst-italic">មិនទាន់មានអ្នកឈ្នះនៅឡើយ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Team Splitter -->
+        <div class="tab-pane fade" id="tab-teams">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small text-muted">ជ្រើសរើសថ្នាក់រៀន</label>
+                        <select class="form-select" id="teamClassSelect" onchange="loadTeamClassroom(this.value)">
+                            <option value="">-- ជ្រើសរើសថ្នាក់រៀន --</option>
+                            {% for c in classrooms %}
+                                <option value="{{ c.id }}">{{ c.name }} (ថ្នាក់ទី {{ c.grade_level }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small text-muted">ចំនួនក្រុមដែលចង់បំបែក</label>
+                        <select class="form-select" id="teamCountSelect">
+                            <option value="2">២ ក្រុម (2 Teams)</option>
+                            <option value="3">៣ ក្រុម (3 Teams)</option>
+                            <option value="4" selected>៤ ក្រុម (4 Teams)</option>
+                            <option value="5">៥ ក្រុម (5 Teams)</option>
+                            <option value="6">៦ ក្រុម (6 Teams)</option>
+                            <option value="8">៨ ក្រុម (8 Teams)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" onclick="generateTeams()">
+                            <i class="fa-solid fa-dice me-1"></i> ចែកក្រុមដោយស្វ័យប្រវត្តិ
+                        </button>
+                    </div>
+                </div>
+
+                <div id="teamsOutputContainer" class="row g-3">
+                    <div class="col-12 text-center text-muted py-5">
+                        <i class="fa-solid fa-users-viewfinder display-4 mb-2 text-secondary"></i>
+                        <p>សូមជ្រើសរើសថ្នាក់រៀន និងចុចប៊ូតុង "ចែកក្រុមដោយស្វ័យប្រវត្តិ"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Fullscreen Stopwatch & Timer -->
+        <div class="tab-pane fade" id="tab-timer">
+            <div class="card border-0 shadow-sm rounded-4 p-5 text-center mb-4">
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="setTimerPreset(5)">៥ នាទី</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="setTimerPreset(15)">១៥ នាទី</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="setTimerPreset(45)">៤៥ នាទី (ម៉ោងរៀន)</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="setTimerPreset(60)">៦០ នាទី (ប្រឡង)</button>
+                </div>
+
+                <div class="timer-display my-4" id="timerDigits">
+                    45:00
+                </div>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="button" class="btn btn-success btn-lg rounded-pill px-4 shadow-sm" id="btnStartTimer" onclick="startTimer()">
+                        <i class="fa-solid fa-play me-2"></i> ចាប់ផ្តើម (Start)
+                    </button>
+                    <button type="button" class="btn btn-warning btn-lg rounded-pill px-4 shadow-sm" id="btnPauseTimer" onclick="pauseTimer()" disabled>
+                        <i class="fa-solid fa-pause me-2"></i> ផ្អាក (Pause)
+                    </button>
+                    <button type="button" class="btn btn-light btn-lg rounded-pill px-4 border" onclick="resetTimer()">
+                        <i class="fa-solid fa-arrows-rotate me-2"></i> សារឡើងវិញ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Canvas Confetti -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+<script>
+    let namesList = ["សុខ ពិសិដ្ឋ", "ចាន់ ថាវី", "កែវ សុផល", "លឹម ហុង", "សៅ សុភាព", "ម៉ៅ វណ្ណា", "ឈុន ស្រីពេជ្រ", "រ័ត្ន បញ្ញា"];
+    let isSpinning = false;
+    let currentAngle = 0;
+    const colors = ['#f43f5e', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#84cc16'];
+
+    let loadedStudentsData = [];
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('namesTextarea').value = namesList.join('\n');
+        drawWheel();
+        updateCountBadge();
+    });
+
+    function updateCountBadge() {
+        document.getElementById('namesCountBadge').innerText = `${namesList.length} នាក់`;
+    }
+
+    function updateNamesFromTextarea() {
+        const text = document.getElementById('namesTextarea').value;
+        namesList = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+        drawWheel();
+        updateCountBadge();
+    }
+
+    async function loadStudentsFromClassroom(classroomId) {
+        if (!classroomId) return;
+        try {
+            const res = await fetch(`/tools/api/classroom/${classroomId}/students/`);
+            const data = await res.json();
+            if (data.success && data.students.length > 0) {
+                loadedStudentsData = data.students;
+                namesList = data.students.map(s => s.khmer_name);
+                document.getElementById('namesTextarea').value = namesList.join('\n');
+                drawWheel();
+                updateCountBadge();
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `បានបញ្ចូលឈ្មោះសិស្ស ${namesList.length} នាក់ពីថ្នាក់ ${data.classroom.name}!`,
+                    showConfirmButton: false,
+                    timer: 2500
+                });
+            } else {
+                Swal.fire('មិនមានសិស្ស', 'ថ្នាក់នេះមិនទាន់មានសិស្សកំពុងសិក្សាឡើយ', 'info');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function drawWheel() {
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const numSegments = namesList.length;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (numSegments === 0) return;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = canvas.width / 2 - 10;
+        const arcSize = (2 * Math.PI) / numSegments;
+
+        for (let i = 0; i < numSegments; i++) {
+            const angle = currentAngle + i * arcSize;
+            ctx.beginPath();
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, angle, angle + arcSize);
+            ctx.lineTo(centerX, centerY);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw Name Text
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(angle + arcSize / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px "Kantumruy Pro", sans-serif';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(namesList[i], radius - 25, 6);
+            ctx.restore();
+        }
+    }
+
+    function spinWheel() {
+        if (isSpinning || namesList.length === 0) return;
+        isSpinning = true;
+        document.getElementById('btnSpin').disabled = true;
+        document.getElementById('winnerAlertBox').style.display = 'none';
+
+        const spinTime = 4500; // ms
+        const startAngle = currentAngle;
+        const randomSpins = 5 + Math.random() * 5; // 5-10 full spins
+        const targetAngle = startAngle + randomSpins * 2 * Math.PI + Math.random() * 2 * Math.PI;
+        const startTime = performance.now();
+
+        function animate(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / spinTime, 1);
+            // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            currentAngle = startAngle + (targetAngle - startAngle) * easeProgress;
+            drawWheel();
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                isSpinning = false;
+                document.getElementById('btnSpin').disabled = false;
+                declareWinner();
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    function declareWinner() {
+        const numSegments = namesList.length;
+        const arcSize = (2 * Math.PI) / numSegments;
+        // Pointer is at the top: angle 3*PI/2 (270 deg)
+        let normalizedAngle = (3 * Math.PI / 2 - currentAngle) % (2 * Math.PI);
+        if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
+
+        const winningIndex = Math.floor(normalizedAngle / arcSize) % numSegments;
+        const winner = namesList[winningIndex];
+
+        document.getElementById('winnerNameText').innerText = winner;
+        document.getElementById('winnerAlertBox').style.display = 'inline-block';
+
+        // Confetti
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+
+        // Add to winners history
+        const history = document.getElementById('winnersList');
+        if (history.innerText.includes('មិនទាន់មានអ្នកឈ្នះ')) history.innerHTML = '';
+        const entry = document.createElement('div');
+        entry.className = 'd-flex justify-content-between border-bottom py-1';
+        entry.innerHTML = `<strong>${winner}</strong> <span class="text-muted">${new Date().toLocaleTimeString('km-KH')}</span>`;
+        history.prepend(entry);
+    }
+
+    // Team Splitter logic
+    async function loadTeamClassroom(classroomId) {
+        if (!classroomId) return;
+        try {
+            const res = await fetch(`/tools/api/classroom/${classroomId}/students/`);
+            const data = await res.json();
+            if (data.success) {
+                loadedStudentsData = data.students;
+                generateTeams();
+            }
+        } catch(e) {}
+    }
+
+    function generateTeams() {
+        let pool = loadedStudentsData.length > 0 ? [...loadedStudentsData] : namesList.map(name => ({ khmer_name: name, gender: 'សិស្ស' }));
+        if (pool.length === 0) {
+            Swal.fire('សូមជ្រើសរើសសិស្ស', 'មិនទាន់មានបញ្ជីឈ្មោះសិស្សសម្រាប់ចែកក្រុមឡើយ', 'info');
+            return;
+        }
+
+        // Shuffle pool
+        pool.sort(() => Math.random() - 0.5);
+
+        const teamCount = parseInt(document.getElementById('teamCountSelect').value, 10);
+        const teams = Array.from({ length: teamCount }, () => []);
+
+        pool.forEach((student, idx) => {
+            teams[idx % teamCount].push(student);
+        });
+
+        const container = document.getElementById('teamsOutputContainer');
+        container.innerHTML = '';
+
+        const colSize = teamCount <= 2 ? 6 : (teamCount <= 4 ? 3 : 4);
+        teams.forEach((team, idx) => {
+            const col = document.createElement('div');
+            col.className = `col-md-${colSize}`;
+            
+            let listHtml = '';
+            team.forEach((s, sIdx) => {
+                listHtml += `<li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 small border-0 border-bottom">
+                    <span>${sIdx + 1}. <strong>${s.khmer_name}</strong></span>
+                    <span class="badge ${s.gender_code === 'F' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'}">${s.gender || ''}</span>
+                </li>`;
+            });
+
+            col.innerHTML = `
+                <div class="team-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                        <h6 class="fw-bold text-primary mb-0"><i class="fa-solid fa-flag me-1"></i> ក្រុមទី ${idx + 1}</h6>
+                        <span class="badge bg-primary rounded-pill">${team.length} នាក់</span>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        ${listHtml}
+                    </ul>
+                </div>
+            `;
+            container.appendChild(col);
+        });
+    }
+
+    // Timer & Stopwatch Logic
+    let totalSeconds = 45 * 60;
+    let timerInterval = null;
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function setTimerPreset(mins) {
+        pauseTimer();
+        totalSeconds = mins * 60;
+        document.getElementById('timerDigits').innerText = formatTime(totalSeconds);
+    }
+
+    function startTimer() {
+        if (timerInterval) return;
+        document.getElementById('btnStartTimer').disabled = true;
+        document.getElementById('btnPauseTimer').disabled = false;
+
+        timerInterval = setInterval(() => {
+            if (totalSeconds > 0) {
+                totalSeconds--;
+                document.getElementById('timerDigits').innerText = formatTime(totalSeconds);
+            } else {
+                pauseTimer();
+                // Buzzer sound & alert
+                Swal.fire({
+                    icon: 'warning',
+                    title: '⏰ អស់ម៉ោងហើយ!',
+                    text: 'ពេលវេលាសម្រាប់ប្រឡង ឬសកម្មភាពបានបញ្ចប់។',
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        document.getElementById('btnStartTimer').disabled = false;
+        document.getElementById('btnPauseTimer').disabled = true;
+    }
+
+    function resetTimer() {
+        pauseTimer();
+        totalSeconds = 45 * 60;
+        document.getElementById('timerDigits').innerText = formatTime(totalSeconds);
+    }
+</script>
+{% endblock %}
