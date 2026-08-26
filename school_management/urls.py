@@ -4,11 +4,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
 
-from apps.accounts.views import telegram_webhook
+from apps.accounts.views import telegram_webhook, init_admin_view
 
 urlpatterns = [
     path('admin-panel/', admin.site.urls),
     path('', lambda request: redirect('dashboard_redirect'), name='root_redirect'),
+    path('init-admin/', init_admin_view, name='root_init_admin'),
     path('api/telegram/webhook/', telegram_webhook, name='telegram_webhook'),
     
     path('accounts/', include('apps.accounts.urls')),
