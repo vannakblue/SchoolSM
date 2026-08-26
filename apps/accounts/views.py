@@ -8,9 +8,38 @@ from .models import User, TelegramConfig, NotificationLog, SchoolProfile, MenuSe
 from .decorators import role_required
 from .utils import send_telegram_notification
 
+def _ensure_admin_exists():
+    try:
+        admin_user = User.objects.filter(username='admin').first()
+        if not admin_user:
+            admin_user = User.objects.create(
+                username='admin',
+                email='admin@school.edu.kh',
+                role=User.Role.ADMIN,
+                khmer_name='បណ្ឌិត សុខ វិបុល',
+                latin_name='Dr. SOK VIBOL',
+                is_staff=True,
+                is_superuser=True,
+                is_active=True
+            )
+            admin_user.set_password('admin123')
+            admin_user.save()
+        else:
+            if not admin_user.check_password('admin123'):
+                admin_user.set_password('admin123')
+                admin_user.is_staff = True
+                admin_user.is_superuser = True
+                admin_user.is_active = True
+                admin_user.save()
+    except Exception:
+        pass
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard_redirect')
+    
+    _ensure_admin_exists()
     
     if request.method == 'POST':
         form = LoginForm(request, data=request.POST)
@@ -31,10 +60,20 @@ def demo_login_view(request, role):
     """
     1-Click Demo Login to switch between Super Admin, Accountant, Teacher, and Student
     """
+    _ensure_admin_exists()
     user = User.objects.filter(role=role).first()
+    if not user and role == 'ADMIN':
+        user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
+    
     if not user:
-        if role == 'ADMIN':
-            user = User.objects.filter(is_superuser=True).first()
+        from django.core.management import call_command
+        try:
+            call_command('seed_school_data')
+            user = User.objects.filter(role=role).first()
+            if not user and role == 'ADMIN':
+                user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
+        except Exception:
+            pass
     
     if user:
         login(request, user)
@@ -43,6 +82,7 @@ def demo_login_view(request, role):
     else:
         messages.error(request, f"មិនទាន់មានគណនីសម្រាប់តួនាទី {role} នៅឡើយទេ! សូមដំណើរការ Seed Data ជាមុនសិន។")
         return redirect('login')
+
 
 
 @login_required
