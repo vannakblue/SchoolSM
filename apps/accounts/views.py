@@ -49,6 +49,13 @@ def login_view(request):
             messages.success(request, f"សូមស្វាគមន៍ {user.display_name}! ចូលប្រព័ន្ធជោគជ័យ។")
             return redirect('dashboard_redirect')
         else:
+            uname = request.POST.get('username', '').strip()
+            pword = request.POST.get('password', '').strip()
+            user = authenticate(request, username=uname, password=pword)
+            if user:
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                messages.success(request, f"សូមស្វាគមន៍ {user.display_name}! ចូលប្រព័ន្ធជោគជ័យ។")
+                return redirect('dashboard_redirect')
             messages.error(request, "ឈ្មោះគណនី ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!")
     else:
         form = LoginForm()
@@ -76,12 +83,13 @@ def demo_login_view(request, role):
             pass
     
     if user:
-        login(request, user)
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         messages.success(request, f"បានចូលប្រើប្រាស់ជា {user.get_role_display()} ({user.display_name})")
         return redirect('dashboard_redirect')
     else:
         messages.error(request, f"មិនទាន់មានគណនីសម្រាប់តួនាទី {role} នៅឡើយទេ! សូមដំណើរការ Seed Data ជាមុនសិន។")
         return redirect('login')
+
 
 
 
