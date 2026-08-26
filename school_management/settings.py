@@ -82,11 +82,15 @@ DATABASES = {
     }
 }
 
-if dj_database_url and os.environ.get('DATABASE_URL'):
-    DATABASES['default'] = dj_database_url.config(
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+database_url = os.environ.get('DATABASE_URL', '').strip()
+if dj_database_url and database_url:
+    try:
+        parsed_db = dj_database_url.parse(database_url, conn_max_age=600, conn_health_checks=True)
+        if parsed_db:
+            DATABASES['default'] = parsed_db
+    except Exception:
+        pass
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
