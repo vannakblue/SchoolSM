@@ -10,7 +10,22 @@ from .utils import send_telegram_notification
 
 def _ensure_admin_exists():
     try:
+        from django.core.management import call_command
+        # Check if database tables exist; if not, migrate and seed automatically
+        try:
+            User.objects.exists()
+        except Exception:
+            call_command('migrate', interactive=False)
+            call_command('seed_school_data')
+
         admin_user = User.objects.filter(username='admin').first()
+        if not admin_user:
+            try:
+                call_command('seed_school_data')
+            except Exception:
+                pass
+            admin_user = User.objects.filter(username='admin').first()
+
         if not admin_user:
             admin_user = User.objects.create(
                 username='admin',
@@ -81,6 +96,39 @@ def demo_login_view(request, role):
                 user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
         except Exception:
             pass
+
+    if not user:
+        try:
+            if role == 'ADMIN':
+                user, _ = User.objects.get_or_create(
+                    username='admin',
+                    defaults={'role': User.Role.ADMIN, 'khmer_name': 'បណ្ឌិត សុខ វិបុល', 'is_staff': True, 'is_superuser': True, 'is_active': True}
+                )
+                user.set_password('admin123')
+                user.save()
+            elif role == 'ACCOUNTANT':
+                user, _ = User.objects.get_or_create(
+                    username='accountant',
+                    defaults={'role': User.Role.ACCOUNTANT, 'khmer_name': 'អ្នកស្រី គង់ សុភា', 'is_active': True}
+                )
+                user.set_password('admin123')
+                user.save()
+            elif role == 'TEACHER':
+                user, _ = User.objects.get_or_create(
+                    username='teacher',
+                    defaults={'role': User.Role.TEACHER, 'khmer_name': 'លោកគ្រូ លី វណ្ណារ៉ា', 'is_active': True}
+                )
+                user.set_password('admin123')
+                user.save()
+            elif role == 'STUDENT':
+                user, _ = User.objects.get_or_create(
+                    username='student',
+                    defaults={'role': User.Role.STUDENT, 'khmer_name': 'សុខ ចិន្តា', 'is_active': True}
+                )
+                user.set_password('admin123')
+                user.save()
+        except Exception:
+            pass
     
     if user:
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
@@ -89,6 +137,7 @@ def demo_login_view(request, role):
     else:
         messages.error(request, f"មិនទាន់មានគណនីសម្រាប់តួនាទី {role} នៅឡើយទេ! សូមដំណើរការ Seed Data ជាមុនសិន។")
         return redirect('login')
+
 
 
 
