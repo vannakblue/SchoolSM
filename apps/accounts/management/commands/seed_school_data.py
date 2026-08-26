@@ -291,9 +291,10 @@ class Command(BaseCommand):
                         StudentAttendance.objects.update_or_create(
                             student=stu,
                             date=att_date,
-                            session=StudentAttendance.Session.FULL_DAY,
+                            session=StudentAttendance.Session.MORNING,
                             defaults={'classroom': stu.classroom, 'status': status, 'recorded_by': admin_user}
                         )
+
 
             # 10. Exam Term & Sample Grades matching exact max score rules
             term_sem1, _ = ExamTerm.objects.get_or_create(
