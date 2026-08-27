@@ -2870,13 +2870,13 @@ def academic_year_set_current(request, pk):
 # Location AJAX APIs (For Cascading Dropdowns in Forms)
 # =========================================================================
 def api_locations_provinces(request):
-    provinces = Province.objects.all().values('id', 'code', 'name_kh', 'name_en')
+    provinces = Province.objects.all().order_by('code').values('id', 'code', 'name_kh', 'name_en')
     return JsonResponse({'status': 'success', 'data': list(provinces)})
 
 
 def api_locations_districts(request):
     province_id = request.GET.get('province_id')
-    districts = District.objects.all()
+    districts = District.objects.all().order_by('code')
     if province_id:
         districts = districts.filter(province_id=province_id)
     data = districts.values('id', 'code', 'name_kh', 'name_en', 'province_id')
@@ -2885,7 +2885,7 @@ def api_locations_districts(request):
 
 def api_locations_communes(request):
     district_id = request.GET.get('district_id')
-    communes = Commune.objects.all()
+    communes = Commune.objects.all().order_by('code')
     if district_id:
         communes = communes.filter(district_id=district_id)
     data = communes.values('id', 'code', 'name_kh', 'name_en', 'district_id')
@@ -2894,7 +2894,7 @@ def api_locations_communes(request):
 
 def api_locations_villages(request):
     commune_id = request.GET.get('commune_id')
-    villages = Village.objects.all()
+    villages = Village.objects.all().order_by('code')
     if commune_id:
         villages = villages.filter(commune_id=commune_id)
     data = villages.values('id', 'code', 'name_kh', 'name_en', 'commune_id')
@@ -3121,7 +3121,7 @@ def location_sync_excel(request):
     Re-sync all locations from E:/SchoolSM/Cambodia All List2025.xlsx.
     """
     import openpyxl
-    excel_file = 'E:/SchoolSM/Cambodia All List2025.xlsx'
+    excel_file = os.path.join(settings.BASE_DIR, 'Cambodia All List2025.xlsx')
     if not os.path.exists(excel_file):
         messages.error(request, f"រកមិនឃើញឯកសារ Excel នៅ {excel_file} ទេ!")
         return redirect('location_manager_view')

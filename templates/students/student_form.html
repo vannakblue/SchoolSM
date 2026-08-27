@@ -298,9 +298,19 @@
     </div>
 </form>
 
+{{ student.enrollment_data|default:None|json_script:"student_enrollment_json" }}
+
 <script>
-// Pass existing saved enrollment data if editing
-const initialEnrollmentData = {{ student.enrollment_data|default:'{}'|safe }};
+// Safely parse saved enrollment data if editing
+let initialEnrollmentData = {};
+try {
+    const rawData = document.getElementById('student_enrollment_json');
+    if (rawData && rawData.textContent) {
+        initialEnrollmentData = JSON.parse(rawData.textContent) || {};
+    }
+} catch (e) {
+    console.error('Error parsing enrollment data:', e);
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     let globalProvinces = [];
@@ -325,14 +335,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Elements for Classroom & Dynamic Grade Options
     const classroomSelect = document.getElementById('id_classroom') || document.querySelector('[name="classroom"]');
-    const gradeCard = document.getElementById('gradeSpecificCard');
+    const gradeCard = document.getElementById('card-grade-specific') || document.getElementById('gradeSpecificCard');
     const gradeNameBadge = document.getElementById('gradeNameBadge');
     const gradeContainer = document.getElementById('gradeOptionsContainer');
 
     function loadGradeOptions(classroomId) {
         if (!classroomId) {
-            gradeCard.style.display = 'none';
-            gradeContainer.innerHTML = '';
+            if (gradeCard) gradeCard.style.display = 'none';
+            if (gradeContainer) gradeContainer.innerHTML = '';
             return;
         }
 
@@ -340,8 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success' && res.data && res.data.length > 0) {
-                    gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
-                    gradeContainer.innerHTML = '';
+                    if (gradeNameBadge) gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
+                    if (gradeContainer) gradeContainer.innerHTML = '';
 
                     res.data.forEach(opt => {
                         const col = document.createElement('div');
@@ -356,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (opt.field_type === 'SECTION') {
                             col.className = 'col-12 mt-3';
                             col.innerHTML = `<h6 class="fw-bold text-dark border-bottom pb-2 mb-0"><i class="fa-solid fa-circle-chevron-right text-primary me-2"></i>${opt.label}</h6>`;
-                            gradeContainer.appendChild(col);
+                            if (gradeContainer) gradeContainer.appendChild(col);
                             return;
                         }
 
@@ -438,18 +448,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             <label class="form-label fw-bold small">${opt.label} ${reqBadge}</label>
                             ${inputHtml}
                         `;
-                        gradeContainer.appendChild(col);
+                        if (gradeContainer) gradeContainer.appendChild(col);
                     });
 
-                    gradeCard.style.display = 'block';
+                    if (gradeCard) gradeCard.style.display = 'block';
                 } else {
-                    gradeCard.style.display = 'none';
-                    gradeContainer.innerHTML = '';
+                    if (gradeCard) gradeCard.style.display = 'none';
+                    if (gradeContainer) gradeContainer.innerHTML = '';
                 }
             })
             .catch(err => {
                 console.error('Error fetching grade options:', err);
-                gradeCard.style.display = 'none';
+                if (gradeCard) gradeCard.style.display = 'none';
             });
     }
 
@@ -468,16 +478,24 @@ document.addEventListener('DOMContentLoaded', function() {
     fetch('/academics/api/locations/provinces/')
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.data) {
                 globalProvinces = data.data;
                 populateSelect(pobProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
                 populateSelect(curProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+
+                // Auto restore existing addresses if available
+                const existingPob = (pobHiddenInput ? pobHiddenInput.value : '') || (pobPreview ? pobPreview.textContent : '');
+                const existingCur = (curHiddenInput ? curHiddenInput.value : '') || (curPreview ? curPreview.textContent : '');
+                if (existingPob && existingPob !== '...') restoreAddressCascade('pob', existingPob);
+                if (existingCur && existingCur !== '...') restoreAddressCascade('cur', existingCur);
             }
         })
         .catch(err => console.error('Error loading provinces:', err));
 
     function populateSelect(selectEl, items, placeholder) {
+        if (!selectEl) return;
         selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+        if (!items || !Array.isArray(items)) return;
         items.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item.id;
@@ -509,60 +527,67 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // POB Chain
-    pobProv.addEventListener('change', function() {
-        resetSelect(pobDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-        resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            pobDist.disabled = false;
-            fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(pobDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                });
-        } else {
-            pobDist.disabled = true;
-            pobComm.disabled = true;
-            pobVill.disabled = true;
-        }
-        updatePobString();
-    });
+    if (pobProv) {
+        pobProv.addEventListener('change', function() {
+            resetSelect(pobDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+            resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                pobDist.disabled = false;
+                fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(pobDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                    });
+            } else {
+                pobDist.disabled = true;
+                pobComm.disabled = true;
+                pobVill.disabled = true;
+            }
+            updatePobString();
+        });
+    }
 
-    pobDist.addEventListener('change', function() {
-        resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            pobComm.disabled = false;
-            fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(pobComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                });
-        } else {
-            pobComm.disabled = true;
-            pobVill.disabled = true;
-        }
-        updatePobString();
-    });
+    if (pobDist) {
+        pobDist.addEventListener('change', function() {
+            resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                pobComm.disabled = false;
+                fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(pobComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                    });
+            } else {
+                pobComm.disabled = true;
+                pobVill.disabled = true;
+            }
+            updatePobString();
+        });
+    }
 
-    pobComm.addEventListener('change', function() {
-        resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            pobVill.disabled = false;
-            fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(pobVill, d.data, '-- ជ្រើសរើសភូមិ --');
-                });
-        } else {
-            pobVill.disabled = true;
-        }
-        updatePobString();
-    });
+    if (pobComm) {
+        pobComm.addEventListener('change', function() {
+            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                pobVill.disabled = false;
+                fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(pobVill, d.data, '-- ជ្រើសរើសភូមិ --');
+                    });
+            } else {
+                pobVill.disabled = true;
+            }
+            updatePobString();
+        });
+    }
 
-    pobVill.addEventListener('change', updatePobString);
+    if (pobVill) pobVill.addEventListener('change', updatePobString);
 
     function resetSelect(selectEl, placeholder) {
+        if (!selectEl) return;
         selectEl.innerHTML = `<option value="">${placeholder}</option>`;
         selectEl.disabled = true;
     }
@@ -586,69 +611,75 @@ document.addEventListener('DOMContentLoaded', function() {
         if (p) parts.push(formatUnit('province', p));
 
         const result = parts.join(', ');
-        pobPreview.textContent = result || '...';
-        if (pobHiddenInput) {
+        if (pobPreview) pobPreview.textContent = result || '...';
+        if (pobHiddenInput && result) {
             pobHiddenInput.value = result;
         }
     }
 
     // Current Address Chain
-    curProv.addEventListener('change', function() {
-        resetSelect(curDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-        resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            curDist.disabled = false;
-            fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                });
-        } else {
-            curDist.disabled = true;
-            curComm.disabled = true;
-            curVill.disabled = true;
-        }
-        updateCurString();
-    });
+    if (curProv) {
+        curProv.addEventListener('change', function() {
+            resetSelect(curDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+            resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                curDist.disabled = false;
+                fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                    });
+            } else {
+                curDist.disabled = true;
+                curComm.disabled = true;
+                curVill.disabled = true;
+            }
+            updateCurString();
+        });
+    }
 
-    curDist.addEventListener('change', function() {
-        resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            curComm.disabled = false;
-            fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(curComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                });
-        } else {
-            curComm.disabled = true;
-            curVill.disabled = true;
-        }
-        updateCurString();
-    });
+    if (curDist) {
+        curDist.addEventListener('change', function() {
+            resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                curComm.disabled = false;
+                fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(curComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                    });
+            } else {
+                curComm.disabled = true;
+                curVill.disabled = true;
+            }
+            updateCurString();
+        });
+    }
 
-    curComm.addEventListener('change', function() {
-        resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
-        if (this.value) {
-            curVill.disabled = false;
-            fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(curVill, d.data, '-- ជ្រើសរើសភូមិ --');
-                });
-        } else {
-            curVill.disabled = true;
-        }
-        updateCurString();
-    });
+    if (curComm) {
+        curComm.addEventListener('change', function() {
+            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (this.value) {
+                curVill.disabled = false;
+                fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
+                    .then(res => res.json())
+                    .then(d => {
+                        populateSelect(curVill, d.data, '-- ជ្រើសរើសភូមិ --');
+                    });
+            } else {
+                curVill.disabled = true;
+            }
+            updateCurString();
+        });
+    }
 
-    curVill.addEventListener('change', updateCurString);
-    curStreet.addEventListener('input', updateCurString);
+    if (curVill) curVill.addEventListener('change', updateCurString);
+    if (curStreet) curStreet.addEventListener('input', updateCurString);
 
     function updateCurString() {
-        const street = curStreet.value.trim();
+        const street = curStreet ? curStreet.value.trim() : '';
         const p = getSelectedText(curProv);
         const d = getSelectedText(curDist);
         const c = getSelectedText(curComm);
@@ -662,57 +693,139 @@ document.addEventListener('DOMContentLoaded', function() {
         if (p) parts.push(formatUnit('province', p));
 
         const result = parts.join(', ');
-        curPreview.textContent = result || '...';
-        if (curHiddenInput) {
+        if (curPreview) curPreview.textContent = result || '...';
+        if (curHiddenInput && result) {
             curHiddenInput.value = result;
         }
     }
 
-    // Copy POB to Current Address
-    btnCopyPob.addEventListener('click', function() {
-        if (!pobProv.value) {
-            alert('សូមជ្រើសរើសទីកន្លែងកំណើតជាមុនសិន!');
-            return;
+    // Auto-restore address cascade helper for editing
+    function restoreAddressCascade(type, text) {
+        if (!text || text === '...') return;
+        const isPob = (type === 'pob');
+        const provEl = isPob ? pobProv : curProv;
+        const distEl = isPob ? pobDist : curDist;
+        const commEl = isPob ? pobComm : curComm;
+        const villEl = isPob ? pobVill : curVill;
+        if (!provEl || !globalProvinces.length) return;
+
+        const rawParts = text.split(',').map(s => s.trim()).filter(Boolean);
+        if (!rawParts.length) return;
+
+        // Try to match Province
+        let matchedProv = null;
+        for (let i = rawParts.length - 1; i >= 0; i--) {
+            const clean = rawParts[i].replace(/^(ខេត្ត|រាជធានី)/, '').trim();
+            matchedProv = globalProvinces.find(p => p.name_kh === clean || p.name_kh.includes(clean) || clean.includes(p.name_kh));
+            if (matchedProv) break;
         }
 
-        const pVal = pobProv.value;
-        const dVal = pobDist.value;
-        const cVal = pobComm.value;
-        const vVal = pobVill.value;
+        if (!matchedProv) return;
+        provEl.value = matchedProv.id;
+        distEl.disabled = false;
 
-        curProv.value = pVal;
-        curDist.disabled = false;
-
-        fetch(`/academics/api/locations/districts/?province_id=${pVal}`)
+        fetch(`/academics/api/locations/districts/?province_id=${matchedProv.id}`)
             .then(res => res.json())
-            .then(d => {
-                populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                curDist.value = dVal;
-                if (dVal) {
-                    curComm.disabled = false;
-                    fetch(`/academics/api/locations/communes/?district_id=${dVal}`)
-                        .then(res => res.json())
-                        .then(c => {
-                            populateSelect(curComm, c.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                            curComm.value = cVal;
-                            if (cVal) {
-                                curVill.disabled = false;
-                                fetch(`/academics/api/locations/villages/?commune_id=${cVal}`)
-                                    .then(res => res.json())
-                                    .then(v => {
-                                        populateSelect(curVill, v.data, '-- ជ្រើសរើសភូមិ --');
-                                        curVill.value = vVal;
-                                        updateCurString();
-                                    });
-                            } else {
-                                updateCurString();
-                            }
-                        });
-                } else {
-                    updateCurString();
+            .then(dRes => {
+                if (dRes.status !== 'success' || !dRes.data) return;
+                populateSelect(distEl, dRes.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+
+                let matchedDist = null;
+                for (let i = rawParts.length - 1; i >= 0; i--) {
+                    const clean = rawParts[i].replace(/^(ស្រុក|ខណ្ឌ|ក្រុង)/, '').trim();
+                    matchedDist = dRes.data.find(d => d.name_kh === clean || d.name_kh.includes(clean) || clean.includes(d.name_kh));
+                    if (matchedDist) break;
                 }
+
+                if (!matchedDist) return;
+                distEl.value = matchedDist.id;
+                commEl.disabled = false;
+
+                fetch(`/academics/api/locations/communes/?district_id=${matchedDist.id}`)
+                    .then(res => res.json())
+                    .then(cRes => {
+                        if (cRes.status !== 'success' || !cRes.data) return;
+                        populateSelect(commEl, cRes.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+
+                        let matchedComm = null;
+                        for (let i = rawParts.length - 1; i >= 0; i--) {
+                            const clean = rawParts[i].replace(/^(ឃុំ|សង្កាត់)/, '').trim();
+                            matchedComm = cRes.data.find(c => c.name_kh === clean || c.name_kh.includes(clean) || clean.includes(c.name_kh));
+                            if (matchedComm) break;
+                        }
+
+                        if (!matchedComm) return;
+                        commEl.value = matchedComm.id;
+                        villEl.disabled = false;
+
+                        fetch(`/academics/api/locations/villages/?commune_id=${matchedComm.id}`)
+                            .then(res => res.json())
+                            .then(vRes => {
+                                if (vRes.status !== 'success' || !vRes.data) return;
+                                populateSelect(villEl, vRes.data, '-- ជ្រើសរើសភូមិ --');
+
+                                let matchedVill = null;
+                                for (let i = rawParts.length - 1; i >= 0; i--) {
+                                    const clean = rawParts[i].replace(/^ភូមិ/, '').trim();
+                                    matchedVill = vRes.data.find(v => v.name_kh === clean || v.name_kh.includes(clean) || clean.includes(v.name_kh));
+                                    if (matchedVill) break;
+                                }
+
+                                if (matchedVill) {
+                                    villEl.value = matchedVill.id;
+                                }
+                            });
+                    });
             });
-    });
+    }
+
+    // Copy POB to Current Address
+    if (btnCopyPob) {
+        btnCopyPob.addEventListener('click', function() {
+            if (!pobProv || !pobProv.value) {
+                alert('សូមជ្រើសរើសទីកន្លែងកំណើតជាមុនសិន!');
+                return;
+            }
+
+            const pVal = pobProv.value;
+            const dVal = pobDist.value;
+            const cVal = pobComm.value;
+            const vVal = pobVill.value;
+
+            curProv.value = pVal;
+            curDist.disabled = false;
+
+            fetch(`/academics/api/locations/districts/?province_id=${pVal}`)
+                .then(res => res.json())
+                .then(d => {
+                    populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                    curDist.value = dVal;
+                    if (dVal) {
+                        curComm.disabled = false;
+                        fetch(`/academics/api/locations/communes/?district_id=${dVal}`)
+                            .then(res => res.json())
+                            .then(c => {
+                                populateSelect(curComm, c.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                                curComm.value = cVal;
+                                if (cVal) {
+                                    curVill.disabled = false;
+                                    fetch(`/academics/api/locations/villages/?commune_id=${cVal}`)
+                                        .then(res => res.json())
+                                        .then(v => {
+                                            populateSelect(curVill, v.data, '-- ជ្រើសរើសភូមិ --');
+                                            curVill.value = vVal;
+                                            updateCurString();
+                                        });
+                                } else {
+                                    updateCurString();
+                                }
+                            });
+                    } else {
+                        updateCurString();
+                    }
+                });
+        });
+    }
 
     // Initialize Card Drag and Drop on Enrollment Form
     initCardDragAndDrop();

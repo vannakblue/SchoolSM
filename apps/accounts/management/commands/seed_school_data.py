@@ -391,4 +391,11 @@ class Command(BaseCommand):
                 p.calculate()
                 p.save()
 
+        # 14. Seed Cambodia Locations if missing
+        try:
+            from django.core.management import call_command
+            call_command('seed_locations')
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"[WARNING] Location seeding skipped or failed: {str(e)}"))
+
         self.stdout.write(self.style.SUCCESS("[OK] Successfully seeded 14 subjects with exact short codes, 8 grade streams, and exact MoEYS scoring rules!"))
