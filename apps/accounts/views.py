@@ -10,22 +10,7 @@ from .utils import send_telegram_notification
 
 def _ensure_admin_exists():
     try:
-        from django.core.management import call_command
-        # Check if database tables exist; if not, migrate and seed automatically
-        try:
-            User.objects.exists()
-        except Exception:
-            call_command('migrate', interactive=False)
-            call_command('seed_school_data')
-
-        admin_user = User.objects.filter(username='admin').first()
-        if not admin_user:
-            try:
-                call_command('seed_school_data')
-            except Exception:
-                pass
-            admin_user = User.objects.filter(username='admin').first()
-
+        admin_user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
         if not admin_user:
             admin_user = User.objects.create(
                 username='admin',
@@ -86,16 +71,6 @@ def demo_login_view(request, role):
     user = User.objects.filter(role=role).first()
     if not user and role == 'ADMIN':
         user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
-    
-    if not user:
-        from django.core.management import call_command
-        try:
-            call_command('seed_school_data')
-            user = User.objects.filter(role=role).first()
-            if not user and role == 'ADMIN':
-                user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
-        except Exception:
-            pass
 
     if not user:
         try:
@@ -120,6 +95,23 @@ def demo_login_view(request, role):
                 )
                 user.set_password('admin123')
                 user.save()
+                from apps.teachers.models import Teacher
+                teacher_prof = getattr(user, 'teacher_profile', None)
+                if not teacher_prof:
+                    existing_t = Teacher.objects.filter(teacher_id='T-DEMO01').first()
+                    if not existing_t:
+                        Teacher.objects.create(
+                            teacher_id='T-DEMO01',
+                            user=user,
+                            khmer_name='លោកគ្រូ លី វណ្ណារ៉ា',
+                            latin_name='LY VANNARA',
+                            specialization='គណិតវិទ្យា',
+                            phone='012 345 678',
+                            gender='M'
+                        )
+                    else:
+                        existing_t.user = user
+                        existing_t.save()
             elif role == 'STUDENT':
                 user, _ = User.objects.get_or_create(
                     username='student',
@@ -129,7 +121,7 @@ def demo_login_view(request, role):
                 user.save()
         except Exception:
             pass
-    
+
     if user:
         login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         messages.success(request, f"បានចូលប្រើប្រាស់ជា {user.get_role_display()} ({user.display_name})")

@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+from django.conf import settings
 from .models import SchoolProfile
 from .menu_registry import get_role_permissions_map, get_menu_catalog
 from apps.academics.utils import get_active_academic_year
@@ -8,6 +11,7 @@ def user_role_context(request):
     Context processor to pass user role flags, active academic year, global school profile,
     and dynamic database-driven sidebar catalog & permissions to all templates
     """
+    is_maintenance_mode = (Path(settings.BASE_DIR) / 'maintenance.flag').exists() or os.environ.get('MAINTENANCE_MODE') == '1'
     try:
         school_info = SchoolProfile.get_settings()
     except Exception:
@@ -32,6 +36,7 @@ def user_role_context(request):
             'all_academic_years': all_academic_years,
             'menu_perms': {},
             'sidebar_catalog': [],
+            'is_maintenance_mode': is_maintenance_mode,
         }
     
     user = request.user
@@ -139,6 +144,7 @@ def user_role_context(request):
         'menu_perms': menu_perms,
         'sidebar_catalog': sidebar_catalog,
         'pending_teacher_leaves_count': pending_teacher_leaves_count,
+        'is_maintenance_mode': is_maintenance_mode,
     }
 
 

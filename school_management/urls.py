@@ -2,13 +2,14 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 
 from apps.accounts.views import telegram_webhook, init_admin_view
 
 urlpatterns = [
     path('admin-panel/', admin.site.urls),
     path('', lambda request: redirect('dashboard_redirect'), name='root_redirect'),
+    path('maintenance-preview/', lambda request: render(request, 'maintenance.html'), name='maintenance_preview'),
     path('init-admin/', init_admin_view, name='root_init_admin'),
     path('api/telegram/webhook/', telegram_webhook, name='telegram_webhook'),
     

@@ -17,8 +17,8 @@ if exist "maintenance.flag" (
     echo [STATUS] ----------------------------------------------------
     echo [SUCCESS] Maintenance Mode is now ACTIVATED!
     echo.
-    echo   * Users (Students ^& Teachers) will now see the Maintenance page.
-    echo   * HTTP Status: 503 (Service Unavailable)
+    echo   * Users ^(Students ^& Teachers^) will now see the Maintenance page.
+    echo   * HTTP Status: 503 ^(Service Unavailable^)
     echo   * Superuser / Admin can still access /admin-panel/ to test changes.
     echo.
     echo   To turn it off later, double-click: maintenance_off.bat

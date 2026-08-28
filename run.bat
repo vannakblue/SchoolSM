@@ -16,6 +16,9 @@ if exist ".venv\Scripts\activate.bat" (
 cls
 echo ================================================================
 echo           SCHOOL MANAGEMENT SYSTEM (SchoolSM)
+if exist "maintenance.flag" (
+    echo   [!] CURRENT STATUS: MAINTENANCE MODE IS ACTIVE
+)
 echo ================================================================
 echo.
 echo   [1] Start Server and Open Web Browser (Default)
@@ -31,11 +34,13 @@ echo   [10] Open Backups Folder in File Explorer
 echo   [11] Push Code to GitHub (Auto-Deploy to Render.com)
 echo   [12] Setup / Fix Python Environment (.venv & Packages)
 echo   [13] Create Clean Project Backup (.ZIP archive)
+echo   [14] Turn ON Maintenance Mode (Show update screen to users)
+echo   [15] Turn OFF Maintenance Mode (Make system live for all)
 echo   [0] Exit
 echo.
 echo ================================================================
 set choice=1
-set /p choice="Enter your choice [0-13] (Press Enter for Option 1): "
+set /p choice="Enter your choice [0-15] (Press Enter for Option 1): "
 
 if "%choice%"=="1" goto start_server
 if "%choice%"=="2" goto migrate
@@ -50,6 +55,8 @@ if "%choice%"=="10" goto open_backups
 if "%choice%"=="11" goto push_github
 if "%choice%"=="12" goto setup_env
 if "%choice%"=="13" goto backup_zip
+if "%choice%"=="14" goto maint_on
+if "%choice%"=="15" goto maint_off
 if "%choice%"=="0" goto end
 
 echo Invalid option! Please try again.
@@ -235,6 +242,26 @@ if exist "backup_project_zip.bat" (
     call backup_project_zip.bat
 ) else (
     echo [ERROR] backup_project_zip.bat not found!
+    pause
+)
+goto menu
+
+:maint_on
+if exist "maintenance_on.bat" (
+    call maintenance_on.bat
+) else (
+    echo active > maintenance.flag
+    echo [SUCCESS] Maintenance Mode is ON!
+    pause
+)
+goto menu
+
+:maint_off
+if exist "maintenance_off.bat" (
+    call maintenance_off.bat
+) else (
+    if exist "maintenance.flag" del maintenance.flag
+    echo [SUCCESS] Maintenance Mode is OFF!
     pause
 )
 goto menu
