@@ -37,12 +37,18 @@ urlpatterns = [
     path('attendance/logs/', biometric_views.teacher_punch_logs_view, name='teacher_punch_logs'),
     path('my-attendance/', biometric_views.teacher_my_attendance_history_view, name='teacher_my_attendance_history'),
 
+    # Teacher Information Re-Submission Campaign & Self-Update Portal
+    path('campaign/settings/', views.teacher_update_campaign_view, name='teacher_update_campaign'),
+    path('portal/update/', views.teacher_self_update_portal, name='teacher_self_update_portal'),
+
     # Leaves & Profile
     path('leave/', views.teacher_leave_list, name='teacher_leave_list'),
     path('leave/apply/', views.teacher_leave_create, name='teacher_leave_create'),
     path('leave/<int:pk>/print/', views.teacher_leave_print_letter, name='teacher_leave_print_letter'),
+    path('delete-all/', views.teacher_delete_all, name='teacher_delete_all'),
     path('<int:pk>/', views.teacher_detail, name='teacher_detail'),
     path('<int:pk>/edit/', views.teacher_edit, name='teacher_edit'),
+    path('<int:pk>/delete/', views.teacher_delete, name='teacher_delete'),
 ]
 
 

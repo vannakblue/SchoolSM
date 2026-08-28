@@ -46,11 +46,11 @@ def test_teacher_import_and_export():
     ws.title = "Teachers"
     ws.append([
         "Teacher ID *", "Khmer Name *", "Latin Name *", "Gender (M/F) *",
-        "DOB (YYYY-MM-DD)", "Phone *", "Email", "Specialization *",
+        "DOB (DD-MM-YYYY)", "Phone *", "Email", "Specialization *",
         "Qualification", "Max Weekly Hours", "Base Salary ($)", "Status (ACTIVE/ON_LEAVE/RESIGNED)"
     ])
-    ws.append(["T-TEST-001", "គ្រូ តេស្ត ១", "Teacher Test 1", "M", "1988-04-12", "012888111", "test1@school.edu.kh", "គណិតវិទ្យា", "បរិញ្ញាបត្រ", 18, 550, "ACTIVE"])
-    ws.append(["T-TEST-002", "គ្រូ តេស្ត ២", "Teacher Test 2", "F", "1991-09-24", "096999222", "test2@school.edu.kh", "រូបវិទ្យា & ICT", "អនុបណ្ឌិត", 16, 600, "ACTIVE"])
+    ws.append(["T-TEST-001", "គ្រូ តេស្ត ១", "Teacher Test 1", "M", "12-04-1988", "012888111", "test1@school.edu.kh", "គណិតវិទ្យា", "បរិញ្ញាបត្រ", 18, 550, "ACTIVE"])
+    ws.append(["T-TEST-002", "គ្រូ តេស្ត ២", "Teacher Test 2", "F", "24/09/1991", "096999222", "test2@school.edu.kh", "រូបវិទ្យា & ICT", "អនុបណ្ឌិត", 16, 600, "ACTIVE"])
 
     excel_buffer = io.BytesIO()
     wb.save(excel_buffer)
@@ -72,15 +72,17 @@ def test_teacher_import_and_export():
     assert t1.khmer_name == "គ្រូ តេស្ត ១"
     assert t1.specialization == "គណិតវិទ្យា"
     assert t1.max_weekly_hours == 18
+    assert str(t1.date_of_birth) == "1988-04-12"
     assert t1.user is not None, "Teacher User account should be created"
-    print(f"  [PASS] 3. Imported Teacher: «{t1.khmer_name}» ({t1.teacher_id}), Specialization: {t1.specialization}, User Account: {t1.user.username}.")
+    print(f"  [PASS] 3. Imported Teacher: «{t1.khmer_name}» ({t1.teacher_id}), Specialization: {t1.specialization}, DOB: {t1.date_of_birth}, User Account: {t1.user.username}.")
 
     assert t2 is not None, "Teacher T-TEST-002 should be created"
     assert t2.khmer_name == "គ្រូ តេស្ត ២"
     assert t2.gender == Teacher.Gender.FEMALE
     assert t2.specialization == "រូបវិទ្យា & ICT"
     assert t2.max_weekly_hours == 16
-    print(f"  [PASS] 4. Imported Teacher: «{t2.khmer_name}» ({t2.teacher_id}), Specialization: {t2.specialization}, Max Hours: {t2.max_weekly_hours}.")
+    assert str(t2.date_of_birth) == "1991-09-24"
+    print(f"  [PASS] 4. Imported Teacher: «{t2.khmer_name}» ({t2.teacher_id}), Specialization: {t2.specialization}, DOB: {t2.date_of_birth}, Max Hours: {t2.max_weekly_hours}.")
 
     # 4. Test Export All Teachers to Excel
     res_export = client.get(reverse('teacher_export_excel'))

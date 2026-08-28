@@ -23,6 +23,15 @@ class Teacher(models.Model):
     address = models.TextField(blank=True, null=True, verbose_name="អាសយដ្ឋានបច្ចុប្បន្ន / Current Address")
     qualification = models.CharField(max_length=200, blank=True, null=True, verbose_name="កម្រិតវប្បធម៌ / Qualification")
     specialization = models.CharField(max_length=200, verbose_name="ឯកទេសបង្រៀន / Specialization")
+    training_level = models.CharField(max_length=200, blank=True, null=True, verbose_name="កម្រិតបណ្តុះបណ្តាល / Pedagogical Training Level")
+    state_hire_date = models.DateField(null=True, blank=True, verbose_name="ថ្ងៃចូលបម្រើការងាររដ្ឋ / State Civil Service Entry Date")
+    permanent_date = models.DateField(null=True, blank=True, verbose_name="ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់ / Permanent Confirmation Date")
+    primary_subject = models.CharField(max_length=150, blank=True, null=True, verbose_name="មុខវិជ្ជាឯកទេសទី១ / Subject Specialization 1")
+    secondary_subject = models.CharField(max_length=150, blank=True, null=True, verbose_name="មុខវិជ្ជាឯកទេសទី២ / Subject Specialization 2")
+    current_duty = models.CharField(max_length=150, blank=True, null=True, default="គ្រូបង្រៀន", verbose_name="ភារកិច្ចបច្ចុប្បន្ន / Current Duty")
+    prakas_category = models.CharField(max_length=100, blank=True, null=True, verbose_name="ប្រភេទក្របខ័ណ្ឌ / Civil Servant Category")
+    prakas_year = models.CharField(max_length=20, blank=True, null=True, verbose_name="ឆ្នាំទទួលប្រកាស / Decree Year")
+    prakas_number = models.CharField(max_length=100, blank=True, null=True, verbose_name="ប្រកាសលេខ / Prakas Number")
     base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('500.00'), verbose_name="ប្រាក់ខែគោល ($) / Base Salary")
     hire_date = models.DateField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទចូលបម្រើការ / Hire Date")
     photo = models.ImageField(upload_to='teachers/photos/', blank=True, null=True, verbose_name="រូបថត / Photo")
@@ -31,6 +40,7 @@ class Teacher(models.Model):
     is_fee_collector = models.BooleanField(default=False, verbose_name="អនុញ្ញាតឱ្យប្រមូលថវិកា / Fee Collector Permission")
     collector_token = models.CharField(max_length=64, blank=True, null=True, unique=True, verbose_name="Collector Pass Token")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, verbose_name="ស្ថានភាព / Status")
+    last_profile_verified_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទផ្ទៀងផ្ទាត់ព័ត៌មានចុងក្រោយ / Last Verified At")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -332,5 +342,59 @@ class TeacherAttendanceConfig(models.Model):
 
     def __str__(self):
         return f"Attendance Config (QR: {'ON' if self.enable_qr_checkin else 'OFF'}, Face AI: {'ON' if self.enable_face_ai_checkin else 'OFF'}, Biometric: {'ON' if self.enable_biometric_device else 'OFF'})"
+
+
+class TeacherProfileUpdateCampaign(models.Model):
+    """
+    Allows Admin to configure a Teacher Information Re-Submission / Verification Campaign.
+    Admin can TICK specific sections/fields that teachers are required to review or update.
+    """
+    AVAILABLE_SECTIONS = [
+        ('identity', 'អត្តសញ្ញាណ (Teacher ID, ឈ្មោះខ្មែរ, ឈ្មោះឡាតាំង)'),
+        ('dob_gender', 'ថ្ងៃខែឆ្នាំកំណើត & ភេទ'),
+        ('phone_email', 'លេខទូរស័ព្ទ & អ៊ីមែល'),
+        ('address', 'អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ ឃុំ ស្រុក ខេត្ត)'),
+        ('education', 'កម្រិតវប្បធម៌ & ឯកទេសទូទៅ'),
+        ('training_subjects', 'កម្រិតបណ្តុះបណ្តាល & មុខវិជ្ជាឯកទេសទី១ ទី២'),
+        ('civil_service', 'ព័ត៌មានក្របខ័ណ្ឌរដ្ឋ (ភារកិច្ច, ថ្ងៃចូលរដ្ឋ, ថ្ងៃតាំងស៊ប់, ប្រកាសលេខ...)'),
+        ('photo_resume', 'រូបថត & ឯកសារ CV / Resume'),
+    ]
+
+    title = models.CharField(max_length=200, default="យុទ្ធនាការផ្ទៀងផ្ទាត់ និងបំពេញព័ត៌មានគ្រូបង្រៀន", verbose_name="ចំណងជើងយុទ្ធនាការ")
+    instructions = models.TextField(blank=True, default="សូមលោកគ្រូ-អ្នកគ្រូ មេត្តាពិនិត្យ និងបំពេញព័ត៌មានដែលបានជ្រើសរើសខាងក្រោមឱ្យបានត្រឹមត្រូវ។", verbose_name="សេចក្តីណែនាំដល់គ្រូ")
+    is_active = models.BooleanField(default=True, verbose_name="បើកដំណើរការយុទ្ធនាការ / Active")
+    allowed_sections = models.JSONField(default=list, blank=True, verbose_name="ផ្នែកព័ត៌មានដែលតម្រូវឱ្យបំពេញ (Tick Selection)")
+    target_all = models.BooleanField(default=True, verbose_name="អនុវត្តចំពោះគ្រូទាំងអស់ / Target All Teachers")
+    target_teachers = models.ManyToManyField(Teacher, blank=True, related_name='update_campaigns', verbose_name="គ្រូជាក់លាក់")
+    deadline = models.DateField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទផុតកំណត់ / Deadline")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "យុទ្ធនាការបំពេញព័ត៌មានគ្រូ / Teacher Profile Update Campaign"
+        verbose_name_plural = "យុទ្ធនាការបំពេញព័ត៌មានគ្រូទាំងអស់"
+
+    @classmethod
+    def get_current_active(cls, teacher=None):
+        import datetime
+        campaign = cls.objects.filter(is_active=True).first()
+        if not campaign:
+            return None
+        if campaign.deadline and campaign.deadline < datetime.date.today():
+            return None
+        if teacher and not campaign.target_all:
+            if not campaign.target_teachers.filter(id=teacher.id).exists():
+                return None
+        return campaign
+
+    def is_section_allowed(self, section_code):
+        if not self.allowed_sections:
+            return True # If empty, all allowed
+        return section_code in self.allowed_sections
+
+    def __str__(self):
+        return f"{self.title} ({'Active' if self.is_active else 'Closed'})"
+
 
 

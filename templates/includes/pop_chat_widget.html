@@ -1,0 +1,907 @@
+{% if request.user.is_authenticated %}
+<!-- Floating Pop Chat Widget (ជំនួយការ & ប្រព័ន្ធជជែកទ្វេទិស គាំទ្រទាំង Text & Voice Messages) -->
+<div id="popChatWidget" class="pop-chat-root no-print" data-is-admin="{% if is_admin %}true{% else %}false{% endif %}">
+    <!-- Floating Trigger Bubble -->
+    <button id="popChatTriggerBtn" type="button" class="pop-chat-bubble shadow-lg" onclick="togglePopChat()" title="ចុចដើម្បីបើក Pop Chat ស្នើសុំ & ជជែក">
+        <div class="pop-chat-bubble-inner">
+            <i class="fa-solid fa-comments fs-5" id="popChatIconOpen"></i>
+            <i class="fa-solid fa-chevron-down fs-5 d-none" id="popChatIconClose"></i>
+            <span class="d-none d-md-inline ms-2 fw-bold small">
+                {% if is_admin %}
+                <i class="fa-solid fa-inbox me-1"></i> សារ & សំណើពីគ្រូ
+                {% else %}
+                <i class="fa-solid fa-headset me-1"></i> ជំនួយការ & ស្នើសុំ Admin
+                {% endif %}
+            </span>
+        </div>
+        <span id="popChatUnreadBadge" class="pop-chat-status-dot" title="Online"></span>
+    </button>
+
+    <!-- Floating Chat Window Container -->
+    <div id="popChatWindow" class="pop-chat-window shadow-2xl d-none">
+        
+        {% if is_admin %}
+        <!-- ==================== ADMIN VIEW ==================== -->
+        <!-- Admin Threads List View (Inbox) -->
+        <div id="popChatAdminInboxView" class="d-flex flex-column h-100">
+            <!-- Header -->
+            <div class="pop-chat-header d-flex align-items-center justify-content-between text-white p-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="pop-chat-avatar-circle">
+                        <i class="fa-solid fa-inbox text-primary"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 fs-6">ប្រអប់សារ & សំណើពីគ្រូ</h6>
+                        <small class="text-white-50" style="font-size: 0.72rem;">Admin Direct Chat Manager</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="loadAdminThreads()" title="Refresh">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="togglePopChat()" title="បិទ">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search / Filter bar -->
+            <div class="p-2 bg-light border-bottom">
+                <input type="text" id="adminThreadSearch" class="form-control form-control-sm rounded-pill px-3" placeholder="🔍 ស្វែងរកឈ្មោះគ្រូ ឬកូដ..." oninput="filterAdminThreads()">
+            </div>
+
+            <!-- Threads List Area -->
+            <div id="adminThreadsList" class="flex-grow-1 overflow-y-auto p-2 bg-white">
+                <div class="text-center py-4 text-muted small">
+                    <i class="fa-solid fa-spinner fa-spin text-primary fs-5 mb-2 d-block"></i>
+                    កំពុងទាញយកបញ្ជីសារពីគ្រូ...
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Direct 1-on-1 Chat Thread View -->
+        <div id="popChatAdminDirectView" class="d-flex flex-column h-100 d-none">
+            <!-- Header with Back Button -->
+            <div class="pop-chat-header d-flex align-items-center justify-content-between text-white p-3">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-light py-0 px-2 rounded-pill fw-bold text-primary" onclick="backToAdminInbox()" title="ត្រឡប់ទៅបញ្ជី">
+                        <i class="fa-solid fa-arrow-left me-1"></i> បញ្ជី
+                    </button>
+                    <div>
+                        <h6 class="fw-bold mb-0 fs-6 text-truncate" id="activeThreadTeacherName" style="max-width: 180px;">ឈ្មោះគ្រូ</h6>
+                        <small class="text-white-50" id="activeThreadTeacherMeta" style="font-size: 0.72rem;">កូដគ្រូ</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="loadActiveThreadMessages()" title="Refresh">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="togglePopChat()" title="បិទ">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages List -->
+            <div id="adminDirectMessages" class="pop-chat-messages p-3 flex-grow-1"></div>
+
+            <!-- Admin Voice Recording Bar (Hidden by default) -->
+            <div id="adminVoiceRecordBar" class="p-2 bg-danger-subtle border-top d-flex align-items-center justify-content-between d-none">
+                <div class="d-flex align-items-center gap-2 text-danger small fw-bold">
+                    <span class="recording-pulse-dot"></span>
+                    <span>កំពុងថតសំឡេង...</span>
+                    <span id="adminVoiceTimer" class="font-monospace">00:00</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" onclick="cancelVoiceRecording('admin')" title="បោះបង់">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold" onclick="stopAndSendVoiceRecording('admin')" title="ផ្ញើសំឡេង">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Footer -->
+            <div id="adminInputFooter" class="pop-chat-footer p-2 bg-white border-top">
+                <form id="adminPopChatForm" onsubmit="handleAdminDirectSubmit(event)" class="d-flex align-items-center gap-2 m-0">
+                    {% csrf_token %}
+                    <input type="text" id="adminDirectInput" class="form-control form-control-sm rounded-pill px-3" placeholder="វាយសារឆ្លើយតប..." autocomplete="off">
+                    <button type="button" id="adminMicBtn" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;" onclick="startVoiceRecording('admin')" title="ចុចដើម្បីថតសំឡេង (Voice Message)">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
+                    <button type="submit" id="adminDirectSendBtn" class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;" title="ឆ្លើយតប">
+                        <i class="fa-solid fa-paper-plane" id="adminDirectSendIcon"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- ==================== TEACHER / USER VIEW ==================== -->
+        <div class="d-flex flex-column h-100">
+            <!-- Header -->
+            <div class="pop-chat-header d-flex align-items-center justify-content-between text-white p-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="pop-chat-avatar-circle">
+                        <i class="fa-solid fa-headset text-primary"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 fs-6">ជំនួយការ & ស្នើសុំ Admin</h6>
+                        <small class="text-white-50 d-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                            <span class="badge-dot-online"></span> Alert ផ្ទាល់ទៅ Telegram Admin
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="loadTeacherMessages()" title="Refresh">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="togglePopChat()" title="បិទ">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Action Chips Bar -->
+            <div class="pop-chat-chips-bar p-2 bg-light border-bottom">
+                <div class="d-flex flex-wrap gap-1">
+                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill small py-1 px-2" onclick="setQuickChip('profile_correction', 'ខ្ញុំចង់ស្នើសុំកែប្រែព័ត៌មានអត្តសញ្ញាណ (ឈ្មោះ/ថ្ងៃកំណើត/ភេទ/កូដគ្រូ)')">
+                        <i class="fa-solid fa-id-card me-1"></i> កែឈ្មោះ/ថ្ងៃកំណើត
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill small py-1 px-2" onclick="setQuickChip('profile_correction', 'ខ្ញុំចង់ស្នើសុំកែប្រែលេខទូរស័ព្ទ ឬអ៊ីមែលទំនាក់ទំនង')">
+                        <i class="fa-solid fa-phone me-1"></i> កែលេខទូរស័ព្ទ
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-warning rounded-pill small py-1 px-2 text-dark" onclick="setQuickChip('general_inquiry', 'ខ្ញុំចង់សាកសួរព័ត៌មានរដ្ឋបាល/កាលវិភាគ/ប្រាក់ខែ')">
+                        <i class="fa-solid fa-circle-question me-1"></i> សាកសួររដ្ឋបាល
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="popChatMessages" class="pop-chat-messages p-3 flex-grow-1"></div>
+
+            <!-- Direct Telegram Quick Banner -->
+            {% if global_school_profile.telegram_channel or school_profile.telegram_channel %}
+            <div class="px-3 py-1 bg-light border-top d-flex align-items-center justify-content-between small text-muted" style="font-size: 0.75rem;">
+                <span><i class="fa-brands fa-telegram text-primary me-1"></i> Admin Chat: <strong>@{{ global_school_profile.telegram_channel|default:school_profile.telegram_channel }}</strong></span>
+                <a href="https://t.me/{{ global_school_profile.telegram_channel|default:school_profile.telegram_channel }}" target="_blank" class="text-primary text-decoration-none fw-bold">Open App ↗</a>
+            </div>
+            {% endif %}
+
+            <!-- Teacher Voice Recording Bar (Hidden by default) -->
+            <div id="teacherVoiceRecordBar" class="p-2 bg-danger-subtle border-top d-flex align-items-center justify-content-between d-none">
+                <div class="d-flex align-items-center gap-2 text-danger small fw-bold">
+                    <span class="recording-pulse-dot"></span>
+                    <span>កំពុងថតសំឡេង...</span>
+                    <span id="teacherVoiceTimer" class="font-monospace">00:00</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" onclick="cancelVoiceRecording('teacher')" title="បោះបង់">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold" onclick="stopAndSendVoiceRecording('teacher')" title="ផ្ញើសំឡេង">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Footer -->
+            <div id="teacherInputFooter" class="pop-chat-footer p-2 bg-white border-top">
+                <form id="popChatForm" onsubmit="handlePopChatSubmit(event)" class="d-flex align-items-center gap-2 m-0">
+                    {% csrf_token %}
+                    <input type="hidden" id="popChatCategory" name="category" value="profile_correction">
+                    <input type="text" id="popChatInput" class="form-control form-control-sm rounded-pill px-3" placeholder="វាយសារស្នើសុំ ឬចុចថតសំឡេង..." autocomplete="off">
+                    <button type="button" id="teacherMicBtn" class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;" onclick="startVoiceRecording('teacher')" title="ចុចដើម្បីថតសំឡេង (Voice Message)">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
+                    <button type="submit" id="popChatSendBtn" class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;" title="ផ្ញើសារទៅកាន់ Admin">
+                        <i class="fa-solid fa-paper-plane" id="popChatSendIcon"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<style>
+/* Pop Chat Styling */
+.pop-chat-root {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1050;
+    font-family: inherit;
+}
+
+.pop-chat-bubble {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    outline: none;
+}
+
+.pop-chat-bubble:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.45) !important;
+}
+
+.pop-chat-status-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background-color: #22c55e;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: pulseGlow 2s infinite;
+}
+
+.pop-chat-status-dot.has-unread {
+    background-color: #ef4444 !important;
+}
+
+@keyframes pulseGlow {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+.recording-pulse-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    animation: pulseGlow 1s infinite;
+}
+
+.pop-chat-window {
+    position: absolute;
+    bottom: 64px;
+    right: 0;
+    width: 390px;
+    max-width: calc(100vw - 32px);
+    height: 540px;
+    max-height: calc(100vh - 120px);
+    background: #ffffff;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    animation: popChatSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes popChatSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pop-chat-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+}
+
+.pop-chat-avatar-circle {
+    width: 36px;
+    height: 36px;
+    background: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.badge-dot-online {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background-color: #4ade80;
+    border-radius: 50%;
+}
+
+.pop-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f8fafc;
+    scroll-behavior: smooth;
+}
+
+.pop-chat-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 88%;
+}
+
+.pop-chat-msg-bot {
+    align-self: flex-start;
+}
+
+.pop-chat-msg-user {
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+.pop-chat-msg-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.pop-chat-msg-bot .pop-chat-msg-bubble {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.pop-chat-msg-user .pop-chat-msg-bubble {
+    background: #4f46e5;
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 5px rgba(79, 70, 229, 0.3);
+}
+
+.pop-chat-voice-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 20px;
+    margin-top: 4px;
+}
+
+.pop-chat-msg-user .pop-chat-voice-player {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.thread-item {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.thread-item:hover {
+    background-color: #f1f5f9;
+}
+
+.btn-xs {
+    font-size: 0.72rem !important;
+    padding: 2px 8px !important;
+}
+
+@media (max-width: 576px) {
+    .pop-chat-root {
+        bottom: 16px;
+        right: 16px;
+    }
+    .pop-chat-window {
+        width: calc(100vw - 32px);
+        height: 500px;
+        bottom: 58px;
+    }
+}
+</style>
+
+<script>
+let popChatActiveTargetUserId = null;
+let allAdminThreadsData = [];
+
+// Voice Recording state
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingTimerInterval = null;
+let recordingSeconds = 0;
+let activeRecordingRole = null;
+
+function togglePopChat() {
+    const root = document.getElementById('popChatWidget');
+    const win = document.getElementById('popChatWindow');
+    const iconOpen = document.getElementById('popChatIconOpen');
+    const iconClose = document.getElementById('popChatIconClose');
+    if (!win) return;
+
+    const isAdmin = root && root.getAttribute('data-is-admin') === 'true';
+
+    if (win.classList.contains('d-none')) {
+        win.classList.remove('d-none');
+        iconOpen.classList.add('d-none');
+        iconClose.classList.remove('d-none');
+
+        if (isAdmin) {
+            loadAdminThreads();
+        } else {
+            loadTeacherMessages();
+            setTimeout(() => {
+                const input = document.getElementById('popChatInput');
+                if (input) input.focus();
+            }, 100);
+        }
+    } else {
+        win.classList.add('d-none');
+        iconOpen.classList.remove('d-none');
+        iconClose.classList.add('d-none');
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            cancelVoiceRecording(activeRecordingRole || 'teacher');
+        }
+    }
+}
+
+// ---------------- VOICE RECORDING LOGIC ----------------
+function startVoiceRecording(role) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("⚠️ កម្មវិធីរុករក (Browser) របស់អ្នកមិនគាំទ្រការថតសំឡេងឡើយ។");
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+        activeRecordingRole = role;
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.start();
+        recordingSeconds = 0;
+
+        // UI Updates
+        if (role === 'admin') {
+            document.getElementById('adminInputFooter').classList.add('d-none');
+            document.getElementById('adminVoiceRecordBar').classList.remove('d-none');
+            const timerEl = document.getElementById('adminVoiceTimer');
+            if (timerEl) timerEl.innerText = '00:00';
+        } else {
+            document.getElementById('teacherInputFooter').classList.add('d-none');
+            document.getElementById('teacherVoiceRecordBar').classList.remove('d-none');
+            const timerEl = document.getElementById('teacherVoiceTimer');
+            if (timerEl) timerEl.innerText = '00:00';
+        }
+
+        recordingTimerInterval = setInterval(() => {
+            recordingSeconds++;
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(recordingSeconds % 60).padStart(2, '0');
+            const str = `${mins}:${secs}`;
+            const tEl = document.getElementById(role === 'admin' ? 'adminVoiceTimer' : 'teacherVoiceTimer');
+            if (tEl) tEl.innerText = str;
+        }, 1000);
+    })
+    .catch(err => {
+        alert("⚠️ មិនអាចបើក Microphone បានទេ! សូមអនុញ្ញាត Microphone permission ក្នុង Browser របស់អ្នក។");
+    });
+}
+
+function cancelVoiceRecording(role) {
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        if (mediaRecorder.stream) {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        }
+    }
+    audioChunks = [];
+    resetRecordingUI(role);
+}
+
+function stopAndSendVoiceRecording(role) {
+    if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        resetRecordingUI(role);
+        return;
+    }
+
+    const duration = recordingSeconds;
+    mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        if (mediaRecorder.stream) {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        }
+        resetRecordingUI(role);
+        sendVoiceMessage(role, audioBlob, duration);
+    };
+    mediaRecorder.stop();
+}
+
+function resetRecordingUI(role) {
+    if (role === 'admin') {
+        document.getElementById('adminVoiceRecordBar').classList.add('d-none');
+        document.getElementById('adminInputFooter').classList.remove('d-none');
+    } else {
+        document.getElementById('teacherVoiceRecordBar').classList.add('d-none');
+        document.getElementById('teacherInputFooter').classList.remove('d-none');
+    }
+}
+
+function sendVoiceMessage(role, audioBlob, duration) {
+    const isAdmin = role === 'admin';
+    const msgContainer = document.getElementById(isAdmin ? 'adminDirectMessages' : 'popChatMessages');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    // Show temporary sent message in UI
+    const tempUrl = URL.createObjectURL(audioBlob);
+    appendVoiceMsg(msgContainer, tempUrl, duration, true, 'ទើបផ្ញើ');
+
+    const formData = new FormData();
+    formData.append('voice_file', audioBlob, 'voice_message.webm');
+    formData.append('voice_duration', duration);
+    formData.append('message', `🎙️ សារសំឡេង (${duration}s)`);
+
+    if (isAdmin) {
+        if (!popChatActiveTargetUserId) return;
+        formData.append('target_user_id', popChatActiveTargetUserId);
+        formData.append('category', 'admin_response');
+    } else {
+        const catInput = document.getElementById('popChatCategory');
+        formData.append('category', catInput ? catInput.value : 'profile_correction');
+    }
+
+    fetch("{% url 'api_pop_chat_send' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!isAdmin && data.status === 'success') {
+            appendBotAlertReply(msgContainer, data.reply, data.timestamp);
+        }
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    })
+    .catch(err => console.error('Voice send error:', err));
+}
+
+// ---------------- TEACHER FUNCTIONS ----------------
+function loadTeacherMessages() {
+    const messagesArea = document.getElementById('popChatMessages');
+    if (!messagesArea) return;
+
+    fetch("{% url 'api_pop_chat_history' %}")
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderMessages(messagesArea, data.messages, false);
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function setQuickChip(category, text) {
+    const input = document.getElementById('popChatInput');
+    const catInput = document.getElementById('popChatCategory');
+    if (input) {
+        input.value = text;
+        input.focus();
+    }
+    if (catInput) {
+        catInput.value = category;
+    }
+}
+
+function handlePopChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('popChatInput');
+    const catInput = document.getElementById('popChatCategory');
+    const sendBtn = document.getElementById('popChatSendBtn');
+    const sendIcon = document.getElementById('popChatSendIcon');
+    const messagesArea = document.getElementById('popChatMessages');
+    if (!input || !input.value.trim()) return;
+
+    const userText = input.value.trim();
+    const category = catInput ? catInput.value : 'profile_correction';
+
+    appendSingleMsg(messagesArea, userText, true, 'ទើបផ្ញើ');
+
+    input.value = '';
+    sendBtn.disabled = true;
+    sendIcon.className = 'fa-solid fa-spinner fa-spin';
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    fetch("{% url 'api_pop_chat_send' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            message: userText,
+            category: category
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        sendBtn.disabled = false;
+        sendIcon.className = 'fa-solid fa-paper-plane';
+
+        if (data.status === 'success') {
+            appendBotAlertReply(messagesArea, data.reply, data.timestamp);
+        }
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    })
+    .catch(err => {
+        sendBtn.disabled = false;
+        sendIcon.className = 'fa-solid fa-paper-plane';
+    });
+}
+
+// ---------------- ADMIN FUNCTIONS ----------------
+function loadAdminThreads() {
+    const listContainer = document.getElementById('adminThreadsList');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = `
+        <div class="text-center py-4 text-muted small">
+            <i class="fa-solid fa-spinner fa-spin text-primary fs-5 mb-2 d-block"></i>
+            កំពុងទាញយកបញ្ជីសារពីគ្រូ...
+        </div>
+    `;
+
+    fetch("{% url 'api_pop_chat_threads' %}")
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            allAdminThreadsData = data.threads || [];
+            renderAdminThreads(allAdminThreadsData);
+        }
+    })
+    .catch(err => {
+        listContainer.innerHTML = `<div class="text-danger small p-3 text-center">បរាជ័យក្នុងការទាញយកបញ្ជីសារ!</div>`;
+    });
+}
+
+function renderAdminThreads(threads) {
+    const listContainer = document.getElementById('adminThreadsList');
+    if (!listContainer) return;
+
+    if (!threads.length) {
+        listContainer.innerHTML = `
+            <div class="text-center py-4 text-muted small">
+                <i class="fa-solid fa-comments fs-3 text-secondary mb-2 d-block"></i>
+                មិនទាន់មានសារស្នើសុំពីគ្រូឡើយ
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    threads.forEach(t => {
+        html += `
+            <div class="thread-item p-2 mb-1 rounded border d-flex align-items-center justify-content-between" onclick="openAdminDirectChat(${t.user_id}, '${escapeHtmlPopChat(t.name)}', '${escapeHtmlPopChat(t.identifier)}', '${escapeHtmlPopChat(t.phone)}')">
+                <div class="d-flex align-items-center gap-2 overflow-hidden">
+                    <div class="avatar-circle flex-shrink-0" style="width: 38px; height: 38px; font-size: 1rem; background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white;">
+                        ${t.name ? t.name.charAt(0).toUpperCase() : 'T'}
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="fw-bold small text-dark text-truncate">${escapeHtmlPopChat(t.name)} <span class="text-muted font-monospace" style="font-size:0.75rem;">(${escapeHtmlPopChat(t.identifier)})</span></div>
+                        <div class="text-muted small text-truncate" style="font-size: 0.75rem;">${escapeHtmlPopChat(t.last_message)}</div>
+                    </div>
+                </div>
+                <div class="text-end flex-shrink-0 ms-2">
+                    <div class="text-muted" style="font-size: 0.68rem;">${escapeHtmlPopChat(t.last_message_time)}</div>
+                    ${t.unread_count > 0 ? `<span class="badge bg-danger rounded-pill px-2" style="font-size:0.65rem;">${t.unread_count} ថ្មី</span>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    listContainer.innerHTML = html;
+}
+
+function filterAdminThreads() {
+    const q = (document.getElementById('adminThreadSearch')?.value || '').toLowerCase().trim();
+    if (!q) {
+        renderAdminThreads(allAdminThreadsData);
+        return;
+    }
+    const filtered = allAdminThreadsData.filter(t => 
+        (t.name && t.name.toLowerCase().includes(q)) || 
+        (t.identifier && t.identifier.toLowerCase().includes(q)) ||
+        (t.phone && t.phone.includes(q))
+    );
+    renderAdminThreads(filtered);
+}
+
+function openAdminDirectChat(userId, name, identifier, phone) {
+    popChatActiveTargetUserId = userId;
+    document.getElementById('popChatAdminInboxView').classList.add('d-none');
+    document.getElementById('popChatAdminDirectView').classList.remove('d-none');
+    document.getElementById('activeThreadTeacherName').innerText = name;
+    document.getElementById('activeThreadTeacherMeta').innerText = `${identifier} • ${phone}`;
+
+    loadActiveThreadMessages();
+    setTimeout(() => {
+        const input = document.getElementById('adminDirectInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+function backToAdminInbox() {
+    popChatActiveTargetUserId = null;
+    document.getElementById('popChatAdminDirectView').classList.add('d-none');
+    document.getElementById('popChatAdminInboxView').classList.remove('d-none');
+    loadAdminThreads();
+}
+
+function loadActiveThreadMessages() {
+    if (!popChatActiveTargetUserId) return;
+    const msgContainer = document.getElementById('adminDirectMessages');
+    if (!msgContainer) return;
+
+    fetch(`{% url 'api_pop_chat_history' %}?target_user_id=${popChatActiveTargetUserId}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderMessages(msgContainer, data.messages, true);
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function handleAdminDirectSubmit(e) {
+    e.preventDefault();
+    if (!popChatActiveTargetUserId) return;
+    const input = document.getElementById('adminDirectInput');
+    const sendBtn = document.getElementById('adminDirectSendBtn');
+    const sendIcon = document.getElementById('adminDirectSendIcon');
+    const msgContainer = document.getElementById('adminDirectMessages');
+    if (!input || !input.value.trim()) return;
+
+    const adminText = input.value.trim();
+    appendSingleMsg(msgContainer, adminText, true, 'ទើបផ្ញើ');
+
+    input.value = '';
+    sendBtn.disabled = true;
+    sendIcon.className = 'fa-solid fa-spinner fa-spin';
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    fetch("{% url 'api_pop_chat_send' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            message: adminText,
+            target_user_id: popChatActiveTargetUserId,
+            category: 'admin_response'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        sendBtn.disabled = false;
+        sendIcon.className = 'fa-solid fa-paper-plane';
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    })
+    .catch(err => {
+        sendBtn.disabled = false;
+        sendIcon.className = 'fa-solid fa-paper-plane';
+    });
+}
+
+// ---------------- COMMON RENDER & AUDIO PLAYBACK HELPERS ----------------
+function renderMessages(container, messages, isAdminView) {
+    if (!messages || !messages.length) {
+        container.innerHTML = `
+            <div class="pop-chat-msg pop-chat-msg-bot mb-3">
+                <div class="pop-chat-msg-bubble">
+                    <div class="fw-bold small text-primary mb-1">
+                        <i class="fa-solid fa-robot me-1"></i> ជំនួយការស្វ័យប្រវត្តិ
+                    </div>
+                    <div>
+                        ${isAdminView ? 'មិនទាន់មានសារសន្ទនានៅឡើយទេ។ Admin អាចវាយសារ ឬថតសំឡេងផ្ញើទៅកាន់គ្រូបាន!' : 'សួស្តី! 👋 តើលោកអ្នកមានព័ត៌មានអ្វីចង់ <strong>ស្នើសុំកែប្រែ</strong> ឬសាកសួរ Admin ដែរឬទេ?'}
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    messages.forEach(m => {
+        const isMe = m.is_me;
+        let voiceHtml = '';
+        if (m.voice_url) {
+            voiceHtml = `
+                <div class="pop-chat-voice-player">
+                    <audio controls style="height: 32px; max-width: 220px;">
+                        <source src="${m.voice_url}" type="audio/webm">
+                        <source src="${m.voice_url}" type="audio/mp3">
+                        Your browser does not support audio playback.
+                    </audio>
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
+                <div class="pop-chat-msg-bubble">
+                    ${!isMe ? `<div class="fw-bold small ${m.is_from_admin ? 'text-primary' : 'text-success'} mb-1"><i class="${m.is_from_admin ? 'fa-solid fa-shield-halved' : 'fa-solid fa-user-tie'} me-1"></i> ${escapeHtmlPopChat(m.sender_name)}</div>` : ''}
+                    <div>${escapeHtmlPopChat(m.message)}</div>
+                    ${voiceHtml}
+                    <div class="${isMe ? 'text-white-50 text-end' : 'text-muted'} mt-1" style="font-size: 0.65rem;">
+                        ${escapeHtmlPopChat(m.created_at)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendSingleMsg(container, text, isMe, timeStr) {
+    const html = `
+        <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
+            <div class="pop-chat-msg-bubble">
+                <div>${escapeHtmlPopChat(text)}</div>
+                <div class="${isMe ? 'text-white-50 text-end' : 'text-muted'} mt-1" style="font-size: 0.65rem;">
+                    ${timeStr}
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendVoiceMsg(container, audioUrl, duration, isMe, timeStr) {
+    const html = `
+        <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
+            <div class="pop-chat-msg-bubble">
+                <div>🎙️ សារសំឡេង (${duration}s)</div>
+                <div class="pop-chat-voice-player">
+                    <audio controls style="height: 32px; max-width: 220px;">
+                        <source src="${audioUrl}" type="audio/webm">
+                    </audio>
+                </div>
+                <div class="${isMe ? 'text-white-50 text-end' : 'text-muted'} mt-1" style="font-size: 0.65rem;">
+                    ${timeStr}
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    container.scrollTop = container.scrollHeight;
+}
+
+function appendBotAlertReply(container, replyText, timeStr) {
+    const html = `
+        <div class="pop-chat-msg pop-chat-msg-bot mb-3">
+            <div class="pop-chat-msg-bubble">
+                <div class="fw-bold small text-success mb-1">
+                    <i class="fa-solid fa-circle-check me-1"></i> បញ្ជូន Alert ទៅ Admin ជោគជ័យ
+                </div>
+                <div class="small">${escapeHtmlPopChat(replyText)}</div>
+                <div class="text-muted mt-1" style="font-size: 0.65rem;">${timeStr || 'ទើបផ្ញើ'}</div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtmlPopChat(text) {
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endif %}

@@ -223,8 +223,20 @@ class Command(BaseCommand):
                 cls.name = name
                 cls.grade_level = grade
                 cls.track = track
+                cls.homeroom_teacher = homeroom
                 cls.save()
                 classrooms[code] = cls
+
+            # Sync assigned subjects and assign teachers to class subjects
+            active_teachers_list = list(teachers.values())
+            for cls in classrooms.values():
+                sub_ids = list(GradeLevelRule.objects.filter(grade_level=cls.grade_level, track=cls.track).values_list('subject_id', flat=True))
+                if sub_ids:
+                    cls.sync_assigned_subjects(sub_ids)
+                for idx, cs in enumerate(ClassSubject.objects.filter(classroom=cls)):
+                    if not cs.teacher and active_teachers_list:
+                        cs.teacher = active_teachers_list[idx % len(active_teachers_list)]
+                        cs.save(update_fields=['teacher'])
 
             c_10a = classrooms['10A']
 

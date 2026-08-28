@@ -6,26 +6,31 @@
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h2 class="fw-bold mb-1">{{ title }}</h2>
-        <p class="text-muted small mb-0">បញ្ចូលព័ត៌មានផ្ទាល់ខ្លួន ឯកទេសបង្រៀន និងប្រាក់ខែគោល</p>
+        <p class="text-muted small mb-0">បញ្ចូលព័ត៌មានលម្អិតផ្លូវការរបស់គ្រូបង្រៀន តាមទម្រង់ក្រសួងអប់រំ យុវជន និងកីឡា</p>
     </div>
     <a href="{% url 'teacher_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
 </div>
 
 <div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="custom-card">
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
+    <div class="col-lg-11">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Section 1: Personal & Identity -->
+            <div class="custom-card mb-4">
+                <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-id-card"></i> ផ្នែកទី១៖ ព័ត៌មានផ្ទាល់ខ្លួន & អត្តសញ្ញាណ
+                </h5>
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">កូដសម្គាល់គ្រូ (Teacher ID) *</label>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">អត្តលេខ / Teacher ID *</label>
                         {{ form.teacher_id }}
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">គោត្តនាម និងនាម (ខ្មែរ) *</label>
                         {{ form.khmer_name }}
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង *</label>
                         {{ form.latin_name }}
                     </div>
@@ -45,29 +50,154 @@
                         <label class="form-label fw-bold small">អ៊ីមែល (Email)</label>
                         {{ form.email }}
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">ឯកទេសបង្រៀន (Specialization) *</label>
-                        {{ form.specialization }}
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small">ស្ថានភាពបង្រៀន</label>
+                        {{ form.status }}
                     </div>
+                    
+                    <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន (ជ្រើសរើសតាមលំដាប់ថ្នាក់រដ្ឋបាលកម្ពុជា) -->
+                    <div class="col-12">
+                        <div class="card border rounded-3 p-3 shadow-xs bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold text-primary mb-0 small d-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-house-chimney-user text-success"></i> អាសយដ្ឋានបច្ចុប្បន្ន (ជ្រើសរើសតាមលំដាប់ថ្នាក់រដ្ឋបាលកម្ពុជា)
+                                </label>
+                                <span class="badge bg-light text-secondary border small fw-normal">ទាញចេញពី Database</span>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-12 mb-1">
+                                    <label class="form-label small text-secondary fw-semibold mb-1">ផ្ទះលេខ / ផ្លូវ (ប្រសិនបើមាន)</label>
+                                    <input type="text" id="teacher_street" class="form-control form-control-sm" placeholder="ឧ. ផ្ទះលេខ 12, ផ្លូវ 2004...">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
+                                    <select id="teacher_province" class="form-select form-select-sm">
+                                        <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                                    <select id="teacher_district" class="form-select form-select-sm" disabled>
+                                        <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
+                                    <select id="teacher_commune" class="form-select form-select-sm" disabled>
+                                        <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
+                                    <select id="teacher_village" class="form-select form-select-sm" disabled>
+                                        <option value="">-- ជ្រើសរើសភូមិ --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                                <span class="fw-semibold">អាសយដ្ឋានពេញលេញ៖</span>
+                                <span id="teacher_address_preview" class="fw-bold text-primary">{% if form.instance.address %}{{ form.instance.address }}{% else %}...{% endif %}</span>
+                            </div>
+
+                            <!-- Real synchronized hidden input -->
+                            <div style="display: none;">
+                                {{ form.address }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Education & Specialization -->
+            <div class="custom-card mb-4">
+                <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap"></i> ផ្នែកទី២៖ កម្រិតវប្បធម៌ & គរុកោសល្យ
+                </h5>
+                <div class="row g-3">
+                    <!-- ជួរទី១៖ កម្រិតវប្បធម៌ & ឯកទេសទូទៅ -->
                     <div class="col-md-6">
-                        <label class="form-label fw-bold small">កម្រិតវប្បធម៌ / សញ្ញាបត្រ</label>
+                        <label class="form-label fw-bold small">កម្រិតវប្បធម៌ (Qualification)</label>
                         {{ form.qualification }}
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">ឯកទេសទូទៅ (Specialization) *</label>
+                        {{ form.specialization }}
+                    </div>
+
+                    <!-- ជួរទី២៖ កម្រិតបណ្តុះបណ្តាល ស្មើនឹង មុខវិជ្ជាឯកទេសទី១ & ទី២ -->
                     <div class="col-md-4">
+                        <label class="form-label fw-bold small">កម្រិតបណ្តុះបណ្តាល (Training Level)</label>
+                        {{ form.training_level }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">មុខវិជ្ជាឯកទេសទី១</label>
+                        {{ form.primary_subject }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">មុខវិជ្ជាឯកទេសទី២</label>
+                        {{ form.secondary_subject }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Civil Service & Appointment Details -->
+            <div class="custom-card mb-4">
+                <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-briefcase"></i> ផ្នែកទី៣៖ ព័ត៌មានក្របខ័ណ្ឌ & ការងាររដ្ឋ
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ភារកិច្ចបច្ចុប្បន្ន (Current Duty)</label>
+                        {{ form.current_duty }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ថ្ងៃចូលបម្រើការងាររដ្ឋ</label>
+                        {{ form.state_hire_date }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់</label>
+                        {{ form.permanent_date }}
+                    </div>
+                    
+                    <div class="col-12 pt-2">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <h6 class="fw-bold text-secondary mb-3 small">
+                                <i class="fa-solid fa-stamp me-1"></i> តាំងស៊ប់តាមប្រកាស (Decree Information)
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">ប្រភេទក្របខ័ណ្ឌ (ឧ. ក.១, ខ.១...)</label>
+                                    {{ form.prakas_category }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">ឆ្នាំទទួលប្រកាស (ឧ. 2018)</label>
+                                    {{ form.prakas_year }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">ប្រកាសលេខ (Prakas Number)</label>
+                                    {{ form.prakas_number }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Payroll & Documents -->
+            <div class="custom-card mb-4">
+                <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-money-check-dollar"></i> ផ្នែកទី៤៖ ប្រាក់ខែ & ឯកសារភ្ជាប់
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
                         <label class="form-label fw-bold small">ប្រាក់ខែគោល ($) *</label>
                         {{ form.base_salary }}
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">កាលបរិច្ឆេទចូលបម្រើការ</label>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">កាលបរិច្ឆេទចូលបម្រើការក្នុងសាលា</label>
                         {{ form.hire_date }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ស្ថានភាព</label>
-                        {{ form.status }}
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold small">អាសយដ្ឋានបច្ចុប្បន្ន</label>
-                        {{ form.address }}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-bold small">រូបថត (Photo)</label>
@@ -78,15 +208,129 @@
                         {{ form.resume }}
                     </div>
                 </div>
+            </div>
 
-                <div class="mt-4 pt-3 border-top d-flex gap-2">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទិន្នន័យគ្រូ
-                    </button>
-                    <a href="{% url 'teacher_list' %}" class="btn btn-light">បោះបង់</a>
-                </div>
-            </form>
-        </div>
+            <div class="p-3 bg-white rounded-3 shadow-sm d-flex gap-2 justify-content-end">
+                <a href="{% url 'teacher_list' %}" class="btn btn-light px-4">បោះបង់</a>
+                <button type="submit" class="btn btn-primary px-4 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកទិន្នន័យគ្រូ
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const provSelect = document.getElementById('teacher_province');
+    const distSelect = document.getElementById('teacher_district');
+    const commSelect = document.getElementById('teacher_commune');
+    const villSelect = document.getElementById('teacher_village');
+    const streetInput = document.getElementById('teacher_street');
+    const addressInput = document.getElementById('id_address');
+    const previewSpan = document.getElementById('teacher_address_preview');
+
+    function populate(sel, items, defaultText) {
+        sel.innerHTML = `<option value="">${defaultText}</option>`;
+        if (!items || !items.length) return;
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.name_kh || item.name_en;
+            opt.dataset.name = item.name_kh || item.name_en;
+            sel.appendChild(opt);
+        });
+    }
+
+    function updateAddressString() {
+        const parts = [];
+        const street = streetInput ? streetInput.value.trim() : '';
+        if (street) parts.push(street);
+
+        const vName = villSelect.selectedIndex > 0 ? villSelect.options[villSelect.selectedIndex].dataset.name : '';
+        const cName = commSelect.selectedIndex > 0 ? commSelect.options[commSelect.selectedIndex].dataset.name : '';
+        const dName = distSelect.selectedIndex > 0 ? distSelect.options[distSelect.selectedIndex].dataset.name : '';
+        const pName = provSelect.selectedIndex > 0 ? provSelect.options[provSelect.selectedIndex].dataset.name : '';
+
+        if (vName) parts.push(vName.startsWith('ភូមិ') ? vName : 'ភូមិ' + vName);
+        if (cName) parts.push(cName.startsWith('ឃុំ') || cName.startsWith('សង្កាត់') ? cName : 'ឃុំ ' + cName);
+        if (dName) parts.push(dName.startsWith('ស្រុក') || dName.startsWith('ខណ្ឌ') || dName.startsWith('ក្រុង') ? dName : 'ស្រុក ' + dName);
+        if (pName) parts.push(pName.startsWith('ខេត្ត') || pName.startsWith('រាជធានី') ? pName : 'ខេត្ត ' + pName);
+
+        const fullStr = parts.join(', ');
+        if (fullStr) {
+            if (addressInput) addressInput.value = fullStr;
+            if (previewSpan) previewSpan.textContent = fullStr;
+        } else if (addressInput && addressInput.value) {
+            if (previewSpan) previewSpan.textContent = addressInput.value;
+        } else {
+            if (previewSpan) previewSpan.textContent = '...';
+        }
+    }
+
+    // Fetch Provinces
+    fetch('/academics/api/locations/provinces/')
+        .then(res => res.json())
+        .then(d => {
+            if (d.status === 'success') {
+                populate(provSelect, d.data, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+            }
+        })
+        .catch(err => console.error(err));
+
+    provSelect.addEventListener('change', function() {
+        const pId = this.value;
+        distSelect.innerHTML = '<option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>';
+        commSelect.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        distSelect.disabled = !pId;
+        commSelect.disabled = true;
+        villSelect.disabled = true;
+
+        if (pId) {
+            fetch(`/academics/api/locations/districts/?province_id=${pId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(distSelect, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    distSelect.addEventListener('change', function() {
+        const dId = this.value;
+        commSelect.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        commSelect.disabled = !dId;
+        villSelect.disabled = true;
+
+        if (dId) {
+            fetch(`/academics/api/locations/communes/?district_id=${dId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(commSelect, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    commSelect.addEventListener('change', function() {
+        const cId = this.value;
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        villSelect.disabled = !cId;
+
+        if (cId) {
+            fetch(`/academics/api/locations/villages/?commune_id=${cId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(villSelect, d.data, '-- ជ្រើសរើសភូមិ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    villSelect.addEventListener('change', updateAddressString);
+    if (streetInput) streetInput.addEventListener('input', updateAddressString);
+});
+</script>
 {% endblock %}

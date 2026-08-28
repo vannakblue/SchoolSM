@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 import json
@@ -8,9 +9,10 @@ import calendar
 from datetime import datetime, date, timedelta
 
 from decimal import Decimal
+from django.utils import timezone
 from apps.accounts.decorators import role_required
 from apps.accounts.models import User
-from .models import Teacher, TeacherAttendance
+from .models import Teacher, TeacherAttendance, TeacherProfileUpdateCampaign
 from .forms import TeacherForm
 from apps.academics.models import ClassSubject, Timetable, AcademicYear
 from apps.academics.utils import get_active_academic_year
@@ -124,6 +126,51 @@ def teacher_edit(request, pk):
         'title': f'កែប្រែព័ត៌មានគ្រូ {teacher.khmer_name}',
         'teacher': teacher
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_delete(request, pk):
+    teacher = get_object_or_404(Teacher, pk=pk)
+    if request.method == 'POST':
+        name = teacher.khmer_name
+        with transaction.atomic():
+            user = teacher.user
+            teacher.delete()
+            if user and user.role == User.Role.TEACHER:
+                user.delete()
+        messages.success(request, f"🗑️ បានលុបគ្រូបង្រៀន {name} ដោយជោគជ័យ!")
+        return redirect('teacher_list')
+    
+    return redirect('teacher_detail', pk=pk)
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_delete_all(request):
+    if request.method == 'POST':
+        with transaction.atomic():
+            teachers = Teacher.objects.all()
+            total_count = teachers.count()
+            
+            if total_count == 0:
+                messages.info(request, "មិនមានទិន្នន័យគ្រូបង្រៀនសម្រាប់លុបឡើយ!")
+                return redirect('teacher_list')
+            
+            # Find associated User accounts with role TEACHER
+            user_ids = list(Teacher.objects.filter(user__isnull=False).values_list('user_id', flat=True))
+            
+            # Delete teachers (cascades to attendances, leave requests, punch logs, etc.)
+            teachers.delete()
+            
+            # Delete associated User accounts
+            if user_ids:
+                User.objects.filter(id__in=user_ids, role=User.Role.TEACHER).delete()
+            
+            messages.success(request, f"🗑️ បានលុបទិន្នន័យគ្រូបង្រៀនទាំងអស់ចំនួន {total_count} នាក់ និងគណនី Login ពាក់ព័ន្ធដោយជោគជ័យ!")
+            return redirect('teacher_list')
+    
+    return redirect('teacher_list')
 
 
 @login_required
@@ -605,7 +652,7 @@ def teacher_leave_print_letter(request, pk):
 @role_required(['ADMIN'])
 def teacher_export_excel(request):
     """
-    Exports all teachers into a beautifully formatted Excel sheet for Timetable / HR management.
+    Exports all teachers into a beautifully formatted Excel sheet matching official MoEYS standard layout.
     """
     import openpyxl
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -615,13 +662,14 @@ def teacher_export_excel(request):
     teachers = Teacher.objects.all().order_by('teacher_id')
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Teachers Directory"
+    ws.title = "MoEYS Teachers Directory"
     ws.views.sheetView[0].showGridLines = True
 
     header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    data_font = Font(name="Calibri", size=10)
-    center_align = Alignment(horizontal="center", vertical="center")
+    sub_header_fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+    header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    data_font = Font(name="Calibri", size=9)
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left_align = Alignment(horizontal="left", vertical="center")
     thin_border = Border(
         left=Side(style='thin', color='CBD5E1'),
@@ -630,55 +678,64 @@ def teacher_export_excel(request):
         bottom=Side(style='thin', color='CBD5E1')
     )
 
-    headers = [
-        "ល.រ / No",
-        "អត្តលេខ / Teacher ID",
-        "ឈ្មោះខ្មែរ / Khmer Name",
-        "ឈ្មោះឡាតាំង / Latin Name",
-        "ភេទ / Gender",
-        "ថ្ងៃខែឆ្នាំកំណើត / DOB",
-        "លេខទូរស័ព្ទ / Phone",
-        "អ៊ីមែល / Email",
-        "ឯកទេសបង្រៀន / Specialization",
-        "កម្រិតវប្បធម៌ / Qualification",
-        "ម៉ោងអតិបរមា/សប្តាហ៍ / Max Weekly Hours",
-        "ប្រាក់ខែគោល ($) / Base Salary",
-        "ស្ថានភាព / Status"
+    # 2-Row Header matching official MoEYS table
+    headers_row1 = [
+        "ល.រ", "អត្តលេខ", "គោត្តនាម និងនាម", "ភេទ", "ថ្ងៃខែឆ្នាំកំណើត",
+        "កម្រិតវប្បធម៌", "ឯកទេស", "កម្រិតបណ្តុះបណ្តាល", "ថ្ងៃចូលបម្រើការងាររដ្ឋ",
+        "ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់", "មុខវិជ្ជាឯកទេសទី១", "មុខវិជ្ជាឯកទេសទី២",
+        "ភារកិច្ចបច្ចុប្បន្ន", "តាំងស៊ប់តាមប្រកាស", "", "", "លេខទូរស័ព្ទ", "ស្ថានភាព"
     ]
 
-    ws.append(headers)
-    for col_num in range(1, len(headers) + 1):
-        cell = ws.cell(row=1, column=col_num)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = center_align
-        cell.border = thin_border
-    ws.row_dimensions[1].height = 28
+    ws.append(headers_row1)
+    # Merge "តាំងស៊ប់តាមប្រកាស" for columns 14, 15, 16
+    ws.merge_cells(start_row=1, start_column=14, end_row=1, end_column=16)
+
+    headers_row2 = [
+        "No.", "Teacher ID", "Khmer & Latin Name", "Gender", "DOB (DD-MM-YYYY)",
+        "Qualification", "Specialization", "Training Level", "State Hire Date",
+        "Permanent Date", "Subject 1", "Subject 2", "Current Duty",
+        "ប្រភេទ / Type", "ឆ្នាំទទួល / Year", "ប្រ.លេខ / Decree No.", "Phone", "Status"
+    ]
+    ws.append(headers_row2)
+
+    for r_idx in [1, 2]:
+        ws.row_dimensions[r_idx].height = 26
+        for col_num in range(1, len(headers_row2) + 1):
+            cell = ws.cell(row=r_idx, column=col_num)
+            cell.fill = header_fill if r_idx == 1 else sub_header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = thin_border
 
     for idx, t in enumerate(teachers, 1):
         row = [
             idx,
             t.teacher_id,
-            t.khmer_name,
-            t.latin_name,
+            f"{t.khmer_name} ({t.latin_name})" if t.latin_name else t.khmer_name,
             t.get_gender_display(),
-            t.date_of_birth.strftime('%Y-%m-%d') if t.date_of_birth else '',
-            t.phone or '',
-            t.email or '',
-            t.specialization or '',
+            t.date_of_birth.strftime('%d-%m-%Y') if t.date_of_birth else '',
             t.qualification or '',
-            t.max_weekly_hours,
-            float(t.base_salary or 0),
+            t.specialization or '',
+            t.training_level or '',
+            t.state_hire_date.strftime('%d-%m-%Y') if t.state_hire_date else '',
+            t.permanent_date.strftime('%d-%m-%Y') if t.permanent_date else '',
+            t.primary_subject or '',
+            t.secondary_subject or '',
+            t.current_duty or 'គ្រូបង្រៀន',
+            t.prakas_category or '',
+            t.prakas_year or '',
+            t.prakas_number or '',
+            t.phone or '',
             t.get_status_display()
         ]
         ws.append(row)
-        curr_row = idx + 1
+        curr_row = idx + 2
         ws.row_dimensions[curr_row].height = 22
         for c_idx in range(1, len(row) + 1):
             cell = ws.cell(row=curr_row, column=c_idx)
             cell.font = data_font
             cell.border = thin_border
-            if c_idx in [1, 2, 5, 6, 11, 13]:
+            if c_idx in [1, 2, 4, 5, 9, 10, 14, 15, 16, 18]:
                 cell.alignment = center_align
             else:
                 cell.alignment = left_align
@@ -686,12 +743,12 @@ def teacher_export_excel(request):
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         col_letter = get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 11)
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename="Teachers_Directory_{date.today().strftime("%Y%m%d")}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="MoEYS_Teachers_Directory_{date.today().strftime("%Y%m%d")}.xlsx"'
     wb.save(response)
     return response
 
@@ -699,7 +756,7 @@ def teacher_export_excel(request):
 @login_required
 @role_required(['ADMIN'])
 def teacher_import_template_excel(request):
-    """Generates a downloadable sample Excel template for importing teachers."""
+    """Generates an official MoEYS standard Excel template for importing teachers."""
     import openpyxl
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
@@ -711,7 +768,7 @@ def teacher_import_template_excel(request):
     ws.views.sheetView[0].showGridLines = True
 
     header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
     thin_border = Border(
         left=Side(style='thin', color='CBD5E1'),
         right=Side(style='thin', color='CBD5E1'),
@@ -724,12 +781,20 @@ def teacher_import_template_excel(request):
         "Khmer Name *",
         "Latin Name *",
         "Gender (M/F) *",
-        "DOB (YYYY-MM-DD)",
+        "DOB (DD-MM-YYYY)",
+        "Qualification",
+        "Specialization *",
+        "Training Level",
+        "State Hire Date (DD-MM-YYYY)",
+        "Permanent Date (DD-MM-YYYY)",
+        "Primary Subject",
+        "Secondary Subject",
+        "Current Duty",
+        "Prakas Category",
+        "Prakas Year",
+        "Prakas Number",
         "Phone *",
         "Email",
-        "Specialization *",
-        "Qualification",
-        "Max Weekly Hours",
         "Base Salary ($)",
         "Status (ACTIVE/ON_LEAVE/RESIGNED)"
     ]
@@ -738,15 +803,14 @@ def teacher_import_template_excel(request):
         cell = ws.cell(row=1, column=col_num)
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = thin_border
-    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[1].height = 30
 
     sample_rows = [
-        ["T-001", "សុខ វិបុល", "Sok Vibol", "M", "1985-05-15", "012345678", "vibol@school.edu.kh", "គណិតវិទ្យា", "បរិញ្ញាបត្រអប់រំ", 18, 500, "ACTIVE"],
-        ["T-002", "ចាន់ រិទ្ធី", "Chan Rithy", "M", "1990-08-20", "017888999", "rithy@school.edu.kh", "រូបវិទ្យា", "បរិញ្ញាបត្រជាន់ខ្ពស់", 18, 550, "ACTIVE"],
-        ["T-003", "ម៉ៅ ស្រីពៅ", "Mao Sreypov", "F", "1992-12-10", "096123456", "sreypov@school.edu.kh", "ភាសាខ្មែរ", "បរិញ្ញាបត្រអក្សរសាស្ត្រ", 18, 500, "ACTIVE"],
-        ["T-004", "ហេង សុផល", "Heng Sophal", "M", "1988-03-25", "077112233", "sophal@school.edu.kh", "ព័ត៌មានវិទ្យា & ICT", "បរិញ្ញាបត្រវិទ្យាសាស្ត្រកុំព្យូទ័រ", 18, 520, "ACTIVE"],
+        ["T-001", "សុខ វិបុល", "Sok Vibol", "M", "15-05-1985", "បរិញ្ញាបត្រ", "គណិតវិទ្យា", "គរុកោសល្យឧត្តម (បរិញ្ញាបត្រ+១)", "01-10-2010", "15-12-2012", "គណិតវិទ្យា", "រូបវិទ្យា", "គ្រូបង្រៀន", "ក្របខ័ណ្ឌ ក.១", "2012", "ប្រកាសលេខ ១៤៥", "012345678", "vibol@school.edu.kh", 500, "ACTIVE"],
+        ["T-002", "ចាន់ រិទ្ធី", "Chan Rithy", "M", "20-08-1990", "អនុបណ្ឌិត", "រូបវិទ្យា", "គរុកោសល្យឧត្តម", "15-10-2014", "20-11-2016", "រូបវិទ្យា", "គីមីវិទ្យា", "ប្រធានផ្នែកវិទ្យាសាស្ត្រ", "ក្របខ័ណ្ឌ ក.២", "2016", "ប្រកាសលេខ ២២០", "017888999", "rithy@school.edu.kh", 550, "ACTIVE"],
+        ["T-003", "ម៉ៅ ស្រីពៅ", "Mao Sreypov", "F", "10-12-1992", "បរិញ្ញាបត្រ", "ភាសាខ្មែរ", "គរុកោសល្យមូលដ្ឋាន (១២+២)", "01-11-2015", "10-01-2018", "តែងសេចក្តី", "អក្សរសិល្ប៍", "គ្រូបង្រៀន", "ក្របខ័ណ្ឌ ខ.១", "2018", "ប្រកាសលេខ ៣០៥", "096123456", "sreypov@school.edu.kh", 500, "ACTIVE"],
     ]
     for r in sample_rows:
         ws.append(r)
@@ -754,9 +818,9 @@ def teacher_import_template_excel(request):
         ws.row_dimensions[curr_row].height = 22
         for c_idx in range(1, len(r) + 1):
             cell = ws.cell(row=curr_row, column=c_idx)
-            cell.font = Font(name="Calibri", size=10)
+            cell.font = Font(name="Calibri", size=9)
             cell.border = thin_border
-            if c_idx in [1, 4, 5, 6, 10, 12]:
+            if c_idx in [1, 4, 5, 9, 10, 14, 15, 16, 20]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="center")
@@ -764,7 +828,7 @@ def teacher_import_template_excel(request):
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         col_letter = get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="teacher_import_template.xlsx"'
@@ -787,29 +851,51 @@ def teacher_import_template_csv(request):
         "Khmer Name *",
         "Latin Name *",
         "Gender (M/F) *",
-        "DOB (YYYY-MM-DD)",
+        "DOB (DD-MM-YYYY)",
+        "Qualification",
+        "Specialization *",
+        "Training Level",
+        "State Hire Date (DD-MM-YYYY)",
+        "Permanent Date (DD-MM-YYYY)",
+        "Primary Subject",
+        "Secondary Subject",
+        "Current Duty",
+        "Prakas Category",
+        "Prakas Year",
+        "Prakas Number",
         "Phone *",
         "Email",
-        "Specialization *",
-        "Qualification",
-        "Max Weekly Hours",
         "Base Salary ($)",
         "Status (ACTIVE/ON_LEAVE/RESIGNED)"
     ])
-    writer.writerow(["T-001", "សុខ វិបុល", "Sok Vibol", "M", "1985-05-15", "012345678", "vibol@school.edu.kh", "គណិតវិទ្យា", "បរិញ្ញាបត្រអប់រំ", "18", "500", "ACTIVE"])
-    writer.writerow(["T-002", "ចាន់ រិទ្ធី", "Chan Rithy", "M", "1990-08-20", "017888999", "rithy@school.edu.kh", "រូបវិទ្យា", "បរិញ្ញាបត្រជាន់ខ្ពស់", "18", "550", "ACTIVE"])
+    writer.writerow(["T-001", "សុខ វិបុល", "Sok Vibol", "M", "15-05-1985", "បរិញ្ញាបត្រ", "គណិតវិទ្យា", "គរុកោសល្យឧត្តម (បរិញ្ញាបត្រ+១)", "01-10-2010", "15-12-2012", "គណិតវិទ្យា", "រូបវិទ្យា", "គ្រូបង្រៀន", "ក្របខ័ណ្ឌ ក.១", "2012", "ប្រកាសលេខ ១៤៥", "012345678", "vibol@school.edu.kh", "500", "ACTIVE"])
+    writer.writerow(["T-002", "ចាន់ រិទ្ធី", "Chan Rithy", "M", "20-08-1990", "អនុបណ្ឌិត", "រូបវិទ្យា", "គរុកោសល្យឧត្តម", "15-10-2014", "20-11-2016", "រូបវិទ្យា", "គីមីវិទ្យា", "ប្រធានផ្នែកវិទ្យាសាស្ត្រ", "ក្របខ័ណ្ឌ ក.២", "2016", "ប្រកាសលេខ ២២០", "017888999", "rithy@school.edu.kh", "550", "ACTIVE"])
     return response
 
 
 @login_required
 @role_required(['ADMIN'])
 def teacher_import(request):
-    """Bulk imports teachers from Excel or CSV file."""
+    """Bulk imports teachers from Excel or CSV file supporting both MoEYS 20-col and standard formats."""
     import csv
     import io
     import openpyxl
     from decimal import Decimal
+    from datetime import datetime, date
     from apps.accounts.models import User
+
+    def parse_date_flexible(val):
+        if not val:
+            return None
+        if isinstance(val, (datetime, date)):
+            return val if isinstance(val, date) else val.date()
+        val_clean = str(val).strip()
+        for fmt in ('%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y'):
+            try:
+                return datetime.strptime(val_clean, fmt).date()
+            except ValueError:
+                pass
+        return None
 
     if request.method == 'POST' and request.FILES.get('file'):
         file = request.FILES['file']
@@ -820,8 +906,13 @@ def teacher_import(request):
             if filename.endswith('.xlsx'):
                 wb = openpyxl.load_workbook(file, data_only=True)
                 ws = wb.active
-                for row in ws.iter_rows(min_row=2, values_only=True):
+                # If first row is merged or title, skip to headers
+                start_row = 2
+                for row in ws.iter_rows(min_row=start_row, values_only=True):
                     if row and any(row):
+                        # skip secondary header row if present
+                        if str(row[0] or '').strip().lower() in ['no.', 'ល.រ', 'teacher id', 'teacher id *']:
+                            continue
                         rows_data.append(list(row))
             elif filename.endswith('.csv'):
                 decoded_file = file.read().decode('utf-8-sig')
@@ -830,6 +921,8 @@ def teacher_import(request):
                 header = next(reader, None)
                 for row in reader:
                     if row and any(row):
+                        if str(row[0] or '').strip().lower() in ['no.', 'ល.រ', 'teacher id', 'teacher id *']:
+                            continue
                         rows_data.append(row)
             else:
                 messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ .xlsx ឬ .csv")
@@ -842,36 +935,60 @@ def teacher_import(request):
             for idx, r in enumerate(rows_data, 2):
                 if len(r) < 3:
                     continue
+
                 t_id = str(r[0] or '').strip()
                 k_name = str(r[1] or '').strip()
                 l_name = str(r[2] or '').strip()
                 gender_raw = str(r[3] or 'M').strip().upper()
-                dob_raw = r[4] if len(r) > 4 else None
-                phone = str(r[5] or '').strip() if len(r) > 5 else ''
-                email = str(r[6] or '').strip() if len(r) > 6 else ''
-                spec = str(r[7] or '').strip() if len(r) > 7 else 'ទូទៅ'
-                qual = str(r[8] or '').strip() if len(r) > 8 else ''
-                max_hours = int(r[9]) if len(r) > 9 and str(r[9]).isdigit() else 18
-                salary_str = str(r[10] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 10 else '500.00'
-                salary = Decimal(salary_str) if salary_str else Decimal('500.00')
-                status_raw = str(r[11] or 'ACTIVE').strip().upper() if len(r) > 11 else 'ACTIVE'
+                dob = parse_date_flexible(r[4] if len(r) > 4 else None)
 
                 if not t_id or not k_name:
                     errors.append(f"ជួរទី {idx}៖ ខ្វះ Teacher ID ឬឈ្មោះគ្រូ")
                     continue
 
                 gender = Teacher.Gender.FEMALE if gender_raw in ['F', 'ស្រី', 'FEMALE'] else Teacher.Gender.MALE
-                status = Teacher.Status.ON_LEAVE if status_raw == 'ON_LEAVE' else (Teacher.Status.RESIGNED if status_raw == 'RESIGNED' else Teacher.Status.ACTIVE)
 
-                dob = None
-                if dob_raw:
-                    if isinstance(dob_raw, (datetime, date)):
-                        dob = dob_raw if isinstance(dob_raw, date) else dob_raw.date()
-                    else:
-                        try:
-                            dob = datetime.strptime(str(dob_raw).strip(), '%Y-%m-%d').date()
-                        except Exception:
-                            pass
+                # Check format by column length
+                if len(r) >= 16:
+                    # MoEYS Extended 20-col format
+                    qual = str(r[5] or '').strip() if len(r) > 5 else ''
+                    spec = str(r[6] or '').strip() if len(r) > 6 else 'ទូទៅ'
+                    training_level = str(r[7] or '').strip() if len(r) > 7 else ''
+                    state_hire_date = parse_date_flexible(r[8] if len(r) > 8 else None)
+                    permanent_date = parse_date_flexible(r[9] if len(r) > 9 else None)
+                    primary_subj = str(r[10] or '').strip() if len(r) > 10 else ''
+                    secondary_subj = str(r[11] or '').strip() if len(r) > 11 else ''
+                    current_duty = str(r[12] or '').strip() if len(r) > 12 else 'គ្រូបង្រៀន'
+                    prakas_cat = str(r[13] or '').strip() if len(r) > 13 else ''
+                    prakas_yr = str(r[14] or '').strip() if len(r) > 14 else ''
+                    prakas_num = str(r[15] or '').strip() if len(r) > 15 else ''
+                    phone = str(r[16] or '').strip() if len(r) > 16 else ''
+                    email = str(r[17] or '').strip() if len(r) > 17 else ''
+                    salary_str = str(r[18] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 18 else '500.00'
+                    salary = Decimal(salary_str) if salary_str else Decimal('500.00')
+                    status_raw = str(r[19] or 'ACTIVE').strip().upper() if len(r) > 19 else 'ACTIVE'
+                    max_hours = 18
+                else:
+                    # Legacy 12-col format
+                    phone = str(r[5] or '').strip() if len(r) > 5 else ''
+                    email = str(r[6] or '').strip() if len(r) > 6 else ''
+                    spec = str(r[7] or '').strip() if len(r) > 7 else 'ទូទៅ'
+                    qual = str(r[8] or '').strip() if len(r) > 8 else ''
+                    max_hours = int(r[9]) if len(r) > 9 and str(r[9]).isdigit() else 18
+                    salary_str = str(r[10] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 10 else '500.00'
+                    salary = Decimal(salary_str) if salary_str else Decimal('500.00')
+                    status_raw = str(r[11] or 'ACTIVE').strip().upper() if len(r) > 11 else 'ACTIVE'
+                    training_level = ''
+                    state_hire_date = None
+                    permanent_date = None
+                    primary_subj = ''
+                    secondary_subj = ''
+                    current_duty = 'គ្រូបង្រៀន'
+                    prakas_cat = ''
+                    prakas_yr = ''
+                    prakas_num = ''
+
+                status = Teacher.Status.ON_LEAVE if status_raw == 'ON_LEAVE' else (Teacher.Status.RESIGNED if status_raw == 'RESIGNED' else Teacher.Status.ACTIVE)
 
                 teacher, created = Teacher.objects.update_or_create(
                     teacher_id=t_id,
@@ -884,6 +1001,15 @@ def teacher_import(request):
                         'email': email or None,
                         'specialization': spec,
                         'qualification': qual,
+                        'training_level': training_level,
+                        'state_hire_date': state_hire_date,
+                        'permanent_date': permanent_date,
+                        'primary_subject': primary_subj,
+                        'secondary_subject': secondary_subj,
+                        'current_duty': current_duty,
+                        'prakas_category': prakas_cat,
+                        'prakas_year': prakas_yr,
+                        'prakas_number': prakas_num,
                         'max_weekly_hours': max_hours,
                         'base_salary': salary,
                         'status': status,
@@ -923,5 +1049,228 @@ def teacher_import(request):
             return redirect('teacher_import')
 
     return render(request, 'teachers/teacher_import.html')
+
+
+# =========================================================================
+# Teacher Information Re-Submission Campaign & Self-Update Portal
+# =========================================================================
+@login_required
+@role_required(['ADMIN'])
+def teacher_update_campaign_view(request):
+    """
+    Allows Admin to configure the Teacher Information Re-Submission Campaign:
+    - Activate/Deactivate
+    - Tick allowed sections (Identity, Gender/DOB, Contact, Address, Education, Training & Subjects, Civil Service, Photo & Resume)
+    - Set Title, Instructions, Target Teachers, Deadline
+    - View submission/verification statistics
+    """
+    campaign = TeacherProfileUpdateCampaign.objects.first()
+    if not campaign:
+        campaign = TeacherProfileUpdateCampaign.objects.create(
+            title="យុទ្ធនាការផ្ទៀងផ្ទាត់ និងបំពេញព័ត៌មានគ្រូបង្រៀន",
+            allowed_sections=['identity', 'dob_gender', 'phone_email', 'address', 'education', 'training_subjects', 'civil_service'],
+            is_active=True
+        )
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip() or "យុទ្ធនាការផ្ទៀងផ្ទាត់ និងបំពេញព័ត៌មានគ្រូបង្រៀន"
+        instructions = request.POST.get('instructions', '').strip()
+        is_active = request.POST.get('is_active') == '1' or 'is_active' in request.POST
+        deadline_str = request.POST.get('deadline', '').strip()
+        target_all = request.POST.get('target_all') == '1' or 'target_all' in request.POST
+        selected_sections = request.POST.getlist('sections')
+        
+        deadline = None
+        if deadline_str:
+            try:
+                deadline = datetime.strptime(deadline_str, '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+        campaign.title = title
+        campaign.instructions = instructions
+        campaign.is_active = is_active
+        campaign.allowed_sections = selected_sections
+        campaign.target_all = target_all
+        campaign.deadline = deadline
+        campaign.save()
+
+        # Handle selected teachers if target_all is false
+        if not target_all:
+            teacher_ids = request.POST.getlist('target_teachers')
+            campaign.target_teachers.set(teacher_ids)
+        else:
+            campaign.target_teachers.clear()
+
+        messages.success(request, "🎉 បានរក្សាទុកការកំណត់យុទ្ធនាការទាមទារព័ត៌មានគ្រូឡើងវិញដោយជោគជ័យ!")
+        return redirect('teacher_update_campaign')
+
+    teachers = Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('teacher_id')
+    total_teachers = teachers.count()
+    verified_count = teachers.filter(last_profile_verified_at__isnull=False).count()
+    pending_count = total_teachers - verified_count
+    progress_pct = int((verified_count / total_teachers * 100)) if total_teachers > 0 else 0
+
+    context = {
+        'campaign': campaign,
+        'available_sections': TeacherProfileUpdateCampaign.AVAILABLE_SECTIONS,
+        'teachers': teachers,
+        'total_teachers': total_teachers,
+        'verified_count': verified_count,
+        'pending_count': pending_count,
+        'progress_pct': progress_pct,
+    }
+    return render(request, 'teachers/teacher_update_campaign.html', context)
+
+
+@login_required
+def teacher_self_update_portal(request):
+    """
+    Teacher Portal for self-updating/re-submitting profile information.
+    Optimized for both Desktop and Mobile Smartphone with Pinch-to-Zoom.
+    Only allows editing sections ticked by Admin in the active campaign.
+    """
+    is_admin = request.user.role == User.Role.ADMIN
+    teacher = None
+
+    if hasattr(request.user, 'teacher_profile') and request.user.teacher_profile:
+        teacher = request.user.teacher_profile
+    elif is_admin:
+        teacher_id = request.GET.get('teacher_id')
+        if teacher_id:
+            teacher = get_object_or_404(Teacher, id=teacher_id)
+        else:
+            teacher = Teacher.objects.first()
+            if not teacher:
+                messages.warning(request, "⚠️ មិនទាន់មានគ្រូបង្រៀននៅក្នុងប្រព័ន្ធនៅឡើយទេ។")
+                return redirect('teacher_list')
+
+    if not teacher:
+        messages.error(request, "⚠️ គណនីរបស់អ្នកមិនមានភ្ជាប់ជាមួយប្រវត្តិរូបគ្រូបង្រៀនឡើយ។")
+        return redirect('dashboard_redirect')
+
+    campaign = TeacherProfileUpdateCampaign.get_current_active(teacher)
+    if not campaign and not is_admin:
+        messages.info(request, "ℹ️ បច្ចុប្បន្នគ្មានយុទ្ធនាការទាមទារឱ្យបំពេញព័ត៌មានគ្រូឡើងវិញឡើយ។")
+        return redirect('teacher_detail', pk=teacher.id)
+
+    # Allowed sections list
+    allowed_sections = campaign.allowed_sections if campaign else [s[0] for s in TeacherProfileUpdateCampaign.AVAILABLE_SECTIONS]
+
+    if request.method == 'POST':
+        # Process updates for allowed fields
+        if 'identity' in allowed_sections:
+            if request.POST.get('khmer_name'):
+                teacher.khmer_name = request.POST.get('khmer_name').strip()
+            if request.POST.get('latin_name'):
+                teacher.latin_name = request.POST.get('latin_name').strip()
+
+        if 'dob_gender' in allowed_sections:
+            if request.POST.get('gender'):
+                teacher.gender = request.POST.get('gender')
+            dob_str = request.POST.get('date_of_birth')
+            if dob_str:
+                try:
+                    teacher.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+
+        if 'phone_email' in allowed_sections:
+            if request.POST.get('phone'):
+                teacher.phone = request.POST.get('phone').strip()
+            teacher.email = request.POST.get('email', '').strip() or None
+
+        if 'address' in allowed_sections:
+            addr = request.POST.get('address', '').strip()
+            if addr:
+                teacher.address = addr
+
+        if 'education' in allowed_sections:
+            teacher.qualification = request.POST.get('qualification', '').strip()
+            if request.POST.get('specialization'):
+                teacher.specialization = request.POST.get('specialization').strip()
+
+        if 'training_subjects' in allowed_sections:
+            teacher.training_level = request.POST.get('training_level', '').strip()
+            teacher.primary_subject = request.POST.get('primary_subject', '').strip()
+            teacher.secondary_subject = request.POST.get('secondary_subject', '').strip()
+
+        if 'civil_service' in allowed_sections:
+            teacher.current_duty = request.POST.get('current_duty', '').strip() or 'គ្រូបង្រៀន'
+            teacher.prakas_category = request.POST.get('prakas_category', '').strip()
+            teacher.prakas_year = request.POST.get('prakas_year', '').strip()
+            teacher.prakas_number = request.POST.get('prakas_number', '').strip()
+            state_hire_str = request.POST.get('state_hire_date')
+            if state_hire_str:
+                try:
+                    teacher.state_hire_date = datetime.strptime(state_hire_str, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+            permanent_str = request.POST.get('permanent_date')
+            if permanent_str:
+                try:
+                    teacher.permanent_date = datetime.strptime(permanent_str, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+
+        if 'photo_resume' in allowed_sections:
+            if 'photo' in request.FILES:
+                teacher.photo = request.FILES['photo']
+            if 'resume' in request.FILES:
+                teacher.resume = request.FILES['resume']
+
+        teacher.last_profile_verified_at = timezone.now()
+        teacher.save()
+
+        # Update User object name/phone if changed
+        if teacher.user:
+            teacher.user.khmer_name = teacher.khmer_name
+            teacher.user.latin_name = teacher.latin_name
+            teacher.user.phone = teacher.phone
+            teacher.user.email = teacher.email or ''
+            teacher.user.save(update_fields=['khmer_name', 'latin_name', 'phone', 'email'])
+
+        # Notify Admin via Telegram if configured
+        try:
+            from apps.accounts.models import SchoolProfile
+            profile = SchoolProfile.objects.first()
+            if profile and profile.telegram_bot_token and profile.telegram_channel:
+                import urllib.request
+                import urllib.parse
+                bot_token = profile.telegram_bot_token.strip()
+                chat_id = profile.telegram_channel.strip()
+                if not chat_id.startswith('@') and not chat_id.startswith('-'):
+                    chat_id = f"@{chat_id}"
+                msg_text = (
+                    f"✅ <b>គ្រូបង្រៀនបានធ្វើបច្ចុប្បន្នភាពព័ត៌មាន (Teacher Portal Update)</b>\n\n"
+                    f"👤 ឈ្មោះគ្រូ៖ <b>{teacher.khmer_name}</b> ({teacher.teacher_id})\n"
+                    f"📞 លេខទូរស័ព្ទ៖ <code>{teacher.phone}</code>\n"
+                    f"📚 ឯកទេស៖ <b>{teacher.specialization}</b>\n"
+                    f"⏰ ពេលវេលា៖ {timezone.now().strftime('%d-%m-%Y %H:%M')}\n"
+                )
+                url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                payload = urllib.parse.urlencode({
+                    'chat_id': chat_id,
+                    'text': msg_text,
+                    'parse_mode': 'HTML'
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={'User-Agent': 'SchoolSM-Bot'})
+                urllib.request.urlopen(req, timeout=4)
+        except Exception:
+            pass
+
+        messages.success(request, f"🎉 អរគុណលោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name}! ព័ត៌មានត្រូវបានផ្ទៀងផ្ទាត់ និងធ្វើបច្ចុប្បន្នភាពរួចរាល់ដោយជោគជ័យ។")
+        if is_admin:
+            return redirect('teacher_detail', pk=teacher.id)
+        return redirect('dashboard_redirect')
+
+    context = {
+        'teacher': teacher,
+        'campaign': campaign,
+        'allowed_sections': allowed_sections,
+        'is_admin': is_admin,
+    }
+    return render(request, 'teachers/teacher_self_update_portal.html', context)
+
 
 

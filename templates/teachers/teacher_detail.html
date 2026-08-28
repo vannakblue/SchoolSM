@@ -7,6 +7,7 @@
     <div>
         <h2 class="fw-bold mb-1">{{ teacher.khmer_name }} ({{ teacher.latin_name }})</h2>
         <p class="text-muted small mb-0">កូដគ្រូ៖ <strong>{{ teacher.teacher_id }}</strong> | ឯកទេស៖ <strong>{{ teacher.specialization }}</strong></p>
+    </div>
     <div class="d-flex align-items-center gap-2">
         <a href="{% url 'face_enroll' teacher.id %}" class="btn btn-outline-info">
             <i class="fa-solid fa-camera-retro me-1"></i> ចុះឈ្មោះផ្ទៃមុខ (Face AI)
@@ -15,6 +16,18 @@
         <a href="{% url 'teacher_edit' teacher.id %}" class="btn btn-light border">
             <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែព័ត៌មាន
         </a>
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTeacherModal">
+            <i class="fa-solid fa-trash-can me-1"></i> លុបគ្រូនេះ
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#requestChangeModal">
+            <i class="fa-solid fa-bullhorn me-1"></i> ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin
+        </button>
+        {% if global_school_profile.telegram_channel or school_profile.telegram_channel %}
+        <a href="https://t.me/{{ global_school_profile.telegram_channel|default:school_profile.telegram_channel }}" target="_blank" class="btn btn-outline-primary fw-bold shadow-sm">
+            <i class="fa-brands fa-telegram me-1"></i> ផ្ញើសារបន្ទាន់តាម Telegram
+        </a>
+        {% endif %}
         {% endif %}
     </div>
 </div>
@@ -31,11 +44,38 @@
             <span class="badge bg-success mb-3">{{ teacher.get_status_display }}</span>
             
             <div class="text-start small p-3 bg-light rounded-3">
+                <div class="mb-2"><strong>អត្តលេខមន្ត្រី៖</strong> <span class="badge bg-primary">{{ teacher.teacher_id }}</span></div>
+                <div class="mb-2"><strong>ភេទ៖</strong> {{ teacher.get_gender_display }}</div>
+                <div class="mb-2"><strong>ថ្ងៃកំណើត៖</strong> {{ teacher.date_of_birth|date:"d-m-Y"|default:"-" }}</div>
                 <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ teacher.phone }}</div>
                 <div class="mb-2"><strong>អ៊ីមែល៖</strong> {{ teacher.email|default:"-" }}</div>
-                <div class="mb-2"><strong>កម្រិតវប្បធម៌៖</strong> {{ teacher.qualification|default:"-" }}</div>
+                <div class="mb-2"><strong>អាសយដ្ឋាន៖</strong> {{ teacher.address|default:"-" }}</div>
                 <div class="mb-2"><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ teacher.base_salary }}</span></div>
-                <div><strong>ថ្ងៃចូលបម្រើការ៖</strong> {{ teacher.hire_date|date:"d/m/Y"|default:"-" }}</div>
+                <div><strong>ថ្ងៃចូលបម្រើការក្នុងសាលា៖</strong> {{ teacher.hire_date|date:"d-m-Y"|default:"-" }}</div>
+            </div>
+        </div>
+
+        <!-- MoEYS Official Civil Service Card -->
+        <div class="custom-card mb-4">
+            <h6 class="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                <i class="fa-solid fa-landmark"></i> ព័ត៌មានក្របខ័ណ្ឌរដ្ឋ & គរុកោសល្យ
+            </h6>
+            <div class="small">
+                <div class="mb-2"><strong>ភារកិច្ចបច្ចុប្បន្ន៖</strong> <span class="badge bg-info text-dark">{{ teacher.current_duty|default:"គ្រូបង្រៀន" }}</span></div>
+                <div class="mb-2"><strong>កម្រិតវប្បធម៌៖</strong> {{ teacher.qualification|default:"-" }}</div>
+                <div class="mb-2"><strong>កម្រិតបណ្តុះបណ្តាល៖</strong> {{ teacher.training_level|default:"-" }}</div>
+                <div class="mb-2"><strong>ឯកទេសបង្រៀន៖</strong> <span class="text-primary fw-bold">{{ teacher.specialization }}</span></div>
+                <div class="mb-2"><strong>មុខវិជ្ជាឯកទេសទី១៖</strong> {{ teacher.primary_subject|default:"-" }}</div>
+                <div class="mb-2"><strong>មុខវិជ្ជាឯកទេសទី២៖</strong> {{ teacher.secondary_subject|default:"-" }}</div>
+                <div class="mb-2"><strong>ថ្ងៃចូលបម្រើការងាររដ្ឋ៖</strong> {{ teacher.state_hire_date|date:"d-m-Y"|default:"-" }}</div>
+                <div class="mb-2"><strong>ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់៖</strong> {{ teacher.permanent_date|date:"d-m-Y"|default:"-" }}</div>
+                <hr class="my-2 text-muted">
+                <div class="text-muted fw-bold mb-1" style="font-size:0.75rem;"><i class="fa-solid fa-stamp me-1"></i> តាំងស៊ប់តាមប្រកាស៖</div>
+                <div class="ps-2">
+                    <div>• ប្រភេទក្របខ័ណ្ឌ៖ <strong>{{ teacher.prakas_category|default:"-" }}</strong></div>
+                    <div>• ឆ្នាំទទួលប្រកាស៖ <strong>{{ teacher.prakas_year|default:"-" }}</strong></div>
+                    <div>• ប្រកាសលេខ៖ <strong>{{ teacher.prakas_number|default:"-" }}</strong></div>
+                </div>
             </div>
         </div>
     </div>
@@ -113,4 +153,99 @@
         </div>
     </div>
 </div>
+
+{% if is_admin %}
+<!-- Delete Teacher Modal -->
+<div class="modal fade" id="deleteTeacherModal" tabindex="-1" aria-labelledby="deleteTeacherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold" id="deleteTeacherModalLabel">
+                    <i class="fa-solid fa-trash me-2"></i> លុបគ្រូបង្រៀន
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'teacher_delete' teacher.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-triangle-exclamation fa-3x text-danger"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">តើលោកអ្នកពិតជាចង់លុបគ្រូបង្រៀន <span class="text-danger">{{ teacher.khmer_name }}</span> មែនទេ?</h5>
+                    <p class="text-muted small mb-0">
+                        សកម្មភាពនេះនឹងលុបប្រវត្តិរូប, គណនី Login, កំណត់ត្រាវត្តមាន, និងពាក្យសុំច្បាប់របស់គ្រូរូបនេះចេញពីប្រព័ន្ធ។
+                    </p>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger px-4 rounded-pill fw-bold">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបគ្រូនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Modal: ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin -->
+<div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'teacher_request_profile_change' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <div class="modal-header bg-warning text-dark py-3">
+                    <h5 class="modal-title fw-bold" id="requestChangeModalLabel">
+                        <i class="fa-solid fa-bullhorn me-2"></i>ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        សំណើនេះនឹងត្រូវបញ្ជូនជា **Alert ស្វ័យប្រវត្តិតាម Telegram** ទៅកាន់អ្នកគ្រប់គ្រងសាលា (Admin) ភ្លាមៗ!
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសព័ត៌មានដែលចង់កែប្រែ <span class="text-danger">*</span></label>
+                        <select name="field_name" class="form-select" required>
+                            <option value="" selected disabled>-- សូមជ្រើសរើសប្រភេទព័ត៌មាន --</option>
+                            <option value="khmer_name">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</option>
+                            <option value="latin_name">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</option>
+                            <option value="gender">ភេទ (Gender)</option>
+                            <option value="date_of_birth">ថ្ងៃខែឆ្នាំកំណើត (DOB - DD-MM-YYYY)</option>
+                            <option value="teacher_id">អត្តលេខគ្រូ (Teacher ID)</option>
+                            <option value="specialization">ឯកទេសបង្រៀន (Specialization)</option>
+                            <option value="other">ព័ត៌មានផ្សេងៗ (Other Information)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ទិន្នន័យថ្មីដែលត្រឹមត្រូវ <span class="text-danger">*</span></label>
+                        <input type="text" name="new_value" class="form-control" placeholder="ឧ. ឈ្មោះត្រឹមត្រូវ ឬ ថ្ងៃកំណើត 15-05-1985..." required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">មូលហេតុ ឬកំណត់ចំណាំបន្ថែម</label>
+                        <textarea name="reason" rows="3" class="form-control" placeholder="បញ្ជាក់ពីមូលហេតុនៃការស្នើសុំកែប្រែ..."></textarea>
+                    </div>
+
+                    {% if global_school_profile.telegram_channel or school_profile.telegram_channel %}
+                    <div class="p-2 rounded bg-light border small text-muted d-flex align-items-center justify-content-between">
+                        <span><i class="fa-brands fa-telegram text-primary me-1"></i> Admin Telegram: <strong>@{{ global_school_profile.telegram_channel|default:school_profile.telegram_channel }}</strong></span>
+                        <a href="https://t.me/{{ global_school_profile.telegram_channel|default:school_profile.telegram_channel }}" target="_blank" class="btn btn-sm btn-link p-0 text-primary">Chat Now</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើសំណើ Alert ទៅ Admin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

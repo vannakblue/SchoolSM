@@ -3,30 +3,114 @@
 {% block title %}ព័ត៌មានគណនី (Profile) | SchoolSM{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
     <div>
-        <h2 class="fw-bold mb-1">ព័ត៌មានគណនីផ្ទាល់ខ្លួន (User Profile)</h2>
-        <p class="text-muted small mb-0">កែប្រែព័ត៌មានផ្ទាល់ខ្លួន និងរូបថតគណនី</p>
+        <h2 class="fw-bold mb-1"><i class="fa-solid fa-user-gear text-primary me-2"></i>ព័ត៌មានគណនីផ្ទាល់ខ្លួន (User Profile)</h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងព័ត៌មានផ្ទាល់ខ្លួន លេខទូរស័ព្ទ អ៊ីមែល និងរូបថតគណនី</p>
     </div>
+    {% if user_obj.is_teacher or teacher_obj %}
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#requestChangeModal">
+            <i class="fa-solid fa-bullhorn me-1"></i> ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin
+        </button>
+        {% if school_profile.telegram_channel or school_profile.phone %}
+        <a href="https://t.me/{{ school_profile.telegram_channel|default:'school_admin' }}" target="_blank" class="btn btn-outline-primary fw-bold shadow-sm">
+            <i class="fa-brands fa-telegram me-1 text-primary"></i> ផ្ញើសារបន្ទាន់តាម Telegram
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 
-<div class="row justify-content-center">
+<div class="row justify-content-center g-4">
     <div class="col-lg-8">
-        <div class="custom-card">
-            <div class="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom">
-                <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 2rem;">
+        <!-- User Avatar & Core Banner -->
+        <div class="custom-card mb-4">
+            <div class="d-flex flex-column flex-sm-row align-items-center gap-4 pb-3 border-bottom">
+                {% if user_obj.avatar %}
+                <img src="{{ user_obj.avatar.url }}" alt="{{ user_display_name }}" class="rounded-circle shadow-sm" style="width: 84px; height: 84px; object-fit: cover; border: 3px solid #e0e7ff;">
+                {% else %}
+                <div class="avatar-circle shadow-sm" style="width: 84px; height: 84px; font-size: 2.2rem; background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white;">
                     {{ user_obj.username|slice:":1"|upper }}
                 </div>
-                <div>
-                    <h4 class="fw-bold mb-1">{{ user_display_name }}</h4>
-                    <span class="badge bg-primary">{{ user_obj.get_role_display }}</span>
-                    <span class="text-muted small ms-2">Username: <strong>{{ user_obj.username }}</strong></span>
+                {% endif %}
+                <div class="text-center text-sm-start flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1">
+                        <h4 class="fw-bold mb-0 text-dark">{{ user_display_name }}</h4>
+                        <span class="badge bg-primary px-2 py-1">{{ user_obj.get_role_display }}</span>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        ឈ្មោះគណនី / Username: <strong>{{ user_obj.username }}</strong>
+                        {% if teacher_obj %}
+                        <span class="ms-2">| អត្តលេខគ្រូ៖ <strong class="text-primary">{{ teacher_obj.teacher_id }}</strong></span>
+                        {% endif %}
+                    </p>
                 </div>
             </div>
 
-            <form method="POST" enctype="multipart/form-data">
+            {% if user_obj.is_teacher or teacher_obj %}
+            <!-- Locked Official Identity Details (Readonly for Teachers) -->
+            <div class="mt-4 p-3 rounded-3" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-lock text-warning me-2"></i>ព័ត៌មានអត្តសញ្ញាណផ្លូវការ (គ្រប់គ្រងដោយរដ្ឋបាល)
+                    </h6>
+                    <span class="badge bg-secondary-subtle text-secondary border">🔒 ចាក់សោដោយរដ្ឋបាល</span>
+                </div>
+
+                <div class="row g-3 small">
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">អត្តលេខគ្រូ (Teacher ID)</span>
+                        <strong class="text-dark fs-6 font-monospace">{{ teacher_obj.teacher_id|default:user_obj.username }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">ឈ្មោះជាភាសាខ្មែរ</span>
+                        <strong class="text-dark fs-6">{{ user_obj.khmer_name|default:'-' }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">ឈ្មោះជាអក្សរឡាតាំង</span>
+                        <strong class="text-dark fs-6">{{ user_obj.latin_name|default:'-' }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">ភេទ (Gender)</span>
+                        <span class="badge bg-info-subtle text-info-emphasis px-2 py-1">
+                            {% if teacher_obj.gender == 'F' or teacher_obj.gender == 'ស្រី' %}ស្រី (Female){% else %}ប្រុស (Male){% endif %}
+                        </span>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">ថ្ងៃខែឆ្នាំកំណើត (DOB)</span>
+                        <strong class="text-dark fs-6">
+                            {% if teacher_obj and teacher_obj.date_of_birth %}
+                            {{ teacher_obj.date_of_birth|date:"d-m-Y" }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <span class="text-muted d-block mb-1">ឯកទេសបង្រៀន</span>
+                        <span class="badge bg-primary-subtle text-primary px-2 py-1">{{ teacher_obj.specialization|default:'ទូទៅ' }}</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info d-flex align-items-center gap-2 mt-3 mb-0 py-2 px-3 small border-0">
+                    <i class="fa-solid fa-circle-info fs-5 text-info flex-shrink-0"></i>
+                    <div>
+                        សម្រាប់ព័ត៌មានអត្តសញ្ញាណខាងលើ លោកអ្នកមិនអាចកែប្រែដោយខ្លួនឯងបានទេ។ ប្រសិនបើមានព័ត៌មានមិនត្រឹមត្រូវ សូមចុច <strong>«ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin»</strong> ដើម្បីឱ្យ Admin ពិនិត្យ និងកែសម្រួលជូន។
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Editable Contact Information Form -->
+            <form method="POST" enctype="multipart/form-data" class="mt-4">
                 {% csrf_token %}
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-address-book text-primary me-2"></i>ព័ត៌មានទំនាក់ទំនង និងរូបថតគណនី
+                </h6>
+
                 <div class="row g-3">
+                    {% if not user_obj.is_teacher and not teacher_obj %}
                     <div class="col-md-6">
                         <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ</label>
                         {{ form.khmer_name }}
@@ -35,27 +119,98 @@
                         <label class="form-label fw-bold small">ឈ្មោះជាអក្សរឡាតាំង</label>
                         {{ form.latin_name }}
                     </div>
+                    {% endif %}
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទទំនាក់ទំនង</label>
+                        {{ form.phone }}
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label fw-bold small">អ៊ីមែល (Email)</label>
                         {{ form.email }}
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">លេខទូរស័ព្ទ</label>
-                        {{ form.phone }}
-                    </div>
                     <div class="col-12">
                         <label class="form-label fw-bold small">ប្តូររូបថតគណនី (Avatar)</label>
                         {{ form.avatar }}
+                        <div class="form-text small">គាំទ្រប្រភេទរូបភាព JPG, PNG, WEBP (ទំហំសមស្រប 300x300px)</div>
                     </div>
                 </div>
 
-                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-between">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មានទំនាក់ទំនង
+                    </button>
+                    {% if user_obj.is_teacher and teacher_obj %}
+                    <a href="{% url 'teacher_detail' teacher_obj.id %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fa-solid fa-id-badge me-1"></i> មើលប្រវត្តិរូបពេញលេញ
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin -->
+{% if user_obj.is_teacher or teacher_obj %}
+<div class="modal fade" id="requestChangeModal" tabindex="-1" aria-labelledby="requestChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'teacher_request_profile_change' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-warning text-dark py-3">
+                    <h5 class="modal-title fw-bold" id="requestChangeModalLabel">
+                        <i class="fa-solid fa-bullhorn me-2"></i>ស្នើសុំកែប្រែព័ត៌មានទៅកាន់ Admin
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        សំណើនេះនឹងត្រូវបញ្ជូនជា **Alert ស្វ័យប្រវត្តិតាម Telegram** ទៅកាន់អ្នកគ្រប់គ្រងសាលា (Admin) ភ្លាមៗ!
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសព័ត៌មានដែលចង់កែប្រែ <span class="text-danger">*</span></label>
+                        <select name="field_name" class="form-select" required>
+                            <option value="" selected disabled>-- សូមជ្រើសរើសប្រភេទព័ត៌មាន --</option>
+                            <option value="khmer_name">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</option>
+                            <option value="latin_name">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</option>
+                            <option value="gender">ភេទ (Gender)</option>
+                            <option value="date_of_birth">ថ្ងៃខែឆ្នាំកំណើត (DOB - DD-MM-YYYY)</option>
+                            <option value="teacher_id">អត្តលេខគ្រូ (Teacher ID)</option>
+                            <option value="specialization">ឯកទេសបង្រៀន (Specialization)</option>
+                            <option value="other">ព័ត៌មានផ្សេងៗ (Other Information)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ទិន្នន័យថ្មីដែលត្រឹមត្រូវ <span class="text-danger">*</span></label>
+                        <input type="text" name="new_value" class="form-control" placeholder="ឧ. ឈ្មោះត្រឹមត្រូវ ឬ ថ្ងៃកំណើត 15-05-1985..." required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">មូលហេតុ ឬកំណត់ចំណាំបន្ថែម</label>
+                        <textarea name="reason" rows="3" class="form-control" placeholder="បញ្ជាក់ពីមូលហេតុនៃការស្នើសុំកែប្រែ..."></textarea>
+                    </div>
+
+                    {% if school_profile.telegram_channel %}
+                    <div class="p-2 rounded bg-light border small text-muted d-flex align-items-center justify-content-between">
+                        <span><i class="fa-brands fa-telegram text-primary me-1"></i> Admin Telegram: <strong>@{{ school_profile.telegram_channel }}</strong></span>
+                        <a href="https://t.me/{{ school_profile.telegram_channel }}" target="_blank" class="btn btn-sm btn-link p-0 text-primary">Chat Now</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មាន
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើសំណើ Alert ទៅ Admin
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endif %}
+
 {% endblock %}

@@ -33,6 +33,14 @@ class UserProfileForm(forms.ModelForm):
             'avatar': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.role == User.Role.TEACHER:
+            self.fields['khmer_name'].disabled = True
+            self.fields['latin_name'].disabled = True
+            self.fields['khmer_name'].help_text = "🔒 ព័ត៌មានអត្តសញ្ញាណត្រូវបានចាក់សោ (សូមស្នើសុំទៅ Admin ដើម្បីកែប្រែ)"
+            self.fields['latin_name'].help_text = "🔒 ព័ត៌មានអត្តសញ្ញាណត្រូវបានចាក់សោ (សូមស្នើសុំទៅ Admin ដើម្បីកែប្រែ)"
+
 
 class TelegramConfigForm(forms.ModelForm):
     class Meta:

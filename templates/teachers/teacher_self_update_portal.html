@@ -1,0 +1,793 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Portal | ផ្ទៀងផ្ទាត់ និងធ្វើបច្ចុប្បន្នភាពព័ត៌មាន | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Smartphone & Tablet Zoom Optimization */
+    .portal-card {
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+    }
+    .portal-section-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: #ffffff;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        padding: 1rem 1.25rem;
+    }
+    .touch-input {
+        font-size: 1rem;
+        padding: 0.65rem 0.85rem;
+    }
+    .locked-input-group .form-control,
+    .locked-input-group .form-select {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        cursor: not-allowed !important;
+        border-color: #cbd5e1 !important;
+    }
+    .locked-input-group .input-group-text {
+        background-color: #e2e8f0 !important;
+        color: #dc2626 !important;
+        border-color: #cbd5e1 !important;
+    }
+    .unlocked-input-group .form-control:focus,
+    .unlocked-input-group .form-select:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Mobile-friendly Container -->
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+
+        <!-- Top Header & Notice -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <div>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 mb-2 fw-bold">
+                    <i class="fa-solid fa-mobile-screen-button me-1"></i> Teacher Self-Service Portal (Mobile & PC)
+                </span>
+                <h3 class="fw-bold mb-1 text-dark">
+                    <i class="fa-solid fa-id-card-clip text-primary me-2"></i> ផ្ទៀងផ្ទាត់ និងបំពេញព័ត៌មានគ្រូបង្រៀន
+                </h3>
+                <p class="text-muted small mb-0">លោកគ្រូ/អ្នកគ្រូ <strong>{{ teacher.khmer_name }}</strong> ({{ teacher.teacher_id }})</p>
+            </div>
+            <div class="d-flex gap-2">
+                {% if is_admin %}
+                <a href="{% url 'teacher_update_campaign' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-gear me-1"></i> ការកំណត់ Campaign
+                </a>
+                {% endif %}
+                <a href="{% url 'teacher_detail' teacher.id %}" class="btn btn-light btn-sm border">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+            </div>
+        </div>
+
+        {% if campaign %}
+        <!-- Campaign Announcement Banner -->
+        <div class="alert alert-primary border-primary-subtle shadow-sm rounded-4 mb-4 p-3 d-flex align-items-start gap-3">
+            <div class="p-2 bg-primary text-white rounded-circle fs-5 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                <i class="fa-solid fa-bullhorn"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold text-primary mb-1">{{ campaign.title }}</h6>
+                <p class="small mb-1 text-secondary">{{ campaign.instructions|default:"សូមលោកគ្រូ-អ្នកគ្រូ មេត្តាពិនិត្យ និងបំពេញព័ត៌មានដែលបានជ្រើសរើសខាងក្រោមឱ្យបានត្រឹមត្រូវ។" }}</p>
+                {% if campaign.deadline %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">
+                    <i class="fa-solid fa-hourglass-half me-1"></i> ផុតកំណត់ត្រឹម៖ {{ campaign.deadline|date:"d-m-Y" }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main Form -->
+        <form method="POST" enctype="multipart/form-data" id="teacherPortalForm">
+            {% csrf_token %}
+
+            <!-- SECTION 1: Personal & Identity -->
+            <div class="portal-card mb-4 overflow-hidden">
+                <div class="portal-section-header d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa-solid fa-user-tie me-2"></i> ផ្នែកទី១៖ ព័ត៌មានផ្ទាល់ខ្លួន & អត្តសញ្ញាណ
+                    </h6>
+                    {% if 'identity' not in allowed_sections and 'dob_gender' not in allowed_sections %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> ជាប់សោរ (Locked)
+                    </span>
+                    {% elif 'identity' in allowed_sections and 'dob_gender' in allowed_sections %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាតកែប្រែ
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-key me-1"></i> អនុញ្ញាតមួយចំនួន
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        <!-- Teacher ID (Always Locked) -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>អត្តលេខមន្ត្រី / Teacher ID</span>
+                                <span class="badge bg-secondary-subtle text-secondary small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                            </label>
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.teacher_id }}" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Khmer Name -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>គោត្តនាម និងនាម (ខ្មែរ) *</span>
+                                {% if 'identity' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'identity' in allowed_sections %}
+                            <div class="input-group unlocked-input-group">
+                                <input type="text" name="khmer_name" class="form-control touch-input" value="{{ teacher.khmer_name }}" required>
+                            </div>
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.khmer_name }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Latin Name -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ឈ្មោះជាអក្សរឡាតាំង *</span>
+                                {% if 'identity' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'identity' in allowed_sections %}
+                            <div class="input-group unlocked-input-group">
+                                <input type="text" name="latin_name" class="form-control touch-input font-monospace" value="{{ teacher.latin_name }}" required>
+                            </div>
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.latin_name }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Gender -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ភេទ *</span>
+                                {% if 'dob_gender' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'dob_gender' in allowed_sections %}
+                            <select name="gender" class="form-select touch-input">
+                                <option value="M" {% if teacher.gender == 'M' %}selected{% endif %}>ប្រុស / Male</option>
+                                <option value="F" {% if teacher.gender == 'F' %}selected{% endif %}>ស្រី / Female</option>
+                            </select>
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.get_gender_display }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- DOB -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ថ្ងៃខែឆ្នាំកំណើត (DOB)</span>
+                                {% if 'dob_gender' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'dob_gender' in allowed_sections %}
+                            <input type="date" name="date_of_birth" class="form-control touch-input" value="{{ teacher.date_of_birth|date:'Y-m-d' }}">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.date_of_birth|date:'d-m-Y'|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Contact & Cambodian Address -->
+            <div class="portal-card mb-4 overflow-hidden">
+                <div class="portal-section-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa-solid fa-address-book me-2"></i> ផ្នែកទី២៖ ទំនាក់ទំនង & អាសយដ្ឋានបច្ចុប្បន្ន
+                    </h6>
+                    {% if 'phone_email' not in allowed_sections and 'address' not in allowed_sections %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> ជាប់សោរ (Locked)
+                    </span>
+                    {% elif 'phone_email' in allowed_sections and 'address' in allowed_sections %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាតកែប្រែ
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-key me-1"></i> អនុញ្ញាតមួយចំនួន
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        <!-- Phone -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>លេខទូរស័ព្ទ *</span>
+                                {% if 'phone_email' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'phone_email' in allowed_sections %}
+                            <input type="text" name="phone" class="form-control touch-input font-monospace" value="{{ teacher.phone }}" required>
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.phone }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>អ៊ីមែល (Email)</span>
+                                {% if 'phone_email' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'phone_email' in allowed_sections %}
+                            <input type="email" name="email" class="form-control touch-input" value="{{ teacher.email|default:'' }}">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.email|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន ៤ កម្រិតរដ្ឋបាលកម្ពុជា -->
+                        <div class="col-12">
+                            <div class="card border rounded-3 p-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold text-primary mb-0 small">
+                                        <i class="fa-solid fa-house-chimney text-success me-1"></i> អាសយដ្ឋានបច្ចុប្បន្ន (ជ្រើសរើសតាមលំដាប់ថ្នាក់រដ្ឋបាលកម្ពុជា)
+                                    </label>
+                                    {% if 'address' in allowed_sections %}
+                                    <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                    {% endif %}
+                                </div>
+
+                                {% if 'address' in allowed_sections %}
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-12 mb-1">
+                                        <label class="form-label small text-secondary mb-1">ផ្ទះលេខ / ផ្លូវ (ប្រសិនបើមាន)</label>
+                                        <input type="text" id="portal_street" class="form-control form-control-sm" placeholder="ឧ. ផ្ទះលេខ 12, ផ្លូវ 2004...">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-secondary mb-1">១. ខេត្ត / រាជធានី</label>
+                                        <select id="portal_province" class="form-select form-select-sm">
+                                            <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-secondary mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                                        <select id="portal_district" class="form-select form-select-sm" disabled>
+                                            <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-secondary mb-1">៣. ឃុំ / សង្កាត់</label>
+                                        <select id="portal_commune" class="form-select form-select-sm" disabled>
+                                            <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-secondary mb-1">៤. ឈ្មោះភូមិ</label>
+                                        <select id="portal_village" class="form-select form-select-sm" disabled>
+                                            <option value="">-- ជ្រើសរើសភូមិ --</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                                    <span class="fw-semibold">អាសយដ្ឋានពេញលេញ៖</span>
+                                    <span id="portal_address_preview" class="fw-bold text-primary">{% if teacher.address %}{{ teacher.address }}{% else %}...{% endif %}</span>
+                                </div>
+                                <input type="hidden" name="address" id="id_portal_address" value="{{ teacher.address|default:'' }}">
+                                {% else %}
+                                <div class="input-group locked-input-group mt-1">
+                                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                    <input type="text" class="form-control touch-input" value="{{ teacher.address|default:'-' }}" readonly>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: Education, Qualification & Specialization -->
+            <div class="portal-card mb-4 overflow-hidden">
+                <div class="portal-section-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa-solid fa-graduation-cap me-2"></i> ផ្នែកទី៣៖ កម្រិតវប្បធម៌ គរុកោសល្យ & ឯកទេស
+                    </h6>
+                    {% if 'education' not in allowed_sections and 'training_subjects' not in allowed_sections %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> ជាប់សោរ (Locked)
+                    </span>
+                    {% elif 'education' in allowed_sections and 'training_subjects' in allowed_sections %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាតកែប្រែ
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-key me-1"></i> អនុញ្ញាតមួយចំនួន
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        <!-- Qualification -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>កម្រិតវប្បធម៌ (Qualification)</span>
+                                {% if 'education' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'education' in allowed_sections %}
+                            <input type="text" name="qualification" class="form-control touch-input" value="{{ teacher.qualification|default:'' }}" placeholder="ឧ. បរិញ្ញាបត្រ, អនុបណ្ឌិត...">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.qualification|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Specialization -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ឯកទេសទូទៅ (Specialization) *</span>
+                                {% if 'education' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'education' in allowed_sections %}
+                            <input type="text" name="specialization" class="form-control touch-input" value="{{ teacher.specialization }}" placeholder="ឧ. គណិតវិទ្យា & រូបវិទ្យា" required>
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.specialization }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Training Level -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>កម្រិតបណ្តុះបណ្តាល (Training Level)</span>
+                                {% if 'training_subjects' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'training_subjects' in allowed_sections %}
+                            <input type="text" name="training_level" class="form-control touch-input" value="{{ teacher.training_level|default:'' }}" placeholder="ឧ. គរុកោសល្យឧត្តម...">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.training_level|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Primary Subject -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>មុខវិជ្ជាឯកទេសទី១</span>
+                                {% if 'training_subjects' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'training_subjects' in allowed_sections %}
+                            <input type="text" name="primary_subject" class="form-control touch-input" value="{{ teacher.primary_subject|default:'' }}" placeholder="ឧ. គណិតវិទ្យា">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.primary_subject|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Secondary Subject -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>មុខវិជ្ជាឯកទេសទី២</span>
+                                {% if 'training_subjects' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'training_subjects' in allowed_sections %}
+                            <input type="text" name="secondary_subject" class="form-control touch-input" value="{{ teacher.secondary_subject|default:'' }}" placeholder="ឧ. រូបវិទ្យា">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.secondary_subject|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: Civil Service & Appointment Details -->
+            <div class="portal-card mb-4 overflow-hidden">
+                <div class="portal-section-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa-solid fa-briefcase me-2"></i> ផ្នែកទី៤៖ ព័ត៌មានក្របខ័ណ្ឌ & ការងាររដ្ឋ
+                    </h6>
+                    {% if 'civil_service' in allowed_sections %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាតកែប្រែ
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> ជាប់សោរ (Locked)
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        <!-- Current Duty -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ភារកិច្ចបច្ចុប្បន្ន (Current Duty)</span>
+                                {% if 'civil_service' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'civil_service' in allowed_sections %}
+                            <input type="text" name="current_duty" class="form-control touch-input" value="{{ teacher.current_duty|default:'គ្រូបង្រៀន' }}">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{{ teacher.current_duty|default:'គ្រូបង្រៀន' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- State Hire Date -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ថ្ងៃចូលបម្រើការងាររដ្ឋ</span>
+                                {% if 'civil_service' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'civil_service' in allowed_sections %}
+                            <input type="date" name="state_hire_date" class="form-control touch-input" value="{{ teacher.state_hire_date|date:'Y-m-d' }}">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.state_hire_date|date:'d-m-Y'|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Permanent Date -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់</span>
+                                {% if 'civil_service' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'civil_service' in allowed_sections %}
+                            <input type="date" name="permanent_date" class="form-control touch-input" value="{{ teacher.permanent_date|date:'Y-m-d' }}">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.permanent_date|date:'d-m-Y'|default:'-' }}" readonly>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <h6 class="fw-bold text-secondary mb-3 small">
+                                    <i class="fa-solid fa-stamp me-1"></i> តាំងស៊ប់តាមប្រកាស
+                                </h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-secondary">ប្រភេទក្របខ័ណ្ឌ (ឧ. ក.១, ខ.១...)</label>
+                                        {% if 'civil_service' in allowed_sections %}
+                                        <input type="text" name="prakas_category" class="form-control touch-input" value="{{ teacher.prakas_category|default:'' }}">
+                                        {% else %}
+                                        <div class="input-group locked-input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                            <input type="text" class="form-control touch-input" value="{{ teacher.prakas_category|default:'-' }}" readonly>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-secondary">ឆ្នាំទទួលប្រកាស (ឧ. 2018)</label>
+                                        {% if 'civil_service' in allowed_sections %}
+                                        <input type="text" name="prakas_year" class="form-control touch-input font-monospace" value="{{ teacher.prakas_year|default:'' }}">
+                                        {% else %}
+                                        <div class="input-group locked-input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                            <input type="text" class="form-control touch-input font-monospace" value="{{ teacher.prakas_year|default:'-' }}" readonly>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-secondary">ប្រកាសលេខ (Prakas Number)</label>
+                                        {% if 'civil_service' in allowed_sections %}
+                                        <input type="text" name="prakas_number" class="form-control touch-input" value="{{ teacher.prakas_number|default:'' }}">
+                                        {% else %}
+                                        <div class="input-group locked-input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                            <input type="text" class="form-control touch-input" value="{{ teacher.prakas_number|default:'-' }}" readonly>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: Photo & Documents -->
+            <div class="portal-card mb-4 overflow-hidden">
+                <div class="portal-section-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);">
+                    <h6 class="fw-bold mb-0">
+                        <i class="fa-solid fa-image me-2"></i> ផ្នែកទី៥៖ រូបថត & ឯកសារ CV
+                    </h6>
+                    {% if 'photo_resume' in allowed_sections %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាតកែប្រែ
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> ជាប់សោរ (Locked)
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>រូបថត (Photo 4x6)</span>
+                                {% if 'photo_resume' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'photo_resume' in allowed_sections %}
+                            <input type="file" name="photo" class="form-control touch-input" accept="image/*">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{% if teacher.photo %}មានរូបថតរួចរាល់{% else %}គ្មានរូបថត{% endif %}" readonly>
+                            </div>
+                            {% endif %}
+                            {% if teacher.photo %}
+                            <small class="text-success d-block mt-1"><i class="fa-solid fa-check me-1"></i> មានរូបថតក្នុងប្រព័ន្ធរួចរាល់</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary d-flex justify-content-between">
+                                <span>ឯកសារ CV / Resume</span>
+                                {% if 'photo_resume' in allowed_sections %}
+                                <span class="badge bg-success-subtle text-success small py-0"><i class="fa-solid fa-lock-open me-1"></i> អនុញ្ញាត</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger small py-0"><i class="fa-solid fa-lock me-1"></i> ជាប់សោរ</span>
+                                {% endif %}
+                            </label>
+                            {% if 'photo_resume' in allowed_sections %}
+                            <input type="file" name="resume" class="form-control touch-input" accept=".pdf,.doc,.docx">
+                            {% else %}
+                            <div class="input-group locked-input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="text" class="form-control touch-input" value="{% if teacher.resume %}មានឯកសារ CV រួចរាល់{% else %}គ្មានឯកសារ{% endif %}" readonly>
+                            </div>
+                            {% endif %}
+                            {% if teacher.resume %}
+                            <small class="text-success d-block mt-1"><i class="fa-solid fa-check me-1"></i> មានឯកសារ CV ក្នុងប្រព័ន្ធរួចរាល់</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button Bar -->
+            <div class="p-3 bg-white rounded-4 shadow-sm d-flex flex-wrap gap-2 justify-content-between align-items-center mb-5 border">
+                <div class="small text-muted">
+                    {% if teacher.last_profile_verified_at %}
+                    <i class="fa-solid fa-clock-rotate-left text-success me-1"></i> បានផ្ទៀងផ្ទាត់ចុងក្រោយ៖ <strong>{{ teacher.last_profile_verified_at|date:"d-m-Y H:i" }}</strong>
+                    {% else %}
+                    <i class="fa-solid fa-circle-exclamation text-warning me-1"></i> មិនទាន់បានផ្ទៀងផ្ទាត់នៅឡើយ
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'dashboard_redirect' %}" class="btn btn-light px-4">បោះបង់</a>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ទៀងផ្ទាត់ និងបញ្ជូនទិន្នន័យ (Submit)
+                    </button>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const provSelect = document.getElementById('portal_province');
+    const distSelect = document.getElementById('portal_district');
+    const commSelect = document.getElementById('portal_commune');
+    const villSelect = document.getElementById('portal_village');
+    const streetInput = document.getElementById('portal_street');
+    const addressInput = document.getElementById('id_portal_address');
+    const previewSpan = document.getElementById('portal_address_preview');
+
+    if (!provSelect) return; // If address section is locked
+
+    function populate(sel, items, defaultText) {
+        sel.innerHTML = `<option value="">${defaultText}</option>`;
+        if (!items || !items.length) return;
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.name_kh || item.name_en;
+            opt.dataset.name = item.name_kh || item.name_en;
+            sel.appendChild(opt);
+        });
+    }
+
+    function updateAddressString() {
+        const parts = [];
+        const street = streetInput ? streetInput.value.trim() : '';
+        if (street) parts.push(street);
+
+        const vName = villSelect.selectedIndex > 0 ? villSelect.options[villSelect.selectedIndex].dataset.name : '';
+        const cName = commSelect.selectedIndex > 0 ? commSelect.options[commSelect.selectedIndex].dataset.name : '';
+        const dName = distSelect.selectedIndex > 0 ? distSelect.options[distSelect.selectedIndex].dataset.name : '';
+        const pName = provSelect.selectedIndex > 0 ? provSelect.options[provSelect.selectedIndex].dataset.name : '';
+
+        if (vName) parts.push(vName.startsWith('ភូមិ') ? vName : 'ភូមិ' + vName);
+        if (cName) parts.push(cName.startsWith('ឃុំ') || cName.startsWith('សង្កាត់') ? cName : 'ឃុំ ' + cName);
+        if (dName) parts.push(dName.startsWith('ស្រុក') || dName.startsWith('ខណ្ឌ') || dName.startsWith('ក្រុង') ? dName : 'ស្រុក ' + dName);
+        if (pName) parts.push(pName.startsWith('ខេត្ត') || pName.startsWith('រាជធានី') ? pName : 'ខេត្ត ' + pName);
+
+        const fullStr = parts.join(', ');
+        if (fullStr) {
+            if (addressInput) addressInput.value = fullStr;
+            if (previewSpan) previewSpan.textContent = fullStr;
+        } else if (addressInput && addressInput.value) {
+            if (previewSpan) previewSpan.textContent = addressInput.value;
+        } else {
+            if (previewSpan) previewSpan.textContent = '...';
+        }
+    }
+
+    // Fetch Provinces
+    fetch('/academics/api/locations/provinces/')
+        .then(res => res.json())
+        .then(d => {
+            if (d.status === 'success') {
+                populate(provSelect, d.data, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+            }
+        })
+        .catch(err => console.error(err));
+
+    provSelect.addEventListener('change', function() {
+        const pId = this.value;
+        distSelect.innerHTML = '<option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>';
+        commSelect.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        distSelect.disabled = !pId;
+        commSelect.disabled = true;
+        villSelect.disabled = true;
+
+        if (pId) {
+            fetch(`/academics/api/locations/districts/?province_id=${pId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(distSelect, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    distSelect.addEventListener('change', function() {
+        const dId = this.value;
+        commSelect.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        commSelect.disabled = !dId;
+        villSelect.disabled = true;
+
+        if (dId) {
+            fetch(`/academics/api/locations/communes/?district_id=${dId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(commSelect, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    commSelect.addEventListener('change', function() {
+        const cId = this.value;
+        villSelect.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
+        villSelect.disabled = !cId;
+
+        if (cId) {
+            fetch(`/academics/api/locations/villages/?commune_id=${cId}`)
+                .then(res => res.json())
+                .then(d => {
+                    populate(villSelect, d.data, '-- ជ្រើសរើសភូមិ --');
+                });
+        }
+        updateAddressString();
+    });
+
+    villSelect.addEventListener('change', updateAddressString);
+    if (streetInput) streetInput.addEventListener('input', updateAddressString);
+});
+</script>
+{% endblock %}

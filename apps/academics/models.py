@@ -165,12 +165,17 @@ class Classroom(models.Model):
         Synchronizes ClassSubject records for this classroom.
         Keeps existing assignments (preserving teacher/hours), deletes unchecked ones, and creates new ones.
         """
+        from apps.teachers.models import Teacher
         target_ids = [int(sid) for sid in subject_ids if str(sid).isdigit()]
         self.assigned_subjects.exclude(subject_id__in=target_ids).delete()
         existing_sub_ids = set(self.assigned_subjects.values_list('subject_id', flat=True))
+        active_teachers = list(Teacher.objects.filter(status='ACTIVE'))
         for sid in target_ids:
             if sid not in existing_sub_ids:
-                ClassSubject.objects.create(classroom=self, subject_id=sid)
+                tch = None
+                if active_teachers:
+                    tch = active_teachers[(sid + (self.id or 0)) % len(active_teachers)]
+                ClassSubject.objects.create(classroom=self, subject_id=sid, teacher=tch)
 
     def __str__(self):
         return f"{self.name} [{self.academic_year.name}]"

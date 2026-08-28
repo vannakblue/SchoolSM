@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធកំពុងធ្វើបច្ចុប្បន្នភាព | SchoolSM Maintenance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+            --bg-gradient: radial-gradient(circle at 50% 0%, #f0f4ff 0%, #f8fafc 100%);
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Kantumruy Pro', 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Decorative background shapes */
+        .bg-shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .shape-1 {
+            width: 320px;
+            height: 320px;
+            background: #c7d2fe;
+            top: 10%;
+            left: 15%;
+        }
+        .shape-2 {
+            width: 280px;
+            height: 280px;
+            background: #a5f3fc;
+            bottom: 10%;
+            right: 15%;
+        }
+
+        .maintenance-card {
+            position: relative;
+            z-index: 1;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 24px;
+            padding: 48px 36px;
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 0 1px 1px rgba(0, 0, 0, 0.02);
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .icon-wrapper {
+            width: 88px;
+            height: 88px;
+            background: var(--primary-gradient);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 12px 24px -6px rgba(79, 70, 229, 0.35);
+            position: relative;
+        }
+
+        .icon-wrapper i {
+            font-size: 38px;
+            color: white;
+            animation: spinGear 8s linear infinite;
+        }
+
+        @keyframes spinGear {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #eef2ff;
+            color: #4338ca;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid #c7d2fe;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #4f46e5;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        p.desc {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-item i {
+            color: #4f46e5;
+            font-size: 18px;
+        }
+
+        .info-text .label {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .info-text .val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .btn-reload {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 8px 18px -4px rgba(79, 70, 229, 0.4);
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-reload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 22px -4px rgba(79, 70, 229, 0.5);
+        }
+
+        .auto-refresh {
+            margin-top: 18px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .admin-link {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .admin-link a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .admin-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+
+    <div class="maintenance-card">
+        <div class="icon-wrapper">
+            <i class="fa-solid fa-gear"></i>
+        </div>
+
+        <div class="status-badge">
+            <span class="pulse-dot"></span>
+            <span>ប្រព័ន្ធកំពុងដំណើរការកែលម្អ</span>
+        </div>
+
+        <h1>ប្រព័ន្ធកំពុងធ្វើបច្ចុប្បន្នភាព (Update)</h1>
+        <p class="desc">
+            យើងខ្ញុំកំពុងធ្វើការអាប់ដេតប្រព័ន្ធគ្រប់គ្រងសាលារៀន <strong>SchoolSM</strong> ដើម្បីបន្ថែមមុខងារថ្មី និងបង្កើនល្បឿនប្រើប្រាស់ឱ្យកាន់តែប្រសើរ។ សូមមេត្តារង់ចាំបន្តិច!
+        </p>
+
+        <div class="info-box">
+            <div class="info-item">
+                <i class="fa-regular fa-clock"></i>
+                <div class="info-text">
+                    <div class="label">រយៈពេលប៉ាន់ស្មាន</div>
+                    <div class="val">ប្រហែល ២ ទៅ ៣ នាទី</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <i class="fa-solid fa-shield-halved"></i>
+                <div class="info-text">
+                    <div class="label">ស្ថានភាពទិន្នន័យ</div>
+                    <div class="val text-success">មានសុវត្ថិភាព ១០០%</div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-reload" onclick="window.location.reload();">
+            <i class="fa-solid fa-rotate-right"></i> ផ្ទុកទំព័រឡើងវិញ (Refresh Page)
+        </button>
+
+        <div class="auto-refresh">
+            ទំព័រនឹង Refresh ដោយស្វ័យប្រវត្តក្នុងរយៈពេល <span id="countdown" style="font-weight: 700; color: #4f46e5;">15</span> វិនាទី
+        </div>
+
+        {% if user.is_authenticated and user.is_staff %}
+        <div class="admin-link">
+            អ្នកជាអ្នកគ្រប់គ្រង (Admin)? <a href="{% url 'admin:index' %}">ចូលទៅ Admin Panel</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Auto refresh every 15 seconds to check if system is back online
+        let timeLeft = 15;
+        const countdownEl = document.getElementById('countdown');
+        
+        setInterval(() => {
+            timeLeft -= 1;
+            if (timeLeft <= 0) {
+                window.location.reload();
+            } else if (countdownEl) {
+                countdownEl.innerText = timeLeft;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

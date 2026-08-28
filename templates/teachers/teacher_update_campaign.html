@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងយុទ្ធនាការបំពេញព័ត៌មានគ្រូឡើងវិញ | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-clipboard-check text-primary me-2"></i> យុទ្ធនាការទាមទារ/បំពេញព័ត៌មានគ្រូបង្រៀនឡើងវិញ
+        </h2>
+        <p class="text-muted small mb-0">Admin អាចជ្រើសរើស (Tick) ផ្នែកព័ត៌មានដែលតម្រូវឱ្យគ្រូបំពេញ ឬផ្ទៀងផ្ទាត់ឡើងវិញ តាមរយៈ Teacher Portal (Mobile & PC)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'teacher_self_update_portal' %}" target="_blank" class="btn btn-outline-primary shadow-xs">
+            <i class="fa-solid fa-mobile-screen me-1"></i> មើលទម្រង់ Teacher Portal
+        </a>
+        <a href="{% url 'teacher_list' %}" class="btn btn-light shadow-xs border">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+        </a>
+    </div>
+</div>
+
+<!-- Progress and Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="custom-card p-3 border-start border-primary border-4">
+            <span class="text-muted small fw-bold">គ្រូបង្រៀនសរុប</span>
+            <h3 class="fw-bold text-dark mb-0">{{ total_teachers }} នាក់</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 border-start border-success border-4">
+            <span class="text-muted small fw-bold">បានផ្ទៀងផ្ទាត់រួច (Verified)</span>
+            <h3 class="fw-bold text-success mb-0">{{ verified_count }} នាក់</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 border-start border-warning border-4">
+            <span class="text-muted small fw-bold">មិនទាន់បានបំពេញ (Pending)</span>
+            <h3 class="fw-bold text-warning mb-0">{{ pending_count }} នាក់</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 border-start border-info border-4">
+            <span class="text-muted small fw-bold">អត្រាសម្រេច (Progress)</span>
+            <h3 class="fw-bold text-info mb-0">{{ progress_pct }}%</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Campaign Configuration Form -->
+    <div class="col-lg-6">
+        <div class="custom-card shadow-sm">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3">
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-sliders me-2"></i> កំណត់ជម្រើសព័ត៌មានដែលតម្រូវឱ្យបំពេញ
+                </h5>
+                <span class="badge {% if campaign.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if campaign.is_active %}កំពុងបើកដំណើរការ{% else %}បានបិទ{% endif %}
+                </span>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <!-- Toggle Active -->
+                <div class="form-check form-switch mb-3 p-3 bg-light rounded-3 border">
+                    <input class="form-check-input ms-0 me-3 fs-5" type="checkbox" role="switch" id="is_active" name="is_active" value="1" {% if campaign.is_active %}checked{% endif %}>
+                    <label class="form-check-label fw-bold text-dark pt-1" for="is_active">
+                        បើកដំណើរការយុទ្ធនាការទាមទារព័ត៌មានគ្រូ (Active Campaign)
+                    </label>
+                    <small class="text-muted d-block ms-5">ពេលបើក គ្រូទាំងអស់នឹងឃើញផ្ទាំងជូនដំណឹងឱ្យចូលទៅផ្ទៀងផ្ទាត់ និងបំពេញព័ត៌មានឡើងវិញ។</small>
+                </div>
+
+                <!-- Campaign Title -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">ចំណងជើងយុទ្ធនាការ *</label>
+                    <input type="text" name="title" class="form-control" value="{{ campaign.title }}" required>
+                </div>
+
+                <!-- Instructions -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">សេចក្តីណែនាំដល់គ្រូបង្រៀន</label>
+                    <textarea name="instructions" class="form-control" rows="2">{{ campaign.instructions }}</textarea>
+                </div>
+
+                <!-- Deadline -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">កាលបរិច្ឆេទផុតកំណត់ (Deadline - ទុកទទេប្រសិនបើគ្មាន)</label>
+                    <input type="date" name="deadline" class="form-control" value="{{ campaign.deadline|date:'Y-m-d'|default:'' }}">
+                </div>
+
+                <!-- Tick Allowed Sections -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold small text-primary mb-0">
+                            <i class="fa-solid fa-list-check me-1"></i> ជ្រើសរើស (Tick) ផ្នែកព័ត៌មានដែលអនុញ្ញាតឱ្យគ្រូបំពេញឡើងវិញ៖
+                        </label>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary btn-xs" onclick="toggleAllSections(true)">ជ្រើសទាំងអស់</button>
+                            <button type="button" class="btn btn-outline-secondary btn-xs" onclick="toggleAllSections(false)">ដោះទាំងអស់</button>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border">
+                        {% for code, label in available_sections %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input section-checkbox" type="checkbox" name="sections" value="{{ code }}" id="sec_{{ code }}" {% if code in campaign.allowed_sections or not campaign.allowed_sections %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold text-dark" for="sec_{{ code }}">
+                                {{ label }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Target Scope -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">គោលដៅអនុវត្ត (Target Scope)</label>
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="target_all" id="target_all_1" value="1" {% if campaign.target_all %}checked{% endif %} onchange="toggleTeacherList(false)">
+                            <label class="form-check-label small fw-bold" for="target_all_1">
+                                អនុវត្តចំពោះគ្រូបង្រៀនទាំងអស់ (All Teachers)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target_all" id="target_all_0" value="0" {% if not campaign.target_all %}checked{% endif %} onchange="toggleTeacherList(true)">
+                            <label class="form-check-label small fw-bold" for="target_all_0">
+                                អនុវត្តចំពោះគ្រូជាក់លាក់តែមួយចំនួន (Specific Teachers)
+                            </label>
+                        </div>
+
+                        <div id="specificTeachersBox" class="mt-3 {% if campaign.target_all %}d-none{% endif %}">
+                            <label class="form-label small text-muted">ជ្រើសរើសគ្រូដែលត្រូវទាមទារព័ត៌មាន៖</label>
+                            <select name="target_teachers" class="form-select form-select-sm" multiple style="height: 140px;">
+                                {% for t in teachers %}
+                                <option value="{{ t.id }}" {% if t in campaign.target_teachers.all %}selected{% endif %}>
+                                    {{ t.teacher_id }} - {{ t.khmer_name }} ({{ t.specialization }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Verification Status of Teachers -->
+    <div class="col-lg-6">
+        <div class="custom-card shadow-sm h-100">
+            <h5 class="fw-bold text-primary mb-3 border-bottom pb-3 d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-users-viewfinder me-2"></i> ស្ថានភាពផ្ទៀងផ្ទាត់របស់គ្រូនីមួយៗ</span>
+                <span class="badge bg-light text-primary border small fw-normal">{{ teachers.count }} នាក់</span>
+            </h5>
+
+            <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>ល.រ</th>
+                            <th>អត្តលេខ & ឈ្មោះគ្រូ</th>
+                            <th>ឯកទេស</th>
+                            <th>ស្ថានភាពផ្ទៀងផ្ទាត់</th>
+                            <th class="text-center">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in teachers %}
+                        <tr>
+                            <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                            <td>
+                                <span class="fw-bold text-dark">{{ t.khmer_name }}</span>
+                                <small class="text-muted d-block">{{ t.teacher_id }}</small>
+                            </td>
+                            <td>{{ t.specialization }}</td>
+                            <td>
+                                {% if t.last_profile_verified_at %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="fa-solid fa-circle-check me-1"></i> {{ t.last_profile_verified_at|date:"d/m/Y H:i" }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                    <i class="fa-solid fa-clock me-1"></i> មិនទាន់ផ្ទៀងផ្ទាត់
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'teacher_self_update_portal' %}?teacher_id={{ t.id }}" target="_blank" class="btn btn-outline-primary btn-xs py-1 px-2" title="ចូល Portal ក្នុងនាមគ្រូរូបនេះ">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Portal
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀន</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllSections(checked) {
+    document.querySelectorAll('.section-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function toggleTeacherList(show) {
+    const box = document.getElementById('specificTeachersBox');
+    if (show) box.classList.remove('d-none');
+    else box.classList.add('d-none');
+}
+</script>
+{% endblock %}

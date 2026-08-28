@@ -3,10 +3,10 @@
 {% block title %}បញ្ជីគ្រូបង្រៀន (Teachers) | SchoolSM{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
         <h2 class="fw-bold mb-1">បញ្ជីគ្រូបង្រៀនទាំងអស់ (Teachers)</h2>
-        <p class="text-muted small mb-0">គ្រូបង្រៀនសរុប៖ <strong>{{ total_count }}</strong> នាក់</p>
+        <p class="text-muted small mb-0">គ្រូបង្រៀនសរុប៖ <strong>{{ total_count }}</strong> នាក់ | ទម្រង់ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% if is_admin %}
@@ -17,19 +17,27 @@
             <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូបង្រៀន (Import)
         </a>
         <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success">
-            <i class="fa-solid fa-file-excel me-1"></i> នាំចេញ Excel
+            <i class="fa-solid fa-file-excel me-1"></i> នាំចេញតារាងក្រសួង (Excel)
         </a>
         <a href="{% url 'teacher_attendance' %}" class="btn btn-outline-secondary">
             <i class="fa-solid fa-user-check me-1"></i> ស្រង់វត្តមានគ្រូ
         </a>
+        <a href="{% url 'teacher_update_campaign' %}" class="btn btn-outline-info">
+            <i class="fa-solid fa-clipboard-check me-1"></i> យុទ្ធនាការបំពេញព័ត៌មាន (Campaign)
+        </a>
+        {% if total_count > 0 %}
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAllTeachersModal">
+            <i class="fa-solid fa-trash-can me-1"></i> លុបគ្រូទាំងអស់ (Delete All)
+        </button>
+        {% endif %}
         {% endif %}
     </div>
 </div>
 
-<!-- Search & Filter -->
+<!-- Search, Filter & View Toggle -->
 <div class="custom-card p-3 mb-4">
-    <form method="GET" class="row g-3">
-        <div class="col-md-6">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-5">
             <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="ស្វែងរកតាម ID, ឈ្មោះ, ឯកទេស ឬលេខទូរស័ព្ទ...">
         </div>
         <div class="col-md-3">
@@ -40,15 +48,110 @@
                 <option value="RESIGNED" {% if selected_status == 'RESIGNED' %}selected{% endif %}>លាឈប់</option>
             </select>
         </div>
-        <div class="col-md-3 d-flex gap-2">
+        <div class="col-md-2 d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-grow-1">ស្វែងរក</button>
-            <a href="{% url 'teacher_list' %}" class="btn btn-light">កំណត់ឡើងវិញ</a>
+            <a href="{% url 'teacher_list' %}" class="btn btn-light" title="កំណត់ឡើងវិញ"><i class="fa-solid fa-rotate-left"></i></a>
+        </div>
+        <div class="col-md-2 text-md-end">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm active" id="viewBtnTable" onclick="switchTeacherView('table')" title="ទិដ្ឋភាពតារាងក្រសួង">
+                    <i class="fa-solid fa-table-list me-1"></i> តារាងក្រសួង
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="viewBtnCards" onclick="switchTeacherView('cards')" title="ទិដ្ឋភាពកាត">
+                    <i class="fa-solid fa-grip me-1"></i> កាត
+                </button>
+            </div>
         </div>
     </form>
 </div>
 
-<!-- Teachers Grid -->
-<div class="row g-4">
+<!-- View 1: MoEYS Official Table View (Matching User Image) -->
+<div id="moeysTableView" class="custom-card mb-4 p-0 overflow-hidden shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0 text-nowrap" style="font-size: 0.82rem;">
+            <thead class="table-primary text-center align-middle" style="background-color: #1e3a8a; color: #ffffff;">
+                <tr>
+                    <th rowspan="2" class="py-2" style="width: 45px;">ល.រ</th>
+                    <th rowspan="2" class="py-2">អត្តលេខ</th>
+                    <th rowspan="2" class="py-2">គោត្តនាម និងនាម</th>
+                    <th rowspan="2" class="py-2" style="width: 50px;">ភេទ</th>
+                    <th rowspan="2" class="py-2">ថ្ងៃខែឆ្នាំកំណើត</th>
+                    <th rowspan="2" class="py-2">កម្រិតវប្បធម៌</th>
+                    <th rowspan="2" class="py-2">ឯកទេស</th>
+                    <th rowspan="2" class="py-2">កម្រិតបណ្តុះបណ្តាល</th>
+                    <th rowspan="2" class="py-2">ថ្ងៃចូលបម្រើការងាររដ្ឋ</th>
+                    <th rowspan="2" class="py-2">ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់</th>
+                    <th rowspan="2" class="py-2">មុខវិជ្ជាឯកទេសទី១</th>
+                    <th rowspan="2" class="py-2">មុខវិជ្ជាឯកទេសទី២</th>
+                    <th rowspan="2" class="py-2">ភារកិច្ចបច្ចុប្បន្ន</th>
+                    <th colspan="3" class="py-1 bg-primary text-white border-bottom-0">តាំងស៊ប់តាមប្រកាស</th>
+                    <th rowspan="2" class="py-2">លេខទូរស័ព្ទ</th>
+                    <th rowspan="2" class="py-2 no-print" style="width: 80px;">សកម្មភាព</th>
+                </tr>
+                <tr class="bg-primary-subtle text-dark">
+                    <th class="py-1 small" style="font-size: 0.75rem;">ប្រភេទ</th>
+                    <th class="py-1 small" style="font-size: 0.75rem;">ឆ្នាំទទួល</th>
+                    <th class="py-1 small" style="font-size: 0.75rem;">ប្រ.លេខ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in teachers %}
+                <tr>
+                    <td class="text-center fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td class="text-center"><span class="badge bg-light text-primary border fw-bold font-monospace">{{ t.teacher_id }}</span></td>
+                    <td class="fw-bold">
+                        <a href="{% url 'teacher_detail' t.id %}" class="text-dark text-decoration-none hover-primary">
+                            {{ t.khmer_name }}
+                        </a>
+                        {% if t.latin_name %}
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">{{ t.latin_name }}</small>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ t.get_gender_display }}</td>
+                    <td class="text-center font-monospace">{{ t.date_of_birth|date:"d-m-Y"|default:"-" }}</td>
+                    <td>{{ t.qualification|default:"-" }}</td>
+                    <td class="text-primary fw-bold">{{ t.specialization }}</td>
+                    <td>{{ t.training_level|default:"-" }}</td>
+                    <td class="text-center font-monospace">{{ t.state_hire_date|date:"d-m-Y"|default:"-" }}</td>
+                    <td class="text-center font-monospace">{{ t.permanent_date|date:"d-m-Y"|default:"-" }}</td>
+                    <td>{{ t.primary_subject|default:"-" }}</td>
+                    <td>{{ t.secondary_subject|default:"-" }}</td>
+                    <td><span class="badge bg-info-subtle text-dark border">{{ t.current_duty|default:"គ្រូបង្រៀន" }}</span></td>
+                    <td class="text-center">{{ t.prakas_category|default:"-" }}</td>
+                    <td class="text-center font-monospace">{{ t.prakas_year|default:"-" }}</td>
+                    <td class="text-center">{{ t.prakas_number|default:"-" }}</td>
+                    <td class="font-monospace">{{ t.phone }}</td>
+                    <td class="text-center no-print">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'teacher_detail' t.id %}" class="btn btn-outline-primary btn-xs py-0 px-1" title="មើលលម្អិត">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            {% if is_admin %}
+                            <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light btn-xs py-0 px-1" title="កែប្រែ">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1" onclick="confirmDeleteTeacher('{{ t.id }}', '{{ t.khmer_name|escapejs }}')" title="លុប">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="18" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-user-xmark fs-2 text-secondary mb-2 d-block"></i>
+                        មិនទាន់មានទិន្នន័យគ្រូបង្រៀននៅឡើយទេ
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- View 2: Cards Grid View -->
+<div id="cardsGridView" class="row g-4 d-none">
     {% for t in teachers %}
     <div class="col-md-6 col-xl-4">
         <div class="custom-card h-100">
@@ -69,6 +172,8 @@
             <div class="p-3 bg-light rounded-3 mb-3 small">
                 <div class="mb-1"><strong>ឯកទេស៖</strong> <span class="text-primary fw-bold">{{ t.specialization }}</span></div>
                 <div class="mb-1"><strong>កម្រិតវប្បធម៌៖</strong> {{ t.qualification|default:"បរិញ្ញាបត្រ" }}</div>
+                <div class="mb-1"><strong>កម្រិតបណ្តុះបណ្តាល៖</strong> {{ t.training_level|default:"-" }}</div>
+                <div class="mb-1"><strong>ភារកិច្ច៖</strong> {{ t.current_duty|default:"គ្រូបង្រៀន" }}</div>
                 <div class="mb-1"><strong>ទូរស័ព្ទ៖</strong> {{ t.phone }}</div>
                 <div><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ t.base_salary }}</span></div>
             </div>
@@ -82,9 +187,12 @@
                         <i class="fa-solid fa-eye me-1"></i> មើលប្រវត្តិ
                     </a>
                     {% if is_admin %}
-                    <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light">
+                    <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light" title="កែប្រែ">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </a>
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmDeleteTeacher('{{ t.id }}', '{{ t.khmer_name|escapejs }}')" title="លុបគ្រូនេះ">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                     {% endif %}
                 </div>
             </div>
@@ -96,4 +204,97 @@
     </div>
     {% endfor %}
 </div>
+
+{% if is_admin %}
+<!-- Delete All Teachers Modal -->
+<div class="modal fade" id="deleteAllTeachersModal" tabindex="-1" aria-labelledby="deleteAllTeachersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold" id="deleteAllTeachersModalLabel">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបគ្រូទាំងអស់
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'teacher_delete_all' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-trash-can fa-3x text-danger"></i>
+                    </div>
+                    <h5 class="fw-bold text-danger mb-2">តើលោកអ្នកប្រាកដជាចង់លុបទិន្នន័យគ្រូបង្រៀនទាំងអស់មែនទេ?</h5>
+                    <p class="text-muted small mb-3">
+                        សកម្មភាពនេះនឹងលុបគ្រូបង្រៀនសរុបចំនួន <strong class="text-danger fs-6">{{ total_count }}</strong> នាក់ រួមទាំងប្រវត្តិរូប, គណនី Login, កំណត់ត្រាវត្តមាន, និងពាក្យសុំច្បាប់ទាំងអស់ចេញពីប្រព័ន្ធ។
+                    </p>
+                    <div class="alert alert-warning text-start small mb-0">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i> <strong>ចំណាំ៖</strong> ទិន្នន័យដែលបានលុប មិនអាចត្រឡប់ក្រោយវិញបានទេ (លើកលែងតែលោកអ្នកមាន Backup Database)។
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger px-4 rounded-pill fw-bold">
+                        <i class="fa-solid fa-trash-can me-1"></i> បាទ/ចាស លុបគ្រូទាំងអស់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Single Teacher Delete Modal -->
+<div class="modal fade" id="deleteSingleTeacherModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-trash me-2"></i> លុបគ្រូបង្រៀន
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteSingleTeacherForm" method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <p class="mb-2">តើលោកអ្នកពិតជាចង់លុបគ្រូបង្រៀន <strong id="deleteTeacherName" class="text-danger"></strong> មែនទេ?</p>
+                    <span class="text-muted small">សកម្មភាពនេះនឹងលុបប្រវត្តិរូប និងគណនី Login របស់គ្រូរូបនេះ។</span>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger px-4 rounded-pill fw-bold">
+                        <i class="fa-solid fa-trash me-1"></i> លុប
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTeacherView(mode) {
+    const tableView = document.getElementById('moeysTableView');
+    const cardsView = document.getElementById('cardsGridView');
+    const btnTable = document.getElementById('viewBtnTable');
+    const btnCards = document.getElementById('viewBtnCards');
+
+    if (mode === 'table') {
+        tableView.classList.remove('d-none');
+        cardsView.classList.add('d-none');
+        btnTable.classList.add('active');
+        btnCards.classList.remove('active');
+    } else {
+        tableView.classList.add('d-none');
+        cardsView.classList.remove('d-none');
+        btnTable.classList.remove('active');
+        btnCards.classList.add('active');
+    }
+}
+
+function confirmDeleteTeacher(teacherId, teacherName) {
+    const form = document.getElementById('deleteSingleTeacherForm');
+    form.action = `/teachers/${teacherId}/delete/`;
+    document.getElementById('deleteTeacherName').textContent = teacherName;
+    const modal = new bootstrap.Modal(document.getElementById('deleteSingleTeacherModal'));
+    modal.show();
+}
+</script>
+{% endif %}
 {% endblock %}

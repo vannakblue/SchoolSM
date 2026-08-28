@@ -94,6 +94,33 @@ class NotificationLog(models.Model):
         return f"[{self.channel}] {self.title} -> {self.recipient_name}"
 
 
+class DirectChatMessage(models.Model):
+    class Category(models.TextChoices):
+        PROFILE_CORRECTION = 'profile_correction', 'ស្នើសុំកែប្រែព័ត៌មានអត្តសញ្ញាណ'
+        GENERAL_INQUIRY = 'general_inquiry', 'សាកសួររដ្ឋបាល/ប្រាក់ខែ'
+        TECHNICAL_HELP = 'technical_help', 'បញ្ហាបច្ចេកទេស'
+        ADMIN_RESPONSE = 'admin_response', 'សារឆ្លើយតបពីរដ្ឋបាល'
+        OTHER = 'other', 'សារទូទៅ'
+
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_chat_messages', verbose_name="អ្នកផ្ញើ / Sender")
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='received_chat_messages', verbose_name="អ្នកទទួល / Recipient")
+    message = models.TextField(verbose_name="ខ្លឹមសារសារ / Message Content", blank=True, default='')
+    voice_file = models.FileField(upload_to='chat_voice/', blank=True, null=True, verbose_name="ឯកសារសំឡេង / Voice File")
+    voice_duration = models.IntegerField(default=0, verbose_name="រយៈពេលសំឡេង (វិនាទី) / Duration (seconds)")
+    category = models.CharField(max_length=50, choices=Category.choices, default=Category.PROFILE_CORRECTION, verbose_name="ប្រភេទសារ / Category")
+    is_from_admin = models.BooleanField(default=False, verbose_name="ផ្ញើដោយ Admin / From Admin")
+    is_read = models.BooleanField(default=False, verbose_name="បានអាន / Is Read")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="កាលបរិច្ឆេទ / Created At")
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = "សារជជែកផ្ទាល់ / Direct Chat Message"
+        verbose_name_plural = "សារជជែកផ្ទាល់ / Direct Chat Messages"
+
+    def __str__(self):
+        return f"{self.sender.display_name} -> {self.recipient.display_name if self.recipient else 'Admin'}: {self.message[:30]}"
+
+
 class SchoolProfile(models.Model):
     """
     Singleton School Profile model holding official school identity, logo, MoEYS administrative info,

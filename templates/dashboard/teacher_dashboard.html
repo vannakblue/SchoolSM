@@ -9,6 +9,9 @@
         <p class="text-muted small mb-0">សូមស្វាគមន៍ លោកគ្រូ/អ្នកគ្រូ <strong>{{ teacher.khmer_name|default:request.user.display_name }}</strong> (ឯកទេស: {{ teacher.specialization|default:"គ្រូបង្រៀន" }})</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'teacher_self_update_portal' %}" class="btn btn-warning text-dark rounded-pill fw-bold shadow-sm">
+            <i class="fa-solid fa-id-card-clip me-1"></i> បំពេញ/ផ្ទៀងផ្ទាត់ព័ត៌មាន (Portal)
+        </a>
         <a href="{% url 'teacher_mobile_qr_scan' %}" class="btn btn-primary rounded-pill fw-bold shadow-sm">
             <i class="fa-solid fa-camera me-1"></i> ស្កេន Check-in លើទូរស័ព្ទ
         </a>

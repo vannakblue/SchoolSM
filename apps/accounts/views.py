@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from .forms import LoginForm, UserProfileForm, TelegramConfigForm, SchoolProfileForm
-from .models import User, TelegramConfig, NotificationLog, SchoolProfile, MenuSection, MenuItem, RoleMenuPermission
+from .models import User, TelegramConfig, NotificationLog, SchoolProfile, MenuSection, MenuItem, RoleMenuPermission, DirectChatMessage
 from .decorators import role_required
 from .utils import send_telegram_notification
 
@@ -224,7 +224,322 @@ def profile_view(request):
     else:
         form = UserProfileForm(instance=user)
     
-    return render(request, 'accounts/profile.html', {'form': form, 'user_obj': user})
+    teacher_obj = getattr(user, 'teacher_profile', None)
+    school_profile = SchoolProfile.get_settings()
+    return render(request, 'accounts/profile.html', {
+        'form': form,
+        'user_obj': user,
+        'teacher_obj': teacher_obj,
+        'school_profile': school_profile,
+    })
+
+
+@login_required
+def teacher_request_profile_change(request):
+    """
+    Allows teachers to submit an official profile correction/update request to the admin.
+    Dispatches an instant Telegram alert to the Admin and logs in NotificationLog.
+    """
+    import datetime
+    if request.method == 'POST':
+        field_name = request.POST.get('field_name', '').strip()
+        new_value = request.POST.get('new_value', '').strip()
+        reason = request.POST.get('reason', '').strip()
+
+        if not field_name or not new_value:
+            messages.warning(request, "⚠️ សូមជ្រើសរើសប្រភេទព័ត៌មាន និងបញ្ចូលទិន្នន័យថ្មីដែលត្រឹមត្រូវ!")
+            return redirect('profile')
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        teacher_display = teacher.khmer_name if teacher else (request.user.khmer_name or request.user.username)
+        teacher_id_str = teacher.teacher_id if teacher else request.user.username
+        phone_str = request.user.phone or (teacher.phone if teacher else '-')
+
+        field_labels = {
+            'khmer_name': 'ឈ្មោះជាភាសាខ្មែរ (Khmer Name)',
+            'latin_name': 'ឈ្មោះជាអក្សរឡាតាំង (Latin Name)',
+            'gender': 'ភេទ (Gender)',
+            'date_of_birth': 'ថ្ងៃខែឆ្នាំកំណើត (DOB)',
+            'teacher_id': 'អត្តលេខគ្រូ (Teacher ID)',
+            'specialization': 'ឯកទេសបង្រៀន (Specialization)',
+            'other': 'ព័ត៌មានផ្សេងៗ (Other Information)',
+        }
+        field_display = field_labels.get(field_name, field_name)
+
+        now_str = datetime.datetime.now().strftime('%d-%m-%Y %H:%M')
+        tg_title = "🔔 សំណើសុំកែប្រែព័ត៌មានអត្តសញ្ញាណគ្រូ"
+        tg_msg = (
+            f"🔔 <b>[សំណើសុំកែប្រែព័ត៌មានគ្រូ / Teacher Profile Correction Request]</b>\n\n"
+            f"👤 <b>គ្រូបង្រៀន៖</b> {teacher_display} (កូដ: <code>{teacher_id_str}</code>)\n"
+            f"📞 <b>លេខទូរស័ព្ទ៖</b> <code>{phone_str}</code>\n"
+            f"📌 <b>ព័ត៌មានដែលស្នើសុំកែ៖</b> {field_display}\n"
+            f"✏️ <b>ទិន្នន័យថ្មីដែលត្រឹមត្រូវ៖</b> <code>{new_value}</code>\n"
+            f"📝 <b>មូលហេតុ/កំណត់ចំណាំ៖</b> {reason or 'គ្មាន'}\n"
+            f"⏰ <b>ពេលវេលាស្នើសុំ៖</b> {now_str}\n\n"
+            f"👉 <i>សូម Admin ចូលទៅកាន់ប្រព័ន្ធដើម្បីពិនិត្យ និងកែសម្រួលជូនគ្រូ!</i>"
+        )
+
+        send_telegram_notification(
+            title=tg_title,
+            message=tg_msg,
+            recipient_name="Admin / រដ្ឋបាលសាលា",
+            recipient_phone=phone_str,
+            recipient_type="Admin"
+        )
+
+        messages.success(
+            request,
+            f"🎉 សំណើសុំកែប្រែ «{field_display}» ត្រូវបានផ្ញើជូន Admin តាមប្រព័ន្ធ Alert ស្វ័យប្រវត្តិតាម Telegram រួចរាល់! Admin នឹងពិនិត្យ និងកែសម្រួលជូនលោកអ្នកឆាប់ៗ។"
+        )
+
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER')
+        if next_url and 'profile' in next_url:
+            return redirect('profile')
+        elif next_url and 'teachers' in next_url and teacher:
+            return redirect('teacher_detail', pk=teacher.id)
+        return redirect('profile')
+
+    return redirect('profile')
+
+
+@login_required
+def api_pop_chat_send(request):
+    """
+    Handles two-way live chat messages between each teacher and the admin.
+    - Supports text messages & voice audio messages (MediaRecorder WebM/WAV/MP3).
+    - Teachers send requests/messages/voice to Admin (also alerts Admin Telegram).
+    - Admin sends direct replies back to specific teachers.
+    - Saved into DirectChatMessage table for persistent 1-on-1 thread history.
+    """
+    import json
+    import datetime
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Only POST method is allowed.'}, status=405)
+
+    msg_text = ''
+    category = 'profile_correction'
+    target_user_id = None
+    voice_file = request.FILES.get('voice_file')
+    voice_duration = 0
+
+    if request.content_type and 'application/json' in request.content_type:
+        try:
+            data = json.loads(request.body)
+            msg_text = str(data.get('message', '')).strip()
+            category = str(data.get('category', 'profile_correction')).strip()
+            target_user_id = data.get('target_user_id')
+        except Exception:
+            pass
+    else:
+        msg_text = request.POST.get('message', '').strip()
+        category = request.POST.get('category', 'profile_correction').strip()
+        target_user_id = request.POST.get('target_user_id')
+        try:
+            voice_duration = int(request.POST.get('voice_duration') or 0)
+        except Exception:
+            voice_duration = 0
+
+    if not msg_text and not voice_file:
+        return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូលខ្លឹមសារសារ ឬថតសំឡេង!'}, status=400)
+
+    if voice_file and not msg_text:
+        msg_text = f"🎙️ សារជាសំឡេង ({voice_duration}s)" if voice_duration > 0 else "🎙️ សារជាសំឡេង (Voice Note)"
+
+    user = request.user
+    is_admin = user.role == User.Role.ADMIN or user.is_superuser
+    now = datetime.datetime.now()
+    now_str = now.strftime('%d-%m-%Y %H:%M')
+
+    if is_admin:
+        # Admin sending direct reply to a specific teacher / user
+        if not target_user_id:
+            return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសគ្រូ ឬគណនីដែលត្រូវឆ្លើយតប!'}, status=400)
+        
+        target_user = get_object_or_404(User, id=target_user_id)
+        chat_msg = DirectChatMessage.objects.create(
+            sender=user,
+            recipient=target_user,
+            message=msg_text,
+            voice_file=voice_file,
+            voice_duration=voice_duration,
+            category=category or DirectChatMessage.Category.ADMIN_RESPONSE,
+            is_from_admin=True,
+            is_read=False
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'message_id': chat_msg.id,
+            'reply': msg_text,
+            'voice_url': chat_msg.voice_file.url if chat_msg.voice_file else '',
+            'voice_duration': chat_msg.voice_duration,
+            'is_from_admin': True,
+            'is_me': True,
+            'timestamp': now_str,
+            'sender_name': user.display_name
+        })
+
+    else:
+        # Teacher or standard user sending to Admin
+        admin_user = User.objects.filter(role=User.Role.ADMIN).first() or User.objects.filter(is_superuser=True).first()
+        chat_msg = DirectChatMessage.objects.create(
+            sender=user,
+            recipient=admin_user,
+            message=msg_text,
+            voice_file=voice_file,
+            voice_duration=voice_duration,
+            category=category or DirectChatMessage.Category.PROFILE_CORRECTION,
+            is_from_admin=False,
+            is_read=False
+        )
+
+        teacher = getattr(user, 'teacher_profile', None)
+        student = getattr(user, 'student_profile', None)
+        sender_name = user.display_name
+        sender_role = user.get_role_display()
+        sender_id = teacher.teacher_id if teacher else (student.student_id if student else user.username)
+        sender_phone = user.phone or (teacher.phone if teacher else (student.phone if student else '-'))
+
+        cat_map = {
+            'profile_correction': '📌 ស្នើសុំកែប្រែព័ត៌មានអត្តសញ្ញាណ (Profile Correction)',
+            'general_inquiry': '❓ សាកសួរព័ត៌មានរដ្ឋបាល/ប្រាក់ខែ (General Inquiry)',
+            'technical_help': '🛠️ រាយការណ៍បញ្ហាបច្ចេកទេស (Technical Help)',
+            'other': '💬 សារទូទៅ (Live Pop Chat)',
+        }
+        cat_label = cat_map.get(category, '💬 សារពី Pop Chat')
+
+        tg_title = f"💬 Pop Chat: សារស្នើសុំពី {sender_name}"
+        tg_msg = (
+            f"💬 <b>[សារថ្មីពី Pop Chat On-Screen / Live Chat Request]</b>\n\n"
+            f"👤 <b>អ្នកផ្ញើ៖</b> {sender_name} (តួនាទី: <code>{sender_role}</code>)\n"
+            f"🆔 <b>កូដសម្គាល់៖</b> <code>{sender_id}</code>\n"
+            f"📞 <b>ទូរស័ព្ទ៖</b> <code>{sender_phone or '-'}</code>\n"
+            f"🏷️ <b>ប្រភេទសំណើ៖</b> {cat_label}\n\n"
+            f"📝 <b>ខ្លឹមសារសារ៖</b>\n<i>«{msg_text}»</i>\n\n"
+            f"⏰ <b>ពេលវេលា៖</b> {now_str}\n"
+            f"👉 <i>សូម Admin ចូលទៅកាន់ Pop Chat ឬប្រព័ន្ធដើម្បីឆ្លើយតបជូនគ្រូ!</i>"
+        )
+
+        send_telegram_notification(
+            title=tg_title,
+            message=tg_msg,
+            recipient_name="Admin / រដ្ឋបាលសាលា",
+            recipient_phone=sender_phone,
+            recipient_type="Admin"
+        )
+
+        reply_msg = (
+            f"✅ សារ{'សំឡេង' if voice_file else ''}របស់អ្នកត្រូវបានបញ្ជូនជា **Alert ស្វ័យប្រវត្តិតាម Telegram ទៅកាន់ Admin** រួចរាល់ហើយ!\n"
+            f"Admin នឹងពិនិត្យមើល និងធ្វើការឆ្លើយតបជូនលោកអ្នកតាមប្រព័ន្ធ Chat នេះឆាប់ៗ។"
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'reply': reply_msg,
+            'message_id': chat_msg.id,
+            'voice_url': chat_msg.voice_file.url if chat_msg.voice_file else '',
+            'voice_duration': chat_msg.voice_duration,
+            'is_from_admin': False,
+            'is_me': True,
+            'timestamp': now_str,
+            'sender_name': sender_name
+        })
+
+
+@login_required
+def api_pop_chat_history(request):
+    """
+    Returns full two-way message history:
+    - For Teachers: returns their 1-on-1 thread with Admin.
+    - For Admin: returns the 1-on-1 thread with the selected target teacher.
+    """
+    from django.db.models import Q
+    user = request.user
+    is_admin = user.role == User.Role.ADMIN or user.is_superuser
+    target_user_id = request.GET.get('target_user_id') or request.GET.get('teacher_id')
+
+    if is_admin:
+        if not target_user_id:
+            return JsonResponse({'status': 'success', 'messages': []})
+        target_user = get_object_or_404(User, id=target_user_id)
+        # Mark unread incoming messages from target_user as read
+        DirectChatMessage.objects.filter(sender=target_user, is_read=False).update(is_read=True)
+        messages_qs = DirectChatMessage.objects.filter(
+            Q(sender=target_user) | Q(recipient=target_user)
+        ).select_related('sender', 'recipient').order_by('created_at')
+    else:
+        # For Teacher: mark incoming admin replies as read
+        DirectChatMessage.objects.filter(recipient=user, is_from_admin=True, is_read=False).update(is_read=True)
+        messages_qs = DirectChatMessage.objects.filter(
+            Q(sender=user) | Q(recipient=user)
+        ).select_related('sender', 'recipient').order_by('created_at')
+
+    msg_list = []
+    for m in messages_qs:
+        msg_list.append({
+            'id': m.id,
+            'sender_id': m.sender_id,
+            'sender_name': m.sender.display_name,
+            'is_from_admin': m.is_from_admin,
+            'is_me': (m.sender_id == user.id),
+            'message': m.message,
+            'voice_url': m.voice_file.url if m.voice_file else '',
+            'voice_duration': m.voice_duration,
+            'category': m.get_category_display(),
+            'created_at': m.created_at.strftime('%d-%m-%Y %H:%M')
+        })
+
+    return JsonResponse({'status': 'success', 'messages': msg_list})
+
+
+@login_required
+def api_pop_chat_threads(request):
+    """
+    For Admin: returns the list of all teacher conversation threads with unread counts & last message preview.
+    """
+    from django.db.models import Q, Max
+    user = request.user
+    is_admin = user.role == User.Role.ADMIN or user.is_superuser
+    if not is_admin:
+        return JsonResponse({'status': 'error', 'message': 'Access denied.'}, status=403)
+
+    # Get all users who have exchanged chat messages or are teachers
+    user_ids_with_chats = set(DirectChatMessage.objects.values_list('sender_id', flat=True)).union(
+        set(DirectChatMessage.objects.exclude(recipient__isnull=True).values_list('recipient_id', flat=True))
+    )
+    user_ids_with_chats.discard(user.id)
+
+    # Add all teachers
+    teacher_user_ids = set(User.objects.filter(role=User.Role.TEACHER).values_list('id', flat=True))
+    all_target_user_ids = user_ids_with_chats.union(teacher_user_ids)
+
+    threads = []
+    for uid in all_target_user_ids:
+        u = User.objects.filter(id=uid).select_related('teacher_profile').first()
+        if not u or u.role == User.Role.ADMIN:
+            continue
+
+        teacher = getattr(u, 'teacher_profile', None)
+        identifier = teacher.teacher_id if teacher else u.username
+        unread_count = DirectChatMessage.objects.filter(sender=u, is_read=False).count()
+        last_msg = DirectChatMessage.objects.filter(Q(sender=u) | Q(recipient=u)).order_by('-created_at').first()
+
+        threads.append({
+            'user_id': u.id,
+            'name': u.display_name,
+            'role': u.get_role_display(),
+            'identifier': identifier,
+            'phone': u.phone or (teacher.phone if teacher else '-'),
+            'unread_count': unread_count,
+            'last_message': last_msg.message if last_msg else 'មិនទាន់មានសារ',
+            'last_message_time': last_msg.created_at.strftime('%d-%m %H:%M') if last_msg else '',
+            'last_timestamp': last_msg.created_at.timestamp() if last_msg else 0
+        })
+
+    # Sort threads: unread first, then newest message
+    threads.sort(key=lambda x: (x['unread_count'] > 0, x['last_timestamp']), reverse=True)
+
+    return JsonResponse({'status': 'success', 'threads': threads})
 
 
 @login_required
