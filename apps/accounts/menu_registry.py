@@ -481,14 +481,6 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'tool_pdf_split',
             },
             {
-                'key': 'tool_pdf_to_word_excel',
-                'name_kh': 'PDF ទៅ Word & Excel',
-                'name_en': 'PDF to Word & Excel',
-                'icon': 'fa-solid fa-file-word text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
-                'url_name': 'tool_pdf_to_word_excel',
-            },
-            {
                 'key': 'tool_images_to_pdf',
                 'name_kh': 'រូបភាពទៅជា PDF',
                 'name_en': 'Images to PDF Tool',
@@ -626,6 +618,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN'],
                 'url_name': 'menu_permissions',
             },
+            {
+                'key': 'tool_database_backup',
+                'name_kh': 'Database Backup & Snapshot',
+                'name_en': 'Database Backup & Snapshot',
+                'icon': 'fa-solid fa-database text-success',
+                'default_roles': ['ADMIN'],
+                'url_name': 'tool_database_backup',
+            },
         ]
     },
 ]
@@ -639,7 +639,11 @@ def sync_system_menus_to_db():
     Synchronizes static catalogue into database MenuSection and MenuItem records.
     Safe to run repeatedly; creates missing records and preserves custom additions.
     """
+    valid_sec_codes = set()
+    valid_item_codes = set()
+
     for sec_idx, sec_data in enumerate(MENU_SECTIONS_CATALOG):
+        valid_sec_codes.add(sec_data['key'])
         sec_obj, _ = MenuSection.objects.get_or_create(
             code=sec_data['key'],
             defaults={
@@ -655,6 +659,7 @@ def sync_system_menus_to_db():
         )
 
         for item_idx, item_data in enumerate(sec_data.get('items', [])):
+            valid_item_codes.add(item_data['key'])
             MenuItem.objects.get_or_create(
                 code=item_data['key'],
                 defaults={
@@ -670,6 +675,10 @@ def sync_system_menus_to_db():
                     'default_roles': ','.join(item_data.get('default_roles', ['ADMIN'])),
                 }
             )
+
+    # Clean up obsolete system menus
+    MenuItem.objects.filter(is_system=True).exclude(code__in=valid_item_codes).delete()
+    MenuSection.objects.filter(is_system=True).exclude(code__in=valid_sec_codes).delete()
 
 
 def get_menu_catalog() -> List[Dict[str, Any]]:

@@ -28,11 +28,14 @@ echo   [7] Start Public Online Tunnel (Access via 5G / Internet from anywhere)
 echo   [8] Backup Database (Create Instant Snapshot / Save Test Data)
 echo   [9] Restore Database (Restore from Snapshot / Backup File)
 echo   [10] Open Backups Folder in File Explorer
+echo   [11] Push Code to GitHub (Auto-Deploy to Render.com)
+echo   [12] Setup / Fix Python Environment (.venv & Packages)
+echo   [13] Create Clean Project Backup (.ZIP archive)
 echo   [0] Exit
 echo.
 echo ================================================================
 set choice=1
-set /p choice="Enter your choice [0-10] (Press Enter for Option 1): "
+set /p choice="Enter your choice [0-13] (Press Enter for Option 1): "
 
 if "%choice%"=="1" goto start_server
 if "%choice%"=="2" goto migrate
@@ -44,6 +47,9 @@ if "%choice%"=="7" goto start_tunnel
 if "%choice%"=="8" goto backup_db
 if "%choice%"=="9" goto restore_db
 if "%choice%"=="10" goto open_backups
+if "%choice%"=="11" goto push_github
+if "%choice%"=="12" goto setup_env
+if "%choice%"=="13" goto backup_zip
 if "%choice%"=="0" goto end
 
 echo Invalid option! Please try again.
@@ -204,6 +210,33 @@ echo Opening backups folder in Windows Explorer...
 if not exist "backups" mkdir backups
 start explorer "backups"
 timeout /t 1 >nul
+goto menu
+
+:push_github
+if exist "push_github.bat" (
+    call push_github.bat
+) else (
+    echo [ERROR] push_github.bat not found!
+    pause
+)
+goto menu
+
+:setup_env
+if exist "setup_env.bat" (
+    call setup_env.bat
+) else (
+    echo [ERROR] setup_env.bat not found!
+    pause
+)
+goto menu
+
+:backup_zip
+if exist "backup_project_zip.bat" (
+    call backup_project_zip.bat
+) else (
+    echo [ERROR] backup_project_zip.bat not found!
+    pause
+)
 goto menu
 
 :end
