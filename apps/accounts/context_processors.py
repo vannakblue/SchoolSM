@@ -12,6 +12,14 @@ def user_role_context(request):
     and dynamic database-driven sidebar catalog & permissions to all templates
     """
     is_maintenance_mode = (Path(settings.BASE_DIR) / 'maintenance.flag').exists() or os.environ.get('MAINTENANCE_MODE') == '1'
+    if not is_maintenance_mode:
+        try:
+            from apps.attendance.models import AttendanceSetting
+            att_settings = AttendanceSetting.get_settings()
+            if att_settings and att_settings.is_maintenance_mode:
+                is_maintenance_mode = True
+        except Exception:
+            pass
     try:
         school_info = SchoolProfile.get_settings()
     except Exception:
