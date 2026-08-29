@@ -644,23 +644,33 @@ function handlePopChatSubmit(e) {
 }
 
 // ---------------- ADMIN FUNCTIONS ----------------
-function loadAdminThreads() {
+let adminSearchDebounceTimer = null;
+
+function loadAdminThreads(searchQuery = '') {
     const listContainer = document.getElementById('adminThreadsList');
     if (!listContainer) return;
 
-    listContainer.innerHTML = `
-        <div class="text-center py-4 text-muted small">
-            <i class="fa-solid fa-spinner fa-spin text-primary fs-5 mb-2 d-block"></i>
-            កំពុងទាញយកបញ្ជីសារពីគ្រូ...
-        </div>
-    `;
+    if (!searchQuery) {
+        listContainer.innerHTML = `
+            <div class="text-center py-4 text-muted small">
+                <i class="fa-solid fa-spinner fa-spin text-primary fs-5 mb-2 d-block"></i>
+                កំពុងទាញយកសារ & សំណើពីគ្រូ...
+            </div>
+        `;
+    }
 
-    fetch("{% url 'api_pop_chat_threads' %}")
+    const url = searchQuery ? `{% url 'api_pop_chat_threads' %}?q=${encodeURIComponent(searchQuery)}` : `{% url 'api_pop_chat_threads' %}`;
+
+    fetch(url)
     .then(res => res.json())
     .then(data => {
         if (data.status === 'success') {
-            allAdminThreadsData = data.threads || [];
-            renderAdminThreads(allAdminThreadsData);
+            if (!searchQuery) {
+                allAdminThreadsData = data.threads || [];
+                renderAdminThreads(allAdminThreadsData, false);
+            } else {
+                renderAdminThreads(data.threads || [], true, searchQuery);
+            }
         }
     })
     .catch(err => {
@@ -668,55 +678,94 @@ function loadAdminThreads() {
     });
 }
 
-function renderAdminThreads(threads) {
+function renderAdminThreads(threads, isSearch = false, query = '') {
     const listContainer = document.getElementById('adminThreadsList');
     if (!listContainer) return;
 
     if (!threads.length) {
-        listContainer.innerHTML = `
-            <div class="text-center py-4 text-muted small">
-                <i class="fa-solid fa-comments fs-3 text-secondary mb-2 d-block"></i>
-                មិនទាន់មានសារស្នើសុំពីគ្រូឡើយ
-            </div>
-        `;
+        if (isSearch) {
+            listContainer.innerHTML = `
+                <div class="text-center py-4 text-muted small">
+                    <i class="fa-solid fa-user-slash fs-3 text-secondary mb-2 d-block"></i>
+                    រកមិនឃើញគ្រូបង្រៀនឈ្មោះ "<strong>${escapeHtmlPopChat(query)}</strong>" ទេ
+                </div>
+            `;
+        } else {
+            listContainer.innerHTML = `
+                <div class="text-center py-4 text-muted small">
+                    <i class="fa-solid fa-inbox fs-3 text-secondary mb-2 d-block"></i>
+                    <div class="fw-bold mb-1">មិនទាន់មានសារ ឬសំណើពីគ្រូឡើយ</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">💡 លោកអ្នកអាចវាយឈ្មោះគ្រូក្នុងប្រអប់ខាងលើ ដើម្បីស្វែងរក និងផ្ញើសារ</div>
+                </div>
+            `;
+        }
         return;
     }
 
     let html = '';
-    threads.forEach(t => {
-        html += `
-            <div class="thread-item p-2 mb-1 rounded border d-flex align-items-center justify-content-between" onclick="openAdminDirectChat(${t.user_id}, '${escapeHtmlPopChat(t.name)}', '${escapeHtmlPopChat(t.identifier)}', '${escapeHtmlPopChat(t.phone)}')">
-                <div class="d-flex align-items-center gap-2 overflow-hidden">
-                    <div class="avatar-circle flex-shrink-0" style="width: 38px; height: 38px; font-size: 1rem; background: linear-gradient(135deg, #4f46e5, #06b6d4); color: white;">
-                        ${t.name ? t.name.charAt(0).toUpperCase() : 'T'}
-                    </div>
-                    <div class="overflow-hidden">
-                        <div class="fw-bold small text-dark text-truncate">${escapeHtmlPopChat(t.name)} <span class="text-muted font-monospace" style="font-size:0.75rem;">(${escapeHtmlPopChat(t.identifier)})</span></div>
-                        <div class="text-muted small text-truncate" style="font-size: 0.75rem;">${escapeHtmlPopChat(t.last_message)}</div>
-                    </div>
-                </div>
-                <div class="text-end flex-shrink-0 ms-2">
-                    <div class="text-muted" style="font-size: 0.68rem;">${escapeHtmlPopChat(t.last_message_time)}</div>
-                    ${t.unread_count > 0 ? `<span class="badge bg-danger rounded-pill px-2" style="font-size:0.65rem;">${t.unread_count} ថ្មី</span>` : ''}
-                </div>
-            </div>
-        `;
-    });
+
+    if (isSearch) {
+        const activeChats = threads.filter(t => t.has_chat);
+        const newTeachers = threads.filter(t => !t.has_chat);
+
+        if (activeChats.length > 0) {
+            html += `<div class="px-2 py-1 small fw-bold text-muted" style="font-size: 0.72rem;"><i class="fa-solid fa-inbox me-1 text-primary"></i> សារដែលមានពីមុន (${activeChats.length})</div>`;
+            activeChats.forEach(t => {
+                html += renderSingleThreadItem(t);
+            });
+        }
+
+        if (newTeachers.length > 0) {
+            html += `<div class="px-2 py-1 mt-2 small fw-bold text-muted" style="font-size: 0.72rem;"><i class="fa-solid fa-chalkboard-user me-1 text-warning"></i> គ្រូបង្រៀនផ្សេងទៀត (${newTeachers.length}) - ចុចដើម្បីផ្ញើសារថ្មី</div>`;
+            newTeachers.forEach(t => {
+                html += renderSingleThreadItem(t, true);
+            });
+        }
+    } else {
+        threads.forEach(t => {
+            html += renderSingleThreadItem(t);
+        });
+    }
+
     listContainer.innerHTML = html;
 }
 
+function renderSingleThreadItem(t, isNew = false) {
+    return `
+        <div class="thread-item p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${isNew ? 'bg-light' : 'bg-white'}" onclick="openAdminDirectChat(${t.user_id}, '${escapeHtmlPopChat(t.name)}', '${escapeHtmlPopChat(t.identifier)}', '${escapeHtmlPopChat(t.phone)}')">
+            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                <div class="avatar-circle flex-shrink-0" style="width: 38px; height: 38px; font-size: 1rem; background: ${isNew ? 'linear-gradient(135deg, #64748b, #94a3b8)' : 'linear-gradient(135deg, #4f46e5, #06b6d4)'}; color: white;">
+                    ${t.name ? t.name.charAt(0).toUpperCase() : 'T'}
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fw-bold small text-dark text-truncate">
+                        ${escapeHtmlPopChat(t.name)} 
+                        <span class="text-muted font-monospace" style="font-size:0.75rem;">(${escapeHtmlPopChat(t.identifier)})</span>
+                    </div>
+                    <div class="${isNew ? 'text-primary' : 'text-muted'} small text-truncate" style="font-size: 0.75rem;">
+                        ${isNew ? '<i class="fa-regular fa-paper-plane me-1"></i> ចុចទីនេះដើម្បីចាប់ផ្តើមជជែក' : escapeHtmlPopChat(t.last_message)}
+                    </div>
+                </div>
+            </div>
+            <div class="text-end flex-shrink-0 ms-2">
+                <div class="text-muted" style="font-size: 0.68rem;">${escapeHtmlPopChat(t.last_message_time)}</div>
+                ${t.unread_count > 0 ? `<span class="badge bg-danger rounded-pill px-2" style="font-size:0.65rem;">${t.unread_count} ថ្មី</span>` : ''}
+            </div>
+        </div>
+    `;
+}
+
 function filterAdminThreads() {
-    const q = (document.getElementById('adminThreadSearch')?.value || '').toLowerCase().trim();
+    const q = (document.getElementById('adminThreadSearch')?.value || '').trim();
     if (!q) {
-        renderAdminThreads(allAdminThreadsData);
+        renderAdminThreads(allAdminThreadsData, false);
         return;
     }
-    const filtered = allAdminThreadsData.filter(t => 
-        (t.name && t.name.toLowerCase().includes(q)) || 
-        (t.identifier && t.identifier.toLowerCase().includes(q)) ||
-        (t.phone && t.phone.includes(q))
-    );
-    renderAdminThreads(filtered);
+
+    clearTimeout(adminSearchDebounceTimer);
+    adminSearchDebounceTimer = setTimeout(() => {
+        loadAdminThreads(q);
+    }, 250);
 }
 
 function openAdminDirectChat(userId, name, identifier, phone) {

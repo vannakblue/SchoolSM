@@ -487,26 +487,43 @@ def api_pop_chat_history(request):
 @login_required
 def api_pop_chat_threads(request):
     """
-    For Admin: returns the list of all teacher conversation threads with unread counts & last message preview.
+    For Admin: returns conversation threads with teachers.
+    - Default (no search query): returns ONLY teachers/users who have active chat messages or requests.
+    - If search query `q` is provided: searches both existing conversations and all registered teachers,
+      enabling Admin to search, find, and start a direct chat with ANY teacher.
     """
-    from django.db.models import Q, Max
+    from django.db.models import Q
     user = request.user
     is_admin = user.role == User.Role.ADMIN or user.is_superuser
     if not is_admin:
         return JsonResponse({'status': 'error', 'message': 'Access denied.'}, status=403)
 
-    # Get all users who have exchanged chat messages or are teachers
+    search_query = request.GET.get('q', '').strip()
+
+    # 1. Get all users who have exchanged chat messages
     user_ids_with_chats = set(DirectChatMessage.objects.values_list('sender_id', flat=True)).union(
         set(DirectChatMessage.objects.exclude(recipient__isnull=True).values_list('recipient_id', flat=True))
     )
     user_ids_with_chats.discard(user.id)
 
-    # Add all teachers
-    teacher_user_ids = set(User.objects.filter(role=User.Role.TEACHER).values_list('id', flat=True))
-    all_target_user_ids = user_ids_with_chats.union(teacher_user_ids)
+    # 2. If search query is provided, search all matching teachers as well
+    if search_query:
+        teacher_matches = User.objects.filter(
+            Q(role=User.Role.TEACHER) | Q(id__in=user_ids_with_chats)
+        ).filter(
+            Q(username__icontains=search_query) |
+            Q(khmer_name__icontains=search_query) |
+            Q(latin_name__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(teacher_profile__teacher_id__icontains=search_query)
+        ).values_list('id', flat=True)[:30]
+        target_user_ids = set(teacher_matches)
+    else:
+        # Default: ONLY show users who have active conversations or requests
+        target_user_ids = user_ids_with_chats
 
     threads = []
-    for uid in all_target_user_ids:
+    for uid in target_user_ids:
         u = User.objects.filter(id=uid).select_related('teacher_profile').first()
         if not u or u.role == User.Role.ADMIN:
             continue
@@ -523,15 +540,16 @@ def api_pop_chat_threads(request):
             'identifier': identifier,
             'phone': u.phone or (teacher.phone if teacher else '-'),
             'unread_count': unread_count,
-            'last_message': last_msg.message if last_msg else 'មិនទាន់មានសារ',
+            'has_chat': last_msg is not None,
+            'last_message': last_msg.message if last_msg else '✨ ចុចទីនេះដើម្បីចាប់ផ្តើមជជែកថ្មី',
             'last_message_time': last_msg.created_at.strftime('%d-%m %H:%M') if last_msg else '',
             'last_timestamp': last_msg.created_at.timestamp() if last_msg else 0
         })
 
-    # Sort threads: unread first, then newest message
+    # Sort threads: unread first, then newest message, then alphabet
     threads.sort(key=lambda x: (x['unread_count'] > 0, x['last_timestamp']), reverse=True)
 
-    return JsonResponse({'status': 'success', 'threads': threads})
+    return JsonResponse({'status': 'success', 'threads': threads, 'is_search': bool(search_query)})
 
 
 @login_required
