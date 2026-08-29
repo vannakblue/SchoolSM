@@ -2842,6 +2842,99 @@ def teacher_assignments_manager(request):
     })
 
 
+@login_required
+@role_required(['ADMIN'])
+def teacher_assignments_reset_teacher(request, teacher_id):
+    """Reset/Clear assignments for a single teacher."""
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    teacher = get_object_or_404(Teacher, pk=teacher_id)
+    
+    cs_query = ClassSubject.objects.filter(teacher=teacher)
+    if active_year:
+        cs_query = cs_query.filter(classroom__academic_year=active_year)
+    
+    count = cs_query.count()
+    cs_query.update(teacher=None)
+    messages.success(request, f"បានសម្អាតការចាត់តាំងថ្នាក់ ({count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ {teacher.khmer_name} ជោគជ័យ!")
+    return redirect(f"/academics/teacher-assignments/?teacher={teacher.id}{f'&year={active_year.id}' if active_year else ''}")
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_assignments_reset_all(request):
+    """Reset/Clear all teacher class assignments for the active academic year."""
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    cs_query = ClassSubject.objects.filter(teacher__isnull=False)
+    if active_year:
+        cs_query = cs_query.filter(classroom__academic_year=active_year)
+    
+    count = cs_query.count()
+    cs_query.update(teacher=None)
+    messages.success(request, f"បានសម្អាតការចាត់តាំងគ្រូទាំងអស់ទូទាំងសាលា ({count} ការចាត់តាំង) ជោគជ័យ! លោកអ្នកអាចចាប់ផ្តើមចាត់តាំងថ្មីបាន។")
+    return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_assignments_auto_assign(request):
+    """
+    Intelligently auto-assign active teachers to classes based on their subject specialization
+    and max weekly hours quota (default 18h).
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('id'))
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    subjects = list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id'))
+    
+    rules_dict = {}
+    for r in GradeLevelRule.objects.all():
+        rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
+    
+    teacher_loads = {t.id: 0 for t in teachers}
+    teacher_max = {t.id: t.max_weekly_hours or 18 for t in teachers}
+    assigned_count = 0
+
+    with transaction.atomic():
+        for cls in classrooms:
+            for sub in subjects:
+                h_req = rules_dict.get((sub.id, cls.grade_level, cls.track))
+                if h_req is None:
+                    h_req = rules_dict.get((sub.id, cls.grade_level, 'GENERAL'), 0)
+                
+                if h_req <= 0:
+                    continue
+
+                # Find candidate teachers specializing in this subject
+                candidates = [t for t in teachers if sub.name_kh in (t.specialization or '') or (sub.name_en and sub.name_en.lower() in (t.specialization or '').lower())]
+                if not candidates:
+                    candidates = teachers # Fallback to any teacher
+
+                # Pick candidate with lowest current load that can fit this subject hours
+                candidates.sort(key=lambda t: (teacher_loads[t.id], t.id))
+                chosen = None
+                for cand in candidates:
+                    if teacher_loads[cand.id] + h_req <= teacher_max[cand.id]:
+                        chosen = cand
+                        break
+                if not chosen and candidates:
+                    chosen = candidates[0]
+
+                if chosen:
+                    cs, _ = ClassSubject.objects.get_or_create(classroom=cls, subject=sub)
+                    cs.teacher = chosen
+                    cs.save(update_fields=['teacher'])
+                    teacher_loads[chosen.id] += h_req
+                    assigned_count += 1
+
+    messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកូតាស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង) ជោគជ័យ!")
+    return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
+
+
 
 
 @login_required

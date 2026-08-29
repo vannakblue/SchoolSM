@@ -114,13 +114,23 @@
         <p class="text-muted small mb-0">ជ្រើសរើសគ្រូនីមួយៗ រួច Tick ថ្នាក់រៀន និងមុខវិជ្ជាដែលគាត់ត្រូវទទួលបន្ទុកបង្រៀន (ប្រព័ន្ធនឹងគណនាម៉ោងសរុបស្វ័យប្រវត្តិតាមមុខវិជ្ជា និងថ្នាក់)</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'teacher_create' %}" class="btn btn-primary btn-sm fw-bold">
+        <!-- Auto Assign by Specialization -->
+        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកូតាម៉ោង (១៨ ម៉ោង/សប្តាហ៍) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
+        </a>
+
+        <!-- Reset All Assignments -->
+        <a href="{% url 'teacher_assignments_reset_all' %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
+            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតការចាត់តាំងទាំងអស់ (Reset)
+        </a>
+
+        <a href="{% url 'teacher_create' %}" class="btn btn-primary btn-sm fw-bold shadow-sm">
             <i class="fa-solid fa-plus me-1"></i> បន្ថែមគ្រូថ្មី
         </a>
-        <a href="{% url 'teacher_import' %}" class="btn btn-outline-primary btn-sm fw-bold">
+        <a href="{% url 'teacher_import' %}" class="btn btn-outline-primary btn-sm fw-bold shadow-sm">
             <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូ (Import)
         </a>
-        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success btn-sm fw-bold">
+        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm">
             <i class="fa-solid fa-file-excel me-1"></i> នាំចេញ Excel
         </a>
     </div>
@@ -198,8 +208,13 @@
                         </div>
                     </div>
 
-                    <!-- Top Action Button -->
-                    <div>
+                    <!-- Top Action Buttons -->
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Reset This Teacher Button -->
+                        <a href="{% url 'teacher_assignments_reset_teacher' selected_teacher.id %}" class="btn btn-outline-danger fw-bold shadow-sm px-3 py-2 btn-sm" onclick="return confirm('តើលោកអ្នកចង់សម្អាតការចាត់តាំងថ្នាក់របស់គ្រូ {{ selected_teacher.khmer_name }} ទាំងអស់ឱ្យទៅជា 0 ថ្នាក់មែនទេ?')">
+                            <i class="fa-solid fa-rotate-left me-1"></i> សម្អាតគ្រូនេះ
+                        </a>
+
                         <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4 py-2">
                             <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការចាត់តាំង
                         </button>
