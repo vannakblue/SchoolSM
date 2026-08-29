@@ -72,7 +72,11 @@ def run_tests():
         }
     )
 
-    # Attach related items
+    # Attach related items (clean up previous test runs if any)
+    TeacherAttendance.objects.filter(teacher=t1, date=date.today()).delete()
+    TeacherPunchLog.objects.filter(teacher=t1, date=date.today()).delete()
+    TeacherBiometricProfile.objects.filter(teacher=t1).delete()
+
     TeacherAttendance.objects.create(
         teacher=t1,
         date=date.today(),
