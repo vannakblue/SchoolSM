@@ -2893,6 +2893,12 @@ def teacher_assignments_training_quotas_save(request):
                 if val_str.isdigit():
                     quotas[level_name] = max(1, min(60, int(val_str)))
 
+        # Handle adding new training level dynamically
+        new_name = request.POST.get('new_level_name', '').strip()
+        new_hours_str = request.POST.get('new_level_hours', '').strip()
+        if new_name and new_hours_str.isdigit():
+            quotas[new_name] = max(1, min(60, int(new_hours_str)))
+
         SavedDefaultConfig.objects.update_or_create(
             key='training_level_quotas',
             defaults={'data': quotas}
