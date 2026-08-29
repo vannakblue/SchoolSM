@@ -72,29 +72,100 @@
 <div id="moeysTableView" class="custom-card mb-4 p-0 overflow-hidden shadow-sm">
     <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle mb-0 text-nowrap" style="font-size: 0.82rem;">
-            <thead class="table-primary text-center align-middle" style="background-color: #1e3a8a; color: #ffffff;">
+            <thead class="table-primary text-center align-middle user-select-none" style="background-color: #1e3a8a; color: #ffffff;">
                 <tr>
                     <th rowspan="2" class="py-2" style="width: 45px;">ល.រ</th>
-                    <th rowspan="2" class="py-2">អត្តលេខ</th>
-                    <th rowspan="2" class="py-2">គោត្តនាម និងនាម</th>
-                    <th rowspan="2" class="py-2" style="width: 50px;">ភេទ</th>
-                    <th rowspan="2" class="py-2">ថ្ងៃខែឆ្នាំកំណើត</th>
-                    <th rowspan="2" class="py-2">កម្រិតវប្បធម៌</th>
-                    <th rowspan="2" class="py-2">ឯកទេស</th>
-                    <th rowspan="2" class="py-2">កម្រិតបណ្តុះបណ្តាល</th>
-                    <th rowspan="2" class="py-2">ថ្ងៃចូលបម្រើការងាររដ្ឋ</th>
-                    <th rowspan="2" class="py-2">ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់</th>
-                    <th rowspan="2" class="py-2">មុខវិជ្ជាឯកទេសទី១</th>
-                    <th rowspan="2" class="py-2">មុខវិជ្ជាឯកទេសទី២</th>
-                    <th rowspan="2" class="py-2">ភារកិច្ចបច្ចុប្បន្ន</th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="1" data-type="text" title="ចុចដើម្បីរៀបតាម អត្តលេខ">
+                        <a href="?sort=teacher_id&order={% if sort_by == 'teacher_id' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>អត្តលេខ</span>
+                            <i class="fa-solid {% if sort_by == 'teacher_id' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="2" data-type="text" title="ចុចដើម្បីរៀបតាម ឈ្មោះគ្រូ">
+                        <a href="?sort=khmer_name&order={% if sort_by == 'khmer_name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>គោត្តនាម និងនាម</span>
+                            <i class="fa-solid {% if sort_by == 'khmer_name' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" style="width: 50px;" data-col-idx="3" data-type="text" title="ចុចដើម្បីរៀបតាម ភេទ">
+                        <a href="?sort=gender&order={% if sort_by == 'gender' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ភេទ</span>
+                            <i class="fa-solid {% if sort_by == 'gender' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="4" data-type="date" title="ចុចដើម្បីរៀបតាម ថ្ងៃខែឆ្នាំកំណើត">
+                        <a href="?sort=date_of_birth&order={% if sort_by == 'date_of_birth' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ថ្ងៃខែឆ្នាំកំណើត</span>
+                            <i class="fa-solid {% if sort_by == 'date_of_birth' or sort_by == 'dob' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="5" data-type="text" title="ចុចដើម្បីរៀបតាម កម្រិតវប្បធម៌">
+                        <a href="?sort=qualification&order={% if sort_by == 'qualification' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>កម្រិតវប្បធម៌</span>
+                            <i class="fa-solid {% if sort_by == 'qualification' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="6" data-type="text" title="ចុចដើម្បីរៀបតាម ឯកទេស">
+                        <a href="?sort=specialization&order={% if sort_by == 'specialization' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ឯកទេស</span>
+                            <i class="fa-solid {% if sort_by == 'specialization' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="7" data-type="text" title="ចុចដើម្បីរៀបតាម កម្រិតបណ្តុះបណ្តាល">
+                        <a href="?sort=training_level&order={% if sort_by == 'training_level' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>កម្រិតបណ្តុះបណ្តាល</span>
+                            <i class="fa-solid {% if sort_by == 'training_level' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="8" data-type="date" title="ចុចដើម្បីរៀបតាម ថ្ងៃចូលបម្រើការងាររដ្ឋ">
+                        <a href="?sort=state_hire_date&order={% if sort_by == 'state_hire_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ថ្ងៃចូលបម្រើការងាររដ្ឋ</span>
+                            <i class="fa-solid {% if sort_by == 'state_hire_date' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="9" data-type="date" title="ចុចដើម្បីរៀបតាម ថ្ងៃតែងតាំងស៊ប់">
+                        <a href="?sort=permanent_date&order={% if sort_by == 'permanent_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ថ្ងៃខែឆ្នាំតែងតាំងស៊ប់</span>
+                            <i class="fa-solid {% if sort_by == 'permanent_date' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="10" data-type="text" title="ចុចដើម្បីរៀបតាម មុខវិជ្ជាឯកទេសទី១">
+                        <a href="?sort=primary_subject&order={% if sort_by == 'primary_subject' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>មុខវិជ្ជាឯកទេសទី១</span>
+                            <i class="fa-solid {% if sort_by == 'primary_subject' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="11" data-type="text" title="ចុចដើម្បីរៀបតាម មុខវិជ្ជាឯកទេសទី២">
+                        <a href="?sort=secondary_subject&order={% if sort_by == 'secondary_subject' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>មុខវិជ្ជាឯកទេសទី២</span>
+                            <i class="fa-solid {% if sort_by == 'secondary_subject' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="12" data-type="text" title="ចុចដើម្បីរៀបតាម ភារកិច្ចបច្ចុប្បន្ន">
+                        <a href="?sort=current_duty&order={% if sort_by == 'current_duty' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>ភារកិច្ចបច្ចុប្បន្ន</span>
+                            <i class="fa-solid {% if sort_by == 'current_duty' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
                     <th colspan="3" class="py-1 bg-primary text-white border-bottom-0">តាំងស៊ប់តាមប្រកាស</th>
-                    <th rowspan="2" class="py-2">លេខទូរស័ព្ទ</th>
+                    <th rowspan="2" class="py-2 sortable-th" data-col-idx="16" data-type="text" title="ចុចដើម្បីរៀបតាម លេខទូរស័ព្ទ">
+                        <a href="?sort=phone&order={% if sort_by == 'phone' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="text-white text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                            <span>លេខទូរស័ព្ទ</span>
+                            <i class="fa-solid {% if sort_by == 'phone' %}{% if order == 'desc' %}fa-sort-down text-warning fs-6{% else %}fa-sort-up text-warning fs-6{% endif %}{% else %}fa-sort text-white-50 small{% endif %}"></i>
+                        </a>
+                    </th>
                     <th rowspan="2" class="py-2 no-print" style="width: 80px;">សកម្មភាព</th>
                 </tr>
                 <tr class="bg-primary-subtle text-dark">
-                    <th class="py-1 small" style="font-size: 0.75rem;">ប្រភេទ</th>
-                    <th class="py-1 small" style="font-size: 0.75rem;">ឆ្នាំទទួល</th>
-                    <th class="py-1 small" style="font-size: 0.75rem;">ប្រ.លេខ</th>
+                    <th class="py-1 small sortable-th" style="font-size: 0.75rem;" data-col-idx="13" data-type="text" title="រៀបតាម ប្រភេទក្របខ័ណ្ឌ">
+                        <span>ប្រភេទ</span>
+                    </th>
+                    <th class="py-1 small sortable-th" style="font-size: 0.75rem;" data-col-idx="14" data-type="number" title="រៀបតាម ឆ្នាំទទួល">
+                        <span>ឆ្នាំទទួល</span>
+                    </th>
+                    <th class="py-1 small sortable-th" style="font-size: 0.75rem;" data-col-idx="15" data-type="text" title="រៀបតាម ប្រកាសលេខ">
+                        <span>ប្រ.លេខ</span>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -276,6 +347,22 @@
     </div>
 </div>
 
+<style>
+.sortable-th {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.sortable-th:hover {
+    background-color: #1d4ed8 !important;
+}
+.sortable-th a {
+    transition: color 0.15s ease;
+}
+.sortable-th a:hover {
+    color: #fde047 !important;
+}
+</style>
+
 <script>
 function switchTeacherView(mode) {
     const tableView = document.getElementById('moeysTableView');
@@ -303,6 +390,79 @@ function confirmDeleteTeacher(teacherId, teacherName) {
     const modal = new bootstrap.Modal(document.getElementById('deleteSingleTeacherModal'));
     modal.show();
 }
+
+// Instant Client-Side & Khmer-Aware Table Sorting on Column Headers
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('#moeysTableView table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    const ths = table.querySelectorAll('.sortable-th');
+
+    ths.forEach(th => {
+        th.addEventListener('click', function(e) {
+            const colIdx = parseInt(this.getAttribute('data-col-idx'));
+            if (isNaN(colIdx)) return;
+
+            const type = this.getAttribute('data-type') || 'text';
+            const currentDir = this.getAttribute('data-dir') === 'asc' ? 'desc' : 'asc';
+
+            // Reset sort icons on all other columns
+            ths.forEach(otherTh => {
+                if (otherTh !== this) {
+                    otherTh.removeAttribute('data-dir');
+                    const icon = otherTh.querySelector('i.fa-solid');
+                    if (icon) {
+                        icon.className = 'fa-solid fa-sort text-white-50 small';
+                    }
+                }
+            });
+
+            this.setAttribute('data-dir', currentDir);
+            const activeIcon = this.querySelector('i.fa-solid');
+            if (activeIcon) {
+                activeIcon.className = `fa-solid ${currentDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} text-warning fs-6`;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelectorAll('td').length > 5);
+            if (rows.length === 0) return;
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.children[colIdx]?.innerText.trim() || '';
+                const cellB = rowB.children[colIdx]?.innerText.trim() || '';
+
+                if (type === 'number') {
+                    const numA = parseFloat(cellA.replace(/[^0-9.-]+/g, '')) || 0;
+                    const numB = parseFloat(cellB.replace(/[^0-9.-]+/g, '')) || 0;
+                    return currentDir === 'asc' ? numA - numB : numB - numA;
+                } else if (type === 'date') {
+                    const parseDate = (s) => {
+                        if (!s || s === '-') return new Date(0);
+                        const parts = s.split('-');
+                        if (parts.length === 3) {
+                            if (parts[0].length === 2) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                            return new Date(s);
+                        }
+                        return new Date(0);
+                    };
+                    const dateA = parseDate(cellA);
+                    const dateB = parseDate(cellB);
+                    return currentDir === 'asc' ? dateA - dateB : dateB - dateA;
+                } else {
+                    return currentDir === 'asc' 
+                        ? cellA.localeCompare(cellB, 'km') 
+                        : cellB.localeCompare(cellA, 'km');
+                }
+            });
+
+            // Re-append sorted rows and dynamically update serial numbers (# 1..N)
+            rows.forEach((row, idx) => {
+                const seqCell = row.children[0];
+                if (seqCell) seqCell.innerText = idx + 1;
+                tbody.appendChild(row);
+            });
+        });
+    });
+});
 </script>
 {% endif %}
 {% endblock %}

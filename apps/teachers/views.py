@@ -27,6 +27,8 @@ from .utils import (
 def teacher_list(request):
     query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '')
+    sort_by = request.GET.get('sort', 'teacher_id')
+    order = request.GET.get('order', 'asc')
 
     teachers = Teacher.objects.all()
 
@@ -36,16 +38,48 @@ def teacher_list(request):
             Q(khmer_name__icontains=query) |
             Q(latin_name__icontains=query) |
             Q(specialization__icontains=query) |
-            Q(phone__icontains=query)
+            Q(phone__icontains=query) |
+            Q(current_duty__icontains=query) |
+            Q(primary_subject__icontains=query)
         )
 
     if status_filter:
         teachers = teachers.filter(status=status_filter)
 
+    # Valid sort mapping
+    valid_sorts = {
+        'id': 'id',
+        'teacher_id': 'teacher_id',
+        'khmer_name': 'khmer_name',
+        'latin_name': 'latin_name',
+        'gender': 'gender',
+        'dob': 'date_of_birth',
+        'date_of_birth': 'date_of_birth',
+        'qualification': 'qualification',
+        'specialization': 'specialization',
+        'training_level': 'training_level',
+        'state_hire_date': 'state_hire_date',
+        'permanent_date': 'permanent_date',
+        'primary_subject': 'primary_subject',
+        'secondary_subject': 'secondary_subject',
+        'current_duty': 'current_duty',
+        'prakas_year': 'prakas_year',
+        'phone': 'phone',
+        'status': 'status',
+    }
+
+    db_sort_field = valid_sorts.get(sort_by, 'teacher_id')
+    if order == 'desc':
+        teachers = teachers.order_by(f"-{db_sort_field}")
+    else:
+        teachers = teachers.order_by(db_sort_field)
+
     return render(request, 'teachers/teacher_list.html', {
         'teachers': teachers,
         'query': query,
         'selected_status': status_filter,
+        'sort_by': sort_by,
+        'order': order,
         'total_count': teachers.count()
     })
 
