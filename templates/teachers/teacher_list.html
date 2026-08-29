@@ -10,6 +10,9 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% if is_admin %}
+        <a href="{% url 'teacher_seed_moeys' %}" class="btn btn-warning text-dark fw-bold" onclick="return confirm('តើលោកអ្នកចង់បញ្ចូល/ធ្វើបច្ចុប្បន្នភាពទិន្នន័យគ្រូបង្រៀនផ្លូវការ MoEYS ២០២៦ (១១៩ នាក់) ចូលក្នុង Database ដែរឬទេ?');">
+            <i class="fa-solid fa-cloud-arrow-down me-1"></i> Sync គ្រូ ១១៩ នាក់ (MoEYS)
+        </a>
         <a href="{% url 'teacher_create' %}" class="btn btn-primary">
             <i class="fa-solid fa-plus me-1"></i> បន្ថែមគ្រូបង្រៀនថ្មី
         </a>
@@ -141,7 +144,12 @@
                 <tr>
                     <td colspan="18" class="text-center py-5 text-muted">
                         <i class="fa-solid fa-user-xmark fs-2 text-secondary mb-2 d-block"></i>
-                        មិនទាន់មានទិន្នន័យគ្រូបង្រៀននៅឡើយទេ
+                        <h6 class="fw-bold mb-2">មិនទាន់មានទិន្នន័យគ្រូបង្រៀននៅឡើយទេ</h6>
+                        {% if is_admin %}
+                        <a href="{% url 'teacher_seed_moeys' %}" class="btn btn-primary btn-sm px-3 shadow-sm" onclick="return confirm('តើលោកអ្នកចង់បញ្ចូលទិន្នន័យគ្រូបង្រៀនផ្លូវការ MoEYS ២០២៦ (១១៩ នាក់) ចូលក្នុង Database ដែរឬទេ?');">
+                            <i class="fa-solid fa-cloud-arrow-down me-1"></i> ចុចទីនេះដើម្បី Sync គ្រូផ្លូវការ ១១៩ នាក់ (MoEYS 2026)
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

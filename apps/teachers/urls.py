@@ -9,6 +9,7 @@ urlpatterns = [
     path('import/', views.teacher_import, name='teacher_import'),
     path('import/template/excel/', views.teacher_import_template_excel, name='teacher_import_template_excel'),
     path('import/template/csv/', views.teacher_import_template_csv, name='teacher_import_template_csv'),
+    path('seed-moeys/', views.teacher_seed_moeys_view, name='teacher_seed_moeys'),
     path('attendance/', views.teacher_attendance_view, name='teacher_attendance'),
     path('attendance/report/', views.teacher_attendance_report, name='teacher_attendance_report'),
     

@@ -1115,6 +1115,21 @@ def teacher_import(request):
     return render(request, 'teachers/teacher_import.html')
 
 
+@login_required
+@role_required(['ADMIN'])
+def teacher_seed_moeys_view(request):
+    """1-Click Sync/Restore all 119 MoEYS Teachers from embedded seed dataset into Database."""
+    from django.core.management import call_command
+    try:
+        call_command('import_teachers_moeys')
+        count = Teacher.objects.count()
+        messages.success(request, f"🎉 ជោគជ័យ! បានបញ្ចូលទិន្នន័យគ្រូបង្រៀនផ្លូវការ ១១៩ នាក់ ទៅក្នុង Database រួចរាល់ដោយជោគជ័យ (សរុប {count} នាក់)។")
+    except Exception as e:
+        messages.error(request, f"⚠️ មានបញ្ហាក្នុងការបញ្ចូលទិន្នន័យគ្រូ៖ {str(e)}")
+    return redirect('teacher_list')
+
+
+
 
 # =========================================================================
 # Teacher Information Re-Submission Campaign & Self-Update Portal
