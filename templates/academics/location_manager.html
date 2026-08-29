@@ -202,7 +202,7 @@
                 <select name="province_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">-- ខេត្ត/រាជធានីទាំងអស់ --</option>
                     {% for p in provinces %}
-                    <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name_kh }} ({{ p.name_en }})</option>
+                    <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>[{{ p.code }}] {{ p.name_kh }} ({{ p.name_en }})</option>
                     {% endfor %}
                 </select>
             </div>
@@ -214,7 +214,7 @@
                 <select name="district_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">-- ស្រុក/ខណ្ឌទាំងអស់ --</option>
                     {% for d in districts %}
-                    <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name_kh }}</option>
+                    <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>[{{ d.code }}] {{ d.name_kh }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -227,7 +227,7 @@
                 <select name="commune_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">-- ឃុំ/សង្កាត់ទាំងអស់ --</option>
                     {% for c in communes %}
-                    <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name_kh }}</option>
+                    <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>[{{ c.code }}] {{ c.name_kh }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -398,7 +398,7 @@
                         <select name="province_id" class="form-select" required>
                             <option value="">-- ជ្រើសរើសខេត្ត --</option>
                             {% for p in provinces %}
-                            <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name_kh }} ({{ p.name_en }})</option>
+                            <option value="{{ p.id }}" {% if province_id == p.id|stringformat:"s" %}selected{% endif %}>[{{ p.code }}] {{ p.name_kh }} ({{ p.name_en }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -408,10 +408,10 @@
                         <select name="district_id" class="form-select" required>
                             <option value="">-- ជ្រើសរើសស្រុក --</option>
                             {% for d in districts %}
-                            <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name_kh }} ({{ d.province.name_kh }})</option>
+                            <option value="{{ d.id }}" {% if district_id == d.id|stringformat:"s" %}selected{% endif %}>[{{ d.code }}] {{ d.name_kh }} ({{ d.province.name_kh }})</option>
                             {% empty %}
                             {% for d in items %}
-                            <option value="{{ d.id }}">{{ d.name_kh }}</option>
+                            <option value="{{ d.id }}">[{{ d.code }}] {{ d.name_kh }}</option>
                             {% endfor %}
                             {% endfor %}
                         </select>
@@ -422,10 +422,10 @@
                         <select name="commune_id" class="form-select" required>
                             <option value="">-- ជ្រើសរើសឃុំ --</option>
                             {% for c in communes %}
-                            <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name_kh }}</option>
+                            <option value="{{ c.id }}" {% if commune_id == c.id|stringformat:"s" %}selected{% endif %}>[{{ c.code }}] {{ c.name_kh }}</option>
                             {% empty %}
                             {% for c in items %}
-                            <option value="{{ c.id }}">{{ c.name_kh }}</option>
+                            <option value="{{ c.id }}">[{{ c.code }}] {{ c.name_kh }}</option>
                             {% endfor %}
                             {% endfor %}
                         </select>

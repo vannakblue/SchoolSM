@@ -3218,36 +3218,48 @@ def academic_year_set_current(request, pk):
 # =========================================================================
 # Location AJAX APIs (For Cascading Dropdowns in Forms)
 # =========================================================================
+def _location_sort_key(x):
+    code_str = str(x.get('code') or '').strip()
+    try:
+        return (0, int(code_str), code_str)
+    except ValueError:
+        return (1, 0, code_str)
+
+
 def api_locations_provinces(request):
-    provinces = Province.objects.all().order_by('code').values('id', 'code', 'name_kh', 'name_en')
-    return JsonResponse({'status': 'success', 'data': list(provinces)})
+    provinces = list(Province.objects.all().values('id', 'code', 'name_kh', 'name_en'))
+    provinces.sort(key=_location_sort_key)
+    return JsonResponse({'status': 'success', 'data': provinces})
 
 
 def api_locations_districts(request):
     province_id = request.GET.get('province_id')
-    districts = District.objects.all().order_by('code')
+    districts = District.objects.all()
     if province_id:
         districts = districts.filter(province_id=province_id)
-    data = districts.values('id', 'code', 'name_kh', 'name_en', 'province_id')
-    return JsonResponse({'status': 'success', 'data': list(data)})
+    data = list(districts.values('id', 'code', 'name_kh', 'name_en', 'province_id'))
+    data.sort(key=_location_sort_key)
+    return JsonResponse({'status': 'success', 'data': data})
 
 
 def api_locations_communes(request):
     district_id = request.GET.get('district_id')
-    communes = Commune.objects.all().order_by('code')
+    communes = Commune.objects.all()
     if district_id:
         communes = communes.filter(district_id=district_id)
-    data = communes.values('id', 'code', 'name_kh', 'name_en', 'district_id')
-    return JsonResponse({'status': 'success', 'data': list(data)})
+    data = list(communes.values('id', 'code', 'name_kh', 'name_en', 'district_id'))
+    data.sort(key=_location_sort_key)
+    return JsonResponse({'status': 'success', 'data': data})
 
 
 def api_locations_villages(request):
     commune_id = request.GET.get('commune_id')
-    villages = Village.objects.all().order_by('code')
+    villages = Village.objects.all()
     if commune_id:
         villages = villages.filter(commune_id=commune_id)
-    data = villages.values('id', 'code', 'name_kh', 'name_en', 'commune_id')
-    return JsonResponse({'status': 'success', 'data': list(data)})
+    data = list(villages.values('id', 'code', 'name_kh', 'name_en', 'commune_id'))
+    data.sort(key=_location_sort_key)
+    return JsonResponse({'status': 'success', 'data': data})
 
 
 # =========================================================================

@@ -453,11 +453,15 @@
 
         function populateSelect(selectEl, items, placeholder) {
             selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+            if (!items || !Array.isArray(items)) return;
             items.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.id;
-                opt.textContent = item.name_kh + (item.name_en ? ` (${item.name_en})` : '');
+                const codePrefix = item.code ? `[${item.code}] ` : '';
+                const enSuffix = item.name_en ? ` (${item.name_en})` : '';
+                opt.textContent = `${codePrefix}${item.name_kh}${enSuffix}`;
                 opt.dataset.nameKh = item.name_kh;
+                opt.dataset.code = item.code || '';
                 selectEl.appendChild(opt);
             });
         }

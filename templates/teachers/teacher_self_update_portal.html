@@ -693,8 +693,12 @@ document.addEventListener('DOMContentLoaded', function() {
         items.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item.id;
-            opt.textContent = item.name_kh || item.name_en;
-            opt.dataset.name = item.name_kh || item.name_en;
+            const codePrefix = item.code ? `[${item.code}] ` : '';
+            const nameKh = item.name_kh || item.name_en;
+            const enSuffix = (item.name_en && item.name_en !== nameKh) ? ` (${item.name_en})` : '';
+            opt.textContent = `${codePrefix}${nameKh}${enSuffix}`;
+            opt.dataset.name = nameKh;
+            opt.dataset.code = item.code || '';
             sel.appendChild(opt);
         });
     }
