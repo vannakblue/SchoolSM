@@ -15,8 +15,8 @@ def user_role_context(request):
     if not is_maintenance_mode:
         try:
             from apps.attendance.models import AttendanceSetting
-            att_settings = AttendanceSetting.get_settings()
-            if att_settings and att_settings.is_maintenance_mode:
+            setting_val = AttendanceSetting.objects.values_list('is_maintenance_mode', flat=True).first()
+            if setting_val:
                 is_maintenance_mode = True
         except Exception:
             pass

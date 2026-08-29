@@ -621,7 +621,7 @@
                     </div>
                 </div>
 
-                <form method="POST">
+                <form method="POST" action="{% url 'attendance_admin_hub' %}">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="toggle_maintenance">
                     <div class="p-4 bg-light rounded-4 border mb-4">
