@@ -515,6 +515,7 @@ def api_pop_chat_threads(request):
             Q(khmer_name__icontains=search_query) |
             Q(latin_name__icontains=search_query) |
             Q(phone__icontains=search_query) |
+            Q(teacher_profile__phone2__icontains=search_query) |
             Q(teacher_profile__teacher_id__icontains=search_query)
         ).values_list('id', flat=True)[:30]
         target_user_ids = set(teacher_matches)

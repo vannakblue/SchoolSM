@@ -39,6 +39,7 @@ def teacher_list(request):
             Q(latin_name__icontains=query) |
             Q(specialization__icontains=query) |
             Q(phone__icontains=query) |
+            Q(phone2__icontains=query) |
             Q(current_duty__icontains=query) |
             Q(primary_subject__icontains=query)
         )

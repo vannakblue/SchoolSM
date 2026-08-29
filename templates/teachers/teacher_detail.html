@@ -46,8 +46,10 @@
             <div class="text-start small p-3 bg-light rounded-3">
                 <div class="mb-2"><strong>អត្តលេខមន្ត្រី៖</strong> <span class="badge bg-primary">{{ teacher.teacher_id }}</span></div>
                 <div class="mb-2"><strong>ភេទ៖</strong> {{ teacher.get_gender_display }}</div>
-                <div class="mb-2"><strong>ថ្ងៃកំណើត៖</strong> {{ teacher.date_of_birth|date:"d-m-Y"|default:"-" }}</div>
-                <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ teacher.phone }}</div>
+                <div class="mb-2"><strong>ទូរស័ព្ទចម្បង៖</strong> <a href="tel:{{ teacher.phone }}" class="text-decoration-none fw-bold">{{ teacher.phone }}</a></div>
+                {% if teacher.phone2 %}
+                <div class="mb-2"><strong>ទូរស័ព្ទទី២ (Telegram)៖</strong> <a href="tel:{{ teacher.phone2 }}" class="text-decoration-none fw-bold text-info"><i class="fa-brands fa-telegram me-1"></i>{{ teacher.phone2 }}</a></div>
+                {% endif %}
                 <div class="mb-2"><strong>អ៊ីមែល៖</strong> {{ teacher.email|default:"-" }}</div>
                 <div class="mb-2"><strong>អាសយដ្ឋាន៖</strong> {{ teacher.address|default:"-" }}</div>
                 <div class="mb-2"><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ teacher.base_salary }}</span></div>

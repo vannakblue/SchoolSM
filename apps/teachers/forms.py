@@ -6,7 +6,7 @@ class TeacherForm(forms.ModelForm):
         model = Teacher
         fields = [
             'teacher_id', 'khmer_name', 'latin_name', 'gender', 'date_of_birth',
-            'phone', 'email', 'address', 'qualification', 'specialization',
+            'phone', 'phone2', 'email', 'address', 'qualification', 'specialization',
             'training_level', 'state_hire_date', 'permanent_date',
             'primary_subject', 'secondary_subject', 'current_duty',
             'prakas_category', 'prakas_year', 'prakas_number',
@@ -18,7 +18,8 @@ class TeacherForm(forms.ModelForm):
             'latin_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. SOK VIBOL'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),
             'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '012 345 678'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. 012 345 678 (ខ្សែទី១)'}),
+            'phone2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. 096 111 222 (ខ្សែទី២ / Telegram)'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'teacher@school.edu.kh'}),
             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ភូមិ ឃុំ ស្រុក ខេត្ត...'}),
             'qualification': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. បាក់ឌុប, បរិញ្ញាបត្រ, អនុបណ្ឌិត...'}),

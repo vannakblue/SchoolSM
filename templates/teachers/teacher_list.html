@@ -203,7 +203,12 @@
                     <td class="text-center">{{ t.prakas_category|default:"-" }}</td>
                     <td class="text-center font-monospace">{{ t.prakas_year|default:"-" }}</td>
                     <td class="text-center">{{ t.prakas_number|default:"-" }}</td>
-                    <td class="font-monospace">{{ t.phone }}</td>
+                    <td class="font-monospace small">
+                        <div>{{ t.phone }}</div>
+                        {% if t.phone2 %}
+                        <div class="text-muted" style="font-size:0.72rem;"><i class="fa-brands fa-telegram text-info me-1"></i>{{ t.phone2 }}</div>
+                        {% endif %}
+                    </td>
                     <td class="text-center no-print sticky-col-action">
                         <div class="btn-group btn-group-sm">
                             <a href="{% url 'teacher_detail' t.id %}" class="btn btn-outline-primary btn-xs py-0 px-1" title="មើលលម្អិត">
@@ -262,7 +267,12 @@
                 <div class="mb-1"><strong>កម្រិតវប្បធម៌៖</strong> {{ t.qualification|default:"បរិញ្ញាបត្រ" }}</div>
                 <div class="mb-1"><strong>កម្រិតបណ្តុះបណ្តាល៖</strong> {{ t.training_level|default:"-" }}</div>
                 <div class="mb-1"><strong>ភារកិច្ច៖</strong> {{ t.current_duty|default:"គ្រូបង្រៀន" }}</div>
-                <div class="mb-1"><strong>ទូរស័ព្ទ៖</strong> {{ t.phone }}</div>
+                <div class="mb-1">
+                    <strong>ទូរស័ព្ទ៖</strong> {{ t.phone }}
+                    {% if t.phone2 %}
+                    <span class="text-muted">/ <i class="fa-brands fa-telegram text-info"></i> {{ t.phone2 }}</span>
+                    {% endif %}
+                </div>
                 <div><strong>ប្រាក់ខែគោល៖</strong> <span class="text-success fw-bold">${{ t.base_salary }}</span></div>
             </div>
 
