@@ -3270,42 +3270,40 @@ def api_locations_villages(request):
 def location_manager_view(request):
     """
     Administrative Divisions Manager (Admin only).
-    Allows Admin to browse, search, and edit Province, District, Commune, and Village names.
+    Allows Admin to browse, search, sort, and edit Province, District, Commune, and Village names.
     """
     level = request.GET.get('level', 'province') # province, district, commune, village
     search = request.GET.get('q', '').strip()
     province_id = request.GET.get('province_id', '')
     district_id = request.GET.get('district_id', '')
     commune_id = request.GET.get('commune_id', '')
+    sort_by = request.GET.get('sort', 'code') # code, name_kh, name_en, parent
+    order = request.GET.get('order', 'asc') # asc, desc
 
     provinces = Province.objects.all().order_by('code')
     districts = District.objects.filter(province_id=province_id).order_by('code') if province_id else District.objects.none()
     communes = Commune.objects.filter(district_id=district_id).order_by('code') if district_id else Commune.objects.none()
 
-    items = []
     if level == 'province':
-        qs = Province.objects.all().order_by('code')
+        qs = Province.objects.all()
         if search:
             qs = qs.filter(Q(name_kh__icontains=search) | Q(name_en__icontains=search) | Q(code__icontains=search))
-        items = qs[:250]
     elif level == 'district':
-        qs = District.objects.select_related('province').all().order_by('province__code', 'code')
+        qs = District.objects.select_related('province').all()
         if province_id:
             qs = qs.filter(province_id=province_id)
         if search:
             qs = qs.filter(Q(name_kh__icontains=search) | Q(name_en__icontains=search) | Q(code__icontains=search))
-        items = qs[:250]
     elif level == 'commune':
-        qs = Commune.objects.select_related('district__province').all().order_by('district__code', 'code')
+        qs = Commune.objects.select_related('district__province').all()
         if district_id:
             qs = qs.filter(district_id=district_id)
         elif province_id:
             qs = qs.filter(district__province_id=province_id)
         if search:
             qs = qs.filter(Q(name_kh__icontains=search) | Q(name_en__icontains=search) | Q(code__icontains=search))
-        items = qs[:250]
     elif level == 'village':
-        qs = Village.objects.select_related('commune__district__province').all().order_by('commune__code', 'code')
+        qs = Village.objects.select_related('commune__district__province').all()
         if commune_id:
             qs = qs.filter(commune_id=commune_id)
         elif district_id:
@@ -3314,7 +3312,36 @@ def location_manager_view(request):
             qs = qs.filter(commune__district__province_id=province_id)
         if search:
             qs = qs.filter(Q(name_kh__icontains=search) | Q(name_en__icontains=search) | Q(code__icontains=search))
-        items = qs[:250]
+    else:
+        qs = Province.objects.all()
+
+    items = list(qs)
+
+    # Natural sorting helper
+    def natural_sort_key(item):
+        if sort_by == 'code':
+            c_str = str(getattr(item, 'code', '') or '').strip()
+            try:
+                return (0, int(c_str), c_str)
+            except ValueError:
+                return (1, 0, c_str)
+        elif sort_by == 'name_kh':
+            return (0, 0, getattr(item, 'name_kh', '') or '')
+        elif sort_by == 'name_en':
+            return (0, 0, (getattr(item, 'name_en', '') or '').lower())
+        elif sort_by == 'parent':
+            if hasattr(item, 'province'):
+                return (0, 0, item.province.name_kh)
+            elif hasattr(item, 'district'):
+                return (0, 0, item.district.name_kh)
+            elif hasattr(item, 'commune'):
+                return (0, 0, item.commune.name_kh)
+            return (0, 0, '')
+        return (0, 0, '')
+
+    is_reverse = (order == 'desc')
+    items.sort(key=natural_sort_key, reverse=is_reverse)
+    items = items[:250]
 
     level_names = {
         'province': 'ខេត្ត/រាជធានី',
@@ -3331,6 +3358,8 @@ def location_manager_view(request):
         'province_id': province_id,
         'district_id': district_id,
         'commune_id': commune_id,
+        'sort_by': sort_by,
+        'order': order,
         'provinces': provinces,
         'districts': districts,
         'communes': communes,

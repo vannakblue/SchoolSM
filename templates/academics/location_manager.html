@@ -256,19 +256,70 @@
         </form>
     </div>
 
+<style>
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+.sortable-th:hover {
+    background-color: #e2e8f0 !important;
+}
+.sort-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
+    font-weight: 600;
+}
+.sort-idle {
+    opacity: 0.35;
+    transition: opacity 0.15s ease;
+}
+.sortable-th:hover .sort-idle {
+    opacity: 0.8;
+}
+</style>
+
     <!-- Data Table -->
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="locationDataTable">
                 <thead class="table-light">
                     <tr>
                         <th style="width: 60px;" class="text-center">ល.រ</th>
-                        <th style="width: 120px;">កូដ</th>
-                        <th>ឈ្មោះជាភាសាខ្មែរ</th>
-                        <th>ឈ្មោះជាអក្សរឡាតាំង (EN)</th>
+                        
+                        <th style="width: 130px;" class="sortable-th" data-col-idx="1" data-type="number" title="ចុចដើម្បីរៀបតាម កូដរដ្ឋបាល">
+                            <a href="?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}&sort=code&order={% if sort_by == 'code' and order == 'asc' %}desc{% else %}asc{% endif %}" class="sort-link">
+                                <span>កូដ</span>
+                                <i class="fa-solid {% if sort_by == 'code' %}{% if order == 'desc' %}fa-sort-down text-primary{% else %}fa-sort-up text-primary{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
+                            </a>
+                        </th>
+                        
+                        <th class="sortable-th" data-col-idx="2" data-type="text" title="ចុចដើម្បីរៀបតាម ឈ្មោះជាភាសាខ្មែរ">
+                            <a href="?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}&sort=name_kh&order={% if sort_by == 'name_kh' and order == 'asc' %}desc{% else %}asc{% endif %}" class="sort-link">
+                                <span>ឈ្មោះជាភាសាខ្មែរ</span>
+                                <i class="fa-solid {% if sort_by == 'name_kh' %}{% if order == 'desc' %}fa-sort-down text-primary{% else %}fa-sort-up text-primary{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
+                            </a>
+                        </th>
+                        
+                        <th class="sortable-th" data-col-idx="3" data-type="text" title="ចុចដើម្បីរៀបតាម ឈ្មោះជាអក្សរឡាតាំង">
+                            <a href="?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}&sort=name_en&order={% if sort_by == 'name_en' and order == 'asc' %}desc{% else %}asc{% endif %}" class="sort-link">
+                                <span>ឈ្មោះជាអក្សរឡាតាំង (EN)</span>
+                                <i class="fa-solid {% if sort_by == 'name_en' %}{% if order == 'desc' %}fa-sort-down text-primary{% else %}fa-sort-up text-primary{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
+                            </a>
+                        </th>
+                        
                         {% if level != 'province' %}
-                        <th>ទីតាំងមេ (Parent Area)</th>
+                        <th class="sortable-th" data-col-idx="4" data-type="text" title="ចុចដើម្បីរៀបតាម ទីតាំងមេ">
+                            <a href="?level={{ level }}{% if province_id %}&province_id={{ province_id }}{% endif %}{% if district_id %}&district_id={{ district_id }}{% endif %}{% if commune_id %}&commune_id={{ commune_id }}{% endif %}{% if search %}&q={{ search }}{% endif %}&sort=parent&order={% if sort_by == 'parent' and order == 'asc' %}desc{% else %}asc{% endif %}" class="sort-link">
+                                <span>ទីតាំងមេ (Parent Area)</span>
+                                <i class="fa-solid {% if sort_by == 'parent' %}{% if order == 'desc' %}fa-sort-down text-primary{% else %}fa-sort-up text-primary{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
+                            </a>
+                        </th>
                         {% endif %}
+                        
                         <th style="width: 150px;" class="text-center">សកម្មភាព</th>
                     </tr>
                 </thead>
@@ -457,4 +508,75 @@
         </div>
     </div>
 </div>
+
+<script>
+// Instant Client-Side Table Sorting for Location Manager
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('locationDataTable');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    const ths = table.querySelectorAll('.sortable-th');
+
+    ths.forEach(th => {
+        th.addEventListener('click', function(e) {
+            // Prevent full page reload on simple left click so sorting is INSTANT
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                e.preventDefault();
+            } else {
+                return;
+            }
+
+            const colIdx = parseInt(this.getAttribute('data-col-idx'));
+            if (isNaN(colIdx)) return;
+
+            const type = this.getAttribute('data-type') || 'text';
+            const currentDir = this.getAttribute('data-dir') === 'asc' ? 'desc' : 'asc';
+
+            // Reset sort icons on all other columns
+            ths.forEach(otherTh => {
+                if (otherTh !== this) {
+                    otherTh.removeAttribute('data-dir');
+                    const icon = otherTh.querySelector('i.fa-solid');
+                    if (icon) {
+                        icon.className = 'fa-solid fa-sort sort-idle';
+                    }
+                }
+            });
+
+            this.setAttribute('data-dir', currentDir);
+            const activeIcon = this.querySelector('i.fa-solid');
+            if (activeIcon) {
+                activeIcon.className = `fa-solid ${currentDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down'} text-primary`;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelectorAll('td').length >= 4);
+            if (rows.length === 0) return;
+
+            rows.sort((rowA, rowB) => {
+                const cellA = (rowA.children[colIdx]?.innerText || '').trim();
+                const cellB = (rowB.children[colIdx]?.innerText || '').trim();
+
+                if (type === 'number') {
+                    const numA = parseFloat(cellA.replace(/[^0-9.-]+/g, '')) || 0;
+                    const numB = parseFloat(cellB.replace(/[^0-9.-]+/g, '')) || 0;
+                    return currentDir === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    return currentDir === 'asc' 
+                        ? cellA.localeCompare(cellB, 'km') 
+                        : cellB.localeCompare(cellA, 'km');
+                }
+            });
+
+            // Re-append sorted rows and update index column (ល.រ)
+            rows.forEach((row, idx) => {
+                const indexCell = row.children[0];
+                if (indexCell) {
+                    indexCell.innerText = idx + 1;
+                }
+                tbody.appendChild(row);
+            });
+        });
+    });
+});
+</script>
 {% endblock %}
