@@ -113,30 +113,32 @@
         </h2>
         <p class="text-muted small mb-0">ជ្រើសរើសគ្រូនីមួយៗ រួច Tick ថ្នាក់រៀន និងមុខវិជ្ជាដែលគាត់ត្រូវទទួលបន្ទុកបង្រៀន (ប្រព័ន្ធនឹងគណនាម៉ោងសរុបស្វ័យប្រវត្តិតាមមុខវិជ្ជា និងថ្នាក់)</p>
     </div>
-    <div class="d-flex flex-wrap gap-2">
-        <!-- Training Level Hours Quota Settings Modal Button -->
-        <button type="button" class="btn btn-outline-indigo btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#trainingQuotaModal">
-            <i class="fa-solid fa-sliders me-1"></i> កំណត់កូតាម៉ោងតាមកម្រិតបណ្តុះបណ្តាល
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Prominent Training Level Hours Quota Settings Modal Button -->
+        <button type="button" class="btn btn-warning fw-bold shadow-sm px-3 py-2 text-dark border" data-bs-toggle="modal" data-bs-target="#trainingQuotaModal" style="background-color: #fef08a; border-color: #fde047;">
+            <i class="fa-solid fa-sliders me-1 text-dark"></i> ⚙️ កំណត់កូតាម៉ោង (គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h)
         </button>
 
         <!-- Auto Assign by Specialization -->
-        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
-            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
+        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-success btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ✨ ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
         </a>
 
         <!-- Reset All Assignments -->
-        <a href="{% url 'teacher_assignments_reset_all' %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
-            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតការចាត់តាំងទាំងអស់ (Reset)
+        <a href="{% url 'teacher_assignments_reset_all' %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
+            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់ (Reset)
         </a>
 
-        <a href="{% url 'teacher_create' %}" class="btn btn-primary btn-sm fw-bold shadow-sm">
+        <div class="vr mx-1 d-none d-md-block"></div>
+
+        <a href="{% url 'teacher_create' %}" class="btn btn-outline-primary btn-sm fw-bold shadow-sm">
             <i class="fa-solid fa-plus me-1"></i> បន្ថែមគ្រូថ្មី
         </a>
-        <a href="{% url 'teacher_import' %}" class="btn btn-outline-primary btn-sm fw-bold shadow-sm">
-            <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូ (Import)
+        <a href="{% url 'teacher_import' %}" class="btn btn-outline-secondary btn-sm fw-bold shadow-sm">
+            <i class="fa-solid fa-file-import me-1"></i> បញ្ចូលគ្រូ
         </a>
-        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm">
-            <i class="fa-solid fa-file-excel me-1"></i> នាំចេញ Excel
+        <a href="{% url 'teacher_export_excel' %}" class="btn btn-outline-secondary btn-sm fw-bold shadow-sm">
+            <i class="fa-solid fa-file-excel me-1"></i> Excel
         </a>
     </div>
 </div>
@@ -246,6 +248,9 @@
                         <label class="form-check-label small fw-bold text-muted cursor-pointer ms-2" title="ធីកដើម្បីកំណត់ចំនួនម៉ោងអតិបរមានេះទៅគ្រូទាំងអស់ទូទាំងសាលា">
                             <input type="checkbox" name="apply_to_all_teachers" id="checkApplyAllTeachers" class="form-check-input me-1"> កំណត់ទៅគ្រប់គ្រូទាំងអស់
                         </label>
+                        <button type="button" class="btn btn-sm btn-white text-primary border shadow-xs fw-bold ms-2" data-bs-toggle="modal" data-bs-target="#trainingQuotaModal" title="កំណត់កូតាម៉ោងតាមកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ 16h, ផ្សេងៗ 18h)">
+                            <i class="fa-solid fa-sliders me-1"></i> កែប្រែកូតាម៉ោងតាមកម្រិត
+                        </button>
                     </div>
 
                     <!-- Right: Live Real-Time Hours Calculation Display -->
