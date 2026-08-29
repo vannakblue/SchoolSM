@@ -50,6 +50,11 @@ class User(AbstractUser):
 
 
 class TelegramConfig(models.Model):
+    class Frequency(models.TextChoices):
+        DAILY = 'DAILY', 'រៀងរាល់ថ្ងៃ (Daily)'
+        WEEKLY = 'WEEKLY', 'រៀងរាល់សប្តាហ៍ (Weekly)'
+        MONTHLY = 'MONTHLY', 'រៀងរាល់ខែ (Monthly)'
+
     bot_token = models.CharField(max_length=255, blank=True, null=True, verbose_name="Telegram Bot Token")
     chat_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Default Channel / Chat ID")
     is_active = models.BooleanField(default=True, verbose_name="បើកដំណើរការ / Is Active")
@@ -57,12 +62,42 @@ class TelegramConfig(models.Model):
     notify_on_exam = models.BooleanField(default=True, verbose_name="ជូនដំណឹងពិន្ទុ / Exam Results Alert")
     notify_on_fee = models.BooleanField(default=True, verbose_name="ជូនដំណឹងបង់ប្រាក់ / Fee Due Alert")
 
+    # Automated Database Backup Schedule (Admin Configurable directly from Web Browser)
+    auto_backup_enabled = models.BooleanField(default=True, verbose_name="បើកដំណើរការ Auto Backup ស្វ័យប្រវត្តិតាមម៉ោង")
+    backup_frequency = models.CharField(
+        max_length=20,
+        choices=Frequency.choices,
+        default=Frequency.DAILY,
+        verbose_name="ប្រេកង់ Backup"
+    )
+    backup_time = models.TimeField(default='00:00', verbose_name="ម៉ោងដែលត្រូវ Backup (Time of Day)")
+    backup_day_of_week = models.PositiveSmallIntegerField(
+        default=6,
+        choices=[(0, 'ចន្ទ / Mon'), (1, 'អង្គារ / Tue'), (2, 'ពុធ / Wed'), (3, 'ព្រហស្បតិ៍ / Thu'), (4, 'សុក្រ / Fri'), (5, 'សៅរ៍ / Sat'), (6, 'អាទិត្យ / Sun')],
+        verbose_name="ថ្ងៃក្នុងសប្តាហ៍សម្រាប់ Weekly Backup"
+    )
+    backup_format = models.CharField(
+        max_length=20,
+        choices=[('json', 'Full JSON Dump (.json)'), ('sqlite3', 'Live SQLite Snapshot (.sqlite3)')],
+        default='json',
+        verbose_name="ទម្រង់ឯកសារ Backup"
+    )
+    backup_chat_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram Chat ID ជាក់លាក់សម្រាប់ Backup")
+    last_backup_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ Backup ស្វ័យប្រវត្តិចុងក្រោយ")
+
     class Meta:
         verbose_name = "ការកំណត់ Telegram / Telegram Config"
         verbose_name_plural = "ការកំណត់ Telegram / Telegram Configs"
 
+    @classmethod
+    def get_config(cls):
+        config = cls.objects.first()
+        if not config:
+            config = cls.objects.create()
+        return config
+
     def __str__(self):
-        return f"Telegram Bot Config ({'Active' if self.is_active else 'Disabled'})"
+        return f"Telegram Bot Config ({'Active' if self.is_active else 'Disabled'}) - Auto-Backup: {'ON' if self.auto_backup_enabled else 'OFF'}"
 
 
 class NotificationLog(models.Model):

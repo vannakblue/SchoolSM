@@ -227,6 +227,123 @@
         </div>
     </div>
 
+    <!-- Automated Scheduled Backup Configuration Panel (Web Browser Scheduled Pipeline) -->
+    <div class="action-panel p-4 mb-4 border-start border-4 border-info">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-info bg-opacity-10 text-info fw-bold mb-2" style="font-size: 0.82rem;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Automated Scheduled Pipeline Settings (កំណត់លើ Web Browser)</span>
+                </div>
+                <h5 class="fw-bold mb-1 text-dark">
+                    <i class="fa-brands fa-telegram text-info me-2"></i>ការកំណត់កាលវិភាគ Auto-Backup ស្វ័យប្រវត្តិតាមម៉ោងទៅ Telegram
+                </h5>
+                <p class="text-muted small mb-0">
+                    Admin អាចកំណត់ឱ្យប្រព័ន្ធធ្វើការ Backup ទិន្នន័យ និងបញ្ជូនទៅកាន់ Telegram Bot / Group ដោយស្វ័យប្រវត្តិតាមម៉ោងដែលបានកំណត់ (Daily/Weekly/Monthly)។
+                </p>
+            </div>
+            <div class="mt-2 mt-md-0 d-flex gap-2">
+                {% if telegram_config.auto_backup_enabled %}
+                <span class="badge badge-soft-success px-3 py-2 rounded-pill fs-6">
+                    <i class="fa-solid fa-circle-check me-1"></i> Auto-Backup: បានបើក (Active)
+                </span>
+                {% else %}
+                <span class="badge badge-soft-warning px-3 py-2 rounded-pill fs-6">
+                    <i class="fa-solid fa-circle-pause me-1"></i> Auto-Backup: បានបិទ (Paused)
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <form action="{% url 'tool_database_backup_save_schedule' %}" method="POST" class="p-3 bg-light rounded-4">
+            {% csrf_token %}
+            <div class="row g-3 align-items-center">
+                <!-- Toggle Switch -->
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="form-check form-switch p-3 bg-white rounded-3 border h-100 d-flex flex-column justify-content-center">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label class="form-check-label fw-bold text-dark mb-0" for="autoBackupSwitch">
+                                បើកដំណើរការ Auto-Backup
+                            </label>
+                            <input class="form-check-input fs-5" type="checkbox" role="switch" name="auto_backup_enabled" id="autoBackupSwitch" {% if telegram_config.auto_backup_enabled %}checked{% endif %}>
+                        </div>
+                        <small class="text-muted mt-1">ដំណើរការស្វ័យប្រវត្តិតាមកាលវិភាគ</small>
+                    </div>
+                </div>
+
+                <!-- Frequency -->
+                <div class="col-12 col-md-6 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">ប្រេកង់ (Frequency)</label>
+                    <select name="backup_frequency" class="form-select rounded-3">
+                        <option value="DAILY" {% if telegram_config.backup_frequency == 'DAILY' %}selected{% endif %}>រៀងរាល់ថ្ងៃ (Daily)</option>
+                        <option value="WEEKLY" {% if telegram_config.backup_frequency == 'WEEKLY' %}selected{% endif %}>រៀងរាល់សប្តាហ៍ (Weekly)</option>
+                        <option value="MONTHLY" {% if telegram_config.backup_frequency == 'MONTHLY' %}selected{% endif %}>រៀងរាល់ខែ (Monthly)</option>
+                    </select>
+                </div>
+
+                <!-- Time of Day -->
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">ម៉ោងត្រូវ Backup (Time)</label>
+                    <input type="time" name="backup_time" class="form-control rounded-3" value="{{ telegram_config.backup_time|time:'H:i'|default:'00:00' }}" required>
+                </div>
+
+                <!-- Day of Week (for weekly) -->
+                <div class="col-6 col-md-4 col-lg-2">
+                    <label class="form-label small fw-bold text-secondary mb-1">ថ្ងៃក្នុងសប្តាហ៍ (បើ Weekly)</label>
+                    <select name="backup_day_of_week" class="form-select rounded-3">
+                        <option value="6" {% if telegram_config.backup_day_of_week == 6 %}selected{% endif %}>ថ្ងៃអាទិត្យ (Sunday)</option>
+                        <option value="5" {% if telegram_config.backup_day_of_week == 5 %}selected{% endif %}>ថ្ងៃសៅរ៍ (Saturday)</option>
+                        <option value="4" {% if telegram_config.backup_day_of_week == 4 %}selected{% endif %}>ថ្ងៃសុក្រ (Friday)</option>
+                        <option value="0" {% if telegram_config.backup_day_of_week == 0 %}selected{% endif %}>ថ្ងៃចន្ទ (Monday)</option>
+                        <option value="1" {% if telegram_config.backup_day_of_week == 1 %}selected{% endif %}>ថ្ងៃអង្គារ (Tuesday)</option>
+                        <option value="2" {% if telegram_config.backup_day_of_week == 2 %}selected{% endif %}>ថ្ងៃពុធ (Wednesday)</option>
+                        <option value="3" {% if telegram_config.backup_day_of_week == 3 %}selected{% endif %}>ថ្ងៃព្រហស្បតិ៍ (Thursday)</option>
+                    </select>
+                </div>
+
+                <!-- Format -->
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label small fw-bold text-secondary mb-1">ទម្រង់ឯកសារ (Format)</label>
+                    <select name="backup_format" class="form-select rounded-3">
+                        <option value="json" {% if telegram_config.backup_format == 'json' %}selected{% endif %}>Full JSON Dump (.json)</option>
+                        {% if stats.db_engine == 'SQLite' %}
+                        <option value="sqlite3" {% if telegram_config.backup_format == 'sqlite3' %}selected{% endif %}>Live SQLite Snapshot (.sqlite3)</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <!-- Telegram Chat ID and Save Button -->
+                <div class="col-12 col-lg-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white small text-muted"><i class="fa-brands fa-telegram text-info me-1"></i> Target Chat ID:</span>
+                        <input type="text" name="backup_chat_id" class="form-control" placeholder="ទុកនៅទទេដើម្បីប្រើ Default Chat ID ({{ telegram_config.chat_id|default:'មិនទាន់កំណត់' }})" value="{{ telegram_config.backup_chat_id|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-4 text-lg-end d-flex gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-primary fw-semibold px-4 rounded-3">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលវិភាគ
+                    </button>
+                    <button type="submit" formaction="{% url 'tool_database_backup_trigger_schedule' %}" name="force" value="true" class="btn btn-outline-info fw-semibold rounded-3" title="តេស្ត Trigger Auto-Backup ភ្លាមៗ">
+                        <i class="fa-solid fa-play me-1"></i> Test Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Last Run & Info -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 pt-2 border-top text-muted small">
+                <div>
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                    Auto-Backup ចុងក្រោយ៖ <strong class="text-dark">{{ telegram_config.last_backup_at|default:"មិនទាន់ធ្លាប់ដំណើរការ" }}</strong>
+                </div>
+                <div>
+                    <i class="fa-solid fa-shield-check text-success me-1"></i>
+                    ដំណើរការដោយស្វ័យប្រវត្តិតាមម៉ោងតាមរយៈ Web Pipeline & Background Daemon
+                </div>
+            </div>
+        </form>
+    </div>
+
     <!-- Snapshots Table Card -->
     <div class="action-panel p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">

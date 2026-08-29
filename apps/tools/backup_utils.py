@@ -421,3 +421,92 @@ def send_database_backup_to_telegram(custom_chat_id=None, format_type='json', se
     }
 
 
+def check_and_run_scheduled_backup(force=False):
+    """
+    Evaluates the Admin-configured Automated Database Backup Schedule:
+    1. Checks if auto_backup_enabled is active.
+    2. Validates frequency (DAILY, WEEKLY, MONTHLY) and time windows.
+    3. Triggers send_database_backup_to_telegram when conditions match.
+    4. Updates last_backup_at timestamp.
+    """
+    from apps.accounts.models import TelegramConfig
+    config = TelegramConfig.get_config()
+
+    if not config.auto_backup_enabled and not force:
+        return {
+            'executed': False,
+            'message': 'មុខងារ Auto-Backup ស្វ័យប្រវត្តិតាមម៉ោងត្រូវបានបិទ (Disabled) នៅក្នុងការកំណត់។'
+        }
+
+    from django.utils import timezone
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    today_date = local_now.date()
+    should_run = force
+
+    if not should_run:
+        # Check if already executed in the same scheduled window today
+        if config.last_backup_at:
+            last_local = timezone.localtime(config.last_backup_at)
+            if last_local.date() == today_date:
+                # If daily and already ran today, skip
+                if config.backup_frequency == 'DAILY':
+                    return {
+                        'executed': False,
+                        'message': f"បានធ្វើការ Auto-Backup រួចរាល់ហើយសម្រាប់ថ្ងៃនេះ ({last_local.strftime('%d/%m/%Y %H:%M')})។"
+                    }
+
+        # Check Frequency
+        if config.backup_frequency == 'WEEKLY':
+            # Check day of week (0=Mon, 6=Sun)
+            if local_now.weekday() != config.backup_day_of_week:
+                return {
+                    'executed': False,
+                    'message': f"មិនទាន់ដល់ថ្ងៃកំណត់សម្រាប់ Weekly Backup (ថ្ងៃកំណត់គឺ {config.get_backup_day_of_week_display()})។"
+                }
+        elif config.backup_frequency == 'MONTHLY':
+            # Run on 1st of month
+            if local_now.day != 1:
+                return {
+                    'executed': False,
+                    'message': "មិនទាន់ដល់ថ្ងៃកំណត់សម្រាប់ Monthly Backup (រៀងរាល់ថ្ងៃទី ១ នៃខែ)។"
+                }
+
+        # Check Time Window (+/- 30 mins)
+        target_time = config.backup_time
+        now_total_mins = local_now.hour * 60 + local_now.minute
+        target_total_mins = target_time.hour * 60 + target_time.minute
+
+        if abs(now_total_mins - target_total_mins) <= 30 or now_total_mins >= target_total_mins:
+            should_run = True
+        else:
+            return {
+                'executed': False,
+                'message': f"មិនទាន់ដល់ម៉ោងកំណត់ ({target_time.strftime('%H:%M')})។ ម៉ោងបច្ចុប្បន្ន: {local_now.strftime('%H:%M')}។"
+            }
+
+    if should_run:
+        result = send_database_backup_to_telegram(
+            custom_chat_id=config.backup_chat_id or config.chat_id,
+            format_type=config.backup_format,
+            sender_user=f"Automated Schedule ({config.get_backup_frequency_display()})"
+        )
+        if result.get('success'):
+            config.last_backup_at = timezone.now()
+            config.save(update_fields=['last_backup_at'])
+            return {
+                'executed': True,
+                'result': result,
+                'message': f"🎉 Auto-Backup Pipeline ត្រូវបានដំណើរការដោយជោគជ័យ! {result['message']}"
+            }
+        else:
+            return {
+                'executed': False,
+                'error': result.get('message'),
+                'message': f"⚠️ Auto-Backup បរាជ័យ: {result.get('message')}"
+            }
+
+    return {'executed': False, 'message': 'លក្ខខណ្ឌមិនត្រូវគ្នា។'}
+
+
+

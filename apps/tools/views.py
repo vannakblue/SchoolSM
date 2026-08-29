@@ -510,13 +510,16 @@ def database_backup_view(request):
     """
     Main Database Backup & Snapshot Manager dashboard.
     """
+    from apps.accounts.models import TelegramConfig
     stats = get_db_statistics()
     backups = list_backups()
+    telegram_config = TelegramConfig.get_config()
     return render(request, 'tools/db_backup.html', {
         'page_title': 'ការគ្រប់គ្រង Database Backup & Snapshot',
         'stats': stats,
         'backups': backups,
         'total_backups': len(backups),
+        'telegram_config': telegram_config,
     })
 
 
@@ -699,6 +702,71 @@ def api_send_backup_to_telegram(request):
             messages.warning(request, result['message'])
     except Exception as e:
         messages.error(request, f"បរាជ័យក្នុងការបញ្ជូន Backup ទៅកាន់ Telegram: {str(e)}")
+
+    return redirect('tool_database_backup')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_save_backup_schedule(request):
+    """
+    Saves the Automated Database Backup Schedule configured by Admin directly from Web Browser.
+    """
+    from apps.accounts.models import TelegramConfig
+    config = TelegramConfig.get_config()
+
+    config.auto_backup_enabled = (request.POST.get('auto_backup_enabled') == 'on' or request.POST.get('auto_backup_enabled') == 'true')
+    config.backup_frequency = request.POST.get('backup_frequency', 'DAILY')
+    
+    backup_time_str = request.POST.get('backup_time', '00:00')
+    if backup_time_str:
+        try:
+            from datetime import time
+            h, m = map(int, backup_time_str.split(':'))
+            config.backup_time = time(h, m)
+        except Exception:
+            pass
+
+    day_of_week = request.POST.get('backup_day_of_week')
+    if day_of_week is not None and str(day_of_week).isdigit():
+        config.backup_day_of_week = int(day_of_week)
+
+    config.backup_format = request.POST.get('backup_format', 'json')
+    config.backup_chat_id = request.POST.get('backup_chat_id', '').strip()
+    
+    # Optional update of general bot token & default chat id if provided
+    bot_token = request.POST.get('bot_token', '').strip()
+    if bot_token:
+        config.bot_token = bot_token
+    default_chat_id = request.POST.get('default_chat_id', '').strip()
+    if default_chat_id:
+        config.chat_id = default_chat_id
+
+    config.save()
+
+    status_txt = "បានបើក (Enabled)" if config.auto_backup_enabled else "បានបិទ (Disabled)"
+    messages.success(request, f"🎉 បានរក្សាទុកការកំណត់ Auto-Backup Schedule រួចរាល់! ស្ថានភាព៖ {status_txt} ({config.get_backup_frequency_display()} វេលាម៉ោង {config.backup_time.strftime('%H:%M')})")
+    return redirect('tool_database_backup')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_trigger_schedule_check(request):
+    """
+    Tests or triggers the Automated Database Backup Schedule check immediately.
+    """
+    from apps.tools.backup_utils import check_and_run_scheduled_backup
+    force = (request.POST.get('force') == 'true' or request.POST.get('force') == '1')
+    try:
+        res = check_and_run_scheduled_backup(force=force)
+        if res.get('executed'):
+            messages.success(request, res.get('message', 'បានដំណើរការ Auto-Backup ដោយជោគជ័យ!'))
+        else:
+            messages.info(request, f"ℹ️ {res.get('message', 'ពុំទាន់ដល់លក្ខខណ្ឌត្រូវ Backup ឡើយ។')}")
+    except Exception as e:
+        messages.error(request, f"បរាជ័យក្នុងការតេស្ត Auto-Backup: {str(e)}")
 
     return redirect('tool_database_backup')
 
