@@ -8,9 +8,12 @@ class Teacher(models.Model):
         FEMALE = 'F', 'ស្រី / Female'
 
     class Status(models.TextChoices):
-        ACTIVE = 'ACTIVE', 'កំពុងបង្រៀន / Active'
+        ACTIVE = 'ACTIVE', 'កំពុងបង្រៀន (សកម្ម) / Active'
         ON_LEAVE = 'ON_LEAVE', 'សម្រាកច្បាប់ / On Leave'
+        RETIRED = 'RETIRED', 'ចូលនិវត្តន៍ / Retired'
+        TRANSFERRED = 'TRANSFERRED', 'ផ្ទេរចេញ / Transferred'
         RESIGNED = 'RESIGNED', 'លាឈប់ / Resigned'
+        INACTIVE = 'INACTIVE', 'អសកម្ម / Inactive'
 
     teacher_id = models.CharField(max_length=50, unique=True, verbose_name="កូដសម្គាល់គ្រូ / Teacher ID")
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_profile')

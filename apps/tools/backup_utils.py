@@ -77,6 +77,8 @@ def get_db_statistics():
         stats['users_count'] = User.objects.count()
         stats['students_count'] = Student.objects.count()
         stats['teachers_count'] = Teacher.objects.count()
+        stats['teachers_active_count'] = Teacher.objects.filter(status=Teacher.Status.ACTIVE).count()
+        stats['teachers_inactive_count'] = Teacher.objects.exclude(status=Teacher.Status.ACTIVE).count()
         stats['classrooms_count'] = Classroom.objects.count()
         stats['exam_scores_count'] = ExamScore.objects.count()
         stats['attendance_count'] = AttendanceRecord.objects.count()
@@ -336,4 +338,86 @@ def delete_backup(backup_filename):
         meta_file.unlink()
 
     return {'success': True, 'deleted': backup_filename}
+
+
+def send_database_backup_to_telegram(custom_chat_id=None, format_type='json', sender_user='System / Pipeline'):
+    """
+    Automated Database Backup Pipeline Delivered to Telegram:
+    1. Creates a full portable JSON dump or SQLite snapshot.
+    2. Gathers real-time database statistics (Students, Active/Retired Teachers, Classrooms, Scores, Attendance).
+    3. Dispatches the backup file and detailed summary report directly to Telegram.
+    """
+    from apps.accounts.utils import send_telegram_document
+    from apps.accounts.models import TelegramConfig
+    from apps.attendance.models import AttendanceSetting
+
+    config = TelegramConfig.objects.first()
+    settings_att = AttendanceSetting.get_settings()
+
+    target_chat = custom_chat_id or (settings_att.management_chat_id if settings_att else None) or (config.chat_id if config else None)
+    if not target_chat:
+        return {
+            'success': False,
+            'message': 'ពុំទាន់បានកំណត់ Telegram Chat ID សម្រាប់ទទួល Database Backup នៅឡើយទេ។ សូមកំណត់ក្នុង School Settings ឬ Telegram Config!'
+        }
+
+    now = datetime.now()
+    now_str = now.strftime('%d/%m/%Y %H:%M:%S')
+    
+    # 1. Create Backup File
+    if format_type == 'sqlite3' and is_sqlite_database():
+        backup_res = create_database_backup(label="Telegram Auto Pipeline Snapshot", user_info=sender_user)
+    else:
+        backup_res = create_json_backup(label="Telegram Auto Pipeline Dump", user_info=sender_user)
+
+    filepath = Path(backup_res['filepath'])
+    filename = backup_res['filename']
+    stats = get_db_statistics()
+
+    with open(filepath, 'rb') as f:
+        file_bytes = f.read()
+
+    size_formatted = backup_res['metadata']['size_formatted']
+
+    # 2. Build Rich Khmer Markdown Caption
+    caption_lines = [
+        f"🛡️ *របាយការណ៍ Database Backup ប្រចាំការ (Data Safety)*",
+        f"📅 *កាលបរិច្ឆេទ:* {now_str}",
+        f"━━━━━━━━━━━━━━━━━━━━",
+        f"📊 *ស្ថិតិទិន្នន័យក្នុងប្រព័ន្ធផ្ទាល់ (Live Statistics):*",
+        f"• សិស្សសរុប: *{stats['students_count']}* នាក់",
+        f"• គ្រូបង្រៀនសកម្ម: *{stats.get('teachers_active_count', stats['teachers_count'])}* នាក់",
+        f"• គ្រូអសកម្ម/ចូលនិវត្តន៍: *{stats.get('teachers_inactive_count', 0)}* នាក់",
+        f"• ថ្នាក់រៀនសរុប: *{stats['classrooms_count']}* ថ្នាក់",
+        f"• កំណត់ត្រាពិន្ទុ: *{stats['exam_scores_count']}* កំណត់ត្រា",
+        f"• កំណត់ត្រាវត្តមាន: *{stats['attendance_count']}* លើក",
+        f"━━━━━━━━━━━━━━━━━━━━",
+        f"📁 *ឯកសារ Backup:* `{filename}`",
+        f"📦 *ទំហំ:* `{size_formatted}`",
+        f"⚙️ *Database Engine:* {stats['db_engine']}",
+        f"🔒 *សុវត្ថិភាព:* រក្សាទុក ១០០% ដោយសុវត្ថិភាព",
+        f"\n_ផ្ញើដោយ: {sender_user} (SchoolSM Automated Pipeline)_"
+    ]
+    caption = "\n".join(caption_lines)
+
+    # 3. Dispatch to Telegram
+    log = send_telegram_document(
+        document_bytes=file_bytes,
+        filename=filename,
+        caption=caption,
+        recipient_name="គណៈគ្រប់គ្រង (Database Backup Channel)",
+        recipient_type="Database Backup Pipeline",
+        custom_chat_id=target_chat
+    )
+
+    return {
+        'success': True,
+        'filename': filename,
+        'size_formatted': size_formatted,
+        'chat_id': target_chat,
+        'log_id': log.id if log else None,
+        'status': log.status if log else 'SENT',
+        'message': f"🚀 បានបញ្ជូន Database Backup '{filename}' ({size_formatted}) ទៅកាន់ Telegram (Chat ID: {target_chat}) ដោយជោគជ័យ!"
+    }
+
 

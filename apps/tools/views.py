@@ -674,3 +674,31 @@ def api_delete_database_backup(request, filename):
         messages.error(request, f"បរាជ័យក្នុងការលុប Snapshot: {str(e)}")
     return redirect('tool_database_backup')
 
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_send_backup_to_telegram(request):
+    """
+    1-Click Pipeline: Creates and delivers live database backup directly to Telegram.
+    """
+    from apps.tools.backup_utils import send_database_backup_to_telegram
+    format_type = request.POST.get('format', 'json')
+    custom_chat_id = request.POST.get('chat_id', '').strip() or None
+    user_info = f"{request.user.get_full_name() or request.user.username} (Admin Web UI)"
+
+    try:
+        result = send_database_backup_to_telegram(
+            custom_chat_id=custom_chat_id,
+            format_type=format_type,
+            sender_user=user_info
+        )
+        if result['success']:
+            messages.success(request, result['message'])
+        else:
+            messages.warning(request, result['message'])
+    except Exception as e:
+        messages.error(request, f"បរាជ័យក្នុងការបញ្ជូន Backup ទៅកាន់ Telegram: {str(e)}")
+
+    return redirect('tool_database_backup')
+

@@ -131,14 +131,27 @@ def answer_telegram_callback_query(callback_query_id, text=None, show_alert=Fals
         return False
 
 
-def send_telegram_document(document_bytes, filename, caption, recipient_name="សិស្ស / អាណាព្យាបាល", recipient_type="Parent", custom_chat_id=None):
+def send_telegram_document(document_bytes, filename, caption, recipient_name="គណៈគ្រប់គ្រង / អ្នកទទួល", recipient_type="Management", custom_chat_id=None, content_type=None):
     """
-    Dispatches a document file (e.g. PDF Report Card or Academic Record) to Telegram.
+    Dispatches a document file (e.g. JSON Backup, SQLite3 Database, Excel, PDF) to Telegram.
     """
+    import mimetypes
     config = TelegramConfig.objects.first()
     target_raw = custom_chat_id or (config.chat_id if config else None)
     chat_ids = extract_chat_ids(target_raw)
     bot_token = config.bot_token if config else None
+
+    if not content_type:
+        if filename.endswith('.json'):
+            content_type = 'application/json'
+        elif filename.endswith(('.sqlite3', '.db')):
+            content_type = 'application/x-sqlite3'
+        elif filename.endswith('.xlsx'):
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        elif filename.endswith('.pdf'):
+            content_type = 'application/pdf'
+        else:
+            content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
 
     status = NotificationLog.Status.SIMULATED
     if config and config.is_active and bot_token and chat_ids:
@@ -148,14 +161,14 @@ def send_telegram_document(document_bytes, filename, caption, recipient_name="�
             try:
                 url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
                 files = {
-                    'document': (filename, document_bytes, 'application/pdf')
+                    'document': (filename, document_bytes, content_type)
                 }
                 data = {
                     'chat_id': cid,
                     'caption': caption,
                     'parse_mode': 'Markdown'
                 }
-                resp = requests.post(url, data=data, files=files, timeout=15)
+                resp = requests.post(url, data=data, files=files, timeout=30)
                 if resp.status_code == 200:
                     any_success = True
                     all_failed = False
@@ -173,7 +186,7 @@ def send_telegram_document(document_bytes, filename, caption, recipient_name="�
         log_recipient = f"{log_recipient} ({target_display})"
 
     log = NotificationLog.objects.create(
-        title=f"ឯកសារ PDF: {filename}",
+        title=f"ឯកសារ: {filename}",
         message=caption,
         recipient_type=recipient_type,
         recipient_name=log_recipient,

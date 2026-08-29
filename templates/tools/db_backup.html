@@ -77,6 +77,9 @@
                         <i class="fa-solid fa-database me-2 text-info"></i> ទាញយក Live SQLite (.sqlite3)
                     </a>
                     {% endif %}
+                    <button class="btn btn-info fw-bold px-3 py-2 rounded-pill shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#telegramBackupModal" title="បញ្ជូនឯកសារ Backup ទៅកាន់ Telegram Channel / Group">
+                        <i class="fa-brands fa-telegram me-2"></i> ផ្ញើ Backup ទៅ Telegram
+                    </button>
                     <button class="btn btn-outline-light px-3 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadRestoreModal">
                         <i class="fa-solid fa-upload me-2"></i> Upload File Backup (.json / .sqlite3)
                     </button>
@@ -415,6 +418,53 @@
                     <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
                         <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload & Restore
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 5: Send Backup to Telegram -->
+<div class="modal fade" id="telegramBackupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_database_backup_send_telegram' %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-info">
+                        <i class="fa-brands fa-telegram me-2"></i>បញ្ជូន Database Backup ទៅ Telegram
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted small mb-3">
+                        ប្រព័ន្ធនឹងធ្វើការ Export ទិន្នន័យទាំងអស់ (រួមទាំងស្ថិតិសិស្ស គ្រូ ថ្នាក់ ពិន្ទុ វត្តមាន) និងបញ្ជូនឯកសារ Backup ដោយផ្ទាល់ទៅកាន់ <strong>Telegram Bot / Channel / Group</strong> របស់សាលា។
+                    </p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ទម្រង់ឯកសារ Backup (Format)</label>
+                        <select name="format" class="form-select form-select-lg rounded-3 fs-6">
+                            <option value="json" selected>Full JSON Data Dump (.json) - សកលសម្រាប់គ្រប់ Database</option>
+                            {% if stats.db_engine == 'SQLite' %}
+                            <option value="sqlite3">Live SQLite Snapshot (.sqlite3)</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Telegram Chat ID ជាក់លាក់ (Optional)</label>
+                        <input type="text" name="chat_id" class="form-control rounded-3" 
+                               placeholder="ទុកនៅទទេដើម្បីប្រើ Chat ID ក្នុង School Config ស្រាប់ (ឧ. -100123456789)">
+                        <div class="form-text small text-muted">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i> ប្រសិនបើទុកនៅទទេ ប្រព័ន្ធនឹងប្រើប្រាស់ Management Telegram Chat ID ដែលបានកំណត់ទុក។
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-info fw-bold rounded-pill px-4 text-white">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជូនទៅ Telegram ឥឡូវនេះ
                     </button>
                 </div>
             </form>

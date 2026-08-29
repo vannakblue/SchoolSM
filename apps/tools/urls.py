@@ -33,6 +33,7 @@ urlpatterns = [
     path('database-backup/create/', views.api_create_database_backup, name='tool_database_backup_create'),
     path('database-backup/download/<str:filename>/', views.download_database_backup, name='tool_database_backup_download'),
     path('database-backup/download/', views.download_database_backup, {'filename': 'current'}, name='tool_database_download_live'),
+    path('database-backup/send-telegram/', views.api_send_backup_to_telegram, name='tool_database_backup_send_telegram'),
     path('database-backup/restore/', views.api_restore_database_backup, name='tool_database_backup_restore'),
     path('database-backup/upload-restore/', views.api_upload_restore_database, name='tool_database_backup_upload_restore'),
     path('database-backup/delete/<str:filename>/', views.api_delete_database_backup, name='tool_database_backup_delete'),
