@@ -11,7 +11,8 @@ from django.views.decorators.http import require_POST, require_GET
 from apps.accounts.decorators import role_required
 from apps.tools.backup_utils import (
     get_db_statistics, create_database_backup, list_backups,
-    restore_database_backup, delete_backup, get_backup_dir, get_db_path
+    restore_database_backup, delete_backup, get_backup_dir, get_db_path,
+    is_sqlite_database, create_json_backup
 )
 
 from apps.academics.models import Classroom, AcademicYear
@@ -542,27 +543,50 @@ def api_create_database_backup(request):
 
 
 @login_required
+@login_required
 @role_required(['ADMIN'])
 def download_database_backup(request, filename=None):
     """
-    Downloads either a specific backup snapshot or the current active db.sqlite3 file.
+    Downloads either a specific backup snapshot (.sqlite3 or .json) or the live database dump.
     """
-    if filename == 'current' or not filename:
-        db_path = get_db_path()
-        if not db_path.exists():
-            raise Http404("Database file not found")
-        from datetime import datetime
-        now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        response = FileResponse(open(db_path, 'rb'), content_type='application/x-sqlite3')
-        response['Content-Disposition'] = f'attachment; filename="school_db_live_{now_str}.sqlite3"'
+    from datetime import datetime
+    now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    if filename == 'json' or request.GET.get('format') == 'json' or (filename == 'current' and not is_sqlite_database()):
+        from django.core.management import call_command
+        output_stream = io.StringIO()
+        call_command(
+            'dumpdata',
+            '--exclude=contenttypes',
+            '--exclude=auth.permission',
+            '--exclude=sessions',
+            '--indent=2',
+            stdout=output_stream
+        )
+        data_bytes = output_stream.getvalue().encode('utf-8')
+        response = HttpResponse(data_bytes, content_type='application/json; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="school_db_backup_{now_str}.json"'
         return response
+
+    if filename == 'current' or not filename:
+        if is_sqlite_database():
+            db_path = get_db_path()
+            if not db_path.exists():
+                raise Http404("Database file not found")
+            response = FileResponse(open(db_path, 'rb'), content_type='application/x-sqlite3')
+            response['Content-Disposition'] = f'attachment; filename="school_db_live_{now_str}.sqlite3"'
+            return response
+        else:
+            return redirect('/tools/database-backup/download/?format=json')
     else:
         # Sanitize filename
         safe_filename = os.path.basename(filename)
         backup_file = get_backup_dir() / safe_filename
         if not backup_file.exists():
             raise Http404("Backup snapshot not found")
-        response = FileResponse(open(backup_file, 'rb'), content_type='application/x-sqlite3')
+
+        content_type = 'application/json' if safe_filename.endswith('.json') else 'application/x-sqlite3'
+        response = FileResponse(open(backup_file, 'rb'), content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
         return response
 
@@ -572,7 +596,7 @@ def download_database_backup(request, filename=None):
 @require_POST
 def api_restore_database_backup(request):
     """
-    Restores the database from a specified snapshot file.
+    Restores the database from a specified snapshot file (.sqlite3 or .json).
     """
     filename = request.POST.get('filename', '').strip()
     if not filename:
@@ -595,15 +619,16 @@ def api_restore_database_backup(request):
 @require_POST
 def api_upload_restore_database(request):
     """
-    Upload an external .sqlite3 database file and restore it as the active database.
+    Upload an external backup file (.json or .sqlite3) and restore it into the database.
     """
     if 'db_file' not in request.FILES:
-        messages.error(request, "សូមជ្រើសរើសឯកសារ .sqlite3 ដើម្បី Upload!")
+        messages.error(request, "សូមជ្រើសរើសឯកសារ Backup (.json ឬ .sqlite3) ដើម្បី Upload!")
         return redirect('tool_database_backup')
 
     uploaded_file = request.FILES['db_file']
-    if not uploaded_file.name.endswith(('.sqlite3', '.db', '.sqlite')):
-        messages.error(request, "ឯកសារត្រូវតែជាប្រភេទ SQLite (.sqlite3 / .db / .sqlite)!")
+    fname_lower = uploaded_file.name.lower()
+    if not fname_lower.endswith(('.json', '.sqlite3', '.db', '.sqlite')):
+        messages.error(request, "ឯកសារត្រូវតែជាប្រភេទ JSON Backup (.json) ឬ SQLite (.sqlite3 / .db)!")
         return redirect('tool_database_backup')
 
     # Save uploaded file to backups directory first
@@ -611,7 +636,12 @@ def api_upload_restore_database(request):
     backup_dir = get_backup_dir()
     now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     clean_orig_name = "".join(c for c in uploaded_file.name if c.isalnum() or c in ('.', '_', '-'))
-    saved_filename = f"db_backup_{now_str}_uploaded_{clean_orig_name}"
+    
+    if fname_lower.endswith('.json'):
+        saved_filename = f"db_dump_{now_str}_uploaded_{clean_orig_name}"
+    else:
+        saved_filename = f"db_backup_{now_str}_uploaded_{clean_orig_name}"
+        
     target_path = backup_dir / saved_filename
 
     with open(target_path, 'wb+') as dest:
@@ -619,12 +649,12 @@ def api_upload_restore_database(request):
             dest.write(chunk)
 
     # Now restore from this saved file
-    user_info = f"{request.user.get_full_name() or request.user.username} (Upload)"
+    user_info = f"{request.user.get_full_name() or request.user.username} (Web Upload)"
     try:
         result = restore_database_backup(saved_filename, user_info=user_info)
-        messages.success(request, f"បាន Upload និង Restore Database ពី {uploaded_file.name} ដោយជោគជ័យ!")
+        messages.success(request, f"🎉 បាន Upload និង Restore Database ពី {uploaded_file.name} ដោយជោគជ័យ!")
     except Exception as e:
-        messages.error(request, f"បរាជ័យក្នុងការ Restore ពី Uploaded File: {str(e)}")
+        messages.error(request, f"⚠️ បរាជ័យក្នុងការ Restore ពី Uploaded File: {str(e)}")
 
     return redirect('tool_database_backup')
 

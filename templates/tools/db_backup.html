@@ -69,19 +69,97 @@
                     <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#createSnapshotModal">
                         <i class="fa-solid fa-camera-retro me-2"></i> បង្កើត Snapshot ឥឡូវនេះ
                     </button>
-                    <a href="{% url 'tool_database_download_live' %}" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark">
-                        <i class="fa-solid fa-download me-2 text-primary"></i> ទាញយក Live Database
+                    <a href="{% url 'tool_database_download_live' %}?format=json" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark" title="ទាញយកទិន្នន័យទាំងអស់ជា JSON">
+                        <i class="fa-solid fa-file-code me-2 text-primary"></i> ទាញយក Full JSON Backup
                     </a>
+                    {% if stats.db_engine == 'SQLite' %}
+                    <a href="{% url 'tool_database_download_live' %}" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm" title="ទាញយកឯកសារ SQLite">
+                        <i class="fa-solid fa-database me-2 text-info"></i> ទាញយក Live SQLite (.sqlite3)
+                    </a>
+                    {% endif %}
                     <button class="btn btn-outline-light px-3 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadRestoreModal">
-                        <i class="fa-solid fa-upload me-2"></i> Upload File .sqlite3
+                        <i class="fa-solid fa-upload me-2"></i> Upload File Backup (.json / .sqlite3)
                     </button>
                 </div>
             </div>
             <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
                 <div class="p-3 rounded-4 bg-white bg-opacity-10 backdrop-blur d-inline-block text-start text-white border border-white border-opacity-20">
-                    <div class="small text-white-50 mb-1"><i class="fa-solid fa-database me-1"></i> Live Database:</div>
-                    <div class="fw-bold fs-5">db.sqlite3 ({{ stats.db_size_formatted }})</div>
+                    <div class="small text-white-50 mb-1"><i class="fa-solid fa-database me-1"></i> Active Database Engine:</div>
+                    <div class="fw-bold fs-5">{{ stats.db_engine }} ({{ stats.db_size_formatted }})</div>
                     <div class="small text-white-50 mt-1">កែប្រែចុងក្រោយ: {{ stats.last_modified|default:"បច្ចុប្បន្ន" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module-Level Backup & Import Hub (Quick Actions) -->
+    <div class="row g-3 mb-4">
+        <!-- Teachers Module Backup & Import -->
+        <div class="col-md-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-success">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-chalkboard-user fs-4 text-success"></i>
+                    <h6 class="fw-bold mb-0 text-dark">គ្រូបង្រៀន (Teachers)</h6>
+                </div>
+                <p class="small text-muted mb-3">ទាញយក Backup ឬ Upload បញ្ចូលគ្រូផ្លូវការ MoEYS ជា Excel</p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'teacher_export_excel' %}" class="btn btn-sm btn-outline-success flex-grow-1" title="ទាញយក Excel គ្រូទាំងអស់">
+                        <i class="fa-solid fa-download me-1"></i> Backup Excel
+                    </a>
+                    <a href="{% url 'teacher_import' %}" class="btn btn-sm btn-success flex-grow-1" title="Upload ឯកសារ Excel គ្រូ">
+                        <i class="fa-solid fa-upload me-1"></i> Import Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Module Backup & Import -->
+        <div class="col-md-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-primary">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-user-graduate fs-4 text-primary"></i>
+                    <h6 class="fw-bold mb-0 text-dark">សិស្ស (Students)</h6>
+                </div>
+                <p class="small text-muted mb-3">ទាញយកបញ្ជីសិស្សទាំងអស់ ឬ Upload បញ្ចូលសិស្សថ្មីជា Excel</p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'student_list' %}?export=excel" class="btn btn-sm btn-outline-primary flex-grow-1" title="ទាញយក Excel សិស្សទាំងអស់">
+                        <i class="fa-solid fa-download me-1"></i> Backup Excel
+                    </a>
+                    <a href="{% url 'student_import' %}" class="btn btn-sm btn-primary flex-grow-1" title="Upload ឯកសារ Excel សិស្ស">
+                        <i class="fa-solid fa-upload me-1"></i> Import Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timetable Module Backup & Management -->
+        <div class="col-md-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-warning">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-calendar-days fs-4 text-warning"></i>
+                    <h6 class="fw-bold mb-0 text-dark">កាលវិភាគ (Timetables)</h6>
+                </div>
+                <p class="small text-muted mb-3">គ្រប់គ្រង Master Timetable ម៉ោងបង្រៀនគ្រូ និងកាលវិភាគថ្នាក់</p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'timetable_view' %}" class="btn btn-sm btn-outline-warning text-dark flex-grow-1">
+                        <i class="fa-solid fa-table me-1"></i> មើលកាលវិភាគ
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Examinations & Scores Backup -->
+        <div class="col-md-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-info">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-square-poll-vertical fs-4 text-info"></i>
+                    <h6 class="fw-bold mb-0 text-dark">ការប្រឡង & ពិន្ទុ (Scores)</h6>
+                </div>
+                <p class="small text-muted mb-3">ទាញយកតារាងពិន្ទុប្រចាំខែ ឆមាស និងរបាយការណ៍ចំណាត់ថ្នាក់</p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'exam_term_list' %}" class="btn btn-sm btn-outline-info flex-grow-1">
+                        <i class="fa-solid fa-list-check me-1"></i> មើលរបាយការណ៍ពិន្ទុ
+                    </a>
                 </div>
             </div>
         </div>
@@ -95,7 +173,7 @@
         <div class="flex-grow-1">
             <h6 class="fw-bold mb-1 text-dark">ទិន្នន័យត្រូវបានរក្សាទុកជាអចិន្ត្រៃយ៍ ១០០% ដោយស្វ័យប្រវត្តិ</h6>
             <div class="small text-muted">
-                រាល់ពេលកែប្រែ Code ឬ Restart Server ទិន្នន័យក្នុងប្រព័ន្ធមិនបាត់បង់ឡើយ។ លើសពីនេះ រាល់ពេលចុច <strong>Restore Snapshot</strong> ណាមួយ ប្រព័ន្ធនឹងធ្វើការ <strong>Auto Safety Backup</strong> ទិន្នន័យចាស់ទុកជាមុនដោយស្វ័យប្រវត្តិជានិច្ច!
+                លោកអ្នកអាចធ្វើការ <strong>ទាញយក (Download Backup)</strong> ទៅកុំព្យូទ័របានគ្រប់ពេល និងអាច <strong>Upload ចូលមកវិញ (Restore / Import)</strong> តាម Web Browser បានភ្លាមៗដោយសុវត្ថិភាពខ្ពស់បំផុត!
             </div>
         </div>
     </div>
@@ -324,10 +402,13 @@
                 </div>
                 <div class="modal-body py-4">
                     <p class="text-muted small mb-3">
-                        ជ្រើសរើសឯកសារ Database ពីកុំព្យូទ័ររបស់អ្នក (ប្រភេទ <code>.sqlite3</code> ឬ <code>.db</code>) ដើម្បីដាក់ចូលប្រើក្នុងប្រព័ន្ធ៖
+                        ជ្រើសរើសឯកសារ Backup ពីកុំព្យូទ័ររបស់អ្នក (ប្រភេទ <strong>.json</strong> ឬ <strong>.sqlite3</strong>) ដើម្បីដាក់ចូលប្រើក្នុងប្រព័ន្ធ៖
                     </p>
                     <div class="mb-3">
-                        <input type="file" name="db_file" class="form-control form-control-lg rounded-3 fs-6" accept=".sqlite3,.db,.sqlite" required>
+                        <input type="file" name="db_file" class="form-control form-control-lg rounded-3 fs-6" accept=".json,.sqlite3,.db,.sqlite" required>
+                        <div class="form-text small text-muted mt-2">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i> ឯកសារ <code>.json</code> ដំណើរការបានគ្រប់ Database (ទាំង Supabase PostgreSQL និង Local SQLite)។
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
