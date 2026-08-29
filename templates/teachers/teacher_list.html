@@ -70,18 +70,18 @@
 
 <!-- View 1: MoEYS Official Table View (Matching User Image) -->
 <div id="moeysTableView" class="custom-card mb-4 p-0 overflow-hidden shadow-sm border">
-    <div class="table-responsive">
+    <div class="table-responsive table-responsive-sticky">
         <table class="table table-bordered table-hover align-middle mb-0 text-nowrap moeys-official-table" style="font-size: 0.84rem;">
             <thead class="text-center align-middle user-select-none">
                 <tr class="main-head-row">
-                    <th rowspan="2" class="py-2 px-2 text-white" style="width: 45px; background-color: #1e3a8a !important;">ល.រ</th>
-                    <th rowspan="2" class="py-2 px-2 sortable-th" data-col-idx="1" data-type="text" title="ចុចដើម្បីរៀបតាម អត្តលេខ">
+                    <th rowspan="2" class="py-2 px-2 text-white sticky-col-idx" style="width: 45px; background-color: #1e3a8a !important;">ល.រ</th>
+                    <th rowspan="2" class="py-2 px-2 sortable-th sticky-col-id" data-col-idx="1" data-type="text" title="ចុចដើម្បីរៀបតាម អត្តលេខ">
                         <a href="?sort=teacher_id&order={% if sort_by == 'teacher_id' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="sort-link">
                             <span>អត្តលេខ</span>
                             <i class="fa-solid {% if sort_by == 'teacher_id' %}{% if order == 'desc' %}fa-sort-down text-warning{% else %}fa-sort-up text-warning{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
                         </a>
                     </th>
-                    <th rowspan="2" class="py-2 px-2 sortable-th" data-col-idx="2" data-type="text" title="ចុចដើម្បីរៀបតាម ឈ្មោះគ្រូ">
+                    <th rowspan="2" class="py-2 px-2 sortable-th sticky-col-name" data-col-idx="2" data-type="text" title="ចុចដើម្បីរៀបតាម ឈ្មោះគ្រូ">
                         <a href="?sort=khmer_name&order={% if sort_by == 'khmer_name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" class="sort-link">
                             <span>គោត្តនាម និងនាម</span>
                             <i class="fa-solid {% if sort_by == 'khmer_name' %}{% if order == 'desc' %}fa-sort-down text-warning{% else %}fa-sort-up text-warning{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
@@ -154,7 +154,7 @@
                             <i class="fa-solid {% if sort_by == 'phone' %}{% if order == 'desc' %}fa-sort-down text-warning{% else %}fa-sort-up text-warning{% endif %}{% else %}fa-sort sort-idle{% endif %}"></i>
                         </a>
                     </th>
-                    <th rowspan="2" class="py-2 px-2 no-print text-white" style="width: 85px; background-color: #1e3a8a !important;">សកម្មភាព</th>
+                    <th rowspan="2" class="py-2 px-2 no-print text-white sticky-col-action" style="width: 85px; background-color: #1e3a8a !important;">សកម្មភាព</th>
                 </tr>
                 <tr class="sub-head-row">
                     <th class="py-1 px-1 sortable-th sub-th" data-col-idx="13" data-type="text" title="រៀបតាម ប្រភេទក្របខ័ណ្ឌ">
@@ -170,16 +170,25 @@
             </thead>
             <tbody>
                 {% for t in teachers %}
-                <tr>
-                    <td class="text-center fw-bold text-muted">{{ forloop.counter }}</td>
-                    <td class="text-center"><span class="badge bg-light text-primary border fw-bold font-monospace">{{ t.teacher_id }}</span></td>
-                    <td class="fw-bold">
-                        <a href="{% url 'teacher_detail' t.id %}" class="text-dark text-decoration-none hover-primary">
-                            {{ t.khmer_name }}
-                        </a>
-                        {% if t.latin_name %}
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">{{ t.latin_name }}</small>
-                        {% endif %}
+                <tr class="teacher-data-row" data-edit-url="{% url 'teacher_edit' t.id %}" data-detail-url="{% url 'teacher_detail' t.id %}" title="ចុចពីរដង (Double-Click) ដើម្បីកែប្រែព័ត៌មានគ្រូ">
+                    <td class="text-center fw-bold text-muted sticky-col-idx">{{ forloop.counter }}</td>
+                    <td class="text-center sticky-col-id"><span class="badge bg-light text-primary border fw-bold font-monospace">{{ t.teacher_id }}</span></td>
+                    <td class="fw-bold sticky-col-name">
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <div>
+                                <a href="{% url 'teacher_detail' t.id %}" class="text-dark text-decoration-none hover-primary">
+                                    {{ t.khmer_name }}
+                                </a>
+                                {% if t.latin_name %}
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">{{ t.latin_name }}</small>
+                                {% endif %}
+                            </div>
+                            {% if is_admin %}
+                            <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light btn-xs py-0 px-1 text-primary border shadow-xs flex-shrink-0" title="កែប្រែគ្រូនេះភ្លាមៗ (Quick Edit)">
+                                <i class="fa-solid fa-pen-to-square" style="font-size: 0.72rem;"></i>
+                            </a>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="text-center">{{ t.get_gender_display }}</td>
                     <td class="text-center font-monospace">{{ t.date_of_birth|date:"d-m-Y"|default:"-" }}</td>
@@ -195,13 +204,13 @@
                     <td class="text-center font-monospace">{{ t.prakas_year|default:"-" }}</td>
                     <td class="text-center">{{ t.prakas_number|default:"-" }}</td>
                     <td class="font-monospace">{{ t.phone }}</td>
-                    <td class="text-center no-print">
+                    <td class="text-center no-print sticky-col-action">
                         <div class="btn-group btn-group-sm">
                             <a href="{% url 'teacher_detail' t.id %}" class="btn btn-outline-primary btn-xs py-0 px-1" title="មើលលម្អិត">
                                 <i class="fa-solid fa-eye"></i>
                             </a>
                             {% if is_admin %}
-                            <a href="{% url 'teacher_edit' t.id %}" class="btn btn-light btn-xs py-0 px-1" title="កែប្រែ">
+                            <a href="{% url 'teacher_edit' t.id %}" class="btn btn-primary btn-xs py-0 px-1 text-white" title="កែប្រែ">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
                             <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1" onclick="confirmDeleteTeacher('{{ t.id }}', '{{ t.khmer_name|escapejs }}')" title="លុប">
@@ -355,6 +364,19 @@
     border: 1px solid #cbd5e1;
 }
 
+/* Sticky Header on Scroll */
+.table-responsive-sticky {
+    max-height: 78vh;
+    overflow: auto;
+    position: relative;
+}
+
+.moeys-official-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
 .moeys-official-table thead tr.main-head-row th {
     background-color: #1e3a8a !important;
     color: #ffffff !important;
@@ -374,6 +396,63 @@
     border: 1px solid #3b82f6 !important;
     padding: 6px 4px !important;
     vertical-align: middle !important;
+}
+
+/* Sticky Freeze Columns (Left) */
+.sticky-col-idx {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10 !important;
+    background-color: #ffffff;
+}
+
+.sticky-col-id {
+    position: sticky !important;
+    left: 45px !important;
+    z-index: 10 !important;
+    background-color: #ffffff;
+}
+
+.sticky-col-name {
+    position: sticky !important;
+    left: 135px !important;
+    z-index: 10 !important;
+    background-color: #ffffff;
+    box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Sticky Freeze Column (Right - Actions) */
+.sticky-col-action {
+    position: sticky !important;
+    right: 0 !important;
+    z-index: 10 !important;
+    background-color: #ffffff;
+    box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Header Overrides for Sticky Columns */
+thead .sticky-col-idx,
+thead .sticky-col-id,
+thead .sticky-col-name,
+thead .sticky-col-action {
+    z-index: 30 !important;
+    background-color: #1e3a8a !important;
+}
+
+/* Row Hover for Sticky Cells */
+.teacher-data-row {
+    cursor: pointer;
+}
+
+.teacher-data-row:hover td {
+    background-color: #f1f5f9 !important;
+}
+
+.teacher-data-row:hover .sticky-col-idx,
+.teacher-data-row:hover .sticky-col-id,
+.teacher-data-row:hover .sticky-col-name,
+.teacher-data-row:hover .sticky-col-action {
+    background-color: #f1f5f9 !important;
 }
 
 .moeys-official-table thead .sortable-th {
@@ -422,10 +501,6 @@
     border-color: #e2e8f0 !important;
     vertical-align: middle;
 }
-
-.moeys-official-table tbody tr:hover td {
-    background-color: #f1f5f9 !important;
-}
 </style>
 
 <script>
@@ -455,6 +530,21 @@ function confirmDeleteTeacher(teacherId, teacherName) {
     const modal = new bootstrap.Modal(document.getElementById('deleteSingleTeacherModal'));
     modal.show();
 }
+
+// Double-Click Row to Edit Teacher
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.teacher-data-row');
+    rows.forEach(row => {
+        row.addEventListener('dblclick', function(e) {
+            // Ignore if clicked on button or anchor
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            const editUrl = this.getAttribute('data-edit-url');
+            if (editUrl) {
+                window.location.href = editUrl;
+            }
+        });
+    });
+});
 
 // Instant Client-Side & Khmer-Aware Table Sorting on Column Headers
 document.addEventListener('DOMContentLoaded', function() {
