@@ -982,6 +982,8 @@ def api_delete_menu_item(request, item_id):
 
 
 from .search_service import global_omnisearch
+from django.db.models import Q
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 @login_required
@@ -993,6 +995,305 @@ def api_global_search(request):
     query = request.GET.get('q', '').strip()
     results = global_omnisearch(query, user=request.user, limit=12)
     return JsonResponse({'results': results})
+
+
+# ==============================================================================
+# USER MANAGEMENT PORTAL (គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់)
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def user_management_view(request):
+    """
+    Dedicated visual portal for Admin to manage system User accounts,
+    change usernames, reset passwords, create users, and toggle active/inactive status.
+    """
+    search_query = request.GET.get('q', '').strip()
+    role_filter = request.GET.get('role', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    sort_by = request.GET.get('sort', 'date_joined')
+    order = request.GET.get('order', 'desc')
+
+    users_qs = User.objects.all()
+
+    if search_query:
+        users_qs = users_qs.filter(
+            Q(username__icontains=search_query) |
+            Q(khmer_name__icontains=search_query) |
+            Q(latin_name__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+
+    if role_filter and role_filter in User.Role.values:
+        users_qs = users_qs.filter(role=role_filter)
+
+    if status_filter == 'active':
+        users_qs = users_qs.filter(is_active=True)
+    elif status_filter == 'inactive':
+        users_qs = users_qs.filter(is_active=False)
+
+    # Sorting
+    valid_sorts = {
+        'date_joined': 'date_joined',
+        'username': 'username',
+        'khmer_name': 'khmer_name',
+        'role': 'role',
+        'last_login': 'last_login',
+    }
+    sort_field = valid_sorts.get(sort_by, 'date_joined')
+    if order == 'desc':
+        users_qs = users_qs.order_by(f"-{sort_field}", "-id")
+    else:
+        users_qs = users_qs.order_by(sort_field, "id")
+
+    # Counts for quick statistics
+    total_users_count = User.objects.count()
+    admin_count = User.objects.filter(role=User.Role.ADMIN).count()
+    teacher_count = User.objects.filter(role=User.Role.TEACHER).count()
+    student_count = User.objects.filter(role=User.Role.STUDENT).count()
+    accountant_count = User.objects.filter(role=User.Role.ACCOUNTANT).count()
+    active_count = User.objects.filter(is_active=True).count()
+    inactive_count = User.objects.filter(is_active=False).count()
+
+    # Pagination: 25 items per page
+    paginator = Paginator(users_qs, 25)
+    page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    return render(request, 'accounts/user_management.html', {
+        'page_obj': page_obj,
+        'users': page_obj.object_list,
+        'total_filtered_count': users_qs.count(),
+        'total_users_count': total_users_count,
+        'admin_count': admin_count,
+        'teacher_count': teacher_count,
+        'student_count': student_count,
+        'accountant_count': accountant_count,
+        'active_count': active_count,
+        'inactive_count': inactive_count,
+        'search_query': search_query,
+        'role_filter': role_filter,
+        'status_filter': status_filter,
+        'sort_by': sort_by,
+        'order': order,
+        'role_choices': User.Role.choices,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_create_user(request):
+    """
+    API endpoint for Admin to create a new User account.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        role = request.POST.get('role', 'TEACHER').strip()
+        khmer_name = request.POST.get('khmer_name', '').strip()
+        latin_name = request.POST.get('latin_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        email = request.POST.get('email', '').strip()
+        is_active = request.POST.get('is_active', '1') in ['1', 'true', 'True', True]
+
+        if not username:
+            return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូលឈ្មោះគណនី (Username)!'}, status=400)
+
+        if User.objects.filter(username__iexact=username).exists():
+            return JsonResponse({'status': 'error', 'message': f'ឈ្មោះគណនី "{username}" នេះមានក្នុងប្រព័ន្ធរួចហើយ!'}, status=400)
+
+        if not password:
+            password = 'password123' if role != User.Role.ADMIN else 'admin123'
+
+        if role not in User.Role.values:
+            role = User.Role.TEACHER
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            role=role,
+            khmer_name=khmer_name or None,
+            latin_name=latin_name or None,
+            phone=phone or None,
+            email=email or '',
+            is_active=is_active
+        )
+        if role == User.Role.ADMIN:
+            user.is_staff = True
+            user.save(update_fields=['is_staff'])
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🎉 បានបង្កើតគណនី "{user.username}" ({user.get_role_display()}) ដោយជោគជ័យ!',
+            'user_id': user.id
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_edit_user(request, user_id):
+    """
+    API endpoint for Admin to edit user details (Username, Name, Email, Phone, Role, Active).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+        username = request.POST.get('username', '').strip()
+        role = request.POST.get('role', '').strip()
+        khmer_name = request.POST.get('khmer_name', '').strip()
+        latin_name = request.POST.get('latin_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        email = request.POST.get('email', '').strip()
+        is_active_val = request.POST.get('is_active')
+
+        if not username:
+            return JsonResponse({'status': 'error', 'message': 'ឈ្មោះគណនី (Username) មិនអាចទទេបានទេ!'}, status=400)
+
+        if User.objects.filter(username__iexact=username).exclude(id=user.id).exists():
+            return JsonResponse({'status': 'error', 'message': f'ឈ្មោះគណនី "{username}" នេះមានក្នុងប្រព័ន្ធរួចហើយ!'}, status=400)
+
+        user.username = username
+        user.khmer_name = khmer_name or None
+        user.latin_name = latin_name or None
+        user.phone = phone or None
+        user.email = email or ''
+
+        if role in User.Role.values:
+            user.role = role
+            if role == User.Role.ADMIN:
+                user.is_staff = True
+
+        if is_active_val is not None:
+            # Prevent admin self-lockout
+            if user.id == request.user.id and is_active_val in ['0', 'false', 'False', False]:
+                return JsonResponse({'status': 'error', 'message': 'មិនអាចបិទដំណើរការគណនីដែលកំពុង Login ផ្ទាល់ខ្លួនបានទេ!'}, status=400)
+            user.is_active = is_active_val in ['1', 'true', 'True', True]
+
+        user.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បានកែប្រែព័ត៌មានគណនី "{user.username}" ដោយជោគជ័យ!',
+            'user_id': user.id,
+            'username': user.username,
+            'khmer_name': user.khmer_name or '',
+            'latin_name': user.latin_name or '',
+            'role': user.role,
+            'role_display': user.get_role_display(),
+            'phone': user.phone or '',
+            'email': user.email or '',
+            'is_active': user.is_active
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_reset_password(request, user_id):
+    """
+    API endpoint for Admin to reset a user's password.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+        new_password = request.POST.get('new_password', '').strip()
+        use_default = request.POST.get('use_default', '0') in ['1', 'true', 'True', True]
+
+        if use_default or not new_password:
+            new_password = 'admin123' if user.role == User.Role.ADMIN else 'password123'
+
+        if len(new_password) < 4:
+            return JsonResponse({'status': 'error', 'message': 'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងហោចណាស់ ៤ តួអក្សរ!'}, status=400)
+
+        user.set_password(new_password)
+        user.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🔑 បានកំណត់ពាក្យសម្ងាត់ថ្មីសម្រាប់ "{user.username}" ដោយជោគជ័យ!',
+            'password_used': new_password
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_user_active(request, user_id):
+    """
+    API endpoint for Admin to activate or deactivate a user account.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+
+        # Safety check: Prevent admin from deactivating their own account
+        if user.id == request.user.id:
+            return JsonResponse({
+                'status': 'error',
+                'message': '⚠️ មិនអាចបិទដំណើរការគណនី Admin ដែលកំពុង Login ផ្ទាល់ខ្លួនបានទេ!'
+            }, status=400)
+
+        user.is_active = not user.is_active
+        user.save(update_fields=['is_active'])
+
+        action_text = "បើកដំណើរការ" if user.is_active else "បិទដំណើរការ (Lock)"
+        return JsonResponse({
+            'status': 'success',
+            'is_active': user.is_active,
+            'message': f'គណនី "{user.username}" ត្រូវបាន {action_text} ដោយជោគជ័យ!'
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_delete_user(request, user_id):
+    """
+    API endpoint for Admin to delete a user account safely.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        user = get_object_or_404(User, id=user_id)
+
+        # Safety check: Cannot delete self
+        if user.id == request.user.id:
+            return JsonResponse({
+                'status': 'error',
+                'message': '⚠️ មិនអាចលុបគណនី Admin ដែលលោកអ្នកកំពុងប្រើប្រាស់បានទេ!'
+            }, status=400)
+
+        username = user.username
+        user.delete()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🗑️ បានលុបគណនី "{username}" ដោយជោគជ័យ!'
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
 
 
 

@@ -1,0 +1,1062 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់ (User Management) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-stat-card {
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    .user-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    }
+    .user-stat-icon-wrap {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+    .avatar-sm-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .badge-role-admin {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+    .badge-role-teacher {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+    .badge-role-student {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+    }
+    .badge-role-accountant {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    .badge-status-active {
+        background-color: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+    }
+    .badge-status-inactive {
+        background-color: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+    .table-users tbody tr {
+        transition: background 0.15s ease;
+    }
+    .table-users tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .action-btn-group .btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+    }
+    .form-switch-lg .form-check-input {
+        width: 2.5em;
+        height: 1.3em;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-3">
+
+    <!-- Header Banner -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary px-3 py-1 rounded-pill"><i class="fa-solid fa-shield-halved me-1"></i> Admin Portal</span>
+                <span class="text-muted small">| ការគ្រប់គ្រងប្រព័ន្ធ</span>
+            </div>
+            <h2 class="fw-bold mb-1 text-dark">
+                <i class="fa-solid fa-users-gear text-primary me-2"></i>គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់ (User Management)
+            </h2>
+            <p class="text-muted small mb-0">បង្កើតគណនីថ្មី កែប្រែ Username កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password) និងចាក់សោ/បើកដំណើរការគណនី</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'menu_permissions' %}" class="btn btn-outline-secondary fw-bold rounded-pill shadow-sm">
+                <i class="fa-solid fa-user-shield me-1 text-danger"></i> កំណត់សិទ្ធិ Menu
+            </a>
+            <button type="button" class="btn btn-primary fw-bold rounded-pill shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                <i class="fa-solid fa-user-plus me-1"></i> បង្កើតគណនីថ្មី (Add User)
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">គណនីសរុប</span>
+                    <div class="user-stat-icon-wrap bg-primary-subtle text-primary">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-0 text-dark">{{ total_users_count }}</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">ក្នុងប្រព័ន្ធទាំងមូល</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">គ្រូបង្រៀន</span>
+                    <div class="user-stat-icon-wrap bg-warning-subtle text-warning">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-0 text-dark">{{ teacher_count }}</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">Teacher Accounts</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">សិស្ស-អាណាព្យាបាល</span>
+                    <div class="user-stat-icon-wrap bg-info-subtle text-info">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-0 text-dark">{{ student_count }}</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">Student Accounts</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">គណនេយ្យករ</span>
+                    <div class="user-stat-icon-wrap bg-success-subtle text-success">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-0 text-dark">{{ accountant_count }}</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">Accountants</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">Admin / រដ្ឋបាល</span>
+                    <div class="user-stat-icon-wrap bg-danger-subtle text-danger">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-0 text-dark">{{ admin_count }}</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">Super Admins</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="user-stat-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold">ស្ថានភាពគណនី</span>
+                    <div class="user-stat-icon-wrap bg-secondary-subtle text-secondary">
+                        <i class="fa-solid fa-toggle-on"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>{{ active_count }} សកម្ម</span>
+                    {% if inactive_count > 0 %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-lock me-1"></i>{{ inactive_count }} ចាក់សោ</span>
+                    {% endif %}
+                </div>
+                <span class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Active / Inactive Status</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <form method="GET" action="{% url 'user_management' %}" class="row g-2 align-items-center">
+                <!-- Search Input -->
+                <div class="col-12 col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" name="q" value="{{ search_query }}" class="form-control bg-light border-start-0" placeholder="ស្វែងរកតាម Username, ឈ្មោះ, ទូរស័ព្ទ, Email...">
+                    </div>
+                </div>
+                <!-- Role Filter -->
+                <div class="col-6 col-md-2">
+                    <select name="role" class="form-select bg-light">
+                        <option value="">-- តួនាទីទាំងអស់ --</option>
+                        {% for r_val, r_label in role_choices %}
+                        <option value="{{ r_val }}" {% if role_filter == r_val %}selected{% endif %}>{{ r_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Status Filter -->
+                <div class="col-6 col-md-2">
+                    <select name="status" class="form-select bg-light">
+                        <option value="">-- ស្ថានភាពទាំងអស់ --</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>🟢 សកម្ម (Active)</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>🔴 ចាក់សោ (Inactive)</option>
+                    </select>
+                </div>
+                <!-- Sort Filter -->
+                <div class="col-6 col-md-2">
+                    <select name="sort" class="form-select bg-light">
+                        <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>កាលបរិច្ឆេទបង្កើត</option>
+                        <option value="username" {% if sort_by == 'username' %}selected{% endif %}>ឈ្មោះគណនី (Username)</option>
+                        <option value="khmer_name" {% if sort_by == 'khmer_name' %}selected{% endif %}>ឈ្មោះខ្មែរ (Name)</option>
+                        <option value="role" {% if sort_by == 'role' %}selected{% endif %}>តួនាទី (Role)</option>
+                        <option value="last_login" {% if sort_by == 'last_login' %}selected{% endif %}>ចូលប្រើចុងក្រោយ</option>
+                    </select>
+                </div>
+                <!-- Submit & Clear -->
+                <div class="col-6 col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary fw-bold flex-grow-1">
+                        <i class="fa-solid fa-filter me-1"></i> ច្រោះ
+                    </button>
+                    {% if search_query or role_filter or status_filter or sort_by != 'date_joined' %}
+                    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary" title="សម្អាតការច្រោះ">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table Card -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-list-check text-primary me-2"></i>បញ្ជីគណនីអ្នកប្រើប្រាស់</h5>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5">{{ total_filtered_count }} គណនី</span>
+            </div>
+            <span class="text-muted small">ទំព័រទី {{ page_obj.number }} នៃ {{ page_obj.paginator.num_pages }}</span>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-users">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4" style="width: 50px;">#</th>
+                        <th>គណនី (Username & Identity)</th>
+                        <th>តួនាទី (Role)</th>
+                        <th>ទំនាក់ទំនង (Phone & Email)</th>
+                        <th>កាលបរិច្ឆេទ (Date Joined)</th>
+                        <th class="text-center">ស្ថានភាព (Status)</th>
+                        <th class="text-end pe-4" style="min-width: 180px;">សកម្មភាព (Actions)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr id="user-row-{{ u.id }}">
+                        <td class="ps-4 text-muted small fw-bold">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                {% if u.avatar %}
+                                <img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="avatar-sm-circle object-fit-cover shadow-sm">
+                                {% else %}
+                                <div class="avatar-sm-circle shadow-sm {% if u.role == 'ADMIN' %}bg-danger text-white{% elif u.role == 'TEACHER' %}bg-warning text-dark{% elif u.role == 'STUDENT' %}bg-primary text-white{% else %}bg-success text-white{% endif %}">
+                                    {{ u.username|slice:":1"|upper }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark user-username-text" id="username-display-{{ u.id }}">{{ u.username }}</span>
+                                        {% if u.id == request.user.id %}
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2" style="font-size: 0.7rem;">(គណនីលោកអ្នក / You)</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-muted small user-fullname-text" id="fullname-display-{{ u.id }}">
+                                        {% if u.khmer_name %}{{ u.khmer_name }}{% endif %}
+                                        {% if u.latin_name %}<span class="text-secondary">({{ u.latin_name }})</span>{% endif %}
+                                        {% if not u.khmer_name and not u.latin_name %}<span class="text-muted fst-italic">គ្មានឈ្មោះ</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill px-2.5 py-1.5 fw-bold user-role-badge {% if u.role == 'ADMIN' %}badge-role-admin{% elif u.role == 'TEACHER' %}badge-role-teacher{% elif u.role == 'STUDENT' %}badge-role-student{% else %}badge-role-accountant{% endif %}" id="role-display-{{ u.id }}">
+                                {% if u.role == 'ADMIN' %}<i class="fa-solid fa-user-shield me-1"></i>{% elif u.role == 'TEACHER' %}<i class="fa-solid fa-chalkboard-user me-1"></i>{% elif u.role == 'STUDENT' %}<i class="fa-solid fa-user-graduate me-1"></i>{% else %}<i class="fa-solid fa-wallet me-1"></i>{% endif %}
+                                {{ u.get_role_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small">
+                                {% if u.phone %}
+                                <div><i class="fa-solid fa-phone text-muted me-1"></i> <span id="phone-display-{{ u.id }}">{{ u.phone }}</span></div>
+                                {% else %}
+                                <div class="text-muted fst-italic"><i class="fa-solid fa-phone text-muted me-1"></i> <span id="phone-display-{{ u.id }}">-</span></div>
+                                {% endif %}
+                                {% if u.email %}
+                                <div class="text-muted"><i class="fa-solid fa-envelope text-muted me-1"></i> <span id="email-display-{{ u.id }}">{{ u.email }}</span></div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="small">
+                                <div class="text-dark"><i class="fa-regular fa-calendar text-muted me-1"></i> {{ u.date_joined|date:"d-m-Y" }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    {% if u.last_login %}ចូលចុងក្រោយ៖ {{ u.last_login|date:"d-m-Y H:i" }}{% else %}មិនទាន់ធ្លាប់ចូលប្រើ{% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex flex-column align-items-center gap-1">
+                                <span class="badge rounded-pill px-2 py-1 user-status-badge {% if u.is_active %}badge-status-active{% else %}badge-status-inactive{% endif %}" id="status-badge-{{ u.id }}">
+                                    {% if u.is_active %}🟢 សកម្ម{% else %}🔴 ចាក់សោ{% endif %}
+                                </span>
+                                {% if u.id != request.user.id %}
+                                <div class="form-check form-switch form-switch-lg mt-1 mb-0" title="ចុចដើម្បីបើក/បិទគណនី">
+                                    <input class="form-check-input toggle-active-switch" type="checkbox" role="switch"
+                                           data-user-id="{{ u.id }}" data-username="{{ u.username }}"
+                                           {% if u.is_active %}checked{% endif %}>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="action-btn-group d-inline-flex gap-1">
+                                <!-- Reset Password Button -->
+                                <button type="button" class="btn btn-outline-warning text-dark btn-reset-password"
+                                        title="កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password)"
+                                        data-user-id="{{ u.id }}"
+                                        data-username="{{ u.username }}"
+                                        data-fullname="{{ u.display_name }}"
+                                        data-role="{{ u.role }}">
+                                    <i class="fa-solid fa-key"></i>
+                                </button>
+                                
+                                <!-- Edit User Button -->
+                                <button type="button" class="btn btn-outline-primary btn-edit-user"
+                                        title="កែប្រែ Username និងព័ត៌មាន (Edit User)"
+                                        data-user-id="{{ u.id }}"
+                                        data-username="{{ u.username }}"
+                                        data-khmer-name="{{ u.khmer_name|default:'' }}"
+                                        data-latin-name="{{ u.latin_name|default:'' }}"
+                                        data-role="{{ u.role }}"
+                                        data-phone="{{ u.phone|default:'' }}"
+                                        data-email="{{ u.email|default:'' }}"
+                                        data-is-active="{% if u.is_active %}1{% else %}0{% endif %}">
+                                    <i class="fa-solid fa-user-pen"></i>
+                                </button>
+                                
+                                <!-- Delete User Button -->
+                                {% if u.id != request.user.id %}
+                                <button type="button" class="btn btn-outline-danger btn-delete-user"
+                                        title="លុបគណនី (Delete User)"
+                                        data-user-id="{{ u.id }}"
+                                        data-username="{{ u.username }}"
+                                        data-fullname="{{ u.display_name }}">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <div class="py-4">
+                                <i class="fa-solid fa-user-slash fs-1 text-secondary mb-3 d-block"></i>
+                                <h5 class="fw-bold">រកមិនឃើញគណនីអ្នកប្រើប្រាស់ណាមួយទេ!</h5>
+                                <p class="small text-muted mb-3">សូមសាកល្បងផ្លាស់ប្តូរពាក្យគន្លឹះស្វែងរក ឬជម្រើសច្រោះឡើងវិញ។</p>
+                                <a href="{% url 'user_management' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> បង្ហាញគណនីទាំងអស់
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white py-3 px-4 border-top d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+            <span class="text-muted small">
+                បង្ហាញគណនីទី <strong>{{ page_obj.start_index }}</strong> ដល់ <strong>{{ page_obj.end_index }}</strong> នៃសរុប <strong>{{ total_filtered_count }}</strong>
+            </span>
+            <nav aria-label="User Pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                            <i class="fa-solid fa-angles-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                            <i class="fa-solid fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-angles-left"></i></span></li>
+                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-angle-left"></i></span></li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                            <i class="fa-solid fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                            <i class="fa-solid fa-angles-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-angle-right"></i></span></li>
+                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-angles-right"></i></span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: CREATE NEW USER                                                   -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-primary text-white py-3 px-4 rounded-top-4">
+                <h5 class="modal-title fw-bold" id="createUserModalLabel">
+                    <i class="fa-solid fa-user-plus me-2"></i>បង្កើតគណនីថ្មី (Create New User)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createUserForm">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Username -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះគណនី (Username) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-at text-muted"></i></span>
+                                <input type="text" name="username" id="create_username" class="form-control" placeholder="ឧ. t_2024_001 ឬ sokha" required autocomplete="off">
+                            </div>
+                            <small class="text-muted">ប្រើអក្សរតូច លេខ ឬសញ្ញា _ (Unique)</small>
+                        </div>
+                        <!-- Role -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">តួនាទី (Role) <span class="text-danger">*</span></label>
+                            <select name="role" id="create_role" class="form-select" required>
+                                <option value="TEACHER">គ្រូបង្រៀន (Teacher)</option>
+                                <option value="STUDENT">សិស្ស-អាណាព្យាបាល (Student & Parent)</option>
+                                <option value="ACCOUNTANT">គណនេយ្យករ (Accountant)</option>
+                                <option value="ADMIN">Super Admin / អ្នកគ្រប់គ្រង</option>
+                            </select>
+                        </div>
+                        <!-- Password -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ពាក្យសម្ងាត់ដំបូង (Password) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
+                                <input type="password" name="password" id="create_password" class="form-control" value="password123" placeholder="Password" required>
+                                <button type="button" class="btn btn-outline-secondary" id="toggleCreatePasswordBtn" title="បង្ហាញ/លាក់">
+                                    <i class="fa-solid fa-eye" id="createPasswordEye"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">លំនាំដើម៖ <code class="fw-bold">password123</code></small>
+                        </div>
+                        <!-- Status Active -->
+                        <div class="col-12 col-md-6 d-flex align-items-center pt-md-4">
+                            <div class="form-check form-switch form-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="create_is_active" value="1" checked>
+                                <label class="form-check-label fw-bold text-dark ms-2" for="create_is_active">បើកដំណើរការភ្លាមៗ (Active Account)</label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12"><hr class="my-1 text-muted"></div>
+                        
+                        <!-- Khmer Name -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</label>
+                            <input type="text" name="khmer_name" class="form-control" placeholder="ឧ. សុខ ចិន្តា">
+                        </div>
+                        <!-- Latin Name -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</label>
+                            <input type="text" name="latin_name" class="form-control" placeholder="ឧ. SOK CHINDA">
+                        </div>
+                        <!-- Phone -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">លេខទូរស័ព្ទ (Phone Number)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-phone text-muted"></i></span>
+                                <input type="text" name="phone" class="form-control" placeholder="ឧ. 012 345 678">
+                            </div>
+                        </div>
+                        <!-- Email -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">អ៊ីមែល (Email Address)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-envelope text-muted"></i></span>
+                                <input type="email" name="email" class="form-control" placeholder="ឧ. user@school.edu.kh">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="submitCreateUserBtn">
+                        <i class="fa-solid fa-check me-1"></i> បង្កើតគណនី
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT USER (CHANGE USERNAME & DETAILS)                              -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-dark text-white py-3 px-4 rounded-top-4">
+                <h5 class="modal-title fw-bold" id="editUserModalLabel">
+                    <i class="fa-solid fa-user-pen text-warning me-2"></i>កែប្រែព័ត៌មានគណនី (Edit User)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editUserForm">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" id="edit_user_id">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Username -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះគណនី (Username) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-at text-muted"></i></span>
+                                <input type="text" name="username" id="edit_username" class="form-control" required autocomplete="off">
+                            </div>
+                            <small class="text-muted">ប្តូរ Username សម្រាប់ Login ចូលប្រព័ន្ធ</small>
+                        </div>
+                        <!-- Role -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">តួនាទី (Role) <span class="text-danger">*</span></label>
+                            <select name="role" id="edit_role" class="form-select" required>
+                                <option value="TEACHER">គ្រូបង្រៀន (Teacher)</option>
+                                <option value="STUDENT">សិស្ស-អាណាព្យាបាល (Student & Parent)</option>
+                                <option value="ACCOUNTANT">គណនេយ្យករ (Accountant)</option>
+                                <option value="ADMIN">Super Admin / អ្នកគ្រប់គ្រង</option>
+                            </select>
+                        </div>
+                        <!-- Khmer Name -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</label>
+                            <input type="text" name="khmer_name" id="edit_khmer_name" class="form-control" placeholder="ឧ. សុខ ចិន្តា">
+                        </div>
+                        <!-- Latin Name -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</label>
+                            <input type="text" name="latin_name" id="edit_latin_name" class="form-control" placeholder="ឧ. SOK CHINDA">
+                        </div>
+                        <!-- Phone -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">លេខទូរស័ព្ទ (Phone Number)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-phone text-muted"></i></span>
+                                <input type="text" name="phone" id="edit_phone" class="form-control" placeholder="ឧ. 012 345 678">
+                            </div>
+                        </div>
+                        <!-- Email -->
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold text-dark">អ៊ីមែល (Email Address)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-envelope text-muted"></i></span>
+                                <input type="email" name="email" id="edit_email" class="form-control" placeholder="ឧ. user@school.edu.kh">
+                            </div>
+                        </div>
+                        <!-- Active Status Checkbox -->
+                        <div class="col-12" id="edit_active_container">
+                            <div class="form-check form-switch form-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="edit_is_active" value="1">
+                                <label class="form-check-label fw-bold text-dark ms-2" for="edit_is_active">បើកដំណើរការគណនី (Active Account)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="submitEditUserBtn">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: RESET PASSWORD                                                    -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-warning text-dark py-3 px-4 rounded-top-4">
+                <h5 class="modal-title fw-bold" id="resetPasswordModalLabel">
+                    <i class="fa-solid fa-key me-2"></i>កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="resetPasswordForm">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" id="reset_user_id">
+                <div class="modal-body p-4">
+                    <div class="p-3 rounded-3 bg-light border mb-3">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="text-muted small">គណនីគោលដៅ៖</span>
+                            <strong class="text-dark fs-6" id="reset_target_username">username</strong>
+                        </div>
+                        <div class="text-muted small" id="reset_target_fullname">Full Name</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">បញ្ចូលពាក្យសម្ងាត់ថ្មី (New Password) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
+                            <input type="password" name="new_password" id="reset_new_password" class="form-control" placeholder="បញ្ចូល Password ថ្មី..." required>
+                            <button type="button" class="btn btn-outline-secondary" id="toggleResetPasswordBtn" title="បង្ហាញ/លាក់">
+                                <i class="fa-solid fa-eye" id="resetPasswordEye"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">យ៉ាងហោចណាស់ ៤ តួអក្សរ</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnFillDefaultPassword">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ប្រើ Password លំនាំដើម (<span id="default_pass_hint">password123</span>)
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
+                    <button type="button" class="btn btn-outline-secondary px-3 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning text-dark px-4 fw-bold" id="submitResetPasswordBtn">
+                        <i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currentUserId = {{ request.user.id }};
+
+    // Helper: Toast Notifications via SweetAlert2
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2500,
+        timerProgressBar: true
+    });
+
+    // -------------------------------------------------------------------------
+    // 1. CREATE USER LOGIC
+    // -------------------------------------------------------------------------
+    const toggleCreatePassBtn = document.getElementById('toggleCreatePasswordBtn');
+    const createPassInput = document.getElementById('create_password');
+    const createPassEye = document.getElementById('createPasswordEye');
+
+    if (toggleCreatePassBtn) {
+        toggleCreatePassBtn.addEventListener('click', function() {
+            if (createPassInput.type === 'password') {
+                createPassInput.type = 'text';
+                createPassEye.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                createPassInput.type = 'password';
+                createPassEye.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    }
+
+    const createUserForm = document.getElementById('createUserForm');
+    if (createUserForm) {
+        createUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitCreateUserBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបង្កើត...';
+
+            const formData = new FormData(createUserForm);
+            fetch("{% url 'api_create_user' %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បង្កើតគណនី';
+                if (data.status === 'success') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+                    if (modal) modal.hide();
+                    createUserForm.reset();
+                    Swal.fire({
+                        title: 'ជោគជ័យ!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'យល់ព្រម'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('កំហុស!', data.message || 'មិនអាចបង្កើតគណនីបានទេ', 'error');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បង្កើតគណនី';
+                console.error(err);
+                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. EDIT USER LOGIC
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('.btn-edit-user').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const uid = this.getAttribute('data-user-id');
+            const uname = this.getAttribute('data-username');
+            const khName = this.getAttribute('data-khmer-name');
+            const laName = this.getAttribute('data-latin-name');
+            const role = this.getAttribute('data-role');
+            const phone = this.getAttribute('data-phone');
+            const email = this.getAttribute('data-email');
+            const isActive = this.getAttribute('data-is-active') === '1';
+
+            document.getElementById('edit_user_id').value = uid;
+            document.getElementById('edit_username').value = uname;
+            document.getElementById('edit_role').value = role;
+            document.getElementById('edit_khmer_name').value = khName;
+            document.getElementById('edit_latin_name').value = laName;
+            document.getElementById('edit_phone').value = phone;
+            document.getElementById('edit_email').value = email;
+            document.getElementById('edit_is_active').checked = isActive;
+
+            // Hide/disable active toggle if editing own account
+            const activeContainer = document.getElementById('edit_active_container');
+            if (parseInt(uid) === currentUserId) {
+                activeContainer.style.display = 'none';
+            } else {
+                activeContainer.style.display = 'block';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        });
+    });
+
+    const editUserForm = document.getElementById('editUserForm');
+    if (editUserForm) {
+        editUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const uid = document.getElementById('edit_user_id').value;
+            const btn = document.getElementById('submitEditUserBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
+
+            const formData = new FormData(editUserForm);
+            fetch(`/accounts/api/users/${uid}/edit/`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
+                if (data.status === 'success') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                    if (modal) modal.hide();
+
+                    // Realtime DOM update
+                    const unameEl = document.getElementById(`username-display-${uid}`);
+                    if (unameEl) unameEl.textContent = data.username;
+
+                    const fnameEl = document.getElementById(`fullname-display-${uid}`);
+                    if (fnameEl) {
+                        let str = data.khmer_name || '';
+                        if (data.latin_name) str += ` (${data.latin_name})`;
+                        fnameEl.textContent = str || 'គ្មានឈ្មោះ';
+                    }
+
+                    const phoneEl = document.getElementById(`phone-display-${uid}`);
+                    if (phoneEl) phoneEl.textContent = data.phone || '-';
+
+                    const emailEl = document.getElementById(`email-display-${uid}`);
+                    if (emailEl) emailEl.textContent = data.email || '';
+
+                    // Update button data attributes
+                    const triggerBtn = document.querySelector(`.btn-edit-user[data-user-id="${uid}"]`);
+                    if (triggerBtn) {
+                        triggerBtn.setAttribute('data-username', data.username);
+                        triggerBtn.setAttribute('data-khmer-name', data.khmer_name);
+                        triggerBtn.setAttribute('data-latin-name', data.latin_name);
+                        triggerBtn.setAttribute('data-role', data.role);
+                        triggerBtn.setAttribute('data-phone', data.phone);
+                        triggerBtn.setAttribute('data-email', data.email);
+                        triggerBtn.setAttribute('data-is-active', data.is_active ? '1' : '0');
+                    }
+
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message
+                    });
+                } else {
+                    Swal.fire('កំហុស!', data.message || 'មិនអាចកែប្រែគណនីបានទេ', 'error');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
+                console.error(err);
+                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. RESET PASSWORD LOGIC
+    // -------------------------------------------------------------------------
+    const toggleResetPassBtn = document.getElementById('toggleResetPasswordBtn');
+    const resetPassInput = document.getElementById('reset_new_password');
+    const resetPassEye = document.getElementById('resetPasswordEye');
+
+    if (toggleResetPassBtn) {
+        toggleResetPassBtn.addEventListener('click', function() {
+            if (resetPassInput.type === 'password') {
+                resetPassInput.type = 'text';
+                resetPassEye.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                resetPassInput.type = 'password';
+                resetPassEye.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    }
+
+    document.querySelectorAll('.btn-reset-password').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const uid = this.getAttribute('data-user-id');
+            const uname = this.getAttribute('data-username');
+            const fname = this.getAttribute('data-fullname');
+            const role = this.getAttribute('data-role');
+
+            document.getElementById('reset_user_id').value = uid;
+            document.getElementById('reset_target_username').textContent = uname;
+            document.getElementById('reset_target_fullname').textContent = fname;
+
+            const defaultPass = role === 'ADMIN' ? 'admin123' : 'password123';
+            document.getElementById('default_pass_hint').textContent = defaultPass;
+            document.getElementById('reset_new_password').value = defaultPass;
+
+            const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+            modal.show();
+        });
+    });
+
+    const btnFillDefaultPassword = document.getElementById('btnFillDefaultPassword');
+    if (btnFillDefaultPassword) {
+        btnFillDefaultPassword.addEventListener('click', function() {
+            const hint = document.getElementById('default_pass_hint').textContent;
+            document.getElementById('reset_new_password').value = hint;
+        });
+    }
+
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const uid = document.getElementById('reset_user_id').value;
+            const btn = document.getElementById('submitResetPasswordBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងកំណត់...';
+
+            const formData = new FormData(resetPasswordForm);
+            fetch(`/accounts/api/users/${uid}/reset-password/`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី';
+                if (data.status === 'success') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+                    if (modal) modal.hide();
+
+                    Swal.fire({
+                        title: '🔑 បានកំណត់ Password ជោគជ័យ!',
+                        html: `<p>${data.message}</p><div class="p-2 bg-light rounded">ពាក្យសម្ងាត់ថ្មី៖ <strong class="text-primary fs-5">${data.password_used}</strong></div>`,
+                        icon: 'success',
+                        confirmButtonText: 'យល់ព្រម'
+                    });
+                } else {
+                    Swal.fire('កំហុស!', data.message || 'មិនអាច Reset Password បានទេ', 'error');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី';
+                console.error(err);
+                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+            });
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. TOGGLE ACTIVE / INACTIVE (SWITCH)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('.toggle-active-switch').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const uid = this.getAttribute('data-user-id');
+            const uname = this.getAttribute('data-username');
+            const isChecked = this.checked;
+
+            fetch(`/accounts/api/users/${uid}/toggle-active/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const badge = document.getElementById(`status-badge-${uid}`);
+                    if (badge) {
+                        if (data.is_active) {
+                            badge.className = 'badge rounded-pill px-2 py-1 user-status-badge badge-status-active';
+                            badge.innerHTML = '🟢 សកម្ម';
+                        } else {
+                            badge.className = 'badge rounded-pill px-2 py-1 user-status-badge badge-status-inactive';
+                            badge.innerHTML = '🔴 ចាក់សោ';
+                        }
+                    }
+                    Toast.fire({
+                        icon: data.is_active ? 'success' : 'warning',
+                        title: data.message
+                    });
+                } else {
+                    // Revert switch
+                    toggle.checked = !isChecked;
+                    Swal.fire('មិនអាចដំណើរការបានទេ!', data.message || 'មានបញ្ហាក្នុងការប្តូរស្ថានភាព', 'error');
+                }
+            })
+            .catch(err => {
+                toggle.checked = !isChecked;
+                console.error(err);
+                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+            });
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // 5. DELETE USER LOGIC
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('.btn-delete-user').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const uid = this.getAttribute('data-user-id');
+            const uname = this.getAttribute('data-username');
+            const fname = this.getAttribute('data-fullname');
+
+            Swal.fire({
+                title: 'តើអ្នកពិតជាចង់លុបគណនីនេះមែនទេ?',
+                html: `ឈ្មោះគណនី៖ <strong class="text-danger">${uname}</strong> (${fname})<br><small class="text-muted">ចំណាំ៖ ការលុបនេះនឹងមិនអាចត្រឡប់វិញបានឡើយ!</small>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'បាទ/ចាស លុបគណនី',
+                cancelButtonText: 'បោះបង់'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/accounts/api/users/${uid}/delete/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const row = document.getElementById(`user-row-${uid}`);
+                            if (row) {
+                                row.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                                row.style.opacity = '0';
+                                row.style.transform = 'translateX(20px)';
+                                setTimeout(() => row.remove(), 400);
+                            }
+                            Toast.fire({
+                                icon: 'success',
+                                title: data.message
+                            });
+                        } else {
+                            Swal.fire('កំហុស!', data.message || 'មិនអាចលុបគណនីបានទេ', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                    });
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

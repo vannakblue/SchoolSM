@@ -129,6 +129,15 @@ STATIC_KEYWORDS_INDEX = [
         'keywords': ['ព័ត៌មានសាលា', 'ផែនទី', 'google maps', 'gps', 'ត្រាសាលា', 'ឡូហ្គោ', 'school profile', 'emis']
     },
     {
+        'title_kh': 'គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់ (User Management)',
+        'title_en': 'User Accounts Management & Password Reset',
+        'category': 'ការកំណត់ប្រព័ន្ធ (Settings)',
+        'icon': 'fa-solid fa-users-gear text-primary',
+        'url_name': 'user_management',
+        'custom_url': None,
+        'keywords': ['គ្រប់គ្រងគណនី', 'user management', 'users', 'គណនី', 'reset password', 'ប្តូរ password', 'បង្កើត user', 'username', 'accounts', 'ចាក់សោគណនី']
+    },
+    {
         'title_kh': 'កំណត់សិទ្ធិ Menu & Submenu តាមតួនាទី',
         'title_en': 'Role Menu & Submenu Permissions',
         'category': 'ការកំណត់ប្រព័ន្ធ (Settings)',

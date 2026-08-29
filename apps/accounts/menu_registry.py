@@ -611,6 +611,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'telegram_settings',
             },
             {
+                'key': 'user_management',
+                'name_kh': 'គ្រប់គ្រងគណនី (User Management)',
+                'name_en': 'User Accounts Management',
+                'icon': 'fa-solid fa-users-gear text-primary',
+                'default_roles': ['ADMIN'],
+                'url_name': 'user_management',
+            },
+            {
                 'key': 'menu_permissions',
                 'name_kh': 'កំណត់សិទ្ធិ Menu & Submenu',
                 'name_en': 'Menu & Submenu Permissions',
