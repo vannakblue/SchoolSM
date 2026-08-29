@@ -876,13 +876,15 @@ def teacher_import_template_csv(request):
 @login_required
 @role_required(['ADMIN'])
 def teacher_import(request):
-    """Bulk imports teachers from Excel or CSV file supporting both MoEYS 20-col and standard formats."""
+    """Bulk imports teachers from Excel or CSV file supporting MoEYS official roster and template formats."""
     import csv
     import io
     import openpyxl
     from decimal import Decimal
     from datetime import datetime, date
+    from django.contrib.auth.hashers import make_password
     from apps.accounts.models import User
+    from apps.teachers.utils import transliterate_khmer_name, format_phone_number
 
     def parse_date_flexible(val):
         if not val:
@@ -890,7 +892,7 @@ def teacher_import(request):
         if isinstance(val, (datetime, date)):
             return val if isinstance(val, date) else val.date()
         val_clean = str(val).strip()
-        for fmt in ('%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d', '%Y/%m/%d', '%d.%m.%Y'):
+        for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%Y/%m/%d', '%d.%m.%Y'):
             try:
                 return datetime.strptime(val_clean, fmt).date()
             except ValueError:
@@ -905,24 +907,16 @@ def teacher_import(request):
         try:
             if filename.endswith('.xlsx'):
                 wb = openpyxl.load_workbook(file, data_only=True)
-                ws = wb.active
-                # If first row is merged or title, skip to headers
-                start_row = 2
-                for row in ws.iter_rows(min_row=start_row, values_only=True):
+                ws = wb['2026'] if '2026' in wb.sheetnames else wb.active
+                for row in ws.iter_rows(values_only=True):
                     if row and any(row):
-                        # skip secondary header row if present
-                        if str(row[0] or '').strip().lower() in ['no.', 'ល.រ', 'teacher id', 'teacher id *']:
-                            continue
                         rows_data.append(list(row))
             elif filename.endswith('.csv'):
                 decoded_file = file.read().decode('utf-8-sig')
                 io_string = io.StringIO(decoded_file)
                 reader = csv.reader(io_string)
-                header = next(reader, None)
                 for row in reader:
                     if row and any(row):
-                        if str(row[0] or '').strip().lower() in ['no.', 'ល.រ', 'teacher id', 'teacher id *']:
-                            continue
                         rows_data.append(row)
             else:
                 messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ .xlsx ឬ .csv")
@@ -931,64 +925,127 @@ def teacher_import(request):
             success_count = 0
             updated_count = 0
             errors = []
+            default_pwd_hash = make_password('password123')
 
-            for idx, r in enumerate(rows_data, 2):
-                if len(r) < 3:
+            for idx, r in enumerate(rows_data, 1):
+                if not r or len(r) < 3:
                     continue
 
-                t_id = str(r[0] or '').strip()
-                k_name = str(r[1] or '').strip()
-                l_name = str(r[2] or '').strip()
-                gender_raw = str(r[3] or 'M').strip().upper()
-                dob = parse_date_flexible(r[4] if len(r) > 4 else None)
+                col0_str = str(r[0] or '').strip()
+                col1_str = str(r[1] or '').strip() if len(r) > 1 else ''
+                col0_lower = col0_str.lower()
+                col1_lower = col1_str.lower()
+
+                # Skip header rows and summary rows
+                if any(col0_lower.startswith(kw) or kw in col0_lower for kw in ['teacher id', 'no.', 'no', 'ល.រ', 'លរ', 'អត្តលេខ', 'ព្រះរាជាណាចក្រ', 'ស្រុក', 'ការិយាល័យ', 'វិទ្យាល័យ', 'បញ្ជីគ្រប់គ្រង', 'បញ្ឈប់', 'ក្នុងនោះ', 'ថ្នាក់ទី']):
+                    continue
+                if any(col1_lower.startswith(kw) or kw in col1_lower for kw in ['khmer name', 'ឈ្មោះ', 'អត្តលេខ', 'teacher id', 'បញ្ឈប់', 'ក្នុងនោះ']):
+                    continue
+
+                # Detect format:
+                # Case A: Official MoEYS Roster (Col 0 = No, Col 1 = Teacher ID, Col 2 = Khmer Name)
+                if col0_str.isdigit() and col1_str.isdigit() and len(r) >= 13:
+                    t_id = col1_str
+                    k_name = str(r[2] or '').replace('\u200b', ' ').strip()
+                    gender_raw = str(r[3] or 'M').strip()
+                    dob = parse_date_flexible(r[4] if len(r) > 4 else None)
+                    qual = str(r[5] or '').strip() if len(r) > 5 else ''
+                    spec_val = str(r[6] or '').strip() if len(r) > 6 else ''
+                    train_level = str(r[7] or '').strip() if len(r) > 7 else ''
+                    state_hire = parse_date_flexible(r[8] if len(r) > 8 else None)
+                    perm_date = parse_date_flexible(r[9] if len(r) > 9 else None)
+                    subj1 = str(r[10] or '').strip() if len(r) > 10 else ''
+                    subj2 = str(r[11] or '').strip() if len(r) > 11 else ''
+                    duty = str(r[12] or '').strip() if len(r) > 12 else 'គ្រូបង្រៀន'
+                    
+                    cat = str(r[13] or '').strip() if len(r) > 13 else ''
+                    class_num = r[14] if len(r) > 14 else None
+                    step_num = r[15] if len(r) > 15 else None
+                    prakas_yr_raw = r[16] if len(r) > 16 else None
+                    prakas_num_raw = str(r[17] or '').strip() if len(r) > 17 else ''
+                    order_num = r[18] if len(r) > 18 else None
+                    raw_phone = r[19] if len(r) > 19 else None
+                    col30_cat = str(r[29] or '').strip() if len(r) > 29 else ''
+
+                    if col30_cat:
+                        prakas_cat = f"ក្របខ័ណ្ឌ {col30_cat}"
+                    elif cat and class_num and step_num:
+                        prakas_cat = f"ក្របខ័ណ្ឌ {cat}.{class_num}.{step_num}"
+                    elif cat:
+                        prakas_cat = f"ក្របខ័ណ្ឌ {cat}"
+                    else:
+                        prakas_cat = ''
+
+                    prakas_yr = ''
+                    if isinstance(prakas_yr_raw, (datetime, date)):
+                        prakas_yr = str(prakas_yr_raw.year)
+                    elif prakas_yr_raw:
+                        prakas_yr = str(prakas_yr_raw).strip()[:4]
+
+                    prakas_number = prakas_num_raw
+                    if order_num:
+                        prakas_number = f"{prakas_num_raw} (ល.រ {order_num})".strip()
+
+                    spec = spec_val or subj1 or 'ទូទៅ'
+                    phone = format_phone_number(raw_phone)
+                    l_name = transliterate_khmer_name(k_name)
+                    salary = Decimal('500.00')
+                    status = Teacher.Status.ACTIVE
+                    is_fee_collector = duty in ['បេឡា', 'គណនេយ្យ', 'លេខា']
+
+                else:
+                    # Case B: Template format (Col 0 = Teacher ID, Col 1 = Khmer Name, Col 2 = Latin Name...)
+                    t_id = col0_str
+                    k_name = col1_str
+                    l_name = str(r[2] or '').strip() or transliterate_khmer_name(k_name)
+                    gender_raw = str(r[3] or 'M').strip()
+                    dob = parse_date_flexible(r[4] if len(r) > 4 else None)
+
+                    if len(r) >= 16:
+                        qual = str(r[5] or '').strip() if len(r) > 5 else ''
+                        spec = str(r[6] or '').strip() if len(r) > 6 else 'ទូទៅ'
+                        train_level = str(r[7] or '').strip() if len(r) > 7 else ''
+                        state_hire = parse_date_flexible(r[8] if len(r) > 8 else None)
+                        perm_date = parse_date_flexible(r[9] if len(r) > 9 else None)
+                        subj1 = str(r[10] or '').strip() if len(r) > 10 else ''
+                        subj2 = str(r[11] or '').strip() if len(r) > 11 else ''
+                        duty = str(r[12] or '').strip() if len(r) > 12 else 'គ្រូបង្រៀន'
+                        prakas_cat = str(r[13] or '').strip() if len(r) > 13 else ''
+                        prakas_yr = str(r[14] or '').strip() if len(r) > 14 else ''
+                        prakas_number = str(r[15] or '').strip() if len(r) > 15 else ''
+                        phone = format_phone_number(r[16] if len(r) > 16 else '')
+                        email = str(r[17] or '').strip() if len(r) > 17 else ''
+                        salary_str = str(r[18] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 18 else '500.00'
+                        salary = Decimal(salary_str) if salary_str else Decimal('500.00')
+                        status_raw = str(r[19] or 'ACTIVE').strip().upper() if len(r) > 19 else 'ACTIVE'
+                        status = Teacher.Status.ON_LEAVE if status_raw == 'ON_LEAVE' else (Teacher.Status.RESIGNED if status_raw == 'RESIGNED' else Teacher.Status.ACTIVE)
+                        max_hours = 18
+                    else:
+                        phone = format_phone_number(r[5] if len(r) > 5 else '')
+                        email = str(r[6] or '').strip() if len(r) > 6 else ''
+                        spec = str(r[7] or '').strip() if len(r) > 7 else 'ទូទៅ'
+                        qual = str(r[8] or '').strip() if len(r) > 8 else ''
+                        max_hours = int(r[9]) if len(r) > 9 and str(r[9]).isdigit() else 18
+                        salary_str = str(r[10] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 10 else '500.00'
+                        salary = Decimal(salary_str) if salary_str else Decimal('500.00')
+                        status_raw = str(r[11] or 'ACTIVE').strip().upper() if len(r) > 11 else 'ACTIVE'
+                        status = Teacher.Status.ON_LEAVE if status_raw == 'ON_LEAVE' else (Teacher.Status.RESIGNED if status_raw == 'RESIGNED' else Teacher.Status.ACTIVE)
+                        train_level = ''
+                        state_hire = None
+                        perm_date = None
+                        subj1 = ''
+                        subj2 = ''
+                        duty = 'គ្រូបង្រៀន'
+                        prakas_cat = ''
+                        prakas_yr = ''
+                        prakas_number = ''
+
+                    is_fee_collector = duty in ['បេឡា', 'គណនេយ្យ', 'លេខា']
 
                 if not t_id or not k_name:
-                    errors.append(f"ជួរទី {idx}៖ ខ្វះ Teacher ID ឬឈ្មោះគ្រូ")
                     continue
 
-                gender = Teacher.Gender.FEMALE if gender_raw in ['F', 'ស្រី', 'FEMALE'] else Teacher.Gender.MALE
-
-                # Check format by column length
-                if len(r) >= 16:
-                    # MoEYS Extended 20-col format
-                    qual = str(r[5] or '').strip() if len(r) > 5 else ''
-                    spec = str(r[6] or '').strip() if len(r) > 6 else 'ទូទៅ'
-                    training_level = str(r[7] or '').strip() if len(r) > 7 else ''
-                    state_hire_date = parse_date_flexible(r[8] if len(r) > 8 else None)
-                    permanent_date = parse_date_flexible(r[9] if len(r) > 9 else None)
-                    primary_subj = str(r[10] or '').strip() if len(r) > 10 else ''
-                    secondary_subj = str(r[11] or '').strip() if len(r) > 11 else ''
-                    current_duty = str(r[12] or '').strip() if len(r) > 12 else 'គ្រូបង្រៀន'
-                    prakas_cat = str(r[13] or '').strip() if len(r) > 13 else ''
-                    prakas_yr = str(r[14] or '').strip() if len(r) > 14 else ''
-                    prakas_num = str(r[15] or '').strip() if len(r) > 15 else ''
-                    phone = str(r[16] or '').strip() if len(r) > 16 else ''
-                    email = str(r[17] or '').strip() if len(r) > 17 else ''
-                    salary_str = str(r[18] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 18 else '500.00'
-                    salary = Decimal(salary_str) if salary_str else Decimal('500.00')
-                    status_raw = str(r[19] or 'ACTIVE').strip().upper() if len(r) > 19 else 'ACTIVE'
-                    max_hours = 18
-                else:
-                    # Legacy 12-col format
-                    phone = str(r[5] or '').strip() if len(r) > 5 else ''
-                    email = str(r[6] or '').strip() if len(r) > 6 else ''
-                    spec = str(r[7] or '').strip() if len(r) > 7 else 'ទូទៅ'
-                    qual = str(r[8] or '').strip() if len(r) > 8 else ''
-                    max_hours = int(r[9]) if len(r) > 9 and str(r[9]).isdigit() else 18
-                    salary_str = str(r[10] or '500.00').replace('$', '').replace(',', '').strip() if len(r) > 10 else '500.00'
-                    salary = Decimal(salary_str) if salary_str else Decimal('500.00')
-                    status_raw = str(r[11] or 'ACTIVE').strip().upper() if len(r) > 11 else 'ACTIVE'
-                    training_level = ''
-                    state_hire_date = None
-                    permanent_date = None
-                    primary_subj = ''
-                    secondary_subj = ''
-                    current_duty = 'គ្រូបង្រៀន'
-                    prakas_cat = ''
-                    prakas_yr = ''
-                    prakas_num = ''
-
-                status = Teacher.Status.ON_LEAVE if status_raw == 'ON_LEAVE' else (Teacher.Status.RESIGNED if status_raw == 'RESIGNED' else Teacher.Status.ACTIVE)
+                gender = Teacher.Gender.FEMALE if gender_raw in ['F', 'ស្រី', 'FEMALE', 'ស'] else Teacher.Gender.MALE
 
                 teacher, created = Teacher.objects.update_or_create(
                     teacher_id=t_id,
@@ -998,37 +1055,44 @@ def teacher_import(request):
                         'gender': gender,
                         'date_of_birth': dob,
                         'phone': phone,
-                        'email': email or None,
-                        'specialization': spec,
                         'qualification': qual,
-                        'training_level': training_level,
-                        'state_hire_date': state_hire_date,
-                        'permanent_date': permanent_date,
-                        'primary_subject': primary_subj,
-                        'secondary_subject': secondary_subj,
-                        'current_duty': current_duty,
+                        'specialization': spec,
+                        'training_level': train_level,
+                        'state_hire_date': state_hire,
+                        'permanent_date': perm_date,
+                        'primary_subject': subj1,
+                        'secondary_subject': subj2,
+                        'current_duty': duty,
                         'prakas_category': prakas_cat,
                         'prakas_year': prakas_yr,
-                        'prakas_number': prakas_num,
-                        'max_weekly_hours': max_hours,
+                        'prakas_number': prakas_number,
                         'base_salary': salary,
+                        'max_weekly_hours': max_hours,
+                        'is_fee_collector': is_fee_collector,
                         'status': status,
                     }
                 )
 
-                # Auto-create or link User Account
-                username = t_id.lower().replace('-', '_').replace(' ', '_')
+                username = t_id
                 user = User.objects.filter(username=username).first()
                 if not user:
-                    user = User.objects.create_user(
+                    user = User.objects.create(
                         username=username,
-                        password='password123',
+                        password=default_pwd_hash,
                         role=User.Role.TEACHER,
                         khmer_name=k_name,
                         latin_name=l_name,
                         phone=phone,
-                        email=email or ''
+                        email=f"{username}@hunsenkkt.edu.kh",
+                        is_active=True
                     )
+                else:
+                    user.khmer_name = k_name
+                    user.latin_name = l_name
+                    user.phone = phone
+                    user.role = User.Role.TEACHER
+                    user.save(update_fields=['khmer_name', 'latin_name', 'phone', 'role'])
+
                 teacher.user = user
                 teacher.save(update_fields=['user'])
 
@@ -1038,7 +1102,7 @@ def teacher_import(request):
                     updated_count += 1
 
             if success_count > 0 or updated_count > 0:
-                messages.success(request, f"🎉 ជោគជ័យ! បានបញ្ចូលគ្រូបង្រៀនថ្មី {success_count} នាក់ និងកែប្រែទិន្នន័យចាស់ {updated_count} នាក់។ គណនី Login ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Password: password123)")
+                messages.success(request, f"🎉 ជោគជ័យ! បានបញ្ចូលគ្រូបង្រៀនថ្មី {success_count} នាក់ និងកែប្រែទិន្នន័យចាស់ {updated_count} នាក់។ គណនី Login ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: អត្តលេខ, Password: password123)")
             if errors:
                 for err in errors[:5]:
                     messages.warning(request, f"⚠️ {err}")
@@ -1049,6 +1113,7 @@ def teacher_import(request):
             return redirect('teacher_import')
 
     return render(request, 'teachers/teacher_import.html')
+
 
 
 # =========================================================================

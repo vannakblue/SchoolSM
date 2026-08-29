@@ -91,6 +91,7 @@ def test_moeys_teacher_profile_system():
         'base_salary': '600.00',
         'status': 'ACTIVE'
     }
+    Teacher.objects.filter(teacher_id='T-MOEYS-002').delete()
     form = TeacherForm(data=form_data)
     assert form.is_valid(), f"Form errors: {form.errors}"
     saved_teacher = form.save()
