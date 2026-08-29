@@ -114,8 +114,13 @@
         <p class="text-muted small mb-0">ជ្រើសរើសគ្រូនីមួយៗ រួច Tick ថ្នាក់រៀន និងមុខវិជ្ជាដែលគាត់ត្រូវទទួលបន្ទុកបង្រៀន (ប្រព័ន្ធនឹងគណនាម៉ោងសរុបស្វ័យប្រវត្តិតាមមុខវិជ្ជា និងថ្នាក់)</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
+        <!-- Training Level Hours Quota Settings Modal Button -->
+        <button type="button" class="btn btn-outline-indigo btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#trainingQuotaModal">
+            <i class="fa-solid fa-sliders me-1"></i> កំណត់កូតាម៉ោងតាមកម្រិតបណ្តុះបណ្តាល
+        </button>
+
         <!-- Auto Assign by Specialization -->
-        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកូតាម៉ោង (១៨ ម៉ោង/សប្តាហ៍) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
+        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
         </a>
 
@@ -155,7 +160,7 @@
             <!-- Teachers List -->
             <div style="max-height: 600px; overflow-y: auto; padding-right: 4px;" id="teacherListContainer">
                 {% for item in teacher_stats %}
-                <a href="?teacher={{ item.teacher.id }}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name }} {{ item.teacher.specialization }}">
+                <a href="?teacher={{ item.teacher.id }}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name }} {{ item.teacher.specialization }} {{ item.teacher.training_level }}">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; font-size: 0.85rem;">
@@ -163,7 +168,14 @@
                             </div>
                             <div>
                                 <div class="fw-bold text-dark small">{{ item.teacher.khmer_name }}</div>
-                                <div class="text-muted" style="font-size: 0.72rem;">{{ item.teacher.specialization }}</div>
+                                <div class="text-muted d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.72rem;">
+                                    <span>{{ item.teacher.specialization }}</span>
+                                    {% if 'ទុតិយភូមិ' in item.teacher.training_level %}
+                                    <span class="badge bg-purple-subtle text-purple border p-0 px-1" style="font-size: 0.65rem;">ទុតិយភូមិ</span>
+                                    {% elif item.teacher.training_level %}
+                                    <span class="badge bg-light text-muted border p-0 px-1" style="font-size: 0.65rem;">{{ item.teacher.training_level }}</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                         <div class="text-end">
@@ -200,6 +212,7 @@
                             <div class="small text-dark mt-1 d-flex flex-wrap align-items-center gap-1">
                                 <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id }}</span>
                                 <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization }}</span>
+                                <span class="badge bg-info-subtle text-info border"><i class="fa-solid fa-graduation-cap me-1"></i>កម្រិតបណ្តុះបណ្តាល៖ {{ selected_teacher.training_level|default:"មិនទាន់កំណត់" }}</span>
                                 {% if selected_teacher_codes %}
                                 <span class="badge bg-purple-subtle text-purple border"><i class="fa-solid fa-tag me-1"></i>កូដមុខវិជ្ជា៖ {{ selected_teacher_codes }}</span>
                                 {% endif %}
@@ -475,4 +488,87 @@
         recalculateAssignedHours();
     });
 </script>
+
+<!-- Modal: Training Level Hours Quota Settings -->
+<div class="modal fade" id="trainingQuotaModal" tabindex="-1" aria-labelledby="trainingQuotaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="POST" action="{% url 'teacher_assignments_training_quotas_save' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-primary" id="trainingQuotaModalLabel">
+                        <i class="fa-solid fa-sliders me-2"></i>កំណត់កូតាម៉ោងតាមកម្រិតបណ្តុះបណ្តាល
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 px-3 small mb-3 border-0 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-circle-info text-info me-1"></i>
+                        <strong>ស្តង់ដារលំនាំដើម៖</strong> គ្រូដែលមានកម្រិត <strong>«គ្រូទុតិយភូមិ»</strong> គឺមាន <strong>១៦ ម៉ោង/សប្តាហ៍</strong> និងក្រៅពីនោះ (គ្រូបឋមភូមិ/បឋម...) គឺមាន <strong>១៨ ម៉ោង/សប្តាហ៍</strong>។ លោកអ្នកអាចកែប្រែចំនួនម៉ោងតាមតម្រូវការខាងក្រោម។
+                    </div>
+
+                    <div class="table-responsive border rounded-3 mb-3">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3 py-2">កម្រិតបណ្តុះបណ្តាល</th>
+                                    <th class="text-center py-2" style="width: 100px;">ចំនួនគ្រូ</th>
+                                    <th class="text-center py-2" style="width: 130px;">កូតាម៉ោង/សប្តាហ៍</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in training_level_settings %}
+                                <tr>
+                                    <td class="ps-3 py-2">
+                                        <div class="fw-bold text-dark">{{ item.name }}</div>
+                                        <small class="text-muted">
+                                            {% if 'ទុតិយភូមិ' in item.name %}
+                                            បង្រៀនកម្រិតវិទ្យាល័យ (Grades 10-12)
+                                            {% else %}
+                                            បង្រៀនកម្រិតអនុវិទ្យាល័យ (Grades 7-9)
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary-subtle text-secondary px-2 py-1">{{ item.count }} នាក់</span>
+                                    </td>
+                                    <td class="text-center pe-3">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="quota_{{ item.name }}" value="{{ item.hours }}" min="1" max="60" class="form-control text-center fw-bold border-primary" required>
+                                            <span class="input-group-text bg-white small">ម៉ោង</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td class="ps-3 py-2">
+                                        <div class="fw-bold text-dark">កម្រិតផ្សេងៗ (Default / Other)</div>
+                                        <small class="text-muted">គ្រូដែលមិនមានក្នុងបញ្ជីខាងលើ</small>
+                                    </td>
+                                    <td class="text-center">-</td>
+                                    <td class="text-center pe-3">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="quota_default" value="{{ training_quotas.default|default:18 }}" min="1" max="60" class="form-control text-center fw-bold" required>
+                                            <span class="input-group-text bg-white small">ម៉ោង</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-text small text-muted">
+                        <i class="fa-solid fa-sync text-primary me-1"></i> នៅពេលចុចរក្សាទុក ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពកូតាម៉ោងអតិបរមា (Max Hours) ទៅកាន់គ្រូទាំងអស់ដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក & អនុវត្តទៅគ្រូទាំងអស់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

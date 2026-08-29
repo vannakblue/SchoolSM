@@ -2647,6 +2647,22 @@ def subject_requirement_row_delete(request, subject_id):
 
 # ----------------- TEACHER CLASS & SUBJECT ASSIGNMENTS -----------------
 
+DEFAULT_TRAINING_LEVEL_QUOTAS = {
+    'គ្រូទុតិយភូមិ': 16,
+    'គ្រូបឋមភូមិ': 18,
+    'គ្រូកម្រិតបឋម': 18,
+    'default': 18,
+}
+
+def get_training_level_quotas():
+    config = SavedDefaultConfig.objects.filter(key='training_level_quotas').first()
+    if config and config.data:
+        res = dict(DEFAULT_TRAINING_LEVEL_QUOTAS)
+        res.update(config.data)
+        return res
+    return dict(DEFAULT_TRAINING_LEVEL_QUOTAS)
+
+
 @login_required
 @role_required(['ADMIN'])
 def teacher_assignments_manager(request):
@@ -2827,6 +2843,23 @@ def teacher_assignments_manager(request):
             if (s.id, selected_teacher.id) in teacher_subject_code_map:
                 selected_teacher_codes.append(teacher_subject_code_map[(s.id, selected_teacher.id)])
 
+    # Retrieve dynamic training level quotas for modal customization
+    training_quotas = get_training_level_quotas()
+    raw_levels = list(Teacher.objects.filter(status='ACTIVE').values_list('training_level', flat=True).distinct())
+    distinct_levels = sorted(list(set([lvl.strip() for lvl in raw_levels if lvl and lvl.strip()])))
+    if 'គ្រូទុតិយភូមិ' not in distinct_levels:
+        distinct_levels.insert(0, 'គ្រូទុតិយភូមិ')
+    if 'គ្រូបឋមភូមិ' not in distinct_levels:
+        distinct_levels.append('គ្រូបឋមភូមិ')
+
+    training_level_settings = []
+    for lvl in distinct_levels:
+        training_level_settings.append({
+            'name': lvl,
+            'hours': training_quotas.get(lvl, 16 if 'ទុតិយភូមិ' in lvl else 18),
+            'count': Teacher.objects.filter(status='ACTIVE', training_level=lvl).count(),
+        })
+
     return render(request, 'academics/teacher_assignments.html', {
         'teachers': teachers,
         'teacher_stats': teacher_stats,
@@ -2839,7 +2872,54 @@ def teacher_assignments_manager(request):
         'selected_assigned_hours': selected_total_assigned_hours,
         'selected_subject_hours': selected_subject_hours,
         'selected_max_hours': selected_teacher.max_weekly_hours if selected_teacher else 18,
+        'training_level_settings': training_level_settings,
+        'training_quotas': training_quotas,
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_assignments_training_quotas_save(request):
+    """
+    Save custom training level teaching hour quotas (e.g. គ្រូទុតិយភូមិ=16h, គ្រូបឋមភូមិ=18h)
+    and sync/apply them to all active teachers in the database.
+    """
+    if request.method == 'POST':
+        quotas = get_training_level_quotas()
+        for key in request.POST.keys():
+            if key.startswith('quota_'):
+                level_name = key[6:].strip()
+                val_str = request.POST.get(key, '').strip()
+                if val_str.isdigit():
+                    quotas[level_name] = max(1, min(60, int(val_str)))
+
+        SavedDefaultConfig.objects.update_or_create(
+            key='training_level_quotas',
+            defaults={'data': quotas}
+        )
+
+        # Apply to all teachers
+        updated_count = 0
+        teachers = Teacher.objects.all()
+        for t in teachers:
+            t_level = (t.training_level or '').strip()
+            if t_level in quotas:
+                new_max = quotas[t_level]
+            elif 'ទុតិយភូមិ' in t_level:
+                new_max = quotas.get('គ្រូទុតិយភូមិ', 16)
+            elif 'បឋមភូមិ' in t_level:
+                new_max = quotas.get('គ្រូបឋមភូមិ', 18)
+            else:
+                new_max = quotas.get('default', 18)
+
+            if t.max_weekly_hours != new_max:
+                t.max_weekly_hours = new_max
+                t.save(update_fields=['max_weekly_hours'])
+                updated_count += 1
+
+        messages.success(request, f"បានរក្សាទុក និងកំណត់កូតាម៉ោងបង្រៀន (គ្រូទុតិយភូមិ = {quotas.get('គ្រូទុតិយភូមិ', 16)} ម៉ោង, ផ្សេងៗ = {quotas.get('default', 18)} ម៉ោង) ទៅគ្រូទាំងអស់ជោគជ័យ!")
+    
+    return redirect('teacher_assignments_manager')
 
 
 @login_required
@@ -2882,13 +2962,32 @@ def teacher_assignments_reset_all(request):
 def teacher_assignments_auto_assign(request):
     """
     Intelligently auto-assign active teachers to classes based on their subject specialization
-    and max weekly hours quota (default 18h).
+    and pedagogical training level quota (គ្រូទុតិយភូមិ = 16h, ផ្សេងៗ = 18h).
     """
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
     
+    quotas = get_training_level_quotas()
     teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('id'))
-    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    
+    # 1. Sync / Update teacher max hours based on training level
+    for t in teachers:
+        t_level = (t.training_level or '').strip()
+        if t_level in quotas:
+            quota_val = quotas[t_level]
+        elif 'ទុតិយភូមិ' in t_level:
+            quota_val = quotas.get('គ្រូទុតិយភូមិ', 16)
+        elif 'បឋមភូមិ' in t_level:
+            quota_val = quotas.get('គ្រូបឋមភូមិ', 18)
+        else:
+            quota_val = quotas.get('default', 18)
+        
+        if not t.max_weekly_hours or t.max_weekly_hours in [16, 18]:
+            t.max_weekly_hours = quota_val
+            t.save(update_fields=['max_weekly_hours'])
+
+    # Classrooms ordered by High School (12, 11, 10) down to Middle School (9, 8, 7)
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('-grade_level', 'code') if active_year else Classroom.objects.all().order_by('-grade_level', 'code'))
     subjects = list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id'))
     
     rules_dict = {}
@@ -2901,6 +3000,7 @@ def teacher_assignments_auto_assign(request):
 
     with transaction.atomic():
         for cls in classrooms:
+            is_high_school = cls.grade_level >= 10
             for sub in subjects:
                 h_req = rules_dict.get((sub.id, cls.grade_level, cls.track))
                 if h_req is None:
@@ -2914,14 +3014,26 @@ def teacher_assignments_auto_assign(request):
                 if not candidates:
                     candidates = teachers # Fallback to any teacher
 
-                # Pick candidate with lowest current load that can fit this subject hours
-                candidates.sort(key=lambda t: (teacher_loads[t.id], t.id))
+                # Score candidates: Prioritize High School Teachers (គ្រូទុតិយភូមិ) for Grades 10-12, Middle School (គ្រូបឋមភូមិ) for Grades 7-9
+                def score_candidate(cand):
+                    is_tutiya = 'ទុតិយភូមិ' in (cand.training_level or '')
+                    level_match_bonus = 0
+                    if is_high_school and is_tutiya:
+                        level_match_bonus = -50  # Lower score is prioritized
+                    elif not is_high_school and not is_tutiya:
+                        level_match_bonus = -50
+                    return (level_match_bonus, teacher_loads[cand.id], cand.id)
+
+                candidates.sort(key=score_candidate)
+                
                 chosen = None
                 for cand in candidates:
                     if teacher_loads[cand.id] + h_req <= teacher_max[cand.id]:
                         chosen = cand
                         break
                 if not chosen and candidates:
+                    # Over-quota fallback candidate with minimum load
+                    candidates.sort(key=lambda t: (teacher_loads[t.id], t.id))
                     chosen = candidates[0]
 
                 if chosen:
@@ -2931,7 +3043,7 @@ def teacher_assignments_auto_assign(request):
                     teacher_loads[chosen.id] += h_req
                     assigned_count += 1
 
-    messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកូតាស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង) ជោគជ័យ!")
+    messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកម្រិតបណ្តុះបណ្តាលស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង, គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h) ជោគជ័យ!")
     return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
 
 

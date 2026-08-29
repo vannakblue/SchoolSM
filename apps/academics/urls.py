@@ -100,6 +100,7 @@ urlpatterns = [
     path('teacher-assignments/reset-all/', views.teacher_assignments_reset_all, name='teacher_assignments_reset_all'),
     path('teacher-assignments/auto-assign/', views.teacher_assignments_auto_assign, name='teacher_assignments_auto_assign'),
     path('teacher-assignments/reset-teacher/<int:teacher_id>/', views.teacher_assignments_reset_teacher, name='teacher_assignments_reset_teacher'),
+    path('teacher-assignments/training-quotas/save/', views.teacher_assignments_training_quotas_save, name='teacher_assignments_training_quotas_save'),
 
     # Student Promotion / Academic Year Transfer
     path('promotion/', views.student_promotion_view, name='student_promotion'),
