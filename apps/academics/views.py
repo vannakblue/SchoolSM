@@ -1481,11 +1481,19 @@ def timetable_auto_generate(request):
                 if not ls.get('is_blocked') and ls.get('subject_id'):
                     locked_sub_counts[int(ls.get('subject_id'))] += 1
 
+            has_any_assignments = class_subject_assignments.exists()
             demands = []
             for r in rules:
                 tch = class_teacher_map.get((cls.id, r.subject_id))
                 if not tch:
-                    # STRICT ISOLATION & ASSIGNMENT: If teacher is not assigned to this class and subject in ClassSubject, DO NOT schedule!
+                    if has_any_assignments:
+                        # STRICT ISOLATION & ASSIGNMENT: If assignments exist for this year, only schedule assigned classes!
+                        continue
+                    else:
+                        sub_teachers = [t for t in teachers if r.subject.name_kh in (t.specialization or '')]
+                        tch = sub_teachers[0] if sub_teachers else (teachers[0] if teachers else None)
+                
+                if not tch:
                     continue
                 needed_h = max(0, r.weekly_hours - locked_sub_counts[r.subject_id])
                 if needed_h <= 0:
@@ -2465,12 +2473,15 @@ def subject_requirements_manager(request):
         rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
 
     matrix_rows = []
+    stream_totals = [0] * len(streams_meta)
+    
     for sub in subjects:
         cells = []
         total_hours_for_sub = 0
-        for sm in streams_meta:
+        for idx, sm in enumerate(streams_meta):
             hrs = rules_dict.get((sub.id, sm['grade_number'], sm['track']), 0)
             total_hours_for_sub += hrs
+            stream_totals[idx] += hrs
             cells.append({
                 'grade_number': sm['grade_number'],
                 'track': sm['track'],
@@ -2483,18 +2494,145 @@ def subject_requirements_manager(request):
             'total_hours': total_hours_for_sub,
         })
 
+    has_custom_default = SavedDefaultConfig.objects.filter(key='custom_subject_requirements').exists()
+
     return render(request, 'academics/subject_requirements.html', {
         'streams_meta': streams_meta,
         'matrix_rows': matrix_rows,
+        'stream_totals': stream_totals,
         'subjects_count': subjects.count(),
+        'has_custom_default': has_custom_default,
     })
 
 
 @login_required
 @role_required(['ADMIN'])
 def subject_requirements_reset(request):
+    """Reset all weekly teaching hours to 0."""
     GradeLevelRule.objects.all().update(weekly_hours=0)
-    messages.success(request, "បានលុបទិន្នន័យម៉ោងសិក្សាទាំងអស់ជោគជ័យ!")
+    messages.success(request, "បានសម្អាតទិន្នន័យម៉ោងសិក្សាទាំងអស់ទៅជា 0 ជោគជ័យ!")
+    return redirect('subject_requirements_manager')
+
+
+@login_required
+@role_required(['ADMIN'])
+def subject_requirements_restore_moeys(request):
+    """
+    Restore official Ministry of Education (MoEYS) standard weekly teaching hours per grade level.
+    """
+    moeys_hours_matrix = {
+        # ថ្នាក់ទី ៧ (Grade 7 - Junior High)
+        (7, 'GENERAL'): {
+            'K': 5, 'M': 5, 'P': 2, 'C': 1, 'B': 2, 'Es': 1,
+            'I': 2, 'G': 2, 'H': 2, 'He': 2, 'Ec': 0, 'E': 2, 'Ed': 2, 'Ag': 2, 'IT': 2,
+        },
+        # ថ្នាក់ទី ៨ (Grade 8 - Junior High)
+        (8, 'GENERAL'): {
+            'K': 5, 'M': 5, 'P': 2, 'C': 2, 'B': 2, 'Es': 1,
+            'I': 2, 'G': 2, 'H': 2, 'He': 2, 'Ec': 0, 'E': 2, 'Ed': 2, 'Ag': 2, 'IT': 2,
+        },
+        # ថ្នាក់ទី ៩ (Grade 9 - Junior High Diploma)
+        (9, 'GENERAL'): {
+            'K': 5, 'M': 5, 'P': 2, 'C': 2, 'B': 2, 'Es': 1,
+            'I': 2, 'G': 2, 'H': 2, 'He': 2, 'Ec': 0, 'E': 2, 'Ed': 2, 'Ag': 2, 'IT': 2,
+        },
+        # ថ្នាក់ទី ១០ (Grade 10 - High School Foundation)
+        (10, 'GENERAL'): {
+            'K': 5, 'M': 5, 'P': 3, 'C': 3, 'B': 3, 'Es': 2,
+            'I': 2, 'G': 2, 'H': 2, 'He': 2, 'Ec': 2, 'E': 3, 'Ed': 2, 'Ag': 0, 'IT': 2,
+        },
+        # ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (Grade 11 - Science Stream)
+        (11, 'SCIENCE'): {
+            'K': 4, 'M': 6, 'P': 4, 'C': 4, 'B': 4, 'Es': 2,
+            'I': 2, 'G': 2, 'H': 2, 'He': 0, 'Ec': 2, 'E': 2, 'Ed': 2, 'Ag': 0, 'IT': 2,
+        },
+        # ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រសង្គម (Grade 11 - Social Science Stream)
+        (11, 'SOCIAL'): {
+            'K': 6, 'M': 4, 'P': 2, 'C': 1, 'B': 2, 'Es': 2,
+            'I': 4, 'G': 4, 'H': 4, 'He': 0, 'Ec': 3, 'E': 2, 'Ed': 2, 'Ag': 0, 'IT': 2,
+        },
+        # ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (Grade 12 - Science Stream BacII)
+        (12, 'SCIENCE'): {
+            'K': 4, 'M': 6, 'P': 4, 'C': 4, 'B': 4, 'Es': 2,
+            'I': 2, 'G': 2, 'H': 2, 'He': 0, 'Ec': 2, 'E': 2, 'Ed': 2, 'Ag': 0, 'IT': 2,
+        },
+        # ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម (Grade 12 - Social Science Stream BacII)
+        (12, 'SOCIAL'): {
+            'K': 6, 'M': 4, 'P': 2, 'C': 1, 'B': 2, 'Es': 2,
+            'I': 4, 'G': 4, 'H': 4, 'He': 0, 'Ec': 3, 'E': 2, 'Ed': 2, 'Ag': 0, 'IT': 2,
+        },
+    }
+
+    count = 0
+    with transaction.atomic():
+        for (g_num, trk), sub_map in moeys_hours_matrix.items():
+            for sub_code, hrs in sub_map.items():
+                sub = Subject.objects.filter(code=sub_code).first()
+                if sub:
+                    rule, _ = GradeLevelRule.objects.get_or_create(
+                        grade_level=g_num,
+                        track=trk,
+                        subject=sub,
+                        defaults={'weekly_hours': hrs}
+                    )
+                    if rule.weekly_hours != hrs:
+                        rule.weekly_hours = hrs
+                        rule.save(update_fields=['weekly_hours'])
+                    count += 1
+
+    messages.success(request, f"បានទាញយក និងកំណត់ម៉ោងសិក្សាតាមស្តង់ដារផ្លូវការក្រសួងអប់រំ (MoEYS) ជោគជ័យ!")
+    return redirect('subject_requirements_manager')
+
+
+@login_required
+@role_required(['ADMIN'])
+def subject_requirements_save_custom_default(request):
+    """
+    Save the current weekly hours configuration as the institution's custom default preset.
+    """
+    rules = GradeLevelRule.objects.filter(weekly_hours__gt=0).select_related('subject')
+    saved_dict = {}
+    for r in rules:
+        saved_dict[f"{r.grade_level}_{r.track}_{r.subject.code}"] = r.weekly_hours
+
+    SavedDefaultConfig.objects.update_or_create(
+        key='custom_subject_requirements',
+        defaults={'data': saved_dict}
+    )
+    messages.success(request, "បានរក្សាទុកទម្រង់ម៉ោងសិក្សាបច្ចុប្បន្នជា «លំនាំដើមផ្ទាល់ខ្លួន» របស់សាលាជោគជ័យ!")
+    return redirect('subject_requirements_manager')
+
+
+@login_required
+@role_required(['ADMIN'])
+def subject_requirements_restore_custom_default(request):
+    """
+    Restore the institution's custom default preset.
+    """
+    preset = SavedDefaultConfig.objects.filter(key='custom_subject_requirements').first()
+    if not preset or not preset.data:
+        messages.warning(request, "មិនទាន់មានទម្រង់លំនាំដើមផ្ទាល់ខ្លួនដែលបានរក្សាទុកនៅឡើយទេ!")
+        return redirect('subject_requirements_manager')
+
+    with transaction.atomic():
+        GradeLevelRule.objects.all().update(weekly_hours=0)
+        for k, hrs in preset.data.items():
+            parts = k.split('_')
+            if len(parts) == 3:
+                g_num, trk, sub_code = parts
+                sub = Subject.objects.filter(code=sub_code).first()
+                if sub:
+                    rule, _ = GradeLevelRule.objects.get_or_create(
+                        grade_level=int(g_num),
+                        track=trk,
+                        subject=sub,
+                        defaults={'weekly_hours': int(hrs)}
+                    )
+                    if rule.weekly_hours != int(hrs):
+                        rule.weekly_hours = int(hrs)
+                        rule.save(update_fields=['weekly_hours'])
+
+    messages.success(request, "បានទាញយកទម្រង់ម៉ោងសិក្សាលំនាំដើមផ្ទាល់ខ្លួនរបស់សាលាជោគជ័យ!")
     return redirect('subject_requirements_manager')
 
 

@@ -90,6 +90,9 @@ urlpatterns = [
     # Subject Requirements & Weekly Hours
     path('subject-requirements/', views.subject_requirements_manager, name='subject_requirements_manager'),
     path('subject-requirements/reset/', views.subject_requirements_reset, name='subject_requirements_reset'),
+    path('subject-requirements/restore-moeys/', views.subject_requirements_restore_moeys, name='subject_requirements_restore_moeys'),
+    path('subject-requirements/save-default/', views.subject_requirements_save_custom_default, name='subject_requirements_save_custom_default'),
+    path('subject-requirements/restore-custom/', views.subject_requirements_restore_custom_default, name='subject_requirements_restore_custom_default'),
     path('subject-requirements/<int:subject_id>/delete/', views.subject_requirement_row_delete, name='subject_requirement_row_delete'),
 
     # Teacher Class & Subject Assignments
