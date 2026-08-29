@@ -692,10 +692,16 @@ def sync_system_menus_to_db():
 def get_menu_catalog() -> List[Dict[str, Any]]:
     """
     Returns the complete structured hierarchy of all sections and submenus sourced from Database.
-    Automatically seeds DB from system catalogue if empty.
+    Automatically seeds and syncs DB from system catalogue if empty or if new system items were added.
     """
     try:
-        if not MenuSection.objects.exists():
+        system_item_codes = set()
+        for s in MENU_SECTIONS_CATALOG:
+            for itm in s.get('items', []):
+                system_item_codes.add(itm['key'])
+
+        existing_sys_codes = set(MenuItem.objects.filter(is_system=True).values_list('code', flat=True))
+        if not MenuSection.objects.exists() or not system_item_codes.issubset(existing_sys_codes):
             sync_system_menus_to_db()
 
         sections = MenuSection.objects.filter(is_active=True).prefetch_related('items').order_by('order', 'id')
