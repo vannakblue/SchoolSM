@@ -12,6 +12,12 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+if exist "%LOCALAPPDATA%\Android\Sdk" (
+    set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
+    set "ANDROID_SDK_ROOT=%LOCALAPPDATA%\Android\Sdk"
+    set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin;%PATH%"
+)
+
 cd /d "%~dp0schoolsm_mobile"
 
 :menu
@@ -47,32 +53,8 @@ echo [*] Resolving dependencies (flutter pub get)...
 call flutter pub get
 
 echo.
-echo [*] Checking Android SDK...
-call flutter doctor | findstr /C:"Unable to locate Android SDK" >nul
-if %ERRORLEVEL% equ 0 (
-    color 0c
-    echo.
-    echo ================================================================
-    echo   [!] NOTICE: Android SDK is not yet installed on this PC.
-    echo ================================================================
-    echo.
-    echo To build an Android APK file, Android SDK is required.
-    echo.
-    echo Easy steps to install:
-    echo 1. Download and install Android Studio: https://developer.android.com/studio
-    echo 2. Launch Android Studio once to install the Android SDK components.
-    echo 3. Then re-run this script [Option 1] to build SchoolSM-Mobile.apk!
-    echo.
-    echo (Tip: You can also select [Option 2] to run the app in Chrome right now!)
-    echo.
-    echo ================================================================
-    pause
-    goto menu
-)
-
-echo.
 echo [*] Compiling release APK (Please wait 1-3 minutes)...
-call flutter build apk --release
+call flutter build apk --release --no-tree-shake-icons
 
 if %ERRORLEVEL% equ 0 (
     color 0a
@@ -94,7 +76,8 @@ if %ERRORLEVEL% equ 0 (
     color 0c
     echo.
     echo ================================================================
-    echo   [ERROR] Failed to build APK. Please check logs above.
+    echo   [ERROR] Failed to build APK.
+    echo   Tip: You can also download the pre-built APK from GitHub Actions.
     echo ================================================================
 )
 
