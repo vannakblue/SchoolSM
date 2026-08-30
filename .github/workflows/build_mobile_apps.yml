@@ -22,29 +22,23 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android Platforms & Build Tools
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "platforms;android-35" "build-tools;36.0.0" "cmake;3.22.1" || true
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Accept Android Licenses
-        run: yes | flutter doctor --android-licenses || true
-
-      - name: Pre-generate local.properties
-        working-directory: ./schoolsm_mobile/android
-        run: |
-          echo "flutter.sdk=$FLUTTER_ROOT" > local.properties
-
       - name: Install Dependencies
         working-directory: ./schoolsm_mobile
         run: flutter pub get
-
-      - name: Patch legacy plugins for AGP 8.7+
-        run: |
-          find ~/.pub-cache -name "AndroidManifest.xml" -path "*/qr_code_scanner*/*" -exec sed -i 's/package="net.touchcapture.qr.flutterqr"//g' {} + || true
-          find ~/.pub-cache -name "build.gradle" -path "*/qr_code_scanner*/*" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} + || true
-          find ~/.pub-cache -name "build.gradle" -path "*/qr_code_scanner*/*" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} + || true
 
       - name: Build Release APK
         working-directory: ./schoolsm_mobile
@@ -54,7 +48,7 @@ jobs:
         working-directory: ./schoolsm_mobile
         run: flutter build appbundle --release --no-tree-shake-icons --android-skip-build-dependency-validation || true
 
-      - name: Prepare APK for Artifacts & Release
+      - name: Prepare APK for Artifacts
         run: |
           mkdir -p dist
           cp schoolsm_mobile/build/app/outputs/flutter-apk/app-release.apk dist/SchoolSM-Mobile.apk
@@ -85,13 +79,9 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies & CocoaPods
+      - name: Install Dependencies
         working-directory: ./schoolsm_mobile
-        run: |
-          flutter pub get
-          cd ios
-          pod install --repo-update || true
-          cd ..
+        run: flutter pub get
 
       - name: Build iOS Application (No Codesign for Distribution/Testing)
         working-directory: ./schoolsm_mobile
