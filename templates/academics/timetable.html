@@ -1586,7 +1586,7 @@
         });
     }
 
-    async function saveMasterMatrix(showPrompt = true) {
+    async function saveMasterMatrix(showPrompt = true, classSubjectsToSync = null) {
         const saveBtn = document.getElementById('btnSaveMatrix');
         if (showPrompt && saveBtn) {
             saveBtn.disabled = true;
@@ -1621,17 +1621,22 @@
         } catch (e) {}
 
         try {
+            const payload = { 
+                academic_year_id: ACTIVE_YEAR_ID,
+                matrix: matrixArray,
+                blocked_slots: blockedArray
+            };
+            if (classSubjectsToSync) {
+                payload.class_subject_assignments = classSubjectsToSync;
+            }
+
             const res = await fetch('/academics/timetable/save-matrix/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}',
                 },
-                body: JSON.stringify({ 
-                    academic_year_id: ACTIVE_YEAR_ID,
-                    matrix: matrixArray,
-                    blocked_slots: blockedArray
-                }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (data.status === 'success') {
@@ -1731,7 +1736,7 @@
     }
 
 
-    // Backup & Export Timetable to JSON File
+    // Full Comprehensive Backup & Export Timetable to JSON File
     function exportTimetableBackup() {
         try {
             const now = new Date();
@@ -1746,12 +1751,23 @@
 
             const backupData = {
                 app: 'SchoolSM',
-                type: 'timetable_backup',
-                version: '2.0',
+                type: 'timetable_full_backup',
+                version: '3.0',
                 export_date: now.toISOString(),
                 export_formatted: `${day}/${month}/${year} ${hour}:${minute}`,
+                academic_year: {
+                    id: ACTIVE_YEAR_ID,
+                    name: '{{ active_year.name|escapejs }}'
+                },
                 total_slots: totalSlots,
+                total_classrooms: Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.length : 0,
                 custom_palette: (typeof loadCustomPalette === 'function') ? loadCustomPalette() : null,
+                classrooms: CLASSROOMS_LIST,
+                subjects: SUBJECTS_LIST,
+                class_subject_assignments: CLASS_OPTIONS,
+                class_requirements: CLASS_REQUIREMENTS,
+                teacher_assigned_hours: TEACHER_ASSIGNED_HOURS,
+                teacher_max_hours: TEACHER_MAX_HOURS,
                 matrix_state: MATRIX_STATE,
             };
 
@@ -1772,8 +1788,18 @@
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'success',
-                    title: 'នាំចេញ Backup ជោគជ័យ!',
-                    text: `ឯកសារ Backup "${a.download}" ត្រូវបានទាញយករួចរាល់ (${totalSlots} ម៉ោងសិក្សា)។ លោកអ្នកអាចរក្សាទុកឯកសារនេះនៅកន្លែងណាមួយសម្រាប់ Restore ពេលក្រោយ។`,
+                    title: 'នាំចេញ Backup ពេញលេញជោគជ័យ!',
+                    html: `
+                        <div class="text-start small">
+                            <p class="mb-2">ឯកសារ Backup <strong>"${a.download}"</strong> ត្រូវបានទាញយករួចរាល់។</p>
+                            <ul class="list-unstyled mb-0 bg-light p-2.5 rounded border">
+                                <li class="mb-1"><i class="fa-solid fa-calendar-check text-primary me-1.5"></i> ម៉ោងបង្រៀនក្នុងកាលវិភាគ៖ <strong>${totalSlots}</strong> ម៉ោង</li>
+                                <li class="mb-1"><i class="fa-solid fa-school text-info me-1.5"></i> ថ្នាក់រៀនសរុប៖ <strong>${Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.length : 0}</strong> ថ្នាក់</li>
+                                <li class="mb-1"><i class="fa-solid fa-user-tie text-success me-1.5"></i> ការចាត់តាំងគ្រូតាមថ្នាក់ និងមុខវិជ្ជា៖ <strong>វេចខ្ចប់ពេញលេញ (Full ClassSubject)</strong></li>
+                                <li><i class="fa-solid fa-palette text-warning me-1.5"></i> ការកំណត់កូដពណ៌ & ម៉ោងកំណត់៖ <strong>វេចខ្ចប់ពេញលេញ</strong></li>
+                            </ul>
+                        </div>
+                    `,
                     confirmButtonColor: '#4f46e5',
                     confirmButtonText: 'យល់ព្រម'
                 });
@@ -1799,11 +1825,13 @@
 
                 let newMatrixState = null;
                 let customPalette = null;
+                let backupClassSubjects = null;
 
                 if (parsed && typeof parsed === 'object') {
                     if (parsed.matrix_state && typeof parsed.matrix_state === 'object') {
                         newMatrixState = parsed.matrix_state;
                         customPalette = parsed.custom_palette;
+                        backupClassSubjects = parsed.class_subject_assignments;
                     } else if (!parsed.app && !parsed.version) {
                         // Support direct matrix_state JSON
                         newMatrixState = parsed;
@@ -1857,7 +1885,7 @@
                     }
                 }
 
-                const executeImport = (targetState, isAutoRemapped = false) => {
+                const executeImport = (targetState, isAutoRemapped = false, syncClassSubjects = false) => {
                     pushHistoryState();
                     MATRIX_STATE = targetState;
 
@@ -1870,13 +1898,15 @@
 
                     renderAllMatrixCells();
                     updateAllHoursCounters();
-                    triggerAutoSave();
+                    
+                    const toSync = (syncClassSubjects && backupClassSubjects) ? backupClassSubjects : null;
+                    saveMasterMatrix(false, toSync);
 
                     let detailMsg = `បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន ${slotCount} ម៉ោង និងបានរក្សាទុកក្នុង Database រួចរាល់!`;
                     if (isAutoRemapped && remappedCount > 0) {
                         detailMsg += `\n✨ ប្រព័ន្ធបានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន ${remappedCount} ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីក្នុងឆ្នាំសិក្សានេះដោយស្វ័យប្រវត្តិ!`;
                     }
-                    if (unassignedSubjects.length > 0) {
+                    if (unassignedSubjects.length > 0 && !syncClassSubjects) {
                         detailMsg += `\n⚠️ ចំណាំ៖ មាន ${unassignedSubjects.length} ម៉ោង ដែលមុខវិជ្ជានោះមិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មីនៅឡើយ (សូមពិនិត្យមើលផ្ទាំង «គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់»)។`;
                     }
 
@@ -1887,19 +1917,52 @@
                             html: `
                                 <div class="text-start small">
                                     <p class="mb-2">✅ បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន <strong>${slotCount}</strong> ម៉ោងសិក្សា។</p>
-                                    ${remappedCount > 0 ? `<div class="alert alert-success py-2 px-3 mb-2"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> បានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន <strong>${remappedCount}</strong> ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីដោយស្វ័យប្រវត្តិ!</div>` : ''}
-                                    ${unassignedSubjects.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> មាន <strong>${unassignedSubjects.length}</strong> ម៉ោង មិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មី។</div>` : ''}
+                                    ${syncClassSubjects ? `<div class="alert alert-primary py-2 px-3 mb-2"><i class="fa-solid fa-user-check me-1"></i> បានស្ដារឡើងវិញនូវការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់ (ClassSubject Assignments) រួចរាល់!</div>` : ''}
+                                    ${remappedCount > 0 && !syncClassSubjects ? `<div class="alert alert-success py-2 px-3 mb-2"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> បានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន <strong>${remappedCount}</strong> ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីដោយស្វ័យប្រវត្តិ!</div>` : ''}
+                                    ${unassignedSubjects.length > 0 && !syncClassSubjects ? `<div class="alert alert-warning py-2 px-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> មាន <strong>${unassignedSubjects.length}</strong> ម៉ោង មិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មី។</div>` : ''}
                                 </div>
                             `,
                             confirmButtonColor: '#4f46e5',
                             confirmButtonText: 'យល់ព្រម'
+                        }).then(() => {
+                            if (syncClassSubjects) {
+                                window.location.reload();
+                            }
                         });
                     } else {
                         alert(`✅ ${detailMsg}`);
+                        if (syncClassSubjects) window.location.reload();
                     }
                 };
 
-                if (discrepancies.length > 0 && typeof Swal !== 'undefined') {
+                if (backupClassSubjects && unassignedSubjects.length > 0 && typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'ស្ដារទាំងការចាត់តាំងគ្រូតាមថ្នាក់?',
+                        html: `
+                            <div class="text-start small">
+                                <p class="mb-2">ឯកសារ Backup នេះមានផ្ទុកទាំង <strong>កាលវិភាគរួម (${slotCount} ម៉ោង)</strong> និង <strong>ការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់</strong>។</p>
+                                <div class="alert alert-info py-2 px-3 mb-3">
+                                    <i class="fa-solid fa-circle-info me-1"></i> តើលោកអ្នកចង់ស្ដារទាំងការចាត់តាំងគ្រូតាមថ្នាក់ (ClassSubject) ចូលក្នុង Database ស្វ័យប្រវត្តិ ឬចង់ប្រើការចាត់តាំងគ្រូដែលមានស្រាប់ក្នុងឆ្នាំសិក្សានេះ?
+                                </div>
+                            </div>
+                        `,
+                        icon: 'question',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonColor: '#4f46e5',
+                        denyButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: '<i class="fa-solid fa-arrows-rotate me-1"></i> ស្ដារទាំងកាលវិភាគ & ការចាត់តាំងគ្រូ (ពេញលេញ)',
+                        denyButtonText: '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្ដារតែកាលវិភាគ (ផ្ទេរទៅគ្រូថ្មី)',
+                        cancelButtonText: 'បោះបង់'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            executeImport(newMatrixState, false, true);
+                        } else if (result.isDenied) {
+                            executeImport(remappedMatrixState, true, false);
+                        }
+                    });
+                } else if (discrepancies.length > 0 && typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'រកឃើញការផ្លាស់ប្តូរគ្រូបង្រៀន!',
                         html: `
@@ -1922,9 +1985,9 @@
                         cancelButtonText: 'បោះបង់'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            executeImport(remappedMatrixState, true);
+                            executeImport(remappedMatrixState, true, false);
                         } else if (result.isDenied) {
-                            executeImport(newMatrixState, false);
+                            executeImport(newMatrixState, false, false);
                         }
                     });
                 } else if (typeof Swal !== 'undefined') {
@@ -1939,12 +2002,12 @@
                         cancelButtonText: 'បោះបង់'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            executeImport(newMatrixState, false);
+                            executeImport(newMatrixState, false, !!backupClassSubjects);
                         }
                     });
                 } else {
                     if (confirm(`តើលោកអ្នកចង់បញ្ចូលទិន្នន័យកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោងសិក្សា) មែនទេ?`)) {
-                        executeImport(remappedMatrixState, true);
+                        executeImport(remappedMatrixState, true, !!backupClassSubjects);
                     }
                 }
 

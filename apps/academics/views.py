@@ -1348,6 +1348,36 @@ def timetable_save_matrix(request):
                         end_time=et_time,
                     ))
             
+            # Synchronize ClassSubject teacher assignments if provided during backup restore
+            class_subjects_data = data.get('class_subject_assignments') or data.get('class_subjects')
+            if class_subjects_data:
+                if isinstance(class_subjects_data, dict):
+                    for cid_str, items in class_subjects_data.items():
+                        try:
+                            c_id = int(cid_str)
+                            for itm in items:
+                                s_id = itm.get('subject_id')
+                                t_id = itm.get('teacher_id')
+                                if s_id and t_id:
+                                    ClassSubject.objects.update_or_create(
+                                        classroom_id=c_id,
+                                        subject_id=s_id,
+                                        defaults={'teacher_id': t_id}
+                                    )
+                        except Exception:
+                            pass
+                elif isinstance(class_subjects_data, list):
+                    for itm in class_subjects_data:
+                        c_id = itm.get('classroom_id')
+                        s_id = itm.get('subject_id')
+                        t_id = itm.get('teacher_id')
+                        if c_id and s_id and t_id:
+                            ClassSubject.objects.update_or_create(
+                                classroom_id=c_id,
+                                subject_id=s_id,
+                                defaults={'teacher_id': t_id}
+                            )
+
             if created_entries:
                 Timetable.objects.bulk_create(created_entries)
 
