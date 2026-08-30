@@ -43,6 +43,8 @@ jobs:
       - name: Patch legacy plugins for AGP 8.7+
         run: |
           find ~/.pub-cache -name "AndroidManifest.xml" -path "*/qr_code_scanner*/*" -exec sed -i 's/package="net.touchcapture.qr.flutterqr"//g' {} + || true
+          find ~/.pub-cache -name "build.gradle" -path "*/qr_code_scanner*/*" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} + || true
+          find ~/.pub-cache -name "build.gradle" -path "*/qr_code_scanner*/*" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} + || true
 
       - name: Build Release APK
         working-directory: ./schoolsm_mobile
