@@ -87,15 +87,17 @@ jobs:
         working-directory: ./schoolsm_mobile
         run: |
           flutter build ios --release --no-codesign
-          mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
           zip -r SchoolSM-iOS.ipa Payload
+          cd ../../..
 
       - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: SchoolSM-Mobile-iOS-IPA
-          path: schoolsm_mobile/SchoolSM-iOS.ipa
+          path: schoolsm_mobile/build/ios/iphoneos/SchoolSM-iOS.ipa
 
       - name: Upload iOS Runner App
         uses: actions/upload-artifact@v4
