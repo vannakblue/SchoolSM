@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "kh.edu.schoolsm.schoolsm_mobile"
-    compileSdk = 35
+    compileSdk = 34
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -16,7 +16,7 @@ android {
     defaultConfig {
         applicationId = "kh.edu.schoolsm.schoolsm_mobile"
         minSdk = 21
-        targetSdk = 35
+        targetSdk = 34
         multiDexEnabled = true
         versionCode = 1
         versionName = "1.0.0"

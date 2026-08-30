@@ -25,6 +25,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Accept Android Licenses
+        run: yes | flutter doctor --android-licenses || true
+
       - name: Pre-generate local.properties
         working-directory: ./schoolsm_mobile/android
         run: |
@@ -36,10 +39,10 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: ./schoolsm_mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: SchoolSM-Mobile-APK
-          path: schoolsm_mobile/build/app/outputs/**/*.apk
+          path: schoolsm_mobile/build/app/outputs/flutter-apk/*.apk
