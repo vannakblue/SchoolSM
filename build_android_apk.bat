@@ -23,6 +23,11 @@ if exist "%LOCALAPPDATA%\Android\Sdk" (
     set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin;%PATH%"
 )
 
+if exist "%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973" (
+    set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973"
+    set "ANDROID_NDK_ROOT=%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973"
+)
+
 cd /d "%~dp0schoolsm_mobile"
 
 :menu

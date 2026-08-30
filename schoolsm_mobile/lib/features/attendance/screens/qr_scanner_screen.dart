@@ -1,5 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
@@ -12,27 +13,40 @@ class QRScannerScreen extends StatefulWidget {
 }
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  final MobileScannerController _controller = MobileScannerController();
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? controller;
   bool _isProcessing = false;
+
+  // In order to get hot reload to work we need to pause the camera if the platform
+  // is android, or resume the camera if the platform is iOS.
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (Platform.isAndroid) {
+      controller?.pauseCamera();
+    }
+    controller?.resumeCamera();
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    controller?.dispose();
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
-
-    final List<Barcode> barcodes = capture.barcodes;
-    for (final barcode in barcodes) {
-      final code = barcode.rawValue;
+  void _onQRViewCreated(QRViewController controller) {
+    setState(() {
+      this.controller = controller;
+    });
+    controller.scannedDataStream.listen((scanData) async {
+      if (_isProcessing) return;
+      final code = scanData.code;
       if (code != null && code.isNotEmpty) {
         setState(() => _isProcessing = true);
+        controller.pauseCamera();
         await _processScan(code);
-        break;
       }
-    }
+    });
   }
 
   Future<void> _processScan(String code) async {
@@ -91,7 +105,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSuccess ? AppColors.success.withOpacity(0.15) : AppColors.danger.withOpacity(0.15),
+                color: isSuccess ? AppColors.success.withValues(alpha: 0.15) : AppColors.danger.withValues(alpha: 0.15),
               ),
               child: Icon(
                 isSuccess ? Icons.check_circle_rounded : Icons.error_outline_rounded,
@@ -143,6 +157,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 onPressed: () {
                   Navigator.pop(ctx);
                   setState(() => _isProcessing = false);
+                  controller?.resumeCamera();
                 },
                 child: const Text("ស្កេនបន្ត (Next Scan)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
@@ -188,6 +203,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scanArea = (MediaQuery.of(context).size.width < 400 ||
+            MediaQuery.of(context).size.height < 400)
+        ? 220.0
+        : 260.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -201,11 +221,15 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on, color: Colors.white),
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () async {
+              await controller?.toggleFlash();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () async {
+              await controller?.flipCamera();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.keyboard, color: Colors.white),
@@ -217,29 +241,15 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
-          // Custom Scanning Overlay Frame
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-            ),
-          ),
-          Container(
-            width: 260,
-            height: 260,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.secondary, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.secondary.withOpacity(0.2),
-                  blurRadius: 20,
-                  spreadRadius: 4,
-                ),
-              ],
+          QRView(
+            key: qrKey,
+            onQRViewCreated: _onQRViewCreated,
+            overlay: QrScannerOverlayShape(
+              borderColor: AppColors.secondary,
+              borderRadius: 20,
+              borderLength: 30,
+              borderWidth: 6,
+              cutOutSize: scanArea,
             ),
           ),
           Positioned(
@@ -247,7 +257,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
