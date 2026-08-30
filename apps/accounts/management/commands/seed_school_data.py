@@ -410,4 +410,12 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"[WARNING] Location seeding skipped or failed: {str(e)}"))
 
+        # 15. Synchronize Dynamic Role Menus & Submenus in Database
+        try:
+            from apps.accounts.menu_registry import sync_system_menus_to_db
+            sync_system_menus_to_db()
+            self.stdout.write(self.style.SUCCESS("[OK] Synchronized all Menu Sections & Submenus into Database!"))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"[WARNING] Menu sync failed: {str(e)}"))
+
         self.stdout.write(self.style.SUCCESS("[OK] Successfully seeded 14 subjects with exact short codes, 8 grade streams, and exact MoEYS scoring rules!"))

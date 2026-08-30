@@ -297,6 +297,16 @@
 
         <!-- Middle: Dynamic Dropdown Filters -->
         <div class="d-flex flex-wrap align-items-center gap-3">
+            <!-- Academic Year Select Filter -->
+            <div class="d-flex align-items-center gap-2">
+                <label for="selectAcademicYear" class="fw-bold small text-muted text-nowrap"><i class="fa-solid fa-calendar-check text-primary me-1"></i>ឆ្នាំសិក្សា៖</label>
+                <select id="selectAcademicYear" class="form-select form-select-sm fw-bold border-primary text-primary" style="min-width: 140px;" onchange="switchAcademicYear(this.value)">
+                    {% for y in academic_years %}
+                    <option value="{{ y.id }}" {% if academic_year and academic_year.id == y.id %}selected{% endif %}>{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <!-- Classroom Select Filter -->
             <div id="classFilterWrapper" class="d-flex align-items-center gap-2">
                 <label for="selectClassroom" class="fw-bold small text-muted text-nowrap">ជ្រើសរើសថ្នាក់៖</label>
@@ -657,6 +667,11 @@
         document.querySelectorAll('.lbl-solar-date').forEach(el => {
             el.innerText = solarVal;
         });
+    }
+
+    function switchAcademicYear(yearId) {
+        if (!yearId) return;
+        window.location.href = `{% url 'student_teacher_timetable_view' %}?year=${yearId}`;
     }
 </script>
 {% endblock %}

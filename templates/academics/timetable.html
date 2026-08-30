@@ -497,10 +497,24 @@
 
     <!-- Top Action Bar Matching User Screenshot -->
     <div class="master-action-bar d-flex flex-wrap align-items-center justify-content-between gap-3 no-print">
-        <!-- Title & Undo/Redo & Auto-Save Status -->
-        <div class="d-flex align-items-center gap-3">
+        <!-- Title & Academic Year & Undo/Redo & Auto-Save Status -->
+        <div class="d-flex flex-wrap align-items-center gap-3">
             <div class="matrix-title">
                 <i class="fa-solid fa-table-cells-large text-primary"></i> កាលវិភាគរួម
+            </div>
+
+            <!-- Academic Year Dropdown Switcher -->
+            <div class="d-inline-flex align-items-center gap-1.5 bg-light p-1 px-2.5 rounded-3 border shadow-sm">
+                <label for="selectAcademicYear" class="small fw-bold text-muted mb-0 text-nowrap">
+                    <i class="fa-solid fa-calendar-check text-primary me-1"></i>ឆ្នាំសិក្សា៖
+                </label>
+                <select id="selectAcademicYear" class="form-select form-select-sm fw-bold border-0 bg-transparent text-primary" style="width: auto; min-width: 140px; cursor: pointer;" onchange="switchAcademicYear(this.value)">
+                    {% for y in academic_years %}
+                    <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>
+                        {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
             
             <div class="d-flex align-items-center gap-1">
@@ -988,9 +1002,10 @@
     const SUBJECTS_LIST = {{ subjects_json|safe }};
     const CLASSROOMS_LIST = {{ classrooms_json|safe }};
     let MATRIX_STATE = {{ matrix_state_json|safe }};
-    const LOCAL_STORAGE_KEY = 'schoolsm_timetable_draft_v2';
+    const ACTIVE_YEAR_ID = {{ active_year.id|default:0 }};
+    const LOCAL_STORAGE_KEY = 'schoolsm_timetable_draft_y' + ACTIVE_YEAR_ID;
     const COLOR_STORAGE_KEY = 'schoolsm_timetable_custom_palette';
-    const BLOCKED_STORAGE_KEY = 'schoolsm_timetable_blocked_' + ({{ active_academic_year.id|default:0 }});
+    const BLOCKED_STORAGE_KEY = 'schoolsm_timetable_blocked_y' + ACTIVE_YEAR_ID;
 
     const DEFAULT_PALETTE = {
         exact: '#3b82f6',
@@ -1613,6 +1628,7 @@
                     'X-CSRFToken': '{{ csrf_token }}',
                 },
                 body: JSON.stringify({ 
+                    academic_year_id: ACTIVE_YEAR_ID,
                     matrix: matrixArray,
                     blocked_slots: blockedArray
                 }),
@@ -1679,6 +1695,7 @@
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({ 
+                    academic_year_id: ACTIVE_YEAR_ID,
                     clear_existing: true,
                     locked_slots: lockedList
                 }),
@@ -1693,6 +1710,11 @@
         } catch (err) {
             window.location.reload();
         }
+    }
+
+    function switchAcademicYear(yearId) {
+        if (!yearId) return;
+        window.location.href = `{% url 'timetable_view' %}?year=${yearId}`;
     }
 
     function clearAllTimetable() {

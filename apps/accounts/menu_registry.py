@@ -645,14 +645,15 @@ from .models import RoleMenuPermission, MenuSection, MenuItem, User
 def sync_system_menus_to_db():
     """
     Synchronizes static catalogue into database MenuSection and MenuItem records.
-    Safe to run repeatedly; creates missing records and preserves custom additions.
+    Safe to run repeatedly; updates existing system records and creates missing ones,
+    while preserving custom additions.
     """
     valid_sec_codes = set()
     valid_item_codes = set()
 
     for sec_idx, sec_data in enumerate(MENU_SECTIONS_CATALOG):
         valid_sec_codes.add(sec_data['key'])
-        sec_obj, _ = MenuSection.objects.get_or_create(
+        sec_obj, created = MenuSection.objects.get_or_create(
             code=sec_data['key'],
             defaults={
                 'name_kh': sec_data['name_kh'],
@@ -665,10 +666,18 @@ def sync_system_menus_to_db():
                 'default_roles': ','.join(sec_data.get('default_roles', ['ADMIN'])),
             }
         )
+        if not created and sec_obj.is_system:
+            sec_obj.name_kh = sec_data['name_kh']
+            sec_obj.name_en = sec_data['name_en']
+            sec_obj.icon = sec_data['icon']
+            sec_obj.color = sec_data.get('color', 'secondary')
+            sec_obj.order = sec_idx
+            sec_obj.default_roles = ','.join(sec_data.get('default_roles', ['ADMIN']))
+            sec_obj.save()
 
         for item_idx, item_data in enumerate(sec_data.get('items', [])):
             valid_item_codes.add(item_data['key'])
-            MenuItem.objects.get_or_create(
+            item_obj, item_created = MenuItem.objects.get_or_create(
                 code=item_data['key'],
                 defaults={
                     'section': sec_obj,
@@ -683,6 +692,16 @@ def sync_system_menus_to_db():
                     'default_roles': ','.join(item_data.get('default_roles', ['ADMIN'])),
                 }
             )
+            if not item_created and item_obj.is_system:
+                item_obj.section = sec_obj
+                item_obj.name_kh = item_data['name_kh']
+                item_obj.name_en = item_data['name_en']
+                item_obj.icon = item_data['icon']
+                item_obj.url_name = item_data.get('url_name')
+                item_obj.order = item_idx
+                item_obj.is_admin_only = item_data.get('is_admin_only', False)
+                item_obj.default_roles = ','.join(item_data.get('default_roles', ['ADMIN']))
+                item_obj.save()
 
     # Clean up obsolete system menus
     MenuItem.objects.filter(is_system=True).exclude(code__in=valid_item_codes).delete()

@@ -295,16 +295,22 @@ class Timetable(models.Model):
             start_time__lt=self.end_time,
             end_time__gt=self.start_time
         )
-        if self.classroom and self.classroom.academic_year_id:
-            teacher_clashes = teacher_clashes.filter(classroom__academic_year_id=self.classroom.academic_year_id)
+        cls_obj = self.classroom if (hasattr(self, 'classroom') and self.classroom) else Classroom.objects.filter(id=self.classroom_id).first()
+        if cls_obj and cls_obj.academic_year_id:
+            teacher_clashes = teacher_clashes.filter(classroom__academic_year_id=cls_obj.academic_year_id)
+        elif cls_obj and cls_obj.academic_year:
+            teacher_clashes = teacher_clashes.filter(classroom__academic_year=cls_obj.academic_year)
+        else:
+            teacher_clashes = teacher_clashes.filter(classroom__academic_year__isnull=True)
 
         if self.pk:
             teacher_clashes = teacher_clashes.exclude(pk=self.pk)
         
         if teacher_clashes.exists():
             clash = teacher_clashes.first()
+            year_name = f"ឆ្នាំសិក្សា {cls_obj.academic_year.name}" if cls_obj and cls_obj.academic_year else "ឆ្នាំសិក្សានេះ"
             raise ValidationError({
-                'teacher': f"គ្រូ {self.teacher.khmer_name} មានម៉ោងបង្រៀនជាន់គ្នានៅ {clash.classroom.name} ({clash.start_time.strftime('%H:%M')} - {clash.end_time.strftime('%H:%M')}) ក្នុងឆ្នាំសិក្សានេះ!"
+                'teacher': f"គ្រូ {self.teacher.khmer_name} មានម៉ោងបង្រៀនជាន់គ្នានៅ {clash.classroom.name} ({clash.start_time.strftime('%H:%M')} - {clash.end_time.strftime('%H:%M')}) ក្នុង{year_name}!"
             })
 
         # 2. Classroom Conflict Check

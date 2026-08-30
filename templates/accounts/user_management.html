@@ -201,14 +201,14 @@
         <div class="card-body p-3">
             <form method="GET" action="{% url 'user_management' %}" class="row g-2 align-items-center">
                 <!-- Search Input -->
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-lg-3">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                         <input type="text" name="q" value="{{ search_query }}" class="form-control bg-light border-start-0" placeholder="ស្វែងរកតាម Username, ឈ្មោះ, ទូរស័ព្ទ, Email...">
                     </div>
                 </div>
                 <!-- Role Filter -->
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-sm-4 col-lg-2">
                     <select name="role" class="form-select bg-light">
                         <option value="">-- តួនាទីទាំងអស់ --</option>
                         {% for r_val, r_label in role_choices %}
@@ -217,7 +217,7 @@
                     </select>
                 </div>
                 <!-- Status Filter -->
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-sm-4 col-lg-2">
                     <select name="status" class="form-select bg-light">
                         <option value="">-- ស្ថានភាពទាំងអស់ --</option>
                         <option value="active" {% if status_filter == 'active' %}selected{% endif %}>🟢 សកម្ម (Active)</option>
@@ -225,7 +225,7 @@
                     </select>
                 </div>
                 <!-- Sort Filter -->
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-sm-4 col-lg-2">
                     <select name="sort" class="form-select bg-light">
                         <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>កាលបរិច្ឆេទបង្កើត</option>
                         <option value="username" {% if sort_by == 'username' %}selected{% endif %}>ឈ្មោះគណនី (Username)</option>
@@ -234,12 +234,20 @@
                         <option value="last_login" {% if sort_by == 'last_login' %}selected{% endif %}>ចូលប្រើចុងក្រោយ</option>
                     </select>
                 </div>
+                <!-- Per Page Filter -->
+                <div class="col-6 col-sm-4 col-lg-1">
+                    <select name="per_page" class="form-select bg-light fw-semibold" title="ចំនួនបង្ហាញក្នុង ១ ទំព័រ">
+                        {% for opt in per_page_options %}
+                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}/ទំព័រ</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <!-- Submit & Clear -->
-                <div class="col-6 col-md-2 d-flex gap-2">
+                <div class="col-12 col-sm-8 col-lg-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary fw-bold flex-grow-1">
                         <i class="fa-solid fa-filter me-1"></i> ច្រោះ
                     </button>
-                    {% if search_query or role_filter or status_filter or sort_by != 'date_joined' %}
+                    {% if search_query or role_filter or status_filter or sort_by != 'date_joined' or per_page != 25 %}
                     <a href="{% url 'user_management' %}" class="btn btn-outline-secondary" title="សម្អាតការច្រោះ">
                         <i class="fa-solid fa-rotate-left"></i>
                     </a>
@@ -398,21 +406,36 @@
         </div>
 
         <!-- Pagination Footer -->
-        {% if page_obj.has_other_pages %}
         <div class="card-footer bg-white py-3 px-4 border-top d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
-            <span class="text-muted small">
-                បង្ហាញគណនីទី <strong>{{ page_obj.start_index }}</strong> ដល់ <strong>{{ page_obj.end_index }}</strong> នៃសរុប <strong>{{ total_filtered_count }}</strong>
-            </span>
+            <div class="d-flex align-items-center flex-wrap gap-3">
+                <span class="text-muted small">
+                    {% if total_filtered_count > 0 %}
+                    បង្ហាញគណនីទី <strong>{{ page_obj.start_index }}</strong> ដល់ <strong>{{ page_obj.end_index }}</strong> នៃសរុប <strong>{{ total_filtered_count }}</strong>
+                    {% else %}
+                    បង្ហាញ <strong>0</strong> គណនី
+                    {% endif %}
+                </span>
+                <div class="d-inline-flex align-items-center gap-2">
+                    <label for="footerPerPageSelect" class="text-muted small mb-0 text-nowrap"><i class="fa-solid fa-table-list me-1 text-primary"></i>បង្ហាញក្នុង ១ ទំព័រ៖</label>
+                    <select id="footerPerPageSelect" class="form-select form-select-sm bg-light border fw-semibold" style="width: auto; min-width: 90px;" onchange="changePerPage(this.value)">
+                        {% for opt in per_page_options %}
+                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }} នាក់</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            {% if page_obj.has_other_pages %}
             <nav aria-label="User Pagination">
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
                             <i class="fa-solid fa-angles-left"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
                             <i class="fa-solid fa-angle-left"></i>
                         </a>
                     </li>
@@ -426,19 +449,19 @@
                         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
                             <i class="fa-solid fa-angle-right"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
                             <i class="fa-solid fa-angles-right"></i>
                         </a>
                     </li>
@@ -448,8 +471,8 @@
                     {% endif %}
                 </ul>
             </nav>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
 </div>
@@ -692,6 +715,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     const currentUserId = {{ request.user.id }};
 
+    function getCsrfToken() {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input && input.value) return input.value;
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+        if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
+        return '{{ csrf_token }}';
+    }
+
     // Helper: Toast Notifications via SweetAlert2
     const Toast = Swal.mixin({
         toast: true,
@@ -732,15 +763,28 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch("{% url 'api_create_user' %}", {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(async res => {
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    if (res.status === 403) throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5)។');
+                    throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                }
+                return { ok: res.ok, data: data };
+            })
+            .then(({ ok, data }) => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បង្កើតគណនី';
-                if (data.status === 'success') {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
-                    if (modal) modal.hide();
+                if (data && data.status === 'success') {
+                    const modalEl = document.getElementById('createUserModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
                     createUserForm.reset();
                     Swal.fire({
                         title: 'ជោគជ័យ!',
@@ -751,14 +795,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.reload();
                     });
                 } else {
-                    Swal.fire('កំហុស!', data.message || 'មិនអាចបង្កើតគណនីបានទេ', 'error');
+                    Swal.fire('កំហុស!', (data && data.message) ? data.message : 'មិនអាចបង្កើតគណនីបានទេ', 'error');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បង្កើតគណនី';
                 console.error(err);
-                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
             });
         });
     }
@@ -794,8 +838,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 activeContainer.style.display = 'block';
             }
 
-            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
-            modal.show();
+            const modalEl = document.getElementById('editUserModal');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
         });
     });
 
@@ -804,6 +849,10 @@ document.addEventListener('DOMContentLoaded', function() {
         editUserForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const uid = document.getElementById('edit_user_id').value;
+            if (!uid) {
+                Swal.fire('កំហុស!', 'មិនមាន User ID ត្រឹមត្រូវទេ!', 'error');
+                return;
+            }
             const btn = document.getElementById('submitEditUserBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
@@ -812,15 +861,33 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/accounts/api/users/${uid}/edit/`, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(async res => {
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    if (res.status === 403) {
+                        throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5) រួចព្យាយាមម្តងទៀត។');
+                    } else if (res.status === 401 || res.redirected || res.url.includes('/login/')) {
+                        throw new Error('Session បានផុតកំណត់! សូម Login ចូលប្រព័ន្ធឡើងវិញ។');
+                    } else {
+                        throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                    }
+                }
+                return { ok: res.ok, data: data };
+            })
+            .then(({ ok, data }) => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
-                if (data.status === 'success') {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
-                    if (modal) modal.hide();
+                if (data && data.status === 'success') {
+                    const modalEl = document.getElementById('editUserModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
 
                     // Realtime DOM update
                     const unameEl = document.getElementById(`username-display-${uid}`);
@@ -843,11 +910,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     const triggerBtn = document.querySelector(`.btn-edit-user[data-user-id="${uid}"]`);
                     if (triggerBtn) {
                         triggerBtn.setAttribute('data-username', data.username);
-                        triggerBtn.setAttribute('data-khmer-name', data.khmer_name);
-                        triggerBtn.setAttribute('data-latin-name', data.latin_name);
+                        triggerBtn.setAttribute('data-khmer-name', data.khmer_name || '');
+                        triggerBtn.setAttribute('data-latin-name', data.latin_name || '');
                         triggerBtn.setAttribute('data-role', data.role);
-                        triggerBtn.setAttribute('data-phone', data.phone);
-                        triggerBtn.setAttribute('data-email', data.email);
+                        triggerBtn.setAttribute('data-phone', data.phone || '');
+                        triggerBtn.setAttribute('data-email', data.email || '');
                         triggerBtn.setAttribute('data-is-active', data.is_active ? '1' : '0');
                     }
 
@@ -856,14 +923,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: data.message
                     });
                 } else {
-                    Swal.fire('កំហុស!', data.message || 'មិនអាចកែប្រែគណនីបានទេ', 'error');
+                    Swal.fire('កំហុស!', (data && data.message) ? data.message : 'មិនអាចកែប្រែគណនីបានទេ', 'error');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ';
                 console.error(err);
-                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
             });
         });
     }
@@ -902,8 +969,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('default_pass_hint').textContent = defaultPass;
             document.getElementById('reset_new_password').value = defaultPass;
 
-            const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-            modal.show();
+            const modalEl = document.getElementById('resetPasswordModal');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
         });
     });
 
@@ -920,6 +988,10 @@ document.addEventListener('DOMContentLoaded', function() {
         resetPasswordForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const uid = document.getElementById('reset_user_id').value;
+            if (!uid) {
+                Swal.fire('កំហុស!', 'មិនមាន User ID ត្រឹមត្រូវទេ!', 'error');
+                return;
+            }
             const btn = document.getElementById('submitResetPasswordBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងកំណត់...';
@@ -928,15 +1000,28 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/accounts/api/users/${uid}/reset-password/`, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(async res => {
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    if (res.status === 403) throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5)។');
+                    throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                }
+                return { ok: res.ok, data: data };
+            })
+            .then(({ ok, data }) => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី';
-                if (data.status === 'success') {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
-                    if (modal) modal.hide();
+                if (data && data.status === 'success') {
+                    const modalEl = document.getElementById('resetPasswordModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
 
                     Swal.fire({
                         title: '🔑 បានកំណត់ Password ជោគជ័យ!',
@@ -945,14 +1030,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         confirmButtonText: 'យល់ព្រម'
                     });
                 } else {
-                    Swal.fire('កំហុស!', data.message || 'មិនអាច Reset Password បានទេ', 'error');
+                    Swal.fire('កំហុស!', (data && data.message) ? data.message : 'មិនអាច Reset Password បានទេ', 'error');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី';
                 console.error(err);
-                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
             });
         });
     }
@@ -969,13 +1054,23 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/accounts/api/users/${uid}/toggle-active/`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
+            .then(async res => {
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    if (res.status === 403) throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5)។');
+                    throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                }
+                return { ok: res.ok, data: data };
+            })
+            .then(({ ok, data }) => {
+                if (data && data.status === 'success') {
                     const badge = document.getElementById(`status-badge-${uid}`);
                     if (badge) {
                         if (data.is_active) {
@@ -993,13 +1088,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // Revert switch
                     toggle.checked = !isChecked;
-                    Swal.fire('មិនអាចដំណើរការបានទេ!', data.message || 'មានបញ្ហាក្នុងការប្តូរស្ថានភាព', 'error');
+                    Swal.fire('មិនអាចដំណើរការបានទេ!', (data && data.message) ? data.message : 'មានបញ្ហាក្នុងការប្តូរស្ថានភាព', 'error');
                 }
             })
             .catch(err => {
                 toggle.checked = !isChecked;
                 console.error(err);
-                Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
             });
         });
     });
@@ -1027,13 +1122,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetch(`/accounts/api/users/${uid}/delete/`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': '{{ csrf_token }}',
-                            'Content-Type': 'application/json'
+                            'X-CSRFToken': getCsrfToken(),
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
                         }
                     })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === 'success') {
+                    .then(async res => {
+                        let data = null;
+                        try {
+                            data = await res.json();
+                        } catch (e) {
+                            if (res.status === 403) throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5)។');
+                            throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                        }
+                        return { ok: res.ok, data: data };
+                    })
+                    .then(({ ok, data }) => {
+                        if (data && data.status === 'success') {
                             const row = document.getElementById(`user-row-${uid}`);
                             if (row) {
                                 row.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
@@ -1046,17 +1151,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                 title: data.message
                             });
                         } else {
-                            Swal.fire('កំហុស!', data.message || 'មិនអាចលុបគណនីបានទេ', 'error');
+                            Swal.fire('កំហុស!', (data && data.message) ? data.message : 'មិនអាចលុបគណនីបានទេ', 'error');
                         }
                     })
                     .catch(err => {
                         console.error(err);
-                        Swal.fire('កំហុស!', 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+                        Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
                     });
                 }
             });
         });
     });
 });
+
+function changePerPage(val) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+}
 </script>
 {% endblock %}

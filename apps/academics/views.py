@@ -1302,11 +1302,20 @@ def timetable_save_matrix(request):
 
     try:
         data = json.loads(request.body.decode('utf-8'))
+        year_param = data.get('academic_year_id') or data.get('year')
+        if year_param:
+            if str(year_param).isdigit():
+                found_year = AcademicYear.objects.filter(id=int(year_param)).first()
+            else:
+                found_year = AcademicYear.objects.filter(name=str(year_param).strip()).first()
+            if found_year:
+                active_year = found_year
+
         matrix_items = data.get('matrix', [])
         blocked_items = data.get('blocked_slots')
         
         session_key = f"blocked_slots_{active_year.id if active_year else 'all'}"
-        if blocked_items is not None:
+        if blocked_items is not None and hasattr(request, 'session'):
             request.session[session_key] = blocked_items
             request.session.modified = True
         
@@ -1368,21 +1377,31 @@ def timetable_auto_generate(request):
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
 
-    # Parse potential locked / blocked slots from request
+    # Parse potential locked / blocked slots & academic year from request
     locked_slots_input = []
     if request.body:
         try:
             req_data = json.loads(request.body.decode('utf-8'))
             locked_slots_input = req_data.get('locked_slots', [])
+            year_param = req_data.get('academic_year_id') or req_data.get('year')
+            if year_param:
+                if str(year_param).isdigit():
+                    found_year = AcademicYear.objects.filter(id=int(year_param)).first()
+                else:
+                    found_year = AcademicYear.objects.filter(name=str(year_param).strip()).first()
+                if found_year:
+                    active_year = found_year
         except Exception:
             pass
 
+    if not active_year:
+        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
     session_key = f"blocked_slots_{active_year.id if active_year else 'all'}"
     blocked_from_input = [ls for ls in locked_slots_input if ls.get('is_blocked')]
-    if blocked_from_input:
+    if blocked_from_input and hasattr(request, 'session'):
         request.session[session_key] = blocked_from_input
         request.session.modified = True
-
 
     classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
     subjects = list(Subject.objects.exclude(code__in=['R', 'D']))
@@ -1680,7 +1699,10 @@ def timetable_auto_generate(request):
     generated_timetable_entries = []
     if best_solution:
         with transaction.atomic():
-            Timetable.objects.all().delete()
+            if active_year:
+                Timetable.objects.filter(classroom__academic_year=active_year).delete()
+            else:
+                Timetable.objects.all().delete()
             for cls in classrooms:
                 cls_slots = best_solution.get(cls.id, {})
                 for (d, p), item in cls_slots.items():

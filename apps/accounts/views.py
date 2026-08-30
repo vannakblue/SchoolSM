@@ -9,8 +9,12 @@ from .decorators import role_required
 from .utils import send_telegram_notification
 
 def _ensure_admin_exists():
+    """
+    Creates an initial default admin user if no admin/superuser exists in the database.
+    Preserves all custom passwords and profiles if an admin already exists.
+    """
     try:
-        admin_user = User.objects.filter(username='admin').first() or User.objects.filter(is_superuser=True).first()
+        admin_user = User.objects.filter(role=User.Role.ADMIN).first() or User.objects.filter(is_superuser=True).first()
         if not admin_user:
             admin_user = User.objects.create(
                 username='admin',
@@ -24,13 +28,6 @@ def _ensure_admin_exists():
             )
             admin_user.set_password('admin123')
             admin_user.save()
-        else:
-            if not admin_user.check_password('admin123'):
-                admin_user.set_password('admin123')
-                admin_user.is_staff = True
-                admin_user.is_superuser = True
-                admin_user.is_active = True
-                admin_user.save()
     except Exception:
         pass
 
@@ -1075,8 +1072,18 @@ def user_management_view(request):
     active_count = User.objects.filter(is_active=True).count()
     inactive_count = User.objects.filter(is_active=False).count()
 
-    # Pagination: 25 items per page
-    paginator = Paginator(users_qs, 25)
+    # Pagination: per_page items per page
+    per_page_options = [10, 25, 50, 100, 200, 500]
+    per_page_param = request.GET.get('per_page', '25')
+    try:
+        per_page = int(per_page_param)
+        if per_page not in per_page_options:
+            if per_page <= 0 or per_page > 1000:
+                per_page = 25
+    except (ValueError, TypeError):
+        per_page = 25
+
+    paginator = Paginator(users_qs, per_page)
     page = request.GET.get('page', 1)
     try:
         page_obj = paginator.page(page)
@@ -1102,6 +1109,8 @@ def user_management_view(request):
         'sort_by': sort_by,
         'order': order,
         'role_choices': User.Role.choices,
+        'per_page': per_page,
+        'per_page_options': per_page_options,
     })
 
 
@@ -1242,6 +1251,11 @@ def api_reset_password(request, user_id):
 
         user.set_password(new_password)
         user.save()
+
+        # If admin is resetting their own password, maintain their active session
+        if request.user.id == user.id:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
 
         return JsonResponse({
             'status': 'success',
