@@ -224,6 +224,48 @@ def profile_view(request):
 
 
 @login_required
+def api_change_password(request):
+    """
+    API endpoint for any logged-in user to change their own password securely.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        user = request.user
+        current_password = request.POST.get('current_password', '').strip()
+        new_password = request.POST.get('new_password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        # Check current password (if provided or enforce)
+        if current_password and not user.check_password(current_password):
+            return JsonResponse({'status': 'error', 'message': 'ពាក្យសម្ងាត់បច្ចុប្បន្ន (Current Password) មិនត្រឹមត្រូវទេ!'}, status=400)
+
+        if not new_password:
+            return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូលពាក្យសម្ងាត់ថ្មី (New Password)!'}, status=400)
+
+        if len(new_password) < 4:
+            return JsonResponse({'status': 'error', 'message': 'ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងហោចណាស់ ៤ តួអក្សរ!'}, status=400)
+
+        if confirm_password and new_password != confirm_password:
+            return JsonResponse({'status': 'error', 'message': 'ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់ពាក្យសម្ងាត់មិនត្រូវគ្នាទេ!'}, status=400)
+
+        user.set_password(new_password)
+        user.save()
+
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, user)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🎉 បានផ្លាស់ប្តូរពាក្យសម្ងាត់សម្រាប់គណនី "{user.username}" ដោយជោគជ័យ!',
+            'password_used': new_password
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
 def teacher_request_profile_change(request):
     """
     Allows teachers to submit an official profile correction/update request to the admin.

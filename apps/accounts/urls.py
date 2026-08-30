@@ -9,6 +9,7 @@ urlpatterns = [
     path('redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/request-change/', views.teacher_request_profile_change, name='teacher_request_profile_change'),
+    path('api/change-password/', views.api_change_password, name='api_change_password'),
     path('settings/school/', views.school_profile_settings_view, name='school_profile_settings'),
     path('settings/telegram/', views.telegram_settings_view, name='telegram_settings'),
     path('settings/menu-permissions/', views.menu_permissions_view, name='menu_permissions'),

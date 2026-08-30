@@ -148,6 +148,64 @@
                 </div>
             </form>
         </div>
+
+        <!-- Change Password Card -->
+        <div class="custom-card mb-4" id="change-password-section">
+            <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-key text-warning me-2"></i>ប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួន (Change Password)
+                    </h5>
+                    <p class="text-muted small mb-0">កំណត់ពាក្យសម្ងាត់ថ្មីយ៉ាងហោចណាស់ ៤ តួអក្សរ</p>
+                </div>
+                <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2.5 py-1.5 rounded-pill">
+                    <i class="fa-solid fa-shield-halved me-1"></i> សុវត្ថិភាពគណនី
+                </span>
+            </div>
+
+            <form id="changePasswordForm">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">ពាក្យសម្ងាត់បច្ចុប្បន្ន <span class="text-muted fw-normal">(Current)</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-lock-open text-muted"></i></span>
+                            <input type="password" name="current_password" id="profile_current_password" class="form-control" placeholder="បញ្ចូល Password ចាស់...">
+                            <button type="button" class="btn btn-outline-secondary btn-toggle-eye" data-target="profile_current_password">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">ពាក្យសម្ងាត់ថ្មី <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
+                            <input type="password" name="new_password" id="profile_new_password" class="form-control" placeholder="បញ្ចូល Password ថ្មី..." required>
+                            <button type="button" class="btn btn-outline-secondary btn-toggle-eye" data-target="profile_new_password">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text small">យ៉ាងហោចណាស់ ៤ តួអក្សរ</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">ផ្ទៀងផ្ទាត់ពាក្យសម្ងាត់ថ្មី <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-check-double text-muted"></i></span>
+                            <input type="password" name="confirm_password" id="profile_confirm_password" class="form-control" placeholder="បញ្ចូល Password ថ្មីម្តងទៀត..." required>
+                            <button type="button" class="btn btn-outline-secondary btn-toggle-eye" data-target="profile_confirm_password">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex justify-content-end">
+                    <button type="submit" class="btn btn-warning text-dark fw-bold px-4 shadow-sm" id="submitChangePassBtn">
+                        <i class="fa-solid fa-key me-1"></i> ផ្លាស់ប្តូរ Password ថ្មី
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -213,4 +271,101 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getCsrfToken() {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input && input.value) return input.value;
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+        if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
+        return '{{ csrf_token }}';
+    }
+
+    // Toggle Eye Buttons
+    document.querySelectorAll('.btn-toggle-eye').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            if (input) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            }
+        });
+    });
+
+    // Handle Change Password Form
+    const changePassForm = document.getElementById('changePasswordForm');
+    if (changePassForm) {
+        changePassForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('profile_new_password').value.trim();
+            const confirmPass = document.getElementById('profile_confirm_password').value.trim();
+
+            if (newPass.length < 4) {
+                Swal.fire('កំហុស!', 'ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងហោចណាស់ ៤ តួអក្សរ!', 'error');
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                Swal.fire('កំហុស!', 'ពាក្យសម្ងាត់ថ្មី និងផ្ទៀងផ្ទាត់ពាក្យសម្ងាត់មិនផ្ទៀងផ្ទាត់គ្នាទេ!', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('submitChangePassBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងផ្លាស់ប្តូរ...';
+
+            const formData = new FormData(changePassForm);
+            fetch("{% url 'api_change_password' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(async res => {
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    if (res.status === 403) throw new Error('CSRF ឬ Session បានផុតកំណត់! សូម Refresh ទំព័រ (F5)។');
+                    throw new Error(`កំហុស Server (HTTP ${res.status})`);
+                }
+                return { ok: res.ok, data: data };
+            })
+            .then(({ ok, data }) => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> ផ្លាស់ប្តូរ Password ថ្មី';
+                if (data && data.status === 'success') {
+                    changePassForm.reset();
+                    Swal.fire({
+                        title: '🔑 ជោគជ័យ!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'យល់ព្រម'
+                    });
+                } else {
+                    Swal.fire('កំហុស!', (data && data.message) ? data.message : 'មិនអាចប្តូរ Password បានទេ', 'error');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> ផ្លាស់ប្តូរ Password ថ្មី';
+                console.error(err);
+                Swal.fire('កំហុស!', err.message || 'មានបញ្ហាតភ្ជាប់ទៅកាន់ Server!', 'error');
+            });
+        });
+    }
+});
+</script>
 {% endblock %}
