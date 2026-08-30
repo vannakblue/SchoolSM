@@ -159,11 +159,34 @@ class AttendanceSetting(models.Model):
         default=True,
         verbose_name="ផ្ញើទៅ Group គណៈគ្រប់គ្រងសាលា / Send to Management Group"
     )
-    custom_dispatch_groups = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True,
-        verbose_name="Group Telegram ផ្សេងៗទៀត (ដាក់ Chat IDs ដោយខណ្ឌសញ្ញាក្បៀស) / Additional Custom Group Chat IDs"
+    # Assembly & Pre-Class Attendance Configuration (វត្តមានពេលគោរពទង់ជាតិ & មុនម៉ោងចូលរៀន)
+    enable_assembly_attendance = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិ/មុនម៉ោងចូលរៀន / Enable Assembly Attendance"
+    )
+    assembly_morning_start = models.TimeField(
+        default='06:30',
+        verbose_name="ម៉ោងចាប់ផ្តើមស្រង់វត្តមានពេលព្រឹក (ឧ. 06:30)"
+    )
+    assembly_morning_end = models.TimeField(
+        default='06:50',
+        verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលព្រឹក (ឧ. 06:50)"
+    )
+    assembly_afternoon_start = models.TimeField(
+        default='12:30',
+        verbose_name="ម៉ោងចាប់ផ្តើមស្រង់វត្តមានពេលរសៀល (ឧ. 12:30)"
+    )
+    assembly_afternoon_end = models.TimeField(
+        default='12:50',
+        verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលរសៀល (ឧ. 12:50)"
+    )
+    allow_monitor_assembly_recording = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យប្រធានថ្នាក់/អនុប្រធានថ្នាក់ស្រង់វត្តមានតាមទូរស័ព្ទ / Allow Class Monitors to record via Mobile/Tablet"
+    )
+    assembly_telegram_alert = models.BooleanField(
+        default=True,
+        verbose_name="ជូនដំណឹង Telegram ទៅគណៈគ្រប់គ្រងភ្លាមៗក្រោយគោរពទង់ជាតិ / Instant Management Telegram Alert"
     )
     updated_at = models.DateTimeField(auto_now=True)
 

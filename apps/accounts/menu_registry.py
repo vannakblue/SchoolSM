@@ -209,9 +209,17 @@ MENU_SECTIONS_CATALOG = [
         'default_roles': ['ADMIN', 'TEACHER'],
         'items': [
             {
+                'key': 'assembly_attendance',
+                'name_kh': 'ស្រង់វត្តមានពេលគោរពទង់ជាតិ',
+                'name_en': 'Flag Ceremony & Pre-Class Attendance',
+                'icon': 'fa-solid fa-flag text-danger',
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
+                'url_name': 'assembly_attendance',
+            },
+            {
                 'key': 'student_attendance_grid',
-                'name_kh': 'ស្រង់វត្តមានសិស្ស',
-                'name_en': 'Student Attendance Sheet',
+                'name_kh': 'ស្រង់វត្តមានសិស្សតាមម៉ោង',
+                'name_en': 'Student Hourly Attendance Sheet',
                 'icon': 'fa-solid fa-clipboard-check',
                 'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'student_attendance_grid',

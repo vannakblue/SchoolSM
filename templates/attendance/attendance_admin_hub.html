@@ -421,6 +421,81 @@
                         </div>
                     </div>
 
+                    <!-- Column 3: Assembly & Pre-Class Attendance Configuration -->
+                    <div class="col-12">
+                        <div class="card card-settings p-4 border-2 border-primary-subtle" style="background: #f8fafc;">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h5 class="fw-bold text-dark mb-0">
+                                            <i class="fa-solid fa-flag text-danger me-2"></i> ៣. ការកំណត់ម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិ / មុនម៉ោងចូលរៀន (Assembly & Flag Ceremony)
+                                        </h5>
+                                        <span class="badge bg-danger text-white fw-bold">Pre-Class Period 0</span>
+                                    </div>
+                                    <p class="text-muted small mb-0">
+                                        កំណត់ចន្លោះម៉ោងស្រង់វត្តមានសិស្សពេលគោរពទង់ជាតិ (ឧ. 06:30 - 06:50 ព្រឹក និង 12:30 - 12:50 រសៀល) និងផ្តល់សិទ្ធិឱ្យគ្រូបន្ទុកថ្នាក់ ប្រធានថ្នាក់ ឬអនុប្រធានថ្នាក់ ស្រង់អវត្តមានសិស្សតាមទូរស័ព្ទដៃ/Tablet។
+                                    </p>
+                                </div>
+                                <a href="{% url 'assembly_attendance' %}" class="btn btn-outline-danger fw-bold btn-sm px-3" target="_blank">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកផ្ទាំងស្រង់វត្តមានគោរពទង់ជាតិ
+                                </a>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-white rounded-3 border h-100">
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" name="enable_assembly_attendance" id="assemblyEnableCheck" {% if att_settings.enable_assembly_attendance %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold text-dark" for="assemblyEnableCheck">
+                                                បើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិ (Enable Assembly Attendance)
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" name="allow_monitor_assembly_recording" id="allowMonitorCheck" {% if att_settings.allow_monitor_assembly_recording %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold text-dark" for="allowMonitorCheck">
+                                                អនុញ្ញាតឱ្យប្រធានថ្នាក់ / អនុប្រធានថ្នាក់ ស្រង់វត្តមានតាមទូរស័ព្ទ (Allow Monitors Mobile)
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="assembly_telegram_alert" id="assemblyTgCheck" {% if att_settings.assembly_telegram_alert %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold text-dark" for="assemblyTgCheck">
+                                                បាញ់សារ Telegram ជូនដំណឹងគណៈគ្រប់គ្រងភ្លាមៗក្រោយគោរពទង់ជាតិ (Instant Telegram Alert)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-white rounded-3 border h-100">
+                                        <h6 class="fw-bold text-dark mb-3">ចន្លោះម៉ោងអនុញ្ញាតឱ្យស្រង់វត្តមាន (Allowed Time Windows)៖</h6>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">🌅 ព្រឹក ចាប់ផ្តើម៖</label>
+                                                <input type="time" name="assembly_morning_start" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_morning_start|time:'H:i'|default:'06:30' }}">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">🌅 ព្រឹក បញ្ចប់៖</label>
+                                                <input type="time" name="assembly_morning_end" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_morning_end|time:'H:i'|default:'06:50' }}">
+                                            </div>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">🌇 រសៀល ចាប់ផ្តើម៖</label>
+                                                <input type="time" name="assembly_afternoon_start" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_afternoon_start|time:'H:i'|default:'12:30' }}">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small fw-bold text-muted mb-1">🌇 រសៀល បញ្ចប់៖</label>
+                                                <input type="time" name="assembly_afternoon_end" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_afternoon_end|time:'H:i'|default:'12:50' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                             </div>
                         </div>
                     </div>

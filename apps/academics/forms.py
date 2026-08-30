@@ -50,7 +50,7 @@ class GradeLevelForm(forms.ModelForm):
 class ClassroomForm(forms.ModelForm):
     class Meta:
         model = Classroom
-        fields = ['name', 'code', 'grade_level', 'track', 'academic_year', 'room_number', 'homeroom_teacher']
+        fields = ['name', 'code', 'grade_level', 'track', 'academic_year', 'room_number', 'homeroom_teacher', 'class_monitor', 'vice_monitor']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ថ្នាក់ទី១០A, ទី១១ វិទ្យាសាស្ត្រ'}),
             'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 10A, 11-SCI'}),
@@ -60,13 +60,26 @@ class ClassroomForm(forms.ModelForm):
             'room_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. បន្ទប់ 201'}),
             'capacity': forms.NumberInput(attrs={'class': 'form-control'}),
             'homeroom_teacher': forms.Select(attrs={'class': 'form-select'}),
+            'class_monitor': forms.Select(attrs={'class': 'form-select'}),
+            'vice_monitor': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from apps.students.models import Student
         self.fields['track'].widget.choices = AcademicTrack.get_track_choices()
         self.fields['academic_year'].queryset = AcademicYear.objects.all().order_by('-start_date')
         self.fields['academic_year'].empty_label = "-- ជ្រើសរើសឆ្នាំសិក្សា / Select Academic Year --"
+        self.fields['class_monitor'].empty_label = "-- ជ្រើសរើសប្រធានថ្នាក់ (Class Monitor) --"
+        self.fields['vice_monitor'].empty_label = "-- ជ្រើសរើសអនុប្រធានថ្នាក់ (Vice Monitor) --"
+        
+        if self.instance.pk:
+            self.fields['class_monitor'].queryset = Student.objects.filter(classroom=self.instance, status='ACTIVE').order_by('khmer_name')
+            self.fields['vice_monitor'].queryset = Student.objects.filter(classroom=self.instance, status='ACTIVE').order_by('khmer_name')
+        else:
+            self.fields['class_monitor'].queryset = Student.objects.none()
+            self.fields['vice_monitor'].queryset = Student.objects.none()
+
         if not self.instance.pk and not self.initial.get('academic_year'):
             if academic_year:
                 self.initial['academic_year'] = academic_year

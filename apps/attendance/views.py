@@ -922,7 +922,6 @@ def attendance_admin_hub(request):
             att_settings.period_grace_minutes = period_grace
             att_settings.period_dispatch_times = period_dispatch_times
             att_settings.management_chat_id = mgmt_chat_id or None
-            att_settings.custom_dispatch_groups = custom_groups or None
             att_settings.auto_daily_dispatch_enabled = auto_dispatch
             att_settings.auto_send_student_summary = auto_students
             att_settings.auto_send_teacher_summary = auto_teachers
@@ -931,6 +930,16 @@ def attendance_admin_hub(request):
             att_settings.dispatch_to_homeroom = dispatch_homeroom
             att_settings.dispatch_to_management = dispatch_mgmt
             att_settings.daily_dispatch_schedule = sched
+
+            # Assembly / Flag Ceremony Configuration
+            att_settings.enable_assembly_attendance = request.POST.get('enable_assembly_attendance') == 'on'
+            att_settings.assembly_morning_start = request.POST.get('assembly_morning_start', '06:30').strip() or '06:30'
+            att_settings.assembly_morning_end = request.POST.get('assembly_morning_end', '06:50').strip() or '06:50'
+            att_settings.assembly_afternoon_start = request.POST.get('assembly_afternoon_start', '12:30').strip() or '12:30'
+            att_settings.assembly_afternoon_end = request.POST.get('assembly_afternoon_end', '12:50').strip() or '12:50'
+            att_settings.allow_monitor_assembly_recording = request.POST.get('allow_monitor_assembly_recording') == 'on'
+            att_settings.assembly_telegram_alert = request.POST.get('assembly_telegram_alert') == 'on'
+
             att_settings.save()
 
             messages.success(request, "💾 បានរក្សាទុកការកំណត់ប្រព័ន្ធវត្តមាន និង Telegram ដោយជោគជ័យ!")
@@ -1205,5 +1214,301 @@ def send_missing_teachers_telegram_view(request):
     )
 
     return JsonResponse(result)
+
+
+# ---------------------------------------------------------------------------
+# Morning Assembly / Flag Ceremony Student Attendance (វត្តមានពេលគោរពទង់ជាតិ)
+# ---------------------------------------------------------------------------
+
+@login_required
+def assembly_attendance_view(request):
+    """
+    Pre-Class & Morning Assembly / Flag Ceremony Attendance Recording View.
+    Designed specifically for mobile/tablet & touch-friendly smartphone operations!
+    
+    Permissions:
+      - Super Admin: Can view and record for ANY classroom.
+      - Homeroom Teacher: Can view and record for assigned homeroom classes.
+      - Class Monitor / Vice Monitor: Can view and record for their own classroom.
+    """
+    user = request.user
+    active_year = get_active_academic_year(request)
+    att_settings = AttendanceSetting.get_settings()
+    now_dt = timezone.localtime(timezone.now())
+    current_time = now_dt.time()
+    today_date = now_dt.date()
+
+    # Determine caller's authorized classrooms
+    authorized_classrooms = Classroom.objects.none()
+    student_profile = getattr(user, 'student_profile', None)
+    teacher_profile = getattr(user, 'teacher_profile', None)
+    is_monitor = False
+    is_vice_monitor = False
+    is_homeroom = False
+    user_role_label = "អ្នកប្រើប្រាស់ទូទៅ"
+
+    if user.role == 'ADMIN' or user.is_superuser:
+        authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+        user_role_label = "គណៈគ្រប់គ្រង / Admin"
+    elif user.role == 'TEACHER' and teacher_profile:
+        authorized_classrooms = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year).order_by('grade_level', 'code')
+        if authorized_classrooms.exists():
+            is_homeroom = True
+            user_role_label = f"លោកគ្រូ/អ្នកគ្រូបន្ទុកថ្នាក់ ({teacher_profile.khmer_name})"
+        else:
+            # Check if teacher teaches any class
+            authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code')
+            user_role_label = f"លោកគ្រូ/អ្នកគ្រូ ({teacher_profile.khmer_name})"
+    elif student_profile:
+        # Check if student is class monitor or vice monitor
+        monitor_classes = Classroom.objects.filter(
+            Q(class_monitor=student_profile) | Q(vice_monitor=student_profile),
+            academic_year=active_year
+        )
+        if monitor_classes.exists():
+            authorized_classrooms = monitor_classes
+            matched_cls = monitor_classes.first()
+            if matched_cls.class_monitor_id == student_profile.id:
+                is_monitor = True
+                user_role_label = f"ប្រធានថ្នាក់ ({student_profile.khmer_name})"
+            else:
+                is_vice_monitor = True
+                user_role_label = f"អនុប្រធានថ្នាក់ ({student_profile.khmer_name})"
+
+    if not authorized_classrooms.exists():
+        messages.error(request, "⚠️ លោកអ្នកមិនមានសិទ្ធិចូលទៅកាន់ការស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ! (ត្រូវការសិទ្ធិជា Admin, គ្រូបន្ទុកថ្នាក់, ឬប្រធានថ្នាក់/អនុប្រធានថ្នាក់)")
+        return redirect('student_attendance_grid')
+
+    # Selected classroom
+    req_class_id = request.GET.get('classroom') or request.POST.get('classroom')
+    selected_class = None
+    if req_class_id and str(req_class_id).isdigit():
+        selected_class = authorized_classrooms.filter(id=int(req_class_id)).first()
+    if not selected_class:
+        selected_class = authorized_classrooms.first()
+
+    # Session Determination: Morning vs Afternoon
+    req_session = request.GET.get('session') or request.POST.get('session')
+    if req_session in ['MORNING', 'AFTERNOON']:
+        selected_session = req_session
+    else:
+        selected_session = 'MORNING' if current_time < dtime(12, 0) else 'AFTERNOON'
+
+    # Time Window Evaluation
+    m_start = att_settings.assembly_morning_start or dtime(6, 30)
+    m_end = att_settings.assembly_morning_end or dtime(6, 50)
+    a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
+    a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+
+    if selected_session == 'MORNING':
+        window_start = m_start
+        window_end = m_end
+        session_title = "ពេលព្រឹក (Morning Flag Ceremony)"
+    else:
+        window_start = a_start
+        window_end = a_end
+        session_title = "ពេលរសៀល (Afternoon Pre-Class Assembly)"
+
+    is_admin_override = (user.role == 'ADMIN' or user.is_superuser)
+    is_within_window = (window_start <= current_time <= window_end)
+
+    if is_admin_override:
+        window_status = 'OPEN_ADMIN'
+        window_message = 'លោកអ្នកមានសិទ្ធិជា Admin អាចស្រង់ ឬកែប្រែបានគ្រប់ពេលវេលា។'
+        can_submit = True
+    elif is_within_window:
+        window_status = 'OPEN'
+        window_message = f'កំពុងស្ថិតក្នុងម៉ោងស្រង់វត្តមាន ({window_start.strftime("%H:%M")} - {window_end.strftime("%H:%M")})'
+        can_submit = True
+    elif current_time < window_start:
+        window_status = 'EARLY'
+        window_message = f'មិនទាន់ដល់ម៉ោងស្រង់វត្តមានឡើយ (បើកនៅម៉ោង {window_start.strftime("%H:%M")})'
+        can_submit = False
+    else:
+        window_status = 'CLOSED'
+        window_message = f'ផុតម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ (ផុតកំណត់ម៉ោង {window_end.strftime("%H:%M")})'
+        can_submit = False
+
+    # Fetch active students for selected classroom
+    students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('khmer_name') if selected_class else []
+
+    # Handle POST Submission
+    if request.method == 'POST' and selected_class:
+        if not can_submit and not is_admin_override:
+            messages.error(request, f"❌ បរាជ័យ៖ {window_message}")
+            return redirect(f"/attendance/assembly/?classroom={selected_class.id}&session={selected_session}")
+
+        saved_absent_count = 0
+        saved_permission_count = 0
+        saved_late_count = 0
+        absent_student_names = []
+
+        with transaction.atomic():
+            # Clean up prior records for Period 0 today
+            StudentAttendance.objects.filter(
+                classroom=selected_class,
+                date=today_date,
+                session=selected_session,
+                period_number=0
+            ).delete()
+
+            new_records = []
+            for st in students:
+                is_marked = request.POST.get(f'status_{st.id}')
+                notes = request.POST.get(f'notes_{st.id}', '').strip()
+
+                if is_marked in [StudentAttendance.Status.ABSENT, StudentAttendance.Status.PERMISSION, StudentAttendance.Status.LATE]:
+                    new_records.append(StudentAttendance(
+                        student=st,
+                        classroom=selected_class,
+                        date=today_date,
+                        session=selected_session,
+                        period_number=0, # 0 indicates Assembly / Flag Ceremony
+                        status=is_marked,
+                        notes=notes or 'វត្តមានពេលគោរពទង់ជាតិ',
+                        recorded_by=request.user
+                    ))
+                    if is_marked == StudentAttendance.Status.ABSENT:
+                        saved_absent_count += 1
+                        absent_student_names.append(f"• {st.khmer_name} (ឥតច្បាប់)")
+                    elif is_marked == StudentAttendance.Status.PERMISSION:
+                        saved_permission_count += 1
+                        absent_student_names.append(f"• {st.khmer_name} (មានច្បាប់)")
+                    elif is_marked == StudentAttendance.Status.LATE:
+                        saved_late_count += 1
+                        absent_student_names.append(f"• {st.khmer_name} (មកយឺត)")
+
+            if new_records:
+                StudentAttendance.objects.bulk_create(new_records)
+
+            # Update / Log submission
+            AttendanceSubmissionLog.objects.update_or_create(
+                classroom=selected_class,
+                date=today_date,
+                session=selected_session,
+                period_number=0,
+                defaults={
+                    'recorded_by': request.user,
+                }
+            )
+
+        # Telegram Instant Alert to Management & Homeroom
+        if att_settings.assembly_telegram_alert:
+            from .telegram_utils import send_telegram_notification
+            total_students_cnt = students.count()
+            present_cnt = total_students_cnt - (saved_absent_count + saved_permission_count)
+            absent_details_str = "\n".join(absent_student_names) if absent_student_names else "✅ សិស្សមានវត្តមានគ្រប់ៗគ្នា ១០០%"
+            
+            tg_msg = (
+                f"🚩 <strong>របាយការណ៍វត្តមានពេលគោរពទង់ជាតិ / Assembly Report</strong>\n"
+                f"🏫 <strong>ថ្នាក់រៀន៖</strong> {selected_class.name}\n"
+                f"📅 <strong>កាលបរិច្ឆេទ៖</strong> {today_date.strftime('%d/%m/%Y')} ({session_title})\n"
+                f"✍️ <strong>អ្នកស្រង់វត្តមាន៖</strong> {user.display_name} ({user_role_label})\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"👥 សិស្សសរុប៖ <strong>{total_students_cnt}</strong> នាក់\n"
+                f"✅ វត្តមាន៖ <strong>{present_cnt}</strong> នាក់\n"
+                f"❌ អវត្តមានឥតច្បាប់៖ <strong>{saved_absent_count}</strong> នាក់\n"
+                f"📝 អវត្តមានមានច្បាប់៖ <strong>{saved_permission_count}</strong> នាក់\n"
+                f"⏰ មកយឺត៖ <strong>{saved_late_count}</strong> នាក់\n\n"
+                f"<strong>បញ្ជីឈ្មោះសិស្សអវត្តមាន/យឺត៖</strong>\n"
+                f"{absent_details_str}\n"
+            )
+
+            # 1. Send to School Management Telegram
+            if att_settings.management_chat_id:
+                for cid in [c.strip() for c in att_settings.management_chat_id.split(',') if c.strip()]:
+                    send_telegram_notification(
+                        title=f"🚩 វត្តមានគោរពទង់ជាតិ: {selected_class.name}",
+                        message=tg_msg,
+                        custom_chat_id=cid
+                    )
+
+            # 2. Send to Classroom / Homeroom Telegram
+            class_chat = selected_class.telegram_chat_id
+            if class_chat:
+                for cid in [c.strip() for c in class_chat.split(',') if c.strip()]:
+                    send_telegram_notification(
+                        title=f"🚩 វត្តមានគោរពទង់ជាតិ: {selected_class.name}",
+                        message=tg_msg,
+                        custom_chat_id=cid
+                    )
+
+        messages.success(request, f"✅ បានរក្សាទុកវត្តមានពេលគោរពទង់ជាតិ ({selected_class.name}) ជោគជ័យ! (អវត្តមាន: {saved_absent_count}, ច្បាប់: {saved_permission_count}, យឺត: {saved_late_count})")
+        return redirect(f"/attendance/assembly/?classroom={selected_class.id}&session={selected_session}")
+
+    # Query existing Period 0 attendance records for today
+    today_records = {}
+    if selected_class:
+        records_qs = StudentAttendance.objects.filter(
+            classroom=selected_class,
+            date=today_date,
+            session=selected_session,
+            period_number=0
+        )
+        for r in records_qs:
+            today_records[r.student_id] = {
+                'status': r.status,
+                'notes': r.notes or ''
+            }
+
+    student_roster = []
+    absent_count = 0
+    permission_count = 0
+    late_count = 0
+
+    for st in students:
+        rec = today_records.get(st.id)
+        status_val = rec['status'] if rec else 'PRESENT'
+        notes_val = rec['notes'] if rec else ''
+        
+        if status_val == StudentAttendance.Status.ABSENT:
+            absent_count += 1
+        elif status_val == StudentAttendance.Status.PERMISSION:
+            permission_count += 1
+        elif status_val == StudentAttendance.Status.LATE:
+            late_count += 1
+
+        student_roster.append({
+            'student': st,
+            'status': status_val,
+            'notes': notes_val,
+        })
+
+    submission_log = AttendanceSubmissionLog.objects.filter(
+        classroom=selected_class,
+        date=today_date,
+        session=selected_session,
+        period_number=0
+    ).select_related('recorded_by').first() if selected_class else None
+
+    context = {
+        'active_year': active_year,
+        'att_settings': att_settings,
+        'authorized_classrooms': authorized_classrooms,
+        'selected_class': selected_class,
+        'selected_session': selected_session,
+        'session_title': session_title,
+        'today_date': today_date,
+        'current_time': current_time,
+        'window_start': window_start,
+        'window_end': window_end,
+        'window_status': window_status,
+        'window_message': window_message,
+        'can_submit': can_submit,
+        'is_admin_override': is_admin_override,
+        'user_role_label': user_role_label,
+        'is_monitor': is_monitor,
+        'is_vice_monitor': is_vice_monitor,
+        'is_homeroom': is_homeroom,
+        'student_roster': student_roster,
+        'total_students_count': len(student_roster),
+        'absent_count': absent_count,
+        'permission_count': permission_count,
+        'late_count': late_count,
+        'present_count': len(student_roster) - (absent_count + permission_count),
+        'submission_log': submission_log,
+    }
+    return render(request, 'attendance/assembly_attendance.html', context)
+
 
 

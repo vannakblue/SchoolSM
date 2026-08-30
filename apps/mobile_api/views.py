@@ -436,3 +436,195 @@ class MobileDashboardSummaryView(APIView):
             }
 
         return Response({'status': 'success', 'dashboard': data})
+
+
+class AssemblyAttendanceAPIView(APIView):
+    """
+    Mobile API for Pre-Class Morning Assembly / Flag Ceremony Attendance.
+    Used by Class Monitors, Vice Monitors, Homeroom Teachers, and Admin on the Mobile App!
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        now_dt = timezone.localtime(timezone.now())
+        current_time = now_dt.time()
+        today_date = now_dt.date()
+
+        from apps.attendance.models import AttendanceSetting, StudentAttendance
+        from apps.academics.utils import get_active_academic_year
+        active_year = get_active_academic_year(request)
+        att_settings = AttendanceSetting.get_settings()
+
+        student_profile = getattr(user, 'student_profile', None)
+        teacher_profile = getattr(user, 'teacher_profile', None)
+
+        authorized_classrooms = Classroom.objects.none()
+        is_monitor = False
+        is_vice_monitor = False
+
+        if user.role == 'ADMIN' or user.is_superuser:
+            authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+        elif user.role == 'TEACHER' and teacher_profile:
+            authorized_classrooms = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year)
+            if not authorized_classrooms.exists():
+                authorized_classrooms = Classroom.objects.filter(academic_year=active_year)
+        elif student_profile:
+            monitor_classes = Classroom.objects.filter(
+                Q(class_monitor=student_profile) | Q(vice_monitor=student_profile),
+                academic_year=active_year
+            )
+            if monitor_classes.exists():
+                authorized_classrooms = monitor_classes
+                matched_cls = monitor_classes.first()
+                if matched_cls.class_monitor_id == student_profile.id:
+                    is_monitor = True
+                else:
+                    is_vice_monitor = True
+
+        if not authorized_classrooms.exists():
+            return Response({
+                'status': 'error',
+                'message': 'លោកអ្នកមិនមានសិទ្ធិជាប្រធានថ្នាក់ អនុប្រធានថ្នាក់ ឬគ្រូបន្ទុកថ្នាក់សម្រាប់ស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        class_id = request.query_params.get('classroom_id')
+        selected_class = authorized_classrooms.filter(id=class_id).first() if class_id else authorized_classrooms.first()
+
+        req_session = request.query_params.get('session')
+        selected_session = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if current_time < dtime(12, 0) else 'AFTERNOON')
+
+        # Time Window
+        m_start = att_settings.assembly_morning_start or dtime(6, 30)
+        m_end = att_settings.assembly_morning_end or dtime(6, 50)
+        a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
+        a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+
+        window_start = m_start if selected_session == 'MORNING' else a_start
+        window_end = m_end if selected_session == 'MORNING' else a_end
+        is_within_window = (window_start <= current_time <= window_end)
+        is_admin = (user.role == 'ADMIN' or user.is_superuser)
+
+        students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('khmer_name') if selected_class else []
+        existing_records = {}
+        if selected_class:
+            recs = StudentAttendance.objects.filter(classroom=selected_class, date=today_date, session=selected_session, period_number=0)
+            for r in recs:
+                existing_records[r.student_id] = {'status': r.status, 'notes': r.notes or ''}
+
+        student_list = []
+        for st in students:
+            rec = existing_records.get(st.id)
+            student_list.append({
+                'id': st.id,
+                'student_id': st.student_id,
+                'name': st.khmer_name,
+                'gender': st.gender,
+                'photo': st.photo.url if st.photo else None,
+                'status': rec['status'] if rec else 'PRESENT',
+                'notes': rec['notes'] if rec else ''
+            })
+
+        classrooms_list = [{'id': c.id, 'name': c.name, 'code': c.code, 'total_students': c.total_students} for c in authorized_classrooms]
+
+        return Response({
+            'status': 'success',
+            'today': today_date.strftime('%Y-%m-%d'),
+            'session': selected_session,
+            'window_start': window_start.strftime('%H:%M'),
+            'window_end': window_end.strftime('%H:%M'),
+            'is_open': is_within_window or is_admin,
+            'is_monitor': is_monitor,
+            'is_vice_monitor': is_vice_monitor,
+            'selected_classroom': {'id': selected_class.id, 'name': selected_class.name} if selected_class else None,
+            'classrooms': classrooms_list,
+            'students': student_list,
+        })
+
+    def post(self, request):
+        user = request.user
+        now_dt = timezone.localtime(timezone.now())
+        current_time = now_dt.time()
+        today_date = now_dt.date()
+
+        from apps.attendance.models import AttendanceSetting, StudentAttendance, AttendanceSubmissionLog
+        att_settings = AttendanceSetting.get_settings()
+
+        classroom_id = request.data.get('classroom_id')
+        session_val = request.data.get('session') or ('MORNING' if current_time < dtime(12, 0) else 'AFTERNOON')
+        attendances_data = request.data.get('attendances') or []
+
+        classroom = Classroom.objects.filter(id=classroom_id).first()
+        if not classroom:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀនឡើយ!'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Permissions check
+        student_profile = getattr(user, 'student_profile', None)
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        is_admin = (user.role == 'ADMIN' or user.is_superuser)
+        is_homeroom = (classroom.homeroom_teacher_id == getattr(teacher_profile, 'id', None))
+        is_monitor = (classroom.class_monitor_id == getattr(student_profile, 'id', None) or classroom.vice_monitor_id == getattr(student_profile, 'id', None))
+
+        if not (is_admin or is_homeroom or is_monitor):
+            return Response({'status': 'error', 'message': 'លោកអ្នកគ្មានសិទ្ធិស្រង់វត្តមានថ្នាក់នេះឡើយ!'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Time Window check
+        m_start = att_settings.assembly_morning_start or dtime(6, 30)
+        m_end = att_settings.assembly_morning_end or dtime(6, 50)
+        a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
+        a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+        window_start = m_start if session_val == 'MORNING' else a_start
+        window_end = m_end if session_val == 'MORNING' else a_end
+        is_within_window = (window_start <= current_time <= window_end)
+
+        if not is_within_window and not is_admin:
+            return Response({
+                'status': 'error',
+                'message': f'ផុតម៉ោងកំណត់ស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ! ({window_start.strftime("%H:%M")} - {window_end.strftime("%H:%M")})'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            StudentAttendance.objects.filter(
+                classroom=classroom,
+                date=today_date,
+                session=session_val,
+                period_number=0
+            ).delete()
+
+            new_records = []
+            for item in attendances_data:
+                st_id = item.get('student_id')
+                status_code = item.get('status')
+                notes_text = item.get('notes', '')
+
+                if status_code in ['ABSENT', 'PERMISSION', 'LATE']:
+                    student_obj = Student.objects.filter(id=st_id, classroom=classroom).first()
+                    if student_obj:
+                        new_records.append(StudentAttendance(
+                            student=student_obj,
+                            classroom=classroom,
+                            date=today_date,
+                            session=session_val,
+                            period_number=0,
+                            status=status_code,
+                            notes=notes_text or 'វត្តមានពេលគោរពទង់ជាតិ (Mobile App)',
+                            recorded_by=user
+                        ))
+
+            if new_records:
+                StudentAttendance.objects.bulk_create(new_records)
+
+            AttendanceSubmissionLog.objects.update_or_create(
+                classroom=classroom,
+                date=today_date,
+                session=session_val,
+                period_number=0,
+                defaults={'recorded_by': user}
+            )
+
+        return Response({
+            'status': 'success',
+            'message': f'បានរក្សាទុកវត្តមានពេលគោរពទង់ជាតិ ({classroom.name}) ជោគជ័យ!',
+            'absent_records_count': len(new_records)
+        })
+

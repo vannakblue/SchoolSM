@@ -1,0 +1,378 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ស្រង់វត្តមានពេលគោរពទង់ជាតិ / Assembly Attendance | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assembly-header-card {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: #fff;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.2);
+    }
+    .metric-pill {
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        transition: transform 0.15s ease;
+    }
+    .metric-pill:hover {
+        transform: translateY(-2px);
+    }
+    .student-row-card {
+        background: #fff;
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        transition: all 0.18s ease;
+    }
+    .student-row-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .student-row-card.is-absent {
+        background: #fef2f2;
+        border-color: #f87171;
+    }
+    .student-row-card.is-permission {
+        background: #eff6ff;
+        border-color: #60a5fa;
+    }
+    .student-row-card.is-late {
+        background: #fffbeb;
+        border-color: #fbbf24;
+    }
+    .status-btn-group .btn {
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 8px;
+    }
+    .sticky-bottom-bar {
+        position: sticky;
+        bottom: 15px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        padding: 12px 20px;
+    }
+    .touch-btn {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 px-md-3" style="max-width: 950px;">
+
+    <!-- Top Hero Banner (Mobile & Tablet Friendly) -->
+    <div class="assembly-header-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <span class="badge bg-white text-primary fw-bold px-3 py-1.5 rounded-pill mb-2 shadow-sm">
+                    <i class="fa-solid fa-flag me-1"></i> Flag Ceremony & Pre-Class Attendance
+                </span>
+                <h3 class="fw-bold mb-1 text-white">
+                    <i class="fa-solid fa-users-viewfinder me-2"></i>ស្រង់វត្តមានពេលគោរពទង់ជាតិ
+                </h3>
+                <div class="small text-white-50">
+                    <i class="fa-solid fa-user-tag me-1"></i> អ្នកស្រង់៖ <strong>{{ user.display_name }}</strong> 
+                    <span class="badge bg-light text-dark ms-1">{{ user_role_label }}</span>
+                </div>
+            </div>
+
+            <!-- Time Window Status Badge -->
+            <div class="text-md-end">
+                <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-25 px-3 py-2 rounded-pill mb-1">
+                    <i class="fa-solid fa-clock text-warning"></i>
+                    <span class="fw-bold text-white small">{{ window_start|time:"H:i" }} - {{ window_end|time:"H:i" }}</span>
+                </div>
+                <div>
+                    {% if window_status == 'OPEN' or window_status == 'OPEN_ADMIN' %}
+                        <span class="badge bg-success px-3 py-1.5 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកឱ្យស្រង់វត្តមាន
+                        </span>
+                    {% elif window_status == 'EARLY' %}
+                        <span class="badge bg-warning text-dark px-3 py-1.5 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-hourglass-start me-1"></i> មិនទាន់ដល់ម៉ោង (06:30)
+                        </span>
+                    {% else %}
+                        <span class="badge bg-danger px-3 py-1.5 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-lock me-1"></i> ផុតម៉ោងស្រង់ (Locked)
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Window Helper Notice -->
+        <div class="mt-3 pt-2 border-top border-white border-opacity-25 d-flex align-items-center justify-content-between small text-white-50">
+            <span><i class="fa-solid fa-circle-info me-1"></i> {{ window_message }}</span>
+            <span>{{ today_date|date:"l ទី d ខែ m ឆ្នាំ Y" }}</span>
+        </div>
+    </div>
+
+    <!-- Classroom & Session Filters -->
+    <div class="card shadow-sm border-0 rounded-4 p-3 bg-white mb-3">
+        <form method="GET" id="filterForm" class="row g-2 align-items-center">
+            <!-- Classroom Selector -->
+            <div class="col-12 col-md-7">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-chalkboard-user text-primary me-1"></i>ជ្រើសរើសថ្នាក់រៀន (Classroom)៖
+                </label>
+                <select name="classroom" class="form-select fw-bold border-primary" onchange="document.getElementById('filterForm').submit();">
+                    {% for cls in authorized_classrooms %}
+                    <option value="{{ cls.id }}" {% if selected_class and selected_class.id == cls.id %}selected{% endif %}>
+                        {{ cls.name }} ({{ cls.code }}) - សិស្ស {{ cls.total_students }} នាក់
+                        {% if is_monitor and selected_class.id == cls.id %} [ថ្នាក់របស់អ្នក]{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Session Toggle -->
+            <div class="col-12 col-md-5">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-sun text-warning me-1"></i>វេនសិក្សា (Session)៖
+                </label>
+                <div class="btn-group w-100" role="group">
+                    <button type="submit" name="session" value="MORNING" class="btn btn-sm touch-btn {% if selected_session == 'MORNING' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}">
+                        <i class="fa-solid fa-sun me-1"></i> ពេលព្រឹក
+                    </button>
+                    <button type="submit" name="session" value="AFTERNOON" class="btn btn-sm touch-btn {% if selected_session == 'AFTERNOON' %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
+                        <i class="fa-solid fa-cloud-sun me-1"></i> ពេលរសៀល
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Real-Time Metrics Overview -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="metric-pill">
+                <small class="text-muted fw-bold d-block">👥 សិស្សសរុប</small>
+                <h4 class="fw-bold text-dark mb-0 mt-1" id="cntTotal">{{ total_students_count }}</h4>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="metric-pill border-success-subtle bg-success-subtle bg-opacity-25">
+                <small class="text-success fw-bold d-block">✅ មានវត្តមាន</small>
+                <h4 class="fw-bold text-success mb-0 mt-1" id="cntPresent">{{ present_count }}</h4>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="metric-pill border-danger-subtle bg-danger-subtle bg-opacity-25">
+                <small class="text-danger fw-bold d-block">❌ អវត្តមាន (ឥតច្បាប់)</small>
+                <h4 class="fw-bold text-danger mb-0 mt-1" id="cntAbsent">{{ absent_count }}</h4>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="metric-pill border-warning-subtle bg-warning-subtle bg-opacity-25">
+                <small class="text-warning fw-bold d-block">⏰ យឺត / ច្បាប់</small>
+                <h4 class="fw-bold text-warning mb-0 mt-1" id="cntLatePerm">{{ late_count|add:permission_count }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Search & 1-Tap Action Banner -->
+    <div class="card shadow-sm border-0 rounded-4 p-3 bg-white mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="input-group input-group-sm flex-grow-1" style="max-width: 320px;">
+                <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" class="form-control" id="studentSearchInput" placeholder="ស្វែងរកឈ្មោះ ឬកូដសិស្ស..." oninput="filterRoster()">
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-success btn-sm touch-btn px-3" onclick="markAllPresent()">
+                    <i class="fa-solid fa-check-double me-1"></i> មានវត្តមានទាំងអស់
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Attendance Form -->
+    <form method="POST" id="assemblyAttendanceForm">
+        {% csrf_token %}
+        <input type="hidden" name="classroom" value="{{ selected_class.id }}">
+        <input type="hidden" name="session" value="{{ selected_session }}">
+
+        <!-- Student Roster List -->
+        <div id="rosterContainer">
+            {% for row in student_roster %}
+            {% with st=row.student %}
+            <div class="student-row-card {% if row.status == 'ABSENT' %}is-absent{% elif row.status == 'PERMISSION' %}is-permission{% elif row.status == 'LATE' %}is-late{% endif %}" 
+                 id="student_card_{{ st.id }}"
+                 data-name="{{ st.khmer_name|lower }} {{ st.latin_name|lower }} {{ st.student_id|lower }}">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <!-- Student Info -->
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="badge rounded-circle p-2 d-flex align-items-center justify-content-center bg-light text-primary border" style="width: 40px; height: 40px;">
+                            {% if st.photo %}
+                                <img src="{{ st.photo.url }}" class="rounded-circle w-100 h-100 object-fit-cover" alt="Student">
+                            {% else %}
+                                <i class="fa-solid fa-user-graduate"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark fs-6">{{ forloop.counter }}. {{ st.khmer_name }}</div>
+                            <div class="small text-muted">
+                                <span>ID: <strong>{{ st.student_id }}</strong></span> • 
+                                <span>ភេទ: <strong>{{ st.get_gender_display }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 1-Tap Attendance Buttons (Absence-First) -->
+                    <div class="status-btn-group btn-group" role="group">
+                        <input type="radio" class="btn-check" name="status_{{ st.id }}" id="st_pres_{{ st.id }}" value="PRESENT" 
+                               {% if row.status == 'PRESENT' %}checked{% endif %} onchange="updateStudentStatus({{ st.id }}, 'PRESENT')">
+                        <label class="btn btn-outline-success touch-btn" for="st_pres_{{ st.id }}" title="មានវត្តមាន">
+                            <i class="fa-solid fa-check me-1"></i>វត្តមាន
+                        </label>
+
+                        <input type="radio" class="btn-check" name="status_{{ st.id }}" id="st_late_{{ st.id }}" value="LATE" 
+                               {% if row.status == 'LATE' %}checked{% endif %} onchange="updateStudentStatus({{ st.id }}, 'LATE')">
+                        <label class="btn btn-outline-warning touch-btn" for="st_late_{{ st.id }}" title="មកយឺត">
+                            <i class="fa-solid fa-clock me-1"></i>យឺត
+                        </label>
+
+                        <input type="radio" class="btn-check" name="status_{{ st.id }}" id="st_perm_{{ st.id }}" value="PERMISSION" 
+                               {% if row.status == 'PERMISSION' %}checked{% endif %} onchange="updateStudentStatus({{ st.id }}, 'PERMISSION')">
+                        <label class="btn btn-outline-primary touch-btn" for="st_perm_{{ st.id }}" title="អវត្តមានមានច្បាប់">
+                            <i class="fa-solid fa-file-signature me-1"></i>ច្បាប់
+                        </label>
+
+                        <input type="radio" class="btn-check" name="status_{{ st.id }}" id="st_abs_{{ st.id }}" value="ABSENT" 
+                               {% if row.status == 'ABSENT' %}checked{% endif %} onchange="updateStudentStatus({{ st.id }}, 'ABSENT')">
+                        <label class="btn btn-outline-danger touch-btn" for="st_abs_{{ st.id }}" title="អវត្តមានឥតច្បាប់">
+                            <i class="fa-solid fa-xmark me-1"></i>អវត្តមាន
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Notes field (collapsible or small) -->
+                <div class="mt-2 {% if row.status == 'PRESENT' %}d-none{% endif %}" id="notes_container_{{ st.id }}">
+                    <input type="text" class="form-control form-control-sm" name="notes_{{ st.id }}" value="{{ row.notes }}" placeholder="មូលហេតុអវត្តមាន / យឺត (បើមាន)...">
+                </div>
+            </div>
+            {% endwith %}
+            {% empty %}
+            <div class="text-center py-5 text-muted bg-white rounded-4 shadow-sm">
+                <i class="fa-solid fa-user-slash fs-1 text-secondary opacity-50 mb-3"></i>
+                <p>មិនមានទិន្នន័យសិស្សនៅក្នុងថ្នាក់រៀននេះឡើយ។</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Sticky Bottom Floating Action Bar -->
+        {% if student_roster %}
+        <div class="sticky-bottom-bar d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <div class="fw-bold text-dark small">
+                    <i class="fa-solid fa-shield-halved text-success me-1"></i> ស្រង់ជូន៖ {{ selected_class.name }} ({{ session_title }})
+                </div>
+                <div class="small text-muted">
+                    {% if submission_log %}
+                        <i class="fa-solid fa-clock-rotate-left text-info me-1"></i> បានបញ្ជូនចុងក្រោយដោយ៖ {{ submission_log.recorded_by.display_name }} ({{ submission_log.updated_at|time:"H:i" }})
+                    {% else %}
+                        <span class="text-warning"><i class="fa-solid fa-circle-exclamation me-1"></i> មិនទាន់បានបញ្ជូននៅឡើយ</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow touch-btn" {% if not can_submit and not is_admin_override %}disabled{% endif %}>
+                <i class="fa-solid fa-paper-plane me-2"></i> រក្សាទុក & ជូនដំណឹងវត្តមាន
+            </button>
+        </div>
+        {% endif %}
+    </form>
+
+</div>
+
+<!-- Real-Time Javascript Interactions -->
+<script>
+    function updateStudentStatus(studentId, status) {
+        const card = document.getElementById(`student_card_${studentId}`);
+        const notes = document.getElementById(`notes_container_${studentId}`);
+
+        if (card) {
+            card.classList.remove('is-absent', 'is-permission', 'is-late');
+            if (status === 'ABSENT') card.classList.add('is-absent');
+            else if (status === 'PERMISSION') card.classList.add('is-permission');
+            else if (status === 'LATE') card.classList.add('is-late');
+        }
+
+        if (notes) {
+            if (status === 'PRESENT') {
+                notes.classList.add('d-none');
+            } else {
+                notes.classList.remove('d-none');
+            }
+        }
+
+        recalculateMetrics();
+    }
+
+    function markAllPresent() {
+        document.querySelectorAll('.student-row-card').forEach(card => {
+            const studentId = card.id.replace('student_card_', '');
+            const presentRadio = document.getElementById(`st_pres_${studentId}`);
+            if (presentRadio) {
+                presentRadio.checked = true;
+                updateStudentStatus(studentId, 'PRESENT');
+            }
+        });
+    }
+
+    function recalculateMetrics() {
+        let total = 0;
+        let present = 0;
+        let absent = 0;
+        let latePerm = 0;
+
+        document.querySelectorAll('.student-row-card').forEach(card => {
+            total++;
+            if (card.classList.contains('is-absent')) absent++;
+            else if (card.classList.contains('is-permission') || card.classList.contains('is-late')) latePerm++;
+            else present++;
+        });
+
+        const cntTotal = document.getElementById('cntTotal');
+        const cntPresent = document.getElementById('cntPresent');
+        const cntAbsent = document.getElementById('cntAbsent');
+        const cntLatePerm = document.getElementById('cntLatePerm');
+
+        if (cntTotal) cntTotal.innerText = total;
+        if (cntPresent) cntPresent.innerText = present;
+        if (cntAbsent) cntAbsent.innerText = absent;
+        if (cntLatePerm) cntLatePerm.innerText = latePerm;
+    }
+
+    function filterRoster() {
+        const q = (document.getElementById('studentSearchInput').value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('#rosterContainer .student-row-card');
+
+        cards.forEach(c => {
+            const name = c.getAttribute('data-name') || '';
+            if (!q || name.includes(q)) {
+                c.classList.remove('d-none');
+            } else {
+                c.classList.add('d-none');
+            }
+        });
+    }
+</script>
+{% endblock %}

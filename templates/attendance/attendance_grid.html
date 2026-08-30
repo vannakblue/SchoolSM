@@ -98,6 +98,9 @@
         <p class="text-muted small mb-0">ប្រព័ន្ធស្រង់វត្តមានឆ្លាតវៃ ស្វ័យប្រវត្តិតាមកាលវិភាគបង្រៀន និងរក្សាទុកតែសិស្សអវត្តមាន</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'assembly_attendance' %}" class="btn btn-danger shadow-sm fw-bold">
+            <i class="fa-solid fa-flag me-1"></i> ស្រង់វត្តមានពេលគោរពទង់ជាតិ
+        </a>
         {% if selected_class %}
         <button type="button" class="btn btn-info text-white shadow-sm fw-bold" onclick="openClassTelegramModal()">
             <i class="fa-brands fa-telegram me-1"></i> ផ្ញើទៅ Telegram ថ្នាក់

@@ -13,8 +13,9 @@ urlpatterns = [
     path('profile/', views.UserProfileView.as_view(), name='mobile_api_profile'),
     path('dashboard/', views.MobileDashboardSummaryView.as_view(), name='mobile_api_dashboard'),
 
-    # 3. QR Attendance Scanning & History
+    # 3. QR Attendance Scanning, Assembly & History
     path('attendance/qr-scan/', views.QRAttendanceScanView.as_view(), name='mobile_api_qr_scan'),
+    path('attendance/assembly/', views.AssemblyAttendanceAPIView.as_view(), name='mobile_api_assembly_attendance'),
     path('attendance/history/', views.AttendanceHistoryView.as_view(), name='mobile_api_attendance_history'),
 
     # 4. Timetable & Schedule
