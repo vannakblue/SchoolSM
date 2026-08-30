@@ -11,7 +11,7 @@ import json
 import csv
 import os
 from apps.accounts.decorators import role_required
-from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack
+from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule
 from .forms import ClassroomForm, SubjectForm, TimetableForm, GradeLevelForm, AcademicYearForm, GradeEnrollmentOptionForm, AcademicTrackForm
 from apps.students.models import Student
 from apps.teachers.models import Teacher
@@ -1970,11 +1970,17 @@ def timetable_daily_reports_view(request):
 
     days_to_render = DAYS_OF_WEEK if selected_day == 'all' else [d for d in DAYS_OF_WEEK if str(d['num']) == str(selected_day)]
 
-    # 1. Build Duty Sign-In Sheets
+    # 1. Query Duty Schedules for this academic year
+    duty_entries = TeacherDutySchedule.objects.filter(academic_year=active_year).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+
+    # Build Duty Sign-In Sheets (Includes Classroom Teaching & On-Duty Staff/Teachers)
     duty_sheets = []
     for d in days_to_render:
         d_entries = timetables.filter(day_of_week=d['num'])
+        d_duties = duty_entries.filter(day_of_week=d['num'])
+
         day_teacher_slots = {}
+        # 1. Populate Classroom Teaching Slots
         for entry in d_entries:
             if entry.teacher_id:
                 if entry.teacher_id not in day_teacher_slots:
@@ -1983,6 +1989,22 @@ def timetable_daily_reports_view(request):
                 slot_code = teacher_subject_code_map.get((entry.subject_id, entry.teacher_id), entry.subject.code)
                 cls_name = entry.classroom.code or entry.classroom.name
                 day_teacher_slots[entry.teacher_id][p_num] = f"{cls_name}({slot_code})"
+
+        # 2. Populate On-Duty Shifts (for office staff and teachers on duty)
+        for duty_s in d_duties:
+            if duty_s.teacher_id:
+                if duty_s.teacher_id not in day_teacher_slots:
+                    day_teacher_slots[duty_s.teacher_id] = {}
+                p_num = duty_s.period_number or 1
+                if p_num not in day_teacher_slots[duty_s.teacher_id]:
+                    duty_type_short = {
+                        'OFFICE': 'ប្រចាំការ-ការិយាល័យ',
+                        'DISCIPLINE': 'ប្រចាំការ-វិន័យ',
+                        'LIBRARY': 'ប្រចាំការ-បណ្ណាល័យ',
+                        'ADMIN': 'ប្រចាំការ-រដ្ឋបាល',
+                        'GENERAL': 'ប្រចាំការទូទៅ',
+                    }.get(duty_s.duty_type, 'ប្រចាំការ')
+                    day_teacher_slots[duty_s.teacher_id][p_num] = f"[{duty_type_short}]"
 
         # Morning session (Periods 1, 2, 3, 4)
         if selected_session in ['all', 'morning']:
@@ -2002,7 +2024,7 @@ def timetable_daily_reports_view(request):
                         'no': no_idx,
                         'teacher_id': tch.teacher_id,
                         'teacher_name': f"{gender_title} {tch.khmer_name}",
-                        'specialization': tch.specialization,
+                        'specialization': tch.specialization or tch.current_duty or 'បុគ្គលិក',
                         'p1': p1,
                         'p2': p2,
                         'p3': p3,
@@ -2039,7 +2061,7 @@ def timetable_daily_reports_view(request):
                         'no': no_idx,
                         'teacher_id': tch.teacher_id,
                         'teacher_name': f"{gender_title} {tch.khmer_name}",
-                        'specialization': tch.specialization,
+                        'specialization': tch.specialization or tch.current_duty or 'បុគ្គលិក',
                         'p1': p5,
                         'p2': p6,
                         'p3': p7,
@@ -2058,10 +2080,13 @@ def timetable_daily_reports_view(request):
                 'total_teachers': len(afternoon_rows),
             })
 
-    # 2. Teacher Teaching Hours Load Report
+    # 2. Teacher Teaching & Duty Hours Load Report
     teacher_load_report = []
     for t in teachers:
         t_slots_count = timetables.filter(teacher=t).count()
+        t_duty_count = duty_entries.filter(teacher=t).count()
+        t_total_actual = t_slots_count + t_duty_count
+
         t_assigned_cs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher=t).select_related('classroom') if active_year else ClassSubject.objects.filter(teacher=t).select_related('classroom')
         t_assigned_sum = 0
         for cs in t_assigned_cs:
@@ -2077,20 +2102,14 @@ def timetable_daily_reports_view(request):
             if t_id == t.id and ClassSubject.objects.filter(subject_id=s_id, teacher_id=t.id, classroom__academic_year=active_year).exists()
         ]
 
-        if t_slots_count > t_assigned_sum and t_assigned_sum > 0:
-            status_text = f"លើសម៉ោងចាត់តាំង ({t_slots_count - t_assigned_sum} ម៉ោង)"
+        if t_total_actual > t_max:
+            status_text = f"លើសម៉ោងកំណត់ ({t_total_actual - t_max} ម៉ោង)"
             status_badge = "bg-warning text-dark border border-warning"
-        elif t_slots_count > t_max:
-            status_text = f"លើសម៉ោងកំណត់គោល ({t_slots_count - t_max} ម៉ោង)"
-            status_badge = "bg-warning text-dark border border-warning"
-        elif t_assigned_sum > t_max and t_slots_count == t_assigned_sum:
-            status_text = "គ្រប់ម៉ោងចាត់តាំងបន្ថែម (Overload)"
-            status_badge = "bg-purple-subtle text-purple border"
-        elif t_slots_count == t_assigned_sum and t_assigned_sum > 0:
-            status_text = "គ្រប់ម៉ោងតាមការកំណត់"
+        elif t_total_actual == t_max:
+            status_text = "គ្រប់ម៉ោងតាមការកំណត់ (100%)"
             status_badge = "bg-success text-white"
-        elif t_slots_count < t_assigned_sum:
-            status_text = f"ខ្វះ {t_assigned_sum - t_slots_count} ម៉ោង"
+        elif t_total_actual < t_max and t_total_actual > 0:
+            status_text = f"ខ្វះ {t_max - t_total_actual} ម៉ោង"
             status_badge = "bg-info text-dark"
         else:
             status_text = "មិនទាន់មានម៉ោង"
@@ -2102,7 +2121,9 @@ def timetable_daily_reports_view(request):
             'max_hours': t_max,
             'assigned_hours': t_assigned_sum,
             'scheduled_hours': t_slots_count,
-            'diff': t_slots_count - t_assigned_sum,
+            'duty_hours': t_duty_count,
+            'total_actual_hours': t_total_actual,
+            'diff': t_total_actual - t_max,
             'status_text': status_text,
             'status_badge': status_badge,
         })
@@ -3103,6 +3124,406 @@ def teacher_assignments_auto_assign(request):
 
     messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកម្រិតបណ្តុះបណ្តាលស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង, គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h) ជោគជ័យ!")
     return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
+
+# ----------------- TEACHER & STAFF ON-DUTY ALLOCATION (ម៉ោងប្រចាំការ) -----------------
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def teacher_duty_manager(request):
+    """
+    Teacher & Office Staff On-Duty (ម៉ោងប្រចាំការ) Allocation Manager.
+    - Tracks teaching hours vs target weekly quota (e.g. 18 hours).
+    - Under-quota teachers get deficit duty hours assigned (manually or auto/random).
+    - Office/Administrative staff have 100% duty hours assigned manually with priority.
+    - Fully scoped per Academic Year!
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    selected_year = request.GET.get('year') or request.GET.get('academic_year')
+    if selected_year:
+        if str(selected_year).isdigit():
+            found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
+        else:
+            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
+        if found_year:
+            active_year = found_year
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+    all_teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
+
+    # Query all timetable teaching slots for this active year
+    timetables = Timetable.objects.filter(
+        classroom__academic_year=active_year
+    ).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.all().select_related('classroom', 'subject', 'teacher')
+
+    # Query all duty schedules for this active year
+    duty_entries = TeacherDutySchedule.objects.filter(
+        academic_year=active_year
+    ).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+
+    # Map teaching hours per teacher
+    teacher_teaching_map = {}
+    teacher_teaching_slots_map = {}
+    for entry in timetables:
+        tid = entry.teacher_id
+        if not tid:
+            continue
+        teacher_teaching_map[tid] = teacher_teaching_map.get(tid, 0) + 1
+        if tid not in teacher_teaching_slots_map:
+            teacher_teaching_slots_map[tid] = {}
+        slot_k = f"{entry.day_of_week}_{entry.period_number}"
+        teacher_teaching_slots_map[tid][slot_k] = {
+            'classroom_name': entry.classroom.name,
+            'subject_name': entry.subject.name_kh,
+            'code': entry.subject.code
+        }
+
+    # Map duty hours per teacher
+    teacher_duty_map = {}
+    teacher_duty_slots_map = {}
+    for d in duty_entries:
+        tid = d.teacher_id
+        teacher_duty_map[tid] = teacher_duty_map.get(tid, 0) + 1
+        if tid not in teacher_duty_slots_map:
+            teacher_duty_slots_map[tid] = {}
+        slot_k = f"{d.day_of_week}_{d.period_number}"
+        teacher_duty_slots_map[tid][slot_k] = {
+            'id': d.id,
+            'duty_type': d.duty_type,
+            'duty_label': d.get_duty_type_display(),
+            'is_auto': d.is_auto_assigned,
+            'notes': d.notes or ''
+        }
+
+    # Build teacher and office staff statistics
+    staff_list = []
+    office_keywords = ['ការិយាល័យ', 'រដ្ឋបាល', 'បណ្ណារក្ស', 'គណនេយ្យ', 'នាយក', 'នាយករង', 'បុគ្គលិក', 'សន្តិសុខ', 'អនាម័យ']
+    
+    total_teachers_count = 0
+    total_office_count = 0
+    total_deficit_count = 0
+    total_exact_count = 0
+    total_duty_hours_school = sum(teacher_duty_map.values())
+    total_teaching_hours_school = sum(teacher_teaching_map.values())
+
+    selected_teacher_id = request.GET.get('teacher')
+    selected_teacher = None
+    if selected_teacher_id and str(selected_teacher_id).isdigit():
+        selected_teacher = all_teachers.filter(id=int(selected_teacher_id)).first()
+
+    for t in all_teachers:
+        t_duty_str = (t.current_duty or '').strip()
+        t_spec_str = (t.specialization or '').strip()
+        is_office = any(kw in t_duty_str for kw in office_keywords) or any(kw in t_spec_str for kw in office_keywords)
+        teaching_h = teacher_teaching_map.get(t.id, 0)
+        if teaching_h == 0 and not t_spec_str:
+            is_office = True
+
+        duty_h = teacher_duty_map.get(t.id, 0)
+        target_max = t.max_weekly_hours or 18
+        total_h = teaching_h + duty_h
+        deficit_h = max(0, target_max - teaching_h) if not is_office else target_max
+        remaining_duty_needed = max(0, target_max - total_h)
+
+        if is_office:
+            total_office_count += 1
+        else:
+            total_teachers_count += 1
+            if total_h >= target_max:
+                total_exact_count += 1
+            else:
+                total_deficit_count += 1
+
+        staff_list.append({
+            'id': t.id,
+            'teacher_id': t.teacher_id,
+            'khmer_name': t.khmer_name,
+            'latin_name': t.latin_name,
+            'gender': t.gender,
+            'gender_kh': 'ស្រី' if t.gender == 'F' else 'ប្រុស',
+            'phone': t.phone or '',
+            'current_duty': t.current_duty or ('បុគ្គលិកការិយាល័យ' if is_office else 'គ្រូបង្រៀន'),
+            'specialization': t.specialization or '',
+            'is_office': is_office,
+            'teaching_hours': teaching_h,
+            'duty_hours': duty_h,
+            'total_hours': total_h,
+            'target_max': target_max,
+            'deficit_hours': deficit_h,
+            'remaining_needed': remaining_duty_needed,
+            'status': 'EXACT' if total_h == target_max else ('OVER' if total_h > target_max else 'DEFICIT'),
+        })
+
+    if not selected_teacher and staff_list:
+        selected_teacher = all_teachers.first()
+
+    active_staff_duty_slots = teacher_duty_slots_map.get(selected_teacher.id, {}) if selected_teacher else {}
+    active_staff_teaching_slots = teacher_teaching_slots_map.get(selected_teacher.id, {}) if selected_teacher else {}
+
+    duty_types = [
+        {'code': 'OFFICE', 'name': 'ប្រចាំការការិយាល័យ', 'icon': 'fa-building-columns', 'color': '#4f46e5'},
+        {'code': 'DISCIPLINE', 'name': 'សម្របសម្រួលវិន័យ', 'icon': 'fa-user-shield', 'color': '#0ea5e9'},
+        {'code': 'LIBRARY', 'name': 'ប្រចាំការបណ្ណាល័យ', 'icon': 'fa-book-open-reader', 'color': '#10b981'},
+        {'code': 'ADMIN', 'name': 'រដ្ឋបាល & លិខិតស្នាម', 'icon': 'fa-file-signature', 'color': '#f59e0b'},
+        {'code': 'GENERAL', 'name': 'ប្រចាំការទូទៅ', 'icon': 'fa-clock', 'color': '#8b5cf6'},
+    ]
+
+    context = {
+        'active_year': active_year,
+        'academic_years': academic_years,
+        'staff_list': staff_list,
+        'staff_list_json': json.dumps(staff_list, ensure_ascii=False),
+        'selected_teacher': selected_teacher,
+        'active_staff_duty_slots': active_staff_duty_slots,
+        'active_staff_duty_slots_json': json.dumps(active_staff_duty_slots, ensure_ascii=False),
+        'active_staff_teaching_slots': active_staff_teaching_slots,
+        'active_staff_teaching_slots_json': json.dumps(active_staff_teaching_slots, ensure_ascii=False),
+        'all_duty_slots_json': json.dumps(teacher_duty_slots_map, ensure_ascii=False),
+        'all_teaching_slots_json': json.dumps(teacher_teaching_slots_map, ensure_ascii=False),
+        'duty_types': duty_types,
+        'duty_types_json': json.dumps(duty_types, ensure_ascii=False),
+        'total_teachers_count': total_teachers_count,
+        'total_office_count': total_office_count,
+        'total_deficit_count': total_deficit_count,
+        'total_exact_count': total_exact_count,
+        'total_duty_hours_school': total_duty_hours_school,
+        'total_teaching_hours_school': total_teaching_hours_school,
+    }
+    return render(request, 'academics/teacher_duty_manager.html', context)
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_duty_save_manual(request):
+    """
+    Saves manually assigned duty slots for a teacher/staff.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        teacher_id = data.get('teacher_id')
+        year_id = data.get('academic_year_id')
+        if year_id:
+            found_year = AcademicYear.objects.filter(id=int(year_id)).first()
+            if found_year:
+                active_year = found_year
+
+        if not active_year:
+            return JsonResponse({'status': 'error', 'message': 'មិនមានឆ្នាំសិក្សាសកម្មឡើយ'}, status=400)
+
+        teacher = Teacher.objects.filter(id=teacher_id).first()
+        if not teacher:
+            return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញគ្រូ ឬបុគ្គលិកឡើយ'}, status=404)
+
+        # Optional update max_weekly_hours
+        max_h = data.get('max_weekly_hours')
+        if max_h is not None and str(max_h).isdigit():
+            teacher.max_weekly_hours = int(max_h)
+            teacher.save(update_fields=['max_weekly_hours'])
+
+        slots = data.get('slots', [])
+
+        with transaction.atomic():
+            TeacherDutySchedule.objects.filter(
+                academic_year=active_year,
+                teacher=teacher
+            ).delete()
+
+            new_entries = []
+            for s in slots:
+                d_num = int(s.get('day_of_week'))
+                p_num = int(s.get('period_number'))
+                dtype = s.get('duty_type') or 'OFFICE'
+                notes = s.get('notes') or ''
+                new_entries.append(TeacherDutySchedule(
+                    academic_year=active_year,
+                    teacher=teacher,
+                    day_of_week=d_num,
+                    period_number=p_num,
+                    duty_type=dtype,
+                    is_auto_assigned=False,
+                    notes=notes,
+                ))
+            if new_entries:
+                TeacherDutySchedule.objects.bulk_create(new_entries)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បានរក្សាទុកម៉ោងប្រចាំការ ({len(new_entries)} ម៉ោង) ជូន {teacher.khmer_name} ដោយជោគជ័យ!',
+            'count': len(new_entries),
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_duty_auto_assign(request):
+    """
+    Intelligent Auto / Random Duty Allocation Solver.
+    Calculates deficit teaching hours for under-quota teachers,
+    finds completely free timetable slots (no teaching & no existing manual duty),
+    and distributes deficit duty hours so they reach 100% full quota!
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8')) if request.body else {}
+        target_teacher_id = data.get('teacher_id')
+        year_id = data.get('academic_year_id')
+        default_duty_type = data.get('duty_type') or 'OFFICE'
+        reset_existing_auto = data.get('reset_existing_auto', True)
+
+        if year_id:
+            found_year = AcademicYear.objects.filter(id=int(year_id)).first()
+            if found_year:
+                active_year = found_year
+
+        if not active_year:
+            return JsonResponse({'status': 'error', 'message': 'មិនមានឆ្នាំសិក្សាសកម្មឡើយ'}, status=400)
+
+        teachers_query = Teacher.objects.filter(status='ACTIVE')
+        if target_teacher_id:
+            teachers_query = teachers_query.filter(id=target_teacher_id)
+
+        # Get existing timetable teaching slots
+        timetables = Timetable.objects.filter(classroom__academic_year=active_year)
+        teaching_slots_by_teacher = {}
+        for entry in timetables:
+            if entry.teacher_id not in teaching_slots_by_teacher:
+                teaching_slots_by_teacher[entry.teacher_id] = set()
+            teaching_slots_by_teacher[entry.teacher_id].add((entry.day_of_week, entry.period_number))
+
+        # Get existing manual duty slots
+        existing_duties = TeacherDutySchedule.objects.filter(academic_year=active_year)
+        manual_duties_by_teacher = {}
+        for d in existing_duties:
+            if not d.is_auto_assigned:
+                if d.teacher_id not in manual_duties_by_teacher:
+                    manual_duties_by_teacher[d.teacher_id] = set()
+                manual_duties_by_teacher[d.teacher_id].add((d.day_of_week, d.period_number))
+
+        import random
+        assigned_total_slots = 0
+        assigned_teachers_count = 0
+
+        with transaction.atomic():
+            if target_teacher_id:
+                if reset_existing_auto:
+                    TeacherDutySchedule.objects.filter(
+                        academic_year=active_year,
+                        teacher_id=target_teacher_id,
+                        is_auto_assigned=True
+                    ).delete()
+            else:
+                if reset_existing_auto:
+                    TeacherDutySchedule.objects.filter(
+                        academic_year=active_year,
+                        is_auto_assigned=True
+                    ).delete()
+
+            new_duty_entries = []
+
+            for teacher in teachers_query:
+                t_teach_slots = teaching_slots_by_teacher.get(teacher.id, set())
+                t_manual_slots = manual_duties_by_teacher.get(teacher.id, set())
+                
+                teaching_count = len(t_teach_slots)
+                manual_duty_count = len(t_manual_slots)
+                target_max = teacher.max_weekly_hours or 18
+
+                needed_duty = target_max - (teaching_count + manual_duty_count)
+                if needed_duty <= 0:
+                    continue
+
+                all_possible_slots = []
+                for day in range(1, 7):
+                    for period in range(1, 9):
+                        slot_tuple = (day, period)
+                        if slot_tuple not in t_teach_slots and slot_tuple not in t_manual_slots:
+                            all_possible_slots.append(slot_tuple)
+
+                if not all_possible_slots:
+                    continue
+
+                random.shuffle(all_possible_slots)
+                teaching_days = {d for (d, p) in t_teach_slots}
+                def slot_priority(s):
+                    day, period = s
+                    same_day_score = 0 if day in teaching_days else 10
+                    return (same_day_score, day, period)
+
+                all_possible_slots.sort(key=slot_priority)
+                
+                chosen_slots = all_possible_slots[:needed_duty]
+                for (day, period) in chosen_slots:
+                    new_duty_entries.append(TeacherDutySchedule(
+                        academic_year=active_year,
+                        teacher=teacher,
+                        day_of_week=day,
+                        period_number=period,
+                        duty_type=default_duty_type,
+                        is_auto_assigned=True,
+                        notes='បែងចែកម៉ោងខ្វះស្វ័យប្រវត្តិ'
+                    ))
+                    assigned_total_slots += 1
+
+                assigned_teachers_count += 1
+
+            if new_duty_entries:
+                TeacherDutySchedule.objects.bulk_create(new_duty_entries)
+
+        msg = f"បានបែងចែកម៉ោងប្រចាំការស្វ័យប្រវត្តិចំនួន {assigned_total_slots} ម៉ោង ជូនគ្រូ/បុគ្គលិក {assigned_teachers_count} នាក់ ដោយជោគជ័យ!"
+        return JsonResponse({
+            'status': 'success',
+            'message': msg,
+            'total_slots': assigned_total_slots,
+            'teachers_count': assigned_teachers_count
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_duty_clear(request):
+    """
+    Clears duty schedules for a specific teacher or all teachers in active year.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8')) if request.body else {}
+        teacher_id = data.get('teacher_id')
+        auto_only = data.get('auto_only', False)
+
+        query = TeacherDutySchedule.objects.filter(academic_year=active_year) if active_year else TeacherDutySchedule.objects.all()
+        if teacher_id:
+            query = query.filter(teacher_id=teacher_id)
+        if auto_only:
+            query = query.filter(is_auto_assigned=True)
+
+        deleted_count, _ = query.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បានសម្អាតម៉ោងប្រចាំការចំនួន {deleted_count} ម៉ោងរួចរាល់!',
+            'deleted_count': deleted_count
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 
 

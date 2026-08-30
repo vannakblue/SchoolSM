@@ -491,4 +491,36 @@ class GradeEnrollmentOption(models.Model):
         return f"{self.grade_level.name} - {self.label} ({self.get_field_type_display()})"
 
 
+class TeacherDutySchedule(models.Model):
+    """
+    Teacher & Office Staff On-Duty / Duty Shift Schedule per Academic Year.
+    For deficit teachers needing extra duty hours to fulfill quota & 100% duty for office staff.
+    """
+    class DutyType(models.TextChoices):
+        OFFICE = 'OFFICE', 'ប្រចាំការការិយាល័យ / Office Duty'
+        DISCIPLINE = 'DISCIPLINE', 'សម្របសម្រួលវិន័យ / Discipline & Order'
+        LIBRARY = 'LIBRARY', 'ប្រចាំការបណ្ណាល័យ / Library Duty'
+        ADMIN = 'ADMIN', 'រដ្ឋបាល & លិខិតស្នាម / Administration'
+        GENERAL = 'GENERAL', 'ប្រចាំការទូទៅ / General Duty'
+
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='duty_schedules', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='duty_schedules', verbose_name="គ្រូបង្រៀន/បុគ្គលិក / Teacher/Staff")
+    day_of_week = models.IntegerField(choices=Timetable.DayOfWeek.choices, verbose_name="ថ្ងៃក្នុងសប្តាហ៍ / Day of Week")
+    period_number = models.IntegerField(default=1, verbose_name="ម៉ោងទី / Period (1-8)")
+    duty_type = models.CharField(max_length=30, choices=DutyType.choices, default=DutyType.OFFICE, verbose_name="ប្រភេទភារកិច្ច / Duty Type")
+    is_auto_assigned = models.BooleanField(default=False, verbose_name="បែងចែកស្វ័យប្រវត្តិ / Auto Assigned")
+    notes = models.CharField(max_length=200, blank=True, null=True, verbose_name="កំណត់ចំណាំ/ទីតាំង / Notes/Location")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['academic_year', 'day_of_week', 'period_number', 'teacher']
+        unique_together = ('academic_year', 'teacher', 'day_of_week', 'period_number')
+        verbose_name = "ម៉ោងប្រចាំការ / Duty Schedule"
+        verbose_name_plural = "ម៉ោងប្រចាំការទាំងអស់ / Duty Schedules"
+
+    def __str__(self):
+        return f"{self.teacher.khmer_name} - {self.get_day_of_week_display()} ម៉ោងទី {self.period_number} ({self.get_duty_type_display()})"
+
+
 

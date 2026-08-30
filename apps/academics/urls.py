@@ -102,6 +102,12 @@ urlpatterns = [
     path('teacher-assignments/reset-teacher/<int:teacher_id>/', views.teacher_assignments_reset_teacher, name='teacher_assignments_reset_teacher'),
     path('teacher-assignments/training-quotas/save/', views.teacher_assignments_training_quotas_save, name='teacher_assignments_training_quotas_save'),
 
+    # Teacher & Office Staff Duty Allocation Manager
+    path('duty-schedule/', views.teacher_duty_manager, name='teacher_duty_manager'),
+    path('duty-schedule/save/', views.teacher_duty_save_manual, name='teacher_duty_save_manual'),
+    path('duty-schedule/auto-assign/', views.teacher_duty_auto_assign, name='teacher_duty_auto_assign'),
+    path('duty-schedule/clear/', views.teacher_duty_clear, name='teacher_duty_clear'),
+
     # Student Promotion / Academic Year Transfer
     path('promotion/', views.student_promotion_view, name='student_promotion'),
 ]

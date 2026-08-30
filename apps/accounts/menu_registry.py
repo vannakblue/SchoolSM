@@ -190,6 +190,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN'],
                 'url_name': 'teacher_assignments_manager',
             },
+            {
+                'key': 'teacher_duty_manager',
+                'name_kh': 'គ្រប់គ្រងម៉ោងប្រចាំការ',
+                'name_en': 'Duty Hours & Staff Roster',
+                'icon': 'fa-solid fa-clock text-danger',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'teacher_duty_manager',
+            },
         ]
     },
     {
