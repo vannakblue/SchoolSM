@@ -86,23 +86,12 @@ jobs:
       - name: Build iOS Application & Package IPA
         working-directory: ./schoolsm_mobile
         run: |
-          flutter build ipa --release --no-codesign || flutter build ios --release --no-codesign
-          mkdir -p dist
-          if [ -d "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" ]; then
-            mkdir -p build/ios/Payload
-            cp -R "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" build/ios/Payload/
-            cd build/ios
-            zip -qry SchoolSM-iOS.ipa Payload
-            cd ../..
-            cp build/ios/SchoolSM-iOS.ipa dist/
-          elif [ -d "build/ios/iphoneos/Runner.app" ]; then
-            mkdir -p build/ios/Payload
-            cp -R "build/ios/iphoneos/Runner.app" build/ios/Payload/
-            cd build/ios
-            zip -qry SchoolSM-iOS.ipa Payload
-            cd ../..
-            cp build/ios/SchoolSM-iOS.ipa dist/
-          fi
+          flutter build ios --release --no-codesign
+          mkdir -p dist/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          cd dist
+          zip -qry SchoolSM-iOS.ipa Payload
+          rm -rf Payload
 
       - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
