@@ -25,6 +25,11 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Pre-generate local.properties
+        working-directory: ./schoolsm_mobile/android
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > local.properties
+
       - name: Install Dependencies
         working-directory: ./schoolsm_mobile
         run: flutter pub get
