@@ -452,6 +452,14 @@
                                         </div>
 
                                         <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" name="allow_all_teachers_assembly_recording" id="allowAllTeachersCheck" {% if att_settings.allow_all_teachers_assembly_recording %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold text-dark" for="allowAllTeachersCheck">
+                                                អនុញ្ញាតឱ្យគ្រូទាំងអស់ស្រង់វត្តមានគោរពទង់ជាតិ (Allow All Teachers)
+                                            </label>
+                                            <div class="text-muted small" style="font-size: 0.75rem;">បើកឱ្យគ្រូបង្រៀនទាំងអស់អាចស្រង់វត្តមានបាន ឬបិទដើម្បីអនុញ្ញាតតែគ្រូបន្ទុកថ្នាក់ & គ្រូប្រចាំការដែល Admin ចាត់តាំង។</div>
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
                                             <input class="form-check-input" type="checkbox" name="allow_monitor_assembly_recording" id="allowMonitorCheck" {% if att_settings.allow_monitor_assembly_recording %}checked{% endif %}>
                                             <label class="form-check-label fw-bold text-dark" for="allowMonitorCheck">
                                                 អនុញ្ញាតឱ្យប្រធានថ្នាក់ / អនុប្រធានថ្នាក់ ស្រង់វត្តមានតាមទូរស័ព្ទ (Allow Monitors Mobile)

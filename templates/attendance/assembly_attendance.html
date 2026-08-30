@@ -127,6 +127,7 @@
     <!-- Classroom & Session Filters -->
     <div class="card shadow-sm border-0 rounded-4 p-3 bg-white mb-3">
         <form method="GET" id="filterForm" class="row g-2 align-items-center">
+            <input type="hidden" name="session" id="sessionHiddenInput" value="{{ selected_session }}">
             <!-- Classroom Selector -->
             <div class="col-12 col-md-7">
                 <label class="form-label small fw-bold text-muted mb-1">
@@ -148,10 +149,10 @@
                     <i class="fa-solid fa-sun text-warning me-1"></i>វេនសិក្សា (Session)៖
                 </label>
                 <div class="btn-group w-100" role="group">
-                    <button type="submit" name="session" value="MORNING" class="btn btn-sm touch-btn {% if selected_session == 'MORNING' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}">
-                        <i class="fa-solid fa-sun me-1"></i> ពេលព្រឹក
+                    <button type="button" class="btn btn-sm touch-btn {% if selected_session == 'MORNING' %}btn-primary fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="switchSession('MORNING')">
+                        <i class="fa-solid fa-sun me-1"></i> ពេលព្រឹក (Default)
                     </button>
-                    <button type="submit" name="session" value="AFTERNOON" class="btn btn-sm touch-btn {% if selected_session == 'AFTERNOON' %}btn-warning text-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
+                    <button type="button" class="btn btn-sm touch-btn {% if selected_session == 'AFTERNOON' %}btn-warning text-dark fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="switchSession('AFTERNOON')">
                         <i class="fa-solid fa-cloud-sun me-1"></i> ពេលរសៀល
                     </button>
                 </div>
@@ -373,6 +374,11 @@
                 c.classList.add('d-none');
             }
         });
+    }
+
+    function switchSession(sessionVal) {
+        document.getElementById('sessionHiddenInput').value = sessionVal;
+        document.getElementById('filterForm').submit();
     }
 </script>
 {% endblock %}

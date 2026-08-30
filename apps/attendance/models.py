@@ -180,6 +180,10 @@ class AttendanceSetting(models.Model):
         default='12:50',
         verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលរសៀល (ឧ. 12:50)"
     )
+    allow_all_teachers_assembly_recording = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យគ្រូបង្រៀនទាំងអស់អាចស្រង់វត្តមានគោរពទង់ជាតិ / Allow All Teachers to record Assembly Attendance"
+    )
     allow_monitor_assembly_recording = models.BooleanField(
         default=True,
         verbose_name="អនុញ្ញាតឱ្យប្រធានថ្នាក់/អនុប្រធានថ្នាក់ស្រង់វត្តមានតាមទូរស័ព្ទ / Allow Class Monitors to record via Mobile/Tablet"

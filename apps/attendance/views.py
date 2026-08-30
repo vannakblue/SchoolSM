@@ -939,6 +939,7 @@ def attendance_admin_hub(request):
             att_settings.assembly_morning_end = request.POST.get('assembly_morning_end', '06:50').strip() or '06:50'
             att_settings.assembly_afternoon_start = request.POST.get('assembly_afternoon_start', '12:30').strip() or '12:30'
             att_settings.assembly_afternoon_end = request.POST.get('assembly_afternoon_end', '12:50').strip() or '12:50'
+            att_settings.allow_all_teachers_assembly_recording = request.POST.get('allow_all_teachers_assembly_recording') == 'on'
             att_settings.allow_monitor_assembly_recording = request.POST.get('allow_monitor_assembly_recording') == 'on'
             att_settings.assembly_telegram_alert = request.POST.get('assembly_telegram_alert') == 'on'
 
@@ -1253,14 +1254,21 @@ def assembly_attendance_view(request):
         authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
         user_role_label = "គណៈគ្រប់គ្រង / Admin"
     elif user.role == 'TEACHER' and teacher_profile:
-        authorized_classrooms = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year).order_by('grade_level', 'code')
-        if authorized_classrooms.exists():
-            is_homeroom = True
-            user_role_label = f"លោកគ្រូ/អ្នកគ្រូបន្ទុកថ្នាក់ ({teacher_profile.khmer_name})"
+        if att_settings.allow_all_teachers_assembly_recording:
+            # Admin allows all teachers to participate in assembly attendance
+            authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
         else:
-            # Check if teacher teaches any class
-            authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code')
-            user_role_label = f"លោកគ្រូ/អ្នកគ្រូ ({teacher_profile.khmer_name})"
+            # Restricted to homeroom or assigned assembly duty teacher
+            duty_classes = Classroom.objects.filter(
+                Q(homeroom_teacher=teacher_profile) | Q(assembly_duty_teacher=teacher_profile),
+                academic_year=active_year
+            ).order_by('grade_level', 'code')
+            if duty_classes.exists():
+                authorized_classrooms = duty_classes
+            else:
+                authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+
+        user_role_label = f"លោកគ្រូ/អ្នកគ្រូ ({teacher_profile.khmer_name})"
     elif student_profile:
         # Check if student is class monitor or vice monitor
         monitor_classes = Classroom.objects.filter(
@@ -1278,7 +1286,7 @@ def assembly_attendance_view(request):
                 user_role_label = f"អនុប្រធានថ្នាក់ ({student_profile.khmer_name})"
 
     if not authorized_classrooms.exists():
-        messages.error(request, "⚠️ លោកអ្នកមិនមានសិទ្ធិចូលទៅកាន់ការស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ! (ត្រូវការសិទ្ធិជា Admin, គ្រូបន្ទុកថ្នាក់, ឬប្រធានថ្នាក់/អនុប្រធានថ្នាក់)")
+        messages.error(request, "⚠️ លោកអ្នកមិនមានសិទ្ធិចូលទៅកាន់ការស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ! (ត្រូវការសិទ្ធិជា Admin, គ្រូបង្រៀន, ឬប្រធានថ្នាក់/អនុប្រធានថ្នាក់)")
         return redirect('student_attendance_grid')
 
     # Selected classroom
@@ -1289,12 +1297,22 @@ def assembly_attendance_view(request):
     if not selected_class:
         selected_class = authorized_classrooms.first()
 
-    # Session Determination: Morning vs Afternoon
+    # Dynamic teacher label based on selected classroom
+    if user.role == 'TEACHER' and teacher_profile and selected_class:
+        if selected_class.homeroom_teacher_id == teacher_profile.id:
+            is_homeroom = True
+            user_role_label = f"លោកគ្រូ/អ្នកគ្រូបន្ទុកថ្នាក់ ({teacher_profile.khmer_name})"
+        elif getattr(selected_class, 'assembly_duty_teacher_id', None) == teacher_profile.id:
+            user_role_label = f"លោកគ្រូ/អ្នកគ្រូប្រចាំការស្រង់វត្តមាន ({teacher_profile.khmer_name})"
+        else:
+            user_role_label = f"លោកគ្រូ/អ្នកគ្រូ ({teacher_profile.khmer_name})"
+
+    # Session Determination: Default is ALWAYS MORNING unless explicitly specified
     req_session = request.GET.get('session') or request.POST.get('session')
     if req_session in ['MORNING', 'AFTERNOON']:
         selected_session = req_session
     else:
-        selected_session = 'MORNING' if current_time < dtime(12, 0) else 'AFTERNOON'
+        selected_session = 'MORNING'
 
     # Time Window Evaluation
     m_start = att_settings.assembly_morning_start or dtime(6, 30)

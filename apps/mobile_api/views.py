@@ -468,9 +468,17 @@ class AssemblyAttendanceAPIView(APIView):
         if user.role == 'ADMIN' or user.is_superuser:
             authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
         elif user.role == 'TEACHER' and teacher_profile:
-            authorized_classrooms = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year)
-            if not authorized_classrooms.exists():
-                authorized_classrooms = Classroom.objects.filter(academic_year=active_year)
+            if att_settings.allow_all_teachers_assembly_recording:
+                authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+            else:
+                duty_classes = Classroom.objects.filter(
+                    Q(homeroom_teacher=teacher_profile) | Q(assembly_duty_teacher=teacher_profile),
+                    academic_year=active_year
+                ).order_by('grade_level', 'code')
+                if duty_classes.exists():
+                    authorized_classrooms = duty_classes
+                else:
+                    authorized_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
         elif student_profile:
             monitor_classes = Classroom.objects.filter(
                 Q(class_monitor=student_profile) | Q(vice_monitor=student_profile),
@@ -487,14 +495,14 @@ class AssemblyAttendanceAPIView(APIView):
         if not authorized_classrooms.exists():
             return Response({
                 'status': 'error',
-                'message': 'លោកអ្នកមិនមានសិទ្ធិជាប្រធានថ្នាក់ អនុប្រធានថ្នាក់ ឬគ្រូបន្ទុកថ្នាក់សម្រាប់ស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ!'
+                'message': 'លោកអ្នកមិនមានសិទ្ធិជាប្រធានថ្នាក់ អនុប្រធានថ្នាក់ ឬគ្រូបង្រៀនសម្រាប់ស្រង់វត្តមានពេលគោរពទង់ជាតិឡើយ!'
             }, status=status.HTTP_403_FORBIDDEN)
 
         class_id = request.query_params.get('classroom_id')
         selected_class = authorized_classrooms.filter(id=class_id).first() if class_id else authorized_classrooms.first()
 
         req_session = request.query_params.get('session')
-        selected_session = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if current_time < dtime(12, 0) else 'AFTERNOON')
+        selected_session = req_session if req_session in ['MORNING', 'AFTERNOON'] else 'MORNING'
 
         # Time Window
         m_start = att_settings.assembly_morning_start or dtime(6, 30)
@@ -553,7 +561,7 @@ class AssemblyAttendanceAPIView(APIView):
         att_settings = AttendanceSetting.get_settings()
 
         classroom_id = request.data.get('classroom_id')
-        session_val = request.data.get('session') or ('MORNING' if current_time < dtime(12, 0) else 'AFTERNOON')
+        session_val = request.data.get('session') or 'MORNING'
         attendances_data = request.data.get('attendances') or []
 
         classroom = Classroom.objects.filter(id=classroom_id).first()
@@ -565,9 +573,11 @@ class AssemblyAttendanceAPIView(APIView):
         teacher_profile = getattr(user, 'teacher_profile', None)
         is_admin = (user.role == 'ADMIN' or user.is_superuser)
         is_homeroom = (classroom.homeroom_teacher_id == getattr(teacher_profile, 'id', None))
+        is_duty_teacher = (getattr(classroom, 'assembly_duty_teacher_id', None) == getattr(teacher_profile, 'id', None))
+        is_teacher_allowed = (user.role == 'TEACHER' and (att_settings.allow_all_teachers_assembly_recording or is_homeroom or is_duty_teacher))
         is_monitor = (classroom.class_monitor_id == getattr(student_profile, 'id', None) or classroom.vice_monitor_id == getattr(student_profile, 'id', None))
 
-        if not (is_admin or is_homeroom or is_monitor):
+        if not (is_admin or is_teacher_allowed or is_monitor):
             return Response({'status': 'error', 'message': 'លោកអ្នកគ្មានសិទ្ធិស្រង់វត្តមានថ្នាក់នេះឡើយ!'}, status=status.HTTP_403_FORBIDDEN)
 
         # Time Window check

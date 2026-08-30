@@ -108,6 +108,7 @@ class Classroom(models.Model):
     room_number = models.CharField(max_length=100, blank=True, null=True, verbose_name="បន្ទប់រៀន / Room Number (e.g. បន្ទប់ 201)")
     capacity = models.IntegerField(default=40, verbose_name="ចំនួនសិស្សអតិបរមា / Capacity")
     homeroom_teacher = models.ForeignKey('teachers.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='homeroom_classes', verbose_name="គ្រូបន្ទុកថ្នាក់ / Homeroom Teacher")
+    assembly_duty_teacher = models.ForeignKey('teachers.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='assembly_duty_classes', verbose_name="គ្រូទទួលបន្ទុកស្រង់វត្តមានគោរពទង់ជាតិ / Assembly Duty Teacher")
     class_monitor = models.ForeignKey('students.Student', on_delete=models.SET_NULL, null=True, blank=True, related_name='monitor_classrooms', verbose_name="ប្រធានថ្នាក់ / Class Monitor")
     vice_monitor = models.ForeignKey('students.Student', on_delete=models.SET_NULL, null=True, blank=True, related_name='vice_monitor_classrooms', verbose_name="អនុប្រធានថ្នាក់ / Vice Class Monitor")
     telegram_chat_id = models.CharField(max_length=300, blank=True, null=True, verbose_name="Telegram Group/Chat ID (សម្រាប់ផ្ញើវត្តមានថ្នាក់ អាចដាក់ច្រើន Chat ID)")
