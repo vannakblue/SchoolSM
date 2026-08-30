@@ -1,0 +1,103 @@
+name: Build SchoolSM Mobile Apps (Android & iOS)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build_android:
+    name: Build Android (APK & App Bundle)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Accept Android Licenses
+        run: yes | flutter doctor --android-licenses || true
+
+      - name: Pre-generate local.properties
+        working-directory: ./schoolsm_mobile/android
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > local.properties
+
+      - name: Install Dependencies
+        working-directory: ./schoolsm_mobile
+        run: flutter pub get
+
+      - name: Build Release APK
+        working-directory: ./schoolsm_mobile
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+
+      - name: Build Android App Bundle (AAB for Play Store)
+        working-directory: ./schoolsm_mobile
+        run: flutter build appbundle --release --no-tree-shake-icons --android-skip-build-dependency-validation || true
+
+      - name: Upload Android Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolSM-Android-APK
+          path: schoolsm_mobile/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SchoolSM-Android-AAB
+          path: schoolsm_mobile/build/app/outputs/bundle/release/*.aab
+
+  build_ios:
+    name: Build iOS (IPA & App Bundle)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies & CocoaPods
+        working-directory: ./schoolsm_mobile
+        run: |
+          flutter pub get
+          cd ios
+          pod install --repo-update || true
+          cd ..
+
+      - name: Build iOS Application (No Codesign for Distribution/Testing)
+        working-directory: ./schoolsm_mobile
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r SchoolSM-iOS.ipa Payload
+          cd ../../..
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolSM-iOS-IPA
+          path: schoolsm_mobile/build/ios/iphoneos/SchoolSM-iOS.ipa
+
+      - name: Upload iOS Runner App
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SchoolSM-iOS-Runner-App
+          path: schoolsm_mobile/build/ios/iphoneos/Runner.app

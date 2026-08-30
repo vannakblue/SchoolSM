@@ -1814,6 +1814,8 @@
                     throw new Error('ទម្រង់ទិន្នន័យក្នុងឯកសារមិនត្រឹមត្រូវ (Invalid backup format)');
                 }
 
+                const slotCount = Object.values(newMatrixState).filter(s => s && s.subject_id).length;
+
                 // 1. Analyze discrepancies between imported backup and current Academic Year teacher assignments
                 let discrepancies = [];
                 let unassignedSubjects = [];
