@@ -935,14 +935,17 @@ def attendance_admin_hub(request):
 
             # Assembly / Flag Ceremony Configuration
             att_settings.enable_assembly_attendance = request.POST.get('enable_assembly_attendance') == 'on'
+            att_settings.enable_assembly_morning = request.POST.get('enable_assembly_morning') == 'on'
             att_settings.assembly_morning_start = request.POST.get('assembly_morning_start', '06:30').strip() or '06:30'
             att_settings.assembly_morning_end = request.POST.get('assembly_morning_end', '06:50').strip() or '06:50'
+            att_settings.enable_assembly_afternoon = request.POST.get('enable_assembly_afternoon') == 'on'
             att_settings.assembly_afternoon_start = request.POST.get('assembly_afternoon_start', '12:30').strip() or '12:30'
             att_settings.assembly_afternoon_end = request.POST.get('assembly_afternoon_end', '12:50').strip() or '12:50'
             att_settings.allow_all_teachers_assembly_recording = request.POST.get('allow_all_teachers_assembly_recording') == 'on'
             att_settings.allow_monitor_assembly_recording = request.POST.get('allow_monitor_assembly_recording') == 'on'
             att_settings.assembly_telegram_alert = request.POST.get('assembly_telegram_alert') == 'on'
             att_settings.assembly_alarm_enabled = request.POST.get('assembly_alarm_enabled') == 'on'
+            att_settings.assembly_auto_alarm_enabled = request.POST.get('assembly_auto_alarm_enabled') == 'on'
             att_settings.assembly_alarm_message = request.POST.get('assembly_alarm_message', '').strip() or "⏰ ដល់ម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ! សូមស្រង់ឱ្យបានមុនម៉ោងកំណត់"
 
             # Assembly Active Weekdays (1=Mon ... 7=Sun)
@@ -1392,12 +1395,21 @@ def assembly_attendance_view(request):
         window_end = a_end
         session_title = "ពេលរសៀល (Afternoon Pre-Class Assembly)"
 
-    # Day of Week & Emergency Cancellation Check
+    # Day of Week, Session Enablement & Emergency Cancellation Check
     today_weekday_str = str(today_date.isoweekday()) # 1=Monday ... 7=Sunday
     is_active_day = today_weekday_str in (att_settings.assembly_active_days or ["1", "2", "3", "4", "5", "6"])
     is_cancelled_today = att_settings.is_assembly_disabled_today and (att_settings.assembly_disabled_date == today_date or not att_settings.assembly_disabled_date)
     
-    is_disabled_today = (not is_active_day) or is_cancelled_today or (not att_settings.enable_assembly_attendance)
+    session_disabled = False
+    session_disabled_reason = ""
+    if selected_session == 'MORNING' and not att_settings.enable_assembly_morning:
+        session_disabled = True
+        session_disabled_reason = "ការស្រង់វត្តមានពេលគោរពទង់ជាតិ (ពេលព្រឹក) ត្រូវបានបិទដំណើរការដោយគណៈគ្រប់គ្រងសាលា។"
+    elif selected_session == 'AFTERNOON' and not att_settings.enable_assembly_afternoon:
+        session_disabled = True
+        session_disabled_reason = "ការស្រង់វត្តមានមុនម៉ោងចូលរៀន (ពេលរសៀល) ត្រូវបានបិទដំណើរការដោយគណៈគ្រប់គ្រងសាលា។"
+
+    is_disabled_today = (not is_active_day) or is_cancelled_today or (not att_settings.enable_assembly_attendance) or session_disabled
     disabled_reason = ""
     if not att_settings.enable_assembly_attendance:
         disabled_reason = "ប្រព័ន្ធស្រង់វត្តមានពេលគោរពទង់ជាតិត្រូវបានបិទដំណើរការជាបណ្តោះអាសន្នដោយគណៈគ្រប់គ្រងសាលា។"
@@ -1405,6 +1417,8 @@ def assembly_attendance_view(request):
         disabled_reason = att_settings.assembly_disabled_reason or "គណៈគ្រប់គ្រងសាលាបានសម្រេចផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ។"
     elif not is_active_day:
         disabled_reason = "ថ្ងៃនេះមិនមែនជាថ្ងៃដែលត្រូវស្រង់វត្តមានពេលគោរពទង់ជាតិនោះឡើយ។"
+    elif session_disabled:
+        disabled_reason = session_disabled_reason
 
     is_admin_override = (user.role == 'ADMIN' or user.is_superuser)
     is_within_window = (window_start <= current_time <= window_end)
@@ -1417,11 +1431,15 @@ def assembly_attendance_view(request):
         diff = (end_dt - curr_dt).total_seconds()
         remaining_minutes = max(0, int(diff // 60))
 
+    # Auto-Alarm on Session Start or Manual Trigger
     alarm_active = False
-    if att_settings.assembly_last_alarm_sent:
-        alarm_diff = (now_dt - att_settings.assembly_last_alarm_sent).total_seconds()
-        if alarm_diff < 3600: # Alarm dispatched within past hour
+    if att_settings.assembly_alarm_enabled:
+        if att_settings.assembly_auto_alarm_enabled and is_within_window and not is_disabled_today:
             alarm_active = True
+        elif att_settings.assembly_last_alarm_sent:
+            alarm_diff = (now_dt - att_settings.assembly_last_alarm_sent).total_seconds()
+            if alarm_diff < 3600: # Alarm dispatched within past hour
+                alarm_active = True
 
     if is_disabled_today and not is_admin_override:
         window_status = 'CANCELLED'

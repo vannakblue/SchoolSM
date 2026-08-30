@@ -168,6 +168,10 @@ class AttendanceSetting(models.Model):
         default=True,
         verbose_name="បើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិ/មុនម៉ោងចូលរៀន / Enable Assembly Attendance"
     )
+    enable_assembly_morning = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការស្រង់វត្តមានពេលព្រឹក / Enable Morning Assembly Attendance"
+    )
     assembly_morning_start = models.TimeField(
         default='06:30',
         verbose_name="ម៉ោងចាប់ផ្តើមស្រង់វត្តមានពេលព្រឹក (ឧ. 06:30)"
@@ -175,6 +179,10 @@ class AttendanceSetting(models.Model):
     assembly_morning_end = models.TimeField(
         default='06:50',
         verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលព្រឹក (ឧ. 06:50)"
+    )
+    enable_assembly_afternoon = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការស្រង់វត្តមានពេលរសៀល / Enable Afternoon Assembly Attendance"
     )
     assembly_afternoon_start = models.TimeField(
         default='12:30',
@@ -219,6 +227,10 @@ class AttendanceSetting(models.Model):
     assembly_alarm_enabled = models.BooleanField(
         default=True,
         verbose_name="បើកដំណើរការ Alarm ដាស់តឿនដល់ម៉ោងស្រង់វត្តមាន / Enable Assembly Alarm"
+    )
+    assembly_auto_alarm_enabled = models.BooleanField(
+        default=True,
+        verbose_name="បន្លឺ Alarm និងដាស់តឿនដោយស្វ័យប្រវត្តិតាមម៉ោងចាប់ផ្តើម / Auto-Alarm on Session Start Time"
     )
     assembly_alarm_message = models.CharField(
         max_length=300,

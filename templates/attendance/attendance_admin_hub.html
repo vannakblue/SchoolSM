@@ -447,8 +447,29 @@
                                         <div class="form-check form-switch mb-3">
                                             <input class="form-check-input" type="checkbox" name="enable_assembly_attendance" id="assemblyEnableCheck" {% if att_settings.enable_assembly_attendance %}checked{% endif %}>
                                             <label class="form-check-label fw-bold text-dark" for="assemblyEnableCheck">
-                                                បើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិ (Enable Assembly Attendance)
+                                                បើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិរួម (Global Enable)
                                             </label>
+                                        </div>
+
+                                        <!-- Morning & Afternoon Session Enable/Disable Toggles -->
+                                        <div class="p-2 mb-3 bg-light rounded-2 border">
+                                            <label class="form-label small fw-bold text-dark mb-1">
+                                                <i class="fa-solid fa-clock-rotate-left text-primary me-1"></i>កំណត់វេនសិក្សា (Tick ដើម្បីបើក / ដោះ Tick ដើម្បីបិទ)៖
+                                            </label>
+                                            <div class="d-flex flex-wrap gap-3">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" name="enable_assembly_morning" id="assemblyMorningCheck" {% if att_settings.enable_assembly_morning %}checked{% endif %}>
+                                                    <label class="form-check-label fw-bold text-primary small" for="assemblyMorningCheck">
+                                                        🌅 វេនព្រឹក (Morning)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" name="enable_assembly_afternoon" id="assemblyAfternoonCheck" {% if att_settings.enable_assembly_afternoon %}checked{% endif %}>
+                                                    <label class="form-check-label fw-bold text-warning-emphasis small" for="assemblyAfternoonCheck">
+                                                        🌇 វេនរសៀល (Afternoon)
+                                                    </label>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="form-check form-switch mb-3">
@@ -473,11 +494,19 @@
                                             </label>
                                         </div>
 
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" name="assembly_alarm_enabled" id="assemblyAlarmCheck" {% if att_settings.assembly_alarm_enabled %}checked{% endif %}>
-                                            <label class="form-check-label fw-bold text-dark" for="assemblyAlarmCheck">
-                                                បើកដំណើរការ Alarm ដាស់តឿនដល់ម៉ោងស្រង់វត្តមាន (Enable Assembly Alarm)
-                                            </label>
+                                        <div class="p-2 bg-light rounded-2 border">
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input" type="checkbox" name="assembly_alarm_enabled" id="assemblyAlarmCheck" {% if att_settings.assembly_alarm_enabled %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-dark small" for="assemblyAlarmCheck">
+                                                    🔔 បើកដំណើរការ Alarm ដាស់តឿន (Enable Alarm System)
+                                                </label>
+                                            </div>
+                                            <div class="form-check form-switch ms-3 mb-0">
+                                                <input class="form-check-input" type="checkbox" name="assembly_auto_alarm_enabled" id="assemblyAutoAlarmCheck" {% if att_settings.assembly_auto_alarm_enabled %}checked{% endif %}>
+                                                <label class="form-check-label text-dark small" for="assemblyAutoAlarmCheck">
+                                                    ⚡ <strong>បន្លឺ Alarm ដោយស្វ័យប្រវត្តិតាមម៉ោងចាប់ផ្តើម</strong> (Auto-Alarm on Start Time)
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

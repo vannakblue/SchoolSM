@@ -193,10 +193,16 @@
                 </label>
                 <div class="btn-group w-100" role="group">
                     <button type="button" class="btn btn-sm touch-btn {% if selected_session == 'MORNING' %}btn-primary fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="switchSession('MORNING')">
-                        <i class="fa-solid fa-sun me-1"></i> ពេលព្រឹក (Default)
+                        <i class="fa-solid fa-sun me-1"></i> ពេលព្រឹក
+                        {% if not att_settings.enable_assembly_morning %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.65rem;">បិទ</span>
+                        {% endif %}
                     </button>
                     <button type="button" class="btn btn-sm touch-btn {% if selected_session == 'AFTERNOON' %}btn-warning text-dark fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="switchSession('AFTERNOON')">
                         <i class="fa-solid fa-cloud-sun me-1"></i> ពេលរសៀល
+                        {% if not att_settings.enable_assembly_afternoon %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.65rem;">បិទ</span>
+                        {% endif %}
                     </button>
                 </div>
             </div>

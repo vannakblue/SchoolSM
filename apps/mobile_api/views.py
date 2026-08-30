@@ -568,6 +568,8 @@ class AssemblyAttendanceAPIView(APIView):
             'window_start': window_start.strftime('%H:%M'),
             'window_end': window_end.strftime('%H:%M'),
             'is_open': (is_within_window and not is_disabled_today) or is_admin,
+            'enable_assembly_morning': att_settings.enable_assembly_morning,
+            'enable_assembly_afternoon': att_settings.enable_assembly_afternoon,
             'is_disabled_today': is_disabled_today,
             'disabled_reason': disabled_reason,
             'remaining_minutes': remaining_minutes,
