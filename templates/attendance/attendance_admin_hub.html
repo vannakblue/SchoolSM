@@ -441,7 +441,7 @@
                                 </a>
                             </div>
 
-                            <div class="row g-3">
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <div class="p-3 bg-white rounded-3 border h-100">
                                         <div class="form-check form-switch mb-3">
@@ -466,10 +466,17 @@
                                             </label>
                                         </div>
 
-                                        <div class="form-check form-switch">
+                                        <div class="form-check form-switch mb-3">
                                             <input class="form-check-input" type="checkbox" name="assembly_telegram_alert" id="assemblyTgCheck" {% if att_settings.assembly_telegram_alert %}checked{% endif %}>
                                             <label class="form-check-label fw-bold text-dark" for="assemblyTgCheck">
                                                 បាញ់សារ Telegram ជូនដំណឹងគណៈគ្រប់គ្រងភ្លាមៗក្រោយគោរពទង់ជាតិ (Instant Telegram Alert)
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="assembly_alarm_enabled" id="assemblyAlarmCheck" {% if att_settings.assembly_alarm_enabled %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold text-dark" for="assemblyAlarmCheck">
+                                                បើកដំណើរការ Alarm ដាស់តឿនដល់ម៉ោងស្រង់វត្តមាន (Enable Assembly Alarm)
                                             </label>
                                         </div>
                                     </div>
@@ -477,8 +484,8 @@
 
                                 <div class="col-md-6">
                                     <div class="p-3 bg-white rounded-3 border h-100">
-                                        <h6 class="fw-bold text-dark mb-3">ចន្លោះម៉ោងអនុញ្ញាតឱ្យស្រង់វត្តមាន (Allowed Time Windows)៖</h6>
-                                        <div class="row g-2 mb-2">
+                                        <h6 class="fw-bold text-dark mb-2">ចន្លោះម៉ោងអនុញ្ញាតឱ្យស្រង់វត្តមាន (Allowed Time Windows)៖</h6>
+                                        <div class="row g-2 mb-3">
                                             <div class="col-6">
                                                 <label class="form-label small fw-bold text-muted mb-1">🌅 ព្រឹក ចាប់ផ្តើម៖</label>
                                                 <input type="time" name="assembly_morning_start" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_morning_start|time:'H:i'|default:'06:30' }}">
@@ -488,7 +495,7 @@
                                                 <input type="time" name="assembly_morning_end" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_morning_end|time:'H:i'|default:'06:50' }}">
                                             </div>
                                         </div>
-                                        <div class="row g-2">
+                                        <div class="row g-2 mb-3">
                                             <div class="col-6">
                                                 <label class="form-label small fw-bold text-muted mb-1">🌇 រសៀល ចាប់ផ្តើម៖</label>
                                                 <input type="time" name="assembly_afternoon_start" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_afternoon_start|time:'H:i'|default:'12:30' }}">
@@ -498,6 +505,89 @@
                                                 <input type="time" name="assembly_afternoon_end" class="form-control form-control-sm fw-bold text-primary font-monospace" value="{{ att_settings.assembly_afternoon_end|time:'H:i'|default:'12:50' }}">
                                             </div>
                                         </div>
+
+                                        <h6 class="fw-bold text-dark mb-1 small">ថ្ងៃត្រូវស្រង់វត្តមានក្នុងសប្តាហ៍ (Active Weekdays)៖</h6>
+                                        <div class="d-flex flex-wrap gap-2 pt-1">
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_1" {% if "1" in att_settings.assembly_active_days %}checked{% endif %}> ចន្ទ
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_2" {% if "2" in att_settings.assembly_active_days %}checked{% endif %}> អង្គារ
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_3" {% if "3" in att_settings.assembly_active_days %}checked{% endif %}> ពុធ
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_4" {% if "4" in att_settings.assembly_active_days %}checked{% endif %}> ព្រហ
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_5" {% if "5" in att_settings.assembly_active_days %}checked{% endif %}> សុក្រ
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_6" {% if "6" in att_settings.assembly_active_days %}checked{% endif %}> សៅរ៍
+                                            </label>
+                                            <label class="btn btn-sm btn-outline-secondary py-1 px-2">
+                                                <input type="checkbox" name="assembly_day_7" {% if "7" in att_settings.assembly_active_days %}checked{% endif %}> អាទិត្យ
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Emergency Cancellation Pop-Chat & Live Alarm Dispatch Row -->
+                            <div class="row g-3">
+                                <!-- Box 1: Emergency Cancel Today + Pop-Chat Notice -->
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-white rounded-3 border border-danger-subtle h-100">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h6 class="fw-bold text-danger mb-0">
+                                                <i class="fa-solid fa-ban me-1"></i> ផ្អាកការស្រង់វត្តមានថ្ងៃនេះ & ផ្ញើសារ Pop-Chat
+                                            </h6>
+                                            {% if att_settings.is_assembly_disabled_today %}
+                                                <span class="badge bg-danger">កំពុងផ្អាកថ្ងៃនេះ</span>
+                                            {% else %}
+                                                <span class="badge bg-success">កំពុងដំណើរការ</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-muted small mb-2" style="font-size: 0.75rem;">
+                                            ប្រសិនបើថ្ងៃនេះមានភ្លៀង ឬកម្មវិធីពិសេស Admin អាចផ្អាកការស្រង់វត្តមានគោរពទង់ជាតិ ហើយសារ Pop-Chat នឹងលោតបង្ហាញពន្យល់ភ្លាមៗលើទូរស័ព្ទដៃ/Tablet របស់គ្រូ និងប្រធានថ្នាក់។
+                                        </p>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" id="cancelReasonInput" class="form-control" placeholder="មូលហេតុផ្អាក (ឧ. ថ្ងៃនេះមានភ្លៀងធ្លាក់ខ្លាំង មិនបាច់ស្រង់វត្តមានទេ)..." value="{{ att_settings.assembly_disabled_reason|default:'' }}">
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-danger btn-sm fw-bold flex-grow-1" onclick="toggleAssemblyToday(1)">
+                                                <i class="fa-solid fa-paper-plane me-1"></i> ផ្អាក & បាញ់សារ Pop-Chat
+                                            </button>
+                                            {% if att_settings.is_assembly_disabled_today %}
+                                            <button type="button" class="btn btn-success btn-sm fw-bold" onclick="toggleAssemblyToday(0)">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> បើកឡើងវិញ
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Box 2: Instant Alarm Trigger to Monitors & Teachers -->
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-white rounded-3 border border-warning-subtle h-100">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h6 class="fw-bold text-dark mb-0">
+                                                <i class="fa-solid fa-bell text-warning me-1"></i> បន្លឺ Alarm & ផ្ញើសារដាស់តឿនឥឡូវនេះ
+                                            </h6>
+                                            {% if att_settings.assembly_last_alarm_sent %}
+                                                <span class="badge bg-light text-muted border">បានបន្លឺ៖ {{ att_settings.assembly_last_alarm_sent|time:"H:i" }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-muted small mb-2" style="font-size: 0.75rem;">
+                                            ចុចបន្លឺសំឡេងកណ្ដឹង Alarm និងបាញ់សារ Telegram / Mobile Push ដាស់តឿនទៅកាន់គ្រូ និងប្រធានថ្នាក់ថាដល់ម៉ោងស្រង់វត្តមាន និងប្រាប់ពីពេលវេលានៅសល់។
+                                        </p>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" id="alarmMessageInput" class="form-control" placeholder="សារដាស់តឿន..." value="{{ att_settings.assembly_alarm_message|default:'⏰ ដល់ម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ! សូមស្រង់ឱ្យបានមុនម៉ោងកំណត់' }}">
+                                        </div>
+                                        <button type="button" class="btn btn-warning text-dark btn-sm fw-bold w-100" onclick="triggerAssemblyAlarm()">
+                                            <i class="fa-solid fa-bullhorn me-1"></i> 🚨 ចុចបន្លឺ Alarm & ដាស់តឿនឥឡូវនេះ (Send Alarm Now)
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1141,6 +1231,78 @@
             resultDiv.classList.add('alert-danger');
             resultDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> កំហុសក្នុងការផ្ញើ៖ ' + err;
         });
+    }
+
+    function toggleAssemblyToday(disableFlag) {
+        const reason = (document.getElementById('cancelReasonInput') ? document.getElementById('cancelReasonInput').value : '').trim();
+        if (disableFlag === 1 && !reason) {
+            if (!confirm("តើលោកអ្នកពិតជាចង់ផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ ដោយមិនដាក់មូលហេតុជាក់លាក់មែនទេ?")) {
+                return;
+            }
+        }
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '';
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+
+        const act = document.createElement('input');
+        act.type = 'hidden';
+        act.name = 'action';
+        act.value = 'toggle_assembly_today';
+        form.appendChild(act);
+
+        const dis = document.createElement('input');
+        dis.type = 'hidden';
+        dis.name = 'disable_today';
+        dis.value = disableFlag;
+        form.appendChild(dis);
+
+        const rsn = document.createElement('input');
+        rsn.type = 'hidden';
+        rsn.name = 'assembly_disabled_reason';
+        rsn.value = reason;
+        form.appendChild(rsn);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function triggerAssemblyAlarm() {
+        const msg = (document.getElementById('alarmMessageInput') ? document.getElementById('alarmMessageInput').value : '').trim();
+        if (!confirm("តើលោកអ្នកចង់បន្លឺ Alarm និងបាញ់សារដាស់តឿនទៅកាន់គណនីគ្រូ និងប្រធានថ្នាក់ទាំងអស់ឥឡូវនេះមែនទេ?")) {
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '';
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+
+        const act = document.createElement('input');
+        act.type = 'hidden';
+        act.name = 'action';
+        act.value = 'trigger_assembly_alarm';
+        form.appendChild(act);
+
+        const m = document.createElement('input');
+        m.type = 'hidden';
+        m.name = 'alarm_message';
+        m.value = msg;
+        form.appendChild(m);
+
+        document.body.appendChild(form);
+        form.submit();
     }
 </script>
 {% endblock %}

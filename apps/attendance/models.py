@@ -94,6 +94,10 @@ def get_default_period_dispatch_times():
     }
 
 
+def get_default_assembly_active_days():
+    return ["1", "2", "3", "4", "5", "6"]
+
+
 class AttendanceSetting(models.Model):
     """
     Singleton configuration for Attendance policies, grace window cutoff,
@@ -191,6 +195,40 @@ class AttendanceSetting(models.Model):
     assembly_telegram_alert = models.BooleanField(
         default=True,
         verbose_name="ជូនដំណឹង Telegram ទៅគណៈគ្រប់គ្រងភ្លាមៗក្រោយគោរពទង់ជាតិ / Instant Management Telegram Alert"
+    )
+    # Daily Days Selection & Emergency Cancellation Pop-Chat Notice
+    assembly_active_days = models.JSONField(
+        default=get_default_assembly_active_days,
+        verbose_name="ថ្ងៃក្នុងសប្តាហ៍ដែលត្រូវស្រង់វត្តមានគោរពទង់ជាតិ (១=ច័ន្ទ ... ៦=សៅរ៍) / Active Weekdays"
+    )
+    is_assembly_disabled_today = models.BooleanField(
+        default=False,
+        verbose_name="ផ្អាកការស្រង់វត្តមានសម្រាប់ថ្ងៃនេះ (Emergency Cancel for Today)"
+    )
+    assembly_disabled_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទដែលបានផ្អាក / Cancelled Date"
+    )
+    assembly_disabled_reason = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="មូលហេតុផ្អាកការស្រង់វត្តមាន (ផ្ញើជា Pop-Chat / Live Notice) / Cancellation Reason"
+    )
+    # Alarm Reminders
+    assembly_alarm_enabled = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការ Alarm ដាស់តឿនដល់ម៉ោងស្រង់វត្តមាន / Enable Assembly Alarm"
+    )
+    assembly_alarm_message = models.CharField(
+        max_length=300,
+        default="⏰ ដល់ម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ! សូមស្រង់ឱ្យបានមុនម៉ោងកំណត់",
+        verbose_name="សារដាស់តឿន Alarm / Custom Alarm Message"
+    )
+    assembly_last_alarm_sent = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទដែលបានបន្លឺ Alarm ចុងក្រោយ / Last Alarm Sent At"
     )
     updated_at = models.DateTimeField(auto_now=True)
 

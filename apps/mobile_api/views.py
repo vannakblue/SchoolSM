@@ -513,7 +513,31 @@ class AssemblyAttendanceAPIView(APIView):
         window_start = m_start if selected_session == 'MORNING' else a_start
         window_end = m_end if selected_session == 'MORNING' else a_end
         is_within_window = (window_start <= current_time <= window_end)
-        is_admin = (user.role == 'ADMIN' or user.is_superuser)
+        # Day of Week & Emergency Cancellation Check
+        today_weekday_str = str(today_date.isoweekday())
+        is_active_day = today_weekday_str in (att_settings.assembly_active_days or ["1", "2", "3", "4", "5", "6"])
+        is_cancelled_today = att_settings.is_assembly_disabled_today and (att_settings.assembly_disabled_date == today_date or not att_settings.assembly_disabled_date)
+        is_disabled_today = (not is_active_day) or is_cancelled_today or (not att_settings.enable_assembly_attendance)
+        
+        disabled_reason = ""
+        if not att_settings.enable_assembly_attendance:
+            disabled_reason = "ប្រព័ន្ធស្រង់វត្តមានពេលគោរពទង់ជាតិត្រូវបានបិទដំណើរការជាបណ្តោះអាសន្ន។"
+        elif is_cancelled_today:
+            disabled_reason = att_settings.assembly_disabled_reason or "គណៈគ្រប់គ្រងសាលាបានសម្រេចផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ។"
+        elif not is_active_day:
+            disabled_reason = "ថ្ងៃនេះមិនមែនជាថ្ងៃដែលត្រូវស្រង់វត្តមានពេលគោរពទង់ជាតិនោះឡើយ។"
+
+        remaining_minutes = 0
+        if is_within_window:
+            end_dt = datetime.datetime.combine(today_date, window_end)
+            curr_dt = datetime.datetime.combine(today_date, current_time)
+            remaining_minutes = max(0, int((end_dt - curr_dt).total_seconds() // 60))
+
+        alarm_active = False
+        if att_settings.assembly_last_alarm_sent:
+            alarm_diff = (now_dt - att_settings.assembly_last_alarm_sent).total_seconds()
+            if alarm_diff < 3600:
+                alarm_active = True
 
         students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('khmer_name') if selected_class else []
         existing_records = {}
@@ -543,7 +567,12 @@ class AssemblyAttendanceAPIView(APIView):
             'session': selected_session,
             'window_start': window_start.strftime('%H:%M'),
             'window_end': window_end.strftime('%H:%M'),
-            'is_open': is_within_window or is_admin,
+            'is_open': (is_within_window and not is_disabled_today) or is_admin,
+            'is_disabled_today': is_disabled_today,
+            'disabled_reason': disabled_reason,
+            'remaining_minutes': remaining_minutes,
+            'alarm_active': alarm_active,
+            'alarm_message': att_settings.assembly_alarm_message,
             'is_monitor': is_monitor,
             'is_vice_monitor': is_vice_monitor,
             'selected_classroom': {'id': selected_class.id, 'name': selected_class.name} if selected_class else None,

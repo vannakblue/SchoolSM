@@ -124,6 +124,43 @@
         </div>
     </div>
 
+    <!-- Cancellation Notice Card -->
+    {% if is_disabled_today %}
+    <div class="card shadow-sm border-2 border-danger bg-danger-subtle rounded-4 p-3 mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-3 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i class="fa-solid fa-ban fa-lg"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold text-danger mb-1">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> ការស្រង់វត្តមានពេលគោរពទង់ជាតិត្រូវបានផ្អាកសម្រាប់ថ្ងៃនេះ
+                </h6>
+                <div class="fw-semibold text-dark small">{{ disabled_reason }}</div>
+                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-circle-info text-info me-1"></i> ចំណាំ៖ ម៉ោងទី ១ (០៧:០០) និងម៉ោងបន្តបន្ទាប់នៅតែស្រង់វត្តមានជាធម្មតា។
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Active Alarm & Countdown Warning Banner -->
+    {% if can_submit and remaining_minutes > 0 and remaining_minutes <= 15 %}
+    <div class="card shadow-sm border-2 border-warning bg-warning-subtle rounded-4 p-2.5 mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span>
+                <span class="fw-bold text-dark small">
+                    <i class="fa-solid fa-bell text-warning me-1"></i> ជិតផុតកំណត់ម៉ោងស្រង់វត្តមានហើយ៖ នៅសល់តែ <strong>{{ remaining_minutes }} នាទីទៀតប៉ុណ្ណោះ</strong> (ផុតកំណត់ម៉ោង {{ window_end|time:"H:i" }})!
+                </span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-dark fw-bold py-1 px-2.5" onclick="playChimeSound()">
+                <i class="fa-solid fa-volume-high me-1"></i> សាកល្បងសំឡេង Alarm
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Classroom & Session Filters -->
     <div class="card shadow-sm border-0 rounded-4 p-3 bg-white mb-3">
         <form method="GET" id="filterForm" class="row g-2 align-items-center">
@@ -380,5 +417,88 @@
         document.getElementById('sessionHiddenInput').value = sessionVal;
         document.getElementById('filterForm').submit();
     }
+
+    // Web Audio API Gentle Double-Chime Alarm
+    function playChimeSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            const now = ctx.currentTime;
+            
+            // First Chime tone (880Hz - A5)
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, now);
+            gain1.gain.setValueAtTime(0.3, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.5);
+
+            // Second Chime tone (1320Hz - E6)
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1320, now + 0.18);
+            gain2.gain.setValueAtTime(0.35, now + 0.18);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.18);
+            osc2.stop(now + 0.75);
+        } catch (e) {
+            console.log("Audio not allowed without gesture", e);
+        }
+    }
+
+    // Auto-display Pop-Chat Modal if Attendance is Cancelled Today
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEl = document.getElementById('popChatNoticeModal');
+        if (modalEl) {
+            const myModal = new bootstrap.Modal(modalEl);
+            myModal.show();
+        }
+
+        {% if alarm_active and can_submit %}
+        setTimeout(playChimeSound, 1000);
+        {% endif %}
+    });
 </script>
+
+<!-- Pop-Chat / Emergency Cancellation Modal -->
+{% if is_disabled_today %}
+<div class="modal fade" id="popChatNoticeModal" tabindex="-1" aria-labelledby="popChatNoticeModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <div class="modal-header bg-danger text-white py-3">
+                <h5 class="modal-title fw-bold" id="popChatNoticeModalLabel">
+                    <i class="fa-solid fa-bullhorn me-2"></i>សេចក្តីជូនដំណឹងពីគណៈគ្រប់គ្រងសាលា
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+                    <i class="fa-solid fa-ban fa-2x"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-2">ផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិ</h5>
+                <div class="p-3 bg-light rounded-3 border text-dark fw-semibold mb-3">
+                    "{{ disabled_reason }}"
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ និងប្រធានថ្នាក់/អនុប្រធានថ្នាក់ មិនបាច់ស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះទេ។ សូមត្រៀមស្រង់វត្តមានចាប់ពីម៉ោងទី១ (០៧:០០) ឡើងទៅ។
+                </p>
+            </div>
+            <div class="modal-footer bg-light border-0 justify-content-center py-3">
+                <button type="button" class="btn btn-danger px-4 fw-bold rounded-pill" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-check me-1"></i> ខ្ញុំបានយល់ដឹង (Acknowledge)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

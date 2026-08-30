@@ -942,13 +942,76 @@ def attendance_admin_hub(request):
             att_settings.allow_all_teachers_assembly_recording = request.POST.get('allow_all_teachers_assembly_recording') == 'on'
             att_settings.allow_monitor_assembly_recording = request.POST.get('allow_monitor_assembly_recording') == 'on'
             att_settings.assembly_telegram_alert = request.POST.get('assembly_telegram_alert') == 'on'
+            att_settings.assembly_alarm_enabled = request.POST.get('assembly_alarm_enabled') == 'on'
+            att_settings.assembly_alarm_message = request.POST.get('assembly_alarm_message', '').strip() or "⏰ ដល់ម៉ោងស្រង់វត្តមានពេលគោរពទង់ជាតិហើយ! សូមស្រង់ឱ្យបានមុនម៉ោងកំណត់"
+
+            # Assembly Active Weekdays (1=Mon ... 7=Sun)
+            active_days = []
+            for d in range(1, 8):
+                if request.POST.get(f'assembly_day_{d}') == 'on':
+                    active_days.append(str(d))
+            att_settings.assembly_active_days = active_days or ["1", "2", "3", "4", "5", "6"]
 
             att_settings.save()
 
             messages.success(request, "💾 បានរក្សាទុកការកំណត់ប្រព័ន្ធវត្តមាន និង Telegram ដោយជោគជ័យ!")
             return redirect('attendance_admin_hub')
 
-        # 2. Toggle Maintenance Mode
+        # 2. Toggle Assembly Today (Emergency Cancellation / Pop-Chat Broadcast)
+        elif action == 'toggle_assembly_today':
+            now_date = timezone.localtime(timezone.now()).date()
+            is_disable = request.POST.get('disable_today') == '1'
+            reason = request.POST.get('assembly_disabled_reason', '').strip()
+
+            att_settings.is_assembly_disabled_today = is_disable
+            att_settings.assembly_disabled_date = now_date if is_disable else None
+            att_settings.assembly_disabled_reason = reason if is_disable else ""
+            att_settings.save()
+
+            if is_disable:
+                from .telegram_utils import send_telegram_notification
+                tg_msg = (
+                    f"📢 <strong>[សេចក្តីជូនដំណឹងបន្ទាន់ / Urgent Notice]</strong>\n"
+                    f"🏛️ <strong>ពីគណៈគ្រប់គ្រងសាលា៖</strong>\n"
+                    f"🚫 <strong>ផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ ({now_date.strftime('%d/%m/%Y')})</strong>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 <strong>មូលហេតុ / Reason៖</strong>\n"
+                    f"{reason or 'ការសម្រេចផ្អាកជាបណ្តោះអាសន្នដោយគណៈគ្រប់គ្រងសាលា'}\n\n"
+                    f"⚠️ <em>ចំណាំ៖ ម៉ោងទី ១ (០៧:០០) និងម៉ោងបន្តបន្ទាប់នៅតែស្រង់វត្តមានជាធម្មតា។</em>"
+                )
+                if att_settings.management_chat_id:
+                    for cid in [c.strip() for c in att_settings.management_chat_id.split(',') if c.strip()]:
+                        send_telegram_notification(title="📢 ផ្អាកការស្រង់វត្តមានគោរពទង់ជាតិថ្ងៃនេះ", message=tg_msg, custom_chat_id=cid)
+                messages.warning(request, f"🚫 បានផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ ({now_date}) និងបានផ្ញើសារ Pop-Chat ជូនដំណឹងរួចរាល់!")
+            else:
+                messages.success(request, "✅ បានបើកដំណើរការស្រង់វត្តមានពេលគោរពទង់ជាតិឡើងវិញសម្រាប់ថ្ងៃនេះ!")
+            return redirect('attendance_admin_hub')
+
+        # 3. Trigger Assembly Alarm Reminder
+        elif action == 'trigger_assembly_alarm':
+            now_dt = timezone.localtime(timezone.now())
+            att_settings.assembly_last_alarm_sent = now_dt
+            att_settings.save(update_fields=['assembly_last_alarm_sent'])
+
+            custom_msg = request.POST.get('alarm_message', '').strip() or att_settings.assembly_alarm_message
+            m_end = att_settings.assembly_morning_end or dtime(6, 50)
+
+            from .telegram_utils import send_telegram_notification
+            tg_msg = (
+                f"🚨 <strong>[រោទ៍ដាស់តឿន / Assembly Alarm Reminder]</strong>\n"
+                f"⏰ {custom_msg}\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"⏳ <strong>ម៉ោងបញ្ចប់ស្រង់វត្តមាន៖</strong> ម៉ោង <strong>{m_end.strftime('%H:%M')}</strong> ព្រឹក\n"
+                f"✍️ សូមលោកគ្រូ-អ្នកគ្រូ និងប្រធានថ្នាក់/អនុប្រធានថ្នាក់ មេត្តាចូលស្រង់វត្តមានឱ្យបានទាន់ពេលវេលា!"
+            )
+            if att_settings.management_chat_id:
+                for cid in [c.strip() for c in att_settings.management_chat_id.split(',') if c.strip()]:
+                    send_telegram_notification(title="🚨 រោទ៍ដាស់តឿនស្រង់វត្តមានគោរពទង់ជាតិ", message=tg_msg, custom_chat_id=cid)
+
+            messages.success(request, "🔔 បានបន្លឺ Alarm និងផ្ញើសារដាស់តឿនទៅកាន់គ្រូ និងប្រធានថ្នាក់ទាំងអស់ដោយជោគជ័យ!")
+            return redirect('attendance_admin_hub')
+
+        # 4. Toggle Maintenance Mode
         elif action == 'toggle_maintenance':
             is_maint = request.POST.get('is_maintenance_mode') == 'on'
             maint_msg = request.POST.get('maintenance_message', '').strip()
@@ -1329,10 +1392,42 @@ def assembly_attendance_view(request):
         window_end = a_end
         session_title = "ពេលរសៀល (Afternoon Pre-Class Assembly)"
 
+    # Day of Week & Emergency Cancellation Check
+    today_weekday_str = str(today_date.isoweekday()) # 1=Monday ... 7=Sunday
+    is_active_day = today_weekday_str in (att_settings.assembly_active_days or ["1", "2", "3", "4", "5", "6"])
+    is_cancelled_today = att_settings.is_assembly_disabled_today and (att_settings.assembly_disabled_date == today_date or not att_settings.assembly_disabled_date)
+    
+    is_disabled_today = (not is_active_day) or is_cancelled_today or (not att_settings.enable_assembly_attendance)
+    disabled_reason = ""
+    if not att_settings.enable_assembly_attendance:
+        disabled_reason = "ប្រព័ន្ធស្រង់វត្តមានពេលគោរពទង់ជាតិត្រូវបានបិទដំណើរការជាបណ្តោះអាសន្នដោយគណៈគ្រប់គ្រងសាលា។"
+    elif is_cancelled_today:
+        disabled_reason = att_settings.assembly_disabled_reason or "គណៈគ្រប់គ្រងសាលាបានសម្រេចផ្អាកការស្រង់វត្តមានពេលគោរពទង់ជាតិសម្រាប់ថ្ងៃនេះ។"
+    elif not is_active_day:
+        disabled_reason = "ថ្ងៃនេះមិនមែនជាថ្ងៃដែលត្រូវស្រង់វត្តមានពេលគោរពទង់ជាតិនោះឡើយ។"
+
     is_admin_override = (user.role == 'ADMIN' or user.is_superuser)
     is_within_window = (window_start <= current_time <= window_end)
 
-    if is_admin_override:
+    # Calculate remaining minutes until window end
+    remaining_minutes = 0
+    if is_within_window:
+        end_dt = datetime.combine(today_date, window_end)
+        curr_dt = datetime.combine(today_date, current_time)
+        diff = (end_dt - curr_dt).total_seconds()
+        remaining_minutes = max(0, int(diff // 60))
+
+    alarm_active = False
+    if att_settings.assembly_last_alarm_sent:
+        alarm_diff = (now_dt - att_settings.assembly_last_alarm_sent).total_seconds()
+        if alarm_diff < 3600: # Alarm dispatched within past hour
+            alarm_active = True
+
+    if is_disabled_today and not is_admin_override:
+        window_status = 'CANCELLED'
+        window_message = f'ផ្អាកការស្រង់វត្តមាន៖ {disabled_reason}'
+        can_submit = False
+    elif is_admin_override:
         window_status = 'OPEN_ADMIN'
         window_message = 'លោកអ្នកមានសិទ្ធិជា Admin អាចស្រង់ ឬកែប្រែបានគ្រប់ពេលវេលា។'
         can_submit = True
@@ -1527,6 +1622,11 @@ def assembly_attendance_view(request):
         'late_count': late_count,
         'present_count': len(student_roster) - (absent_count + permission_count),
         'submission_log': submission_log,
+        'is_disabled_today': is_disabled_today,
+        'disabled_reason': disabled_reason,
+        'is_cancelled_today': is_cancelled_today,
+        'remaining_minutes': remaining_minutes,
+        'alarm_active': alarm_active,
     }
     return render(request, 'attendance/assembly_attendance.html', context)
 
