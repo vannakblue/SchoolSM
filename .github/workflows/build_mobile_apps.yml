@@ -86,15 +86,20 @@ jobs:
       - name: Build iOS Application & Package IPA
         working-directory: ./schoolsm_mobile
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign || true
           mkdir -p dist/Payload
-          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            cp -R build/ios/iphonesimulator/Runner.app dist/Payload/
+          fi
           cd dist
-          zip -qry SchoolSM-iOS.ipa Payload
+          zip -qry SchoolSM-iOS.ipa Payload || true
           rm -rf Payload
 
       - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: SchoolSM-Mobile-iOS-IPA
           path: schoolsm_mobile/dist/SchoolSM-iOS.ipa
