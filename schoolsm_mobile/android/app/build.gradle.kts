@@ -6,8 +6,7 @@ plugins {
 
 android {
     namespace = "kh.edu.schoolsm.schoolsm_mobile"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 35
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -17,10 +16,10 @@ android {
     defaultConfig {
         applicationId = "kh.edu.schoolsm.schoolsm_mobile"
         minSdk = 21
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35
         multiDexEnabled = true
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
