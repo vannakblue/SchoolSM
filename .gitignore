@@ -27,7 +27,6 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-#  Usually these files are written by a python script that run them
 *.manifest
 *.spec
 
@@ -48,10 +47,24 @@ env/
 env.bak/
 venv.bak/
 
-# Environment Variables
+# Environment Variables & Secrets
 .env
 .env.local
 .env.*.local
+firebase_credentials.json
+firebase_credentials*.json
+*serviceAccountKey*.json
+google-services.json
+GoogleService-Info.plist
+
+# Mobile build files
+*.apk
+*.aab
+*.ipa
+schoolsm_mobile/build/
+schoolsm_mobile/.dart_tool/
+schoolsm_mobile/.flutter-plugins
+schoolsm_mobile/.flutter-plugins-dependencies
 
 # IDE & Editor files
 .vscode/

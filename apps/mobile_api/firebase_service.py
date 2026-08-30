@@ -19,7 +19,20 @@ def initialize_firebase():
         import firebase_admin
         from firebase_admin import credentials
 
-        cred_path = getattr(settings, 'FIREBASE_CREDENTIALS_PATH', None)
+        import json
+        raw_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+        if raw_json:
+            try:
+                cert_dict = json.loads(raw_json)
+                cred = credentials.Certificate(cert_dict)
+                firebase_admin.initialize_app(cred)
+                _firebase_initialized = True
+                logger.info("Firebase Admin SDK initialized from environment variable.")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to parse FIREBASE_CREDENTIALS_JSON env var: {e}")
+
+        cred_path = getattr(settings, 'FIREBASE_CREDENTIALS_PATH', None) or os.environ.get('FIREBASE_CREDENTIALS_PATH')
         if not cred_path:
             # Check default path in project root
             default_path = os.path.join(settings.BASE_DIR, 'firebase_credentials.json')
@@ -30,7 +43,7 @@ def initialize_firebase():
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
             _firebase_initialized = True
-            logger.info("Firebase Admin SDK initialized successfully.")
+            logger.info("Firebase Admin SDK initialized successfully from file.")
             return True
         else:
             logger.info("Firebase credentials file not found. Push notifications will be logged to database only.")

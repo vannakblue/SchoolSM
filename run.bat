@@ -27,20 +27,22 @@ echo   [3] Create Admin Account (createsuperuser)
 echo   [4] Run Test Suite (test_suite.py)
 echo   [5] Open Django Shell (Python Console)
 echo   [6] Allow Mobile Wi-Fi Access (Open Port 8000 in Windows Firewall)
-echo   [7] Start Public Online Tunnel (Access via 5G / Internet from anywhere)
-echo   [8] Backup Database (Create Instant Snapshot / Save Test Data)
-echo   [9] Restore Database (Restore from Snapshot / Backup File)
+echo   [7] Start Public Online Tunnel (Access via 5G / Internet)
+echo   [8] Backup Database (Create Instant Snapshot)
+echo   [9] Restore Database (Restore from Snapshot)
 echo   [10] Open Backups Folder in File Explorer
 echo   [11] Push Code to GitHub (Auto-Deploy to Render.com)
-echo   [12] Setup / Fix Python Environment (.venv & Packages)
+echo   [12] Setup / Fix Python Environment (.venv and Packages)
 echo   [13] Create Clean Project Backup (.ZIP archive)
 echo   [14] Turn ON Maintenance Mode (Show update screen to users)
 echo   [15] Turn OFF Maintenance Mode (Make system live for all)
+echo   [16] Build Android APK (SchoolSM Mobile App)
+echo   [17] Run Mobile App (Web Browser / Chrome)
 echo   [0] Exit
 echo.
 echo ================================================================
 set choice=1
-set /p choice="Enter your choice [0-15] (Press Enter for Option 1): "
+set /p choice="Enter your choice [0-17] (Press Enter for Option 1): "
 
 if "%choice%"=="1" goto start_server
 if "%choice%"=="2" goto migrate
@@ -57,6 +59,8 @@ if "%choice%"=="12" goto setup_env
 if "%choice%"=="13" goto backup_zip
 if "%choice%"=="14" goto maint_on
 if "%choice%"=="15" goto maint_off
+if "%choice%"=="16" goto build_apk
+if "%choice%"=="17" goto run_flutter
 if "%choice%"=="0" goto end
 
 echo Invalid option! Please try again.
@@ -262,6 +266,24 @@ if exist "maintenance_off.bat" (
 ) else (
     if exist "maintenance.flag" del maintenance.flag
     echo [SUCCESS] Maintenance Mode is OFF!
+    pause
+)
+goto menu
+
+:build_apk
+if exist "build_android_apk.bat" (
+    call build_android_apk.bat
+) else (
+    echo [ERROR] build_android_apk.bat not found!
+    pause
+)
+goto menu
+
+:run_flutter
+if exist "run_flutter_app.bat" (
+    call run_flutter_app.bat
+) else (
+    echo [ERROR] run_flutter_app.bat not found!
     pause
 )
 goto menu

@@ -1,19 +1,12 @@
 @echo off
-chcp 65001 >nul
-title SchoolSM - Build & Run Mobile App
+title SchoolSM - Build Mobile App
 color 0b
-
-echo ================================================================
-echo        🚀 កម្មវិធីគ្រប់គ្រង និងបង្កើត SchoolSM Mobile App
-echo        SchoolSM Mobile Builder & Runner (Android, Web, Windows)
-echo ================================================================
-echo.
 
 where flutter >nul 2>nul
 if %ERRORLEVEL% neq 0 (
     color 0c
-    echo [ERROR] រកមិនឃើញ Flutter SDK នៅក្នុងប្រព័ន្ធទេ!
-    echo សូមប្រាកដថា Flutter SDK ត្រូវបានដំឡើង និងដាក់ក្នុង PATH Environment Variable.
+    echo [ERROR] Flutter SDK not found in PATH!
+    echo Please ensure Flutter SDK is installed and added to PATH.
     echo.
     pause
     exit /b 1
@@ -25,16 +18,16 @@ cd /d "%~dp0schoolsm_mobile"
 cls
 color 0b
 echo ================================================================
-echo        🚀 ជម្រើសបង្កើត និងបើកដំណើរការ SchoolSM Mobile App
+echo        SchoolSM Mobile App Builder and Runner
 echo ================================================================
 echo.
-echo   [1] បង្កើត Release APK សម្រាប់ Android (Build Android APK)
-echo   [2] បើកដំណើរការ Mobile App លើ Web Browser (Chrome)
-echo   [3] ពិនិត្យស្ថានភាពប្រព័ន្ធ (Flutter Doctor Diagnostic)
-echo   [4] ចាកចេញ (Exit)
+echo   [1] Build Release Android APK (Build Android APK)
+echo   [2] Run Mobile App on Web Browser (Google Chrome)
+echo   [3] Check Flutter and Android System (Flutter Doctor)
+echo   [4] Exit
 echo.
 echo ================================================================
-set /p choice="សូមជ្រើសរើសជម្រើស (1-4) រួចចុច Enter: "
+set /p choice="Please select option [1-4] and press Enter: "
 
 if "%choice%"=="1" goto build_apk
 if "%choice%"=="2" goto run_web
@@ -46,32 +39,31 @@ goto menu
 cls
 color 0b
 echo ================================================================
-echo   [*] កំពុងចាប់ផ្តើមបង្កើត Release Android APK...
+echo   [*] Building Release Android APK...
 echo ================================================================
 echo.
 
-echo [*] កំពុងទាញយក Packages ចាំបាច់ (flutter pub get)...
+echo [*] Resolving dependencies (flutter pub get)...
 call flutter pub get
 
 echo.
-echo [*] កំពុងពិនិត្យ Android SDK...
+echo [*] Checking Android SDK...
 call flutter doctor | findstr /C:"Unable to locate Android SDK" >nul
 if %ERRORLEVEL% equ 0 (
     color 0c
     echo.
     echo ================================================================
-    echo   ⚠️ មូលហេតុដែលមិនទាន់អាចបង្កើត APK បាន:
-    echo   [Android SDK Not Found on this PC]
+    echo   [!] NOTICE: Android SDK is not yet installed on this PC.
     echo ================================================================
     echo.
-    echo ម៉ាស៊ីនកុំព្យូទ័ររបស់អ្នកមិនទាន់មាន Android SDK (Software Development Kit) ទេ។
+    echo To build an Android APK file, Android SDK is required.
     echo.
-    echo 📌 ដំណោះស្រាយងាយស្រួលបំផុត:
-    echo 1. ទាញយក និងដំឡើង Android Studio ពី: https://developer.android.com/studio
-    echo 2. បើក Android Studio ម្តង វានឹងដំឡើង Android SDK ស្វ័យប្រវត្តិ។
-    echo 3. បន្ទាប់មកត្រឡប់មកចុច [1] លើឯកសារនេះម្តងទៀត វានឹងបង្កើតបាន APK ភ្លាមៗ!
+    echo Easy steps to install:
+    echo 1. Download and install Android Studio: https://developer.android.com/studio
+    echo 2. Launch Android Studio once to install the Android SDK components.
+    echo 3. Then re-run this script [Option 1] to build SchoolSM-Mobile.apk!
     echo.
-    echo (ចំណាំ: អ្នកក៏អាចជ្រើសរើសលេខ [2] ដើម្បី Run App លើ Chrome បានភ្លាមៗ!)
+    echo (Tip: You can also select [Option 2] to run the app in Chrome right now!)
     echo.
     echo ================================================================
     pause
@@ -79,20 +71,20 @@ if %ERRORLEVEL% equ 0 (
 )
 
 echo.
-echo [*] កំពុង Compile កូដទៅជា APK (សូមរង់ចាំពី ១ ទៅ ៣ នាទី)...
+echo [*] Compiling release APK (Please wait 1-3 minutes)...
 call flutter build apk --release
 
 if %ERRORLEVEL% equ 0 (
     color 0a
     echo.
     echo ================================================================
-    echo   🎉 អបអរសាទរ! ការបង្កើត APK បានជោគជ័យ ១០០%%!
+    echo   [SUCCESS] APK build completed successfully!
     echo ================================================================
     echo.
     
     if exist "build\app\outputs\flutter-apk\app-release.apk" (
         copy /y "build\app\outputs\flutter-apk\app-release.apk" "%~dp0SchoolSM-Mobile.apk" >nul
-        echo [✓] ឯកសារ APK ត្រូវបានចម្លងទៅកាន់: "%~dp0SchoolSM-Mobile.apk"
+        echo [OK] APK copied to: "%~dp0SchoolSM-Mobile.apk"
         echo.
         explorer.exe /select,"%~dp0SchoolSM-Mobile.apk"
     ) else (
@@ -102,7 +94,7 @@ if %ERRORLEVEL% equ 0 (
     color 0c
     echo.
     echo ================================================================
-    echo   [ERROR] មានបញ្ហាក្នុងការ Build APK!
+    echo   [ERROR] Failed to build APK. Please check logs above.
     echo ================================================================
 )
 
@@ -114,7 +106,7 @@ goto menu
 cls
 color 0a
 echo ================================================================
-echo   🌐 កំពុងបើកដំណើរការ Mobile App លើ Web Browser (Chrome)...
+echo   [*] Launching SchoolSM Mobile App on Google Chrome...
 echo ================================================================
 echo.
 call flutter run -d chrome
@@ -125,7 +117,7 @@ goto menu
 cls
 color 0e
 echo ================================================================
-echo   🔍 ពិនិត្យស្ថានភាព Flutter & Android Toolchain
+echo   [*] Running Flutter Doctor Diagnostics...
 echo ================================================================
 echo.
 call flutter doctor -v
