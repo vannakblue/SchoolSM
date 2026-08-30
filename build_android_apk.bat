@@ -15,9 +15,6 @@ if %ERRORLEVEL% neq 0 (
 if exist "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot" (
     set "JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
     set "PATH=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin;%PATH%"
-) else if exist "C:\Program Files\Android\Android Studio\jbr" (
-    set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
-    set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
 )
 
 if exist "%LOCALAPPDATA%\Android\Sdk" (
@@ -61,14 +58,6 @@ echo [*] Resolving dependencies (flutter pub get)...
 call flutter pub get
 
 echo.
-echo [*] Cleaning stale Gradle locks & background daemons...
-taskkill /F /IM java.exe >nul 2>nul
-taskkill /F /IM javaw.exe >nul 2>nul
-if exist "android\.gradle" (
-    rd /s /q "android\.gradle" >nul 2>nul
-)
-
-echo.
 echo [*] Compiling release APK (Please wait 1-3 minutes)...
 call flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
@@ -93,7 +82,6 @@ if %ERRORLEVEL% equ 0 (
     echo.
     echo ================================================================
     echo   [ERROR] Failed to build APK.
-    echo   Tip: You can also download the pre-built APK from GitHub Actions.
     echo ================================================================
 )
 

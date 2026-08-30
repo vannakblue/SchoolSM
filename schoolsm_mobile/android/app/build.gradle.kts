@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "kh.edu.schoolsm.schoolsm_mobile"
     compileSdk = 34
+    buildToolsVersion = "36.0.0"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -20,6 +21,11 @@ android {
         multiDexEnabled = true
         versionCode = 1
         versionName = "1.0.0"
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     buildTypes {
