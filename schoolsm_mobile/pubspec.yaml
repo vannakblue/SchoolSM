@@ -26,8 +26,8 @@ dependencies:
   flutter_spinkit: ^5.2.1
   cached_network_image: ^3.4.1
 
-  # QR Code Scanning (Pure Android/iOS, Zero NDK / Zero JNI)
-  qr_code_scanner: ^1.0.1
+  # QR Code Scanning (Cross-platform Web, Android & iOS)
+  mobile_scanner: ^6.0.0
 
 dev_dependencies:
   flutter_test:

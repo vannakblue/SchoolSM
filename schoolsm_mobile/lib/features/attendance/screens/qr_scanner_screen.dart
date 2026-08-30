@@ -1,6 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
@@ -13,40 +12,30 @@ class QRScannerScreen extends StatefulWidget {
 }
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? controller;
+  final MobileScannerController controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    returnImage: false,
+  );
   bool _isProcessing = false;
-
-  // In order to get hot reload to work we need to pause the camera if the platform
-  // is android, or resume the camera if the platform is iOS.
-  @override
-  void reassemble() {
-    super.reassemble();
-    if (Platform.isAndroid) {
-      controller?.pauseCamera();
-    }
-    controller?.resumeCamera();
-  }
 
   @override
   void dispose() {
-    controller?.dispose();
+    controller.dispose();
     super.dispose();
   }
 
-  void _onQRViewCreated(QRViewController controller) {
-    setState(() {
-      this.controller = controller;
-    });
-    controller.scannedDataStream.listen((scanData) async {
-      if (_isProcessing) return;
-      final code = scanData.code;
-      if (code != null && code.isNotEmpty) {
+  void _onDetect(BarcodeCapture capture) async {
+    if (_isProcessing) return;
+    final List<Barcode> barcodes = capture.barcodes;
+    for (final barcode in barcodes) {
+      final code = barcode.rawValue;
+      if (code != null && code.trim().isNotEmpty) {
         setState(() => _isProcessing = true);
-        controller.pauseCamera();
-        await _processScan(code);
+        controller.stop();
+        await _processScan(code.trim());
+        break;
       }
-    });
+    }
   }
 
   Future<void> _processScan(String code) async {
@@ -157,7 +146,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 onPressed: () {
                   Navigator.pop(ctx);
                   setState(() => _isProcessing = false);
-                  controller?.resumeCamera();
+                  controller.start();
                 },
                 child: const Text("ស្កេនបន្ត (Next Scan)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
@@ -203,11 +192,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scanArea = (MediaQuery.of(context).size.width < 400 ||
-            MediaQuery.of(context).size.height < 400)
-        ? 220.0
-        : 260.0;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -221,15 +205,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on, color: Colors.white),
-            onPressed: () async {
-              await controller?.toggleFlash();
-            },
+            onPressed: () => controller.toggleTorch(),
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
-            onPressed: () async {
-              await controller?.flipCamera();
-            },
+            onPressed: () => controller.switchCamera(),
           ),
           IconButton(
             icon: const Icon(Icons.keyboard, color: Colors.white),
@@ -241,16 +221,9 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          QRView(
-            key: qrKey,
-            onQRViewCreated: _onQRViewCreated,
-            overlay: QrScannerOverlayShape(
-              borderColor: AppColors.secondary,
-              borderRadius: 20,
-              borderLength: 30,
-              borderWidth: 6,
-              cutOutSize: scanArea,
-            ),
+          MobileScanner(
+            controller: controller,
+            onDetect: _onDetect,
           ),
           Positioned(
             bottom: 40,
