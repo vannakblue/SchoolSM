@@ -12,6 +12,11 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+if exist "C:\Program Files\Android\Android Studio\jbr" (
+    set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+    set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
+)
+
 if exist "%LOCALAPPDATA%\Android\Sdk" (
     set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
     set "ANDROID_SDK_ROOT=%LOCALAPPDATA%\Android\Sdk"

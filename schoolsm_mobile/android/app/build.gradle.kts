@@ -15,7 +15,7 @@ android {
 
     defaultConfig {
         applicationId = "kh.edu.schoolsm.schoolsm_mobile"
-        minSdk = 21
+        minSdk = flutter.minSdkVersion
         targetSdk = 34
         multiDexEnabled = true
         versionCode = 1
