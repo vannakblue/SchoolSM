@@ -1,11 +1,10 @@
 @echo off
-chcp 65001 >nul
 title Push Code to GitHub (Auto-Deploy to Render) - SchoolSM
 color 0B
 cd /d "%~dp0"
 
 echo ================================================================
-echo           PUSH CODE TO GITHUB ^& AUTO-DEPLOY TO RENDER
+echo           PUSH CODE TO GITHUB and AUTO-DEPLOY TO RENDER
 echo ================================================================
 echo.
 
@@ -34,7 +33,7 @@ echo [1/4] Checking for Django model changes...
 python manage.py makemigrations --dry-run >nul 2>nul
 if %errorlevel% equ 0 (
     python manage.py makemigrations >nul 2>nul
-    echo   - Django migrations verified/created.
+    echo   - Django migrations verified and created.
 ) else (
     echo   - No new migration needed.
 )
@@ -48,12 +47,9 @@ echo ----------------------------------------------------------------
 echo.
 
 :: 4. Ask for Commit Message
+set msg=
 set /p msg="Enter commit message (Press Enter for 'Update SchoolSM'): "
-if "%msg%"=="" (
-    for /f "tokens=1-4 delims=/ " %%a in ('date /t') do (set mydate=%%a-%%b-%%c)
-    for /f "tokens=1-2 delims=: " %%a in ('time /t') do (set mytime=%%a:%%b)
-    set msg=Update SchoolSM [%date% %time%]
-)
+if "%msg%"=="" set msg=Update SchoolSM
 
 echo.
 echo [3/4] Staging and Committing changes...
@@ -62,7 +58,7 @@ git commit -m "%msg%"
 
 if %errorlevel% neq 0 (
     echo.
-    echo [INFO] No changes detected to commit or commit skipped.
+    echo [INFO] Working tree clean or commit skipped.
 )
 
 :: 5. Push to GitHub
