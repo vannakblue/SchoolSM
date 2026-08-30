@@ -18,8 +18,21 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    project.pluginManager.withPlugin("com.android.library") {
+        project.extensions.configure<com.android.build.gradle.LibraryExtension> {
+            if (namespace == null) {
+                namespace = "dev.flutter.plugins.${project.name.replace("-", "_")}"
+            }
+            compileSdk = 36
+            ndkVersion = "28.2.13676358"
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

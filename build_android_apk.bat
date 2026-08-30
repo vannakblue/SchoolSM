@@ -17,15 +17,14 @@ if exist "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot" (
     set "PATH=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin;%PATH%"
 )
 
-if exist "%LOCALAPPDATA%\Android\Sdk" (
+if exist "e:\AndroidSdk" (
+    set "ANDROID_HOME=e:\AndroidSdk"
+    set "ANDROID_SDK_ROOT=e:\AndroidSdk"
+    set "PATH=e:\AndroidSdk\platform-tools;e:\AndroidSdk\cmdline-tools\latest\bin;%PATH%"
+) else if exist "%LOCALAPPDATA%\Android\Sdk" (
     set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
     set "ANDROID_SDK_ROOT=%LOCALAPPDATA%\Android\Sdk"
     set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%LOCALAPPDATA%\Android\Sdk\cmdline-tools\latest\bin;%PATH%"
-)
-
-if exist "%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973" (
-    set "ANDROID_NDK_HOME=%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973"
-    set "ANDROID_NDK_ROOT=%LOCALAPPDATA%\Android\Sdk\ndk\27.0.12077973"
 )
 
 cd /d "%~dp0schoolsm_mobile"
