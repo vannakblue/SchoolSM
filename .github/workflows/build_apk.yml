@@ -36,21 +36,10 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: ./schoolsm_mobile
-        run: |
-          flutter build apk --release --verbose > ../build_log.txt 2>&1 || true
-          tail -n 60 ../build_log.txt
-
-      - name: Upload Build Log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Build-Logs
-          path: build_log.txt
+        run: flutter build apk --release
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: SchoolSM-Mobile-APK
-          path: schoolsm_mobile/build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: ignore
+          path: schoolsm_mobile/build/app/outputs/**/*.apk
