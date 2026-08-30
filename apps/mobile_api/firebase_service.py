@@ -34,10 +34,15 @@ def initialize_firebase():
 
         cred_path = getattr(settings, 'FIREBASE_CREDENTIALS_PATH', None) or os.environ.get('FIREBASE_CREDENTIALS_PATH')
         if not cred_path:
-            # Check default path in project root
-            default_path = os.path.join(settings.BASE_DIR, 'firebase_credentials.json')
-            if os.path.exists(default_path):
-                cred_path = default_path
+            # Check default paths (project root or Render /etc/secrets/)
+            candidate_paths = [
+                os.path.join(settings.BASE_DIR, 'firebase_credentials.json'),
+                '/etc/secrets/firebase_credentials.json',
+            ]
+            for p in candidate_paths:
+                if os.path.exists(p):
+                    cred_path = p
+                    break
 
         if cred_path and os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
