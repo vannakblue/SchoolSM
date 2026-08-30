@@ -1,9 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Q
+from django.utils import timezone
 import calendar
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, time as dtime
 from apps.accounts.decorators import role_required
 from apps.accounts.utils import send_telegram_notification
 from .models import StudentAttendance, AttendanceSubmissionLog, AttendanceSetting
