@@ -350,6 +350,15 @@ class SchoolProfile(models.Model):
         return profile
 
     @property
+    def logo_url(self):
+        if self.logo:
+            try:
+                return self.logo.url
+            except Exception:
+                return None
+        return None
+
+    @property
     def google_maps_direct_url(self):
         if self.google_maps_url and self.google_maps_url.startswith('http') and 'schoolsm_sample' not in self.google_maps_url:
             return self.google_maps_url
