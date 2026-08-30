@@ -15,6 +15,9 @@ if %ERRORLEVEL% neq 0 (
 if exist "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot" (
     set "JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
     set "PATH=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot\bin;%PATH%"
+) else if exist "C:\Program Files\Android\Android Studio\jbr" (
+    set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+    set "PATH=C:\Program Files\Android\Android Studio\jbr\bin;%PATH%"
 )
 
 if exist "%LOCALAPPDATA%\Android\Sdk" (
