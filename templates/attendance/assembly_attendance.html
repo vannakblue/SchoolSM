@@ -93,13 +93,13 @@
                 </div>
             </div>
 
-            <!-- Time Window Status Badge -->
+            <!-- Time Window Status Badge & Admin Settings Button -->
             <div class="text-md-end">
                 <div class="d-inline-flex align-items-center gap-2 bg-white bg-opacity-25 px-3 py-2 rounded-pill mb-1">
                     <i class="fa-solid fa-clock text-warning"></i>
                     <span class="fw-bold text-white small">{{ window_start|time:"H:i" }} - {{ window_end|time:"H:i" }}</span>
                 </div>
-                <div>
+                <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
                     {% if window_status == 'OPEN' or window_status == 'OPEN_ADMIN' %}
                         <span class="badge bg-success px-3 py-1.5 rounded-pill shadow-sm">
                             <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកឱ្យស្រង់វត្តមាន
@@ -112,6 +112,12 @@
                         <span class="badge bg-danger px-3 py-1.5 rounded-pill shadow-sm">
                             <i class="fa-solid fa-lock me-1"></i> ផុតម៉ោងស្រង់ (Locked)
                         </span>
+                    {% endif %}
+
+                    {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+                    <a href="{% url 'attendance_admin_hub' %}" class="badge bg-warning text-dark px-3 py-1.5 rounded-pill shadow-sm text-decoration-none fw-bold" title="ចូលទៅកាន់មជ្ឈមណ្ឌលកំណត់ប្រព័ន្ធវត្តមាន">
+                        <i class="fa-solid fa-sliders me-1"></i> កំណត់ប្រព័ន្ធវត្តមាន (Admin Hub)
+                    </a>
                     {% endif %}
                 </div>
             </div>
