@@ -75,8 +75,10 @@ if %errorlevel% equ 0 (
     echo ================================================================
     echo.
     echo   * GitHub Repo: https://github.com/vannakblue/SchoolSM
-    echo   * Render.com is now automatically deploying your changes.
-    echo   * It will take about 1 - 2 minutes to go live on the server.
+    echo   * Web Server (Render): Auto-deploying to https://schoolsm.onrender.com
+    echo.
+    echo   * Mobile Apps (Android & iOS) Build in Progress:
+    echo     👉 Download APK & IPA: https://github.com/vannakblue/SchoolSM/actions
     echo.
 ) else (
     color 0C
