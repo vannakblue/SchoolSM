@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build_android:
     name: Build Android (APK & App Bundle)
@@ -37,6 +40,10 @@ jobs:
         working-directory: ./schoolsm_mobile
         run: flutter pub get
 
+      - name: Patch legacy plugins for AGP 8.7+
+        run: |
+          find ~/.pub-cache -name "AndroidManifest.xml" -path "*/qr_code_scanner*/*" -exec sed -i 's/package="net.touchcapture.qr.flutterqr"//g' {} + || true
+
       - name: Build Release APK
         working-directory: ./schoolsm_mobile
         run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
@@ -45,11 +52,16 @@ jobs:
         working-directory: ./schoolsm_mobile
         run: flutter build appbundle --release --no-tree-shake-icons --android-skip-build-dependency-validation || true
 
+      - name: Prepare APK for Artifacts & Release
+        run: |
+          mkdir -p dist
+          cp schoolsm_mobile/build/app/outputs/flutter-apk/app-release.apk dist/SchoolSM-Mobile.apk
+
       - name: Upload Android Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: SchoolSM-Android-APK
-          path: schoolsm_mobile/build/app/outputs/flutter-apk/app-release.apk
+          name: SchoolSM-Mobile-Android-APK
+          path: dist/SchoolSM-Mobile.apk
 
       - name: Upload Android App Bundle
         uses: actions/upload-artifact@v4
@@ -92,7 +104,7 @@ jobs:
       - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SchoolSM-iOS-IPA
+          name: SchoolSM-Mobile-iOS-IPA
           path: schoolsm_mobile/build/ios/iphoneos/SchoolSM-iOS.ipa
 
       - name: Upload iOS Runner App
