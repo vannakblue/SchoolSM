@@ -546,7 +546,6 @@
                             {% if slot %}
                                 {% if slot.is_duty %}
                                     <div class="sub-title text-danger fw-bold"><i class="fa-solid fa-clock me-1 text-danger"></i>{{ slot.duty_name }}</div>
-                                    <div class="extra-info text-danger-emphasis">{% if slot.duty_notes %}({{ slot.duty_notes }}){% else %}(ម៉ោងប្រចាំការ){% endif %}</div>
                                 {% else %}
                                     <div class="sub-title">{{ slot.subject_name }}</div>
                                     <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
@@ -573,7 +572,6 @@
                             {% if slot %}
                                 {% if slot.is_duty %}
                                     <div class="sub-title text-danger fw-bold"><i class="fa-solid fa-clock me-1 text-danger"></i>{{ slot.duty_name }}</div>
-                                    <div class="extra-info text-danger-emphasis">{% if slot.duty_notes %}({{ slot.duty_notes }}){% else %}(ម៉ោងប្រចាំការ){% endif %}</div>
                                 {% else %}
                                     <div class="sub-title">{{ slot.subject_name }}</div>
                                     <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
