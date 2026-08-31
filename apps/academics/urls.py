@@ -83,6 +83,7 @@ urlpatterns = [
     path('timetable/daily-reports/', views.timetable_daily_reports_view, name='timetable_daily_reports_view'),
     path('timetable/daily-reports/export-excel/', views.timetable_daily_reports_export_excel, name='timetable_daily_reports_export_excel'),
     path('timetable/student-teacher/', views.student_teacher_timetable_view, name='student_teacher_timetable_view'),
+    path('timetable/student-teacher/export-excel/', views.student_teacher_timetable_export_excel, name='student_teacher_timetable_export_excel'),
     path('timetable/save-matrix/', views.timetable_save_matrix, name='timetable_save_matrix'),
     path('timetable/transfer-class/', views.timetable_transfer_class, name='timetable_transfer_class'),
     path('timetable/auto-generate/', views.timetable_auto_generate, name='timetable_auto_generate'),

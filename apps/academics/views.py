@@ -2835,6 +2835,396 @@ def student_teacher_timetable_view(request):
 
 
 @login_required
+def student_teacher_timetable_export_excel(request):
+    """
+    Exports Student (Classroom) and Teacher Timetables to Excel (.xlsx) using openpyxl.
+    Supports:
+      - mode='class' & id='all'   : All classrooms in separate sheets (1 sheet per classroom in 1 workbook)
+      - mode='class' & id=<int>   : Single classroom timetable sheet
+      - mode='teacher' & id='all' : All teachers in separate sheets (1 sheet per teacher in 1 workbook)
+      - mode='teacher' & id=<int> : Single teacher timetable sheet
+    Strictly isolated per Academic Year!
+    """
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from .utils import get_active_academic_year
+
+    active_year = get_active_academic_year(request)
+    selected_year = request.GET.get('year') or request.GET.get('academic_year')
+    if selected_year:
+        if str(selected_year).isdigit():
+            found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
+        else:
+            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
+        if found_year:
+            active_year = found_year
+
+    year_name = active_year.name if active_year else '២០២៦-២០២៧'
+    mode = request.GET.get('mode', 'class') # 'class' or 'teacher'
+    target_id = request.GET.get('id', 'all')
+
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    timetables = list(timetables_qs)
+
+    timetables_by_classroom = defaultdict(list)
+    timetables_by_teacher = defaultdict(list)
+    for entry in timetables:
+        timetables_by_classroom[entry.classroom_id].append(entry)
+        if entry.teacher_id:
+            timetables_by_teacher[entry.teacher_id].append(entry)
+
+    # ClassSubject mapping
+    class_subjects_qs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('subject', 'teacher', 'classroom') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('subject', 'teacher', 'classroom')
+    teacher_subjects_map = defaultdict(set)
+    for cs in class_subjects_qs:
+        if cs.teacher_id and cs.subject:
+            teacher_subjects_map[cs.teacher_id].add(cs.subject.name_kh)
+
+    # Teacher Duties
+    duty_entries_qs = TeacherDutySchedule.objects.filter(academic_year=active_year).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+    duty_by_teacher = defaultdict(list)
+    for d in duty_entries_qs:
+        if d.teacher_id:
+            duty_by_teacher[d.teacher_id].append(d)
+
+    raw_duty_types = TeacherDutyType.get_all_duty_types()
+    duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+
+    # Styling Tokens
+    font_title = Font(name='Khmer OS Muol Light', size=12, bold=True)
+    font_sub = Font(name='Khmer OS Muol Light', size=11, bold=True)
+    font_meta = Font(name='Khmer OS Siemreap', size=10, italic=True)
+    font_head = Font(name='Khmer OS Siemreap', size=10, bold=True)
+    font_session = Font(name='Khmer OS Siemreap', size=10, bold=True)
+    font_slot = Font(name='Khmer OS Siemreap', size=9.5)
+    font_slot_bold = Font(name='Khmer OS Siemreap', size=9.5, bold=True)
+    font_duty = Font(name='Khmer OS Siemreap', size=9.5, bold=True, color='B91C1C')
+    font_sig_title = Font(name='Khmer OS Siemreap', size=10, bold=True)
+    font_sig_name = Font(name='Khmer OS Siemreap', size=10, bold=True)
+
+    fill_header = PatternFill(start_color='E2E8F0', end_color='E2E8F0', fill_type='solid')
+    fill_session = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+    fill_duty = PatternFill(start_color='FEF2F2', end_color='FEF2F2', fill_type='solid')
+
+    thin_border = Border(
+        left=Side(style='thin', color='1E293B'),
+        right=Side(style='thin', color='1E293B'),
+        top=Side(style='thin', color='1E293B'),
+        bottom=Side(style='thin', color='1E293B')
+    )
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active) # Remove default sheet
+
+    def sanitize_title(title):
+        invalid_chars = r':\/?*[]'
+        for char in invalid_chars:
+            title = title.replace(char, '')
+        return title.strip()[:31]
+
+    # Helper: Build 1 Classroom Timetable Sheet
+    def render_classroom_sheet(workbook, cls):
+        sheet_name = sanitize_title(f"ថ្នាក់ {cls.name}")
+        # Ensure sheet title uniqueness
+        counter = 1
+        base_name = sheet_name
+        while sheet_name in workbook.sheetnames:
+            sheet_name = f"{base_name[:28]}_{counter}"
+            counter += 1
+
+        ws = workbook.create_sheet(title=sheet_name)
+        ws.views.sheetView[0].showGridLines = True
+
+        # Header Title
+        ws.merge_cells('A1:G1')
+        ws['A1'] = "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត"
+        ws['A1'].font = font_title
+        ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+        ws.merge_cells('A2:G2')
+        ws['A2'] = "កាលវិភាគបង្រៀន និងរៀនប្រចាំសប្តាហ៍"
+        ws['A2'].font = font_sub
+        ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+        homeroom_str = f"{cls.homeroom_teacher.khmer_name}" if (cls.homeroom_teacher and hasattr(cls, 'homeroom_teacher')) else "...................."
+        ws.merge_cells('A3:G3')
+        ws['A3'] = f"ថ្នាក់ទី៖ {cls.name} | គ្រូបន្ទុកថ្នាក់៖ {homeroom_str} | ឆ្នាំសិក្សា៖ {year_name}"
+        ws['A3'].font = font_meta
+        ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Headers Row 5
+        headers = ['ម៉ោងទី', 'ច័ន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍']
+        ws.append([]) # Row 4
+        ws.append(headers) # Row 5
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=5, column=col_idx)
+            cell.font = font_head
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_header
+            cell.border = thin_border
+        ws.row_dimensions[5].height = 26
+
+        cls_entries = timetables_by_classroom.get(cls.id, [])
+        slots_map = {}
+        for entry in cls_entries:
+            t_name = entry.teacher.khmer_name if entry.teacher else ""
+            t_gender = getattr(entry.teacher, 'gender', 'M') if entry.teacher else 'M'
+            title = "អ្នកគ្រូ" if t_gender == 'F' else "លោកគ្រូ"
+            disp_tch = f"{title} {t_name}" if t_name else ""
+            sub_name = entry.subject.name_kh if entry.subject else ""
+            slots_map[(entry.day_of_week, entry.period_number)] = f"{sub_name}\n({disp_tch})" if (sub_name and disp_tch) else (sub_name or "-")
+
+        # Session 1: ពេលព្រឹក (Row 6)
+        ws.append(['ពេលព្រឹក', '', '', '', '', '', ''])
+        ws.merge_cells('A6:G6')
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=6, column=col_idx)
+            cell.font = font_session
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_session
+            cell.border = thin_border
+        ws.row_dimensions[6].height = 22
+
+        # Periods 1 to 4 (Rows 7 to 10)
+        curr_row = 7
+        for p in [1, 2, 3, 4]:
+            row_data = [p] + [slots_map.get((d['num'], p), '-') for d in DAYS_OF_WEEK]
+            ws.append(row_data)
+            ws.row_dimensions[curr_row].height = 36
+            for col_idx in range(1, 8):
+                cell = ws.cell(row=curr_row, column=col_idx)
+                cell.font = font_slot_bold if col_idx > 1 else font_head
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+            curr_row += 1
+
+        # Session 2: ពេលរសៀល (Row 11)
+        ws.append(['ពេលរសៀល', '', '', '', '', '', ''])
+        ws.merge_cells('A11:G11')
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=11, column=col_idx)
+            cell.font = font_session
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_session
+            cell.border = thin_border
+        ws.row_dimensions[11].height = 22
+
+        # Periods 5 to 8 (Rows 12 to 15)
+        curr_row = 12
+        for p in [5, 6, 7, 8]:
+            row_data = [p] + [slots_map.get((d['num'], p), '-') for d in DAYS_OF_WEEK]
+            ws.append(row_data)
+            ws.row_dimensions[curr_row].height = 36
+            for col_idx in range(1, 8):
+                cell = ws.cell(row=curr_row, column=col_idx)
+                cell.font = font_slot_bold if col_idx > 1 else font_head
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+            curr_row += 1
+
+        # Signatures (Rows 17-20)
+        curr_row += 1
+        ws.cell(row=curr_row + 1, column=2, value="បានឃើញ និងឯកភាព").font = font_sig_title
+        ws.cell(row=curr_row + 2, column=2, value="នាយកសាលា").font = font_sig_title
+        ws.cell(row=curr_row + 1, column=6, value="ហត្ថលេខាគ្រូបន្ទុកថ្នាក់").font = font_sig_title
+        ws.cell(row=curr_row + 4, column=6, value=homeroom_str).font = font_sig_name
+
+        # Column widths
+        ws.column_dimensions['A'].width = 10
+        for col_letter in ['B', 'C', 'D', 'E', 'F', 'G']:
+            ws.column_dimensions[col_letter].width = 23
+
+    # Helper: Build 1 Teacher Timetable Sheet
+    def render_teacher_sheet(workbook, tch):
+        sheet_name = sanitize_title(f"{tch.khmer_name}")
+        counter = 1
+        base_name = sheet_name
+        while sheet_name in workbook.sheetnames:
+            sheet_name = f"{base_name[:28]}_{counter}"
+            counter += 1
+
+        ws = workbook.create_sheet(title=sheet_name)
+        ws.views.sheetView[0].showGridLines = True
+
+        tch_gender_title = "អ្នកគ្រូ" if tch.gender == 'F' else "លោកគ្រូ"
+        full_name = f"{tch_gender_title} {tch.khmer_name}"
+
+        # Header Title
+        ws.merge_cells('A1:G1')
+        ws['A1'] = "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត"
+        ws['A1'].font = font_title
+        ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+        ws.merge_cells('A2:G2')
+        ws['A2'] = "កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍"
+        ws['A2'].font = font_sub
+        ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+        assigned_subs = sorted(list(teacher_subjects_map.get(tch.id, set())))
+        subs_str = ", ".join(assigned_subs) if assigned_subs else (tch.specialization or "-")
+        
+        tch_entries = timetables_by_teacher.get(tch.id, [])
+        teaching_hours = len(tch_entries)
+        tch_duties = duty_by_teacher.get(tch.id, [])
+        duty_hours = len(tch_duties)
+        total_hours = teaching_hours + duty_hours
+
+        ws.merge_cells('A3:G3')
+        ws['A3'] = f"ឈ្មោះគ្រូបង្រៀន៖ {full_name} | មុខវិជ្ជា៖ {subs_str} | ម៉ោងបង្រៀន៖ {teaching_hours} | ម៉ោងប្រចាំការ៖ {duty_hours} | សរុប៖ {total_hours} ម៉ោង | ឆ្នាំសិក្សា៖ {year_name}"
+        ws['A3'].font = font_meta
+        ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Headers Row 5
+        headers = ['ម៉ោងទី', 'ច័ន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍']
+        ws.append([]) # Row 4
+        ws.append(headers) # Row 5
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=5, column=col_idx)
+            cell.font = font_head
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_header
+            cell.border = thin_border
+        ws.row_dimensions[5].height = 26
+
+        slots_map = {}
+        is_duty_map = {}
+        for entry in tch_entries:
+            sub_name = entry.subject.name_kh if entry.subject else ""
+            cls_name = entry.classroom.name if entry.classroom else ""
+            slots_map[(entry.day_of_week, entry.period_number)] = f"{sub_name}\n(ថ្នាក់ {cls_name})" if (sub_name and cls_name) else (sub_name or "-")
+            is_duty_map[(entry.day_of_week, entry.period_number)] = False
+
+        for d in tch_duties:
+            k = (d.day_of_week, d.period_number)
+            if k not in slots_map:
+                duty_name = duty_types_dict.get(d.duty_type, 'ប្រចាំការទូទៅ')
+                slots_map[k] = duty_name
+                is_duty_map[k] = True
+
+        # Session 1: ពេលព្រឹក (Row 6)
+        ws.append(['ពេលព្រឹក', '', '', '', '', '', ''])
+        ws.merge_cells('A6:G6')
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=6, column=col_idx)
+            cell.font = font_session
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_session
+            cell.border = thin_border
+        ws.row_dimensions[6].height = 22
+
+        # Periods 1 to 4 (Rows 7 to 10)
+        curr_row = 7
+        for p in [1, 2, 3, 4]:
+            row_data = [p] + [slots_map.get((d['num'], p), '-') for d in DAYS_OF_WEEK]
+            ws.append(row_data)
+            ws.row_dimensions[curr_row].height = 36
+            for col_idx in range(1, 8):
+                cell = ws.cell(row=curr_row, column=col_idx)
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+                if col_idx == 1:
+                    cell.font = font_head
+                else:
+                    is_duty = is_duty_map.get((DAYS_OF_WEEK[col_idx-2]['num'], p), False)
+                    if is_duty:
+                        cell.font = font_duty
+                        cell.fill = fill_duty
+                    else:
+                        cell.font = font_slot_bold
+            curr_row += 1
+
+        # Session 2: ពេលរសៀល (Row 11)
+        ws.append(['ពេលរសៀល', '', '', '', '', '', ''])
+        ws.merge_cells('A11:G11')
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=11, column=col_idx)
+            cell.font = font_session
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.fill = fill_session
+            cell.border = thin_border
+        ws.row_dimensions[11].height = 22
+
+        # Periods 5 to 8 (Rows 12 to 15)
+        curr_row = 12
+        for p in [5, 6, 7, 8]:
+            row_data = [p] + [slots_map.get((d['num'], p), '-') for d in DAYS_OF_WEEK]
+            ws.append(row_data)
+            ws.row_dimensions[curr_row].height = 36
+            for col_idx in range(1, 8):
+                cell = ws.cell(row=curr_row, column=col_idx)
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+                if col_idx == 1:
+                    cell.font = font_head
+                else:
+                    is_duty = is_duty_map.get((DAYS_OF_WEEK[col_idx-2]['num'], p), False)
+                    if is_duty:
+                        cell.font = font_duty
+                        cell.fill = fill_duty
+                    else:
+                        cell.font = font_slot_bold
+            curr_row += 1
+
+        # Signatures (Rows 17-20)
+        curr_row += 1
+        ws.cell(row=curr_row + 1, column=2, value="បានឃើញ និងឯកភាព").font = font_sig_title
+        ws.cell(row=curr_row + 2, column=2, value="នាយកសាលា").font = font_sig_title
+        ws.cell(row=curr_row + 1, column=6, value="ហត្ថលេខាសាមីខ្លួន").font = font_sig_title
+        ws.cell(row=curr_row + 4, column=6, value=f"{tch.khmer_name}").font = font_sig_name
+
+        # Column widths
+        ws.column_dimensions['A'].width = 10
+        for col_letter in ['B', 'C', 'D', 'E', 'F', 'G']:
+            ws.column_dimensions[col_letter].width = 23
+
+    # EXECUTE REQUESTED EXPORT
+    if mode == 'teacher':
+        if target_id != 'all' and str(target_id).isdigit():
+            single_teacher = next((t for t in teachers if t.id == int(target_id)), None)
+            if single_teacher:
+                render_teacher_sheet(wb, single_teacher)
+                filename = f"timetable_teacher_{single_teacher.khmer_name}.xlsx"
+            else:
+                for tch in teachers:
+                    render_teacher_sheet(wb, tch)
+                filename = "all_teachers_timetables.xlsx"
+        else:
+            # All Teachers into separate sheets
+            for tch in teachers:
+                render_teacher_sheet(wb, tch)
+            filename = "all_teachers_timetables.xlsx"
+    else:
+        # mode == 'class'
+        if target_id != 'all' and str(target_id).isdigit():
+            single_class = next((c for c in classrooms if c.id == int(target_id)), None)
+            if single_class:
+                render_classroom_sheet(wb, single_class)
+                filename = f"timetable_class_{single_class.name}.xlsx"
+            else:
+                for cls in classrooms:
+                    render_classroom_sheet(wb, cls)
+                filename = "all_classrooms_timetables.xlsx"
+        else:
+            # All Classrooms into separate sheets
+            for cls in classrooms:
+                render_classroom_sheet(wb, cls)
+            filename = "all_classrooms_timetables.xlsx"
+
+    # If no sheets were created, create a blank placeholder
+    if not wb.sheetnames:
+        ws = wb.create_sheet(title="គ្មានទិន្នន័យ")
+        ws['A1'] = "គ្មានទិន្នន័យកាលវិភាគសម្រាប់ឆ្នាំសិក្សាដែលបានជ្រើសរើសឡើយ"
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+@login_required
 def timetable_daily_reports_view(request):
     """
     Daily Duty Sign-In Sheets Generator & Related Timetable Reports.
