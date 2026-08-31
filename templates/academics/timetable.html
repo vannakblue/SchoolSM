@@ -94,6 +94,7 @@
     .btn-import { background: #0d9488; }
     .btn-clear { background: #ef4444; }
     .btn-autogen { background: #8b5cf6; }
+    .btn-transfer { background: #0891b2; }
     .btn-save {
         background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
@@ -588,6 +589,11 @@
                 <i class="fa-solid fa-wand-magic-sparkles"></i> រៀបចំស្វ័យប្រវត្តិ (Random)
             </button>
 
+            <!-- ផ្ទេរ/ចម្លងកាលវិភាគ (Transfer/Clone) -->
+            <button type="button" class="btn-action-custom btn-transfer" onclick="openTransferModal()" title="ផ្ទេរ ឬចម្លងកាលវិភាគពីថ្នាក់មួយទៅថ្នាក់មួយទៀត">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i> ផ្ទេរ/ចម្លងកាលវិភាគ
+            </button>
+
             <!-- រក្សាទុកការកែប្រែ -->
             <button type="button" class="btn-action-custom btn-save" id="btnSaveMatrix" onclick="saveMasterMatrix(true)">
                 <i class="fa-solid fa-floppy-disk"></i> រក្សាទុកការកែប្រែ
@@ -835,6 +841,139 @@
                         <i class="fa-solid fa-check me-1"></i> អនុវត្តការកំណត់
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Class Timetable Transfer / Clone Manager (ផ្ទេរ ឬចម្លងកាលវិភាគពីថ្នាក់មួយទៅថ្នាក់មួយទៀត) -->
+<div class="modal fade" id="transferTimetableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-arrow-right-arrow-left me-2"></i>ផ្ទេរ / ចម្លងកាលវិភាគថ្នាក់ (Class Timetable Transfer & Clone)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Info Alert -->
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-4 rounded-3 border-0 bg-info-subtle text-info-emphasis">
+                    <i class="fa-solid fa-circle-info fs-4 me-3 text-info"></i>
+                    <div>
+                        <strong>គោលការណ៍ផ្ទេរ & គណនាម៉ោងបង្រៀន៖</strong>
+                        លោកអ្នកអាចចម្លង ឬផ្ទេរកាលវិភាគដែលបានរៀបចំរួចពីថ្នាក់មួយ (ឧ. 7A) ទៅថ្នាក់មួយទៀត (ឧ. 7B) ក្នុងកម្រិតថ្នាក់តែមួយ។ ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពម៉ោងបង្រៀនរបស់គ្រូពាក់ព័ន្ធទាំងអស់ដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <!-- Source Class Selection -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-danger me-1"></i> ថ្នាក់ប្រភព (Source Class - ចម្លងពី) <span class="text-danger">*</span>
+                        </label>
+                        <select id="transferSourceClass" class="form-select fw-bold text-primary" onchange="updateTransferModalPreview()">
+                            <option value="">-- ជ្រើសរើសថ្នាក់ប្រភព --</option>
+                            {% for row in classrooms_data %}
+                            <option value="{{ row.classroom.id }}" data-grade="{{ row.classroom.grade_level }}" data-scheduled="{{ row.scheduled_hours }}">
+                                {{ row.classroom.name }} ({{ row.scheduled_hours }} ម៉ោង)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Target Class Selection -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-arrow-down-to-bracket text-success me-1"></i> ថ្នាក់គោលដៅ (Target Class - ផ្ទេរទៅ) <span class="text-danger">*</span>
+                        </label>
+                        <select id="transferTargetClass" class="form-select fw-bold text-success" onchange="updateTransferModalPreview()">
+                            <option value="">-- ជ្រើសរើសថ្នាក់គោលដៅ --</option>
+                            {% for row in classrooms_data %}
+                            <option value="{{ row.classroom.id }}" data-grade="{{ row.classroom.grade_level }}" data-scheduled="{{ row.scheduled_hours }}">
+                                {{ row.classroom.name }} ({{ row.scheduled_hours }} ម៉ោង)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Transfer Modes (4 options) -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark small mb-2">
+                        <i class="fa-solid fa-sliders text-primary me-1"></i> ជ្រើសរើសវិធីសាស្ត្រផ្ទេរ (Transfer Mode) <span class="text-danger">*</span>
+                    </label>
+                    
+                    <div class="row g-2">
+                        <!-- Mode 1: Copy with Same Teachers -->
+                        <div class="col-md-6">
+                            <label class="p-3 border rounded-3 d-flex align-items-start gap-2 h-100 cursor-pointer transfer-mode-card" for="modeCopySameTeachers">
+                                <input class="form-check-input mt-1" type="radio" name="transferMode" id="modeCopySameTeachers" value="copy_with_teachers" checked onchange="updateTransferModalPreview()">
+                                <div>
+                                    <div class="fw-bold text-dark small">📋 ចម្លងកាលវិភាគ & គ្រូបង្រៀន</div>
+                                    <div class="text-muted" style="font-size: 0.76rem;">ចម្លងម៉ោងទាំងអស់ និងចាត់តាំងគ្រូដូចថ្នាក់ប្រភពបេះបិទ (ម៉ោងគ្រូនឹងកើនឡើងបន្ថែម)</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Mode 2: Copy Subject Slots with Target Class Teachers -->
+                        <div class="col-md-6">
+                            <label class="p-3 border rounded-3 d-flex align-items-start gap-2 h-100 cursor-pointer transfer-mode-card" for="modeCopyTargetTeachers">
+                                <input class="form-check-input mt-1" type="radio" name="transferMode" id="modeCopyTargetTeachers" value="copy_with_target_teachers" onchange="updateTransferModalPreview()">
+                                <div>
+                                    <div class="fw-bold text-dark small">🎯 ចម្លងតែគ្រោងម៉ោងមុខវិជ្ជា</div>
+                                    <div class="text-muted" style="font-size: 0.76rem;">យកម៉ោងមុខវិជ្ជាដូចថ្នាក់ប្រភព ប៉ុន្តែប្រើគ្រូដែលបានចាត់តាំងឱ្យថ្នាក់គោលដៅ</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Mode 3: Move / Cut -->
+                        <div class="col-md-6">
+                            <label class="p-3 border rounded-3 d-flex align-items-start gap-2 h-100 cursor-pointer transfer-mode-card" for="modeMove">
+                                <input class="form-check-input mt-1" type="radio" name="transferMode" id="modeMove" value="move" onchange="updateTransferModalPreview()">
+                                <div>
+                                    <div class="fw-bold text-dark small">🚚 ផ្ទេរ/កាត់ទាំងស្រុង (Move)</div>
+                                    <div class="text-muted" style="font-size: 0.76rem;">ផ្ទេរម៉ោងទាំងអស់ទៅថ្នាក់គោលដៅ ហើយលុបម៉ោងនៅថ្នាក់ប្រភពឱ្យនៅទំនេរវិញ</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Mode 4: Swap Both Classes -->
+                        <div class="col-md-6">
+                            <label class="p-3 border rounded-3 d-flex align-items-start gap-2 h-100 cursor-pointer transfer-mode-card" for="modeSwap">
+                                <input class="form-check-input mt-1" type="radio" name="transferMode" id="modeSwap" value="swap" onchange="updateTransferModalPreview()">
+                                <div>
+                                    <div class="fw-bold text-dark small">🔄 ប្តូរកាលវិភាគគ្នា (Swap 7A ⇄ 7B)</div>
+                                    <div class="text-muted" style="font-size: 0.76rem;">ប្តូរកាលវិភាគរវាងថ្នាក់ទាំងពីរទៅវិញទៅមកដោយស្វ័យប្រវត្តិ</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overwrite Checkbox -->
+                <div class="form-check mb-3 p-2 bg-light rounded border">
+                    <input class="form-check-input ms-1" type="checkbox" id="chkOverwriteTarget" checked>
+                    <label class="form-check-label ms-2 small fw-bold text-dark cursor-pointer" for="chkOverwriteTarget">
+                        <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> សរសេរជាន់លើកាលវិភាគចាស់នៅថ្នាក់គោលដៅ (បើមាន)
+                    </label>
+                </div>
+
+                <!-- Live Preview / Calculation Impact Box -->
+                <div id="transferPreviewBox" class="p-3 bg-light rounded-3 border d-none">
+                    <h6 class="fw-bold text-dark small mb-2">
+                        <i class="fa-solid fa-eye text-primary me-1"></i> សង្ខេបលទ្ធផល និងការគណនាម៉ោងបង្រៀន៖
+                    </h6>
+                    <div id="transferPreviewContent" class="small text-muted">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold" id="btnConfirmTransfer" onclick="executeClassTransfer()">
+                    <i class="fa-solid fa-check me-1"></i> ផ្ទេរកាលវិភាគឥឡូវនេះ
+                </button>
             </div>
         </div>
     </div>
@@ -2554,6 +2693,223 @@
         if (modalEl) {
             const modalInstance = bootstrap.Modal.getInstance(modalEl);
             if (modalInstance) modalInstance.hide();
+        }
+    }
+
+    // ==========================================
+    // 🌟 CLASS TIMETABLE TRANSFER / CLONE LOGIC
+    // ==========================================
+    function openTransferModal(sourceClassId = null) {
+        const modalEl = document.getElementById('transferTimetableModal');
+        if (!modalEl) return;
+        
+        const sourceSelect = document.getElementById('transferSourceClass');
+        const targetSelect = document.getElementById('transferTargetClass');
+        
+        if (sourceSelect) {
+            if (sourceClassId) {
+                sourceSelect.value = sourceClassId;
+            } else if (currentSelectedClassId) {
+                sourceSelect.value = currentSelectedClassId;
+            }
+        }
+        
+        updateTransferModalPreview();
+        const modalInstance = new bootstrap.Modal(modalEl);
+        modalInstance.show();
+    }
+
+    function updateTransferModalPreview() {
+        const sourceSelect = document.getElementById('transferSourceClass');
+        const targetSelect = document.getElementById('transferTargetClass');
+        const previewBox = document.getElementById('transferPreviewBox');
+        const previewContent = document.getElementById('transferPreviewContent');
+        const mode = document.querySelector('input[name="transferMode"]:checked')?.value || 'copy_with_teachers';
+        
+        const sId = sourceSelect?.value;
+        const tId = targetSelect?.value;
+        
+        if (!sId || !tId || sId === tId) {
+            if (previewBox) previewBox.classList.add('d-none');
+            return;
+        }
+        
+        const sOpt = sourceSelect.selectedOptions[0];
+        const tOpt = targetSelect.selectedOptions[0];
+        const sName = sOpt ? sOpt.text.split(' (')[0] : 'ថ្នាក់ប្រភព';
+        const tName = tOpt ? tOpt.text.split(' (')[0] : 'ថ្នាក់គោលដៅ';
+        
+        // Count slots in source and target from MATRIX_STATE
+        let sourceSlotsCount = 0;
+        const sourceTeachersMap = {};
+        let targetSlotsCount = 0;
+        
+        for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+            if (slot && slot.subject_id) {
+                if (key.startsWith(`${sId}_`)) {
+                    sourceSlotsCount++;
+                    if (slot.teacher_name) {
+                        sourceTeachersMap[slot.teacher_name] = (sourceTeachersMap[slot.teacher_name] || 0) + 1;
+                    }
+                } else if (key.startsWith(`${tId}_`)) {
+                    targetSlotsCount++;
+                }
+            }
+        }
+        
+        let modeText = "";
+        if (mode === 'copy_with_teachers') {
+            modeText = `ចម្លងម៉ោងទាំងអស់ (${sourceSlotsCount} ម៉ោង) ពី <strong>${sName}</strong> ទៅ <strong>${tName}</strong> ដោយប្រើគ្រូដដែល។`;
+        } else if (mode === 'copy_with_target_teachers') {
+            modeText = `ចម្លងគ្រោងម៉ោងមុខវិជ្ជា (${sourceSlotsCount} ម៉ោង) ពី <strong>${sName}</strong> ទៅ <strong>${tName}</strong> (ដោយប្រើគ្រូដែលចាត់តាំងឱ្យ ${tName})។`;
+        } else if (mode === 'move') {
+            modeText = `ផ្ទេរម៉ោងទាំងអស់ (${sourceSlotsCount} ម៉ោង) ពី <strong>${sName}</strong> ទៅ <strong>${tName}</strong> ហើយសម្អាត ${sName} ឱ្យនៅទំនេរវិញ។`;
+        } else if (mode === 'swap') {
+            modeText = `ប្តូរកាលវិភាគគ្នាទៅវិញទៅមក៖ <strong>${sName}</strong> (${sourceSlotsCount} ម៉ោង) ⇄ <strong>${tName}</strong> (${targetSlotsCount} ម៉ោង)។`;
+        }
+        
+        let teachersSummaryHtml = Object.entries(sourceTeachersMap)
+            .map(([tname, hrs]) => `<span class="badge bg-primary-subtle text-primary border me-1 mb-1">${tname}: ${hrs} ម៉ោង</span>`)
+            .join(' ');
+            
+        if (!teachersSummaryHtml) teachersSummaryHtml = '<span class="text-muted">មិនទាន់មានម៉ោងរៀបចំឡើយ</span>';
+        
+        previewContent.innerHTML = `
+            <div class="mb-2 text-dark">${modeText}</div>
+            <div class="p-2 bg-white rounded border">
+                <div class="fw-bold text-dark mb-1">បញ្ជីគ្រូបង្រៀន និងម៉ោងដែលត្រូវផ្ទេរ (${sourceSlotsCount} ម៉ោង)៖</div>
+                <div class="d-flex flex-wrap gap-1">${teachersSummaryHtml}</div>
+            </div>
+        `;
+        
+        if (previewBox) previewBox.classList.remove('d-none');
+    }
+
+    async function executeClassTransfer() {
+        const sourceSelect = document.getElementById('transferSourceClass');
+        const targetSelect = document.getElementById('transferTargetClass');
+        const mode = document.querySelector('input[name="transferMode"]:checked')?.value || 'copy_with_teachers';
+        const overwrite = document.getElementById('chkOverwriteTarget')?.checked ?? true;
+        
+        const sourceId = sourceSelect?.value;
+        const targetId = targetSelect?.value;
+        
+        if (!sourceId || !targetId) {
+            alert('សូមជ្រើសរើសថ្នាក់ប្រភព និងថ្នាក់គោលដៅ!');
+            return;
+        }
+        
+        if (sourceId === targetId) {
+            alert('ថ្នាក់ប្រភព និងថ្នាក់គោលដៅមិនអាចដូចគ្នាឡើយ!');
+            return;
+        }
+        
+        const btn = document.getElementById('btnConfirmTransfer');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងផ្ទេរកាលវិភាគ...`;
+        }
+        
+        try {
+            pushHistoryState();
+            
+            const response = await fetch('/academics/timetable/transfer-class/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    source_class_id: sourceId,
+                    target_class_id: targetId,
+                    mode: mode,
+                    overwrite: overwrite,
+                })
+            });
+            
+            const res = await response.json();
+            
+            if (res.status === 'success') {
+                // Apply updated slots to MATRIX_STATE
+                if (mode === 'move') {
+                    // Clear source in matrix state
+                    for (let d = 1; d <= 6; d++) {
+                        for (let p = 1; p <= 8; p++) {
+                            delete MATRIX_STATE[`${sourceId}_${d}_${p}`];
+                        }
+                    }
+                } else if (mode === 'swap') {
+                    // Clear both
+                    for (let d = 1; d <= 6; d++) {
+                        for (let p = 1; p <= 8; p++) {
+                            delete MATRIX_STATE[`${sourceId}_${d}_${p}`];
+                            delete MATRIX_STATE[`${targetId}_${d}_${p}`];
+                        }
+                    }
+                    if (res.source_entries) {
+                        for (const itm of res.source_entries) {
+                            const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
+                            const sub = SUBJECTS_MAP[itm.subject_id];
+                            const tch = TEACHERS_MAP[itm.teacher_id];
+                            const slotCode = TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+                            MATRIX_STATE[key] = {
+                                subject_id: itm.subject_id,
+                                teacher_id: itm.teacher_id,
+                                subject_name: sub?.name_kh || '',
+                                teacher_name: tch?.khmer_name || '',
+                                slot_code: slotCode,
+                                subject_color: sub?.color_code || '#4f46e5',
+                            };
+                        }
+                    }
+                } else if (overwrite) {
+                    // Clear target
+                    for (let d = 1; d <= 6; d++) {
+                        for (let p = 1; p <= 8; p++) {
+                            delete MATRIX_STATE[`${targetId}_${d}_${p}`];
+                        }
+                    }
+                }
+                
+                // Populate target entries
+                if (res.target_entries) {
+                    for (const itm of res.target_entries) {
+                        const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
+                        const sub = SUBJECTS_MAP[itm.subject_id];
+                        const tch = TEACHERS_MAP[itm.teacher_id];
+                        const slotCode = TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+                        MATRIX_STATE[key] = {
+                            subject_id: itm.subject_id,
+                            teacher_id: itm.teacher_id,
+                            subject_name: sub?.name_kh || '',
+                            teacher_name: tch?.khmer_name || '',
+                            slot_code: slotCode,
+                            subject_color: sub?.color_code || '#4f46e5',
+                        };
+                    }
+                }
+                
+                renderAllMatrixCells();
+                updateAllHoursCounters();
+                
+                // Close modal
+                const modalEl = document.getElementById('transferTimetableModal');
+                if (modalEl) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                }
+                
+                showAutoSaveStatus(res.message || 'បានផ្ទេរកាលវិភាគដោយជោគជ័យ!');
+            } else {
+                alert('កំហុស៖ ' + (res.message || 'មិនអាចផ្ទេរកាលវិភាគបានឡើយ'));
+            }
+        } catch(err) {
+            alert('កំហុសប្រព័ន្ធ៖ ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> ផ្ទេរកាលវិភាគឥឡូវនេះ`;
+            }
         }
     }
 </script>

@@ -1670,6 +1670,199 @@ def timetable_save_matrix(request):
 
 @login_required
 @role_required(['ADMIN'])
+def timetable_transfer_class(request):
+    """
+    Transfers, Clones, or Swaps timetable entries between two classrooms (e.g. 7A -> 7B).
+    Modes:
+      - 'copy_with_teachers': Copies schedule from source to target, assigning the same teachers to target (and syncing target ClassSubject).
+      - 'copy_with_target_teachers': Copies subject periods from source to target, but using target class's designated teachers.
+      - 'move': Moves schedule from source to target (clearing source class schedule).
+      - 'swap': Swaps schedule between source and target classes.
+    Recalculates teacher hours and ensures real-time sync with ClassSubject!
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        source_id = int(data.get('source_class_id'))
+        target_id = int(data.get('target_class_id'))
+        mode = data.get('mode', 'copy_with_teachers')
+        overwrite = data.get('overwrite', True)
+
+        if source_id == target_id:
+            return JsonResponse({'status': 'error', 'message': 'ថ្នាក់ប្រភព និងថ្នាក់គោលដៅមិនអាចដូចគ្នាឡើយ! (Source and target classes cannot be the same)'}, status=400)
+
+        source_class = Classroom.objects.filter(id=source_id).first()
+        target_class = Classroom.objects.filter(id=target_id).first()
+
+        if not source_class or not target_class:
+            return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀនដែលបានជ្រើសរើសឡើយ!'}, status=404)
+
+        source_entries = list(Timetable.objects.filter(classroom=source_class))
+        target_entries = list(Timetable.objects.filter(classroom=target_class))
+
+        if not source_entries and mode in ['copy_with_teachers', 'copy_with_target_teachers', 'move']:
+            return JsonResponse({'status': 'error', 'message': f'ថ្នាក់ {source_class.name} មិនទាន់មានកាលវិភាគដើម្បីផ្ទេរឡើយ!'}, status=400)
+
+        # Target class assigned teachers lookup from ClassSubject
+        target_cs_map = {cs.subject_id: cs.teacher_id for cs in ClassSubject.objects.filter(classroom=target_class) if cs.teacher_id}
+
+        with transaction.atomic():
+            if mode == 'swap':
+                # Swap slots between source and target
+                Timetable.objects.filter(classroom=source_class).delete()
+                Timetable.objects.filter(classroom=target_class).delete()
+
+                new_source_entries = []
+                for te in target_entries:
+                    new_source_entries.append(Timetable(
+                        classroom=source_class,
+                        subject=te.subject,
+                        teacher=te.teacher,
+                        day_of_week=te.day_of_week,
+                        period_number=te.period_number,
+                        start_time=te.start_time,
+                        end_time=te.end_time,
+                    ))
+
+                new_target_entries = []
+                for se in source_entries:
+                    new_target_entries.append(Timetable(
+                        classroom=target_class,
+                        subject=se.subject,
+                        teacher=se.teacher,
+                        day_of_week=se.day_of_week,
+                        period_number=se.period_number,
+                        start_time=se.start_time,
+                        end_time=se.end_time,
+                    ))
+
+                if new_source_entries:
+                    Timetable.objects.bulk_create(new_source_entries)
+                if new_target_entries:
+                    Timetable.objects.bulk_create(new_target_entries)
+
+                msg = f"បានប្តូរកាលវិភាគរវាងថ្នាក់ {source_class.name} និង {target_class.name} ទៅវិញទៅមកដោយជោគជ័យ!"
+
+            elif mode == 'move':
+                # Move: Delete target if overwrite, delete source entries
+                if overwrite:
+                    Timetable.objects.filter(classroom=target_class).delete()
+
+                new_target_entries = []
+                for se in source_entries:
+                    new_target_entries.append(Timetable(
+                        classroom=target_class,
+                        subject=se.subject,
+                        teacher=se.teacher,
+                        day_of_week=se.day_of_week,
+                        period_number=se.period_number,
+                        start_time=se.start_time,
+                        end_time=se.end_time,
+                    ))
+                    # Sync target ClassSubject
+                    ClassSubject.objects.update_or_create(
+                        classroom=target_class,
+                        subject=se.subject,
+                        defaults={'teacher': se.teacher}
+                    )
+
+                Timetable.objects.filter(classroom=source_class).delete()
+                if new_target_entries:
+                    Timetable.objects.bulk_create(new_target_entries)
+
+                msg = f"បានផ្ទេរកាលវិភាគទាំងអស់ពី {source_class.name} ទៅកាន់ {target_class.name} ដោយជោគជ័យ!"
+
+            elif mode == 'copy_with_target_teachers':
+                # Copy subject periods but use target class's assigned teachers
+                if overwrite:
+                    Timetable.objects.filter(classroom=target_class).delete()
+
+                new_target_entries = []
+                for se in source_entries:
+                    t_id = target_cs_map.get(se.subject_id) or se.teacher_id
+                    t_obj = Teacher.objects.filter(id=t_id).first() if t_id else se.teacher
+                    new_target_entries.append(Timetable(
+                        classroom=target_class,
+                        subject=se.subject,
+                        teacher=t_obj,
+                        day_of_week=se.day_of_week,
+                        period_number=se.period_number,
+                        start_time=se.start_time,
+                        end_time=se.end_time,
+                    ))
+
+                if new_target_entries:
+                    Timetable.objects.bulk_create(new_target_entries)
+
+                msg = f"បានចម្លងគ្រោងកាលវិភាគពី {source_class.name} ទៅកាន់ {target_class.name} (ដោយប្រើគ្រូចាត់តាំងនៅ {target_class.name}) ដោយជោគជ័យ!"
+
+            else:  # 'copy_with_teachers'
+                if overwrite:
+                    Timetable.objects.filter(classroom=target_class).delete()
+
+                new_target_entries = []
+                for se in source_entries:
+                    new_target_entries.append(Timetable(
+                        classroom=target_class,
+                        subject=se.subject,
+                        teacher=se.teacher,
+                        day_of_week=se.day_of_week,
+                        period_number=se.period_number,
+                        start_time=se.start_time,
+                        end_time=se.end_time,
+                    ))
+                    # Sync target ClassSubject with copied teachers
+                    ClassSubject.objects.update_or_create(
+                        classroom=target_class,
+                        subject=se.subject,
+                        defaults={'teacher': se.teacher}
+                    )
+
+                if new_target_entries:
+                    Timetable.objects.bulk_create(new_target_entries)
+
+                msg = f"បានចម្លងកាលវិភាគ និងគ្រូបង្រៀនពី {source_class.name} ទៅកាន់ {target_class.name} ដោយជោគជ័យ!"
+
+        # Fetch updated entries for real-time frontend matrix sync
+        updated_source = [
+            {
+                'classroom_id': e.classroom_id,
+                'subject_id': e.subject_id,
+                'teacher_id': e.teacher_id,
+                'day_of_week': e.day_of_week,
+                'period_number': e.period_number,
+            } for e in Timetable.objects.filter(classroom=source_class)
+        ]
+        updated_target = [
+            {
+                'classroom_id': e.classroom_id,
+                'subject_id': e.subject_id,
+                'teacher_id': e.teacher_id,
+                'day_of_week': e.day_of_week,
+                'period_number': e.period_number,
+            } for e in Timetable.objects.filter(classroom=target_class)
+        ]
+
+        return JsonResponse({
+            'status': 'success',
+            'message': msg,
+            'source_entries': updated_source,
+            'target_entries': updated_target,
+            'source_class_id': source_id,
+            'target_class_id': target_id,
+            'mode': mode,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
 def timetable_auto_generate(request):
     """
     Intelligent Timetable Auto-Generator (Constraint-Satisfaction Solver).
