@@ -8,6 +8,7 @@ from django.db.models import Q, Count
 from decimal import Decimal
 from collections import defaultdict
 import datetime
+from django.utils import timezone
 import json
 import csv
 import os
@@ -1239,6 +1240,346 @@ def reset_grade_rules_to_moeys(request):
                     created_count += 1
 
     messages.success(request, f"🎉 បានកំណត់ឡើងវិញនូវច្បាប់ពិន្ទុស្តង់ដារ MoEYS ទាំង ៨ កម្រិតថ្នាក់ ({created_count} មុខវិជ្ជា) ដោយជោគជ័យ!")
+    return redirect('grade_rules_manager')
+
+
+@login_required
+@role_required(['ADMIN'])
+def grade_rules_export_excel(request):
+    """
+    Exports the MoEYS Scoring Rules Matrix to a styled Excel (.xlsx) file.
+    """
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Scoring Rules Matrix"
+
+    # Fonts & Fills
+    title_font = Font(name="Khmer OS Siemreap", size=14, bold=True, color="1E3A8A")
+    subtitle_font = Font(name="Khmer OS Siemreap", size=10, italic=True, color="475569")
+    header_font = Font(name="Khmer OS Siemreap", size=10, bold=True, color="FFFFFF")
+    data_font = Font(name="Khmer OS Siemreap", size=10)
+    bold_font = Font(name="Khmer OS Siemreap", size=10, bold=True)
+
+    header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
+    total_header_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
+    total_cell_fill = PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid")
+    alt_row_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+
+    thin_border = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+
+    # Title Block
+    ws.merge_cells('A1:Q1')
+    ws['A1'] = "តារាងច្បាប់ពិន្ទុអតិបរមាតាមកម្រិតថ្នាក់ (MoEYS Scoring Rules Matrix)"
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 30
+
+    ws.merge_cells('A2:Q2')
+    export_time = timezone.now().strftime("%d/%m/%Y %H:%M")
+    ws['A2'] = f"កាលបរិច្ឆេទ Export: {export_time} | ប្រព័ន្ធគ្រប់គ្រងសាលារៀន SchoolSM"
+    ws['A2'].font = subtitle_font
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[2].height = 20
+
+    # Headers
+    subjects = list(Subject.objects.all().order_by('order', 'id'))
+    headers = ["ល.រ", "កម្រិតថ្នាក់ (Grade Level)", "លេខកម្រិត", "ជំនាញ (Track)"]
+    for sub in subjects:
+        headers.append(f"{sub.name_kh} ({sub.code})")
+    headers.append("ពិន្ទុសរុបពេញ (Total)")
+
+    ws.append([]) # Row 3 empty
+    ws.append(headers) # Row 4
+    ws.row_dimensions[4].height = 28
+
+    for col_num in range(1, len(headers) + 1):
+        cell = ws.cell(row=4, column=col_num)
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border = thin_border
+        if col_num == len(headers):
+            cell.fill = total_header_fill
+        else:
+            cell.fill = header_fill
+
+    # Data Rows
+    grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track', 'id'))
+    rules_dict = {}
+    for r in GradeLevelRule.objects.select_related('subject').all():
+        rules_dict[(r.grade_level, r.track, r.subject_id)] = r.max_score
+
+    for idx, gl in enumerate(grade_levels, start=1):
+        row_num = 4 + idx
+        g = gl.grade_number
+        t = gl.track
+        row_data = [idx, gl.name, g, t]
+        total_max = Decimal('0.00')
+
+        for sub in subjects:
+            sc = rules_dict.get((g, t, sub.id))
+            if sc and sc > 0:
+                total_max += sc
+                row_data.append(float(sc))
+            else:
+                row_data.append("-")
+        row_data.append(float(total_max))
+
+        ws.append(row_data)
+        ws.row_dimensions[row_num].height = 22
+
+        # Style data cells
+        is_alt = (idx % 2 == 0)
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.border = thin_border
+            cell.font = bold_font if col_num in [1, 2, len(headers)] else data_font
+
+            if col_num == 2:
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+            else:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            if col_num == len(headers):
+                cell.fill = total_cell_fill
+            elif is_alt:
+                cell.fill = alt_row_fill
+
+    # Auto Column Widths
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_str = str(cell.value or '')
+            if cell.row in [1, 2]:
+                continue
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"moeys_scoring_rules_matrix_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def grade_rules_export_csv(request):
+    """
+    Exports the MoEYS Scoring Rules Matrix as a UTF-8 BOM CSV file for Excel compatibility.
+    """
+    import csv
+
+    subjects = list(Subject.objects.all().order_by('order', 'id'))
+    grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track', 'id'))
+    rules_dict = {}
+    for r in GradeLevelRule.objects.select_related('subject').all():
+        rules_dict[(r.grade_level, r.track, r.subject_id)] = r.max_score
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    filename = f"moeys_scoring_rules_{timezone.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    # Write UTF-8 BOM
+    response.write('\ufeff'.encode('utf-8'))
+
+    writer = csv.writer(response)
+    header = ["No", "Grade_Level_Name", "Grade_Number", "Track"]
+    for sub in subjects:
+        header.append(f"{sub.name_kh} ({sub.code})")
+    header.append("Total_Max_Score")
+    writer.writerow(header)
+
+    for idx, gl in enumerate(grade_levels, start=1):
+        g = gl.grade_number
+        t = gl.track
+        row = [idx, gl.name, g, t]
+        total_max = Decimal('0.00')
+        for sub in subjects:
+            sc = rules_dict.get((g, t, sub.id))
+            if sc and sc > 0:
+                total_max += sc
+                row.append(str(sc))
+            else:
+                row.append("0")
+        row.append(str(total_max))
+        writer.writerow(row)
+
+    return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def grade_rules_import(request):
+    """
+    Bulk imports/updates Scoring Rules from an uploaded Excel (.xlsx, .xls) or CSV (.csv) file.
+    """
+    import csv
+    import io
+    if request.method != 'POST':
+        return redirect('grade_rules_manager')
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        messages.error(request, "⚠️ សូមជ្រើសរើសឯកសារ Excel (.xlsx) ឬ CSV (.csv) ដើម្បី Upload!")
+        return redirect('grade_rules_manager')
+
+    fname = uploaded_file.name.lower()
+    subjects = list(Subject.objects.all().order_by('order', 'id'))
+    sub_by_code = {s.code.upper(): s for s in subjects if s.code}
+    sub_by_name = {s.name_kh.strip(): s for s in subjects if s.name_kh}
+
+    rows_data = []
+
+    try:
+        if fname.endswith('.xlsx') or fname.endswith('.xls'):
+            import openpyxl
+            wb = openpyxl.load_workbook(uploaded_file, data_only=True)
+            ws = wb.active
+            for row in ws.iter_rows(values_only=True):
+                if any(row):
+                    rows_data.append([str(c).strip() if c is not None else '' for c in row])
+        elif fname.endswith('.csv'):
+            content = uploaded_file.read().decode('utf-8-sig', errors='ignore')
+            reader = csv.reader(io.StringIO(content))
+            for row in reader:
+                if any(row):
+                    rows_data.append([str(c).strip() for c in row])
+        else:
+            messages.error(request, "⚠️ ប្រព័ន្ធគាំទ្រតែឯកសារប្រភេទ .xlsx, .xls ឬ .csv ប៉ុណ្ណោះ!")
+            return redirect('grade_rules_manager')
+    except Exception as e:
+        messages.error(request, f"❌ កំហុសក្នុងការអានឯកសារ៖ {str(e)}")
+        return redirect('grade_rules_manager')
+
+    if not rows_data:
+        messages.error(request, "⚠️ ឯកសារទទេ មិនមានទិន្នន័យឡើយ!")
+        return redirect('grade_rules_manager')
+
+    # Locate Header Row
+    header_idx = -1
+    for idx, r in enumerate(rows_data[:10]):
+        row_str = " ".join(r).lower()
+        if "កម្រិតថ្នាក់" in row_str or "grade" in row_str or "track" in row_str or "ជំនាញ" in row_str:
+            header_idx = idx
+            break
+
+    if header_idx == -1:
+        header_idx = 0
+
+    header_row = rows_data[header_idx]
+    
+    # Map column indexes to subjects
+    col_subject_map = {}
+    grade_col = -1
+    grade_num_col = -1
+    track_col = -1
+
+    for c_idx, h_text in enumerate(header_row):
+        h_clean = h_text.strip()
+        h_lower = h_clean.lower()
+        if "កម្រិតថ្នាក់" in h_lower or "grade_level_name" in h_lower:
+            grade_col = c_idx
+        elif "លេខកម្រិត" in h_lower or "grade_number" in h_lower or h_lower == "grade":
+            grade_num_col = c_idx
+        elif "ជំនាញ" in h_lower or "track" in h_lower:
+            track_col = c_idx
+        else:
+            # Check subject match by code or name
+            matched_sub = None
+            for code, sub_obj in sub_by_code.items():
+                if f"({code})" in h_clean.upper() or h_clean.upper() == code:
+                    matched_sub = sub_obj
+                    break
+            if not matched_sub:
+                for name, sub_obj in sub_by_name.items():
+                    if name in h_clean:
+                        matched_sub = sub_obj
+                        break
+            if matched_sub:
+                col_subject_map[c_idx] = matched_sub
+
+    updated_count = 0
+    with transaction.atomic():
+        for r_idx in range(header_idx + 1, len(rows_data)):
+            r = rows_data[r_idx]
+            if len(r) <= max(grade_col, track_col, 1):
+                continue
+
+            grade_name = r[grade_col] if grade_col >= 0 and grade_col < len(r) else ''
+            g_num_str = r[grade_num_col] if grade_num_col >= 0 and grade_num_col < len(r) else ''
+            track_str = r[track_col].upper() if track_col >= 0 and track_col < len(r) else 'GENERAL'
+
+            # Parse Grade Number
+            g_num = None
+            if g_num_str and g_num_str.isdigit():
+                g_num = int(g_num_str)
+            else:
+                for digit in ['12', '11', '10', '9', '8', '7']:
+                    if digit in grade_name:
+                        g_num = int(digit)
+                        break
+
+            if not g_num:
+                continue
+
+            # Standardize Track
+            if 'SCIENCE' in track_str or 'វិទ្យាសាស្ត្រ' in track_str:
+                if 'សង្គម' in track_str or 'SOCIAL' in track_str:
+                    track_val = 'SOCIAL'
+                else:
+                    track_val = 'SCIENCE'
+            elif 'SOCIAL' in track_str or 'សង្គម' in track_str:
+                track_val = 'SOCIAL'
+            else:
+                track_val = 'GENERAL'
+
+            # Update or create GradeLevel
+            if grade_name:
+                GradeLevel.objects.get_or_create(
+                    grade_number=g_num,
+                    track=track_val,
+                    defaults={'name': grade_name}
+                )
+
+            # Update Subject Max Scores
+            for c_idx, sub_obj in col_subject_map.items():
+                if c_idx < len(r):
+                    val_str = r[c_idx].strip()
+                    if val_str and val_str not in ['-', 'N/A', 'n/a']:
+                        try:
+                            score_val = Decimal(val_str)
+                            if score_val > 0:
+                                GradeLevelRule.objects.update_or_create(
+                                    grade_level=g_num,
+                                    track=track_val,
+                                    subject=sub_obj,
+                                    defaults={'max_score': score_val, 'order': sub_obj.order}
+                                )
+                                updated_count += 1
+                            else:
+                                GradeLevelRule.objects.filter(grade_level=g_num, track=track_val, subject=sub_obj).delete()
+                        except Exception:
+                            pass
+
+    messages.success(request, f"🎉 ជោគជ័យ! បាន Import និងធ្វើបច្ចុប្បន្នភាពច្បាប់ពិន្ទុចំនួន {updated_count} មុខវិជ្ជាពីឯកសារ {uploaded_file.name}!")
     return redirect('grade_rules_manager')
 
 

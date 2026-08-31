@@ -10,42 +10,59 @@
         </h2>
         <p class="text-muted small mb-0">គ្រប់គ្រងកម្រិតថ្នាក់ និងកំណត់ពិន្ទុអតិបរមាតាម ១៤ មុខវិជ្ជាផ្លូវការ (MoEYS Standard)</p>
     </div>
-    <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Export Excel Button -->
+        <a href="{% url 'grade_rules_export_excel' %}" class="btn btn-success fw-bold shadow-sm" title="ទាញយកជាឯកសារ Excel (.xlsx)">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+
+        <!-- Export CSV Button -->
+        <a href="{% url 'grade_rules_export_csv' %}" class="btn btn-outline-success fw-bold shadow-sm bg-white" title="ទាញយកជាឯកសារ CSV (.csv)">
+            <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+        </a>
+
+        <!-- Import Excel/CSV Button -->
+        <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#importRulesModal">
+            <i class="fa-solid fa-file-import me-1"></i> Import Excel / CSV
+        </button>
+
+        <div class="vr mx-1 d-none d-md-block"></div>
+
         <!-- Manage Academic Tracks Button -->
-        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#manageTracksModal">
-            <i class="fa-solid fa-layer-group me-1"></i> គ្រប់គ្រងជំនាញសិក្សា (Tracks)
+        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm bg-white" data-bs-toggle="modal" data-bs-target="#manageTracksModal">
+            <i class="fa-solid fa-layer-group me-1"></i> គ្រប់គ្រងជំនាញ (Tracks)
         </button>
 
         <!-- Add New Grade Level Button (Opens Modal) -->
-        <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createGradeLevelModal">
+        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm bg-white" data-bs-toggle="modal" data-bs-target="#createGradeLevelModal">
             <i class="fa-solid fa-plus me-1"></i> បង្កើតកម្រិតថ្នាក់ថ្មី
         </button>
 
         <!-- Save Current Config as Default Button -->
         <form method="POST" action="{% url 'save_current_as_default' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់រក្សាទុកការកំណត់ច្បាប់ពិន្ទុបច្ចុប្បន្នជា Default សម្រាប់ប្រើប្រាស់ឡើងវិញមែនទេ?')">
             {% csrf_token %}
-            <button type="submit" class="btn btn-success fw-bold shadow-sm">
+            <button type="submit" class="btn btn-outline-success fw-bold shadow-sm bg-white">
                 <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកជា Default
             </button>
         </form>
 
         {% if has_saved_custom %}
-        <a href="{% url 'restore_saved_custom_default' %}" class="btn btn-outline-primary fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុលំនាំដើមដែលបាន Save ទុកឡើងវិញមែនទេ?')">
+        <a href="{% url 'restore_saved_custom_default' %}" class="btn btn-outline-primary fw-bold bg-white" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុលំនាំដើមដែលបាន Save ទុកឡើងវិញមែនទេ?')">
             <i class="fa-solid fa-clock-rotate-left me-1"></i> ស្តារតាមដែលបាន Save
         </a>
         {% endif %}
 
-        <a href="{% url 'reset_grade_rules_to_moeys' %}" class="btn btn-outline-success fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុទាំងអស់ឡើងវិញទៅតាមស្តង់ដារក្រសួងអប់រំ (MoEYS Standard Matrix) មែនទេ?')">
+        <a href="{% url 'reset_grade_rules_to_moeys' %}" class="btn btn-outline-success fw-bold bg-white" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុទាំងអស់ឡើងវិញទៅតាមស្តង់ដារក្រសួងអប់រំ (MoEYS Standard Matrix) មែនទេ?')">
             <i class="fa-solid fa-rotate-left me-1"></i> ស្តារច្បាប់ពិន្ទុ MoEYS
         </a>
 
-        <a href="{% url 'master_restore_defaults' %}" class="btn btn-primary fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារប្រព័ន្ធទាំងមូល (១៤ មុខវិជ្ជា + ច្បាប់ពិន្ទុ ៨ កម្រិតថ្នាក់ + ថ្នាក់រៀនស្តង់ដារ) ឡើងវិញមែនទេ?')">
+        <a href="{% url 'master_restore_defaults' %}" class="btn btn-primary fw-bold shadow-sm" onclick="return confirm('តើលោកអ្នកចង់ស្តារប្រព័ន្ធទាំងមូល (១៤ មុខវិជ្ជា + ច្បាប់ពិន្ទុ ៨ កម្រិតថ្នាក់ + ថ្នាក់រៀនស្តង់ដារ) ឡើងវិញមែនទេ?')">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្តារប្រព័ន្ធទាំងមូល (Master Restore)
         </a>
 
         <form method="POST" action="{% url 'grade_rules_delete_all' %}" class="d-inline" onsubmit="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់លុបច្បាប់ពិន្ទុទាំងអស់ចេញពីប្រព័ន្ធមែនទេ?')">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger fw-bold">
+            <button type="submit" class="btn btn-outline-danger fw-bold bg-white">
                 <i class="fa-solid fa-trash-can me-1"></i> លុបច្បាប់ពិន្ទុទាំងអស់
             </button>
         </form>
@@ -312,10 +329,61 @@
 <form id="singleDeleteGradeLevelForm" method="POST" style="display: none;">
     {% csrf_token %}
 </form>
-
 <form id="singleDeleteTrackForm" method="POST" style="display: none;">
     {% csrf_token %}
 </form>
+
+<!-- Modal: Import Scoring Rules Excel / CSV -->
+<div class="modal fade" id="importRulesModal" tabindex="-1" aria-labelledby="importRulesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="POST" action="{% url 'grade_rules_import' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-primary" id="importRulesModalLabel">
+                        <i class="fa-solid fa-file-import me-2"></i>Import ច្បាប់ពិន្ទុ (Excel / CSV)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2.5 px-3 small mb-3 border-0 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-circle-info text-info me-1"></i>
+                        <strong>ការណែនាំ៖</strong> លោកអ្នកអាចទាញយកឯកសារគំរូ ឬ Export ច្បាប់ពិន្ទុបច្ចុប្បន្នជា Excel រួចកែប្រែពិន្ទុ និង Upload ចូលមកវិញដើម្បី Update ដោយស្វ័យប្រវត្តិ។
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-file-excel text-success me-1"></i> ជ្រើសរើសឯកសារ (.xlsx, .xls, .csv) <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx, .xls, .csv" required>
+                    </div>
+
+                    <div class="bg-light p-3 rounded-3 border small">
+                        <div class="fw-bold text-dark mb-1">
+                            <i class="fa-solid fa-lightbulb text-warning me-1"></i> ទម្រង់ជួរឈរដែលប្រព័ន្ធគាំទ្រ៖
+                        </div>
+                        <ul class="mb-0 ps-3 text-muted" style="font-size: 0.8rem;">
+                            <li>ជួរឈរ <strong>កម្រិតថ្នាក់ (Grade Level)</strong> ឬ <strong>លេខកម្រិត (7..12)</strong></li>
+                            <li>ជួរឈរ <strong>ជំនាញ (Track)</strong> (GENERAL, SCIENCE, SOCIAL)</li>
+                            <li>ជួរឈរមុខវិជ្ជាទាំង ១៤ (ឧ. តែងសេចក្តី, គណិតវិទ្យា, រូបវិទ្យា...) ឬតាមកូដ (R, D, K, M, P, C, B, E...)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 d-flex justify-content-between">
+                    <a href="{% url 'grade_rules_export_excel' %}" class="btn btn-outline-success btn-sm fw-bold">
+                        <i class="fa-solid fa-download me-1"></i> ទាញយកគំរូ Excel
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                            <i class="fa-solid fa-upload me-1"></i> Upload & Import
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% block extra_js %}
 <script>

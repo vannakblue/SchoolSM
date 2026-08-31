@@ -70,6 +70,9 @@ urlpatterns = [
 
     # Scoring Rules Manager
     path('scoring-rules/', views.grade_rules_manager, name='grade_rules_manager'),
+    path('scoring-rules/export-excel/', views.grade_rules_export_excel, name='grade_rules_export_excel'),
+    path('scoring-rules/export-csv/', views.grade_rules_export_csv, name='grade_rules_export_csv'),
+    path('scoring-rules/import/', views.grade_rules_import, name='grade_rules_import'),
     path('scoring-rules/reset/', views.reset_grade_rules_to_moeys, name='reset_grade_rules_to_moeys'),
     path('scoring-rules/save-default/', views.save_current_as_default, name='save_current_as_default'),
     path('scoring-rules/restore-custom/', views.restore_saved_custom_default, name='restore_saved_custom_default'),

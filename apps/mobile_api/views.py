@@ -1180,6 +1180,13 @@ class MobileBlindScoringSaveAPIView(APIView):
                 else:
                     continue
 
+                if not score_obj.entered_by:
+                    score_obj.entered_by = request.user
+                if not score_obj.entered_at:
+                    score_obj.entered_at = timezone.now()
+                score_obj.secret_code_used = secret_code
+                score_obj.last_modified_by = request.user
+
                 score_obj.save()
                 saved_count += 1
 

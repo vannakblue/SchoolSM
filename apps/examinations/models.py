@@ -513,6 +513,13 @@ class CandidateSubjectScore(models.Model):
     signature_present = models.BooleanField(default=True, verbose_name="បានចុះហត្ថលេខា / Signed")
     notes = models.CharField(max_length=255, blank=True, null=True, verbose_name="ចំណាំ / Notes")
 
+    # Grader Information & Audit Trail (ព័ត៌មានអ្នកបញ្ចូលពិន្ទុ)
+    entered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='entered_candidate_scores', verbose_name="អ្នកបញ្ចូលពិន្ទុ / Entered By")
+    entered_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងបញ្ចូល / Entered At")
+    secret_code_used = models.CharField(max_length=50, blank=True, null=True, verbose_name="អក្សរសម្ងាត់ដែលបានប្រើ / Secret Code Used")
+    last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='modified_candidate_scores', verbose_name="អ្នកកែប្រែចុងក្រោយ / Last Modified By")
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         ordering = ['exam_subject__order', 'id']
         unique_together = ('candidate', 'exam_subject')

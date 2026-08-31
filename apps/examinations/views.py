@@ -1730,9 +1730,25 @@ def api_exam_validate_secret_code(request):
         'max_score': float(exam_subject.max_score),
         'coefficient': float(exam_subject.coefficient),
         'candidate_count': len(desks_data),
-        'is_already_graded': code_obj.is_graded if code_obj else False,
-        'graded_by': (code_obj.graded_by.get_full_name() or code_obj.graded_by.username) if (code_obj and code_obj.graded_by) else '',
-        'graded_at': code_obj.graded_at.strftime('%d/%m/%Y %H:%M') if (code_obj and code_obj.graded_at) else '',
+        'is_already_graded': (code_obj.is_graded if code_obj else False) or bool(any(sc.score is not None or sc.is_absent for sc in scores_map.values())),
+        'graded_by': (
+            (getattr(code_obj.graded_by, 'khmer_name', '') or code_obj.graded_by.get_full_name() or code_obj.graded_by.username)
+            if (code_obj and code_obj.graded_by)
+            else (
+                (getattr(first_sc.entered_by, 'khmer_name', '') or first_sc.entered_by.get_full_name() or first_sc.entered_by.username)
+                if (first_sc := next((sc for sc in scores_map.values() if sc.entered_by), None))
+                else ''
+            )
+        ),
+        'graded_at': (
+            code_obj.graded_at.strftime('%d/%m/%Y %H:%M')
+            if (code_obj and code_obj.graded_at)
+            else (
+                first_sc.entered_at.strftime('%d/%m/%Y %H:%M')
+                if (first_sc := next((sc for sc in scores_map.values() if sc.entered_at), None))
+                else ''
+            )
+        ),
         'desks': desks_data
     })
 
@@ -1827,6 +1843,13 @@ def api_exam_save_blind_scores(request):
             else:
                 score_obj.score = None
                 score_obj.is_absent = False
+
+            if not score_obj.entered_by:
+                score_obj.entered_by = request.user
+            if not score_obj.entered_at:
+                score_obj.entered_at = timezone.now()
+            score_obj.secret_code_used = secret_code
+            score_obj.last_modified_by = request.user
 
             score_obj.save()
             saved_count += 1

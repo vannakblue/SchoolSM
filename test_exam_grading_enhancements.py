@@ -149,7 +149,8 @@ def run_tests():
         coefficient=Decimal('1.00')
     )
 
-    test_code_str = f"MTEST{now.strftime('%H%M%S')}"
+    import uuid
+    test_code_str = f"M{uuid.uuid4().hex[:6].upper()}"
     room_code = ExamRoomSubjectCode.objects.create(
         exam_room=std_room,
         exam_subject=exam_sub,
