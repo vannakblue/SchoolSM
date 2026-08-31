@@ -1547,8 +1547,19 @@
         event.stopPropagation();
         selectClassRow(classId);
 
-        currentPickingCell = { classId, day, period };
         const picker = document.getElementById('slotPickerPopover');
+
+        // Toggle behavior: If picker is already open on this exact cell, close it and dismiss
+        if (picker && picker.style.display === 'block' && currentPickingCell) {
+            if (String(currentPickingCell.classId) === String(classId) &&
+                String(currentPickingCell.day) === String(day) &&
+                String(currentPickingCell.period) === String(period)) {
+                closeSlotPicker();
+                return;
+            }
+        }
+
+        currentPickingCell = { classId, day, period };
         const container = document.getElementById('pickerOptionsContainer');
         container.innerHTML = '';
 

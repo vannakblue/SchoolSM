@@ -273,6 +273,23 @@
                 </div>
             </div>
 
+            <!-- Dynamic Live Changes Alert Banner -->
+            <div id="liveChangesAlert" class="alert alert-warning border-warning shadow-sm mb-3 d-none">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="fa-solid fa-bell text-warning fs-4 mt-0.5"></i>
+                    <div class="w-100">
+                        <div class="fw-bold text-dark mb-1">
+                            <span>🔔 សេចក្តីជូនដំណឹងអំពីបម្រែបម្រួលគ្រូបង្រៀន និងកាលវិភាគរួម (Pending Changes)៖</span>
+                        </div>
+                        <div id="liveChangesList" class="small text-dark"></div>
+                        <div class="mt-2 text-muted" style="font-size: 0.78rem;">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                            នៅពេលចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពបញ្ជីគ្រូ និង <strong>Sync ម៉ោងបង្រៀនក្នុងកាលវិភាគរួម (Master Timetable) ដោយស្វ័យប្រវត្តិ</strong>។
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Checkbox Matrix Table -->
             <div class="custom-card p-0 shadow-sm border mb-4">
                 <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -322,19 +339,34 @@
                                             name="{{ cell.input_name }}" 
                                             class="assign-check"
                                             data-subject-id="{{ cell.subject.id }}"
+                                            data-subject-name="{{ cell.subject.name_kh }}"
+                                            data-classroom-id="{{ cell.classroom.id }}"
+                                            data-classroom-name="{{ cell.classroom.name }}"
                                             data-hours="{{ cell.hours_required }}"
+                                            data-initial-checked="{% if cell.is_checked %}1{% else %}0{% endif %}"
+                                            data-other-teacher="{{ cell.other_teacher.khmer_name|default:'' }}"
+                                            data-scheduled-slots="{{ cell.scheduled_slots_count|default:0 }}"
                                             {% if cell.is_checked %}checked{% endif %}
                                             onchange="onCheckboxChange(this)"
-                                            title="{{ row.classroom.name }} - {{ cell.subject.name_kh }} ({{ cell.hours_required }} ម៉ោង/សប្តាហ៍)"
+                                            title="{{ row.classroom.name }} - {{ cell.subject.name_kh }} ({{ cell.hours_required }} ម៉ោង/សប្តាហ៍){% if cell.other_teacher %} | ផ្ទេរពី {{ cell.other_teacher.khmer_name }}{% endif %}{% if cell.scheduled_slots_count > 0 %} | មាន {{ cell.scheduled_slots_count }} ម៉ោងក្នុងកាលវិភាគរួម{% endif %}"
                                         >
-                                        {% if cell.hours_required > 0 %}
-                                        <span class="text-muted" style="font-size: 0.65rem; line-height: 1;">{{ cell.hours_required }}h</span>
-                                        {% else %}
-                                        <span class="text-muted opacity-25" style="font-size: 0.65rem; line-height: 1;">-</span>
-                                        {% endif %}
+                                        <div class="d-flex flex-wrap align-items-center justify-content-center gap-1 mt-0.5">
+                                            {% if cell.hours_required > 0 %}
+                                            <span class="text-muted fw-bold" style="font-size: 0.65rem; line-height: 1;">{{ cell.hours_required }}h</span>
+                                            {% else %}
+                                            <span class="text-muted opacity-25" style="font-size: 0.65rem; line-height: 1;">-</span>
+                                            {% endif %}
+
+                                            {% if cell.scheduled_slots_count > 0 %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle p-0 px-1" style="font-size: 0.60rem; line-height: 1.1;" title="មាន {{ cell.scheduled_slots_count }} ម៉ោងបានរៀបចំរួចក្នុងកាលវិភាគរួម">
+                                                <i class="fa-solid fa-calendar-check me-0.5"></i>{{ cell.scheduled_slots_count }}h
+                                            </span>
+                                            {% endif %}
+                                        </div>
+
                                         {% if cell.other_teacher %}
-                                        <span class="other-teacher-tag" title="កំពុងបង្រៀនដោយ៖ {{ cell.other_teacher.khmer_name }}">
-                                            {{ cell.other_teacher.khmer_name }}
+                                        <span class="other-teacher-tag" title="កំពុងបង្រៀនដោយ៖ {{ cell.other_teacher.khmer_name }} (ការធីកនឹងផ្ទេរគ្រូ និង Sync កាលវិភាគ)">
+                                            <i class="fa-solid fa-user-pen me-0.5 text-danger"></i>{{ cell.other_teacher.khmer_name }}
                                         </span>
                                         {% endif %}
                                     </div>
@@ -370,7 +402,7 @@
                 <div class="card-footer bg-white border-top p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="text-muted small">
                         <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                        នៅពេលលោកអ្នកចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពម៉ោងបង្រៀនអតិបរមា និង Sync ចូលទៅក្នុងកាលវិភាគសិក្សាស្វ័យប្រវត្តិនៃថ្នាក់នីមួយៗភ្លាមៗ!
+                        នៅពេលលោកអ្នកចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពម៉ោងបង្រៀនអតិបរមា និង <strong>Sync ចូលទៅក្នុងកាលវិភាគរួម (Master Timetable) នៃថ្នាក់នីមួយៗស្វ័យប្រវត្តិ</strong>!
                     </div>
                     <button type="submit" class="btn btn-primary fw-bold px-4 py-2 shadow-sm">
                         <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការចាត់តាំង (Save Assignments)
@@ -435,18 +467,72 @@
         let totalAssigned = 0;
         let totalCheckedCount = 0;
 
+        const transfers = [];
+        const removals = [];
+        const additions = [];
+
         checkboxes.forEach(cb => {
             const subId = cb.getAttribute('data-subject-id');
             const hours = parseInt(cb.getAttribute('data-hours')) || 0;
+            const isChecked = cb.checked;
+            const initialChecked = cb.getAttribute('data-initial-checked') === '1';
+            const otherTeacher = cb.getAttribute('data-other-teacher') || '';
+            const clsName = cb.getAttribute('data-classroom-name') || '';
+            const subName = cb.getAttribute('data-subject-name') || '';
+            const schedSlots = parseInt(cb.getAttribute('data-scheduled-slots')) || 0;
 
             if (!subjectTotals[subId]) subjectTotals[subId] = 0;
 
-            if (cb.checked) {
+            if (isChecked) {
                 subjectTotals[subId] += hours;
                 totalAssigned += hours;
                 totalCheckedCount++;
+
+                if (otherTeacher) {
+                    transfers.push({ clsName, subName, otherTeacher, schedSlots });
+                } else if (!initialChecked) {
+                    additions.push({ clsName, subName, schedSlots });
+                }
+            } else {
+                if (initialChecked) {
+                    removals.push({ clsName, subName, schedSlots });
+                }
             }
         });
+
+        // Update Dynamic Live Changes Notification Alert
+        const alertBox = document.getElementById('liveChangesAlert');
+        const listEl = document.getElementById('liveChangesList');
+        if (alertBox && listEl) {
+            if (transfers.length > 0 || removals.length > 0 || additions.length > 0) {
+                let html = '';
+                if (transfers.length > 0) {
+                    html += `<div class="mb-1 text-danger fw-bold"><i class="fa-solid fa-right-left me-1"></i> ផ្ទេរពីគ្រូផ្សេង (${transfers.length} មុខវិជ្ជា)៖</div><ul class="mb-2 ps-3">`;
+                    transfers.forEach(t => {
+                        html += `<li>ផ្ទេរថ្នាក់ <strong>${t.clsName}</strong> (${t.subName}) ពី <strong>${t.otherTeacher}</strong> មកកាន់គ្រូនេះ ${t.schedSlots > 0 ? `<span class="badge bg-primary-subtle text-primary border ms-1"><i class="fa-solid fa-rotate me-0.5"></i>Sync កាលវិភាគ ${t.schedSlots} ម៉ោង</span>` : ''}</li>`;
+                    });
+                    html += `</ul>`;
+                }
+                if (removals.length > 0) {
+                    html += `<div class="mb-1 text-danger fw-bold"><i class="fa-solid fa-trash-can me-1"></i> ដកចេញពីគ្រូនេះ (${removals.length} មុខវិជ្ជា)៖</div><ul class="mb-2 ps-3">`;
+                    removals.forEach(r => {
+                        html += `<li>ដកចេញពីថ្នាក់ <strong>${r.clsName}</strong> (${r.subName}) ${r.schedSlots > 0 ? `<span class="badge bg-warning-subtle text-dark border ms-1"><i class="fa-solid fa-clock me-0.5"></i>ម៉ោងក្នុងកាលវិភាគ ${r.schedSlots} ម៉ោងនឹងត្រូវទំនេរ</span>` : ''}</li>`;
+                    });
+                    html += `</ul>`;
+                }
+                if (additions.length > 0) {
+                    html += `<div class="mb-1 text-success fw-bold"><i class="fa-solid fa-plus-circle me-1"></i> ចាត់តាំងថ្មី (${additions.length} មុខវិជ្ជា)៖</div><ul class="mb-1 ps-3">`;
+                    additions.forEach(a => {
+                        html += `<li>ចាត់តាំងថ្នាក់ <strong>${a.clsName}</strong> (${a.subName}) ${a.schedSlots > 0 ? `<span class="badge bg-primary-subtle text-primary border ms-1"><i class="fa-solid fa-rotate me-0.5"></i>Sync កាលវិភាគ ${a.schedSlots} ម៉ោង</span>` : ''}</li>`;
+                    });
+                    html += `</ul>`;
+                }
+                listEl.innerHTML = html;
+                alertBox.classList.remove('d-none');
+            } else {
+                alertBox.classList.add('d-none');
+            }
+        }
 
         // Update Column Badges in tfoot
         for (const [subId, sumHours] of Object.entries(subjectTotals)) {
@@ -494,8 +580,20 @@
         }
     }
 
+    // Confirmation prompt if there are transfers or removals affecting Master Timetable
     document.addEventListener('DOMContentLoaded', () => {
         recalculateAssignedHours();
+
+        document.getElementById('assignmentForm')?.addEventListener('submit', function(e) {
+            const transfers = document.querySelectorAll('.assign-check:checked[data-other-teacher]:not([data-other-teacher=""])');
+            if (transfers.length > 0) {
+                const confirmMsg = `⚠️ ការព្រមានអំពីការផ្ទេរគ្រូបង្រៀន និងកាលវិភាគរួម៖\n\nលោកអ្នកកំពុងផ្ទេរការបង្រៀនពីគ្រូផ្សេងចំនួន ${transfers.length} មុខវិជ្ជា។\nប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពកាលវិភាគរួម (Master Timetable) ដោយស្វ័យប្រវត្តិ។\n\nតើលោកអ្នកពិតជាចង់រក្សាទុកមែនទេ?`;
+                if (!confirm(confirmMsg)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
     });
 </script>
 

@@ -4488,29 +4488,130 @@ def teacher_assignments_manager(request):
                         checked_pairs.add((cls_id, sub_id))
 
             assigned_count = 0
+            transferred_changes = []
+            removed_changes = []
+            new_additions = []
+            total_tt_synced = 0
+
             with transaction.atomic():
                 # 1. Unassign unchecked pairs previously belonging to this teacher in this academic year
-                existing_assigned = ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year) if active_year else ClassSubject.objects.filter(teacher=selected_teacher)
-                unassign_ids = [cs.id for cs in existing_assigned if (cs.classroom_id, cs.subject_id) not in checked_pairs]
-                if unassign_ids:
-                    ClassSubject.objects.filter(id__in=unassign_ids).update(teacher=None)
+                existing_assigned = list(
+                    ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year).select_related('classroom', 'subject')
+                    if active_year else ClassSubject.objects.filter(teacher=selected_teacher).select_related('classroom', 'subject')
+                )
+                unassign_cs_list = [cs for cs in existing_assigned if (cs.classroom_id, cs.subject_id) not in checked_pairs]
+                
+                for cs in unassign_cs_list:
+                    tt_qs = Timetable.objects.filter(classroom_id=cs.classroom_id, subject_id=cs.subject_id, teacher=selected_teacher)
+                    if active_year:
+                        tt_qs = tt_qs.filter(classroom__academic_year=active_year)
+                    tt_count = tt_qs.count()
+                    if tt_count > 0:
+                        tt_qs.update(teacher=None)
+                        total_tt_synced += tt_count
+                    removed_changes.append({
+                        'classroom_name': cs.classroom.name if cs.classroom else f'ថ្នាក់ #{cs.classroom_id}',
+                        'subject_name': cs.subject.name_kh if cs.subject else f'មុខវិជ្ជា #{cs.subject_id}',
+                        'tt_count': tt_count,
+                    })
 
-                # 2. Assign checked pairs to this teacher
+                if unassign_cs_list:
+                    ClassSubject.objects.filter(id__in=[cs.id for cs in unassign_cs_list]).update(teacher=None)
+
+                # 2. Assign checked pairs to this teacher & detect transfers from other teachers
                 for cls_id, sub_id in checked_pairs:
-                    cs = ClassSubject.objects.filter(classroom_id=cls_id, subject_id=sub_id).first()
+                    cs = ClassSubject.objects.filter(classroom_id=cls_id, subject_id=sub_id).select_related('classroom', 'subject', 'teacher').first()
                     if not cs:
-                        ClassSubject.objects.create(
+                        cls_obj = Classroom.objects.filter(id=cls_id).first()
+                        sub_obj = Subject.objects.filter(id=sub_id).first()
+                        cs = ClassSubject.objects.create(
                             classroom_id=cls_id,
                             subject_id=sub_id,
                             teacher=selected_teacher,
                         )
+                        tt_qs = Timetable.objects.filter(classroom_id=cls_id, subject_id=sub_id)
+                        if active_year:
+                            tt_qs = tt_qs.filter(classroom__academic_year=active_year)
+                        tt_synced = tt_qs.exclude(teacher=selected_teacher).update(teacher=selected_teacher)
+                        total_tt_synced += tt_synced
+                        new_additions.append({
+                            'classroom_name': cls_obj.name if cls_obj else f'ថ្នាក់ #{cls_id}',
+                            'subject_name': sub_obj.name_kh if sub_obj else f'មុខវិជ្ជា #{sub_id}',
+                            'tt_updated': tt_synced,
+                        })
                     else:
-                        if cs.teacher_id != selected_teacher.id:
+                        old_teacher = cs.teacher
+                        old_teacher_id = getattr(old_teacher, 'id', None)
+                        if old_teacher_id and old_teacher_id != selected_teacher.id:
+                            # Transferred from another teacher!
                             cs.teacher = selected_teacher
                             cs.save(update_fields=['teacher'])
+                            tt_qs = Timetable.objects.filter(classroom_id=cls_id, subject_id=sub_id)
+                            if active_year:
+                                tt_qs = tt_qs.filter(classroom__academic_year=active_year)
+                            tt_synced = tt_qs.exclude(teacher=selected_teacher).update(teacher=selected_teacher)
+                            total_tt_synced += tt_synced
+                            transferred_changes.append({
+                                'classroom_name': cs.classroom.name if cs.classroom else f'ថ្នាក់ #{cls_id}',
+                                'subject_name': cs.subject.name_kh if cs.subject else f'មុខវិជ្ជា #{sub_id}',
+                                'old_teacher_name': old_teacher.khmer_name or old_teacher.latin_name or 'គ្រូផ្សេង',
+                                'tt_updated': tt_synced,
+                            })
+                        else:
+                            if cs.teacher_id != selected_teacher.id:
+                                cs.teacher = selected_teacher
+                                cs.save(update_fields=['teacher'])
+                                tt_qs = Timetable.objects.filter(classroom_id=cls_id, subject_id=sub_id)
+                                if active_year:
+                                    tt_qs = tt_qs.filter(classroom__academic_year=active_year)
+                                tt_synced = tt_qs.exclude(teacher=selected_teacher).update(teacher=selected_teacher)
+                                total_tt_synced += tt_synced
+                                new_additions.append({
+                                    'classroom_name': cs.classroom.name if cs.classroom else f'ថ្នាក់ #{cls_id}',
+                                    'subject_name': cs.subject.name_kh if cs.subject else f'មុខវិជ្ជា #{sub_id}',
+                                    'tt_updated': tt_synced,
+                                })
                     assigned_count += 1
 
-            messages.success(request, f"បានរក្សាទុកការចាត់តាំងមុខវិជ្ជា និងថ្នាក់បង្រៀន ({assigned_count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ {selected_teacher.khmer_name} ជោគជ័យ!")
+                # 3. Check for timetable slot clashes/conflicts for selected_teacher in Master Timetable
+                clash_details = []
+                tt_all = list(
+                    Timetable.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year).select_related('classroom', 'subject')
+                    if active_year else Timetable.objects.filter(teacher=selected_teacher).select_related('classroom', 'subject')
+                )
+                day_period_map = defaultdict(list)
+                for entry in tt_all:
+                    day_period_map[(entry.day_of_week, entry.period_number)].append(entry)
+                
+                kh_days_map = {1: 'ចន្ទ', 2: 'អង្គារ', 3: 'ពុធ', 4: 'ព្រហស្បតិ៍', 5: 'សុក្រ', 6: 'សៅរ៍', 7: 'អាទិត្យ'}
+                for (d_num, p_num), entries_in_slot in day_period_map.items():
+                    if len(entries_in_slot) > 1:
+                        classes_str = ", ".join([f"{e.classroom.name} ({e.subject.name_kh})" for e in entries_in_slot])
+                        clash_details.append(f"ថ្ងៃ {kh_days_map.get(d_num, d_num)} ម៉ោងទី {p_num} ៖ ជាន់គ្នារវាង {classes_str}")
+
+            # Compose informative notification messages
+            msg_parts = [f"✅ បានរក្សាទុកការចាត់តាំងមុខវិជ្ជា និងថ្នាក់បង្រៀន ({assigned_count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ <strong>{selected_teacher.khmer_name}</strong> ជោគជ័យ!"]
+            if total_tt_synced > 0:
+                msg_parts.append(f"🔄 <strong>ធ្វើបច្ចុប្បន្នភាពកាលវិភាគរួម (Master Timetable)៖</strong> បាន Sync ម៉ោងបង្រៀនចំនួន <strong>{total_tt_synced} ម៉ោង</strong> ក្នុងកាលវិភាគរួមស្វ័យប្រវត្តិ។")
+            if transferred_changes:
+                transfers_str = "<br>• " + "<br>• ".join([
+                    f"ផ្ទេរថ្នាក់ <strong>{t['classroom_name']}</strong> ({t['subject_name']}) ពី <strong>{t['old_teacher_name']}</strong> មកកាន់ <strong>{selected_teacher.khmer_name}</strong>" + (f" (Sync កាលវិភាគ {t['tt_updated']} ម៉ោង)" if t['tt_updated'] > 0 else "")
+                    for t in transferred_changes
+                ])
+                msg_parts.append(f"👥 <strong>បម្រែបម្រួលផ្ទេរគ្រូបង្រៀន ({len(transferred_changes)} មុខវិជ្ជា)៖</strong>{transfers_str}")
+            if removed_changes:
+                removals_str = "<br>• " + "<br>• ".join([
+                    f"ដកចេញពីថ្នាក់ <strong>{r['classroom_name']}</strong> ({r['subject_name']})" + (f" (ម៉ោងក្នុងកាលវិភាគ {r['tt_count']} ម៉ោងត្រូវទំនេរ)" if r['tt_count'] > 0 else "")
+                    for r in removed_changes
+                ])
+                msg_parts.append(f"🗑️ <strong>មុខវិជ្ជាដែលបានដកចេញ ({len(removed_changes)} មុខវិជ្ជា)៖</strong>{removals_str}")
+
+            messages.success(request, "<br><br>".join(msg_parts))
+
+            if clash_details:
+                clashes_str = "<br>• " + "<br>• ".join(clash_details)
+                messages.warning(request, f"⚠️ <strong>ការព្រមានជាន់ម៉ោងក្នុងកាលវិភាគរួម (Timetable Conflicts)!</strong><br>លោកគ្រូ/អ្នកគ្រូ {selected_teacher.khmer_name} មានម៉ោងជាន់គ្នា៖{clashes_str}<br><em>សូមចូលទៅកាន់ «កាលវិភាគរួម (Master Timetable)» ដើម្បីសម្រួលរៀបចំម៉ោងឡើងវិញ!</em>")
+
             return redirect(f"/academics/teacher-assignments/?teacher={selected_teacher.id}{f'&year={active_year.id}' if active_year else ''}")
 
         # Build matrix for display with zero N+1 queries
@@ -4564,6 +4665,17 @@ def teacher_assignments_manager(request):
                 'is_over': t_hours > t_max,
             })
 
+        timetables_active = list(
+            Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher')
+            if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+        )
+        tt_slot_count_map = defaultdict(int)
+        tt_teacher_map = {}
+        for t_entry in timetables_active:
+            tt_slot_count_map[(t_entry.classroom_id, t_entry.subject_id)] += 1
+            if t_entry.teacher:
+                tt_teacher_map[(t_entry.classroom_id, t_entry.subject_id)] = t_entry.teacher.khmer_name
+
         matrix_grid = []
         selected_subject_hours = {sub.id: 0 for sub in subjects}
         selected_total_assigned_hours = 0
@@ -4580,6 +4692,8 @@ def teacher_assignments_manager(request):
                 is_checked = (cls.id, sub.id) in selected_teacher_pairs
                 other_teacher = all_assignments.get((cls.id, sub.id))
                 is_valid_for_class = sub.id in cls_assigned_subs
+                scheduled_slots_count = tt_slot_count_map.get((cls.id, sub.id), 0)
+                scheduled_teacher_name = tt_teacher_map.get((cls.id, sub.id))
 
                 cls_grade = cls.grade_level if cls.grade_level is not None else 10
                 cls_track = cls.track or 'GENERAL'
@@ -4600,6 +4714,8 @@ def teacher_assignments_manager(request):
                     'hours_required': h_req,
                     'other_teacher': other_teacher if (other_teacher and other_teacher != selected_teacher) else None,
                     'is_valid_for_class': is_valid_for_class,
+                    'scheduled_slots_count': scheduled_slots_count,
+                    'scheduled_teacher_name': scheduled_teacher_name,
                 })
             matrix_grid.append({
                 'classroom': cls,
