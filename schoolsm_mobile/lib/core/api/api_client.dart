@@ -11,8 +11,9 @@ class ApiClient {
   ApiClient._internal() {
     dio = Dio(
       BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -49,11 +50,12 @@ class ApiClient {
         }
       }
       if (error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout) {
-        return "ការតភ្ជាប់ទៅកាន់ Server យឺតខ្លាំង (Connection Timeout)";
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout) {
+        return "ការតភ្ជាប់ទៅកាន់ Server យឺត (Connection Timeout)! ប្រសិនបើ Server កំពុងភ្ញាក់ (Cold Start) សូមរង់ចាំបន្តិច រួចព្យាយាមម្តងទៀត។";
       }
       if (error.type == DioExceptionType.connectionError) {
-        return "មិនអាចភ្ជាប់ទៅកាន់ Server បានទេ! សូមពិនិត្យអាសយដ្ឋាន Server ឬអ៊ីនធឺណិត។";
+        return "មិនអាចភ្ជាប់ទៅកាន់ Server បានទេ! ប្រសិនបើ Server នៅ Sleep Mode សូមរង់ចាំប្រហែល 30 វិនាទីដើម្បីឱ្យ Server ភ្ញាក់ រួចព្យាយាមម្តងទៀត។";
       }
       return "មានបញ្ហាបច្ចេកទេស (${error.response?.statusCode ?? 'Network Error'})";
     }

@@ -205,6 +205,10 @@
             </ul>
         </div>
 
+        <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#dutyTypeManagerModal">
+            <i class="fa-solid fa-gear me-1"></i> កំណត់ប្រភេទប្រចាំការ (Manage Duty Types)
+        </button>
+
         <button type="button" class="btn btn-primary btn-sm shadow-sm" onclick="openSchoolWideAutoAssignModal()">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Assign គ្រូខ្វះម៉ោងទាំងអស់
         </button>
@@ -371,18 +375,23 @@
 
             <!-- Duty Type Picker Legend -->
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
-                <div class="d-flex flex-wrap align-items-center gap-2 small">
+                <div class="d-flex flex-wrap align-items-center gap-2 small" id="dutyTypeRadioContainer">
                     <span class="fw-bold text-muted me-1">ជ្រើសប្រភេទប្រចាំការ៖</span>
                     {% for dt in duty_types %}
-                    <label class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 cursor-pointer">
+                    <label class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 cursor-pointer duty-type-radio-label" id="duty_type_label_{{ dt.code }}">
                         <input type="radio" name="selectedDutyType" value="{{ dt.code }}" class="form-check-input mt-0 me-1" {% if forloop.first %}checked{% endif %}>
                         <i class="fa-solid {{ dt.icon }}" style="color: {{ dt.color }};"></i>
                         <span>{{ dt.name }}</span>
                     </label>
                     {% endfor %}
                 </div>
-                <div class="small text-muted">
-                    <i class="fa-solid fa-circle-info text-info me-1"></i> ចុចលើក្រឡាដើម្បីបន្ថែម ឬលុបម៉ោងប្រចាំការ
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 rounded-pill fw-bold shadow-2xs" data-bs-toggle="modal" data-bs-target="#dutyTypeManagerModal" title="បន្ថែម កែប្រែ ឬលុបប្រភេទប្រចាំការ">
+                        <i class="fa-solid fa-gear me-1"></i> កំណត់ប្រភេទប្រចាំការ (Manage)
+                    </button>
+                    <div class="small text-muted d-none d-md-inline">
+                        <i class="fa-solid fa-circle-info text-info me-1"></i> ចុចលើក្រឡាដើម្បីបន្ថែម/ដកម៉ោង
+                    </div>
                 </div>
             </div>
 
@@ -521,33 +530,154 @@
     </div>
 </div>
 
+<!-- Modal: Duty Type Manager (CRUD) -->
+<div class="modal fade" id="dutyTypeManagerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #4f46e5, #06b6d4);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-layer-group me-2"></i>គ្រប់គ្រងប្រភេទប្រចាំការ (Manage Duty Types)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <!-- Left: Current Duty Types List -->
+                    <div class="col-12 col-md-7">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-list-check text-primary me-2"></i>ប្រភេទប្រចាំការបច្ចុប្បន្ន (<span id="dtCountBadge">0</span>)
+                            </h6>
+                            <span class="badge bg-light text-muted border">ចុចលើប៊ូតុងដើម្បីកែប្រែ ឬលុប</span>
+                        </div>
+                        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0 small">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>ប្រភេទភារកិច្ច</th>
+                                        <th>កូដ (Code)</th>
+                                        <th class="text-end">សកម្មភាព</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dutyTypesTableBody">
+                                    <!-- Dynamic rows loaded via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Add / Edit Form -->
+                    <div class="col-12 col-md-5">
+                        <div class="card border-primary-subtle bg-light-subtle rounded-3 p-3 shadow-sm">
+                            <h6 class="fw-bold text-primary mb-3 d-flex align-items-center" id="dutyFormTitle">
+                                <i class="fa-solid fa-circle-plus me-2" id="dutyFormTitleIcon"></i><span id="dutyFormTitleText">បន្ថែមប្រភេទប្រចាំការថ្មី</span>
+                            </h6>
+                            <form id="dutyTypeForm" onsubmit="saveDutyType(event)">
+                                <input type="hidden" id="dt_form_id" value="">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">ឈ្មោះប្រភេទប្រចាំការ <span class="text-danger">*</span></label>
+                                    <input type="text" id="dt_form_name" class="form-control form-control-sm" placeholder="ឧ. ប្រចាំការខ្លោងទ្វារ, បន្ទប់កុំព្យូទ័រ..." required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">ជ្រើសរើស Icon <span class="text-muted fw-normal">(FontAwesome)</span></label>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text bg-white" id="dt_icon_preview_box"><i class="fa-solid fa-clock" id="dt_icon_preview"></i></span>
+                                        <input type="text" id="dt_form_icon" class="form-control form-control-sm" value="fa-clock" placeholder="fa-shield-halved, fa-door-open..." oninput="updateIconPreview(this.value)" required>
+                                    </div>
+                                    <!-- Quick Icon Presets -->
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-building-columns')"><i class="fa-solid fa-building-columns"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-user-shield')"><i class="fa-solid fa-user-shield"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-book-open-reader')"><i class="fa-solid fa-book-open-reader"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-file-signature')"><i class="fa-solid fa-file-signature"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-clock')"><i class="fa-solid fa-clock"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-door-open')"><i class="fa-solid fa-door-open"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-laptop-code')"><i class="fa-solid fa-laptop-code"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-futbol')"><i class="fa-solid fa-futbol"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-bell')"><i class="fa-solid fa-bell"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-camera')"><i class="fa-solid fa-camera"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-handshake')"><i class="fa-solid fa-handshake"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="setPresetIcon('fa-shield-halved')"><i class="fa-solid fa-shield-halved"></i></button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">ពណ៌សម្គាល់ (Color Theme)</label>
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <input type="color" id="dt_form_color_picker" class="form-control form-control-color p-0 border-0 rounded-circle" value="#4f46e5" style="width: 32px; height: 32px; cursor: pointer;" oninput="document.getElementById('dt_form_color').value = this.value; updateIconColor(this.value);">
+                                        <input type="text" id="dt_form_color" class="form-control form-control-sm font-monospace" value="#4f46e5" oninput="document.getElementById('dt_form_color_picker').value = this.value; updateIconColor(this.value);" required>
+                                    </div>
+                                    <!-- Quick Color Swatches -->
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #4f46e5;" onclick="setPresetColor('#4f46e5')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #0ea5e9;" onclick="setPresetColor('#0ea5e9')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #10b981;" onclick="setPresetColor('#10b981')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #f59e0b;" onclick="setPresetColor('#f59e0b')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #8b5cf6;" onclick="setPresetColor('#8b5cf6')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #ef4444;" onclick="setPresetColor('#ef4444')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #ec4899;" onclick="setPresetColor('#ec4899')">&nbsp;</span>
+                                        <span class="badge rounded-circle p-2 cursor-pointer shadow-sm" style="background-color: #14b8a6;" onclick="setPresetColor('#14b8a6')">&nbsp;</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 pt-2 border-top">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill d-none" id="dt_cancel_edit_btn" onclick="resetDutyTypeForm()">
+                                        បោះបង់
+                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-sm flex-fill fw-bold" id="dt_submit_btn">
+                                        <i class="fa-solid fa-plus me-1" id="dt_submit_btn_icon"></i> <span id="dt_submit_btn_text">បន្ថែមថ្មី</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                <span class="small text-muted"><i class="fa-solid fa-circle-check text-success me-1"></i> រាល់ការកែប្រែនឹងត្រូវ Update លើកាលវិភាគភ្លាមៗ។</span>
+                <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">រួចរាល់ (Close)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Embedded Javascript Engine -->
 <script>
     const ACTIVE_YEAR_ID = {{ active_year.id|default:0 }};
     const CURRENT_TEACHER_ID = {{ selected_teacher.id|default:0 }};
-    const DUTY_TYPES = {{ duty_types_json|safe }};
+    let CURRENT_DUTY_TYPES = {{ duty_types_json|safe }};
     const ACTIVE_STAFF_DUTY_SLOTS = {{ active_staff_duty_slots_json|safe }};
     const ACTIVE_STAFF_TEACHING_SLOTS = {{ active_staff_teaching_slots_json|safe }};
     
     // In-memory duty matrix state for active teacher: { "day_period": { duty_type, notes, is_auto } }
     let CURRENT_DUTY_STATE = { ...ACTIVE_STAFF_DUTY_SLOTS };
+    let DUTY_TYPE_CONFIG = {};
 
-    const DUTY_TYPE_CONFIG = {
-        'OFFICE': { name: 'ប្រចាំការការិយាល័យ', color: '#4f46e5', icon: 'fa-building-columns' },
-        'DISCIPLINE': { name: 'សម្របសម្រួលវិន័យ', color: '#0ea5e9', icon: 'fa-user-shield' },
-        'LIBRARY': { name: 'ប្រចាំការបណ្ណាល័យ', color: '#10b981', icon: 'fa-book-open-reader' },
-        'ADMIN': { name: 'រដ្ឋបាល & លិខិតស្នាម', color: '#f59e0b', icon: 'fa-file-signature' },
-        'GENERAL': { name: 'ប្រចាំការទូទៅ', color: '#8b5cf6', icon: 'fa-clock' },
-    };
+    function updateDutyTypeConfigMap() {
+        DUTY_TYPE_CONFIG = {};
+        CURRENT_DUTY_TYPES.forEach(dt => {
+            DUTY_TYPE_CONFIG[dt.code] = {
+                id: dt.id,
+                name: dt.name,
+                color: dt.color,
+                icon: dt.icon
+            };
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
+        updateDutyTypeConfigMap();
         renderDutyMatrix();
         updateDutyCounters();
+        renderDutyTypesTable();
     });
 
     function getSelectedDutyType() {
         const checked = document.querySelector('input[name="selectedDutyType"]:checked');
-        return checked ? checked.value : 'OFFICE';
+        if (checked) return checked.value;
+        return CURRENT_DUTY_TYPES.length > 0 ? CURRENT_DUTY_TYPES[0].code : 'OFFICE';
     }
 
     function renderDutyMatrix() {
@@ -571,7 +701,8 @@
                     `;
                     cellEl.onclick = null;
                 } else if (dutySlot) {
-                    const cfg = DUTY_TYPE_CONFIG[dutySlot.duty_type] || DUTY_TYPE_CONFIG['OFFICE'];
+                    const fallbackDefault = CURRENT_DUTY_TYPES.length > 0 ? CURRENT_DUTY_TYPES[0] : { name: 'ប្រចាំការ', color: '#4f46e5', icon: 'fa-clock' };
+                    const cfg = DUTY_TYPE_CONFIG[dutySlot.duty_type] || fallbackDefault;
                     const autoBadge = dutySlot.is_auto ? `<span class="badge bg-white text-dark ms-1" style="font-size: 0.6rem; opacity: 0.9;">Auto</span>` : '';
                     cellEl.innerHTML = `
                         <div class="duty-slot-assigned" style="background-color: ${cfg.color};" title="${cfg.name} (ចុចដើម្បីលុប)">
@@ -855,6 +986,207 @@
 
         const badge = document.getElementById('staffCountBadge');
         if (badge) badge.innerText = `${visibleCount} នាក់`;
+    }
+
+    // =========================================================================
+    // DUTY TYPES DYNAMIC CRUD MANAGEMENT
+    // =========================================================================
+    function updateIconPreview(iconClass) {
+        const preview = document.getElementById('dt_icon_preview');
+        if (preview) {
+            preview.className = `fa-solid ${iconClass || 'fa-clock'}`;
+        }
+    }
+
+    function updateIconColor(color) {
+        const preview = document.getElementById('dt_icon_preview');
+        if (preview) {
+            preview.style.color = color;
+        }
+    }
+
+    function setPresetIcon(iconClass) {
+        document.getElementById('dt_form_icon').value = iconClass;
+        updateIconPreview(iconClass);
+    }
+
+    function setPresetColor(hexColor) {
+        document.getElementById('dt_form_color').value = hexColor;
+        document.getElementById('dt_form_color_picker').value = hexColor;
+        updateIconColor(hexColor);
+    }
+
+    function renderDutyTypesTable() {
+        const tbody = document.getElementById('dutyTypesTableBody');
+        const countBadge = document.getElementById('dtCountBadge');
+        if (countBadge) countBadge.innerText = CURRENT_DUTY_TYPES.length;
+
+        if (!tbody) return;
+        if (CURRENT_DUTY_TYPES.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">គ្មានប្រភេទប្រចាំការនៅឡើយទេ</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = CURRENT_DUTY_TYPES.map(dt => `
+            <tr id="dt_row_${dt.id}">
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge p-2 rounded-circle" style="background-color: ${dt.color};">
+                            <i class="fa-solid ${dt.icon} text-white" style="font-size: 0.85rem;"></i>
+                        </span>
+                        <strong class="text-dark">${dt.name}</strong>
+                    </div>
+                </td>
+                <td>
+                    <code class="text-secondary fw-bold">${dt.code}</code>
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-outline-primary btn-xs px-2 py-1 me-1" onclick="editDutyType(${dt.id})" title="កែប្រែ">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-xs px-2 py-1" onclick="deleteDutyType(${dt.id}, '${dt.name}')" title="លុប" ${CURRENT_DUTY_TYPES.length <= 1 ? 'disabled' : ''}>
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function editDutyType(id) {
+        const dt = CURRENT_DUTY_TYPES.find(item => item.id === id);
+        if (!dt) return;
+
+        document.getElementById('dt_form_id').value = dt.id;
+        document.getElementById('dt_form_name').value = dt.name;
+        document.getElementById('dt_form_icon').value = dt.icon;
+        document.getElementById('dt_form_color').value = dt.color;
+        document.getElementById('dt_form_color_picker').value = dt.color;
+        updateIconPreview(dt.icon);
+        updateIconColor(dt.color);
+
+        document.getElementById('dutyFormTitleText').innerText = `កែប្រែ៖ ${dt.name}`;
+        document.getElementById('dutyFormTitleIcon').className = 'fa-solid fa-pen-to-square me-2';
+        document.getElementById('dt_submit_btn_text').innerText = 'រក្សាទុកការកែប្រែ';
+        document.getElementById('dt_submit_btn_icon').className = 'fa-solid fa-check me-1';
+        document.getElementById('dt_cancel_edit_btn').classList.remove('d-none');
+    }
+
+    function resetDutyTypeForm() {
+        document.getElementById('dt_form_id').value = '';
+        document.getElementById('dt_form_name').value = '';
+        document.getElementById('dt_form_icon').value = 'fa-clock';
+        document.getElementById('dt_form_color').value = '#4f46e5';
+        document.getElementById('dt_form_color_picker').value = '#4f46e5';
+        updateIconPreview('fa-clock');
+        updateIconColor('#4f46e5');
+
+        document.getElementById('dutyFormTitleText').innerText = 'បន្ថែមប្រភេទប្រចាំការថ្មី';
+        document.getElementById('dutyFormTitleIcon').className = 'fa-solid fa-circle-plus me-2';
+        document.getElementById('dt_submit_btn_text').innerText = 'បន្ថែមថ្មី';
+        document.getElementById('dt_submit_btn_icon').className = 'fa-solid fa-plus me-1';
+        document.getElementById('dt_cancel_edit_btn').classList.add('d-none');
+    }
+
+    async function saveDutyType(e) {
+        e.preventDefault();
+        const editId = document.getElementById('dt_form_id').value;
+        const name = document.getElementById('dt_form_name').value.trim();
+        const icon = document.getElementById('dt_form_icon').value.trim();
+        const color = document.getElementById('dt_form_color').value.trim();
+
+        if (!name) return;
+
+        const isEditing = !!editId;
+        const url = isEditing ? `/academics/duty-schedule/types/${editId}/edit/` : '/academics/duty-schedule/types/create/';
+        const submitBtn = document.getElementById('dt_submit_btn');
+        submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ name, icon, color })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (isEditing) {
+                    const idx = CURRENT_DUTY_TYPES.findIndex(i => i.id === parseInt(editId));
+                    if (idx !== -1) {
+                        CURRENT_DUTY_TYPES[idx] = data.duty_type;
+                    }
+                } else {
+                    CURRENT_DUTY_TYPES.push(data.duty_type);
+                }
+
+                updateDutyTypeConfigMap();
+                renderDutyTypesTable();
+                syncDutyTypeRadios();
+                renderDutyMatrix();
+                resetDutyTypeForm();
+            } else {
+                alert('⚠️ បរាជ័យ៖ ' + data.message);
+            }
+        } catch (err) {
+            alert('⚠️ Error: ' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    async function deleteDutyType(id, name) {
+        if (!confirm(`⚠️ តើលោកអ្នកពិតជាចង់លុបប្រភេទប្រចាំការ "${name}" នេះមែនទេ?`)) return;
+
+        try {
+            const res = await fetch(`/academics/duty-schedule/types/${id}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                CURRENT_DUTY_TYPES = CURRENT_DUTY_TYPES.filter(i => i.id !== id);
+                updateDutyTypeConfigMap();
+                renderDutyTypesTable();
+                syncDutyTypeRadios();
+                renderDutyMatrix();
+            } else {
+                alert('⚠️ បរាជ័យ៖ ' + data.message);
+            }
+        } catch (err) {
+            alert('⚠️ Error: ' + err.message);
+        }
+    }
+
+    function syncDutyTypeRadios() {
+        const container = document.getElementById('dutyTypeRadioContainer');
+        const autoSelect = document.getElementById('autoAssignDutyTypeSelect');
+
+        if (container) {
+            const currentVal = getSelectedDutyType();
+            let radiosHtml = `<span class="fw-bold text-muted me-1">ជ្រើសប្រភេទប្រចាំការ៖</span>`;
+            CURRENT_DUTY_TYPES.forEach((dt, idx) => {
+                const isChecked = (dt.code === currentVal) || (idx === 0 && !CURRENT_DUTY_TYPES.some(x => x.code === currentVal));
+                radiosHtml += `
+                    <label class="btn btn-sm btn-outline-secondary py-0 px-2 d-flex align-items-center gap-1 cursor-pointer duty-type-radio-label" id="duty_type_label_${dt.code}">
+                        <input type="radio" name="selectedDutyType" value="${dt.code}" class="form-check-input mt-0 me-1" ${isChecked ? 'checked' : ''}>
+                        <i class="fa-solid ${dt.icon}" style="color: ${dt.color};"></i>
+                        <span>${dt.name}</span>
+                    </label>
+                `;
+            });
+            container.innerHTML = radiosHtml;
+        }
+
+        if (autoSelect) {
+            autoSelect.innerHTML = CURRENT_DUTY_TYPES.map(dt => `
+                <option value="${dt.code}">${dt.name}</option>
+            `).join('');
+        }
     }
 </script>
 {% endblock %}

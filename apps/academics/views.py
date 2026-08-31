@@ -6,12 +6,13 @@ from django.http import JsonResponse, HttpResponse
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Count
 from decimal import Decimal
+from collections import defaultdict
 import datetime
 import json
 import csv
 import os
 from apps.accounts.decorators import role_required
-from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule
+from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule, TeacherDutyType
 from .forms import ClassroomForm, SubjectForm, TimetableForm, GradeLevelForm, AcademicYearForm, GradeEnrollmentOptionForm, AcademicTrackForm
 from apps.students.models import Student
 from apps.teachers.models import Teacher
@@ -108,13 +109,8 @@ DEFAULT_MOEYS_CLASSROOMS = [
 @login_required
 @role_required(['ADMIN'])
 def grade_level_list(request):
-    """Lists all configurable Grade Levels / Streams"""
-    grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
-    form = GradeLevelForm()
-    return render(request, 'academics/grade_level_list.html', {
-        'grade_levels': grade_levels,
-        'form': form,
-    })
+    """Lists all configurable Grade Levels / Streams -> Managed in Scoring Rules"""
+    return redirect('grade_rules_manager')
 
 
 @login_required
@@ -154,9 +150,7 @@ def grade_level_edit(request, pk):
             form.save()
             messages.success(request, f"បានកែប្រែកម្រិតថ្នាក់ '{gl.name}' ជោគជ័យ!")
             return redirect('grade_rules_manager')
-    else:
-        form = GradeLevelForm(instance=gl)
-    return render(request, 'academics/grade_level_form.html', {'form': form, 'grade_level': gl})
+    return redirect('grade_rules_manager')
 
 
 @login_required
@@ -179,9 +173,7 @@ def grade_level_delete(request, pk):
 @role_required(['ADMIN'])
 def academic_track_list(request):
     """List & manage all academic tracks"""
-    tracks = AcademicTrack.objects.all().order_by('order', 'id')
-    form = AcademicTrackForm()
-    return render(request, 'academics/track_list.html', {'tracks': tracks, 'form': form})
+    return redirect('grade_options_manager')
 
 
 @login_required
@@ -1030,7 +1022,6 @@ PERIODS_LIST = [1, 2, 3, 4, 5, 6, 7, 8]
 
 @login_required
 def timetable_view(request):
-
     """
     Master Timetable Matrix (កាលវិភាគរួម) View.
     Displays school-wide timetable matrix with rows as classrooms and columns as Day x Periods 1-8.
@@ -1053,16 +1044,26 @@ def timetable_view(request):
             except Exception:
                 pass
 
-    academic_years = AcademicYear.objects.all().order_by('-start_date')
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
-    teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
-    subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
+    academic_years = list(AcademicYear.objects.all().order_by('-start_date'))
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    subjects = list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id'))
+    subjects_by_id = {s.id: s for s in subjects}
+    teachers_by_id = {t.id: t for t in teachers}
     
     # Existing timetable entries for active academic year
-    timetables = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    timetables = list(timetables_qs)
+
+    timetables_by_classroom = defaultdict(list)
+    timetables_by_teacher = defaultdict(int)
+    for entry in timetables:
+        timetables_by_classroom[entry.classroom_id].append(entry)
+        if entry.teacher_id:
+            timetables_by_teacher[entry.teacher_id] += 1
     
     # Pre-fetch ClassSubject assignments (Only teachers assigned to this class and subject in this academic year)
-    class_subject_assignments = ClassSubject.objects.filter(
+    class_subject_assignments_qs = ClassSubject.objects.filter(
         classroom__academic_year=active_year,
         teacher__isnull=False
     ).exclude(
@@ -1072,20 +1073,24 @@ def timetable_view(request):
     ).exclude(
         subject__code__in=['R', 'D']
     ).select_related('classroom', 'subject', 'teacher')
+    class_subject_assignments = list(class_subject_assignments_qs)
+
+    cs_by_teacher = defaultdict(list)
+    cs_pairs_set = set()
+    for cs in class_subject_assignments:
+        if cs.teacher_id:
+            cs_by_teacher[cs.teacher_id].append(cs)
+            cs_pairs_set.add((cs.subject_id, cs.teacher_id))
 
     # Build unique sequential teacher-subject codes (e.g. K1, K2, M1, M2, P1, P2...)
-    distinct_assignments = class_subject_assignments.values(
-        'subject_id', 'teacher_id'
-    ).distinct().order_by('subject_id', 'teacher_id')
+    distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0] or 0, x[1] or 0))
 
     teacher_subject_code_map = {}
     subject_teacher_counters = {}
 
-    for item in distinct_assignments:
-        s_id = item['subject_id']
-        t_id = item['teacher_id']
-        sub = next((s for s in subjects if s.id == s_id), None)
-        sub_code = sub.code if sub else 'S'
+    for (s_id, t_id) in distinct_assignments:
+        sub = subjects_by_id.get(s_id)
+        sub_code = sub.code if sub and sub.code else 'S'
         
         if s_id not in subject_teacher_counters:
             subject_teacher_counters[s_id] = 1
@@ -1103,7 +1108,7 @@ def timetable_view(request):
                     subject_teacher_counters[s.id] = 1
                 else:
                     subject_teacher_counters[s.id] += 1
-                teacher_subject_code_map[(s.id, t.id)] = f"{s.code}{subject_teacher_counters[s.id]}"
+                teacher_subject_code_map[(s.id, t.id)] = f"{s.code or 'S'}{subject_teacher_counters[s.id]}"
 
     # Build options per classroom with slot_code (e.g. K1, M2...)
     class_options_map = {}
@@ -1111,25 +1116,27 @@ def timetable_view(request):
         c_id = cs.classroom_id
         if c_id not in class_options_map:
             class_options_map[c_id] = []
-        slot_code = teacher_subject_code_map.get((cs.subject_id, cs.teacher_id), f"{cs.subject.code}1")
+        sub_code = cs.subject.code if cs.subject and cs.subject.code else 'S'
+        slot_code = teacher_subject_code_map.get((cs.subject_id, cs.teacher_id), f"{sub_code}1")
+        tch_name = (cs.teacher.khmer_name or cs.teacher.name or '') if cs.teacher else ''
         class_options_map[c_id].append({
-            'subject_id': cs.subject.id,
-            'subject_code': cs.subject.code,
+            'subject_id': cs.subject.id if cs.subject else None,
+            'subject_code': sub_code,
             'slot_code': slot_code,
-            'subject_name': cs.subject.name_kh,
-            'subject_color': cs.subject.color_code,
-            'category': cs.subject.category,
-            'teacher_id': cs.teacher.id,
-            'teacher_name': cs.teacher.khmer_name,
-            'teacher_short': cs.teacher.khmer_name[:6],
+            'subject_name': cs.subject.name_kh if cs.subject else '',
+            'subject_color': cs.subject.color_code if cs.subject and cs.subject.color_code else '#4f46e5',
+            'category': cs.subject.category if cs.subject else 'GENERAL',
+            'teacher_id': cs.teacher.id if cs.teacher else None,
+            'teacher_name': tch_name,
+            'teacher_short': tch_name[:6],
         })
 
     # Pre-fetch required hours from GradeLevelRule
-    grade_rules = GradeLevelRule.objects.filter(
+    grade_rules = list(GradeLevelRule.objects.filter(
         weekly_hours__gt=0
     ).exclude(
         subject__code__in=['R', 'D']
-    ).select_related('subject')
+    ).select_related('subject'))
 
     requirements_map = {}
     for r in grade_rules:
@@ -1151,24 +1158,30 @@ def timetable_view(request):
         
         # Classroom slot map: (day_of_week, period_number) -> slot info
         cls_slots = {}
-        cls_entries = timetables.filter(classroom=cls)
+        cls_entries = timetables_by_classroom.get(cls.id, [])
         
         for entry in cls_entries:
+            sub_name = entry.subject.name_kh if entry.subject else ''
+            sub_code = entry.subject.code if entry.subject and entry.subject.code else ''
+            sub_color = entry.subject.color_code if entry.subject and entry.subject.color_code else '#4f46e5'
+            sub_category = entry.subject.category if entry.subject else 'GENERAL'
+            tch_name = (entry.teacher.khmer_name or entry.teacher.name or '') if entry.teacher else ''
+            tch_short = tch_name[:6]
             slot_code = teacher_subject_code_map.get(
                 (entry.subject_id, entry.teacher_id), 
-                entry.subject.code
+                sub_code
             )
             cls_slots[(entry.day_of_week, entry.period_number)] = {
                 'id': entry.id,
                 'subject_id': entry.subject_id,
-                'subject_name': entry.subject.name_kh,
-                'subject_code': entry.subject.code,
+                'subject_name': sub_name,
+                'subject_code': sub_code,
                 'slot_code': slot_code,
-                'subject_color': entry.subject.color_code,
-                'category': entry.subject.category,
+                'subject_color': sub_color,
+                'category': sub_category,
                 'teacher_id': entry.teacher_id,
-                'teacher_name': entry.teacher.khmer_name,
-                'teacher_short': entry.teacher.khmer_name[:6],
+                'teacher_name': tch_name,
+                'teacher_short': tch_short,
             }
             matrix_state[f"{cls.id}_{entry.day_of_week}_{entry.period_number}"] = {
                 'subject_id': entry.subject_id,
@@ -1195,24 +1208,25 @@ def timetable_view(request):
         classrooms_data.append({
             'classroom': cls,
             'total_req_hours': total_req_hours,
-            'scheduled_hours': cls_entries.count(),
+            'scheduled_hours': len(cls_entries),
             'days_grid': days_grid,
         })
 
     # Merge session-stored blocked slots for active academic year into matrix_state
     session_key = f"blocked_slots_{active_year.id if active_year else 'all'}"
     saved_blocked = request.session.get(session_key, [])
-    for blk in saved_blocked:
-        c_id = blk.get('classroom_id')
-        d_num = blk.get('day_of_week')
-        p_num = blk.get('period_number')
-        if c_id and d_num and p_num:
-            k = f"{c_id}_{d_num}_{p_num}"
-            if k not in matrix_state:
-                matrix_state[k] = {'is_blocked': True, 'is_locked': True}
+    if isinstance(saved_blocked, list):
+        for blk in saved_blocked:
+            if isinstance(blk, dict):
+                c_id = blk.get('classroom_id')
+                d_num = blk.get('day_of_week')
+                p_num = blk.get('period_number')
+                if c_id and d_num and p_num:
+                    k = f"{c_id}_{d_num}_{p_num}"
+                    if k not in matrix_state:
+                        matrix_state[k] = {'is_blocked': True, 'is_locked': True}
 
     # Pre-calculate classroom requirements mapping for frontend validation
-
     class_requirements_map = {}
     for cls in classrooms:
         reqs = requirements_map.get((cls.grade_level, cls.track), {})
@@ -1226,15 +1240,17 @@ def timetable_view(request):
     teacher_max_hours_map = {}
 
     for t in teachers:
-        assigned_cs = class_subject_assignments.filter(teacher=t)
+        assigned_cs = cs_by_teacher.get(t.id, [])
         total_assigned_h = 0
         for cs in assigned_cs:
-            h = requirements_map.get((cs.classroom.grade_level, cs.classroom.track), {}).get(cs.subject_id)
-            if h is None:
-                h = requirements_map.get((cs.classroom.grade_level, 'GENERAL'), {}).get(cs.subject_id, 0)
-            total_assigned_h += h
+            cls = cs.classroom
+            if cls:
+                h = requirements_map.get((cls.grade_level, cls.track), {}).get(cs.subject_id)
+                if h is None:
+                    h = requirements_map.get((cls.grade_level, 'GENERAL'), {}).get(cs.subject_id, 0)
+                total_assigned_h += h
 
-        scheduled_h = timetables.filter(teacher=t).count()
+        scheduled_h = timetables_by_teacher.get(t.id, 0)
         t_max = t.max_weekly_hours or 18
         teacher_assigned_hours_map[t.id] = total_assigned_h
         teacher_max_hours_map[t.id] = t_max
@@ -1250,15 +1266,16 @@ def timetable_view(request):
         })
 
     teacher_code_directory = []
-    for (s_id, t_id), code in sorted(teacher_subject_code_map.items(), key=lambda x: x[1]):
-        sub = next((s for s in subjects if s.id == s_id), None)
-        tch = next((t for t in teachers if t.id == t_id), None)
-        if sub and tch and class_subject_assignments.filter(subject_id=s_id, teacher_id=t_id).exists():
-            teacher_code_directory.append({
-                'code': code,
-                'subject': sub,
-                'teacher': tch,
-            })
+    for (s_id, t_id), code in sorted(teacher_subject_code_map.items(), key=lambda x: str(x[1])):
+        if (s_id, t_id) in cs_pairs_set:
+            sub = subjects_by_id.get(s_id)
+            tch = teachers_by_id.get(t_id)
+            if sub and tch:
+                teacher_code_directory.append({
+                    'code': code,
+                    'subject': sub,
+                    'teacher': tch,
+                })
 
     subjects_list = [{'id': s.id, 'name_kh': s.name_kh, 'code': s.code, 'category': s.category} for s in subjects]
     classrooms_list = [{'id': c.id, 'name': c.name, 'grade_level': c.grade_level, 'track': c.track} for c in classrooms]
@@ -1780,27 +1797,34 @@ def student_teacher_timetable_view(request):
         if found_year:
             active_year = found_year
 
-    academic_years = AcademicYear.objects.all().order_by('-start_date')
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
-    teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
-    timetables = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    academic_years = list(AcademicYear.objects.all().order_by('-start_date'))
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    timetables = list(timetables_qs)
+
+    timetables_by_classroom = defaultdict(list)
+    timetables_by_teacher = defaultdict(list)
+    for entry in timetables:
+        timetables_by_classroom[entry.classroom_id].append(entry)
+        if entry.teacher_id:
+            timetables_by_teacher[entry.teacher_id].append(entry)
 
     # Pre-fetch ClassSubject for teachers' subjects within active academic year
-    class_subjects = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('subject', 'teacher', 'classroom') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('subject', 'teacher', 'classroom')
-    teacher_subjects_map = {}
+    class_subjects_qs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('subject', 'teacher', 'classroom') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('subject', 'teacher', 'classroom')
+    class_subjects = list(class_subjects_qs)
+    teacher_subjects_map = defaultdict(set)
     for cs in class_subjects:
-        t_id = cs.teacher_id
-        if t_id not in teacher_subjects_map:
-            teacher_subjects_map[t_id] = set()
-        teacher_subjects_map[t_id].add(cs.subject.name_kh)
+        if cs.teacher_id and cs.subject:
+            teacher_subjects_map[cs.teacher_id].add(cs.subject.name_kh)
 
     # 1. Build Classroom Timetables Data
     classrooms_timetables = []
     for cls in classrooms:
-        cls_entries = timetables.filter(classroom=cls)
+        cls_entries = timetables_by_classroom.get(cls.id, [])
         slots_map = {}
         for entry in cls_entries:
-            t_name = entry.teacher.khmer_name if entry.teacher else ""
+            t_name = (entry.teacher.khmer_name or entry.teacher.name or '') if entry.teacher else ""
             t_gender = getattr(entry.teacher, 'gender', 'M') if entry.teacher else 'M'
             title = "អ្នកគ្រូ" if t_gender == 'F' else "លោកគ្រូ"
             if t_name.startswith('លោកគ្រូ') or t_name.startswith('អ្នកគ្រូ'):
@@ -1809,15 +1833,14 @@ def student_teacher_timetable_view(request):
                 display_teacher = f"{title} {t_name}" if t_name else ""
 
             slots_map[(entry.day_of_week, entry.period_number)] = {
-                'subject_name': entry.subject.name_kh,
-                'subject_code': entry.subject.code,
+                'subject_name': entry.subject.name_kh if entry.subject else '',
+                'subject_code': entry.subject.code if entry.subject else '',
                 'teacher_name': t_name,
                 'teacher_title': title,
                 'teacher_display': display_teacher,
                 'teacher_gender': t_gender,
             }
 
-        
         # Build 4 morning periods (1-4) and 4 afternoon periods (5-8)
         morning_rows = []
         for p in [1, 2, 3, 4]:
@@ -1841,14 +1864,14 @@ def student_teacher_timetable_view(request):
     # 2. Build Teacher Timetables Data (Only slots taught in active academic year)
     teachers_timetables = []
     for tch in teachers:
-        tch_entries = timetables.filter(teacher=tch)
+        tch_entries = timetables_by_teacher.get(tch.id, [])
         slots_map = {}
         for entry in tch_entries:
             slots_map[(entry.day_of_week, entry.period_number)] = {
-                'subject_name': entry.subject.name_kh,
-                'subject_code': entry.subject.code,
-                'classroom_name': entry.classroom.name,
-                'classroom_code': entry.classroom.code,
+                'subject_name': entry.subject.name_kh if entry.subject else '',
+                'subject_code': entry.subject.code if entry.subject else '',
+                'classroom_name': entry.classroom.name if entry.classroom else '',
+                'classroom_code': entry.classroom.code if entry.classroom else '',
             }
 
         morning_rows = []
@@ -1861,7 +1884,7 @@ def student_teacher_timetable_view(request):
             p_slots = [slots_map.get((d['num'], p)) for d in DAYS_OF_WEEK]
             afternoon_rows.append({'period': p, 'slots': p_slots})
 
-        assigned_subs = sorted(list(teacher_subjects_map.get(tch.id, [])))
+        assigned_subs = sorted(list(teacher_subjects_map.get(tch.id, set())))
         subjects_display = ", ".join(assigned_subs) if assigned_subs else (tch.specialization or "-")
         title = "អ្នកគ្រូ" if tch.gender == 'F' else "លោកគ្រូ"
 
@@ -1924,13 +1947,25 @@ def timetable_daily_reports_view(request):
         if found_year:
             active_year = found_year
 
-    teachers = Teacher.objects.filter(status='ACTIVE').order_by('teacher_id', 'khmer_name')
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
-    subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
-    timetables = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('teacher_id', 'khmer_name'))
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+    subjects = list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id'))
+    subjects_by_id = {s.id: s for s in subjects}
+    timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+    timetables = list(timetables_qs)
+
+    timetables_by_day = defaultdict(list)
+    timetables_by_teacher = defaultdict(int)
+    timetables_by_classroom = defaultdict(int)
+    for entry in timetables:
+        timetables_by_day[entry.day_of_week].append(entry)
+        if entry.teacher_id:
+            timetables_by_teacher[entry.teacher_id] += 1
+        if entry.classroom_id:
+            timetables_by_classroom[entry.classroom_id] += 1
 
     # Pre-fetch rules & assignments
-    grade_rules = GradeLevelRule.objects.filter(weekly_hours__gt=0).exclude(subject__code__in=['R', 'D'])
+    grade_rules = list(GradeLevelRule.objects.filter(weekly_hours__gt=0).exclude(subject__code__in=['R', 'D']))
     requirements_map = {}
     for r in grade_rules:
         k = (r.grade_level, r.track)
@@ -1939,24 +1974,35 @@ def timetable_daily_reports_view(request):
         requirements_map[k][r.subject_id] = r.weekly_hours
 
     # Teacher subject code map
-    distinct_assignments = ClassSubject.objects.filter(
+    class_subject_assignments_qs = ClassSubject.objects.filter(
         classroom__academic_year=active_year,
         teacher__isnull=False
     ).exclude(
         subject__code__in=['R', 'D']
-    ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id') if active_year else ClassSubject.objects.filter(
+    ).select_related('classroom', 'subject', 'teacher') if active_year else ClassSubject.objects.filter(
         teacher__isnull=False
     ).exclude(
         subject__code__in=['R', 'D']
-    ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')
+    ).select_related('classroom', 'subject', 'teacher')
+    class_subject_assignments = list(class_subject_assignments_qs)
+
+    cs_by_teacher = defaultdict(list)
+    cs_pairs_set = set()
+    teacher_subject_classes_map = defaultdict(list)
+    for cs in class_subject_assignments:
+        if cs.teacher_id:
+            cs_by_teacher[cs.teacher_id].append(cs)
+            cs_pairs_set.add((cs.subject_id, cs.teacher_id))
+            if cs.classroom:
+                teacher_subject_classes_map[(cs.subject_id, cs.teacher_id)].append(cs.classroom.name)
+
+    distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0] or 0, x[1] or 0))
 
     teacher_subject_code_map = {}
     subject_teacher_counters = {}
-    for item in distinct_assignments:
-        s_id = item['subject_id']
-        t_id = item['teacher_id']
-        sub = next((s for s in subjects if s.id == s_id), None)
-        sub_code = sub.code if sub else 'S'
+    for (s_id, t_id) in distinct_assignments:
+        sub = subjects_by_id.get(s_id)
+        sub_code = sub.code if sub and sub.code else 'S'
         if s_id not in subject_teacher_counters:
             subject_teacher_counters[s_id] = 1
         else:
@@ -1971,13 +2017,20 @@ def timetable_daily_reports_view(request):
     days_to_render = DAYS_OF_WEEK if selected_day == 'all' else [d for d in DAYS_OF_WEEK if str(d['num']) == str(selected_day)]
 
     # 1. Query Duty Schedules for this academic year
-    duty_entries = TeacherDutySchedule.objects.filter(academic_year=active_year).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+    duty_entries_qs = TeacherDutySchedule.objects.filter(academic_year=active_year).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+    duty_entries = list(duty_entries_qs)
+    duty_by_day = defaultdict(list)
+    duty_by_teacher = defaultdict(int)
+    for duty_s in duty_entries:
+        duty_by_day[duty_s.day_of_week].append(duty_s)
+        if duty_s.teacher_id:
+            duty_by_teacher[duty_s.teacher_id] += 1
 
     # Build Duty Sign-In Sheets (Includes Classroom Teaching & On-Duty Staff/Teachers)
     duty_sheets = []
     for d in days_to_render:
-        d_entries = timetables.filter(day_of_week=d['num'])
-        d_duties = duty_entries.filter(day_of_week=d['num'])
+        d_entries = timetables_by_day.get(d['num'], [])
+        d_duties = duty_by_day.get(d['num'], [])
 
         day_teacher_slots = {}
         # 1. Populate Classroom Teaching Slots
@@ -1986,8 +2039,9 @@ def timetable_daily_reports_view(request):
                 if entry.teacher_id not in day_teacher_slots:
                     day_teacher_slots[entry.teacher_id] = {}
                 p_num = entry.period_number or 1
-                slot_code = teacher_subject_code_map.get((entry.subject_id, entry.teacher_id), entry.subject.code)
-                cls_name = entry.classroom.code or entry.classroom.name
+                sub_code = entry.subject.code if entry.subject and entry.subject.code else 'S'
+                slot_code = teacher_subject_code_map.get((entry.subject_id, entry.teacher_id), sub_code)
+                cls_name = entry.classroom.code if (entry.classroom and entry.classroom.code) else (entry.classroom.name if entry.classroom else '')
                 day_teacher_slots[entry.teacher_id][p_num] = f"{cls_name}({slot_code})"
 
         # 2. Populate On-Duty Shifts (for office staff and teachers on duty)
@@ -2020,10 +2074,11 @@ def timetable_daily_reports_view(request):
                 
                 if has_classes:
                     gender_title = "អ្នកគ្រូ" if tch.gender == 'F' else "លោកគ្រូ"
+                    tch_name = (tch.khmer_name or tch.name or '')
                     morning_rows.append({
                         'no': no_idx,
-                        'teacher_id': tch.teacher_id,
-                        'teacher_name': f"{gender_title} {tch.khmer_name}",
+                        'teacher_id': tch.teacher_id or '',
+                        'teacher_name': f"{gender_title} {tch_name}",
                         'specialization': tch.specialization or tch.current_duty or 'បុគ្គលិក',
                         'p1': p1,
                         'p2': p2,
@@ -2057,10 +2112,11 @@ def timetable_daily_reports_view(request):
                 
                 if has_classes:
                     gender_title = "អ្នកគ្រូ" if tch.gender == 'F' else "លោកគ្រូ"
+                    tch_name = (tch.khmer_name or tch.name or '')
                     afternoon_rows.append({
                         'no': no_idx,
-                        'teacher_id': tch.teacher_id,
-                        'teacher_name': f"{gender_title} {tch.khmer_name}",
+                        'teacher_id': tch.teacher_id or '',
+                        'teacher_name': f"{gender_title} {tch_name}",
                         'specialization': tch.specialization or tch.current_duty or 'បុគ្គលិក',
                         'p1': p5,
                         'p2': p6,
@@ -2083,23 +2139,24 @@ def timetable_daily_reports_view(request):
     # 2. Teacher Teaching & Duty Hours Load Report
     teacher_load_report = []
     for t in teachers:
-        t_slots_count = timetables.filter(teacher=t).count()
-        t_duty_count = duty_entries.filter(teacher=t).count()
+        t_slots_count = timetables_by_teacher.get(t.id, 0)
+        t_duty_count = duty_by_teacher.get(t.id, 0)
         t_total_actual = t_slots_count + t_duty_count
 
-        t_assigned_cs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher=t).select_related('classroom') if active_year else ClassSubject.objects.filter(teacher=t).select_related('classroom')
+        t_assigned_cs = cs_by_teacher.get(t.id, [])
         t_assigned_sum = 0
         for cs in t_assigned_cs:
             cls = cs.classroom
-            cls_reqs = requirements_map.get((cls.grade_level, cls.track), {})
-            if not cls_reqs:
-                cls_reqs = requirements_map.get((cls.grade_level, 'GENERAL'), {})
-            t_assigned_sum += cls_reqs.get(cs.subject_id, 0)
+            if cls:
+                cls_reqs = requirements_map.get((cls.grade_level, cls.track), {})
+                if not cls_reqs:
+                    cls_reqs = requirements_map.get((cls.grade_level, 'GENERAL'), {})
+                t_assigned_sum += cls_reqs.get(cs.subject_id, 0)
 
         t_max = t.max_weekly_hours or 18
         t_codes = [
             code for (s_id, t_id), code in teacher_subject_code_map.items() 
-            if t_id == t.id and ClassSubject.objects.filter(subject_id=s_id, teacher_id=t.id, classroom__academic_year=active_year).exists()
+            if t_id == t.id and (s_id, t_id) in cs_pairs_set
         ]
 
         if t_total_actual > t_max:
@@ -2130,22 +2187,19 @@ def timetable_daily_reports_view(request):
 
     # 3. Teacher Subject Code Directory
     teacher_code_directory = []
-    for (s_id, t_id), code in sorted(teacher_subject_code_map.items(), key=lambda x: x[1]):
-        sub = next((s for s in subjects if s.id == s_id), None)
-        tch = next((t for t in teachers if t.id == t_id), None)
-        if sub and tch and ClassSubject.objects.filter(subject_id=s_id, teacher_id=t_id, classroom__academic_year=active_year).exists():
-            assigned_classes = Classroom.objects.filter(
-                academic_year=active_year,
-                assigned_subjects__subject_id=s_id,
-                assigned_subjects__teacher_id=t_id
-            ).distinct()
-            cls_names = ", ".join(c.name for c in assigned_classes) or "-"
-            teacher_code_directory.append({
-                'code': code,
-                'subject': sub,
-                'teacher': tch,
-                'classes': cls_names,
-            })
+    for (s_id, t_id), code in sorted(teacher_subject_code_map.items(), key=lambda x: str(x[1])):
+        if (s_id, t_id) in cs_pairs_set:
+            sub = subjects_by_id.get(s_id)
+            tch = next((t for t in teachers if t.id == t_id), None)
+            if sub and tch:
+                assigned_classes = sorted(list(set(teacher_subject_classes_map.get((s_id, t_id), []))))
+                cls_names = ", ".join(assigned_classes) or "-"
+                teacher_code_directory.append({
+                    'code': code,
+                    'subject': sub,
+                    'teacher': tch,
+                    'classes': cls_names,
+                })
 
     # 4. Classrooms Summary
     classrooms_summary = []
@@ -2154,7 +2208,7 @@ def timetable_daily_reports_view(request):
         if not cls_reqs:
             cls_reqs = requirements_map.get((cls.grade_level, 'GENERAL'), {})
         req_total = sum(cls_reqs.values())
-        sched_total = timetables.filter(classroom=cls).count()
+        sched_total = timetables_by_classroom.get(cls.id, 0)
         diff = sched_total - req_total
         classrooms_summary.append({
             'classroom': cls,
@@ -3178,6 +3232,9 @@ def teacher_duty_manager(request):
             'code': entry.subject.code
         }
 
+    raw_duty_types = TeacherDutyType.get_all_duty_types()
+    duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+
     # Map duty hours per teacher
     teacher_duty_map = {}
     teacher_duty_slots_map = {}
@@ -3190,7 +3247,7 @@ def teacher_duty_manager(request):
         teacher_duty_slots_map[tid][slot_k] = {
             'id': d.id,
             'duty_type': d.duty_type,
-            'duty_label': d.get_duty_type_display(),
+            'duty_label': duty_types_dict.get(d.duty_type, d.duty_type),
             'is_auto': d.is_auto_assigned,
             'notes': d.notes or ''
         }
@@ -3261,11 +3318,15 @@ def teacher_duty_manager(request):
     active_staff_teaching_slots = teacher_teaching_slots_map.get(selected_teacher.id, {}) if selected_teacher else {}
 
     duty_types = [
-        {'code': 'OFFICE', 'name': 'ប្រចាំការការិយាល័យ', 'icon': 'fa-building-columns', 'color': '#4f46e5'},
-        {'code': 'DISCIPLINE', 'name': 'សម្របសម្រួលវិន័យ', 'icon': 'fa-user-shield', 'color': '#0ea5e9'},
-        {'code': 'LIBRARY', 'name': 'ប្រចាំការបណ្ណាល័យ', 'icon': 'fa-book-open-reader', 'color': '#10b981'},
-        {'code': 'ADMIN', 'name': 'រដ្ឋបាល & លិខិតស្នាម', 'icon': 'fa-file-signature', 'color': '#f59e0b'},
-        {'code': 'GENERAL', 'name': 'ប្រចាំការទូទៅ', 'icon': 'fa-clock', 'color': '#8b5cf6'},
+        {
+            'id': dt.id,
+            'code': dt.code,
+            'name': dt.name,
+            'icon': dt.icon,
+            'color': dt.color,
+            'order': dt.order
+        }
+        for dt in raw_duty_types
     ]
 
     context = {
@@ -3524,6 +3585,154 @@ def teacher_duty_clear(request):
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_duty_types_list(request):
+    """
+    Returns JSON list of all configured duty types.
+    """
+    duty_types = TeacherDutyType.get_all_duty_types()
+    data = [
+        {
+            'id': dt.id,
+            'code': dt.code,
+            'name': dt.name,
+            'icon': dt.icon,
+            'color': dt.color,
+            'order': dt.order
+        }
+        for dt in duty_types
+    ]
+    return JsonResponse({'status': 'success', 'duty_types': data})
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_duty_type_create(request):
+    """
+    Creates a new duty type.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=405)
+
+    try:
+        data = json.loads(request.body.decode('utf-8')) if request.content_type == 'application/json' else request.POST
+        name = data.get('name', '').strip()
+        icon = data.get('icon', 'fa-clock').strip()
+        color = data.get('color', '#4f46e5').strip()
+        code = data.get('code', '').strip().upper()
+
+        if not name:
+            return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូលឈ្មោះប្រភេទប្រចាំការ!'}, status=400)
+
+        # Generate unique code if not provided
+        if not code:
+            import re
+            base_code = re.sub(r'[^A-Z0-9_]', '', name.upper().replace(' ', '_')).strip('_')[:20]
+            if not base_code:
+                base_code = f"DUTY_{TeacherDutyType.objects.count() + 1}"
+            code = base_code
+            counter = 1
+            while TeacherDutyType.objects.filter(code=code).exists():
+                code = f"{base_code}_{counter}"
+                counter += 1
+        elif TeacherDutyType.objects.filter(code=code).exists():
+            return JsonResponse({'status': 'error', 'message': f'កូដ "{code}" មានរួចហើយ!'}, status=400)
+
+        max_order = TeacherDutyType.objects.count() + 1
+        dt = TeacherDutyType.objects.create(
+            code=code,
+            name=name,
+            icon=icon or 'fa-clock',
+            color=color or '#4f46e5',
+            order=max_order
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🎉 បានបន្ថែមប្រភេទប្រចាំការ "{dt.name}" ដោយជោគជ័យ!',
+            'duty_type': {
+                'id': dt.id,
+                'code': dt.code,
+                'name': dt.name,
+                'icon': dt.icon,
+                'color': dt.color,
+                'order': dt.order
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_duty_type_edit(request, type_id):
+    """
+    Updates an existing duty type.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=405)
+
+    try:
+        dt = get_object_or_404(TeacherDutyType, id=type_id)
+        data = json.loads(request.body.decode('utf-8')) if request.content_type == 'application/json' else request.POST
+        name = data.get('name', '').strip()
+        icon = data.get('icon', '').strip()
+        color = data.get('color', '').strip()
+
+        if not name:
+            return JsonResponse({'status': 'error', 'message': 'ឈ្មោះប្រភេទប្រចាំការមិនអាចទទេបានឡើយ!'}, status=400)
+
+        dt.name = name
+        if icon:
+            dt.icon = icon
+        if color:
+            dt.color = color
+        dt.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🎉 បានកែប្រែប្រភេទប្រចាំការ "{dt.name}" ដោយជោគជ័យ!',
+            'duty_type': {
+                'id': dt.id,
+                'code': dt.code,
+                'name': dt.name,
+                'icon': dt.icon,
+                'color': dt.color,
+                'order': dt.order
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_duty_type_delete(request, type_id):
+    """
+    Deletes an existing duty type safely.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=405)
+
+    try:
+        dt = get_object_or_404(TeacherDutyType, id=type_id)
+        if TeacherDutyType.objects.count() <= 1:
+            return JsonResponse({'status': 'error', 'message': 'មិនអាចលុបបានទេ ត្រូវមានយ៉ាងហោចណាស់ប្រភេទប្រចាំការមួយក្នុងប្រព័ន្ធ!'}, status=400)
+
+        name = dt.name
+        code = dt.code
+        dt.delete()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'🗑️ បានលុបប្រភេទប្រចាំការ "{name}" ដោយជោគជ័យ!',
+            'deleted_code': code
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
 

@@ -1182,7 +1182,7 @@ def api_create_user(request):
             return JsonResponse({'status': 'error', 'message': f'ឈ្មោះគណនី "{username}" នេះមានក្នុងប្រព័ន្ធរួចហើយ!'}, status=400)
 
         if not password:
-            password = 'password123' if role != User.Role.ADMIN else 'admin123'
+            password = 'p123456'
 
         if role not in User.Role.values:
             role = User.Role.TEACHER
@@ -1286,7 +1286,7 @@ def api_reset_password(request, user_id):
         use_default = request.POST.get('use_default', '0') in ['1', 'true', 'True', True]
 
         if use_default or not new_password:
-            new_password = 'admin123' if user.role == User.Role.ADMIN else 'password123'
+            new_password = 'p123456'
 
         if len(new_password) < 4:
             return JsonResponse({'status': 'error', 'message': 'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងហោចណាស់ ៤ តួអក្សរ!'}, status=400)

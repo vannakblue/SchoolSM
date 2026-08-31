@@ -107,6 +107,10 @@ urlpatterns = [
     path('duty-schedule/save/', views.teacher_duty_save_manual, name='teacher_duty_save_manual'),
     path('duty-schedule/auto-assign/', views.teacher_duty_auto_assign, name='teacher_duty_auto_assign'),
     path('duty-schedule/clear/', views.teacher_duty_clear, name='teacher_duty_clear'),
+    path('duty-schedule/types/', views.api_duty_types_list, name='api_duty_types_list'),
+    path('duty-schedule/types/create/', views.api_duty_type_create, name='api_duty_type_create'),
+    path('duty-schedule/types/<int:type_id>/edit/', views.api_duty_type_edit, name='api_duty_type_edit'),
+    path('duty-schedule/types/<int:type_id>/delete/', views.api_duty_type_delete, name='api_duty_type_delete'),
 
     # Student Promotion / Academic Year Transfer
     path('promotion/', views.student_promotion_view, name='student_promotion'),

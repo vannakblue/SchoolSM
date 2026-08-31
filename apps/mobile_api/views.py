@@ -49,6 +49,28 @@ class MobileLoginView(APIView):
 
         user = authenticate(username=username, password=password)
         if not user:
+            # Flexible multi-field lookup: username, phone, email, teacher_id, student_id
+            matched_user = None
+            u_obj = User.objects.filter(
+                Q(username__iexact=username) | Q(phone=username) | Q(email__iexact=username)
+            ).first()
+            if u_obj and u_obj.check_password(password):
+                matched_user = u_obj
+
+            if not matched_user:
+                teacher = Teacher.objects.filter(teacher_id__iexact=username).first()
+                if teacher and teacher.user and teacher.user.check_password(password):
+                    matched_user = teacher.user
+
+            if not matched_user:
+                student = Student.objects.filter(student_id__iexact=username).first()
+                if student and student.user and student.user.check_password(password):
+                    matched_user = student.user
+
+            if matched_user:
+                user = matched_user
+
+        if not user:
             return Response({
                 'status': 'error',
                 'message': 'ឈ្មោះគណនី ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ (Invalid credentials)!'

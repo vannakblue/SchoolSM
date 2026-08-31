@@ -517,12 +517,12 @@
                             <label class="form-label fw-bold text-dark">ពាក្យសម្ងាត់ដំបូង (Password) <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
-                                <input type="password" name="password" id="create_password" class="form-control" value="password123" placeholder="Password" required>
+                                <input type="password" name="password" id="create_password" class="form-control" value="p123456" placeholder="Password" required>
                                 <button type="button" class="btn btn-outline-secondary" id="toggleCreatePasswordBtn" title="បង្ហាញ/លាក់">
                                     <i class="fa-solid fa-eye" id="createPasswordEye"></i>
                                 </button>
                             </div>
-                            <small class="text-muted">លំនាំដើម៖ <code class="fw-bold">password123</code></small>
+                            <small class="text-muted">លំនាំដើម៖ <code class="fw-bold">p123456</code></small>
                         </div>
                         <!-- Status Active -->
                         <div class="col-12 col-md-6 d-flex align-items-center pt-md-4">
@@ -693,7 +693,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnFillDefaultPassword">
-                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ប្រើ Password លំនាំដើម (<span id="default_pass_hint">password123</span>)
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ប្រើ Password លំនាំដើម (<span id="default_pass_hint">p123456</span>)
                         </button>
                     </div>
                 </div>
@@ -965,7 +965,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('reset_target_username').textContent = uname;
             document.getElementById('reset_target_fullname').textContent = fname;
 
-            const defaultPass = role === 'ADMIN' ? 'admin123' : 'password123';
+            const defaultPass = 'p123456';
             document.getElementById('default_pass_hint').textContent = defaultPass;
             document.getElementById('reset_new_password').value = defaultPass;
 

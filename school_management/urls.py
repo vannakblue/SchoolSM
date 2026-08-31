@@ -3,10 +3,16 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect, render
+from django.http import JsonResponse
 
 from apps.accounts.views import telegram_webhook, init_admin_view
 
+def health_check(request):
+    return JsonResponse({'status': 'ok', 'service': 'SchoolSM', 'message': 'Server is active and healthy'})
+
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
+    path('ping/', health_check, name='ping_check'),
     path('admin-panel/', admin.site.urls),
     path('', lambda request: redirect('dashboard_redirect'), name='root_redirect'),
     path('maintenance-preview/', lambda request: render(request, 'maintenance.html'), name='maintenance_preview'),

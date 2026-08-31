@@ -111,12 +111,17 @@ class _LoginScreenState extends State<LoginScreen> {
               spacing: 6,
               children: [
                 ActionChip(
-                  label: const Text("Emulator (10.0.2.2)", style: TextStyle(fontSize: 11)),
-                  onPressed: () => urlController.text = "http://10.0.2.2:8000",
+                  avatar: const Icon(Icons.cloud_done, size: 14, color: AppColors.primary),
+                  label: const Text("Render Cloud", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () => urlController.text = "https://schoolsm.onrender.com",
                 ),
                 ActionChip(
                   label: const Text("Localhost", style: TextStyle(fontSize: 11)),
                   onPressed: () => urlController.text = "http://127.0.0.1:8000",
+                ),
+                ActionChip(
+                  label: const Text("Emulator (10.0.2.2)", style: TextStyle(fontSize: 11)),
+                  onPressed: () => urlController.text = "http://10.0.2.2:8000",
                 ),
               ],
             ),
@@ -164,13 +169,37 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Server Config Icon on top right
+                // Server Config Badge on top right
                 Align(
                   alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: const Icon(Icons.settings, color: AppColors.textDarkSecondary),
-                    tooltip: "កំណត់ Server",
-                    onPressed: _showServerSettingsDialog,
+                  child: InkWell(
+                    onTap: _showServerSettingsDialog,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.15)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            ApiConstants.baseUrl.startsWith("https") ? Icons.cloud_done : Icons.dns,
+                            size: 14,
+                            color: AppColors.secondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            ApiConstants.baseUrl.replaceAll("https://", "").replaceAll("http://", ""),
+                            style: const TextStyle(fontSize: 11, color: AppColors.textDarkSecondary, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.edit, size: 12, color: AppColors.textDarkSecondary),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 

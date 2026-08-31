@@ -182,7 +182,7 @@ class Command(BaseCommand):
                     username=uname,
                     defaults={'role': User.Role.TEACHER, 'khmer_name': kh_name, 'latin_name': en_name, 'phone': phone}
                 )
-                u.set_password('password123')
+                u.set_password('p123456')
                 u.save()
 
                 tch, _ = Teacher.objects.get_or_create(
@@ -262,7 +262,7 @@ class Command(BaseCommand):
                     username=uname,
                     defaults={'role': User.Role.STUDENT, 'khmer_name': kh_name, 'latin_name': en_name, 'phone': phone}
                 )
-                stu_u.set_password('password123')
+                stu_u.set_password('p123456')
                 stu_u.save()
 
                 stu, _ = Student.objects.get_or_create(

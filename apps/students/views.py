@@ -182,7 +182,7 @@ def student_enroll(request):
                 if not user:
                     user = User.objects.create_user(
                         username=username,
-                        password='password123',
+                        password='p123456',
                         role=User.Role.STUDENT,
                         khmer_name=student.khmer_name,
                         latin_name=student.latin_name,
@@ -191,7 +191,7 @@ def student_enroll(request):
                 student.user = user
                 student.save(update_fields=['user'])
 
-            messages.success(request, f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) ក្នុងឆ្នាំសិក្សា {current_year.name if current_year else ''} ដោយជោគជ័យ! ពាក្យសម្ងាត់ដំបូងគឺ 'password123'")
+            messages.success(request, f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) ក្នុងឆ្នាំសិក្សា {current_year.name if current_year else ''} ដោយជោគជ័យ! ពាក្យសម្ងាត់ដំបូងគឺ 'p123456'")
             return redirect('student_detail', pk=student.pk)
         else:
             messages.error(request, "សូមពិនិត្យទម្រង់ដែលបានបំពេញឡើងវិញ!")
@@ -256,7 +256,7 @@ def public_student_enroll(request):
                 if not user:
                     user = User.objects.create_user(
                         username=username,
-                        password='password123',
+                        password='p123456',
                         role=User.Role.STUDENT,
                         khmer_name=student.khmer_name,
                         latin_name=student.latin_name,
@@ -500,7 +500,7 @@ def public_enroll_success(request, pk):
     return render(request, 'students/public_enroll_success.html', {
         'student': student,
         'username': username,
-        'initial_password': 'password123',
+        'initial_password': 'p123456',
     })
 
 
@@ -1021,7 +1021,7 @@ def student_import(request):
                     if not user:
                         user = User.objects.create_user(
                             username=username,
-                            password='password123',
+                            password='p123456',
                             role=User.Role.STUDENT,
                             khmer_name=student.khmer_name,
                             latin_name=student.latin_name,

@@ -143,7 +143,7 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"❌ មិនអាចបើកឯកសារ Excel បានទេ៖ {str(ex)}"))
             return
 
-        default_password_hash = make_password('password123')
+        default_password_hash = make_password('p123456')
 
         with transaction.atomic():
             if clear_first:
@@ -288,6 +288,6 @@ class Command(BaseCommand):
             f"   - បញ្ចូលថ្មី (Created): {created_count} នាក់\n"
             f"   - កែប្រែទិន្នន័យ (Updated): {updated_count} នាក់\n"
             f"   - សរុបទាំងអស់ (Total): {Teacher.objects.count()} នាក់\n"
-            f"   - គណនី Login (Users): បង្កើតរួចជាស្រេច (Username: អត្តលេខ, Password: password123)\n"
+            f"   - គណនី Login (Users): បង្កើតរួចជាស្រេច (Username: អត្តលេខ, Password: p123456)\n"
             f"======================================================="
         ))

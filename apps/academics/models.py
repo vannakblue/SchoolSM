@@ -494,6 +494,48 @@ class GradeEnrollmentOption(models.Model):
         return f"{self.grade_level.name} - {self.label} ({self.get_field_type_display()})"
 
 
+class TeacherDutyType(models.Model):
+    """
+    Customizable On-Duty / Shift Types for Teachers & Office Staff.
+    Allows Admins to dynamically create, edit, customize colors/icons, or delete duty types.
+    """
+    code = models.CharField(max_length=50, unique=True, verbose_name="កូដសម្គាល់ / Code")
+    name = models.CharField(max_length=150, verbose_name="ឈ្មោះភារកិច្ច / Name")
+    icon = models.CharField(max_length=50, default='fa-clock', verbose_name="រូបតំណាង / FontAwesome Icon")
+    color = models.CharField(max_length=20, default='#4f46e5', verbose_name="ពណ៌ / Color (Hex)")
+    order = models.IntegerField(default=0, verbose_name="លំដាប់លំដោយ / Order")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "ប្រភេទប្រចាំការ / Duty Type"
+        verbose_name_plural = "ប្រភេទប្រចាំការទាំងអស់ / Duty Types"
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    @classmethod
+    def get_all_duty_types(cls):
+        """
+        Returns all configured duty types from database.
+        Seeds the initial 5 default types if table is empty.
+        """
+        types = list(cls.objects.all().order_by('order', 'id'))
+        if not types:
+            initial = [
+                {'code': 'OFFICE', 'name': 'ប្រចាំការការិយាល័យ', 'icon': 'fa-building-columns', 'color': '#4f46e5', 'order': 1},
+                {'code': 'DISCIPLINE', 'name': 'សម្របសម្រួលវិន័យ', 'icon': 'fa-user-shield', 'color': '#0ea5e9', 'order': 2},
+                {'code': 'LIBRARY', 'name': 'ប្រចាំការបណ្ណាល័យ', 'icon': 'fa-book-open-reader', 'color': '#10b981', 'order': 3},
+                {'code': 'ADMIN', 'name': 'រដ្ឋបាល & លិខិតស្នាម', 'icon': 'fa-file-signature', 'color': '#f59e0b', 'order': 4},
+                {'code': 'GENERAL', 'name': 'ប្រចាំការទូទៅ', 'icon': 'fa-clock', 'color': '#8b5cf6', 'order': 5},
+            ]
+            for item in initial:
+                t = cls.objects.create(**item)
+                types.append(t)
+        return types
+
+
 class TeacherDutySchedule(models.Model):
     """
     Teacher & Office Staff On-Duty / Duty Shift Schedule per Academic Year.
@@ -510,7 +552,7 @@ class TeacherDutySchedule(models.Model):
     teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='duty_schedules', verbose_name="គ្រូបង្រៀន/បុគ្គលិក / Teacher/Staff")
     day_of_week = models.IntegerField(choices=Timetable.DayOfWeek.choices, verbose_name="ថ្ងៃក្នុងសប្តាហ៍ / Day of Week")
     period_number = models.IntegerField(default=1, verbose_name="ម៉ោងទី / Period (1-8)")
-    duty_type = models.CharField(max_length=30, choices=DutyType.choices, default=DutyType.OFFICE, verbose_name="ប្រភេទភារកិច្ច / Duty Type")
+    duty_type = models.CharField(max_length=50, default='OFFICE', verbose_name="ប្រភេទភារកិច្ច / Duty Type")
     is_auto_assigned = models.BooleanField(default=False, verbose_name="បែងចែកស្វ័យប្រវត្តិ / Auto Assigned")
     notes = models.CharField(max_length=200, blank=True, null=True, verbose_name="កំណត់ចំណាំ/ទីតាំង / Notes/Location")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -523,7 +565,7 @@ class TeacherDutySchedule(models.Model):
         verbose_name_plural = "ម៉ោងប្រចាំការទាំងអស់ / Duty Schedules"
 
     def __str__(self):
-        return f"{self.teacher.khmer_name} - {self.get_day_of_week_display()} ម៉ោងទី {self.period_number} ({self.get_duty_type_display()})"
+        return f"{self.teacher.khmer_name} - {self.get_day_of_week_display()} ម៉ោងទី {self.period_number} ({self.duty_type})"
 
 
 

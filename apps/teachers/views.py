@@ -98,7 +98,7 @@ def teacher_create(request):
             if not User.objects.filter(username=username).exists():
                 user = User.objects.create_user(
                     username=username,
-                    password='password123',
+                    password='p123456',
                     role=User.Role.TEACHER,
                     khmer_name=teacher.khmer_name,
                     latin_name=teacher.latin_name,
@@ -108,7 +108,7 @@ def teacher_create(request):
                 teacher.user = user
                 teacher.save()
 
-            messages.success(request, f"🎉 បានបន្ថែមគ្រូបង្រៀន {teacher.khmer_name} (User: {username}) ដោយជោគជ័យ! Password: 'password123'")
+            messages.success(request, f"🎉 បានបន្ថែមគ្រូបង្រៀន {teacher.khmer_name} (User: {username}) ដោយជោគជ័យ! Password: 'p123456'")
             return redirect('teacher_detail', pk=teacher.pk)
     else:
         form = TeacherForm()
@@ -960,7 +960,7 @@ def teacher_import(request):
             success_count = 0
             updated_count = 0
             errors = []
-            default_pwd_hash = make_password('password123')
+            default_pwd_hash = make_password('p123456')
 
             for idx, r in enumerate(rows_data, 1):
                 if not r or len(r) < 3:
@@ -1137,7 +1137,7 @@ def teacher_import(request):
                     updated_count += 1
 
             if success_count > 0 or updated_count > 0:
-                messages.success(request, f"🎉 ជោគជ័យ! បានបញ្ចូលគ្រូបង្រៀនថ្មី {success_count} នាក់ និងកែប្រែទិន្នន័យចាស់ {updated_count} នាក់។ គណនី Login ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: អត្តលេខ, Password: password123)")
+                messages.success(request, f"🎉 ជោគជ័យ! បានបញ្ចូលគ្រូបង្រៀនថ្មី {success_count} នាក់ និងកែប្រែទិន្នន័យចាស់ {updated_count} នាក់។ គណនី Login ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: អត្តលេខ, Password: p123456)")
             if errors:
                 for err in errors[:5]:
                     messages.warning(request, f"⚠️ {err}")
