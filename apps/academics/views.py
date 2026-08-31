@@ -3939,7 +3939,7 @@ def teacher_assignments_manager(request):
             'selected_assigned_count': len(selected_teacher_pairs),
             'selected_assigned_hours': selected_total_assigned_hours,
             'selected_subject_hours': selected_subject_hours,
-            'selected_max_hours': selected_teacher.max_weekly_hours if selected_teacher else 18,
+            'selected_max_hours': selected_teacher.max_weekly_hours if (selected_teacher and selected_teacher.max_weekly_hours) else 18,
             'training_level_settings': training_level_settings,
             'training_quotas': training_quotas,
         })
@@ -3947,7 +3947,7 @@ def teacher_assignments_manager(request):
         messages.error(request, f"កំហុសក្នុងការទាញយកទិន្នន័យចាត់តាំងគ្រូ៖ {str(e)}")
         try:
             return render(request, 'academics/teacher_assignments.html', {
-                'teachers': list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')),
+                'teachers': list(Teacher.objects.all().order_by('khmer_name')),
                 'teacher_stats': [],
                 'selected_teacher': None,
                 'selected_teacher_codes': None,
@@ -3962,7 +3962,11 @@ def teacher_assignments_manager(request):
                 'training_quotas': DEFAULT_TRAINING_LEVEL_QUOTAS,
             })
         except Exception as inner_e:
-            return HttpResponse(f"Teacher Assignments Error: {str(e)} | Render Template Error: {str(inner_e)}", status=500)
+            return HttpResponse(
+                f"<div style='padding:30px;font-family:sans-serif;'><h3>កំហុសប្រព័ន្ធ (System Error)</h3><p>{str(e)}</p><p><small>{str(inner_e)}</small></p><a href='/academics/timetable/'>ត្រឡប់ទៅកាន់កាលវិភាគ</a></div>",
+                status=200,
+                content_type="text/html; charset=utf-8"
+            )
 
 
 @login_required
