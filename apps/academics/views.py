@@ -3338,23 +3338,27 @@ def teacher_assignments_manager(request):
         active_year = get_active_academic_year(request)
         selected_year = request.GET.get('year') or request.GET.get('academic_year')
         if selected_year:
-            if str(selected_year).isdigit():
-                found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
+            if str(selected_year).strip().isdigit():
+                found_year = AcademicYear.objects.filter(id=int(str(selected_year).strip())).first()
             else:
                 found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
             if found_year:
                 active_year = found_year
 
-        teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
-        classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
-        subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
+        teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+        classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code')) if active_year else list(Classroom.objects.all().order_by('grade_level', 'code'))
+        subjects = list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id'))
 
         selected_teacher_id = request.GET.get('teacher')
         selected_teacher = None
         if selected_teacher_id:
-            selected_teacher = Teacher.objects.filter(id=selected_teacher_id).first()
-        if not selected_teacher and teachers.exists():
-            selected_teacher = teachers.first()
+            s_tid = str(selected_teacher_id).strip()
+            if s_tid.isdigit():
+                selected_teacher = Teacher.objects.filter(id=int(s_tid)).first()
+            else:
+                selected_teacher = Teacher.objects.filter(khmer_name=s_tid).first()
+        if not selected_teacher and teachers:
+            selected_teacher = teachers[0]
 
         if request.method == 'POST' and selected_teacher:
             # Handle Max Hours update
@@ -3373,7 +3377,7 @@ def teacher_assignments_manager(request):
             for key in request.POST.keys():
                 if key.startswith('assign_'):
                     parts = key.split('_')
-                    if len(parts) == 3:
+                    if len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
                         cls_id, sub_id = int(parts[1]), int(parts[2])
                         checked_pairs.add((cls_id, sub_id))
 
@@ -3424,22 +3428,25 @@ def teacher_assignments_manager(request):
         rules_by_grade_track = defaultdict(set)
         for r in all_rules:
             rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
-            if r.weekly_hours > 0:
+            if r.weekly_hours and r.weekly_hours > 0:
                 rules_by_grade_track[(r.grade_level, r.track)].add(r.subject_id)
 
         cls_assigned_subs_map = defaultdict(set)
-        for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
-            cls_assigned_subs_map[cls_id].add(sub_id)
+        if classrooms:
+            for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
+                cls_assigned_subs_map[cls_id].add(sub_id)
 
         teacher_stats = []
         for t in teachers:
             assigned_cs = teacher_assigned_map.get(t.id, [])
             t_hours = 0
             for cs in assigned_cs:
-                h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, cs.classroom.track))
+                cls_grade = cs.classroom.grade_level if cs.classroom else 10
+                cls_track = cs.classroom.track if cs.classroom else 'GENERAL'
+                h = rules_dict.get((cs.subject_id, cls_grade, cls_track))
                 if h is None:
-                    h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, 'GENERAL'), 0)
-                t_hours += h
+                    h = rules_dict.get((cs.subject_id, cls_grade, 'GENERAL'), 0)
+                t_hours += (h or 0)
 
             t_max = t.max_weekly_hours or 18
             teacher_stats.append({
@@ -3447,7 +3454,7 @@ def teacher_assignments_manager(request):
                 'assigned_count': len(assigned_cs),
                 'assigned_hours': t_hours,
                 'max_weekly_hours': t_max,
-                'is_selected': selected_teacher and t.id == selected_teacher.id,
+                'is_selected': bool(selected_teacher and t.id == selected_teacher.id),
                 'is_over': t_hours > t_max,
             })
 
@@ -3459,16 +3466,21 @@ def teacher_assignments_manager(request):
             cells = []
             cls_assigned_subs = cls_assigned_subs_map.get(cls.id)
             if not cls_assigned_subs:
-                cls_assigned_subs = rules_by_grade_track.get((cls.grade_level, cls.track)) or rules_by_grade_track.get((cls.grade_level, 'GENERAL')) or set()
+                cls_grade = cls.grade_level if cls.grade_level is not None else 10
+                cls_track = cls.track or 'GENERAL'
+                cls_assigned_subs = rules_by_grade_track.get((cls_grade, cls_track)) or rules_by_grade_track.get((cls_grade, 'GENERAL')) or set()
 
             for sub in subjects:
                 is_checked = (cls.id, sub.id) in selected_teacher_pairs
                 other_teacher = all_assignments.get((cls.id, sub.id))
                 is_valid_for_class = sub.id in cls_assigned_subs
 
-                h_req = rules_dict.get((sub.id, cls.grade_level, cls.track))
+                cls_grade = cls.grade_level if cls.grade_level is not None else 10
+                cls_track = cls.track or 'GENERAL'
+                h_req = rules_dict.get((sub.id, cls_grade, cls_track))
                 if h_req is None:
-                    h_req = rules_dict.get((sub.id, cls.grade_level, 'GENERAL'), 0)
+                    h_req = rules_dict.get((sub.id, cls_grade, 'GENERAL'), 0)
+                h_req = h_req or 0
 
                 if is_checked:
                     selected_subject_hours[sub.id] += h_req
@@ -3489,16 +3501,16 @@ def teacher_assignments_manager(request):
             })
 
         # Build teacher-subject code mapping (e.g. K1, K2, M1...)
-        distinct_assignments = ClassSubject.objects.filter(
+        distinct_assignments = list(ClassSubject.objects.filter(
             classroom__academic_year=active_year,
             teacher__isnull=False
         ).exclude(
             subject__code__in=['R', 'D']
-        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id') if active_year else ClassSubject.objects.filter(
+        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')) if active_year else list(ClassSubject.objects.filter(
             teacher__isnull=False
         ).exclude(
             subject__code__in=['R', 'D']
-        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')
+        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id'))
 
         teacher_subject_code_map = {}
         subject_teacher_counters = {}
@@ -3506,7 +3518,7 @@ def teacher_assignments_manager(request):
             s_id = item['subject_id']
             t_id = item['teacher_id']
             sub = next((s for s in subjects if s.id == s_id), None)
-            sub_code = sub.code if sub else 'S'
+            sub_code = sub.code if (sub and sub.code) else 'S'
             if s_id not in subject_teacher_counters:
                 subject_teacher_counters[s_id] = 1
             else:
@@ -3522,7 +3534,7 @@ def teacher_assignments_manager(request):
         # Retrieve dynamic training level quotas for modal customization
         training_quotas = get_training_level_quotas()
         raw_levels = list(Teacher.objects.filter(status='ACTIVE').values_list('training_level', flat=True).distinct())
-        distinct_levels = sorted(list(set([lvl.strip() for lvl in raw_levels if lvl and lvl.strip()])))
+        distinct_levels = sorted(list(set([str(lvl).strip() for lvl in raw_levels if lvl and str(lvl).strip()])))
         if 'គ្រូទុតិយភូមិ' not in distinct_levels:
             distinct_levels.insert(0, 'គ្រូទុតិយភូមិ')
         if 'គ្រូបឋមភូមិ' not in distinct_levels:
@@ -3553,21 +3565,24 @@ def teacher_assignments_manager(request):
         })
     except Exception as e:
         messages.error(request, f"កំហុសក្នុងការទាញយកទិន្នន័យចាត់តាំងគ្រូ៖ {str(e)}")
-        return render(request, 'academics/teacher_assignments.html', {
-            'teachers': Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'),
-            'teacher_stats': [],
-            'selected_teacher': None,
-            'selected_teacher_codes': None,
-            'classrooms': [],
-            'subjects': [],
-            'matrix_grid': [],
-            'selected_assigned_count': 0,
-            'selected_assigned_hours': 0,
-            'selected_subject_hours': {},
-            'selected_max_hours': 18,
-            'training_level_settings': [],
-            'training_quotas': DEFAULT_TRAINING_LEVEL_QUOTAS,
-        })
+        try:
+            return render(request, 'academics/teacher_assignments.html', {
+                'teachers': list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')),
+                'teacher_stats': [],
+                'selected_teacher': None,
+                'selected_teacher_codes': None,
+                'classrooms': [],
+                'subjects': list(Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')),
+                'matrix_grid': [],
+                'selected_assigned_count': 0,
+                'selected_assigned_hours': 0,
+                'selected_subject_hours': {},
+                'selected_max_hours': 18,
+                'training_level_settings': [],
+                'training_quotas': DEFAULT_TRAINING_LEVEL_QUOTAS,
+            })
+        except Exception as inner_e:
+            return HttpResponse(f"Teacher Assignments Error: {str(e)} | Render Template Error: {str(inner_e)}", status=500)
 
 
 @login_required

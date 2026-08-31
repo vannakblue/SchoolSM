@@ -3,12 +3,49 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect, render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+import sys, traceback
 
 from apps.accounts.views import telegram_webhook, init_admin_view
 
 def health_check(request):
     return JsonResponse({'status': 'ok', 'service': 'SchoolSM', 'message': 'Server is active and healthy'})
+
+def custom_500(request):
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    tb_str = "".join(tb_lines)
+    return HttpResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Server Error (500) | SchoolSM Diagnostics</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-light p-4">
+        <div class="container">
+            <div class="card border-danger shadow-sm my-4">
+                <div class="card-header bg-danger text-white fw-bold">
+                    ⚠️ 500 Internal Server Error - System Diagnostic Report
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Path:</strong> <code>{request.path}</code></p>
+                    <p class="mb-2"><strong>User:</strong> {getattr(request, 'user', 'Anonymous')}</p>
+                    <p class="mb-3"><strong>Exception:</strong> <span class="text-danger fw-bold">{exc_type.__name__ if exc_type else 'Unknown'}: {exc_value}</span></p>
+                    <h6 class="fw-bold">Traceback:</h6>
+                    <pre class="bg-dark text-light p-3 rounded small" style="max-height: 400px; overflow: auto;">{tb_str}</pre>
+                    <a href="/academics/teacher-assignments/" class="btn btn-outline-primary mt-2">Refresh Page</a>
+                    <a href="/dashboard/admin/" class="btn btn-secondary mt-2 ms-2">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """, status=500)
+
+handler500 = 'school_management.urls.custom_500'
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
