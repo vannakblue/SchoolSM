@@ -3100,7 +3100,9 @@ def student_teacher_timetable_export_excel(request):
         for d in tch_duties:
             k = (d.day_of_week, d.period_number)
             if k not in slots_map:
-                duty_name = duty_types_dict.get(d.duty_type, 'ប្រចាំការទូទៅ')
+                duty_name = duty_types_dict.get(d.duty_type, 'ប្រចាំការ')
+                if duty_name in ['ប្រចាំការទូទៅ', 'GENERAL']:
+                    duty_name = 'ប្រចាំការ'
                 slots_map[k] = duty_name
                 is_duty_map[k] = True
 
@@ -3346,14 +3348,7 @@ def timetable_daily_reports_view(request):
                     day_teacher_slots[duty_s.teacher_id] = {}
                 p_num = duty_s.period_number or 1
                 if p_num not in day_teacher_slots[duty_s.teacher_id]:
-                    duty_type_short = {
-                        'OFFICE': 'ប្រចាំការ-ការិយាល័យ',
-                        'DISCIPLINE': 'ប្រចាំការ-វិន័យ',
-                        'LIBRARY': 'ប្រចាំការ-បណ្ណាល័យ',
-                        'ADMIN': 'ប្រចាំការ-រដ្ឋបាល',
-                        'GENERAL': 'ប្រចាំការទូទៅ',
-                    }.get(duty_s.duty_type, 'ប្រចាំការ')
-                    day_teacher_slots[duty_s.teacher_id][p_num] = f"[{duty_type_short}]"
+                    day_teacher_slots[duty_s.teacher_id][p_num] = "ប្រចាំការ"
 
         # Morning session (Periods 1, 2, 3, 4)
         if selected_session in ['all', 'morning']:
@@ -3623,8 +3618,8 @@ def timetable_daily_reports_export_excel(request):
             duty_hours_by_teacher[duty.teacher_id] += 1
 
     # Styling Tokens
-    font_title = Font(name='Khmer OS Muol Light', size=12, bold=True)
-    font_sub = Font(name='Khmer OS Muol Light', size=11, bold=True)
+    font_title = Font(name='Khmer OS Muol Light', size=13, bold=True)
+    font_sub = Font(name='Khmer OS Muol Light', size=13, bold=True)
     font_meta = Font(name='Khmer OS Siemreap', size=10, italic=True)
     font_head = Font(name='Khmer OS Siemreap', size=10, bold=True)
     font_body = Font(name='Khmer OS Siemreap', size=10)
@@ -3947,14 +3942,7 @@ def timetable_daily_reports_export_excel(request):
                         day_teacher_slots[duty_s.teacher_id] = {}
                     p_num = duty_s.period_number or 1
                     if p_num not in day_teacher_slots[duty_s.teacher_id]:
-                        duty_type_short = {
-                            'OFFICE': 'ប្រចាំការ-ការិយាល័យ',
-                            'DISCIPLINE': 'ប្រចាំការ-វិន័យ',
-                            'LIBRARY': 'ប្រចាំការ-បណ្ណាល័យ',
-                            'ADMIN': 'ប្រចាំការ-រដ្ឋបាល',
-                            'GENERAL': 'ប្រចាំការទូទៅ',
-                        }.get(duty_s.duty_type, 'ប្រចាំការ')
-                        day_teacher_slots[duty_s.teacher_id][p_num] = f"[{duty_type_short}]"
+                        day_teacher_slots[duty_s.teacher_id][p_num] = "ប្រចាំការ"
 
             sessions = []
             if selected_session in ['all', 'morning']:

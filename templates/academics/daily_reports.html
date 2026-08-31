@@ -258,6 +258,11 @@
                         <option value="afternoon" {% if selected_session == 'afternoon' %}selected{% endif %}>ពេលរសៀល (ម៉ោង ៥-៨)</option>
                     </select>
                 </div>
+
+                <!-- Toggle Custom Date Panel -->
+                <button class="btn btn-sm btn-outline-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#customDateCollapse" title="កែប្រែកាលបរិច្ឆេទលើបញ្ជីវត្តមាន និងរបាយការណ៍">
+                    <i class="fa-solid fa-calendar-pen me-1"></i> កែថ្ងៃខែ
+                </button>
             </div>
 
             <!-- Report Navigation Sub-Tabs -->
@@ -284,6 +289,20 @@
                 </li>
             </ul>
         </form>
+
+        <!-- Collapsible Quick Date Editor Matching Student-Teacher Timetable -->
+        <div class="collapse mt-3 pt-3 border-top" id="customDateCollapse">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទពុទ្ធសករាជ / ចន្ទគតិ (ជួរទី ១)៖</label>
+                    <input type="text" class="form-control form-control-sm" id="inputLunarDate" value="{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០" oninput="updateCustomDates()">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសូរិយគតិ (ជួរទី ២)៖</label>
+                    <input type="text" class="form-control form-control-sm" id="inputSolarDate" value="{{ school_info.province|default:'ខេត្តកណ្តាល' }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}" oninput="updateCustomDates()">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -302,10 +321,10 @@
     <div class="duty-sheet-paper">
         <!-- School Header -->
         <div class="text-center mb-3">
-            <h4 class="fw-bold text-dark mb-1" style="font-family: 'Khmer OS Muol Light', serif; letter-spacing: 0.5px;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត</h4>
-            <h5 class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif;">
+            <div class="fw-bold text-dark mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt; letter-spacing: 0.5px;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត</div>
+            <div class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt;">
                 បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ {{ sheet.session_name }}
-            </h5>
+            </div>
             <div class="text-dark small fw-bold">
                 ថ្ងៃ {{ sheet.day_name }} | ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }}
             </div>
@@ -361,9 +380,8 @@
 
             <!-- Right: Reporter Signature -->
             <div class="col-6 text-center">
-                <div class="text-dark small mb-1">
-                    {{ today_kh_dow }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}
-                </div>
+                <div class="lbl-lunar-date text-dark small mb-0">{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០</div>
+                <div class="lbl-solar-date text-dark small mb-1">{{ school_info.province|default:"ខេត្តកណ្តាល" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
                 <div class="fw-bold" style="font-size: 0.95rem;">អ្នករៀបចំរបាយការណ៍</div>
             </div>
         </div>
@@ -604,5 +622,21 @@
             topBtnText.innerText = reportLabels[tabName];
         }
     }
+
+    function updateCustomDates() {
+        const lunarVal = document.getElementById('inputLunarDate')?.value || '';
+        const solarVal = document.getElementById('inputSolarDate')?.value || '';
+
+        document.querySelectorAll('.lbl-lunar-date').forEach(el => {
+            el.innerText = lunarVal;
+        });
+        document.querySelectorAll('.lbl-solar-date').forEach(el => {
+            el.innerText = solarVal;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateCustomDates();
+    });
 </script>
 {% endblock %}
