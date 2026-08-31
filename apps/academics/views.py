@@ -3333,218 +3333,241 @@ def teacher_assignments_manager(request):
     Admin can select any teacher and tick multiple classrooms and multiple subjects assigned to that teacher.
     Strictly isolated per Academic Year!
     """
-    from .utils import get_active_academic_year
-    active_year = get_active_academic_year(request)
-    selected_year = request.GET.get('year') or request.GET.get('academic_year')
-    if selected_year:
-        if str(selected_year).isdigit():
-            found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
-        else:
-            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
-        if found_year:
-            active_year = found_year
-
-    teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
-    subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
-
-    selected_teacher_id = request.GET.get('teacher')
-    selected_teacher = None
-    if selected_teacher_id:
-        selected_teacher = Teacher.objects.filter(id=selected_teacher_id).first()
-    if not selected_teacher and teachers.exists():
-        selected_teacher = teachers.first()
-
-    if request.method == 'POST' and selected_teacher:
-        # Handle Max Hours update
-        max_h_str = request.POST.get('max_weekly_hours', '').strip()
-        apply_all = request.POST.get('apply_to_all_teachers') in ['true', 'on', '1']
-        if max_h_str and max_h_str.isdigit():
-            val = int(max_h_str)
-            if apply_all:
-                Teacher.objects.all().update(max_weekly_hours=val)
-                selected_teacher.max_weekly_hours = val
+    try:
+        from .utils import get_active_academic_year
+        active_year = get_active_academic_year(request)
+        selected_year = request.GET.get('year') or request.GET.get('academic_year')
+        if selected_year:
+            if str(selected_year).isdigit():
+                found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
             else:
-                selected_teacher.max_weekly_hours = val
-                selected_teacher.save(update_fields=['max_weekly_hours'])
+                found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
+            if found_year:
+                active_year = found_year
 
-        checked_pairs = set()
-        for key in request.POST.keys():
-            if key.startswith('assign_'):
-                parts = key.split('_')
-                if len(parts) == 3:
-                    cls_id, sub_id = int(parts[1]), int(parts[2])
-                    checked_pairs.add((cls_id, sub_id))
+        teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
+        classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+        subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
 
-        # 1. Unassign unchecked pairs previously belonging to this teacher in this academic year
-        existing_assigned = ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year) if active_year else ClassSubject.objects.filter(teacher=selected_teacher)
-        for cs in existing_assigned:
-            if (cs.classroom_id, cs.subject_id) not in checked_pairs:
-                cs.teacher = None
-                cs.save(update_fields=['teacher'])
+        selected_teacher_id = request.GET.get('teacher')
+        selected_teacher = None
+        if selected_teacher_id:
+            selected_teacher = Teacher.objects.filter(id=selected_teacher_id).first()
+        if not selected_teacher and teachers.exists():
+            selected_teacher = teachers.first()
 
-        # 2. Assign checked pairs to this teacher
-        assigned_count = 0
-        for cls_id, sub_id in checked_pairs:
-            cs, _ = ClassSubject.objects.get_or_create(
-                classroom_id=cls_id,
-                subject_id=sub_id,
+        if request.method == 'POST' and selected_teacher:
+            # Handle Max Hours update
+            max_h_str = request.POST.get('max_weekly_hours', '').strip()
+            apply_all = request.POST.get('apply_to_all_teachers') in ['true', 'on', '1']
+            if max_h_str and max_h_str.isdigit():
+                val = int(max_h_str)
+                if apply_all:
+                    Teacher.objects.all().update(max_weekly_hours=val)
+                    selected_teacher.max_weekly_hours = val
+                else:
+                    selected_teacher.max_weekly_hours = val
+                    selected_teacher.save(update_fields=['max_weekly_hours'])
+
+            checked_pairs = set()
+            for key in request.POST.keys():
+                if key.startswith('assign_'):
+                    parts = key.split('_')
+                    if len(parts) == 3:
+                        cls_id, sub_id = int(parts[1]), int(parts[2])
+                        checked_pairs.add((cls_id, sub_id))
+
+            assigned_count = 0
+            with transaction.atomic():
+                # 1. Unassign unchecked pairs previously belonging to this teacher in this academic year
+                existing_assigned = ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year) if active_year else ClassSubject.objects.filter(teacher=selected_teacher)
+                unassign_ids = [cs.id for cs in existing_assigned if (cs.classroom_id, cs.subject_id) not in checked_pairs]
+                if unassign_ids:
+                    ClassSubject.objects.filter(id__in=unassign_ids).update(teacher=None)
+
+                # 2. Assign checked pairs to this teacher
+                for cls_id, sub_id in checked_pairs:
+                    cs = ClassSubject.objects.filter(classroom_id=cls_id, subject_id=sub_id).first()
+                    if not cs:
+                        ClassSubject.objects.create(
+                            classroom_id=cls_id,
+                            subject_id=sub_id,
+                            teacher=selected_teacher,
+                        )
+                    else:
+                        if cs.teacher_id != selected_teacher.id:
+                            cs.teacher = selected_teacher
+                            cs.save(update_fields=['teacher'])
+                    assigned_count += 1
+
+            messages.success(request, f"បានរក្សាទុកការចាត់តាំងមុខវិជ្ជា និងថ្នាក់បង្រៀន ({assigned_count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ {selected_teacher.khmer_name} ជោគជ័យ!")
+            return redirect(f"/academics/teacher-assignments/?teacher={selected_teacher.id}{f'&year={active_year.id}' if active_year else ''}")
+
+        # Build matrix for display with zero N+1 queries
+        selected_teacher_pairs = set()
+        if selected_teacher:
+            selected_teacher_pairs = set(
+                ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year).values_list('classroom_id', 'subject_id') if active_year else ClassSubject.objects.filter(teacher=selected_teacher).values_list('classroom_id', 'subject_id')
             )
-            cs.teacher = selected_teacher
-            cs.save(update_fields=['teacher'])
-            assigned_count += 1
 
-        messages.success(request, f"បានរក្សាទុកការចាត់តាំងមុខវិជ្ជា និងថ្នាក់បង្រៀន ({assigned_count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ {selected_teacher.khmer_name} ជោគជ័យ!")
-        return redirect(f"/academics/teacher-assignments/?teacher={selected_teacher.id}{f'&year={active_year.id}' if active_year else ''}")
+        all_assignments = {}
+        cs_query = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('teacher') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('teacher')
+        
+        teacher_assigned_map = defaultdict(list)
+        for cs in cs_query:
+            all_assignments[(cs.classroom_id, cs.subject_id)] = cs.teacher
+            if cs.teacher_id:
+                teacher_assigned_map[cs.teacher_id].append(cs)
 
-    # Build matrix for display with zero N+1 queries
-    selected_teacher_pairs = set()
-    if selected_teacher:
-        selected_teacher_pairs = set(
-            ClassSubject.objects.filter(teacher=selected_teacher, classroom__academic_year=active_year).values_list('classroom_id', 'subject_id') if active_year else ClassSubject.objects.filter(teacher=selected_teacher).values_list('classroom_id', 'subject_id')
-        )
+        all_rules = list(GradeLevelRule.objects.all())
+        rules_dict = {}
+        rules_by_grade_track = defaultdict(set)
+        for r in all_rules:
+            rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
+            if r.weekly_hours > 0:
+                rules_by_grade_track[(r.grade_level, r.track)].add(r.subject_id)
 
-    all_assignments = {}
-    cs_query = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('teacher') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('teacher')
-    
-    teacher_assigned_map = defaultdict(list)
-    for cs in cs_query:
-        all_assignments[(cs.classroom_id, cs.subject_id)] = cs.teacher
-        if cs.teacher_id:
-            teacher_assigned_map[cs.teacher_id].append(cs)
+        cls_assigned_subs_map = defaultdict(set)
+        for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
+            cls_assigned_subs_map[cls_id].add(sub_id)
 
-    all_rules = list(GradeLevelRule.objects.all())
-    rules_dict = {}
-    rules_by_grade_track = defaultdict(set)
-    for r in all_rules:
-        rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
-        if r.weekly_hours > 0:
-            rules_by_grade_track[(r.grade_level, r.track)].add(r.subject_id)
+        teacher_stats = []
+        for t in teachers:
+            assigned_cs = teacher_assigned_map.get(t.id, [])
+            t_hours = 0
+            for cs in assigned_cs:
+                h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, cs.classroom.track))
+                if h is None:
+                    h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, 'GENERAL'), 0)
+                t_hours += h
 
-    cls_assigned_subs_map = defaultdict(set)
-    for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
-        cls_assigned_subs_map[cls_id].add(sub_id)
-
-    teacher_stats = []
-    for t in teachers:
-        assigned_cs = teacher_assigned_map.get(t.id, [])
-        t_hours = 0
-        for cs in assigned_cs:
-            h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, cs.classroom.track))
-            if h is None:
-                h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, 'GENERAL'), 0)
-            t_hours += h
-
-        t_max = t.max_weekly_hours or 18
-        teacher_stats.append({
-            'teacher': t,
-            'assigned_count': len(assigned_cs),
-            'assigned_hours': t_hours,
-            'max_weekly_hours': t_max,
-            'is_selected': selected_teacher and t.id == selected_teacher.id,
-            'is_over': t_hours > t_max,
-        })
-
-    matrix_grid = []
-    selected_subject_hours = {sub.id: 0 for sub in subjects}
-    selected_total_assigned_hours = 0
-
-    for cls in classrooms:
-        cells = []
-        cls_assigned_subs = cls_assigned_subs_map.get(cls.id)
-        if not cls_assigned_subs:
-            cls_assigned_subs = rules_by_grade_track.get((cls.grade_level, cls.track)) or rules_by_grade_track.get((cls.grade_level, 'GENERAL')) or set()
-
-        for sub in subjects:
-            is_checked = (cls.id, sub.id) in selected_teacher_pairs
-            other_teacher = all_assignments.get((cls.id, sub.id))
-            is_valid_for_class = sub.id in cls_assigned_subs
-
-            h_req = rules_dict.get((sub.id, cls.grade_level, cls.track))
-            if h_req is None:
-                h_req = rules_dict.get((sub.id, cls.grade_level, 'GENERAL'), 0)
-
-            if is_checked:
-                selected_subject_hours[sub.id] += h_req
-                selected_total_assigned_hours += h_req
-
-            cells.append({
-                'subject': sub,
-                'classroom': cls,
-                'input_name': f"assign_{cls.id}_{sub.id}",
-                'is_checked': is_checked,
-                'hours_required': h_req,
-                'other_teacher': other_teacher if (other_teacher and other_teacher != selected_teacher) else None,
-                'is_valid_for_class': is_valid_for_class,
+            t_max = t.max_weekly_hours or 18
+            teacher_stats.append({
+                'teacher': t,
+                'assigned_count': len(assigned_cs),
+                'assigned_hours': t_hours,
+                'max_weekly_hours': t_max,
+                'is_selected': selected_teacher and t.id == selected_teacher.id,
+                'is_over': t_hours > t_max,
             })
-        matrix_grid.append({
-            'classroom': cls,
-            'cells': cells,
+
+        matrix_grid = []
+        selected_subject_hours = {sub.id: 0 for sub in subjects}
+        selected_total_assigned_hours = 0
+
+        for cls in classrooms:
+            cells = []
+            cls_assigned_subs = cls_assigned_subs_map.get(cls.id)
+            if not cls_assigned_subs:
+                cls_assigned_subs = rules_by_grade_track.get((cls.grade_level, cls.track)) or rules_by_grade_track.get((cls.grade_level, 'GENERAL')) or set()
+
+            for sub in subjects:
+                is_checked = (cls.id, sub.id) in selected_teacher_pairs
+                other_teacher = all_assignments.get((cls.id, sub.id))
+                is_valid_for_class = sub.id in cls_assigned_subs
+
+                h_req = rules_dict.get((sub.id, cls.grade_level, cls.track))
+                if h_req is None:
+                    h_req = rules_dict.get((sub.id, cls.grade_level, 'GENERAL'), 0)
+
+                if is_checked:
+                    selected_subject_hours[sub.id] += h_req
+                    selected_total_assigned_hours += h_req
+
+                cells.append({
+                    'subject': sub,
+                    'classroom': cls,
+                    'input_name': f"assign_{cls.id}_{sub.id}",
+                    'is_checked': is_checked,
+                    'hours_required': h_req,
+                    'other_teacher': other_teacher if (other_teacher and other_teacher != selected_teacher) else None,
+                    'is_valid_for_class': is_valid_for_class,
+                })
+            matrix_grid.append({
+                'classroom': cls,
+                'cells': cells,
+            })
+
+        # Build teacher-subject code mapping (e.g. K1, K2, M1...)
+        distinct_assignments = ClassSubject.objects.filter(
+            classroom__academic_year=active_year,
+            teacher__isnull=False
+        ).exclude(
+            subject__code__in=['R', 'D']
+        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id') if active_year else ClassSubject.objects.filter(
+            teacher__isnull=False
+        ).exclude(
+            subject__code__in=['R', 'D']
+        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')
+
+        teacher_subject_code_map = {}
+        subject_teacher_counters = {}
+        for item in distinct_assignments:
+            s_id = item['subject_id']
+            t_id = item['teacher_id']
+            sub = next((s for s in subjects if s.id == s_id), None)
+            sub_code = sub.code if sub else 'S'
+            if s_id not in subject_teacher_counters:
+                subject_teacher_counters[s_id] = 1
+            else:
+                subject_teacher_counters[s_id] += 1
+            teacher_subject_code_map[(s_id, t_id)] = f"{sub_code}{subject_teacher_counters[s_id]}"
+
+        selected_teacher_codes = []
+        if selected_teacher:
+            for s in subjects:
+                if (s.id, selected_teacher.id) in teacher_subject_code_map:
+                    selected_teacher_codes.append(teacher_subject_code_map[(s.id, selected_teacher.id)])
+
+        # Retrieve dynamic training level quotas for modal customization
+        training_quotas = get_training_level_quotas()
+        raw_levels = list(Teacher.objects.filter(status='ACTIVE').values_list('training_level', flat=True).distinct())
+        distinct_levels = sorted(list(set([lvl.strip() for lvl in raw_levels if lvl and lvl.strip()])))
+        if 'គ្រូទុតិយភូមិ' not in distinct_levels:
+            distinct_levels.insert(0, 'គ្រូទុតិយភូមិ')
+        if 'គ្រូបឋមភូមិ' not in distinct_levels:
+            distinct_levels.append('គ្រូបឋមភូមិ')
+
+        training_level_settings = []
+        for lvl in distinct_levels:
+            training_level_settings.append({
+                'name': lvl,
+                'hours': training_quotas.get(lvl, 16 if 'ទុតិយភូមិ' in lvl else 18),
+                'count': Teacher.objects.filter(status='ACTIVE', training_level=lvl).count(),
+            })
+
+        return render(request, 'academics/teacher_assignments.html', {
+            'teachers': teachers,
+            'teacher_stats': teacher_stats,
+            'selected_teacher': selected_teacher,
+            'selected_teacher_codes': ", ".join(selected_teacher_codes) or None,
+            'classrooms': classrooms,
+            'subjects': subjects,
+            'matrix_grid': matrix_grid,
+            'selected_assigned_count': len(selected_teacher_pairs),
+            'selected_assigned_hours': selected_total_assigned_hours,
+            'selected_subject_hours': selected_subject_hours,
+            'selected_max_hours': selected_teacher.max_weekly_hours if selected_teacher else 18,
+            'training_level_settings': training_level_settings,
+            'training_quotas': training_quotas,
         })
-
-    # Build teacher-subject code mapping (e.g. K1, K2, M1...)
-    distinct_assignments = ClassSubject.objects.filter(
-        classroom__academic_year=active_year,
-        teacher__isnull=False
-    ).exclude(
-        subject__code__in=['R', 'D']
-    ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id') if active_year else ClassSubject.objects.filter(
-        teacher__isnull=False
-    ).exclude(
-        subject__code__in=['R', 'D']
-    ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')
-
-    teacher_subject_code_map = {}
-    subject_teacher_counters = {}
-    for item in distinct_assignments:
-        s_id = item['subject_id']
-        t_id = item['teacher_id']
-        sub = next((s for s in subjects if s.id == s_id), None)
-        sub_code = sub.code if sub else 'S'
-        if s_id not in subject_teacher_counters:
-            subject_teacher_counters[s_id] = 1
-        else:
-            subject_teacher_counters[s_id] += 1
-        teacher_subject_code_map[(s_id, t_id)] = f"{sub_code}{subject_teacher_counters[s_id]}"
-
-    selected_teacher_codes = []
-    if selected_teacher:
-        for s in subjects:
-            if (s.id, selected_teacher.id) in teacher_subject_code_map:
-                selected_teacher_codes.append(teacher_subject_code_map[(s.id, selected_teacher.id)])
-
-    # Retrieve dynamic training level quotas for modal customization
-    training_quotas = get_training_level_quotas()
-    raw_levels = list(Teacher.objects.filter(status='ACTIVE').values_list('training_level', flat=True).distinct())
-    distinct_levels = sorted(list(set([lvl.strip() for lvl in raw_levels if lvl and lvl.strip()])))
-    if 'គ្រូទុតិយភូមិ' not in distinct_levels:
-        distinct_levels.insert(0, 'គ្រូទុតិយភូមិ')
-    if 'គ្រូបឋមភូមិ' not in distinct_levels:
-        distinct_levels.append('គ្រូបឋមភូមិ')
-
-    training_level_settings = []
-    for lvl in distinct_levels:
-        training_level_settings.append({
-            'name': lvl,
-            'hours': training_quotas.get(lvl, 16 if 'ទុតិយភូមិ' in lvl else 18),
-            'count': Teacher.objects.filter(status='ACTIVE', training_level=lvl).count(),
+    except Exception as e:
+        messages.error(request, f"កំហុសក្នុងការទាញយកទិន្នន័យចាត់តាំងគ្រូ៖ {str(e)}")
+        return render(request, 'academics/teacher_assignments.html', {
+            'teachers': Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'),
+            'teacher_stats': [],
+            'selected_teacher': None,
+            'selected_teacher_codes': None,
+            'classrooms': [],
+            'subjects': [],
+            'matrix_grid': [],
+            'selected_assigned_count': 0,
+            'selected_assigned_hours': 0,
+            'selected_subject_hours': {},
+            'selected_max_hours': 18,
+            'training_level_settings': [],
+            'training_quotas': DEFAULT_TRAINING_LEVEL_QUOTAS,
         })
-
-    return render(request, 'academics/teacher_assignments.html', {
-        'teachers': teachers,
-        'teacher_stats': teacher_stats,
-        'selected_teacher': selected_teacher,
-        'selected_teacher_codes': ", ".join(selected_teacher_codes) or None,
-        'classrooms': classrooms,
-        'subjects': subjects,
-        'matrix_grid': matrix_grid,
-        'selected_assigned_count': len(selected_teacher_pairs),
-        'selected_assigned_hours': selected_total_assigned_hours,
-        'selected_subject_hours': selected_subject_hours,
-        'selected_max_hours': selected_teacher.max_weekly_hours if selected_teacher else 18,
-        'training_level_settings': training_level_settings,
-        'training_quotas': training_quotas,
-    })
 
 
 @login_required

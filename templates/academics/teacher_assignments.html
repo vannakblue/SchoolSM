@@ -167,17 +167,17 @@
             <!-- Teachers List -->
             <div style="max-height: 600px; overflow-y: auto; padding-right: 4px;" id="teacherListContainer">
                 {% for item in teacher_stats %}
-                <a href="?teacher={{ item.teacher.id }}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name }} {{ item.teacher.specialization }} {{ item.teacher.training_level }}">
+                <a href="?teacher={{ item.teacher.id }}{% if active_academic_year %}&year={{ active_academic_year.id }}{% endif %}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name|default:item.teacher.username }} {{ item.teacher.specialization|default:'' }} {{ item.teacher.training_level|default:'' }}">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; font-size: 0.85rem;">
-                                {{ item.teacher.khmer_name|slice:":1" }}
+                                {{ item.teacher.khmer_name|default:item.teacher.username|slice:":1" }}
                             </div>
                             <div>
-                                <div class="fw-bold text-dark small">{{ item.teacher.khmer_name }}</div>
+                                <div class="fw-bold text-dark small">{{ item.teacher.khmer_name|default:item.teacher.username }}</div>
                                 <div class="text-muted d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.72rem;">
-                                    <span>{{ item.teacher.specialization }}</span>
-                                    {% if 'ទុតិយភូមិ' in item.teacher.training_level %}
+                                    <span>{{ item.teacher.specialization|default:"" }}</span>
+                                    {% if item.teacher.training_level and 'ទុតិយភូមិ' in item.teacher.training_level %}
                                     <span class="badge bg-purple-subtle text-purple border p-0 px-1" style="font-size: 0.65rem;">ទុតិយភូមិ</span>
                                     {% elif item.teacher.training_level %}
                                     <span class="badge bg-light text-muted border p-0 px-1" style="font-size: 0.65rem;">{{ item.teacher.training_level }}</span>
@@ -187,7 +187,7 @@
                         </div>
                         <div class="text-end">
                             <span class="badge {% if item.is_over %}bg-warning text-dark border border-warning{% elif item.assigned_hours > 0 %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size: 0.72rem;">
-                                {{ item.assigned_hours }}/{{ item.max_weekly_hours }} ម៉ោង
+                                {{ item.assigned_hours }}/{{ item.max_weekly_hours|default:18 }} ម៉ោង
                             </span>
                             <div class="text-muted" style="font-size: 0.68rem;">{{ item.assigned_count }} ថ្នាក់</div>
                         </div>
@@ -215,10 +215,10 @@
                             <i class="fa-solid fa-chalkboard-user"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name }} ({{ selected_teacher.latin_name }})</h5>
+                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name|default:selected_teacher.username }}{% if selected_teacher.latin_name %} ({{ selected_teacher.latin_name }}){% endif %}</h5>
                             <div class="small text-dark mt-1 d-flex flex-wrap align-items-center gap-1">
-                                <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id }}</span>
-                                <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization }}</span>
+                                <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id|default:"-" }}</span>
+                                <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization|default:"-" }}</span>
                                 <span class="badge bg-info-subtle text-info border"><i class="fa-solid fa-graduation-cap me-1"></i>កម្រិតបណ្តុះបណ្តាល៖ {{ selected_teacher.training_level|default:"មិនទាន់កំណត់" }}</span>
                                 {% if selected_teacher_codes %}
                                 <span class="badge bg-purple-subtle text-purple border"><i class="fa-solid fa-tag me-1"></i>កូដមុខវិជ្ជា៖ {{ selected_teacher_codes }}</span>
@@ -231,7 +231,7 @@
                     <!-- Top Action Buttons -->
                     <div class="d-flex align-items-center gap-2">
                         <!-- Reset This Teacher Button -->
-                        <a href="{% url 'teacher_assignments_reset_teacher' selected_teacher.id %}" class="btn btn-outline-danger fw-bold shadow-sm px-3 py-2 btn-sm" onclick="return confirm('តើលោកអ្នកចង់សម្អាតការចាត់តាំងថ្នាក់របស់គ្រូ {{ selected_teacher.khmer_name }} ទាំងអស់ឱ្យទៅជា 0 ថ្នាក់មែនទេ?')">
+                        <a href="{% url 'teacher_assignments_reset_teacher' selected_teacher.id %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-outline-danger fw-bold shadow-sm px-3 py-2 btn-sm" onclick="return confirm('តើលោកអ្នកចង់សម្អាតការចាត់តាំងថ្នាក់របស់គ្រូ {{ selected_teacher.khmer_name|default:selected_teacher.username }} ទាំងអស់ឱ្យទៅជា 0 ថ្នាក់មែនទេ?')">
                             <i class="fa-solid fa-rotate-left me-1"></i> សម្អាតគ្រូនេះ
                         </a>
 
