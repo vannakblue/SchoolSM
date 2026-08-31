@@ -148,6 +148,20 @@
         letter-spacing: 0.5px;
     }
 
+    .cell-duty-slot {
+        background-color: #fef2f2 !important;
+    }
+    .cell-duty-slot .sub-title {
+        color: #b91c1c !important;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .cell-duty-slot .extra-info {
+        color: #991b1b !important;
+        font-size: 0.74rem;
+        font-weight: 600;
+    }
+
     /* Signature & Footer Section */
     .tt-footer {
         margin-top: 18px;
@@ -496,7 +510,15 @@
                 <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កណ្តួត" }}</div>
                 <div class="tt-main-title">កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍</div>
                 <div class="tt-meta-line">ឈ្មោះគ្រូបង្រៀន៖ {{ tch_item.title }} {{ tch_item.teacher.khmer_name }}</div>
-                <div class="tt-meta-line">មុខវិជ្ជាបង្រៀន៖ {{ tch_item.subjects_display }} | ឆ្នាំសិក្សា៖ {{ tch_item.academic_year }}</div>
+                <div class="tt-meta-line">
+                    មុខវិជ្ជាបង្រៀន៖ {{ tch_item.subjects_display }} 
+                    | ម៉ោងបង្រៀន៖ <strong>{{ tch_item.teaching_hours }}</strong> ម៉ោង 
+                    {% if tch_item.duty_hours > 0 %}
+                    | ម៉ោងប្រចាំការ៖ <strong class="text-danger">{{ tch_item.duty_hours }}</strong> ម៉ោង 
+                    {% endif %}
+                    | សរុប៖ <strong>{{ tch_item.total_hours }}</strong> ម៉ោង 
+                    | ឆ្នាំសិក្សា៖ {{ tch_item.academic_year }}
+                </div>
             </div>
 
             <!-- Timetable Table -->
@@ -520,10 +542,15 @@
                     <tr>
                         <td class="td-period">{{ row.period }}</td>
                         {% for slot in row.slots %}
-                        <td class="cell-slot">
+                        <td class="cell-slot {% if slot.is_duty %}cell-duty-slot{% endif %}">
                             {% if slot %}
-                                <div class="sub-title">{{ slot.subject_name }}</div>
-                                <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                                {% if slot.is_duty %}
+                                    <div class="sub-title text-danger fw-bold"><i class="fa-solid fa-clock me-1 text-danger"></i>{{ slot.duty_name }}</div>
+                                    <div class="extra-info text-danger-emphasis">{% if slot.duty_notes %}({{ slot.duty_notes }}){% else %}(ម៉ោងប្រចាំការ){% endif %}</div>
+                                {% else %}
+                                    <div class="sub-title">{{ slot.subject_name }}</div>
+                                    <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                                {% endif %}
                             {% else %}
                                 -
                             {% endif %}
@@ -542,10 +569,15 @@
                     <tr>
                         <td class="td-period">{{ row.period }}</td>
                         {% for slot in row.slots %}
-                        <td class="cell-slot">
+                        <td class="cell-slot {% if slot.is_duty %}cell-duty-slot{% endif %}">
                             {% if slot %}
-                                <div class="sub-title">{{ slot.subject_name }}</div>
-                                <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                                {% if slot.is_duty %}
+                                    <div class="sub-title text-danger fw-bold"><i class="fa-solid fa-clock me-1 text-danger"></i>{{ slot.duty_name }}</div>
+                                    <div class="extra-info text-danger-emphasis">{% if slot.duty_notes %}({{ slot.duty_notes }}){% else %}(ម៉ោងប្រចាំការ){% endif %}</div>
+                                {% else %}
+                                    <div class="sub-title">{{ slot.subject_name }}</div>
+                                    <div class="extra-info">(ថ្នាក់ {{ slot.classroom_name }})</div>
+                                {% endif %}
                             {% else %}
                                 -
                             {% endif %}

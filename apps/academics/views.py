@@ -2350,6 +2350,17 @@ def student_teacher_timetable_view(request):
         if cs.teacher_id and cs.subject:
             teacher_subjects_map[cs.teacher_id].add(cs.subject.name_kh)
 
+    # Pre-fetch Teacher Duty Schedules for active academic year
+    duty_entries_qs = TeacherDutySchedule.objects.filter(academic_year=active_year).select_related('teacher') if active_year else TeacherDutySchedule.objects.all().select_related('teacher')
+    duty_entries = list(duty_entries_qs)
+    duty_by_teacher = defaultdict(list)
+    for d in duty_entries:
+        if d.teacher_id:
+            duty_by_teacher[d.teacher_id].append(d)
+
+    raw_duty_types = TeacherDutyType.get_all_duty_types()
+    duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+
     # 1. Build Classroom Timetables Data
     classrooms_timetables = []
     for cls in classrooms:
@@ -2393,18 +2404,37 @@ def student_teacher_timetable_view(request):
             'total_hours': len(slots_map),
         })
 
-    # 2. Build Teacher Timetables Data (Only slots taught in active academic year)
+    # 2. Build Teacher Timetables Data (Teaching slots + Duty schedule slots in active academic year)
     teachers_timetables = []
     for tch in teachers:
         tch_entries = timetables_by_teacher.get(tch.id, [])
         slots_map = {}
+        teaching_hours = 0
         for entry in tch_entries:
             slots_map[(entry.day_of_week, entry.period_number)] = {
                 'subject_name': entry.subject.name_kh if entry.subject else '',
                 'subject_code': entry.subject.code if entry.subject else '',
                 'classroom_name': entry.classroom.name if entry.classroom else '',
                 'classroom_code': entry.classroom.code if entry.classroom else '',
+                'is_duty': False,
             }
+            teaching_hours += 1
+
+        # Fill in duty slots if no teaching class in that slot
+        tch_duties = duty_by_teacher.get(tch.id, [])
+        duty_hours = 0
+        for d in tch_duties:
+            k = (d.day_of_week, d.period_number)
+            if k not in slots_map:
+                duty_name = duty_types_dict.get(d.duty_type, d.duty_type)
+                slots_map[k] = {
+                    'is_duty': True,
+                    'duty_name': duty_name,
+                    'duty_code': d.duty_type,
+                    'duty_notes': d.notes or '',
+                    'is_auto': d.is_auto_assigned,
+                }
+                duty_hours += 1
 
         morning_rows = []
         for p in [1, 2, 3, 4]:
@@ -2427,7 +2457,9 @@ def student_teacher_timetable_view(request):
             'academic_year': active_year.name if active_year else "២០២៥-២០២៦",
             'morning_rows': morning_rows,
             'afternoon_rows': afternoon_rows,
-            'total_hours': len(slots_map),
+            'teaching_hours': teaching_hours,
+            'duty_hours': duty_hours,
+            'total_hours': teaching_hours + duty_hours,
         })
 
     # Date formatting in Khmer

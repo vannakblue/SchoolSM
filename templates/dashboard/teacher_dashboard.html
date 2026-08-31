@@ -145,6 +145,28 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if today_duty_list %}
+            <!-- Today's Duty Shifts Banner -->
+            <div class="p-3 bg-danger-subtle border-top border-danger-subtle d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-danger small mb-0">ម៉ោងប្រចាំការថ្ងៃនេះ (Duty Roster)</div>
+                        <div class="small text-danger-emphasis">
+                            {% for d in today_duty_list %}
+                            <span class="badge bg-danger text-white me-1">ម៉ោងទី {{ d.period_number }}៖ {{ d.duty_name }}{% if d.notes %} ({{ d.notes }}){% endif %}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <a href="{% url 'teacher_duty_manager' %}" class="btn btn-sm btn-outline-danger fw-bold">
+                    <i class="fa-solid fa-calendar-check me-1"></i> កាលវិភាគប្រចាំការ
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 

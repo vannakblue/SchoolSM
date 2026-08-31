@@ -245,9 +245,31 @@ def teacher_dashboard(request):
         is_published=True
     )[:4]
 
+    today_duty_list = []
+    if teacher:
+        try:
+            from apps.academics.models import TeacherDutySchedule, TeacherDutyType
+            raw_duty_types = TeacherDutyType.get_all_duty_types()
+            duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+            duty_qs = TeacherDutySchedule.objects.filter(
+                teacher=teacher,
+                day_of_week=today_weekday
+            )
+            if current_year:
+                duty_qs = duty_qs.filter(academic_year=current_year)
+            for d in duty_qs.order_by('period_number'):
+                today_duty_list.append({
+                    'period_number': d.period_number,
+                    'duty_name': duty_types_dict.get(d.duty_type, d.duty_type),
+                    'notes': d.notes or '',
+                })
+        except Exception:
+            today_duty_list = []
+
     return render(request, 'dashboard/teacher_dashboard.html', {
         'teacher': teacher,
         'today_schedule': today_schedule,
+        'today_duty_list': today_duty_list,
         'my_classes': my_classes,
         'my_homeroom': my_homeroom,
         'my_students_count': my_students_count,
