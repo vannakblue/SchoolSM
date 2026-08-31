@@ -160,17 +160,65 @@
     <div>
         <h2 class="fw-bold mb-1 text-primary d-flex align-items-center gap-2">
             <i class="fa-solid fa-file-signature text-purple"></i>
-            <span>បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ</span>
+            <span>បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ & របាយការណ៍</span>
         </h2>
         <div class="text-muted small fw-bold" style="letter-spacing: 0.5px;">DAILY DUTY SIGN-IN SHEETS GENERATOR & TIMETABLE REPORTS</div>
     </div>
 
-    <!-- Top Action Buttons -->
+    <!-- Top Action Buttons with Multi-Report Excel Export Dropdown -->
     <div class="d-flex flex-wrap align-items-center gap-2">
-        <!-- Excel Export -->
-        <a href="{% url 'timetable_daily_reports_export_excel' %}?day={{ selected_day }}&session={{ selected_session }}" class="btn btn-warning fw-bold text-white shadow-sm px-3 py-2" title="ទាញយកឯកសារ Excel (.xlsx) ទាំង ១២ ថស">
-            <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (១២ ថស)
-        </a>
+        <!-- Unified / Dynamic Excel Export Split Button -->
+        <div class="btn-group shadow-sm">
+            <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type={{ selected_tab }}&day={{ selected_day }}&session={{ selected_session }}" 
+               id="btnTopExcelExport" 
+               class="btn btn-warning fw-bold text-white px-3 py-2" 
+               title="ទាញយកឯកសារ Excel (.xlsx)">
+                <i class="fa-solid fa-file-excel me-1"></i> 
+                <span id="btnTopExcelText">
+                    {% if selected_tab == 'teacher_load' %}
+                    ទាញយក Excel បន្ទុកបង្រៀន
+                    {% elif selected_tab == 'subject_codes' %}
+                    ទាញយក Excel កូដគ្រូ-មុខវិជ្ជា
+                    {% elif selected_tab == 'class_summary' %}
+                    ទាញយក Excel ម៉ោងតាមថ្នាក់
+                    {% else %}
+                    ទាញយក Excel (១២ ថស)
+                    {% endif %}
+                </span>
+            </a>
+            <button type="button" class="btn btn-warning text-white dropdown-toggle dropdown-toggle-split px-2" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 small">
+                <li><h6 class="dropdown-header text-primary fw-bold"><i class="fa-solid fa-file-excel me-1"></i> ជម្រើសទាញយក Excel គ្រប់ផ្ទាំងទាំង ៤៖</h6></li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'timetable_daily_reports_export_excel' %}?report_type=duty_sheets&day={{ selected_day }}&session={{ selected_session }}">
+                        <i class="fa-solid fa-clipboard-user text-primary me-2"></i> ១. បញ្ជីវត្តមានប្រចាំថ្ងៃ (១២ ថស / តាមថ្ងៃ)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'timetable_daily_reports_export_excel' %}?report_type=teacher_load">
+                        <i class="fa-solid fa-chart-column text-success me-2"></i> ២. បន្ទុកបង្រៀនរបស់គ្រូ (Teacher Load)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'timetable_daily_reports_export_excel' %}?report_type=subject_codes">
+                        <i class="fa-solid fa-tags text-purple me-2"></i> ៣. កូដគ្រូ-មុខវិជ្ជា (Subject Codes Directory)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item py-2" href="{% url 'timetable_daily_reports_export_excel' %}?report_type=class_summary">
+                        <i class="fa-solid fa-school text-info me-2"></i> ៤. ម៉ោងតាមថ្នាក់រៀន (Classrooms Summary)
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <a class="dropdown-item py-2 fw-bold text-primary bg-light" href="{% url 'timetable_daily_reports_export_excel' %}?report_type=all_reports">
+                        <i class="fa-solid fa-box-archive me-2"></i> 📦 ទាញយកគ្រប់របាយការណ៍ទាំងអស់ (All-in-One Workbook)
+                    </a>
+                </li>
+            </ul>
+        </div>
 
         <!-- Print Preview / Direct Print -->
         <button type="button" class="btn btn-purple fw-bold text-white shadow-sm px-4 py-2" style="background-color: #6366f1;" onclick="window.print()">
@@ -241,6 +289,15 @@
 
 <!-- ================== TAB 1: DAILY DUTY SIGN-IN SHEETS ================== -->
 <div id="pane_duty_sheets" class="{% if selected_tab != 'duty_sheets' %}d-none{% endif %}">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <div class="small fw-bold text-muted">
+            <i class="fa-solid fa-circle-info text-primary me-1"></i> បង្ហាញបញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ (សម្រាប់ព្រីន និងទាញយកជា Excel)
+        </div>
+        <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=duty_sheets&day={{ selected_day }}&session={{ selected_session }}" class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
+            <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)
+        </a>
+    </div>
+
     {% for sheet in duty_sheets %}
     <div class="duty-sheet-paper">
         <!-- School Header -->
@@ -250,7 +307,7 @@
                 បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ {{ sheet.session_name }}
             </h5>
             <div class="text-dark small fw-bold">
-                ថ្ងៃ {{ sheet.day_name }} | ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៤-២០២៥" }}
+                ថ្ងៃ {{ sheet.day_name }} | ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }}
             </div>
         </div>
 
@@ -322,11 +379,17 @@
 <!-- ================== TAB 2: TEACHER TEACHING HOURS LOAD REPORT ================== -->
 <div id="pane_teacher_load" class="{% if selected_tab != 'teacher_load' %}d-none{% endif %}">
     <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-primary mb-0">
-                <i class="fa-solid fa-chart-column me-2"></i>របាយការណ៍បន្ទុកម៉ោងបង្រៀនសរុបរបស់គ្រូ (Teacher Teaching Hours Load)
-            </h5>
-            <span class="badge bg-primary fs-7">សរុបគ្រូ៖ {{ teacher_load_report|length }} នាក់</span>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-chart-column me-2"></i>របាយការណ៍បន្ទុកម៉ោងបង្រៀនសរុបរបស់គ្រូ (Teacher Teaching Hours Load)
+                </h5>
+                <span class="text-muted small">សរុបគ្រូ៖ {{ teacher_load_report|length }} នាក់</span>
+            </div>
+            <!-- Tab 2 Excel Export Button -->
+            <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=teacher_load" class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel បន្ទុកបង្រៀន
+            </a>
         </div>
 
         <div class="table-responsive border rounded-3">
@@ -385,11 +448,17 @@
 <!-- ================== TAB 3: TEACHER SUBJECT CODES DIRECTORY ================== -->
 <div id="pane_subject_codes" class="{% if selected_tab != 'subject_codes' %}d-none{% endif %}">
     <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-primary mb-0">
-                <i class="fa-solid fa-tags me-2"></i>បញ្ជីកូដគ្រូបង្រៀន និងមុខវិជ្ជា (Teacher Subject Codes Directory)
-            </h5>
-            <span class="badge bg-purple-subtle text-purple border fs-7">សរុបកូដ៖ {{ teacher_code_directory|length }}</span>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-tags me-2"></i>បញ្ជីកូដគ្រូបង្រៀន និងមុខវិជ្ជា (Teacher Subject Codes Directory)
+                </h5>
+                <span class="text-muted small">សរុបកូដ៖ {{ teacher_code_directory|length }}</span>
+            </div>
+            <!-- Tab 3 Excel Export Button -->
+            <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=subject_codes" class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel កូដគ្រូ-មុខវិជ្ជា
+            </a>
         </div>
 
         <div class="table-responsive border rounded-3">
@@ -428,11 +497,17 @@
 <!-- ================== TAB 4: CLASSROOMS SUMMARY ================== -->
 <div id="pane_class_summary" class="{% if selected_tab != 'class_summary' %}d-none{% endif %}">
     <div class="card border-0 shadow-sm rounded-3 p-4 bg-white mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-primary mb-0">
-                <i class="fa-solid fa-school me-2"></i>របាយការណ៍ម៉ោងតាមថ្នាក់រៀន (Classrooms Timetable Allocation Summary)
-            </h5>
-            <span class="badge bg-success fs-7">សរុបថ្នាក់៖ {{ classrooms_summary|length }} ថ្នាក់</span>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-school me-2"></i>របាយការណ៍ម៉ោងតាមថ្នាក់រៀន (Classrooms Timetable Allocation Summary)
+                </h5>
+                <span class="text-muted small">សរុបថ្នាក់៖ {{ classrooms_summary|length }} ថ្នាក់</span>
+            </div>
+            <!-- Tab 4 Excel Export Button -->
+            <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=class_summary" class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel ម៉ោងតាមថ្នាក់
+            </a>
         </div>
 
         <div class="table-responsive border rounded-3">
@@ -491,6 +566,13 @@
 </div>
 
 <script>
+    const reportLabels = {
+        'duty_sheets': 'ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)',
+        'teacher_load': 'ទាញយក Excel បន្ទុកបង្រៀន',
+        'subject_codes': 'ទាញយក Excel កូដគ្រូ-មុខវិជ្ជា',
+        'class_summary': 'ទាញយក Excel ម៉ោងតាមថ្នាក់'
+    };
+
     function switchReportTab(tabName) {
         document.getElementById('inputTab').value = tabName;
         
@@ -509,6 +591,18 @@
         buttons.forEach(btn => btn.classList.remove('active'));
         const activeBtn = Array.from(buttons).find(btn => btn.getAttribute('onclick').includes(tabName));
         if (activeBtn) activeBtn.classList.add('active');
+
+        // Update Top Excel Export Button URL & Label dynamically
+        const dayVal = document.querySelector('select[name="day"]')?.value || 'all';
+        const sessionVal = document.querySelector('select[name="session"]')?.value || 'all';
+        const topBtn = document.getElementById('btnTopExcelExport');
+        const topBtnText = document.getElementById('btnTopExcelText');
+        if (topBtn) {
+            topBtn.href = `{% url 'timetable_daily_reports_export_excel' %}?report_type=${tabName}&day=${dayVal}&session=${sessionVal}`;
+        }
+        if (topBtnText && reportLabels[tabName]) {
+            topBtnText.innerText = reportLabels[tabName];
+        }
     }
 </script>
 {% endblock %}
