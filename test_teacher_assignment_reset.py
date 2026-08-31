@@ -52,7 +52,12 @@ req.session = {}
 setattr(req, '_messages', FallbackStorage(req))
 res = teacher_assignments_reset_all(req)
 assert res.status_code == 302
-assert ClassSubject.objects.filter(teacher__isnull=False).count() == 0
-print("   [PASS] Reset all assignments successful (0 assigned across all teachers)!")
+from apps.academics.utils import get_active_academic_year
+ay = get_active_academic_year(req)
+if ay:
+    assert ClassSubject.objects.filter(classroom__academic_year=ay, teacher__isnull=False).count() == 0
+else:
+    assert ClassSubject.objects.filter(teacher__isnull=False).count() == 0
+print("   [PASS] Reset all assignments successful (0 assigned across active academic year)!")
 
 print("\n=== ALL TEACHER ASSIGNMENT RESET & AUTO-ASSIGN TESTS PASSED 100%! ===")

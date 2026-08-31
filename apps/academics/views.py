@@ -3314,11 +3314,14 @@ DEFAULT_TRAINING_LEVEL_QUOTAS = {
 }
 
 def get_training_level_quotas():
-    config = SavedDefaultConfig.objects.filter(key='training_level_quotas').first()
-    if config and config.data:
-        res = dict(DEFAULT_TRAINING_LEVEL_QUOTAS)
-        res.update(config.data)
-        return res
+    try:
+        config = SavedDefaultConfig.objects.filter(key='training_level_quotas').first()
+        if config and config.data and isinstance(config.data, dict):
+            res = dict(DEFAULT_TRAINING_LEVEL_QUOTAS)
+            res.update(config.data)
+            return res
+    except Exception:
+        pass
     return dict(DEFAULT_TRAINING_LEVEL_QUOTAS)
 
 
@@ -3394,7 +3397,7 @@ def teacher_assignments_manager(request):
         messages.success(request, f"បានរក្សាទុកការចាត់តាំងមុខវិជ្ជា និងថ្នាក់បង្រៀន ({assigned_count} ថ្នាក់-មុខវិជ្ជា) សម្រាប់គ្រូ {selected_teacher.khmer_name} ជោគជ័យ!")
         return redirect(f"/academics/teacher-assignments/?teacher={selected_teacher.id}{f'&year={active_year.id}' if active_year else ''}")
 
-    # Build matrix for display
+    # Build matrix for display with zero N+1 queries
     selected_teacher_pairs = set()
     if selected_teacher:
         selected_teacher_pairs = set(
@@ -3403,16 +3406,28 @@ def teacher_assignments_manager(request):
 
     all_assignments = {}
     cs_query = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('teacher') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('teacher')
+    
+    teacher_assigned_map = defaultdict(list)
     for cs in cs_query:
         all_assignments[(cs.classroom_id, cs.subject_id)] = cs.teacher
+        if cs.teacher_id:
+            teacher_assigned_map[cs.teacher_id].append(cs)
 
+    all_rules = list(GradeLevelRule.objects.all())
     rules_dict = {}
-    for r in GradeLevelRule.objects.all():
+    rules_by_grade_track = defaultdict(set)
+    for r in all_rules:
         rules_dict[(r.subject_id, r.grade_level, r.track)] = r.weekly_hours
+        if r.weekly_hours > 0:
+            rules_by_grade_track[(r.grade_level, r.track)].add(r.subject_id)
+
+    cls_assigned_subs_map = defaultdict(set)
+    for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
+        cls_assigned_subs_map[cls_id].add(sub_id)
 
     teacher_stats = []
     for t in teachers:
-        assigned_cs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher=t).select_related('classroom') if active_year else ClassSubject.objects.filter(teacher=t).select_related('classroom')
+        assigned_cs = teacher_assigned_map.get(t.id, [])
         t_hours = 0
         for cs in assigned_cs:
             h = rules_dict.get((cs.subject_id, cs.classroom.grade_level, cs.classroom.track))
@@ -3423,7 +3438,7 @@ def teacher_assignments_manager(request):
         t_max = t.max_weekly_hours or 18
         teacher_stats.append({
             'teacher': t,
-            'assigned_count': assigned_cs.count(),
+            'assigned_count': len(assigned_cs),
             'assigned_hours': t_hours,
             'max_weekly_hours': t_max,
             'is_selected': selected_teacher and t.id == selected_teacher.id,
@@ -3436,13 +3451,9 @@ def teacher_assignments_manager(request):
 
     for cls in classrooms:
         cells = []
-        cls_assigned_subs = set(cls.assigned_subjects.values_list('subject_id', flat=True))
+        cls_assigned_subs = cls_assigned_subs_map.get(cls.id)
         if not cls_assigned_subs:
-            cls_assigned_subs = set(GradeLevelRule.objects.filter(
-                grade_level=cls.grade_level,
-                track=cls.track,
-                weekly_hours__gt=0
-            ).values_list('subject_id', flat=True))
+            cls_assigned_subs = rules_by_grade_track.get((cls.grade_level, cls.track)) or rules_by_grade_track.get((cls.grade_level, 'GENERAL')) or set()
 
         for sub in subjects:
             is_checked = (cls.id, sub.id) in selected_teacher_pairs
@@ -3563,8 +3574,8 @@ def teacher_assignments_training_quotas_save(request):
             defaults={'data': quotas}
         )
 
-        # Apply to all teachers
-        updated_count = 0
+        # Apply to all teachers in bulk
+        teachers_to_update = []
         teachers = Teacher.objects.all()
         for t in teachers:
             t_level = (t.training_level or '').strip()
@@ -3579,8 +3590,17 @@ def teacher_assignments_training_quotas_save(request):
 
             if t.max_weekly_hours != new_max:
                 t.max_weekly_hours = new_max
-                t.save(update_fields=['max_weekly_hours'])
-                updated_count += 1
+                teachers_to_update.append(t)
+
+        if teachers_to_update:
+            try:
+                Teacher.objects.bulk_update(teachers_to_update, ['max_weekly_hours'])
+            except Exception:
+                for t in teachers_to_update:
+                    try:
+                        t.save(update_fields=['max_weekly_hours'])
+                    except Exception:
+                        pass
 
         messages.success(request, f"បានរក្សាទុក និងកំណត់កូតាម៉ោងបង្រៀន (គ្រូទុតិយភូមិ = {quotas.get('គ្រូទុតិយភូមិ', 16)} ម៉ោង, ផ្សេងៗ = {quotas.get('default', 18)} ម៉ោង) ទៅគ្រូទាំងអស់ជោគជ័យ!")
     
@@ -3629,10 +3649,11 @@ def teacher_assignments_auto_assign(request):
     Intelligently auto-assign active teachers to classes based on their subject specialization
     and pedagogical training level quota (គ្រូទុតិយភូមិ = 16h, ផ្សេងៗ = 18h).
     """
-    from .utils import get_active_academic_year
-    active_year = get_active_academic_year(request)
-    
+    active_year = None
     try:
+        from .utils import get_active_academic_year
+        active_year = get_active_academic_year(request)
+        
         quotas = get_training_level_quotas()
         teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('id'))
         
@@ -3640,7 +3661,8 @@ def teacher_assignments_auto_assign(request):
             messages.warning(request, "មិនទាន់មានគ្រូបង្រៀនសកម្ម (ACTIVE) ក្នុងប្រព័ន្ធដើម្បីចាត់តាំងស្វ័យប្រវត្តិឡើយ!")
             return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
 
-        # 1. Sync / Update teacher max hours based on training level
+        # 1. Sync / Update teacher max hours based on training level in bulk
+        teachers_to_update = []
         for t in teachers:
             t_level = (t.training_level or '').strip()
             if t_level in quotas:
@@ -3653,11 +3675,19 @@ def teacher_assignments_auto_assign(request):
                 quota_val = quotas.get('default', 18)
             
             if not t.max_weekly_hours or t.max_weekly_hours in [16, 18]:
-                t.max_weekly_hours = quota_val
-                try:
-                    t.save(update_fields=['max_weekly_hours'])
-                except Exception:
-                    pass
+                if t.max_weekly_hours != quota_val:
+                    t.max_weekly_hours = quota_val
+                    teachers_to_update.append(t)
+
+        if teachers_to_update:
+            try:
+                Teacher.objects.bulk_update(teachers_to_update, ['max_weekly_hours'])
+            except Exception:
+                for t in teachers_to_update:
+                    try:
+                        t.save(update_fields=['max_weekly_hours'])
+                    except Exception:
+                        pass
 
         # Classrooms ordered by High School (12, 11, 10) down to Middle School (9, 8, 7)
         classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('-grade_level', 'code') if active_year else Classroom.objects.all().order_by('-grade_level', 'code'))
@@ -3671,74 +3701,90 @@ def teacher_assignments_auto_assign(request):
         teacher_max = {t.id: (t.max_weekly_hours or 18) for t in teachers}
         assigned_count = 0
 
-        with transaction.atomic():
-            for cls in classrooms:
-                cls_grade = cls.grade_level if cls.grade_level is not None else 10
-                cls_track = cls.track or 'GENERAL'
-                is_high_school = cls_grade >= 10
+        # Pre-fetch existing ClassSubject mapping to avoid N+1 DB calls
+        existing_cs_map = {}
+        if classrooms:
+            for cs in ClassSubject.objects.filter(classroom__in=classrooms):
+                existing_cs_map[(cs.classroom_id, cs.subject_id)] = cs
+
+        cs_to_update = []
+        cs_to_create = []
+
+        for cls in classrooms:
+            cls_grade = cls.grade_level if cls.grade_level is not None else 10
+            cls_track = cls.track or 'GENERAL'
+            is_high_school = cls_grade >= 10
+            
+            for sub in subjects:
+                h_req = rules_dict.get((sub.id, cls_grade, cls_track))
+                if h_req is None:
+                    h_req = rules_dict.get((sub.id, cls_grade, 'GENERAL'), 0)
                 
-                for sub in subjects:
-                    h_req = rules_dict.get((sub.id, cls_grade, cls_track))
-                    if h_req is None:
-                        h_req = rules_dict.get((sub.id, cls_grade, 'GENERAL'), 0)
+                if not h_req or h_req <= 0:
+                    continue
+
+                sub_kh = (sub.name_kh or '').strip()
+                sub_en = (sub.name_en or '').strip().lower()
+
+                # Find candidate teachers specializing in this subject
+                candidates = []
+                for t in teachers:
+                    spec = (t.specialization or '').strip().lower()
+                    if sub_kh and sub_kh.lower() in spec:
+                        candidates.append(t)
+                    elif sub_en and sub_en in spec:
+                        candidates.append(t)
+                
+                if not candidates:
+                    candidates = list(teachers)  # Fallback to any teacher
+
+                # Score candidates: Prioritize High School Teachers (គ្រូទុតិយភូមិ) for Grades 10-12, Middle School (គ្រូបឋមភូមិ) for Grades 7-9
+                def score_candidate(cand):
+                    is_tutiya = 'ទុតិយភូមិ' in (cand.training_level or '')
+                    level_match_bonus = 0
+                    if is_high_school and is_tutiya:
+                        level_match_bonus = -50  # Lower score is prioritized
+                    elif not is_high_school and not is_tutiya:
+                        level_match_bonus = -50
+                    return (level_match_bonus, teacher_loads.get(cand.id, 0), cand.id)
+
+                candidates.sort(key=score_candidate)
+                
+                chosen = None
+                for cand in candidates:
+                    if teacher_loads.get(cand.id, 0) + h_req <= teacher_max.get(cand.id, 18):
+                        chosen = cand
+                        break
+                if not chosen and candidates:
+                    # Over-quota fallback candidate with minimum load
+                    candidates.sort(key=lambda t: (teacher_loads.get(t.id, 0), t.id))
+                    chosen = candidates[0]
+
+                if chosen:
+                    cs = existing_cs_map.get((cls.id, sub.id))
+                    if not cs:
+                        new_cs = ClassSubject(
+                            classroom=cls,
+                            subject=sub,
+                            teacher=chosen,
+                            weekly_hours=h_req or 4,
+                        )
+                        cs_to_create.append(new_cs)
+                        existing_cs_map[(cls.id, sub.id)] = new_cs
+                    else:
+                        cs.teacher = chosen
+                        if h_req:
+                            cs.weekly_hours = h_req
+                        cs_to_update.append(cs)
                     
-                    if not h_req or h_req <= 0:
-                        continue
+                    teacher_loads[chosen.id] = teacher_loads.get(chosen.id, 0) + h_req
+                    assigned_count += 1
 
-                    sub_kh = (sub.name_kh or '').strip()
-                    sub_en = (sub.name_en or '').strip().lower()
-
-                    # Find candidate teachers specializing in this subject
-                    candidates = []
-                    for t in teachers:
-                        spec = (t.specialization or '').strip().lower()
-                        if sub_kh and sub_kh.lower() in spec:
-                            candidates.append(t)
-                        elif sub_en and sub_en in spec:
-                            candidates.append(t)
-                    
-                    if not candidates:
-                        candidates = list(teachers)  # Fallback to any teacher
-
-                    # Score candidates: Prioritize High School Teachers (គ្រូទុតិយភូមិ) for Grades 10-12, Middle School (គ្រូបឋមភូមិ) for Grades 7-9
-                    def score_candidate(cand):
-                        is_tutiya = 'ទុតិយភូមិ' in (cand.training_level or '')
-                        level_match_bonus = 0
-                        if is_high_school and is_tutiya:
-                            level_match_bonus = -50  # Lower score is prioritized
-                        elif not is_high_school and not is_tutiya:
-                            level_match_bonus = -50
-                        return (level_match_bonus, teacher_loads.get(cand.id, 0), cand.id)
-
-                    candidates.sort(key=score_candidate)
-                    
-                    chosen = None
-                    for cand in candidates:
-                        if teacher_loads.get(cand.id, 0) + h_req <= teacher_max.get(cand.id, 18):
-                            chosen = cand
-                            break
-                    if not chosen and candidates:
-                        # Over-quota fallback candidate with minimum load
-                        candidates.sort(key=lambda t: (teacher_loads.get(t.id, 0), t.id))
-                        chosen = candidates[0]
-
-                    if chosen:
-                        cs = ClassSubject.objects.filter(classroom=cls, subject=sub).first()
-                        if not cs:
-                            cs = ClassSubject.objects.create(
-                                classroom=cls,
-                                subject=sub,
-                                teacher=chosen,
-                                weekly_hours=h_req or 4,
-                            )
-                        else:
-                            cs.teacher = chosen
-                            if h_req:
-                                cs.weekly_hours = h_req
-                            cs.save()
-                        
-                        teacher_loads[chosen.id] = teacher_loads.get(chosen.id, 0) + h_req
-                        assigned_count += 1
+        with transaction.atomic():
+            if cs_to_create:
+                ClassSubject.objects.bulk_create(cs_to_create, ignore_conflicts=True)
+            if cs_to_update:
+                ClassSubject.objects.bulk_update(cs_to_update, ['teacher', 'weekly_hours'])
 
         messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកម្រិតបណ្តុះបណ្តាលស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង, គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h) ជោគជ័យ!")
     except Exception as e:

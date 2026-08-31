@@ -125,12 +125,12 @@
         </button>
 
         <!-- Auto Assign by Specialization -->
-        <a href="{% url 'teacher_assignments_auto_assign' %}" class="btn btn-success btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
+        <a href="{% url 'teacher_assignments_auto_assign' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-success btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ✨ ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
         </a>
 
         <!-- Reset All Assignments -->
-        <a href="{% url 'teacher_assignments_reset_all' %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
+        <a href="{% url 'teacher_assignments_reset_all' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
             <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់ (Reset)
         </a>
 
