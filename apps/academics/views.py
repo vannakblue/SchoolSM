@@ -3532,17 +3532,19 @@ def teacher_assignments_manager(request):
                 'cells': cells,
             })
 
-        # Build teacher-subject code mapping (e.g. K1, K2, M1...)
-        distinct_assignments = list(ClassSubject.objects.filter(
-            classroom__academic_year=active_year,
-            teacher__isnull=False
-        ).exclude(
-            subject__code__in=['R', 'D']
-        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id')) if active_year else list(ClassSubject.objects.filter(
-            teacher__isnull=False
-        ).exclude(
-            subject__code__in=['R', 'D']
-        ).values('subject_id', 'teacher_id').distinct().order_by('subject_id', 'teacher_id'))
+        # Build teacher-subject code mapping (e.g. K1, K2, M1...) using in-memory cs_query
+        distinct_assignments = []
+        seen_pairs = set()
+        for cs in cs_query:
+            if cs.subject_id and cs.teacher_id:
+                sub = next((s for s in subjects if s.id == cs.subject_id), None)
+                if sub and sub.code in ['R', 'D']:
+                    continue
+                pair = (cs.subject_id, cs.teacher_id)
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    distinct_assignments.append({'subject_id': cs.subject_id, 'teacher_id': cs.teacher_id})
+        distinct_assignments.sort(key=lambda x: (x['subject_id'], x['teacher_id']))
 
         teacher_subject_code_map = {}
         subject_teacher_counters = {}
@@ -3563,9 +3565,9 @@ def teacher_assignments_manager(request):
                 if (s.id, selected_teacher.id) in teacher_subject_code_map:
                     selected_teacher_codes.append(teacher_subject_code_map[(s.id, selected_teacher.id)])
 
-        # Retrieve dynamic training level quotas for modal customization
+        # Retrieve dynamic training level quotas for modal customization from in-memory teachers
         training_quotas = get_training_level_quotas()
-        raw_levels = list(Teacher.objects.filter(status='ACTIVE').values_list('training_level', flat=True).distinct())
+        raw_levels = [t.training_level for t in teachers if t.training_level]
         distinct_levels = sorted(list(set([str(lvl).strip() for lvl in raw_levels if lvl and str(lvl).strip()])))
         if 'គ្រូទុតិយភូមិ' not in distinct_levels:
             distinct_levels.insert(0, 'គ្រូទុតិយភូមិ')
@@ -3573,11 +3575,16 @@ def teacher_assignments_manager(request):
             distinct_levels.append('គ្រូបឋមភូមិ')
 
         training_level_settings = []
+        teacher_levels_count = defaultdict(int)
+        for t in teachers:
+            if t.training_level:
+                teacher_levels_count[t.training_level] += 1
+
         for lvl in distinct_levels:
             training_level_settings.append({
                 'name': lvl,
                 'hours': training_quotas.get(lvl, 16 if 'ទុតិយភូមិ' in lvl else 18),
-                'count': Teacher.objects.filter(status='ACTIVE', training_level=lvl).count(),
+                'count': teacher_levels_count.get(lvl, 0),
             })
 
         return render(request, 'academics/teacher_assignments.html', {

@@ -214,7 +214,7 @@ def teacher_dashboard(request):
         taught_class_ids = Timetable.objects.filter(
             teacher=teacher,
             classroom__academic_year=current_year
-        ).values_list('classroom_id', flat=True).distinct() if current_year else Timetable.objects.filter(teacher=teacher).values_list('classroom_id', flat=True).distinct()
+        ).order_by().values_list('classroom_id', flat=True).distinct() if current_year else Timetable.objects.filter(teacher=teacher).order_by().values_list('classroom_id', flat=True).distinct()
         
         my_classes = Classroom.objects.filter(id__in=taught_class_ids)
 
