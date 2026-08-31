@@ -50,7 +50,7 @@ class GradeLevelForm(forms.ModelForm):
 class ClassroomForm(forms.ModelForm):
     class Meta:
         model = Classroom
-        fields = ['name', 'code', 'grade_level', 'track', 'academic_year', 'room_number', 'homeroom_teacher', 'assembly_duty_teacher', 'class_monitor', 'vice_monitor']
+        fields = ['name', 'code', 'grade_level', 'track', 'academic_year', 'room_number', 'capacity', 'homeroom_teacher', 'assembly_duty_teacher', 'class_monitor', 'vice_monitor']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ថ្នាក់ទី១០A, ទី១១ វិទ្យាសាស្ត្រ'}),
             'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 10A, 11-SCI'}),
@@ -58,7 +58,7 @@ class ClassroomForm(forms.ModelForm):
             'track': forms.Select(attrs={'class': 'form-select'}),
             'academic_year': forms.Select(attrs={'class': 'form-select'}),
             'room_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. បន្ទប់ 201'}),
-            'capacity': forms.NumberInput(attrs={'class': 'form-control'}),
+            'capacity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. 45 (ទុកទទេ = មិនកំណត់)', 'min': 1}),
             'homeroom_teacher': forms.Select(attrs={'class': 'form-select'}),
             'assembly_duty_teacher': forms.Select(attrs={'class': 'form-select'}),
             'class_monitor': forms.Select(attrs={'class': 'form-select'}),
@@ -69,6 +69,7 @@ class ClassroomForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from apps.students.models import Student
         from apps.teachers.models import Teacher
+        self.fields['capacity'].required = False
         self.fields['track'].widget.choices = AcademicTrack.get_track_choices()
         self.fields['academic_year'].queryset = AcademicYear.objects.all().order_by('-start_date')
         self.fields['academic_year'].empty_label = "-- ជ្រើសរើសឆ្នាំសិក្សា / Select Academic Year --"

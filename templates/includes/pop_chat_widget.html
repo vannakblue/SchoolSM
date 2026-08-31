@@ -1,21 +1,30 @@
 {% if request.user.is_authenticated %}
 <!-- Floating Pop Chat Widget (ជំនួយការ & ប្រព័ន្ធជជែកទ្វេទិស គាំទ្រទាំង Text & Voice Messages) -->
 <div id="popChatWidget" class="pop-chat-root no-print" data-is-admin="{% if is_admin %}true{% else %}false{% endif %}">
-    <!-- Floating Trigger Bubble -->
-    <button id="popChatTriggerBtn" type="button" class="pop-chat-bubble shadow-lg" onclick="togglePopChat()" title="ចុចដើម្បីបើក Pop Chat ស្នើសុំ & ជជែក">
-        <div class="pop-chat-bubble-inner">
-            <i class="fa-solid fa-comments fs-5" id="popChatIconOpen"></i>
-            <i class="fa-solid fa-chevron-down fs-5 d-none" id="popChatIconClose"></i>
-            <span class="d-none d-md-inline ms-2 fw-bold small">
-                {% if is_admin %}
-                <i class="fa-solid fa-inbox me-1"></i> សារ & សំណើពីគ្រូ
-                {% else %}
-                <i class="fa-solid fa-headset me-1"></i> ជំនួយការ & ស្នើសុំ Admin
-                {% endif %}
-            </span>
-        </div>
-        <span id="popChatUnreadBadge" class="pop-chat-status-dot" title="Online"></span>
-    </button>
+    <!-- Floating Trigger Bubble Group -->
+    <div class="d-flex align-items-center gap-1 pop-chat-bubble-container" id="popChatBubbleGroup">
+        <!-- Quick Dock Switcher Button -->
+        <button type="button" class="btn btn-sm btn-dark text-white rounded-circle shadow-sm pop-chat-dock-btn" onclick="togglePopChatDock(event)" title="ប្តូរទីតាំងឆ្វេង/ស្តាំ (Dock Left/Right)" style="width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0.85; border: 1.5px solid rgba(255,255,255,0.4);">
+            <i class="fa-solid fa-arrows-left-right" style="font-size: 11px;"></i>
+        </button>
+
+        <!-- Floating Trigger Bubble -->
+        <button id="popChatTriggerBtn" type="button" class="pop-chat-bubble shadow-lg" onclick="handlePopChatClick(event)" title="ចុចដើម្បីបើក Pop Chat (អាចចុចអូសទាញទីតាំងបាន / Drag to move)">
+            <i class="fa-solid fa-grip-vertical me-1 text-white-50 pop-chat-drag-handle" style="cursor: grab;" title="ទាញទីតាំង (Drag)"></i>
+            <div class="pop-chat-bubble-inner">
+                <i class="fa-solid fa-comments fs-5" id="popChatIconOpen"></i>
+                <i class="fa-solid fa-chevron-down fs-5 d-none" id="popChatIconClose"></i>
+                <span class="d-none d-md-inline ms-1 fw-bold small">
+                    {% if is_admin %}
+                    <i class="fa-solid fa-inbox me-1"></i> សារ & សំណើពីគ្រូ
+                    {% else %}
+                    <i class="fa-solid fa-headset me-1"></i> ជំនួយការ & ស្នើសុំ Admin
+                    {% endif %}
+                </span>
+            </div>
+            <span id="popChatUnreadBadge" class="pop-chat-status-dot" title="Online"></span>
+        </button>
+    </div>
 
     <!-- Floating Chat Window Container -->
     <div id="popChatWindow" class="pop-chat-window shadow-2xl d-none">
@@ -210,10 +219,16 @@
 /* Pop Chat Styling */
 .pop-chat-root {
     position: fixed;
-    bottom: 24px;
+    bottom: 95px;
     right: 24px;
-    z-index: 1050;
+    z-index: 1040;
     font-family: inherit;
+    user-select: none;
+    touch-action: none;
+}
+
+.pop-chat-bubble-container {
+    transition: transform 0.2s ease;
 }
 
 .pop-chat-bubble {
@@ -224,16 +239,39 @@
     color: #ffffff;
     border: none;
     border-radius: 50px;
-    padding: 12px 20px;
+    padding: 10px 18px;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: relative;
     outline: none;
 }
 
 .pop-chat-bubble:hover {
-    transform: translateY(-3px) scale(1.03);
+    transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(79, 70, 229, 0.45) !important;
+}
+
+.pop-chat-bubble:active {
+    cursor: grabbing;
+}
+
+.pop-chat-drag-handle {
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.pop-chat-bubble:hover .pop-chat-drag-handle {
+    opacity: 1;
+}
+
+.pop-chat-dock-btn {
+    transition: all 0.2s ease;
+}
+
+.pop-chat-dock-btn:hover {
+    opacity: 1 !important;
+    transform: scale(1.1);
+    background-color: #0f172a !important;
 }
 
 .pop-chat-status-dot {
@@ -410,6 +448,20 @@ let recordingTimerInterval = null;
 let recordingSeconds = 0;
 let activeRecordingRole = null;
 
+// Drag & Dock State
+let isDraggingPopChat = false;
+let dragStartX = 0, dragStartY = 0;
+let widgetStartX = 0, widgetStartY = 0;
+let hasDraggedSignificant = false;
+
+function handlePopChatClick(e) {
+    if (hasDraggedSignificant) {
+        hasDraggedSignificant = false;
+        return;
+    }
+    togglePopChat();
+}
+
 function togglePopChat() {
     const root = document.getElementById('popChatWidget');
     const win = document.getElementById('popChatWindow');
@@ -423,6 +475,12 @@ function togglePopChat() {
         win.classList.remove('d-none');
         iconOpen.classList.add('d-none');
         iconClose.classList.remove('d-none');
+
+        // Adjust window position according to widget location
+        if (root) {
+            const rect = root.getBoundingClientRect();
+            adjustPopChatWindowOrientation(rect.left, rect.top);
+        }
 
         if (isAdmin) {
             loadAdminThreads();
@@ -442,6 +500,148 @@ function togglePopChat() {
         }
     }
 }
+
+function togglePopChatDock(e) {
+    if (e) e.stopPropagation();
+    const widget = document.getElementById('popChatWidget');
+    if (!widget) return;
+    const rect = widget.getBoundingClientRect();
+    const isCurrentlyLeft = rect.left < window.innerWidth / 2;
+    
+    if (isCurrentlyLeft) {
+        // Dock to Right
+        widget.style.left = 'auto';
+        widget.style.right = '24px';
+        widget.style.bottom = '95px';
+        widget.style.top = 'auto';
+    } else {
+        // Dock to Left
+        widget.style.left = '24px';
+        widget.style.right = 'auto';
+        widget.style.bottom = '95px';
+        widget.style.top = 'auto';
+    }
+    
+    const newRect = widget.getBoundingClientRect();
+    try {
+        localStorage.setItem('schoolsm_pop_chat_pos', JSON.stringify({
+            left: Math.round(newRect.left),
+            top: Math.round(newRect.top)
+        }));
+    } catch(err) {}
+    adjustPopChatWindowOrientation(newRect.left, newRect.top);
+}
+
+function adjustPopChatWindowOrientation(left, top) {
+    const win = document.getElementById('popChatWindow');
+    if (!win) return;
+    
+    // Horizontal alignment
+    if (left < window.innerWidth / 2) {
+        win.style.left = '0';
+        win.style.right = 'auto';
+    } else {
+        win.style.right = '0';
+        win.style.left = 'auto';
+    }
+
+    // Vertical alignment (if widget is dragged near the top of viewport)
+    if (top < 340) {
+        win.style.top = '58px';
+        win.style.bottom = 'auto';
+    } else {
+        win.style.bottom = '58px';
+        win.style.top = 'auto';
+    }
+}
+
+function initPopChatDraggable() {
+    const widget = document.getElementById('popChatWidget');
+    const trigger = document.getElementById('popChatTriggerBtn');
+    if (!widget || !trigger) return;
+
+    // Restore saved position
+    try {
+        const saved = localStorage.getItem('schoolsm_pop_chat_pos');
+        if (saved) {
+            const pos = JSON.parse(saved);
+            if (pos.left !== undefined && pos.top !== undefined) {
+                const maxLeft = window.innerWidth - widget.offsetWidth - 12;
+                const maxTop = window.innerHeight - widget.offsetHeight - 12;
+                const left = Math.max(12, Math.min(pos.left, maxLeft));
+                const top = Math.max(12, Math.min(pos.top, maxTop));
+                
+                widget.style.left = `${left}px`;
+                widget.style.top = `${top}px`;
+                widget.style.right = 'auto';
+                widget.style.bottom = 'auto';
+                
+                adjustPopChatWindowOrientation(left, top);
+            }
+        }
+    } catch(e) {}
+
+    // Pointer events for smooth drag
+    trigger.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.pop-chat-dock-btn')) return;
+        isDraggingPopChat = true;
+        hasDraggedSignificant = false;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        const rect = widget.getBoundingClientRect();
+        widgetStartX = rect.left;
+        widgetStartY = rect.top;
+        try { trigger.setPointerCapture(e.pointerId); } catch(err) {}
+    });
+
+    trigger.addEventListener('pointermove', (e) => {
+        if (!isDraggingPopChat) return;
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+            hasDraggedSignificant = true;
+        }
+        if (hasDraggedSignificant) {
+            let newLeft = widgetStartX + dx;
+            let newTop = widgetStartY + dy;
+            
+            const maxLeft = window.innerWidth - widget.offsetWidth - 12;
+            const maxTop = window.innerHeight - widget.offsetHeight - 12;
+            newLeft = Math.max(12, Math.min(newLeft, maxLeft));
+            newTop = Math.max(12, Math.min(newTop, maxTop));
+
+            widget.style.left = `${newLeft}px`;
+            widget.style.top = `${newTop}px`;
+            widget.style.right = 'auto';
+            widget.style.bottom = 'auto';
+
+            adjustPopChatWindowOrientation(newLeft, newTop);
+        }
+    });
+
+    const stopDrag = (e) => {
+        if (isDraggingPopChat) {
+            isDraggingPopChat = false;
+            try { trigger.releasePointerCapture(e.pointerId); } catch(err) {}
+            if (hasDraggedSignificant) {
+                const rect = widget.getBoundingClientRect();
+                try {
+                    localStorage.setItem('schoolsm_pop_chat_pos', JSON.stringify({
+                        left: Math.round(rect.left),
+                        top: Math.round(rect.top)
+                    }));
+                } catch(err) {}
+            }
+        }
+    };
+
+    trigger.addEventListener('pointerup', stopDrag);
+    trigger.addEventListener('pointercancel', stopDrag);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initPopChatDraggable();
+});
 
 // ---------------- VOICE RECORDING LOGIC ----------------
 function startVoiceRecording(role) {

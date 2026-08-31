@@ -587,12 +587,13 @@ def classroom_auto_generate(request):
     except ValueError:
         count = 1
 
-    capacity = 40
-    try:
-        if request.POST.get('capacity'):
-            capacity = int(request.POST.get('capacity'))
-    except ValueError:
-        capacity = 40
+    capacity = None
+    capacity_raw = (request.POST.get('capacity') or '').strip()
+    if capacity_raw:
+        try:
+            capacity = max(1, int(capacity_raw))
+        except ValueError:
+            capacity = None
 
     room_prefix = (request.POST.get('room_prefix') or '').strip()
 
