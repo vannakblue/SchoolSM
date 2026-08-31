@@ -28,12 +28,33 @@ class ExamTerm(models.Model):
     start_date = models.DateField(verbose_name="ថ្ងៃចាប់ផ្តើម / Start Date")
     end_date = models.DateField(verbose_name="ថ្ងៃបញ្ចប់ / End Date")
     is_published = models.BooleanField(default=True, verbose_name="ប្រកាសលទ្ធផលជាសាធារណៈ / Published")
+
+    # Admin Grading Window & Deadline Controls
+    grading_start_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើមបញ្ចូលពិន្ទុ / Grading Start Time")
+    grading_end_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់បញ្ចូលពិន្ទុ / Grading Deadline")
+    is_grading_locked = models.BooleanField(default=False, verbose_name="ចាក់សោការបញ្ចូលពិន្ទុ / Lock Grade Entry")
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-start_date']
         verbose_name = "សម័យប្រឡង / Exam Term"
         verbose_name_plural = "សម័យប្រឡងទាំងអស់ / Exam Terms"
+
+    def get_grading_status(self):
+        """
+        Returns (is_open: bool, status_code: str, message: str)
+        status_code: 'OPEN', 'LOCKED', 'NOT_STARTED', 'EXPIRED'
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        if self.is_grading_locked:
+            return False, 'LOCKED', 'ការបញ្ចូលពិន្ទុត្រូវបានចាក់សោ (Locked by Admin)'
+        if self.grading_start_datetime and now < self.grading_start_datetime:
+            return False, 'NOT_STARTED', f'ការបញ្ចូលពិន្ទុនឹងបើកនៅថ្ងៃ {self.grading_start_datetime.strftime("%d/%m/%Y %H:%M")}'
+        if self.grading_end_datetime and now > self.grading_end_datetime:
+            return False, 'EXPIRED', f'ការបញ្ចូលពិន្ទុបានផុតកំណត់កាលពីថ្ងៃ {self.grading_end_datetime.strftime("%d/%m/%Y %H:%M")}'
+        return True, 'OPEN', 'កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ'
 
     def __str__(self):
         return f"{self.name} ({self.academic_year.name})"
@@ -160,6 +181,12 @@ class StandardizedExam(models.Model):
     candidates_per_room = models.IntegerField(default=25, verbose_name="ចំនួនបេក្ខជនក្នុងមួយបន្ទប់ / Candidates Per Room")
     description = models.TextField(blank=True, null=True, verbose_name="ការពិពណ៌នា/សេចក្តីណែនាំ / Description")
     is_published = models.BooleanField(default=True, verbose_name="ប្រកាសលទ្ធផល / Published")
+
+    # Admin Grading Window & Deadline Controls
+    grading_start_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើមបញ្ចូលពិន្ទុ / Grading Start Time")
+    grading_end_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់បញ្ចូលពិន្ទុ / Grading Deadline")
+    is_grading_locked = models.BooleanField(default=False, verbose_name="ចាក់សោការបញ្ចូលពិន្ទុ / Lock Grade Entry")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -167,6 +194,21 @@ class StandardizedExam(models.Model):
         ordering = ['-exam_date', '-id']
         verbose_name = "ការប្រឡងតេស្តស្តង់ដា / Standardized Exam"
         verbose_name_plural = "ការប្រឡងតេស្តស្តង់ដាទាំងអស់ / Standardized Exams"
+
+    def get_grading_status(self):
+        """
+        Returns (is_open: bool, status_code: str, message: str)
+        status_code: 'OPEN', 'LOCKED', 'NOT_STARTED', 'EXPIRED'
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        if self.is_grading_locked:
+            return False, 'LOCKED', 'ការបញ្ចូលពិន្ទុត្រូវបានចាក់សោ (Locked by Admin)'
+        if self.grading_start_datetime and now < self.grading_start_datetime:
+            return False, 'NOT_STARTED', f'ការបញ្ចូលពិន្ទុនឹងបើកនៅថ្ងៃ {self.grading_start_datetime.strftime("%d/%m/%Y %H:%M")}'
+        if self.grading_end_datetime and now > self.grading_end_datetime:
+            return False, 'EXPIRED', f'ការបញ្ចូលពិន្ទុបានផុតកំណត់កាលពីថ្ងៃ {self.grading_end_datetime.strftime("%d/%m/%Y %H:%M")}'
+        return True, 'OPEN', 'កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ'
 
     def __str__(self):
         return f"{self.name} (ថ្នាក់ទី {self.grade_level} - {self.academic_year.name})"

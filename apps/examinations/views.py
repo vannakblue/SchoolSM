@@ -105,25 +105,54 @@ def grade_entry_matrix(request):
     """
     Rapid score entry grid for all students in a classroom across the exact subjects and max scores defined for that grade level & track.
     Strictly isolated per Academic Year!
-    Enforces active student exam restrictions and Admin-only override for excluded/missed students.
+    Enforces active student exam restrictions, Teacher Assigned Subject filters, and Admin grading deadline windows.
     """
     from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import ClassSubject
     active_year = get_active_academic_year(request)
     is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+    teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
 
     terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
-    selected_term_id = request.GET.get('term', str(terms.first().id if terms.first() else ''))
-    selected_class_id = request.GET.get('classroom', str(classrooms.first().id if classrooms.first() else ''))
+    selected_term_id = request.GET.get('term') or request.POST.get('term') or str(terms.first().id if terms.first() else '')
+    selected_class_id = request.GET.get('classroom') or request.POST.get('classroom') or str(classrooms.first().id if classrooms.first() else '')
+    selected_subject_id = request.GET.get('subject') or request.POST.get('subject') or ''
 
-    selected_term = terms.filter(id=selected_term_id).first() if selected_term_id else None
-    selected_class = classrooms.filter(id=selected_class_id).first() if selected_class_id else None
+    selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else terms.first()
+    selected_class = Classroom.objects.filter(id=selected_class_id).first() if (selected_class_id and str(selected_class_id).isdigit()) else classrooms.first()
+
+    effective_year = selected_term.academic_year if selected_term else active_year
+
+    # Teacher assigned classes and subjects filtering
+    teacher_assigned_classes = set()
+    teacher_assigned_subjects = set()
+    homeroom_cls_ids = set()
+    if teacher_profile:
+        cs_qs = ClassSubject.objects.filter(teacher=teacher_profile)
+        if effective_year:
+            cs_qs = cs_qs.filter(classroom__academic_year=effective_year)
+        teacher_assigned_classes = set(cs_qs.values_list('classroom_id', flat=True))
+        teacher_assigned_subjects = set(cs_qs.values_list('subject_id', flat=True))
+        # Add homeroom classroom
+        homeroom_cls_ids = set(Classroom.objects.filter(homeroom_teacher=teacher_profile).values_list('id', flat=True))
+        teacher_assigned_classes.update(homeroom_cls_ids)
+        
+        # Filter classrooms list to only assigned classes for this teacher
+        classrooms = all_classrooms.filter(id__in=teacher_assigned_classes) if teacher_assigned_classes else all_classrooms
+    else:
+        classrooms = all_classrooms
 
     subject_rules = []
     students = []
     matrix_data = []
     excluded_students_map = {}
+    is_grading_open = True
+    grading_status_msg = "កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ"
+
+    if selected_term:
+        is_grading_open, _, grading_status_msg = selected_term.get_grading_status()
 
     if selected_term and selected_class:
         # Load specific subject rules for this classroom's grade_level & track
@@ -134,6 +163,13 @@ def grade_entry_matrix(request):
             # Fallback to all subjects if no custom rules set
             for s in Subject.objects.all():
                 subject_rules.append(GradeLevelRule(grade_level=selected_class.grade_level, track=selected_class.track, subject=s, max_score=Decimal('100.00')))
+
+        # If a specific subject is filtered
+        if selected_subject_id and str(selected_subject_id).isdigit():
+            subject_rules = [r for r in subject_rules if r.subject_id == int(selected_subject_id)]
+        elif teacher_profile and teacher_assigned_subjects and not teacher_profile.current_duty.startswith('នាយក'):
+            # Highlight teacher's assigned subjects or filter if preferred
+            pass
 
         # Find all active exclusions for this term or month
         term_month = selected_term.start_date.month if selected_term.start_date else None
@@ -156,6 +192,11 @@ def grade_entry_matrix(request):
         }
 
         if request.method == 'POST':
+            # Block saving if grading window is closed for regular teachers
+            if not is_grading_open and not is_admin:
+                messages.error(request, f"⚠️ មិនអាចរក្សាទុកបានទេ៖ {grading_status_msg}!")
+                return redirect(f"/examinations/matrix/?term={selected_term.id}&classroom={selected_class.id}{f'&subject={selected_subject_id}' if selected_subject_id else ''}")
+
             saved_count = 0
             blocked_count = 0
             for student in students:
@@ -168,6 +209,11 @@ def grade_entry_matrix(request):
 
                 for rule in subject_rules:
                     subject = rule.subject
+                    
+                    # If teacher is not admin, only allow saving subjects they teach (or all in classroom if homeroom)
+                    if teacher_profile and teacher_assigned_subjects and (subject.id not in teacher_assigned_subjects) and (selected_class.id not in homeroom_cls_ids):
+                        continue
+
                     field_name = f"score_{student.id}_{subject.id}"
                     score_val = request.POST.get(field_name, '').strip()
                     if score_val != '':
@@ -199,7 +245,7 @@ def grade_entry_matrix(request):
             if blocked_count > 0:
                 messages.warning(request, f"⚠️ មានសិស្សចំនួន {blocked_count} នាក់ជាសិស្សផ្អាក/ឈប់រៀន ឬត្រូវបានលើកលែងមិនឱ្យប្រឡង ដែលមានតែ Admin ប៉ុណ្ណោះដែលអាចកែប្រែពិន្ទុបាន!")
             messages.success(request, f"🎉 បានរក្សាទុកពិន្ទុសិស្សថ្នាក់ {selected_class.name} ចំនួន {saved_count} មុខវិជ្ជាជោគជ័យ!")
-            return redirect(f"/examinations/matrix/?term={selected_term.id}&classroom={selected_class.id}")
+            return redirect(f"/examinations/matrix/?term={selected_term.id}&classroom={selected_class.id}{f'&subject={selected_subject_id}' if selected_subject_id else ''}")
 
         for student in students:
             is_excluded = (student.id in excluded_students_map) or (student.status != 'ACTIVE') or getattr(student, 'is_exam_suspended', False)
@@ -227,28 +273,40 @@ def grade_entry_matrix(request):
                     display_score = '0.00'
                     display_letter = 'F'
 
+                can_edit_subject = (is_admin or is_grading_open) and (
+                    is_admin or not teacher_profile or (rule.subject_id in teacher_assigned_subjects) or (selected_class.id in homeroom_cls_ids)
+                )
+
                 row_scores.append({
                     'subject': rule.subject,
                     'max_score': rule.max_score,
                     'score': display_score,
                     'grade_letter': display_letter,
+                    'can_edit_subject': can_edit_subject and not is_excluded,
                 })
             matrix_data.append({
                 'student': student,
                 'is_excluded': is_excluded,
                 'exclusion_reason': exc_reason,
-                'can_edit': is_admin or not is_excluded,
+                'can_edit': (is_admin or is_grading_open) and (is_admin or not is_excluded),
                 'scores': row_scores
             })
+
+    # All subjects for quick subject filter
+    all_subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
 
     return render(request, 'examinations/grade_matrix.html', {
         'terms': terms,
         'classrooms': classrooms,
+        'all_subjects': all_subjects,
         'selected_term': selected_term,
         'selected_class': selected_class,
+        'selected_subject_id': selected_subject_id,
         'subject_rules': subject_rules,
         'matrix_data': matrix_data,
         'active_year': active_year,
+        'is_grading_open': is_grading_open,
+        'grading_status_msg': grading_status_msg,
     })
 
 
@@ -1622,7 +1680,9 @@ def api_exam_validate_secret_code(request):
             'message': f'លេខកូដសម្ងាត់ «{secret_code}» មិនត្រឹមត្រូវ ឬមិនត្រូវគ្នានឹងមុខវិជ្ជា {exam_subject.subject.name_kh} នៃសម័យប្រឡងនេះឡើយ! សូមផ្ទៀងផ្ទាត់លេខកូដលើកញ្ចប់ក្រដាសប្រឡងម្តងទៀត។'
         })
 
-    # Retrieve candidates in this room sorted by desk_number (1 to 25)
+    is_grading_open, _, grading_msg = exam.get_grading_status()
+
+    # Retrieve candidates in this room sorted by desk_number (1 to N)
     candidates = room.candidates.all().order_by('desk_number', 'id')
     if not candidates.exists():
         return JsonResponse({
@@ -1663,6 +1723,8 @@ def api_exam_validate_secret_code(request):
         'room_id': room.id,
         'room_name': display_room_name,
         'is_blind_mode': not is_admin,
+        'is_grading_open': is_grading_open or is_admin,
+        'grading_status_msg': grading_msg,
         'subject_id': exam_subject.id,
         'subject_name': exam_subject.subject.name_kh,
         'max_score': float(exam_subject.max_score),
@@ -1680,7 +1742,7 @@ def api_exam_validate_secret_code(request):
 def api_exam_save_blind_scores(request):
     """
     Step 4 Save API:
-    Saves scores submitted blindly by desk number (01 to 25), matches with candidates,
+    Saves scores submitted blindly by desk number (01 to N), matches with candidates,
     updates CandidateSubjectScore, marks envelope code as graded, and recalculates exam ranks.
     """
     if request.method != 'POST':
@@ -1701,6 +1763,12 @@ def api_exam_save_blind_scores(request):
 
     exam = get_object_or_404(StandardizedExam, id=exam_id)
     exam_subject = get_object_or_404(ExamSubject.objects.select_related('subject'), id=subject_id, exam=exam)
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+    # Enforce Grading Window for regular teachers
+    is_grading_open, _, grading_msg = exam.get_grading_status()
+    if not is_grading_open and not is_admin:
+        return JsonResponse({'status': 'error', 'message': f'⚠️ មិនអាចរក្សាទុកបានទេ៖ {grading_msg}!'})
 
     code_obj = ExamRoomSubjectCode.objects.filter(
         secret_code__iexact=secret_code,

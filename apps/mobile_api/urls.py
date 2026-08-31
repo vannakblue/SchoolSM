@@ -21,8 +21,13 @@ urlpatterns = [
     # 4. Timetable & Schedule
     path('timetable/', views.TimetableView.as_view(), name='mobile_api_timetable'),
 
-    # 5. Examination Grades
+    # 5. Examination Grades & Mobile Grade Entry
     path('grades/', views.ExamGradesView.as_view(), name='mobile_api_grades'),
+    path('grades/teacher-entry/meta/', views.TeacherGradeEntryMetaAPIView.as_view(), name='mobile_api_teacher_entry_meta'),
+    path('grades/teacher-entry/sheet/', views.TeacherGradeEntrySheetAPIView.as_view(), name='mobile_api_teacher_entry_sheet'),
+    path('grades/teacher-entry/save/', views.TeacherGradeEntrySaveAPIView.as_view(), name='mobile_api_teacher_entry_save'),
+    path('grades/blind-scoring/validate-code/', views.MobileBlindScoringValidateAPIView.as_view(), name='mobile_api_blind_scoring_validate'),
+    path('grades/blind-scoring/save-scores/', views.MobileBlindScoringSaveAPIView.as_view(), name='mobile_api_blind_scoring_save'),
 
     # 6. In-App Notifications
     path('notifications/', views.MobileNotificationListView.as_view(), name='mobile_api_notifications'),

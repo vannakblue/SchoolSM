@@ -83,6 +83,23 @@ teacher_user, _ = User.objects.get_or_create(
     username="teacher_test_restrict",
     defaults={'role': User.Role.TEACHER, 'khmer_name': "Teacher Test"}
 )
+teacher_profile = getattr(teacher_user, 'teacher_profile', None)
+if not teacher_profile:
+    from apps.teachers.models import Teacher
+    teacher_profile = Teacher.objects.create(
+        user=teacher_user,
+        teacher_id="T_RESTRICT_01",
+        khmer_name="លោកគ្រូ តេស្តវិន័យ",
+        gender='M',
+        phone="012999888",
+        status='ACTIVE'
+    )
+from apps.academics.models import ClassSubject
+ClassSubject.objects.get_or_create(
+    classroom=classroom,
+    subject=subj_math,
+    defaults={'teacher': teacher_profile, 'weekly_hours': 4}
+)
 
 # 2. Setup Students with different statuses
 # Student 1: Active (Regular)

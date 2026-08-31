@@ -16,8 +16,11 @@ from apps.accounts.models import User, SchoolProfile
 from apps.teachers.models import Teacher, TeacherAttendance
 from apps.students.models import Student
 from apps.attendance.models import StudentAttendance
-from apps.academics.models import Timetable, Classroom, Subject, AcademicYear
-from apps.examinations.models import ExamTerm, Grade
+from apps.academics.models import Timetable, Classroom, Subject, AcademicYear, GradeLevelRule
+from apps.examinations.models import (
+    ExamTerm, Grade, StandardizedExam, ExamSubject, ExamRoom,
+    ExamRoomSubjectCode, ExamCandidate, CandidateSubjectScore, ExamStudentExclusion
+)
 from .models import DeviceFCMToken, MobileNotificationLog
 from .serializers import (
     UserProfileSerializer, TeacherProfileSerializer, StudentProfileSerializer,
@@ -704,4 +707,495 @@ class AssemblyAttendanceAPIView(APIView):
             'message': f'បានរក្សាទុកវត្តមានពេលគោរពទង់ជាតិ ({classroom.name}) ជោគជ័យ!',
             'absent_records_count': len(new_records)
         })
+
+
+# ==============================================================================
+# MOBILE EXAMINATION GRADE ENTRY & BLIND SCORING APIS
+# ==============================================================================
+
+class TeacherGradeEntryMetaAPIView(APIView):
+    """
+    Returns available Exam Terms, Classrooms, and Subjects assigned to the authenticated teacher.
+    Respects Admin vs Teacher role isolation and returns grading window status.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        is_admin = user.is_superuser or getattr(user, 'role', '') == 'ADMIN'
+        teacher_profile = getattr(user, 'teacher_profile', None) if not is_admin else None
+
+        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+        terms_qs = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
+        terms_data = []
+        for t in terms_qs:
+            is_open, status_code, status_msg = t.get_grading_status()
+            terms_data.append({
+                'id': t.id,
+                'name': t.name,
+                'term_type': t.term_type,
+                'scoring_mode': t.scoring_mode,
+                'start_date': t.start_date.strftime('%Y-%m-%d') if t.start_date else '',
+                'end_date': t.end_date.strftime('%Y-%m-%d') if t.end_date else '',
+                'grading_start': t.grading_start_datetime.strftime('%d/%m/%Y %H:%M') if t.grading_start_datetime else '',
+                'grading_deadline': t.grading_end_datetime.strftime('%d/%m/%Y %H:%M') if t.grading_end_datetime else '',
+                'is_grading_open': is_open or is_admin,
+                'status_code': status_code,
+                'status_message': status_msg,
+            })
+
+        # Classrooms & Subjects
+        all_classrooms = Classroom.objects.filter(academic_year=active_year) if active_year else Classroom.objects.all()
+        teacher_assigned_classes = set()
+        teacher_assigned_subjects = set()
+
+        if teacher_profile:
+            from apps.academics.models import ClassSubject
+            cs_qs = ClassSubject.objects.filter(teacher=teacher_profile)
+            if active_year:
+                cs_qs = cs_qs.filter(classroom__academic_year=active_year)
+            teacher_assigned_classes = set(cs_qs.values_list('classroom_id', flat=True))
+            teacher_assigned_subjects = set(cs_qs.values_list('subject_id', flat=True))
+            homeroom_cls_ids = set(Classroom.objects.filter(homeroom_teacher=teacher_profile).values_list('id', flat=True))
+            teacher_assigned_classes.update(homeroom_cls_ids)
+            
+            allowed_classrooms = all_classrooms.filter(id__in=teacher_assigned_classes) if teacher_assigned_classes else all_classrooms
+        else:
+            allowed_classrooms = all_classrooms
+
+        classrooms_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'grade_level': c.grade_level,
+                'track': c.track,
+                'track_display': c.get_track_display(),
+            }
+            for c in allowed_classrooms.order_by('grade_level', 'code')
+        ]
+
+        # Standardized Exams for blind scoring
+        std_exams_qs = StandardizedExam.objects.filter(academic_year=active_year) if active_year else StandardizedExam.objects.all()
+        if not is_admin:
+            std_exams_qs = std_exams_qs.filter(is_published=True)
+
+        std_exams_data = []
+        for se in std_exams_qs.order_by('-exam_date', '-id'):
+            is_open, status_code, status_msg = se.get_grading_status()
+            std_exams_data.append({
+                'id': se.id,
+                'name': se.name,
+                'grade_level': se.grade_level,
+                'track': se.track,
+                'exam_date': se.exam_date.strftime('%Y-%m-%d') if se.exam_date else '',
+                'candidates_per_room': se.candidates_per_room,
+                'is_grading_open': is_open or is_admin,
+                'status_message': status_msg,
+            })
+
+        return Response({
+            'status': 'success',
+            'is_admin': is_admin,
+            'exam_terms': terms_data,
+            'classrooms': classrooms_data,
+            'standardized_exams': std_exams_data,
+        })
+
+
+class TeacherGradeEntrySheetAPIView(APIView):
+    """
+    Returns student grading sheet for a specific (term, classroom, subject) on mobile.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        term_id = request.query_params.get('term_id')
+        classroom_id = request.query_params.get('classroom_id')
+        subject_id = request.query_params.get('subject_id')
+
+        if not term_id or not classroom_id:
+            return Response({'status': 'error', 'message': 'សូមផ្តល់ term_id និង classroom_id!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exam_term = get_object_or_404(ExamTerm, id=term_id)
+        classroom = get_object_or_404(Classroom, id=classroom_id)
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
+
+        # Check grading window
+        is_grading_open, status_code, status_msg = exam_term.get_grading_status()
+
+        # Subject rules
+        rules_qs = classroom.get_subject_rules()
+        if rules_qs.exists():
+            subject_rules = list(rules_qs)
+        else:
+            subject_rules = [GradeLevelRule(grade_level=classroom.grade_level, track=classroom.track, subject=s, max_score=Decimal('100.00')) for s in Subject.objects.all()]
+
+        if subject_id and str(subject_id).isdigit():
+            subject_rules = [r for r in subject_rules if r.subject_id == int(subject_id)]
+
+        # Exclusions
+        term_month = exam_term.start_date.month if exam_term.start_date else None
+        exclusions_qs = ExamStudentExclusion.objects.filter(
+            academic_year=exam_term.academic_year,
+            is_active=True
+        ).filter(
+            Q(exam_term=exam_term) | (Q(month=term_month) if term_month else Q())
+        )
+        excluded_ids = {e.student_id: e.get_reason_display() for e in exclusions_qs}
+
+        students = Student.objects.filter(classroom=classroom).order_by('student_id')
+        existing_grades = {
+            (g.student_id, g.subject_id): g
+            for g in Grade.objects.filter(classroom=classroom, exam_term=exam_term)
+        }
+
+        # Check teacher assigned subjects
+        teacher_assigned_subjects = set()
+        if teacher_profile:
+            from apps.academics.models import ClassSubject
+            teacher_assigned_subjects = set(ClassSubject.objects.filter(teacher=teacher_profile, classroom=classroom).values_list('subject_id', flat=True))
+            if classroom.homeroom_teacher_id == teacher_profile.id:
+                teacher_assigned_subjects = {r.subject_id for r in subject_rules}
+
+        subjects_data = []
+        for r in subject_rules:
+            subjects_data.append({
+                'id': r.subject.id,
+                'name_kh': r.subject.name_kh,
+                'code': r.subject.code,
+                'max_score': float(r.max_score),
+                'can_edit': (is_admin or is_grading_open) and (is_admin or not teacher_profile or r.subject_id in teacher_assigned_subjects)
+            })
+
+        students_data = []
+        for st in students:
+            is_excluded = (st.id in excluded_ids) or (st.status != 'ACTIVE') or getattr(st, 'is_exam_suspended', False)
+            exc_reason = excluded_ids.get(st.id, '')
+            if getattr(st, 'is_exam_suspended', False):
+                exc_reason = st.get_exam_suspension_reason_display()
+
+            scores_list = []
+            for r in subject_rules:
+                g = existing_grades.get((st.id, r.subject_id))
+                val = float(g.score) if g and g.score is not None else (0.0 if is_excluded else None)
+                letter = g.grade_letter if g else ('F' if is_excluded else '-')
+                can_edit = (is_admin or is_grading_open) and (is_admin or not is_excluded) and (is_admin or not teacher_profile or r.subject_id in teacher_assigned_subjects)
+
+                scores_list.append({
+                    'subject_id': r.subject_id,
+                    'subject_name': r.subject.name_kh,
+                    'max_score': float(r.max_score),
+                    'score': val,
+                    'grade_letter': letter,
+                    'can_edit': can_edit,
+                })
+
+            students_data.append({
+                'student_id': st.id,
+                'student_code': st.student_id,
+                'khmer_name': st.khmer_name,
+                'gender': st.gender,
+                'is_excluded': is_excluded,
+                'exclusion_reason': exc_reason,
+                'scores': scores_list,
+            })
+
+        return Response({
+            'status': 'success',
+            'term': {
+                'id': exam_term.id,
+                'name': exam_term.name,
+                'is_grading_open': is_grading_open or is_admin,
+                'status_message': status_msg,
+            },
+            'classroom': {
+                'id': classroom.id,
+                'name': classroom.name,
+                'total_students': len(students_data),
+            },
+            'subjects': subjects_data,
+            'students': students_data,
+        })
+
+
+class TeacherGradeEntrySaveAPIView(APIView):
+    """
+    Saves student scores submitted via Mobile App.
+    Payload:
+    {
+        "term_id": 1,
+        "classroom_id": 2,
+        "scores": [
+            {"student_id": 10, "subject_id": 3, "score": 45.5, "is_absent": false}
+        ]
+    }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        term_id = data.get('term_id')
+        classroom_id = data.get('classroom_id')
+        scores_list = data.get('scores', [])
+
+        if not term_id or not classroom_id or not scores_list:
+            return Response({'status': 'error', 'message': 'ទិន្នន័យមិនពេញលេញ!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exam_term = get_object_or_404(ExamTerm, id=term_id)
+        classroom = get_object_or_404(Classroom, id=classroom_id)
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
+
+        # Check grading window
+        is_grading_open, _, status_msg = exam_term.get_grading_status()
+        if not is_grading_open and not is_admin:
+            return Response({'status': 'error', 'message': f'⚠️ មិនអាចរក្សាទុកបានទេ៖ {status_msg}!'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Pre-cache max scores
+        rules_map = {r.subject_id: r.max_score for r in classroom.get_subject_rules()}
+
+        # Teacher assigned subjects
+        teacher_assigned_subjects = set()
+        if teacher_profile:
+            from apps.academics.models import ClassSubject
+            teacher_assigned_subjects = set(ClassSubject.objects.filter(teacher=teacher_profile, classroom=classroom).values_list('subject_id', flat=True))
+            if classroom.homeroom_teacher_id == teacher_profile.id:
+                teacher_assigned_subjects = set(rules_map.keys())
+
+        # Exclusions map
+        term_month = exam_term.start_date.month if exam_term.start_date else None
+        exclusions_qs = ExamStudentExclusion.objects.filter(
+            academic_year=exam_term.academic_year,
+            is_active=True
+        ).filter(
+            Q(exam_term=exam_term) | (Q(month=term_month) if term_month else Q())
+        )
+        excluded_ids = set(exclusions_qs.values_list('student_id', flat=True))
+
+        saved_count = 0
+        with transaction.atomic():
+            for item in scores_list:
+                st_id = item.get('student_id')
+                sub_id = item.get('subject_id')
+                score_raw = str(item.get('score', '')).strip().upper()
+                is_absent = bool(item.get('is_absent', False)) or (score_raw == 'A')
+
+                if not st_id or not sub_id:
+                    continue
+
+                # Non-admin teacher can only save assigned subjects
+                if teacher_profile and sub_id not in teacher_assigned_subjects and not is_admin:
+                    continue
+
+                # Excluded student positive score blocked for non-admin
+                if (st_id in excluded_ids) and not is_admin:
+                    continue
+
+                student = Student.objects.filter(id=st_id, classroom=classroom).first()
+                subject = Subject.objects.filter(id=sub_id).first()
+                if not student or not subject:
+                    continue
+
+                max_sc = rules_map.get(sub_id, Decimal('100.00'))
+
+                if is_absent:
+                    score_num = Decimal('0.00')
+                elif score_raw != '' and score_raw != '-':
+                    try:
+                        score_num = Decimal(score_raw)
+                        if score_num > max_sc:
+                            score_num = max_sc
+                        if score_num < Decimal('0.00'):
+                            score_num = Decimal('0.00')
+                    except Exception:
+                        continue
+                else:
+                    continue
+
+                Grade.objects.update_or_create(
+                    student=student,
+                    subject=subject,
+                    exam_term=exam_term,
+                    classroom=classroom,
+                    defaults={
+                        'score': score_num,
+                        'max_score': max_sc,
+                    }
+                )
+                saved_count += 1
+
+        return Response({
+            'status': 'success',
+            'message': f'🎉 បានរក្សាទុកពិន្ទុចំនួន {saved_count} ជោគជ័យ!',
+            'saved_count': saved_count
+        })
+
+
+class MobileBlindScoringValidateAPIView(APIView):
+    """
+    Validates Secret Code on Mobile App and returns anonymous desk list (Desks 01 to N).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        exam_id = data.get('exam_id')
+        subject_id = data.get('subject_id')
+        secret_code = str(data.get('secret_code', '')).strip().upper()
+
+        if not exam_id or not subject_id or not secret_code:
+            return Response({'status': 'error', 'message': 'សូមជ្រើសរើសសម័យប្រឡង មុខវិជ្ជា និងលេខកូដសម្ងាត់!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exam = get_object_or_404(StandardizedExam, id=exam_id)
+        exam_subject = get_object_or_404(ExamSubject.objects.select_related('subject'), id=subject_id, exam=exam)
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+        # Check grading window
+        is_grading_open, _, grading_msg = exam.get_grading_status()
+
+        code_obj = ExamRoomSubjectCode.objects.filter(
+            secret_code__iexact=secret_code,
+            exam_subject=exam_subject
+        ).select_related('exam_room').first()
+
+        room = code_obj.exam_room if code_obj else ExamRoom.objects.filter(exam=exam, secret_code__iexact=secret_code).first()
+        if not room:
+            return Response({
+                'status': 'error',
+                'message': f'លេខកូដសម្ងាត់ «{secret_code}» មិនត្រឹមត្រូវ ឬមិនត្រូវគ្នានឹងមុខវិជ្ជា {exam_subject.subject.name_kh} ឡើយ!'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        candidates = room.candidates.all().order_by('desk_number', 'id')
+        scores_map = {
+            sc.candidate_id: sc
+            for sc in CandidateSubjectScore.objects.filter(candidate__in=candidates, exam_subject=exam_subject)
+        }
+
+        desks_data = []
+        for cand in candidates:
+            sc = scores_map.get(cand.id)
+            score_val = None
+            is_absent = False
+            if sc:
+                is_absent = sc.is_absent
+                if sc.score is not None and not is_absent:
+                    score_val = float(sc.score)
+
+            desks_data.append({
+                'desk_number': cand.desk_number,
+                'candidate_id': cand.id,
+                'score': score_val,
+                'is_absent': is_absent,
+            })
+
+        display_room_name = room.room_name if is_admin else f"កញ្ចប់កូដសម្ងាត់ #{secret_code}"
+
+        return Response({
+            'status': 'success',
+            'room_id': room.id,
+            'room_name': display_room_name,
+            'is_blind_mode': not is_admin,
+            'is_grading_open': is_grading_open or is_admin,
+            'grading_status_msg': grading_msg,
+            'subject_id': exam_subject.id,
+            'subject_name': exam_subject.subject.name_kh,
+            'max_score': float(exam_subject.max_score),
+            'coefficient': float(exam_subject.coefficient),
+            'candidate_count': len(desks_data),
+            'is_already_graded': code_obj.is_graded if code_obj else False,
+            'desks': desks_data
+        })
+
+
+class MobileBlindScoringSaveAPIView(APIView):
+    """
+    Saves scores submitted blindly via Mobile App by desk number (01 to N).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        exam_id = data.get('exam_id')
+        subject_id = data.get('subject_id')
+        secret_code = str(data.get('secret_code', '')).strip().upper()
+        scores_list = data.get('scores', [])
+
+        if not exam_id or not subject_id or not secret_code or not scores_list:
+            return Response({'status': 'error', 'message': 'ទិន្នន័យមិនពេញលេញ!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exam = get_object_or_404(StandardizedExam, id=exam_id)
+        exam_subject = get_object_or_404(ExamSubject.objects.select_related('subject'), id=subject_id, exam=exam)
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+        # Check grading window
+        is_grading_open, _, grading_msg = exam.get_grading_status()
+        if not is_grading_open and not is_admin:
+            return Response({'status': 'error', 'message': f'⚠️ មិនអាចរក្សាទុកបានទេ៖ {grading_msg}!'}, status=status.HTTP_403_FORBIDDEN)
+
+        code_obj = ExamRoomSubjectCode.objects.filter(
+            secret_code__iexact=secret_code,
+            exam_subject=exam_subject
+        ).select_related('exam_room').first()
+
+        room = code_obj.exam_room if code_obj else ExamRoom.objects.filter(exam=exam, secret_code__iexact=secret_code).first()
+        if not room:
+            return Response({'status': 'error', 'message': 'លេខកូដសម្ងាត់មិនត្រឹមត្រូវ!'}, status=status.HTTP_404_NOT_FOUND)
+
+        candidates_by_desk = {c.desk_number: c for c in room.candidates.all()}
+        saved_count = 0
+        absent_count = 0
+
+        with transaction.atomic():
+            for item in scores_list:
+                desk_num = int(item.get('desk_number', 0))
+                score_raw = str(item.get('score', '')).strip().upper()
+                is_absent = bool(item.get('is_absent', False)) or (score_raw == 'A')
+
+                cand = candidates_by_desk.get(desk_num)
+                if not cand:
+                    continue
+
+                score_obj, _ = CandidateSubjectScore.objects.get_or_create(
+                    candidate=cand,
+                    exam_subject=exam_subject
+                )
+
+                if is_absent:
+                    score_obj.is_absent = True
+                    score_obj.score = Decimal('0.00')
+                    absent_count += 1
+                elif score_raw != '' and score_raw != '-':
+                    try:
+                        val = Decimal(score_raw)
+                        if val > exam_subject.max_score:
+                            val = exam_subject.max_score
+                        if val < Decimal('0.00'):
+                            val = Decimal('0.00')
+                        score_obj.score = val
+                        score_obj.is_absent = False
+                    except Exception:
+                        continue
+                else:
+                    continue
+
+                score_obj.save()
+                saved_count += 1
+
+            if code_obj:
+                code_obj.is_graded = True
+                code_obj.graded_by = request.user
+                code_obj.graded_at = timezone.now()
+                code_obj.save(update_fields=['is_graded', 'graded_by', 'graded_at'])
+
+            exam.recalculate_all_ranks()
+
+        return Response({
+            'status': 'success',
+            'message': f'🎉 បានរក្សាទុកពិន្ទុកញ្ចប់ {secret_code} ចំនួន {saved_count} តុជោគជ័យ!',
+            'saved_count': saved_count,
+            'absent_count': absent_count
+        })
+
 

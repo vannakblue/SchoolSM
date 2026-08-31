@@ -19,10 +19,10 @@
     {% endif %}
 </div>
 
-<!-- Filters: Select Term & Class -->
+<!-- Filters: Select Term, Class & Subject -->
 <div class="custom-card p-3 mb-4">
     <form method="GET" class="row g-3 align-items-center">
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="form-label fw-bold small text-muted">សម័យប្រឡង (Exam Term) *</label>
             <select name="term" class="form-select" onchange="this.form.submit()">
                 {% for t in terms %}
@@ -30,7 +30,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="form-label fw-bold small text-muted">ថ្នាក់រៀន (Classroom) *</label>
             <select name="classroom" class="form-select" onchange="this.form.submit()">
                 {% for c in classrooms %}
@@ -38,11 +38,55 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">ផ្ទុកតារាង</button>
+        <div class="col-md-3">
+            <label class="form-label fw-bold small text-muted">មុខវិជ្ជា (Subject Filter)</label>
+            <select name="subject" class="form-select" onchange="this.form.submit()">
+                <option value="">-- គ្រប់មុខវិជ្ជាទាំងអស់ --</option>
+                {% for s in all_subjects %}
+                <option value="{{ s.id }}" {% if selected_subject_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name_kh }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i></button>
         </div>
     </form>
 </div>
+
+<!-- Grading Window Alert Banner -->
+{% if selected_term %}
+    {% if not is_grading_open %}
+    <div class="alert alert-danger border-0 shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; min-width: 42px;">
+                <i class="fa-solid fa-lock fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0 text-danger">ការបញ្ចូលពិន្ទុត្រូវបានបិទ / ចាក់សោ (Locked / Expired)</h6>
+                <span class="small text-danger-emphasis">{{ grading_status_msg }}</span>
+            </div>
+        </div>
+        {% if user.role == 'ADMIN' or user.is_superuser %}
+        <span class="badge bg-danger text-white p-2">Admin Override Enabled</span>
+        {% else %}
+        <span class="badge bg-secondary text-white p-2"><i class="fa-solid fa-eye me-1"></i> របៀបមើលតែប៉ុណ្ណោះ (Read-Only)</span>
+        {% endif %}
+    </div>
+    {% elif selected_term.grading_end_datetime %}
+    <div class="alert alert-info border-0 shadow-sm rounded-4 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-clock text-info fs-4"></i>
+            <div>
+                <strong class="text-dark">កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ៖</strong>
+                <span class="text-muted small ms-1">ផុតកំណត់ត្រឹមថ្ងៃទី <strong>{{ selected_term.grading_end_datetime|date:"d/m/Y ម៉ោង H:i" }}</strong></span>
+            </div>
+        </div>
+        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fw-bold">
+            <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ
+        </span>
+    </div>
+    {% endif %}
+{% endif %}
 
 <!-- Matrix Table Form -->
 {% if selected_term and selected_class %}
@@ -65,16 +109,22 @@
 <form method="POST">
     {% csrf_token %}
     <div class="custom-card mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
             <div>
                 <h5 class="fw-bold mb-0 text-primary">
                     <i class="fa-solid fa-pen-to-square me-2"></i>បញ្ចូលពិន្ទុ៖ {{ selected_class.name }} ({{ selected_term.name }})
                 </h5>
                 <span class="badge bg-light text-dark mt-1">{{ selected_class.get_track_display }} | ពិន្ទុសរុបពេញ៖ {{ selected_class.get_total_max_score|floatformat:0 }} ពិន្ទុ</span>
             </div>
-            <button type="submit" class="btn btn-success fw-bold">
+            {% if is_grading_open or user.role == 'ADMIN' or user.is_superuser %}
+            <button type="submit" class="btn btn-success fw-bold shadow-sm">
                 <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុទាំងអស់
             </button>
+            {% else %}
+            <button type="button" class="btn btn-secondary fw-bold" disabled>
+                <i class="fa-solid fa-lock me-1"></i> បានចាក់សោ (Locked)
+            </button>
+            {% endif %}
         </div>
 
         <div class="table-responsive">
@@ -112,7 +162,7 @@
                         </td>
                         {% for score_item in row.scores %}
                         <td class="text-center">
-                            {% if row.can_edit %}
+                            {% if score_item.can_edit_subject %}
                             <input type="number" step="0.5" min="0" max="{{ score_item.max_score }}" 
                                    name="score_{{ row.student.id }}_{{ score_item.subject.id }}" 
                                    value="{{ score_item.score }}" 
@@ -122,11 +172,11 @@
                             {% else %}
                             <div class="input-group input-group-sm">
                                 <input type="text" 
-                                       value="0.00" 
+                                       value="{{ score_item.score|default:'-' }}" 
                                        readonly 
                                        disabled 
                                        class="form-control form-control-sm text-center bg-light text-muted fw-bold"
-                                       title="សិស្សមិនបានប្រឡង/ត្រូវបានលើកលែង (ពិន្ទុ ០ ស្វ័យប្រវត្តិ - មានតែ Admin ទើបអាចកែបាន)">
+                                       title="{% if not is_grading_open %}ផុតកំណត់រយៈពេលបញ្ចូលពិន្ទុ{% else %}មុខវិជ្ជារបស់គ្រូផ្សេង ឬសិស្សត្រូវបានលើកលែង{% endif %}">
                             </div>
                             {% endif %}
                         </td>
@@ -146,9 +196,11 @@
                 <i class="fa-solid fa-circle-info text-primary me-1"></i>
                 សិស្សដែលមិនបានប្រឡង ឬត្រូវបានលើកលែង ទទួលបានពិន្ទុ <strong>០.០០ ដោយស្វ័យប្រវត្តិ</strong> (មានតែ Admin ទេដែលអាចកែប្រែពិន្ទុបាន)។
             </div>
+            {% if is_grading_open or user.role == 'ADMIN' or user.is_superuser %}
             <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm">
                 <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកពិន្ទុទាំងអស់
             </button>
+            {% endif %}
         </div>
     </div>
 </form>
