@@ -31,4 +31,16 @@ urlpatterns = [
 
     # 6. In-App Notifications
     path('notifications/', views.MobileNotificationListView.as_view(), name='mobile_api_notifications'),
+
+    # 7. Administrative Locations (ខេត្ត ស្រុក ឃុំ ភូមិ Cascading APIs)
+    path('locations/provinces/', views.MobileLocationProvincesAPIView.as_view(), name='mobile_api_locations_provinces'),
+    path('locations/districts/', views.MobileLocationDistrictsAPIView.as_view(), name='mobile_api_locations_districts'),
+    path('locations/communes/', views.MobileLocationCommunesAPIView.as_view(), name='mobile_api_locations_communes'),
+    path('locations/villages/', views.MobileLocationVillagesAPIView.as_view(), name='mobile_api_locations_villages'),
+    path('locations/hierarchy/', views.MobileLocationHierarchyAPIView.as_view(), name='mobile_api_locations_hierarchy'),
+
+    # 8. Student Promotion & Grade Retention (ឡើងថ្នាក់ & ត្រួតថ្នាក់)
+    path('students/promotion/meta/', views.MobileStudentPromotionMetaAPIView.as_view(), name='mobile_api_student_promotion_meta'),
+    path('students/promotion/students/', views.MobileStudentPromotionClassStudentsAPIView.as_view(), name='mobile_api_student_promotion_students'),
+    path('students/promotion/submit/', views.MobileStudentPromotionSubmitAPIView.as_view(), name='mobile_api_student_promotion_submit'),
 ]

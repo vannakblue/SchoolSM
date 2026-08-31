@@ -4769,66 +4769,166 @@ def api_duty_type_delete(request, type_id):
 
 
 @login_required
-@role_required(['ADMIN'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_promotion_view(request):
-    academic_years = AcademicYear.objects.all()
-    classrooms = Classroom.objects.all()
+    """
+    Student Promotion & Grade Retention Matrix (ឧបករណ៍ផ្ទេរ ឡើងថ្នាក់ និងត្រួតថ្នាក់សិស្ស).
+    Allows Admin & Authorized Teachers to specify individual promotion / retention decisions per student
+    with MoEYS standard reasons, target classrooms, and full audit logs.
+    """
+    from apps.students.models import StudentPromotionRecord
+
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+    teacher_profile = None
+
+    if not is_admin:
+        teacher_profile = Teacher.objects.filter(user=request.user).first()
+        if not teacher_profile:
+            messages.error(request, "⚠️ គណនីរបស់អ្នកមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!")
+            return redirect('dashboard')
+        # Allowed classrooms where teacher is class head or teaches
+        taught_class_ids = set(ClassSubject.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
+        if hasattr(Classroom, 'teacher'):
+            taught_class_ids.update(Classroom.objects.filter(teacher=teacher_profile).values_list('id', flat=True))
+        classrooms = Classroom.objects.filter(id__in=taught_class_ids).select_related('academic_year')
+    else:
+        classrooms = Classroom.objects.all().select_related('academic_year')
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+    all_target_classrooms = Classroom.objects.all().select_related('academic_year').order_by('grade_level', 'name')
 
     source_class_id = request.GET.get('source_class')
     students = []
     source_class = None
 
-    if source_class_id:
-        source_class = Classroom.objects.filter(id=source_class_id).first()
+    if source_class_id and str(source_class_id).strip().isdigit():
+        cls_int_id = int(str(source_class_id).strip())
+        source_class = classrooms.filter(id=cls_int_id).first() if not is_admin else Classroom.objects.filter(id=cls_int_id).first()
         if source_class:
-            students = Student.objects.filter(classroom=source_class, status='ACTIVE')
+            students = Student.objects.filter(classroom=source_class, status='ACTIVE').order_by('student_id')
 
     if request.method == 'POST':
+        source_class_post = request.POST.get('source_class')
         target_year_id = request.POST.get('target_year')
-        target_class_id = request.POST.get('target_class')
-        action = request.POST.get('promotion_action')
+        global_action = request.POST.get('global_promotion_action', 'PROMOTE')
+        global_target_class_id = request.POST.get('global_target_class')
         selected_student_ids = request.POST.getlist('student_ids')
 
-        if not selected_student_ids:
-            messages.error(request, "សូមជ្រើសរើសសិស្សយ៉ាងតិចម្នាក់ដើម្បីផ្ទេរ!")
-            return redirect(f"/academics/promotion/?source_class={source_class_id}")
+        redirect_url = f"/academics/promotion/?source_class={source_class_post}" if (source_class_post and str(source_class_post).strip().isdigit()) else "/academics/promotion/"
 
-        target_year = get_object_or_404(AcademicYear, pk=target_year_id) if target_year_id else None
-        target_class = get_object_or_404(Classroom, pk=target_class_id) if target_class_id else None
+        if not selected_student_ids:
+            messages.error(request, "⚠️ សូមជ្រើសរើសសិស្សយ៉ាងតិចម្នាក់ដើម្បីដំណើរការ!")
+            return redirect(redirect_url)
+
+        target_year = AcademicYear.objects.filter(pk=target_year_id).first() if (target_year_id and str(target_year_id).strip().isdigit()) else None
+        global_target_class = Classroom.objects.filter(pk=global_target_class_id).first() if (global_target_class_id and str(global_target_class_id).strip().isdigit()) else None
+
+        promoted_count = 0
+        retained_count = 0
+        other_count = 0
 
         with transaction.atomic():
-            count = 0
             for student_id in selected_student_ids:
-                student = Student.objects.filter(id=student_id).first()
+                if not str(student_id).strip().isdigit():
+                    continue
+                student = Student.objects.filter(id=int(str(student_id).strip())).first()
                 if not student:
                     continue
-                
-                if action == 'PROMOTE' and target_class and target_year:
-                    student.classroom = target_class
-                    student.academic_year = target_year
+
+                # Individual decision or fallback to global
+                action = request.POST.get(f'action_{student_id}', global_action)
+                target_cid = request.POST.get(f'target_class_{student_id}') or global_target_class_id
+                target_cls = Classroom.objects.filter(id=int(str(target_cid).strip())).first() if (target_cid and str(target_cid).strip().isdigit()) else global_target_class
+                standard_reason = request.POST.get(f'reason_{student_id}', 'PASSED_YEAR')
+                custom_notes = request.POST.get(f'notes_{student_id}', '').strip()
+
+                old_class = student.classroom
+                old_year = student.academic_year
+
+                # Map action to Cambodian label for reason
+                reason_display = dict(StudentPromotionRecord.StandardReason.choices).get(standard_reason, standard_reason)
+                full_reason = f"{reason_display}" + (f" ({custom_notes})" if custom_notes else "")
+
+                if action == 'PROMOTE':
+                    student.academic_year = target_year or old_year
+                    if target_cls:
+                        student.classroom = target_cls
                     student.status = 'ACTIVE'
+                    student.is_repeating_grade = False
+                    student.last_promotion_status = 'ឡើងថ្នាក់'
+                    student.last_promotion_reason = full_reason
                     student.save()
-                    count += 1
-                elif action == 'RETAIN' and target_year:
-                    student.academic_year = target_year
-                    if target_class:
-                        student.classroom = target_class
+                    promoted_count += 1
+
+                elif action == 'RETAIN':
+                    student.academic_year = target_year or old_year
+                    if target_cls:
+                        student.classroom = target_cls
+                    student.status = 'ACTIVE'
+                    student.is_repeating_grade = True
+                    student.last_promotion_status = 'ត្រួតថ្នាក់'
+                    student.last_promotion_reason = full_reason
                     student.save()
-                    count += 1
+                    retained_count += 1
+
                 elif action == 'GRADUATE':
                     student.status = 'GRADUATED'
+                    student.is_repeating_grade = False
+                    student.last_promotion_status = 'បញ្ចប់ការសិក្សា'
+                    student.last_promotion_reason = full_reason
                     student.save()
-                    count += 1
+                    other_count += 1
 
-            messages.success(request, f"🎉 ជោគជ័យ! បានដំណើរការឡើងថ្នាក់/ផ្ទេរសិស្សចំនួន {count} នាក់។")
-            return redirect('classroom_list')
+                elif action == 'TRANSFER':
+                    student.status = 'TRANSFERRED'
+                    student.last_promotion_status = 'ផ្ទេរចេញ'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    other_count += 1
+
+                elif action == 'DROP':
+                    student.status = 'DROPPED'
+                    student.last_promotion_status = 'ឈប់រៀន'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    other_count += 1
+
+                # Record Audit History
+                StudentPromotionRecord.objects.create(
+                    student=student,
+                    from_academic_year=old_year,
+                    to_academic_year=target_year or old_year,
+                    from_classroom=old_class,
+                    to_classroom=target_cls,
+                    action=action,
+                    standard_reason=standard_reason,
+                    custom_notes=custom_notes,
+                    processed_by=request.user
+                )
+
+        total_done = promoted_count + retained_count + other_count
+        messages.success(
+            request,
+            f"🎉 ជោគជ័យ! បានដំណើរការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សសរុប {total_done} នាក់ "
+            f"(ឡើងថ្នាក់: {promoted_count} នាក់, ត្រួតថ្នាក់: {retained_count} នាក់, ផ្សេងៗ: {other_count} នាក់)។"
+        )
+        return redirect(redirect_url)
+
+    # Recent promotion audit logs
+    recent_promotions = StudentPromotionRecord.objects.select_related(
+        'student', 'from_classroom', 'to_classroom', 'from_academic_year', 'to_academic_year', 'processed_by'
+    ).all()[:60]
 
     return render(request, 'academics/promotion.html', {
         'academic_years': academic_years,
         'classrooms': classrooms,
+        'all_target_classrooms': all_target_classrooms,
         'source_class_id': source_class_id,
         'source_class': source_class,
         'students': students,
+        'recent_promotions': recent_promotions,
+        'standard_reasons': StudentPromotionRecord.StandardReason.choices,
+        'is_admin': is_admin,
     })
 
 

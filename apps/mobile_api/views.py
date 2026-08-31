@@ -1206,3 +1206,392 @@ class MobileBlindScoringSaveAPIView(APIView):
         })
 
 
+# =========================================================================
+# 7. Administrative Locations API (ខេត្ត ស្រុក ឃុំ ភូមិ Cascading Dropdowns)
+# =========================================================================
+
+def _mobile_location_sort_key(x):
+    code_str = str(x.get('code') or '').strip()
+    try:
+        return (0, int(code_str), code_str)
+    except ValueError:
+        return (1, 0, code_str)
+
+
+class MobileLocationProvincesAPIView(APIView):
+    """
+    Mobile API: Returns list of all 25 Provinces / Cities in Cambodia.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.academics.models import Province
+        provinces = list(Province.objects.all().values('id', 'code', 'name_kh', 'name_en'))
+        provinces.sort(key=_mobile_location_sort_key)
+        return Response({
+            'status': 'success',
+            'count': len(provinces),
+            'data': provinces
+        })
+
+
+class MobileLocationDistrictsAPIView(APIView):
+    """
+    Mobile API: Returns districts filtered by province_id (or province code).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.academics.models import District
+        province_id = request.GET.get('province_id')
+        districts = District.objects.all()
+        if province_id:
+            districts = districts.filter(province_id=province_id)
+        data = list(districts.values('id', 'code', 'name_kh', 'name_en', 'province_id'))
+        data.sort(key=_mobile_location_sort_key)
+        return Response({
+            'status': 'success',
+            'count': len(data),
+            'data': data
+        })
+
+
+class MobileLocationCommunesAPIView(APIView):
+    """
+    Mobile API: Returns communes filtered by district_id.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.academics.models import Commune
+        district_id = request.GET.get('district_id')
+        communes = Commune.objects.all()
+        if district_id:
+            communes = communes.filter(district_id=district_id)
+        data = list(communes.values('id', 'code', 'name_kh', 'name_en', 'district_id'))
+        data.sort(key=_mobile_location_sort_key)
+        return Response({
+            'status': 'success',
+            'count': len(data),
+            'data': data
+        })
+
+
+class MobileLocationVillagesAPIView(APIView):
+    """
+    Mobile API: Returns villages filtered by commune_id.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.academics.models import Village
+        commune_id = request.GET.get('commune_id')
+        villages = Village.objects.all()
+        if commune_id:
+            villages = villages.filter(commune_id=commune_id)
+        data = list(villages.values('id', 'code', 'name_kh', 'name_en', 'commune_id'))
+        data.sort(key=_mobile_location_sort_key)
+        return Response({
+            'status': 'success',
+            'count': len(data),
+            'data': data
+        })
+
+
+class MobileLocationHierarchyAPIView(APIView):
+    """
+    Mobile API: Returns a lightweight hierarchy of provinces and districts (or full tree)
+    for mobile apps to cache locally for instant, offline-capable cascading dropdowns.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.academics.models import Province, District
+        provinces = list(Province.objects.all().prefetch_related('districts').order_by('id'))
+        tree = []
+        for p in provinces:
+            districts = [
+                {'id': d.id, 'code': d.code, 'name_kh': d.name_kh, 'name_en': d.name_en}
+                for d in p.districts.all()
+            ]
+            districts.sort(key=_mobile_location_sort_key)
+            tree.append({
+                'id': p.id,
+                'code': p.code,
+                'name_kh': p.name_kh,
+                'name_en': p.name_en,
+                'districts': districts
+            })
+        tree.sort(key=_mobile_location_sort_key)
+        return Response({
+            'status': 'success',
+            'count': len(tree),
+            'data': tree
+        })
+
+
+# =========================================================================
+# 8. Student Promotion & Grade Retention APIs (ឡើងថ្នាក់ & ត្រួតថ្នាក់)
+# =========================================================================
+
+class MobileStudentPromotionMetaAPIView(APIView):
+    """
+    Mobile API: Returns metadata for Student Promotion:
+    - Allowed source classrooms for current user
+    - Target academic years
+    - Available target classrooms
+    - MoEYS standard promotion reasons & actions
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.students.models import StudentPromotionRecord
+        from apps.academics.models import ClassSubject
+
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        teacher_profile = Teacher.objects.filter(user=request.user).first() if not is_admin else None
+
+        if not is_admin and not teacher_profile:
+            return Response({
+                'status': 'error',
+                'message': 'អ្នកមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if not is_admin:
+            taught_cids = set(ClassSubject.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
+            if hasattr(Classroom, 'teacher'):
+                taught_cids.update(Classroom.objects.filter(teacher=teacher_profile).values_list('id', flat=True))
+            source_classes = Classroom.objects.filter(id__in=taught_cids).select_related('academic_year')
+        else:
+            source_classes = Classroom.objects.all().select_related('academic_year')
+
+        source_classes_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'grade_level': c.grade_level,
+                'academic_year_id': c.academic_year_id,
+                'academic_year_name': c.academic_year.name if c.academic_year else '',
+                'student_count': c.students.filter(status='ACTIVE').count()
+            }
+            for c in source_classes
+        ]
+
+        target_years_data = [
+            {
+                'id': y.id,
+                'name': y.name,
+                'is_current': y.is_current
+            }
+            for y in AcademicYear.objects.all().order_by('-start_date')
+        ]
+
+        all_target_classes_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'grade_level': c.grade_level,
+                'academic_year_id': c.academic_year_id,
+                'academic_year_name': c.academic_year.name if c.academic_year else ''
+            }
+            for c in Classroom.objects.all().select_related('academic_year').order_by('grade_level', 'name')
+        ]
+
+        reasons_data = [
+            {'code': code, 'label': label}
+            for code, label in StudentPromotionRecord.StandardReason.choices
+        ]
+
+        actions_data = [
+            {'code': code, 'label': label}
+            for code, label in StudentPromotionRecord.Action.choices
+        ]
+
+        return Response({
+            'status': 'success',
+            'is_admin': is_admin,
+            'source_classrooms': source_classes_data,
+            'target_academic_years': target_years_data,
+            'all_target_classrooms': all_target_classes_data,
+            'standard_reasons': reasons_data,
+            'actions': actions_data
+        })
+
+
+class MobileStudentPromotionClassStudentsAPIView(APIView):
+    """
+    Mobile API: Returns the active students of a source class for promotion decisions.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        source_class_id = request.GET.get('source_class_id')
+        if not source_class_id:
+            return Response({'status': 'error', 'message': 'source_class_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        classroom = get_object_or_404(Classroom, id=source_class_id)
+        students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+
+        students_data = [
+            {
+                'id': s.id,
+                'student_id': s.student_id,
+                'khmer_name': s.khmer_name,
+                'latin_name': s.latin_name,
+                'gender': s.gender,
+                'gender_display': s.get_gender_display(),
+                'status': s.status,
+                'status_display': s.get_status_display(),
+                'is_repeating_grade': s.is_repeating_grade,
+                'last_promotion_status': s.last_promotion_status or '',
+                'last_promotion_reason': s.last_promotion_reason or '',
+                'default_action': 'PROMOTE',
+                'default_reason': 'PASSED_YEAR'
+            }
+            for s in students
+        ]
+
+        return Response({
+            'status': 'success',
+            'classroom_id': classroom.id,
+            'classroom_name': classroom.name,
+            'academic_year': classroom.academic_year.name if classroom.academic_year else '',
+            'student_count': len(students_data),
+            'students': students_data
+        })
+
+
+class MobileStudentPromotionSubmitAPIView(APIView):
+    """
+    Mobile API: Submits individual student promotion & grade retention decisions.
+    Payload:
+    {
+      "source_class_id": 1,
+      "target_year_id": 2,
+      "students": [
+         {
+           "student_id": 10,
+           "action": "PROMOTE" | "RETAIN" | "GRADUATE" | "TRANSFER" | "DROP",
+           "target_class_id": 15,
+           "standard_reason": "PASSED_YEAR" | "FAILED_YEAR" | ...,
+           "custom_notes": "optional notes"
+         }
+      ]
+    }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from apps.students.models import StudentPromotionRecord
+
+        data = request.data
+        source_class_id = data.get('source_class_id')
+        target_year_id = data.get('target_year_id')
+        students_payload = data.get('students', [])
+
+        if not source_class_id or not students_payload:
+            return Response({
+                'status': 'error',
+                'message': 'ទិន្នន័យមិនពេញលេញ! source_class_id និងបញ្ជីសិស្សត្រូវតែបញ្ជាក់។'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        source_class = get_object_or_404(Classroom, id=source_class_id)
+        target_year = AcademicYear.objects.filter(id=target_year_id).first() if target_year_id else source_class.academic_year
+
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        if not is_admin:
+            teacher_profile = Teacher.objects.filter(user=request.user).first()
+            if not teacher_profile:
+                return Response({'status': 'error', 'message': 'គ្មានសិទ្ធិអនុវត្ត!'}, status=status.HTTP_403_FORBIDDEN)
+
+        promoted_count = 0
+        retained_count = 0
+        other_count = 0
+
+        with transaction.atomic():
+            for item in students_payload:
+                s_id = item.get('student_id')
+                action = item.get('action', 'PROMOTE')
+                target_cid = item.get('target_class_id')
+                standard_reason = item.get('standard_reason', 'PASSED_YEAR')
+                custom_notes = str(item.get('custom_notes', '')).strip()
+
+                student = Student.objects.filter(id=s_id, classroom=source_class).first()
+                if not student:
+                    continue
+
+                target_cls = Classroom.objects.filter(id=target_cid).first() if target_cid else None
+                old_class = student.classroom
+                old_year = student.academic_year
+
+                reason_display = dict(StudentPromotionRecord.StandardReason.choices).get(standard_reason, standard_reason)
+                full_reason = f"{reason_display}" + (f" ({custom_notes})" if custom_notes else "")
+
+                if action == 'PROMOTE':
+                    student.academic_year = target_year or old_year
+                    if target_cls:
+                        student.classroom = target_cls
+                    student.status = 'ACTIVE'
+                    student.is_repeating_grade = False
+                    student.last_promotion_status = 'ឡើងថ្នាក់'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    promoted_count += 1
+
+                elif action == 'RETAIN':
+                    student.academic_year = target_year or old_year
+                    if target_cls:
+                        student.classroom = target_cls
+                    student.status = 'ACTIVE'
+                    student.is_repeating_grade = True
+                    student.last_promotion_status = 'ត្រួតថ្នាក់'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    retained_count += 1
+
+                elif action == 'GRADUATE':
+                    student.status = 'GRADUATED'
+                    student.is_repeating_grade = False
+                    student.last_promotion_status = 'បញ្ចប់ការសិក្សា'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    other_count += 1
+
+                elif action == 'TRANSFER':
+                    student.status = 'TRANSFERRED'
+                    student.last_promotion_status = 'ផ្ទេរចេញ'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    other_count += 1
+
+                elif action == 'DROP':
+                    student.status = 'DROPPED'
+                    student.last_promotion_status = 'ឈប់រៀន'
+                    student.last_promotion_reason = full_reason
+                    student.save()
+                    other_count += 1
+
+                # Record Promotion Audit
+                StudentPromotionRecord.objects.create(
+                    student=student,
+                    from_academic_year=old_year,
+                    to_academic_year=target_year or old_year,
+                    from_classroom=old_class,
+                    to_classroom=target_cls,
+                    action=action,
+                    standard_reason=standard_reason,
+                    custom_notes=custom_notes,
+                    processed_by=request.user
+                )
+
+        total_done = promoted_count + retained_count + other_count
+        return Response({
+            'status': 'success',
+            'message': f'🎉 បានដំណើរការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សចំនួន {total_done} នាក់ជោគជ័យ!',
+            'total_processed': total_done,
+            'promoted_count': promoted_count,
+            'retained_count': retained_count,
+            'other_count': other_count
+        })
+
+

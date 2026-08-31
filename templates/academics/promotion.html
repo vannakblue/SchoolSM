@@ -1,128 +1,472 @@
 {% extends 'base.html' %}
 
-{% block title %}ផ្ទេរសិស្ស & ឡើងថ្នាក់ (Student Promotion) | SchoolSM{% endblock %}
+{% block title %}ឧបករណ៍ផ្ទេរ ឡើងថ្នាក់ & ត្រួតថ្នាក់សិស្ស (Student Promotion) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .promotion-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 1rem;
+        color: white;
+    }
+    .badge-retain {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+    .badge-promote {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    .badge-graduate {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+    }
+    .table-promotion th {
+        background-color: #f8fafc;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #475569;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+    .table-promotion td {
+        vertical-align: middle;
+    }
+    .student-row.is-retained {
+        background-color: #fffbeb !important;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
-        <h2 class="fw-bold mb-1">ឧបករណ៍ផ្ទេរ និងឡើងថ្នាក់សិស្ស (Student Promotion)</h2>
-        <p class="text-muted small mb-0">មុខងារសម្រាប់បញ្ជូនសិស្សពីឆ្នាំចាស់ ទៅឆ្នាំសិក្សាថ្មី (ឡើងថ្នាក់ទាំងមូល ឬសិស្សធ្លាក់រៀនត្រួតថ្នាក់)</p>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-arrow-up-right-dots me-2"></i>ឧបករណ៍ផ្ទេរ ឡើងថ្នាក់ និងត្រួតថ្នាក់សិស្ស (Student Promotion)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រងការផ្ទេរសិស្សនៅចុងឆ្នាំសិក្សា កំណត់សិស្សឡើងថ្នាក់ និងសិស្សត្រួតថ្នាក់ជាលក្ខណៈបុគ្គល ជាមួយមូលហេតុត្រឹមត្រូវ</p>
     </div>
-    <a href="{% url 'classroom_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'classroom_list' %}" class="btn btn-outline-secondary fw-bold shadow-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> ថ្នាក់រៀន
+        </a>
+    </div>
 </div>
 
-<!-- Step 1: Select Source Class -->
-<div class="custom-card p-3 mb-4">
-    <form method="GET" class="row g-3 align-items-center">
-        <div class="col-md-8">
-            <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្នាក់ប្រភព (Source Class to Transfer From)</label>
-            <select name="source_class" class="form-select form-select-lg" onchange="this.form.submit()">
-                <option value="">-- សូមជ្រើសរើសថ្នាក់រៀន --</option>
-                {% for c in classrooms %}
-                <option value="{{ c.id }}" {% if source_class_id == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }} [{{ c.academic_year.name }}] (សិស្ស: {{ c.total_students }} នាក់)</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary btn-lg w-100">
-                <i class="fa-solid fa-list-check me-1"></i> ទាញយកបញ្ជីសិស្ស
-            </button>
-        </div>
-    </form>
-</div>
+<!-- Nav Tabs: 1. Promotion Matrix, 2. History Logs -->
+<ul class="nav nav-pills mb-4 gap-2" id="promotionTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold px-4 shadow-sm" id="matrix-tab" data-bs-toggle="pill" data-bs-target="#matrix-pane" type="button" role="tab">
+            <i class="fa-solid fa-table-list me-2"></i>ឧបករណ៍ឡើងថ្នាក់/ត្រួតថ្នាក់ (Promotion Matrix)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold px-4 shadow-sm bg-white" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-pane" type="button" role="tab">
+            <i class="fa-solid fa-clock-rotate-left me-2"></i>ប្រវត្តិកំណត់ត្រាឡើងថ្នាក់ (Audit Logs)
+            <span class="badge bg-secondary ms-1">{{ recent_promotions.count }}</span>
+        </button>
+    </li>
+</ul>
 
-{% if source_class %}
-<form method="POST">
-    {% csrf_token %}
-    <input type="hidden" name="source_class" value="{{ source_class.id }}">
+<div class="tab-content" id="promotionTabsContent">
+    <!-- TAB 1: Promotion Matrix -->
+    <div class="tab-pane fade show active" id="matrix-pane" role="tabpanel">
+        
+        <!-- Step 1: Select Source Class -->
+        <div class="custom-card p-4 mb-4 border-0 shadow-sm">
+            <form method="GET" class="row g-3 align-items-center">
+                <div class="col-lg-8 col-md-7">
+                    <label class="form-label fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-chalkboard-user text-primary me-1"></i> ជ្រើសរើសថ្នាក់ដើម/ប្រភព (Source Classroom) <span class="text-danger">*</span>
+                    </label>
+                    <select name="source_class" class="form-select form-select-lg shadow-sm" onchange="this.form.submit()">
+                        <option value="">-- សូមជ្រើសរើសថ្នាក់រៀនដើមដើម្បីទាញយកបញ្ជីសិស្ស --</option>
+                        {% for c in classrooms %}
+                        <option value="{{ c.id }}" {% if source_class_id == c.id|stringformat:"i" %}selected{% endif %}>
+                            {{ c.name }} [ឆ្នាំសិក្សា: {{ c.academic_year.name }}] (សិស្ស: {{ c.total_students }} នាក់)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-5 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> ទាញយកបញ្ជីសិស្ស
+                    </button>
+                </div>
+            </form>
+        </div>
 
-    <!-- Step 2: Target Academic Year & Target Class -->
-    <div class="custom-card mb-4 bg-light border-primary">
-        <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-bullseye me-2"></i>គោលដៅផ្ទេរសិស្ស (Target Destination)</h5>
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label fw-bold small">សកម្មភាពផ្ទេរ (Action) *</label>
-                <select name="promotion_action" class="form-select fw-bold">
-                    <option value="PROMOTE">✅ ឡើងថ្នាក់បន្ទាប់ (Promote to Next Grade)</option>
-                    <option value="RETAIN">⚠️ រៀនត្រួតថ្នាក់ដដែល (Retain in Same Grade)</option>
-                    <option value="GRADUATE">🎓 បញ្ចប់ការសិក្សា (Graduated)</option>
-                </select>
+        {% if source_class %}
+        <form method="POST" id="promotionForm">
+            {% csrf_token %}
+            <input type="hidden" name="source_class" value="{{ source_class.id }}">
+
+            <!-- Step 2: Target Year & Batch Default Controllers -->
+            <div class="custom-card mb-4 border-0 shadow-sm bg-white p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 pb-3 mb-3 border-bottom">
+                    <div>
+                        <h5 class="fw-bold text-primary mb-1">
+                            <i class="fa-solid fa-sliders me-2"></i>គោលដៅឆ្នាំសិក្សាថ្មី & ការកំណត់រហ័ស (Batch Defaults)
+                        </h5>
+                        <p class="text-muted small mb-0">ថ្នាក់ដើម៖ <strong>{{ source_class.name }}</strong> (ឆ្នាំសិក្សា៖ {{ source_class.academic_year.name }})</p>
+                    </div>
+
+                    <!-- Live Decision Stats -->
+                    <div class="d-flex gap-2">
+                        <span class="badge badge-promote fs-6 px-3 py-2 fw-bold" id="statPromotedBadge">
+                            <i class="fa-solid fa-arrow-up me-1"></i> ឡើងថ្នាក់: <span id="statPromoteCount">0</span>
+                        </span>
+                        <span class="badge badge-retain fs-6 px-3 py-2 fw-bold" id="statRetainedBadge">
+                            <i class="fa-solid fa-rotate-left me-1"></i> ត្រួតថ្នាក់: <span id="statRetainCount">0</span>
+                        </span>
+                        <span class="badge badge-graduate fs-6 px-3 py-2 fw-bold" id="statOtherBadge">
+                            <i class="fa-solid fa-graduation-cap me-1"></i> ផ្សេងៗ: <span id="statOtherCount">0</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">
+                            <i class="fa-solid fa-calendar-check text-success me-1"></i> ឆ្នាំសិក្សាគោលដៅ (Target Academic Year) *
+                        </label>
+                        <select name="target_year" id="globalTargetYear" class="form-select fw-bold shadow-sm" required>
+                            {% for y in academic_years %}
+                            <option value="{{ y.id }}" {% if y.is_current %}selected{% endif %}>
+                                {{ y.name }}{% if y.is_current %} (ឆ្នាំបច្ចុប្បន្ន){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">
+                            <i class="fa-solid fa-door-open text-primary me-1"></i> ថ្នាក់គោលដៅរួម (Default Target Class)
+                        </label>
+                        <select name="global_target_class" id="globalTargetClass" class="form-select shadow-sm" onchange="applyGlobalTargetClass(this.value)">
+                            <option value="">-- កំណត់ថ្នាក់គោលដៅទាំងអស់ --</option>
+                            {% for c in all_target_classrooms %}
+                            <option value="{{ c.id }}" data-year="{{ c.academic_year_id }}">{{ c.name }} [{{ c.academic_year.name }}]</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">
+                            <i class="fa-solid fa-bolt text-warning me-1"></i> កំណត់សកម្មភាពរហ័ស (Quick Actions)
+                        </label>
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="setAllActions('PROMOTE')">
+                                <i class="fa-solid fa-check me-1"></i> ឡើងថ្នាក់ទាំងអស់
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm fw-bold" onclick="setAllActions('RETAIN')">
+                                <i class="fa-solid fa-rotate-left me-1"></i> ត្រួតថ្នាក់ទាំងអស់
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-4">
-                <label class="form-label fw-bold small">ឆ្នាំសិក្សាថ្មី (Target Academic Year) *</label>
-                <select name="target_year" class="form-select">
-                    {% for y in academic_years %}
-                    <option value="{{ y.id }}">{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fw-bold small">ថ្នាក់រៀនថ្មី (Target Class) *</label>
-                <select name="target_class" class="form-select">
-                    {% for c in classrooms %}
-                    <option value="{{ c.id }}">{{ c.name }} [{{ c.academic_year.name }}]</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-    </div>
 
-    <!-- Step 3: Student List with Checkboxes -->
-    <div class="custom-card mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0">បញ្ជីសិស្សក្នុងថ្នាក់៖ {{ source_class.name }} ({{ students.count }} នាក់)</h5>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="selectAllStudents" checked onclick="toggleSelectAll(this, 'student-cb')">
-                <label class="form-check-label fw-bold small" for="selectAllStudents">
-                    ជ្រើសរើសទាំងអស់ (Select All)
-                </label>
+            <!-- Step 3: Individual Student Promotion Matrix Table -->
+            <div class="custom-card mb-4 border-0 shadow-sm p-0 overflow-hidden">
+                <div class="p-3 bg-light d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-users text-primary me-2"></i>បញ្ជីសិស្សក្នុងថ្នាក់៖ {{ source_class.name }}
+                        </h5>
+                        <span class="badge bg-primary rounded-pill">{{ students.count }} នាក់</span>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllStudents" checked onclick="toggleAllStudents(this)">
+                        <label class="form-check-label fw-bold small text-dark" for="selectAllStudents">
+                            ជ្រើសរើសទាំងអស់ (Select All)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-promotion mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th width="40" class="text-center">#</th>
+                                <th width="140">អត្តលេខ</th>
+                                <th width="200">ឈ្មោះសិស្ស</th>
+                                <th width="70" class="text-center">ភេទ</th>
+                                <th width="190">សកម្មភាព (Decision) *</th>
+                                <th width="220">ថ្នាក់គោលដៅ (Target Class)</th>
+                                <th>មូលហេតុត្រឹមត្រូវ & ច្បាស់លាស់ (Reason & Notes) *</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr id="row_student_{{ s.id }}" class="student-row">
+                                <td class="text-center">
+                                    <input class="form-check-input student-cb" type="checkbox" name="student_ids" value="{{ s.id }}" checked onchange="updateLiveStats()">
+                                </td>
+                                <td class="fw-bold text-primary font-monospace">
+                                    {{ s.student_id }}
+                                    {% if s.is_repeating_grade %}
+                                    <span class="badge badge-retain d-block mt-1" style="font-size: 0.7rem;">
+                                        <i class="fa-solid fa-rotate-left"></i> ត្រួតថ្នាក់
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ s.khmer_name }}</div>
+                                    <small class="text-muted">{{ s.latin_name }}</small>
+                                </td>
+                                <td class="text-center">
+                                    {% if s.gender == 'M' %}
+                                    <span class="badge bg-primary-subtle text-primary">ប្រុស</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">ស្រី</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <select name="action_{{ s.id }}" id="action_{{ s.id }}" class="form-select form-select-sm fw-bold action-selector" onchange="onStudentActionChange('{{ s.id }}', this.value)">
+                                        <option value="PROMOTE" selected>🟢 ឡើងថ្នាក់ (Promote)</option>
+                                        <option value="RETAIN">🟡 រៀនត្រួតថ្នាក់ (Retain)</option>
+                                        <option value="GRADUATE">🎓 បញ្ចប់ការសិក្សា (Graduate)</option>
+                                        <option value="TRANSFER">🔵 ផ្ទេរចេញ (Transfer)</option>
+                                        <option value="DROP">🔴 ឈប់រៀន (Drop Out)</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="target_class_{{ s.id }}" id="target_class_{{ s.id }}" class="form-select form-select-sm target-class-selector">
+                                        <option value="">-- ជ្រើសរើសថ្នាក់ --</option>
+                                        {% for c in all_target_classrooms %}
+                                        <option value="{{ c.id }}">{{ c.name }} [{{ c.academic_year.name }}]</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <div class="row g-1">
+                                        <div class="col-md-6">
+                                            <select name="reason_{{ s.id }}" id="reason_{{ s.id }}" class="form-select form-select-sm reason-selector">
+                                                {% for r_code, r_label in standard_reasons %}
+                                                <option value="{{ r_code }}" {% if r_code == 'PASSED_YEAR' %}selected{% endif %}>{{ r_label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <input type="text" name="notes_{{ s.id }}" class="form-control form-control-sm" placeholder="កំណត់សម្គាល់បន្ថែម...">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="fa-solid fa-user-slash fa-2x mb-2 d-block text-secondary"></i>
+                                    មិនមានសិស្សសកម្មនៅក្នុងថ្នាក់នេះឡើយ
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if students %}
+                <div class="p-4 bg-light border-top d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="small text-muted">
+                        <i class="fa-solid fa-circle-info text-info me-1"></i>
+                        ប្រព័ន្ធនឹងកត់ត្រាប្រវត្តិ និងមូលហេតុឡើងថ្នាក់/ត្រួតថ្នាក់ចូលក្នុង Audit Trail ដោយស្វ័យប្រវត្តិ។
+                    </div>
+                    <button type="button" class="btn btn-warning btn-lg px-5 fw-bold shadow" onclick="confirmPromotionExecution()">
+                        <i class="fa-solid fa-arrow-up-right-dots me-2"></i> អនុវត្តការឡើងថ្នាក់ / ត្រួតថ្នាក់ឥឡូវនេះ
+                    </button>
+                </div>
+                {% endif %}
             </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table-custom">
-                <thead>
-                    <tr>
-                        <th width="40"></th>
-                        <th>កូដសិស្ស</th>
-                        <th>ឈ្មោះសិស្ស</th>
-                        <th>ភេទ</th>
-                        <th>ស្ថានភាពបច្ចុប្បន្ន</th>
-                        <th>កម្រៃសិក្សា</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in students %}
-                    <tr>
-                        <td>
-                            <input class="form-check-input student-cb" type="checkbox" name="student_ids" value="{{ s.id }}" checked>
-                        </td>
-                        <td class="fw-bold text-primary">{{ s.student_id }}</td>
-                        <td>
-                            <div class="fw-bold">{{ s.khmer_name }}</div>
-                            <span class="text-muted small">{{ s.latin_name }}</span>
-                        </td>
-                        <td>{{ s.get_gender_display }}</td>
-                        <td><span class="badge bg-success">{{ s.get_status_display }}</span></td>
-                        <td>{{ s.get_scholarship_type_display }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">គ្មានសិស្សនៅក្នុងថ្នាក់នេះឡើយ</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        {% if students %}
-        <div class="mt-4 pt-3 border-top text-end">
-            <button type="submit" class="btn btn-warning btn-lg px-4 fw-bold" onclick="return confirm('តើលោកអ្នកប្រាកដជាចង់ដំណើរការផ្ទេរ/ឡើងថ្នាក់សម្រាប់សិស្សដែលបានជ្រើសរើសមែនទេ?')">
-                <i class="fa-solid fa-arrow-up-right-dots me-2"></i> អនុវត្តការផ្ទេរ/ឡើងថ្នាក់ឥឡូវនេះ
-            </button>
-        </div>
+        </form>
         {% endif %}
+
     </div>
-</form>
-{% endif %}
+
+    <!-- TAB 2: Promotion Audit Logs History -->
+    <div class="tab-pane fade" id="history-pane" role="tabpanel">
+        <div class="custom-card border-0 shadow-sm p-0 overflow-hidden">
+            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>ប្រវត្តិកំណត់ត្រាឡើងថ្នាក់ និងត្រួតថ្នាក់ (Recent Promotion Logs)
+                </h5>
+                <span class="badge bg-primary">{{ recent_promotions.count }} កំណត់ត្រា</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th width="130">កាលបរិច្ឆេទ</th>
+                            <th width="130">អត្តលេខ</th>
+                            <th width="180">ឈ្មោះសិស្ស</th>
+                            <th width="120" class="text-center">សកម្មភាព</th>
+                            <th width="160">ថ្នាក់ដើម ➡️ ថ្នាក់ថ្មី</th>
+                            <th>មូលហេតុ & កំណត់សម្គាល់</th>
+                            <th width="150">ចាត់ចែងដោយ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_promotions %}
+                        <tr>
+                            <td class="small text-muted">{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                            <td class="font-monospace fw-bold text-primary">{{ log.student.student_id }}</td>
+                            <td class="fw-bold">{{ log.student.khmer_name }}</td>
+                            <td class="text-center">
+                                {% if log.action == 'PROMOTE' %}
+                                <span class="badge badge-promote fw-bold"><i class="fa-solid fa-arrow-up me-1"></i>ឡើងថ្នាក់</span>
+                                {% elif log.action == 'RETAIN' %}
+                                <span class="badge badge-retain fw-bold"><i class="fa-solid fa-rotate-left me-1"></i>ត្រួតថ្នាក់</span>
+                                {% elif log.action == 'GRADUATE' %}
+                                <span class="badge badge-graduate fw-bold"><i class="fa-solid fa-graduation-cap me-1"></i>បញ្ចប់</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ log.get_action_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">
+                                <span class="text-muted">{{ log.from_classroom.name|default:"-" }}</span>
+                                <i class="fa-solid fa-arrow-right mx-1 text-primary"></i>
+                                <strong class="text-dark">{{ log.to_classroom.name|default:"-" }}</strong>
+                            </td>
+                            <td class="small">
+                                <span class="fw-bold text-dark">{{ log.get_standard_reason_display }}</span>
+                                {% if log.custom_notes %}
+                                <div class="text-muted font-italic">({{ log.custom_notes }})</div>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">
+                                <i class="fa-solid fa-user-tie me-1"></i>
+                                {{ log.processed_by.get_full_name|default:log.processed_by.username|default:"Admin" }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">មិនទាន់មានកំណត់ត្រាឡើងថ្នាក់នៅឡើយទេ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateLiveStats() {
+        let pCount = 0;
+        let rCount = 0;
+        let oCount = 0;
+
+        document.querySelectorAll('.student-cb:checked').forEach(cb => {
+            const sid = cb.value;
+            const actionSel = document.getElementById('action_' + sid);
+            if (actionSel) {
+                const val = actionSel.value;
+                if (val === 'PROMOTE') pCount++;
+                else if (val === 'RETAIN') rCount++;
+                else oCount++;
+            }
+        });
+
+        document.getElementById('statPromoteCount').innerText = pCount;
+        document.getElementById('statRetainCount').innerText = rCount;
+        document.getElementById('statOtherCount').innerText = oCount;
+    }
+
+    function toggleAllStudents(master) {
+        document.querySelectorAll('.student-cb').forEach(cb => {
+            cb.checked = master.checked;
+        });
+        updateLiveStats();
+    }
+
+    function setAllActions(action) {
+        document.querySelectorAll('.action-selector').forEach(sel => {
+            sel.value = action;
+            const sid = sel.id.replace('action_', '');
+            onStudentActionChange(sid, action);
+        });
+        updateLiveStats();
+    }
+
+    function applyGlobalTargetClass(classId) {
+        if (!classId) return;
+        document.querySelectorAll('.target-class-selector').forEach(sel => {
+            sel.value = classId;
+        });
+    }
+
+    function onStudentActionChange(studentId, action) {
+        const row = document.getElementById('row_student_' + studentId);
+        const reasonSel = document.getElementById('reason_' + studentId);
+
+        if (action === 'RETAIN') {
+            if (row) row.classList.add('is-retained');
+            if (reasonSel && reasonSel.value === 'PASSED_YEAR') {
+                reasonSel.value = 'FAILED_YEAR';
+            }
+        } else {
+            if (row) row.classList.remove('is-retained');
+            if (action === 'PROMOTE' && reasonSel && reasonSel.value === 'FAILED_YEAR') {
+                reasonSel.value = 'PASSED_YEAR';
+            }
+        }
+        updateLiveStats();
+    }
+
+    function confirmPromotionExecution() {
+        const checked = document.querySelectorAll('.student-cb:checked');
+        if (checked.length === 0) {
+            Swal.fire('សូមជ្រើសរើស!', 'សូមជ្រើសរើសសិស្សយ៉ាងតិចម្នាក់ដើម្បីដំណើរការ!', 'warning');
+            return;
+        }
+
+        const pCount = document.getElementById('statPromoteCount').innerText;
+        const rCount = document.getElementById('statRetainCount').innerText;
+        const oCount = document.getElementById('statOtherCount').innerText;
+
+        Swal.fire({
+            title: 'បញ្ជាក់ការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្ស',
+            html: `
+                <div class="text-start small">
+                    <p class="mb-2">តើលោកអ្នកពិតជាចង់ដំណើរការផ្ទេរ និងឡើងថ្នាក់សម្រាប់សិស្សដែលបានជ្រើសរើសចំនួន <strong>${checked.length} នាក់</strong> មែនទេ?</p>
+                    <ul class="list-group list-group-flush border rounded-3 p-2 bg-light mb-0">
+                        <li class="list-group-item bg-transparent d-flex justify-content-between text-success fw-bold">
+                            <span><i class="fa-solid fa-arrow-up me-1"></i> សិស្សឡើងថ្នាក់៖</span>
+                            <span>${pCount} នាក់</span>
+                        </li>
+                        <li class="list-group-item bg-transparent d-flex justify-content-between text-warning fw-bold">
+                            <span><i class="fa-solid fa-rotate-left me-1"></i> សិស្សត្រួតថ្នាក់៖</span>
+                            <span>${rCount} នាក់</span>
+                        </li>
+                        <li class="list-group-item bg-transparent d-flex justify-content-between text-info fw-bold">
+                            <span><i class="fa-solid fa-graduation-cap me-1"></i> ផ្សេងៗ (បញ្ចប់/ផ្ទេរ)៖</span>
+                            <span>${oCount} នាក់</span>
+                        </li>
+                    </ul>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'យល់ព្រម អនុវត្តភ្លាម',
+            cancelButtonText: 'ពិនិត្យឡើងវិញ',
+            confirmButtonColor: '#f59e0b',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('promotionForm').submit();
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateLiveStats();
+    });
+</script>
 {% endblock %}

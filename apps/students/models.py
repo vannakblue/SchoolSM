@@ -199,6 +199,25 @@ class Student(models.Model):
         verbose_name="កំណត់សម្គាល់ដកសិទ្ធិប្រឡង / Exam Suspension Notes"
     )
 
+    # Promotion & Grade Retention Tracking (ឡើងថ្នាក់ & ត្រួតថ្នាក់)
+    is_repeating_grade = models.BooleanField(
+        default=False,
+        verbose_name="ជាសិស្សត្រួតថ្នាក់ / Is Repeating Grade",
+        help_text="សិស្សដែលរៀនត្រួតថ្នាក់ក្នុងកម្រិតថ្នាក់ដដែល"
+    )
+    last_promotion_status = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name="ស្ថានភាពឡើង/ត្រួតថ្នាក់ចុងក្រោយ / Last Promotion Status"
+    )
+    last_promotion_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="មូលហេតុឡើង/ត្រួតថ្នាក់ចុងក្រោយ / Last Promotion Reason"
+    )
+
     # Parent & Guardian Info
     father_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ឈ្មោះឪពុក / Father Name")
     father_phone = models.CharField(max_length=30, blank=True, null=True, verbose_name="លេខទូរស័ព្ទឪពុក / Father Phone")
@@ -349,3 +368,46 @@ class Student(models.Model):
     def __str__(self):
         class_name = self.classroom.name if self.classroom else "គ្មានថ្នាក់"
         return f"{self.student_id} - {self.khmer_name} [{class_name}]"
+
+
+class StudentPromotionRecord(models.Model):
+    """
+    Tracks historical promotion and retention decisions for individual students at end-of-year.
+    """
+    class Action(models.TextChoices):
+        PROMOTE = 'PROMOTE', 'ឡើងថ្នាក់ / Promoted to Next Grade'
+        RETAIN = 'RETAIN', 'ត្រួតថ្នាក់ / Retained in Same Grade'
+        GRADUATE = 'GRADUATE', 'បញ្ចប់ការសិក្សា / Graduated'
+        TRANSFER = 'TRANSFER', 'ផ្ទេរចេញ / Transferred Out'
+        DROP = 'DROP', 'ឈប់រៀន / Dropped Out'
+
+    class StandardReason(models.TextChoices):
+        PASSED_YEAR = 'PASSED_YEAR', 'ជាប់មធ្យមភាគប្រចាំឆ្នាំ (Passed Yearly Average)'
+        FAILED_YEAR = 'FAILED_YEAR', 'ធ្លាក់មធ្យមភាគប្រចាំឆ្នាំ (< ៥០.០០) (Failed Yearly Average)'
+        EXCESSIVE_ABSENCE = 'EXCESSIVE_ABSENCE', 'អវត្តមានច្រើនហួសកម្រិតកំណត់ (Excessive Absences)'
+        VOLUNTARY_RETENTION = 'VOLUNTARY_RETENTION', 'សុំត្រួតថ្នាក់ដោយស្ម័គ្រចិត្ត (Voluntary Grade Retention)'
+        DISCIPLINARY_BOARD = 'DISCIPLINARY_BOARD', 'សេចក្តីសម្រេចក្រុមប្រឹក្សាវិន័យ (Disciplinary Board Decision)'
+        TEST_SCORE_LOW = 'TEST_SCORE_LOW', 'លទ្ធផលតេស្តសមត្ថភាពមិនគ្រប់ (Low Standardized Test Score)'
+        EXCELLENT_DOUBLE_PROMOTION = 'EXCELLENT_DOUBLE_PROMOTION', 'លទ្ធផលសិក្សាឆ្នើម / លោតថ្នាក់ (Double Promotion)'
+        OTHER = 'OTHER', 'ផ្សេងៗ (Other Reason)'
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='promotion_records', verbose_name="សិស្ស / Student")
+    from_academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.SET_NULL, null=True, blank=True, related_name='promotions_from', verbose_name="ឆ្នាំសិក្សាដើម / From Year")
+    to_academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.SET_NULL, null=True, blank=True, related_name='promotions_to', verbose_name="ឆ្នាំសិក្សាថ្មី / To Year")
+    from_classroom = models.ForeignKey('academics.Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='promotions_from_class', verbose_name="ថ្នាក់ដើម / From Class")
+    to_classroom = models.ForeignKey('academics.Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='promotions_to_class', verbose_name="ថ្នាក់ថ្មី / To Class")
+    action = models.CharField(max_length=20, choices=Action.choices, default=Action.PROMOTE, verbose_name="សកម្មភាព / Action")
+    standard_reason = models.CharField(max_length=50, choices=StandardReason.choices, default=StandardReason.PASSED_YEAR, verbose_name="មូលហេតុស្តង់ដារ / Standard Reason")
+    custom_notes = models.TextField(blank=True, null=True, verbose_name="កំណត់សម្គាល់ & មូលហេតុលម្អិត / Notes & Reason Details")
+    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_promotions', verbose_name="ចាត់ចែងដោយ / Processed By")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោង / Created At")
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        verbose_name = "កំណត់ត្រាឡើង/ត្រួតថ្នាក់ / Student Promotion Record"
+        verbose_name_plural = "កំណត់ត្រាឡើង/ត្រួតថ្នាក់ទាំងអស់ / Student Promotion Records"
+
+    def __str__(self):
+        from_c = self.from_classroom.name if self.from_classroom else 'គ្មាន'
+        to_c = self.to_classroom.name if self.to_classroom else 'គ្មាន'
+        return f"{self.student.khmer_name} - {self.get_action_display()} ({from_c} ➡️ {to_c})"
