@@ -11,6 +11,8 @@ import datetime
 import json
 import csv
 import os
+import re
+import string
 from apps.accounts.decorators import role_required
 from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule, TeacherDutyType
 from .forms import ClassroomForm, SubjectForm, TimetableForm, GradeLevelForm, AcademicYearForm, GradeEnrollmentOptionForm, AcademicTrackForm
@@ -392,13 +394,271 @@ def classroom_list(request):
             'total_max_score': tot_max,
         })
 
+    grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track', 'id'))
+    if not grade_levels:
+        for idx, (name, g_num, trk, ord_idx) in enumerate(DEFAULT_MOEYS_STREAMS):
+            GradeLevel.objects.get_or_create(grade_number=g_num, track=trk, defaults={'name': name, 'order': ord_idx})
+        grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track', 'id'))
+
     return render(request, 'academics/classroom_list.html', {
         'classroom_items': classroom_items,
         'all_subjects': all_subjects,
         'academic_years': academic_years,
         'selected_year': str(active_year.id) if active_year else '',
         'active_year': active_year,
+        'grade_levels': grade_levels,
     })
+
+
+KHMER_NUMERALS_MAP = {'0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤', '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'}
+
+def to_khmer_digits(n):
+    return ''.join(KHMER_NUMERALS_MAP.get(c, c) for c in str(n))
+
+def get_next_available_letters(academic_year, grade_number, count=1):
+    existing_classes = Classroom.objects.filter(
+        academic_year=academic_year,
+        grade_level=grade_number
+    )
+    
+    used_letters = set()
+    for c in existing_classes:
+        code = (c.code or '').strip().upper()
+        # Extract trailing letters or letter after grade_number
+        match = re.search(r'([A-Z]+)$', code)
+        if match:
+            used_letters.add(match.group(1))
+        else:
+            match2 = re.search(rf'^{grade_number}\s*[-_]?\s*([A-Z]+)', code)
+            if match2:
+                used_letters.add(match2.group(1))
+
+    all_letters = list(string.ascii_uppercase)
+    for first_char in string.ascii_uppercase:
+        for second_char in string.ascii_uppercase:
+            all_letters.append(f"{first_char}{second_char}")
+
+    available = [L for L in all_letters if L not in used_letters]
+    return available[:count]
+
+def generate_classroom_name(grade_number, track, letter, grade_level_obj=None):
+    kh_grade = to_khmer_digits(grade_number)
+    if track == 'GENERAL' or track == Classroom.Track.GENERAL:
+        return f"ថ្នាក់ទី {kh_grade}{letter}"
+    elif track == 'SCIENCE' or track == Classroom.Track.SCIENCE:
+        return f"ថ្នាក់ទី {kh_grade}{letter} វិទ្យាសាស្ត្រ"
+    elif track == 'SOCIAL' or track == Classroom.Track.SOCIAL:
+        return f"ថ្នាក់ទី {kh_grade}{letter} វិទ្យាសាស្ត្រសង្គម"
+    else:
+        track_name = grade_level_obj.name if grade_level_obj else track
+        return f"ថ្នាក់ទី {kh_grade}{letter} ({track_name})"
+
+@login_required
+@role_required(['ADMIN'])
+def classroom_auto_generate_preview(request):
+    """
+    AJAX endpoint to live-preview the classrooms that will be generated.
+    Prevents letter clashes across streams of the same grade level (e.g. 11 Science & 11 Social).
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year')
+    if year_id:
+        found_year = AcademicYear.objects.filter(id=year_id).first()
+        if found_year:
+            active_year = found_year
+
+    if not active_year:
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសឆ្នាំសិក្សា!'}, status=400)
+
+    grade_level_id = request.GET.get('grade_level_id')
+    grade_number = request.GET.get('grade_number')
+    track = request.GET.get('track', 'GENERAL')
+    grade_level_obj = None
+
+    if grade_level_id and str(grade_level_id).isdigit():
+        grade_level_obj = GradeLevel.objects.filter(id=int(grade_level_id)).first()
+        if grade_level_obj:
+            grade_number = grade_level_obj.grade_number
+            track = grade_level_obj.track
+
+    if not grade_number:
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសកម្រិតថ្នាក់!'}, status=400)
+
+    try:
+        grade_number = int(grade_number)
+    except ValueError:
+        return JsonResponse({'status': 'error', 'message': 'កម្រិតថ្នាក់មិនត្រឹមត្រូវ!'}, status=400)
+
+    try:
+        count = int(request.GET.get('count', 1))
+        if count < 1:
+            count = 1
+        elif count > 26:
+            count = 26
+    except ValueError:
+        count = 1
+
+    room_prefix = (request.GET.get('room_prefix') or '').strip()
+
+    available_letters = get_next_available_letters(active_year, grade_number, count)
+    
+    existing_classes = Classroom.objects.filter(
+        academic_year=active_year,
+        grade_level=grade_number
+    ).values('code', 'name', 'track')
+
+    preview_items = []
+    for letter in available_letters:
+        code = f"{grade_number}{letter}"
+        name = generate_classroom_name(grade_number, track, letter, grade_level_obj)
+        room = f"{room_prefix} {letter}".strip() if room_prefix else f"បន្ទប់ {code}"
+        preview_items.append({
+            'code': code,
+            'name': name,
+            'grade_level': grade_number,
+            'track': track,
+            'room_number': room,
+            'letter': letter,
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'academic_year': active_year.name,
+        'grade_number': grade_number,
+        'track': track,
+        'count': len(preview_items),
+        'preview': preview_items,
+        'existing_classes': list(existing_classes),
+    })
+
+@login_required
+@role_required(['ADMIN'])
+def classroom_auto_generate(request):
+    """
+    Auto batch creates classrooms for a selected Grade Level and Count.
+    Ensures conflict-free sequential letters across tracks for the same grade (e.g. 11A-11E Science -> 11F-11H Social).
+    Auto-assigns standard subjects from GradeLevelRule.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP Method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    year_id = request.POST.get('academic_year_id') or request.POST.get('year')
+    if year_id:
+        found_year = AcademicYear.objects.filter(id=year_id).first()
+        if found_year:
+            active_year = found_year
+
+    if not active_year:
+        messages.error(request, "⚠️ សូមជ្រើសរើសឆ្នាំសិក្សាជាមុនសិន!")
+        return redirect('classroom_list')
+
+    grade_level_id = request.POST.get('grade_level_id')
+    grade_number = request.POST.get('grade_number')
+    track = request.POST.get('track', 'GENERAL')
+    grade_level_obj = None
+
+    if grade_level_id and str(grade_level_id).isdigit():
+        grade_level_obj = GradeLevel.objects.filter(id=int(grade_level_id)).first()
+        if grade_level_obj:
+            grade_number = grade_level_obj.grade_number
+            track = grade_level_obj.track
+
+    if not grade_number:
+        messages.error(request, "⚠️ សូមជ្រើសរើសកម្រិតថ្នាក់!")
+        return redirect('classroom_list')
+
+    try:
+        grade_number = int(grade_number)
+    except ValueError:
+        messages.error(request, "⚠️ កម្រិតថ្នាក់មិនត្រឹមត្រូវ!")
+        return redirect('classroom_list')
+
+    try:
+        count = int(request.POST.get('count', 1))
+        if count < 1:
+            count = 1
+        elif count > 26:
+            count = 26
+    except ValueError:
+        count = 1
+
+    capacity = 40
+    try:
+        if request.POST.get('capacity'):
+            capacity = int(request.POST.get('capacity'))
+    except ValueError:
+        capacity = 40
+
+    room_prefix = (request.POST.get('room_prefix') or '').strip()
+
+    available_letters = get_next_available_letters(active_year, grade_number, count)
+    if not available_letters:
+        messages.error(request, f"⚠️ មិនមានអក្សរកូដថ្នាក់ទំនេរសម្រាប់កម្រិតថ្នាក់ទី {grade_number} ឡើយ!")
+        return redirect('classroom_list')
+
+    created_classrooms = []
+    with transaction.atomic():
+        for letter in available_letters:
+            code = f"{grade_number}{letter}"
+            name = generate_classroom_name(grade_number, track, letter, grade_level_obj)
+            room = f"{room_prefix} {letter}".strip() if room_prefix else f"បន្ទប់ {code}"
+            
+            classroom, created = Classroom.objects.get_or_create(
+                code=code,
+                academic_year=active_year,
+                defaults={
+                    'name': name,
+                    'grade_level': grade_number,
+                    'track': track,
+                    'capacity': capacity,
+                    'room_number': room,
+                }
+            )
+            if not created:
+                classroom.name = name
+                classroom.grade_level = grade_number
+                classroom.track = track
+                classroom.capacity = capacity
+                if room_prefix:
+                    classroom.room_number = room
+                classroom.save()
+
+            # Auto-assign standard subjects from GradeLevelRule
+            sub_ids = list(GradeLevelRule.objects.filter(
+                grade_level=grade_number,
+                track=track,
+                weekly_hours__gt=0
+            ).values_list('subject_id', flat=True))
+            if not sub_ids:
+                sub_ids = list(GradeLevelRule.objects.filter(
+                    grade_level=grade_number,
+                    track='GENERAL',
+                    weekly_hours__gt=0
+                ).values_list('subject_id', flat=True))
+
+            if sub_ids:
+                classroom.sync_assigned_subjects(sub_ids)
+
+            created_classrooms.append(classroom)
+
+    codes_str = ", ".join(c.code for c in created_classrooms)
+    success_msg = f"🎉 បានបង្កើតថ្នាក់រៀនដោយស្វ័យប្រវត្តិចំនួន {len(created_classrooms)} ថ្នាក់ ({codes_str}) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!"
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+        return JsonResponse({
+            'status': 'success',
+            'message': success_msg,
+            'count': len(created_classrooms),
+            'classrooms': [{'id': c.id, 'code': c.code, 'name': c.name} for c in created_classrooms],
+        })
+
+    messages.success(request, success_msg)
+    return redirect('classroom_list')
 
 
 @login_required

@@ -52,6 +52,8 @@ urlpatterns = [
     # Classrooms
     path('classrooms/', views.classroom_list, name='classroom_list'),
     path('classrooms/create/', views.classroom_create, name='classroom_create'),
+    path('classrooms/auto-generate/', views.classroom_auto_generate, name='classroom_auto_generate'),
+    path('classrooms/auto-generate/preview/', views.classroom_auto_generate_preview, name='classroom_auto_generate_preview'),
     path('classrooms/<int:pk>/edit/', views.classroom_edit, name='classroom_edit'),
     path('classrooms/<int:pk>/delete/', views.classroom_delete, name='classroom_delete'),
     path('classrooms/<int:pk>/subjects/', views.classroom_manage_subjects, name='classroom_manage_subjects'),

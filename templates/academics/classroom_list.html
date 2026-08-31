@@ -12,6 +12,9 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% if is_admin %}
+        <button type="button" class="btn btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAutoCreateClasses">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតថ្នាក់ស្វ័យប្រវត្តិ (Quick Auto)
+        </button>
         <a href="{% url 'subject_list' %}" class="btn btn-outline-primary fw-bold">
             <i class="fa-solid fa-book-bookmark me-1"></i> គ្រប់គ្រងមុខវិជ្ជា (Subjects)
         </a>
@@ -268,6 +271,123 @@
 </div>
 {% endwith %}
 {% endfor %}
+
+<!-- Modal: Auto Generate Classrooms (Quick Access) -->
+<div class="modal fade" id="modalAutoCreateClasses" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <form method="POST" action="{% url 'classroom_auto_generate' %}" class="modal-content shadow-lg border-0 rounded-4 overflow-hidden" id="autoGenerateClassForm">
+            {% csrf_token %}
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>បង្កើតថ្នាក់រៀនស្វ័យប្រវត្តិ (Quick Auto Generate Classrooms)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-4 rounded-3 border-info">
+                    <i class="fa-solid fa-circle-info fs-4 me-3 text-info"></i>
+                    <div>
+                        <strong>គោលការណ៍ស្វ័យប្រវត្តិ៖</strong> 
+                        ប្រព័ន្ធនឹងគណនា និងផ្ដល់អក្សរកូដថ្នាក់បន្តបន្ទាប់ (ឧ. 7A, 7B, 7C ឬ 11A-11E, 11F...) ដោយមិនជាន់គ្នារវាងផ្នែកវិទ្យាសាស្ត្រ និងវិទ្យាសាស្ត្រសង្គមឡើយ ហើយភ្ជាប់មុខវិជ្ជាស្តង់ដារជូនភ្លាមៗ។ Admin អាចកែប្រែ ឬលុបតាមក្រោយបានគ្រប់ពេល។
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- Academic Year -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-calendar-days text-primary me-1"></i> ឆ្នាំសិក្សា (Academic Year) <span class="text-danger">*</span>
+                        </label>
+                        <select name="academic_year_id" id="autoAcademicYear" class="form-select fw-semibold" onchange="updateAutoClassPreview()">
+                            {% for y in academic_years %}
+                            <option value="{{ y.id }}" {% if selected_year == y.id|stringformat:"i" or y.is_current %}selected{% endif %}>
+                                {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Grade Level -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-graduation-cap text-primary me-1"></i> កម្រិតថ្នាក់ / ជំនាញ (Grade Level & Track) <span class="text-danger">*</span>
+                        </label>
+                        <select name="grade_level_id" id="autoGradeLevel" class="form-select fw-semibold" onchange="updateAutoClassPreview()">
+                            {% for gl in grade_levels %}
+                            <option value="{{ gl.id }}" data-grade="{{ gl.grade_number }}" data-track="{{ gl.track }}">
+                                {{ gl.name }} (កម្រិតទី {{ gl.grade_number }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Number of classes to generate -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-arrow-up-1-9 text-primary me-1"></i> ចំនួនថ្នាក់ត្រូវបង្កើត (Number of Classes) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <button type="button" class="btn btn-outline-secondary" onclick="changeAutoCount(-1)">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <input type="number" name="count" id="autoClassCount" class="form-control text-center fw-bold fs-5 text-primary" value="3" min="1" max="26" oninput="updateAutoClassPreview()">
+                            <button type="button" class="btn btn-outline-secondary" onclick="changeAutoCount(1)">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                        <!-- Quick Pills -->
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <span class="text-muted small me-1">រហ័ស៖</span>
+                            {% for num in "12345678"|make_list %}
+                            <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 fw-bold" style="font-size: 0.75rem;" onclick="setAutoCount({{ num }})">+{{ num }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-users text-primary me-1"></i> ចំនួនសិស្សអតិបរមាក្នុងមួយថ្នាក់ (Capacity)
+                        </label>
+                        <input type="number" name="capacity" class="form-control fw-semibold" value="40" min="1" max="100">
+                    </div>
+
+                    <!-- Room Prefix -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-solid fa-door-open text-primary me-1"></i> បន្ទប់រៀនលំនាំដើម (Default Room Prefix - មិនបាច់ដាក់ក៏បាន)
+                        </label>
+                        <input type="text" name="room_prefix" id="autoRoomPrefix" class="form-control" placeholder="ឧ. បន្ទប់ (ទុកទទេដើម្បីដាក់ បន្ទប់ 7A... ស្វ័យប្រវត្តិ)" oninput="updateAutoClassPreview()">
+                    </div>
+                </div>
+
+                <!-- Live Preview Card -->
+                <div class="mt-4 p-3 bg-light rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold text-dark small">
+                            <i class="fa-solid fa-eye text-success me-1"></i> លទ្ធផលមើលសាកល្បងជាក់ស្តែង (Live Preview)៖
+                        </span>
+                        <span class="badge bg-success px-3 py-1 fs-6" id="previewCountBadge">0 ថ្នាក់</span>
+                    </div>
+
+                    <div id="autoClassPreviewBadges" class="d-flex flex-wrap gap-2 py-2" style="min-height: 50px;">
+                        <div class="text-muted small italic">កំពុងគណនា...</div>
+                    </div>
+
+                    <div id="autoClassExistingInfo" class="mt-2 text-muted small border-top pt-2" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-3">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm" id="btnSubmitAutoGenerate">
+                    <i class="fa-solid fa-circle-check me-1"></i> បង្កើតថ្នាក់ឥឡូវនេះ (Generate Now)
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endif %}
 
 {% block extra_js %}
@@ -328,11 +448,98 @@
         if (scoreEl) scoreEl.textContent = Math.round(totalScore);
     }
 
-    // Initialize styling on modal load
+    // Auto-Generate Class Counter controls & Live Preview
+    function changeAutoCount(delta) {
+        const input = document.getElementById('autoClassCount');
+        if (!input) return;
+        let val = parseInt(input.value) || 1;
+        val = Math.max(1, Math.min(26, val + delta));
+        input.value = val;
+        updateAutoClassPreview();
+    }
+
+    function setAutoCount(num) {
+        const input = document.getElementById('autoClassCount');
+        if (!input) return;
+        input.value = num;
+        updateAutoClassPreview();
+    }
+
+    let previewDebounceTimer = null;
+    function updateAutoClassPreview() {
+        clearTimeout(previewDebounceTimer);
+        previewDebounceTimer = setTimeout(() => {
+            const yearSelect = document.getElementById('autoAcademicYear');
+            const gradeSelect = document.getElementById('autoGradeLevel');
+            const countInput = document.getElementById('autoClassCount');
+            const roomPrefixInput = document.getElementById('autoRoomPrefix');
+            const badgesContainer = document.getElementById('autoClassPreviewBadges');
+            const countBadge = document.getElementById('previewCountBadge');
+            const existingInfo = document.getElementById('autoClassExistingInfo');
+
+            if (!gradeSelect || !badgesContainer) return;
+
+            const yearId = yearSelect ? yearSelect.value : '';
+            const gradeLevelId = gradeSelect.value;
+            const count = countInput ? countInput.value : 3;
+            const roomPrefix = roomPrefixInput ? roomPrefixInput.value : '';
+
+            fetch(`/academics/classrooms/auto-generate/preview/?academic_year_id=${encodeURIComponent(yearId)}&grade_level_id=${encodeURIComponent(gradeLevelId)}&count=${encodeURIComponent(count)}&room_prefix=${encodeURIComponent(roomPrefix)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (countBadge) countBadge.textContent = `${data.count} ថ្នាក់`;
+                        
+                        if (data.preview && data.preview.length > 0) {
+                            let html = '';
+                            data.preview.forEach(item => {
+                                html += `
+                                    <div class="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white border border-success rounded-3 shadow-sm">
+                                        <span class="badge bg-success fs-6">${item.code}</span>
+                                        <div>
+                                            <strong class="text-dark d-block" style="font-size: 0.88rem;">${item.name}</strong>
+                                            <span class="text-muted" style="font-size: 0.75rem;"><i class="fa-solid fa-door-open me-1"></i>${item.room_number}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            badgesContainer.innerHTML = html;
+                        } else {
+                            badgesContainer.innerHTML = '<span class="text-danger small">មិនមានអក្សរកូដទំនេរសម្រាប់កម្រិតថ្នាក់នេះឡើយ!</span>';
+                        }
+
+                        if (existingInfo && data.existing_classes) {
+                            if (data.existing_classes.length > 0) {
+                                const existCodes = data.existing_classes.map(c => c.code).join(', ');
+                                existingInfo.style.display = 'block';
+                                existingInfo.innerHTML = `<i class="fa-solid fa-list-check me-1 text-secondary"></i>ថ្នាក់ដែលមានស្រាប់ក្នុងកម្រិតទី ${data.grade_number}៖ <strong>${existCodes}</strong> (ប្រព័ន្ធនឹងបន្តអក្សរបន្ទាប់ដោយមិនជាន់គ្នា)`;
+                            } else {
+                                existingInfo.style.display = 'block';
+                                existingInfo.innerHTML = `<i class="fa-solid fa-sparkles me-1 text-success"></i>មិនទាន់មានថ្នាក់ក្នុងកម្រិតទី ${data.grade_number} ឡើយ (ចាប់ផ្ដើមពីអក្សរ A)`;
+                            }
+                        }
+                    } else {
+                        badgesContainer.innerHTML = `<span class="text-danger small">${data.message || 'កំហុសក្នុងការទាញយកលទ្ធផល'}</span>`;
+                    }
+                })
+                .catch(err => {
+                    badgesContainer.innerHTML = '<span class="text-danger small">មិនអាចទាញយកទិន្នន័យបាន</span>';
+                });
+        }, 120);
+    }
+
+    // Initialize styling and preview on load
     document.addEventListener('DOMContentLoaded', function() {
         {% for item in classroom_items %}
         updateSubjectModalStats('{{ item.classroom.id }}');
         {% endfor %}
+
+        const autoModal = document.getElementById('modalAutoCreateClasses');
+        if (autoModal) {
+            autoModal.addEventListener('shown.bs.modal', function() {
+                updateAutoClassPreview();
+            });
+        }
     });
 </script>
 
