@@ -351,7 +351,11 @@ def classroom_list(request):
             except Exception:
                 pass
 
-    classrooms = Classroom.objects.select_related('academic_year', 'homeroom_teacher').prefetch_related('assigned_subjects__subject', 'students').all()
+    classrooms = Classroom.objects.select_related(
+        'academic_year', 'homeroom_teacher', 'assembly_duty_teacher', 'class_monitor', 'vice_monitor'
+    ).prefetch_related(
+        'assigned_subjects__subject', 'assigned_subjects__teacher', 'students'
+    ).all()
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     all_subjects = Subject.objects.all().order_by('order', 'id')
     
@@ -364,8 +368,36 @@ def classroom_list(request):
         rules_dict[(r.grade_level, r.track, r.subject_id)] = r.max_score
 
     classroom_items = []
+    total_students_school = 0
+    total_female_school = 0
+    total_capacity_school = 0
+    classes_with_homeroom = 0
+    
+    grade_grouped = defaultdict(list)
+
     for c in classrooms:
-        assigned_ids = set(c.assigned_subjects.values_list('subject_id', flat=True))
+        tot_stu = c.total_students
+        fem_stu = c.female_students
+        male_stu = max(0, tot_stu - fem_stu)
+        
+        total_students_school += tot_stu
+        total_female_school += fem_stu
+        if c.capacity:
+            total_capacity_school += c.capacity
+        if c.homeroom_teacher:
+            classes_with_homeroom += 1
+            
+        grade_grouped[c.grade_level].append(c)
+
+        # Build map of assigned subjects to their teacher and weekly hours
+        cs_map = {}
+        for cs in c.assigned_subjects.all():
+            cs_map[cs.subject_id] = {
+                'teacher': cs.teacher,
+                'weekly_hours': cs.weekly_hours,
+            }
+
+        assigned_ids = set(cs_map.keys())
         
         # If none explicitly assigned yet, fallback to subjects in rules for this grade/track
         if not assigned_ids:
@@ -377,14 +409,23 @@ def classroom_list(request):
         for sub in all_subjects:
             is_active = sub.id in assigned_ids
             sc = rules_dict.get((c.grade_level, c.track, sub.id), Decimal('50.00'))
+            cs_info = cs_map.get(sub.id, {})
+            assigned_teacher = cs_info.get('teacher')
+            weekly_hours = cs_info.get('weekly_hours') or (4 if sub.code in ['M', 'K'] else 2)
+            
             if is_active:
                 tot_max += sc
                 active_cnt += 1
+                
             subjects_with_meta.append({
                 'subject': sub,
                 'is_active': is_active,
                 'max_score': sc,
+                'assigned_teacher': assigned_teacher,
+                'weekly_hours': weekly_hours,
             })
+
+        occupancy_pct = round((tot_stu / c.capacity) * 100, 1) if (c.capacity and c.capacity > 0) else None
 
         classroom_items.append({
             'classroom': c,
@@ -392,7 +433,36 @@ def classroom_list(request):
             'subjects_with_meta': subjects_with_meta,
             'active_subjects_count': active_cnt,
             'total_max_score': tot_max,
+            'male_students': male_stu,
+            'female_students': fem_stu,
+            'total_students': tot_stu,
+            'occupancy_pct': occupancy_pct,
         })
+
+    # Grade Level Breakdown for Summary Modal
+    grade_breakdown = []
+    for g_num in sorted(grade_grouped.keys()):
+        g_classes = grade_grouped[g_num]
+        g_tot_stu = sum(c.total_students for c in g_classes)
+        g_fem_stu = sum(c.female_students for c in g_classes)
+        g_male_stu = max(0, g_tot_stu - g_fem_stu)
+        g_cap = sum(c.capacity or 0 for c in g_classes)
+        g_homeroom_cnt = sum(1 for c in g_classes if c.homeroom_teacher)
+        
+        grade_breakdown.append({
+            'grade_number': g_num,
+            'grade_name': f"ថ្នាក់ទី {g_num}",
+            'classes_count': len(g_classes),
+            'classes_list': g_classes,
+            'students_count': g_tot_stu,
+            'female_count': g_fem_stu,
+            'male_count': g_male_stu,
+            'total_capacity': g_cap,
+            'homeroom_assigned_count': g_homeroom_cnt,
+        })
+
+    total_male_school = max(0, total_students_school - total_female_school)
+    classes_without_homeroom = max(0, len(classroom_items) - classes_with_homeroom)
 
     grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track', 'id'))
     if not grade_levels:
@@ -407,6 +477,14 @@ def classroom_list(request):
         'selected_year': str(active_year.id) if active_year else '',
         'active_year': active_year,
         'grade_levels': grade_levels,
+        'total_classrooms_count': len(classroom_items),
+        'total_students_school': total_students_school,
+        'total_female_school': total_female_school,
+        'total_male_school': total_male_school,
+        'total_capacity_school': total_capacity_school,
+        'classes_with_homeroom': classes_with_homeroom,
+        'classes_without_homeroom': classes_without_homeroom,
+        'grade_breakdown': grade_breakdown,
     })
 
 

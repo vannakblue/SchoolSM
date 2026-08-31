@@ -45,9 +45,9 @@
         </select>
     </form>
     <div class="d-flex align-items-center gap-3 small">
-        <span class="badge bg-primary-soft text-primary fs-6 px-3 py-2">
-            <i class="fa-solid fa-layer-group me-1"></i> សរុប <strong>{{ classroom_items|length }}</strong> ថ្នាក់រៀន
-        </span>
+        <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3 py-1.5 rounded-pill shadow-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalSchoolClassroomsOverview" title="ចុចដើម្បីមើលរបាយការណ៍ស្ថិតិថ្នាក់រៀនទូទាំងសាលា">
+            <i class="fa-solid fa-chart-pie text-primary"></i> សរុប <strong>{{ classroom_items|length }}</strong> ថ្នាក់រៀន <span class="badge bg-primary text-white ms-1" style="font-size: 0.7rem;"><i class="fa-solid fa-eye me-1"></i>មើលស្ថិតិ</span>
+        </button>
     </div>
 </div>
 
@@ -92,7 +92,9 @@
                                     <i class="fa-solid fa-book-bookmark me-1"></i>{{ item.active_subjects_count }} មុខវិជ្ជា
                                 </span>
                             </div>
-                            <h4 class="fw-bold mb-1 text-primary">{{ c.name }}</h4>
+                            <h4 class="fw-bold mb-1 text-primary cursor-pointer d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ចុចដើម្បីមើលព័ត៌មានលម្អិតអំពីថ្នាក់ {{ c.name }}">
+                                <span>{{ c.name }}</span> <i class="fa-solid fa-circle-info fs-6 text-info opacity-75"></i>
+                            </h4>
                             <span class="text-muted small"><i class="fa-solid fa-door-open me-1"></i>{{ c.room_number|default:"គ្មានបន្ទប់" }} (កូដ: {{ c.code }})</span>
                         </div>
                         <div class="text-end">
@@ -101,7 +103,7 @@
                         </div>
                     </div>
 
-                    <div class="p-3 bg-light rounded-3 mb-3 small">
+                    <div class="p-3 bg-light rounded-3 mb-3 small cursor-pointer" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ចុចដើម្បីមើលព័ត៌មានលម្អិត">
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">គ្រូបន្ទុកថ្នាក់៖</span>
                             <strong class="text-dark">{{ c.homeroom_teacher.khmer_name|default:"មិនទាន់ចាត់តាំង" }}</strong>
@@ -129,7 +131,10 @@
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top gap-2">
-                    <div class="d-flex gap-1">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-info fw-bold" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="មើលព័ត៌មានលម្អិតអំពីថ្នាក់នេះ">
+                            <i class="fa-solid fa-circle-info me-1"></i> លម្អិត
+                        </button>
                         <a href="{% url 'timetable_view' %}?classroom={{ c.id }}" class="btn btn-sm btn-outline-primary" title="កាលវិភាគ">
                             <i class="fa-solid fa-calendar-days me-1"></i> កាលវិភាគ
                         </a>
@@ -392,6 +397,388 @@
     </div>
 </div>
 {% endif %}
+
+<!-- ================= MODAL: SCHOOLWIDE CLASSROOMS ANALYTICS & SUMMARY ================= -->
+<div class="modal fade" id="modalSchoolClassroomsOverview" tabindex="-1" aria-labelledby="modalSchoolOverviewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-school-flag fs-4 text-warning"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalSchoolOverviewLabel">
+                            ស្ថិតិ និងព័ត៌មានសង្ខេបថ្នាក់រៀនទូទាំងសាលា (Classrooms Overview & Analytics)
+                        </h5>
+                        <small class="text-white-50">ឆ្នាំសិក្សា៖ {{ active_year.name|default:"គ្រប់ឆ្នាំសិក្សា" }}</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <!-- 4 Top Metric Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold">សរុបថ្នាក់រៀន</span>
+                                <span class="badge bg-primary-subtle text-primary p-2 rounded-circle"><i class="fa-solid fa-school fs-6"></i></span>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-0">{{ total_classrooms_count }} <span class="fs-6 fw-normal text-muted">ថ្នាក់</span></h3>
+                            <div class="small text-muted mt-1">ក្នុង {{ grade_breakdown|length }} កម្រិតថ្នាក់</div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold">សិស្សកំពុងសិក្សា</span>
+                                <span class="badge bg-success-subtle text-success p-2 rounded-circle"><i class="fa-solid fa-users fs-6"></i></span>
+                            </div>
+                            <h3 class="fw-bold text-success mb-0">{{ total_students_school }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                            <div class="small text-muted mt-1">ស្រី: <strong>{{ total_female_school }}</strong> | ប្រុស: <strong>{{ total_male_school }}</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold">គ្រូបន្ទុកថ្នាក់</span>
+                                <span class="badge bg-info-subtle text-info p-2 rounded-circle"><i class="fa-solid fa-chalkboard-user fs-6"></i></span>
+                            </div>
+                            <h3 class="fw-bold text-info mb-0">{{ classes_with_homeroom }}/{{ total_classrooms_count }}</h3>
+                            <div class="small text-muted mt-1">
+                                {% if classes_without_homeroom > 0 %}
+                                <span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> នៅខ្វះ {{ classes_without_homeroom }} ថ្នាក់</span>
+                                {% else %}
+                                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check"></i> បានចាត់តាំងគ្រប់ថ្នាក់</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-bold">ចំណុះសរុប (Capacity)</span>
+                                <span class="badge bg-warning-subtle text-warning p-2 rounded-circle"><i class="fa-solid fa-people-roof fs-6"></i></span>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-0">{{ total_capacity_school|default:"0" }} <span class="fs-6 fw-normal text-muted">កន្លែង</span></h3>
+                            <div class="small text-muted mt-1">ទំហំផ្ទុកសិស្សទូទាំងសាលា</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Breakdown by Grade Level Table -->
+                <div class="bg-white p-3 rounded-3 border shadow-sm mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>ព័ត៌មានលម្អិតតាមកម្រិតថ្នាក់នីមួយៗ (Grade Level Breakdown)
+                        </h6>
+                        <span class="badge bg-light text-dark border">សរុប {{ total_classrooms_count }} ថ្នាក់រៀន</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 small">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="min-width: 110px;">កម្រិតថ្នាក់</th>
+                                    <th class="text-center" style="width: 100px;">ចំនួនថ្នាក់</th>
+                                    <th>បញ្ជីថ្នាក់រៀន (Classrooms)</th>
+                                    <th class="text-center" style="width: 120px;">សិស្សសរុប</th>
+                                    <th class="text-center" style="width: 110px;">សិស្សស្រី</th>
+                                    <th class="text-center" style="width: 110px;">សិស្សប្រុស</th>
+                                    <th class="text-center" style="width: 120px;">គ្រូបន្ទុកថ្នាក់</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for g in grade_breakdown %}
+                                <tr>
+                                    <td class="fw-bold text-primary">
+                                        <i class="fa-solid fa-graduation-cap me-1"></i> {{ g.grade_name }}
+                                    </td>
+                                    <td class="text-center fw-bold">
+                                        <span class="badge bg-primary px-2 py-1">{{ g.classes_count }} ថ្នាក់</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for c in g.classes_list %}
+                                            <button type="button" class="badge bg-light text-dark border px-2 py-1 cursor-pointer" data-bs-dismiss="modal" onclick="const m = document.querySelector('#modalClassDetails{{ c.id }}'); if (m) { new bootstrap.Modal(m).show(); }" title="ចុចមើលលម្អិតថ្នាក់ {{ c.name }}">
+                                                {{ c.code|default:c.name }}
+                                            </button>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center fw-bold">{{ g.students_count }} នាក់</td>
+                                    <td class="text-center text-muted">{{ g.female_count }} នាក់</td>
+                                    <td class="text-center text-muted">{{ g.male_count }} នាក់</td>
+                                    <td class="text-center">
+                                        {% if g.homeroom_assigned_count == g.classes_count %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">គ្រប់ {{ g.homeroom_assigned_count }}</span>
+                                        {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ g.homeroom_assigned_count }}/{{ g.classes_count }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-3">មិនទាន់មានទិន្នន័យថ្នាក់រៀនឡើយ</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL: CLASSROOM DETAILS (PER CLASSROOM) ================= -->
+{% for item in classroom_items %}
+{% with c=item.classroom %}
+<div class="modal fade" id="modalClassDetails{{ c.id }}" tabindex="-1" aria-labelledby="modalClassDetailsLabel{{ c.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-chalkboard fs-4 text-warning"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalClassDetailsLabel{{ c.id }}">
+                            ព័ត៌មានលម្អិតថ្នាក់រៀន៖ {{ c.name }}
+                        </h5>
+                        <small class="text-white-50">កូដថ្នាក់៖ <strong>{{ c.code }}</strong> | កម្រិតថ្នាក់ទី {{ c.grade_level }} ({{ c.get_track_display }})</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4 bg-light">
+                <!-- 4 Quick Key Metric Cards -->
+                <div class="row g-3 mb-4">
+                    <!-- Metric 1: Students -->
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="text-muted small fw-bold mb-1">
+                                <i class="fa-solid fa-users text-primary me-1"></i> សិស្សសរុបក្នុងថ្នាក់
+                            </div>
+                            <h3 class="fw-bold text-primary mb-0">{{ item.total_students }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                            <div class="small text-muted mt-1">
+                                ស្រី: <strong class="text-dark">{{ item.female_students }}</strong> | ប្រុស: <strong class="text-dark">{{ item.male_students }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 2: Room & Capacity -->
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="text-muted small fw-bold mb-1">
+                                <i class="fa-solid fa-door-open text-success me-1"></i> បន្ទប់ & ចំណុះ
+                            </div>
+                            <h4 class="fw-bold text-dark mb-0">{{ c.room_number|default:"មិនទាន់កំណត់" }}</h4>
+                            <div class="small text-muted mt-1">
+                                ចំណុះ៖ <strong>{% if c.capacity %}{{ c.capacity }} នាក់{% else %}មិនកំណត់{% endif %}</strong>
+                                {% if item.occupancy_pct %}
+                                <span class="badge {% if item.occupancy_pct > 100 %}bg-danger{% else %}bg-success{% endif %} ms-1">
+                                    {{ item.occupancy_pct }}%
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 3: Subjects & Max Score -->
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="text-muted small fw-bold mb-1">
+                                <i class="fa-solid fa-book-bookmark text-info me-1"></i> មុខវិជ្ជា & ពិន្ទុពេញ
+                            </div>
+                            <h4 class="fw-bold text-info mb-0">{{ item.active_subjects_count }} <span class="fs-6 fw-normal text-muted">មុខវិជ្ជា</span></h4>
+                            <div class="small text-muted mt-1">
+                                ពិន្ទុពេញសរុប៖ <strong class="text-dark">{{ item.total_max_score|floatformat:0 }} ពិន្ទុ</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 4: Homeroom Teacher -->
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="bg-white p-3 rounded-3 border shadow-sm h-100">
+                            <div class="text-muted small fw-bold mb-1">
+                                <i class="fa-solid fa-user-tie text-warning me-1"></i> គ្រូបន្ទុកថ្នាក់
+                            </div>
+                            <h5 class="fw-bold text-dark mb-0">
+                                {{ c.homeroom_teacher.khmer_name|default:"មិនទាន់ចាត់តាំង" }}
+                            </h5>
+                            <div class="small text-muted mt-1">
+                                {% if c.homeroom_teacher.phone %}
+                                <i class="fa-solid fa-phone me-1"></i> {{ c.homeroom_teacher.phone }}
+                                {% else %}
+                                គ្រូទទួលបន្ទុកផ្ទាល់
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Class Leadership & Information Grid -->
+                <div class="bg-white p-3 rounded-3 border shadow-sm mb-4">
+                    <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                        <i class="fa-solid fa-id-card-clip text-primary me-2"></i>គណៈគ្រប់គ្រងថ្នាក់ & ព័ត៌មានទូទៅ (Class Leadership & Details)
+                    </h6>
+                    <div class="row g-3 small">
+                        <div class="col-md-4">
+                            <div class="text-muted">គ្រូបន្ទុកថ្នាក់ (Homeroom Teacher)៖</div>
+                            <div class="fw-bold text-dark fs-6">{{ c.homeroom_teacher.khmer_name|default:"-- មិនទាន់ចាត់តាំង --" }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">គ្រូស្រង់វត្តមានគោរពទង់ជាតិ (Assembly Duty)៖</div>
+                            <div class="fw-bold text-dark fs-6">{{ c.assembly_duty_teacher.khmer_name|default:"-- មិនទាន់ចាត់តាំង --" }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">ឆ្នាំសិក្សា (Academic Year)៖</div>
+                            <div class="fw-bold text-dark fs-6">{{ c.academic_year.name }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">ប្រធានថ្នាក់ (Class Monitor)៖</div>
+                            <div class="fw-bold text-dark">
+                                {% if c.class_monitor %}
+                                    {{ c.class_monitor.name_kh|default:c.class_monitor.name_en }}
+                                {% else %}
+                                    -- មិនទាន់ចាត់តាំង --
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">អនុប្រធានថ្នាក់ (Vice Monitor)៖</div>
+                            <div class="fw-bold text-dark">
+                                {% if c.vice_monitor %}
+                                    {{ c.vice_monitor.name_kh|default:c.vice_monitor.name_en }}
+                                {% else %}
+                                    -- មិនទាន់ចាត់តាំង --
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">Telegram Chat ID (ផ្ញើវត្តមាន)៖</div>
+                            <div class="fw-bold text-dark">{{ c.telegram_chat_id|default:"-- គ្មាន --" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subjects & Assigned Teachers Table -->
+                <div class="bg-white p-3 rounded-3 border shadow-sm mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-book-open-reader text-primary me-2"></i>មុខវិជ្ជាសិក្សា & គ្រូបង្រៀនប្រចាំមុខវិជ្ជា (Subjects & Teachers Assignment)
+                        </h6>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                            បានជ្រើស {{ item.active_subjects_count }} មុខវិជ្ជា | ពិន្ទុពេញ៖ {{ item.total_max_score|floatformat:0 }}
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 70px;" class="text-center">កូដ</th>
+                                    <th>ឈ្មោះមុខវិជ្ជា</th>
+                                    <th class="text-center" style="width: 100px;">ប្រភេទ</th>
+                                    <th class="text-center" style="width: 110px;">ពិន្ទុពេញ</th>
+                                    <th class="text-center" style="width: 100px;">ម៉ោង/សប្តាហ៍</th>
+                                    <th style="min-width: 180px;">គ្រូបង្រៀន (Assigned Teacher)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub_info in item.subjects_with_meta %}
+                                    {% if sub_info.is_active %}
+                                    <tr>
+                                        <td class="text-center">
+                                            <span class="badge" style="background-color: {{ sub_info.subject.color_code|default:'#4f46e5' }}; color: #ffffff;">
+                                                {{ sub_info.subject.code }}
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold text-dark">
+                                            {{ sub_info.subject.name_kh }}
+                                            {% if sub_info.subject.name_en %}
+                                            <span class="text-muted fw-normal">({{ sub_info.subject.name_en }})</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark border">{{ sub_info.subject.get_category_display|default:"ទូទៅ" }}</span>
+                                        </td>
+                                        <td class="text-center fw-bold text-primary">
+                                            {{ sub_info.max_score|floatformat:0 }} ពិន្ទុ
+                                        </td>
+                                        <td class="text-center fw-bold text-dark">
+                                            {{ sub_info.weekly_hours }} ម៉ោង
+                                        </td>
+                                        <td>
+                                            {% if sub_info.assigned_teacher %}
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                <i class="fa-solid fa-chalkboard-user me-1"></i> {{ sub_info.assigned_teacher.khmer_name }}
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
+                                                <i class="fa-solid fa-circle-question me-1"></i> មិនទាន់ចាត់តាំង
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Quick Action Shortcuts Bar -->
+                <div class="bg-white p-3 rounded-3 border shadow-sm">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-bolt text-warning me-2"></i>ផ្លូវកាត់សកម្មភាពរហ័ស (Quick Actions)
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2 pt-1">
+                        <a href="{% url 'student_list' %}?classroom={{ c.id }}" class="btn btn-outline-primary btn-sm fw-bold">
+                            <i class="fa-solid fa-users me-1"></i> បញ្ជីសិស្សក្នុងថ្នាក់ ({{ item.total_students }} នាក់)
+                        </a>
+                        <a href="{% url 'timetable_view' %}?classroom={{ c.id }}" class="btn btn-outline-primary btn-sm fw-bold">
+                            <i class="fa-solid fa-calendar-days me-1"></i> កាលវិភាគថ្នាក់នេះ
+                        </a>
+                        <a href="{% url 'student_attendance_grid' %}?classroom={{ c.id }}" class="btn btn-outline-success btn-sm fw-bold">
+                            <i class="fa-solid fa-clipboard-user me-1"></i> ស្រង់វត្តមានសិស្ស
+                        </a>
+                        <a href="{% url 'teacher_assignments_manager' %}" class="btn btn-outline-info btn-sm fw-bold">
+                            <i class="fa-solid fa-chalkboard-user me-1"></i> ចាត់តាំងគ្រូបង្រៀន
+                        </a>
+                        {% if is_admin %}
+                        <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-dismiss="modal" onclick="const m = document.querySelector('#modalClassSubjects{{ c.id }}'); if (m) { new bootstrap.Modal(m).show(); }">
+                            <i class="fa-solid fa-list-check me-1"></i> កំណត់មុខវិជ្ជា
+                        </button>
+                        <a href="{% url 'classroom_edit' c.id %}" class="btn btn-outline-secondary btn-sm fw-bold">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែព័ត៌មានថ្នាក់
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                <span class="text-muted small">
+                    <i class="fa-solid fa-info-circle me-1"></i> ថ្នាក់រៀននៃប្រព័ន្ធគ្រប់គ្រងសាលារៀន
+                </span>
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endwith %}
+{% endfor %}
 
 {% block extra_js %}
 <script>
