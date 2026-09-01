@@ -122,10 +122,14 @@ class Classroom(models.Model):
 
     @property
     def total_students(self):
+        if hasattr(self, 'annotated_total_students'):
+            return self.annotated_total_students
         return self.students.filter(status='ACTIVE').count()
 
     @property
     def female_students(self):
+        if hasattr(self, 'annotated_female_students'):
+            return self.annotated_female_students
         return self.students.filter(status='ACTIVE', gender='F').count()
 
     def get_assigned_subject_ids(self):

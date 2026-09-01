@@ -384,25 +384,42 @@ def grade_option_update_width(request, pk):
 
 @login_required
 def classroom_list(request):
+    from django.db.models import Count, Q
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
-    selected_year = request.GET.get('year') or request.GET.get('academic_year')
-    if selected_year:
-        if str(selected_year).isdigit():
-            found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
+    
+    selected_year = ''
+    if 'academic_year' in request.GET or 'year' in request.GET:
+        raw_year = (request.GET.get('academic_year') if 'academic_year' in request.GET else request.GET.get('year') or '').strip()
+        if raw_year == '' or raw_year.lower() == 'all':
+            active_year = None
+            selected_year = ''
+        elif raw_year.isdigit():
+            found_year = AcademicYear.objects.filter(id=int(raw_year)).first()
+            if found_year:
+                active_year = found_year
+                selected_year = str(found_year.id)
+            else:
+                active_year = None
+                selected_year = ''
         else:
-            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
-        if found_year:
-            active_year = found_year
-            try:
-                request.session['active_academic_year_id'] = active_year.id
-            except Exception:
-                pass
+            found_year = AcademicYear.objects.filter(name=raw_year).first()
+            if found_year:
+                active_year = found_year
+                selected_year = str(found_year.id)
+            else:
+                active_year = None
+                selected_year = ''
+    elif active_year:
+        selected_year = str(active_year.id)
 
     classrooms = Classroom.objects.select_related(
         'academic_year', 'homeroom_teacher', 'assembly_duty_teacher', 'class_monitor', 'vice_monitor'
     ).prefetch_related(
-        'assigned_subjects__subject', 'assigned_subjects__teacher', 'students'
+        'assigned_subjects__subject', 'assigned_subjects__teacher'
+    ).annotate(
+        annotated_total_students=Count('students', filter=Q(students__status='ACTIVE'), distinct=True),
+        annotated_female_students=Count('students', filter=Q(students__status='ACTIVE', students__gender='F'), distinct=True)
     ).all()
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     all_subjects = Subject.objects.all().order_by('order', 'id')
@@ -424,8 +441,8 @@ def classroom_list(request):
     grade_grouped = defaultdict(list)
 
     for c in classrooms:
-        tot_stu = c.total_students
-        fem_stu = c.female_students
+        tot_stu = getattr(c, 'annotated_total_students', 0)
+        fem_stu = getattr(c, 'annotated_female_students', 0)
         male_stu = max(0, tot_stu - fem_stu)
         
         total_students_school += tot_stu
@@ -491,8 +508,8 @@ def classroom_list(request):
     grade_breakdown = []
     for g_num in sorted(grade_grouped.keys()):
         g_classes = grade_grouped[g_num]
-        g_tot_stu = sum(c.total_students for c in g_classes)
-        g_fem_stu = sum(c.female_students for c in g_classes)
+        g_tot_stu = sum(getattr(c, 'annotated_total_students', 0) for c in g_classes)
+        g_fem_stu = sum(getattr(c, 'annotated_female_students', 0) for c in g_classes)
         g_male_stu = max(0, g_tot_stu - g_fem_stu)
         g_cap = sum(c.capacity or 0 for c in g_classes)
         g_homeroom_cnt = sum(1 for c in g_classes if c.homeroom_teacher)
