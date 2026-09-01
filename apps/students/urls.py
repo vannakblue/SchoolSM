@@ -23,8 +23,10 @@ urlpatterns = [
     path('statuses/<int:pk>/save/', views.student_status_save, name='student_status_edit'),
     path('statuses/<int:pk>/delete/', views.student_status_delete, name='student_status_delete'),
 
-    # AJAX API for Grade-Specific Enrollment Options
+    # AJAX API for Grade-Specific Enrollment Options & Student ID Validation
     path('api/grade-options/', views.api_get_grade_options, name='api_get_grade_options'),
+    path('api/check-student-id/', views.api_check_student_id, name='api_check_student_id'),
+    path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),
 
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),

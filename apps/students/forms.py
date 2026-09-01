@@ -3,6 +3,17 @@ from .models import Student, ScholarshipType, StudentStatusConfig
 from apps.academics.models import Classroom, AcademicYear
 
 class StudentEnrollmentForm(forms.ModelForm):
+    student_id = forms.CharField(
+        required=False,
+        label="អត្តលេខសិស្ស / Student ID",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ (ឧ. 260001)',
+            'id': 'id_student_id',
+            'autocomplete': 'off'
+        }),
+        help_text="ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតអត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា ឬបញ្ចូលអត្តលេខផ្ទាល់ខ្លួនដែលមិនស្ទួន"
+    )
     scholarship_type = forms.ChoiceField(
         choices=[],
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -58,11 +69,26 @@ class StudentEnrollmentForm(forms.ModelForm):
         if not self.instance.pk and status_choices:
             self.initial.setdefault('status', 'ACTIVE')
 
+    def clean_student_id(self):
+        sid = self.cleaned_data.get('student_id')
+        if sid:
+            sid = str(sid).strip()
+            if sid:
+                qs = Student.objects.filter(student_id__iexact=sid)
+                if self.instance and self.instance.pk:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    existing = qs.first()
+                    class_info = f" ({existing.classroom.name})" if existing.classroom else ""
+                    raise forms.ValidationError(
+                        f"⚠️ អត្តលេខសិស្ស '{sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_info}! សូមបញ្ចូលអត្តលេខផ្សេង ឬទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ។"
+                    )
+        return sid or ''
 
     class Meta:
         model = Student
         fields = [
-            'khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
+            'student_id', 'khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
             'current_address', 'phone', 'photo', 'birth_certificate',
             'classroom', 'academic_year', 'status', 'scholarship_type', 'fee_start_month', 'fee_end_month',
             'is_exam_suspended', 'exam_suspension_reason', 'exam_suspension_notes',
@@ -71,6 +97,7 @@ class StudentEnrollmentForm(forms.ModelForm):
             'guardian_name', 'emergency_phone', 'telegram_chat_id'
         ]
         widgets = {
+            'student_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ (ឧ. 260001)', 'id': 'id_student_id', 'autocomplete': 'off'}),
             'khmer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. សុខ ចិន្តា'}),
             'latin_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. SOK CHINDA'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),

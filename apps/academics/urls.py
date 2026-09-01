@@ -82,6 +82,8 @@ urlpatterns = [
     path('timetable/', views.timetable_view, name='timetable_view'),
     path('timetable/daily-reports/', views.timetable_daily_reports_view, name='timetable_daily_reports_view'),
     path('timetable/daily-reports/export-excel/', views.timetable_daily_reports_export_excel, name='timetable_daily_reports_export_excel'),
+    path('timetable/daily-reports/print-config/', views.api_get_daily_report_print_config, name='api_get_daily_report_print_config'),
+    path('timetable/daily-reports/print-config/save/', views.api_save_daily_report_print_config, name='api_save_daily_report_print_config'),
     path('timetable/student-teacher/', views.student_teacher_timetable_view, name='student_teacher_timetable_view'),
     path('timetable/student-teacher/export-excel/', views.student_teacher_timetable_export_excel, name='student_teacher_timetable_export_excel'),
     path('timetable/save-matrix/', views.timetable_save_matrix, name='timetable_save_matrix'),
@@ -93,6 +95,15 @@ urlpatterns = [
     path('timetable/<int:pk>/edit/', views.timetable_edit, name='timetable_edit'),
     path('timetable/<int:pk>/delete/', views.timetable_delete, name='timetable_delete'),
     path('timetable/clear/<int:class_id>/', views.timetable_clear_class, name='timetable_clear_class'),
+    
+    # Timetable Versions / Revisions (លើកទី១, លើកទី២...)
+    path('timetable/versions/', views.timetable_versions_list, name='timetable_versions_list'),
+    path('timetable/versions/save/', views.timetable_version_save, name='timetable_version_save'),
+    path('timetable/versions/<int:version_id>/restore/', views.timetable_version_restore, name='timetable_version_restore'),
+    path('timetable/versions/<int:version_id>/delete/', views.timetable_version_delete, name='timetable_version_delete'),
+    path('timetable/versions/<int:version_id>/export/', views.timetable_version_export, name='timetable_version_export'),
+    path('timetable/versions/<int:version_id>/update/', views.timetable_version_update, name='timetable_version_update'),
+
 
     # Subject Requirements & Weekly Hours
     path('subject-requirements/', views.subject_requirements_manager, name='subject_requirements_manager'),

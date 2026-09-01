@@ -304,6 +304,12 @@
                     data-bs-target="#customDateCollapse" title="កែប្រែកាលបរិច្ឆេទលើបញ្ជីវត្តមាន និងរបាយការណ៍">
                     <i class="fa-solid fa-calendar-pen me-1"></i> កែថ្ងៃខែ
                 </button>
+
+                <!-- Admin Print Pages Configuration Button -->
+                <button class="btn btn-sm btn-outline-primary fw-bold" type="button" onclick="openPrintConfigModal()"
+                    title="កំណត់ចំនួនទំព័រសម្រាប់ព្រីន តាមថ្ងៃ និងវេននីមួយៗ">
+                    <i class="fa-solid fa-file-invoice me-1"></i> កំណត់ទំព័រព្រីន
+                </button>
             </div>
 
             <!-- Report Navigation Sub-Tabs -->
@@ -363,88 +369,112 @@
             <i class="fa-solid fa-circle-info text-primary me-1"></i> បង្ហាញបញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
             (សម្រាប់ព្រីន និងទាញយកជា Excel)
         </div>
-        <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=duty_sheets&day={{ selected_day }}&session={{ selected_session }}"
-            class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
-            <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)
-        </a>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="openPrintConfigModal()">
+                <i class="fa-solid fa-sliders me-1"></i> កំណត់ទំព័រព្រីន
+            </button>
+            <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=duty_sheets&day={{ selected_day }}&session={{ selected_session }}"
+                class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)
+            </a>
+        </div>
     </div>
 
     {% for sheet in duty_sheets %}
-    <div class="duty-sheet-paper">
-        <!-- School Header -->
-        <div class="mb-3">
-            <div class="fw-bold text-dark text-start mb-2"
-                style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt; letter-spacing: 0.5px;">
-                {{ school_info.name|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត" }}
-            </div>
-            <div class="text-center">
-                <div class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt;">
-                    បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
+        {% for subpage in sheet.subpages %}
+        <div class="duty-sheet-paper">
+            <!-- School Header -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="fw-bold text-dark text-start"
+                        style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt; letter-spacing: 0.5px;">
+                        {{ school_info.name|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត" }}
+                    </div>
+                    {% if subpage.total_pages > 1 %}
+                    <span class="badge bg-light text-dark border fw-bold small">
+                        ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}
+                    </span>
+                    {% endif %}
                 </div>
-                <div class="text-dark small fw-bold">
-                    ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }} សម្រាប់ ថ្ងៃ {{ sheet.day_name }} {{ sheet.session_name }}
+                <div class="text-center">
+                    <div class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt;">
+                        បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
+                    </div>
+                    <div class="text-dark small fw-bold">
+                        ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }} សម្រាប់ ថ្ងៃ {{ sheet.day_name }} {{ sheet.session_name }}
+                        {% if subpage.total_pages > 1 %}
+                        <span class="text-muted fw-normal ms-1">(សន្លឹកទី {{ subpage.page_num }})</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Sheet Table -->
-        <table class="duty-sheet-table">
-            <thead>
-                <tr>
-                    <th style="width: 35px; text-align: center;">ល.រ</th>
-                    <th style="width: 82px; text-align: center; white-space: nowrap;">អត្តលេខ</th>
-                    <th style="width: 122px; text-align: left; padding-left: 6px; white-space: nowrap;">ឈ្មោះគ្រូបង្រៀន</th>
-                    {% for p_lbl in sheet.period_labels %}
-                    <th style="width: 72px; text-align: center; white-space: nowrap;">{{ p_lbl }}</th>
+            <!-- Sheet Table -->
+            <table class="duty-sheet-table">
+                <thead>
+                    <tr>
+                        <th style="width: 35px; text-align: center;">ល.រ</th>
+                        <th style="width: 82px; text-align: center; white-space: nowrap;">អត្តលេខ</th>
+                        <th style="width: 122px; text-align: left; padding-left: 6px; white-space: nowrap;">ឈ្មោះគ្រូបង្រៀន</th>
+                        {% for p_lbl in sheet.period_labels %}
+                        <th style="width: 72px; text-align: center; white-space: nowrap;">{{ p_lbl }}</th>
+                        {% endfor %}
+                        <th style="width: 135px; text-align: center;">ហត្ថលេខាចូល</th>
+                        <th style="width: 135px; text-align: center;">ហត្ថលេខាចេញ</th>
+                        <th style="width: 90px; text-align: center;">ផ្សេងៗ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in subpage.rows %}
+                    <tr>
+                        <td class="text-center fw-bold">{{ row.no }}</td>
+                        <td class="text-center font-monospace" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
+                        <td class="text-start fw-bold text-dark" style="padding: 3px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-center text-muted small"></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted">
+                            មិនមានម៉ោងបង្រៀនណាមួយត្រូវបានរៀបចំក្នុងពេលនេះឡើយ។
+                        </td>
+                    </tr>
                     {% endfor %}
-                    <th style="width: 135px; text-align: center;">ហត្ថលេខាចូល</th>
-                    <th style="width: 135px; text-align: center;">ហត្ថលេខាចេញ</th>
-                    <th style="width: 90px; text-align: center;">ផ្សេងៗ</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in sheet.rows %}
-                <tr>
-                    <td class="text-center fw-bold">{{ row.no }}</td>
-                    <td class="text-center font-monospace" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
-                    <td class="text-start fw-bold text-dark" style="padding: 3px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
-                    <td></td>
-                    <td></td>
-                    <td class="text-center text-muted small"></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="10" class="text-center py-4 text-muted">
-                        មិនមានម៉ោងបង្រៀនណាមួយត្រូវបានរៀបចំក្នុងពេលនេះឡើយ។
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </tbody>
+            </table>
 
-        <!-- Signatures & Dates -->
-        <div class="row mt-4 pt-2">
-            <!-- Left: Principal Signature -->
-            <div class="col-6 text-center">
-                <div style="height: 38px;"></div>
-                <div class="fw-bold" style="font-size: 0.95rem;">បានឃើញ និងឯកភាព</div>
-                <div class="fw-bold" style="font-size: 0.95rem;">នាយកសាលា</div>
-            </div>
+            <!-- Signatures & Dates (Rendered on final page of that session) -->
+            {% if subpage.is_last_page %}
+            <div class="row mt-4 pt-2">
+                <!-- Left: Principal Signature -->
+                <div class="col-6 text-center">
+                    <div style="height: 38px;"></div>
+                    <div class="fw-bold" style="font-size: 0.95rem;">បានឃើញ និងឯកភាព</div>
+                    <div class="fw-bold" style="font-size: 0.95rem;">នាយកសាលា</div>
+                </div>
 
-            <!-- Right: Reporter Signature -->
-            <div class="col-6 text-center">
-                <div class="lbl-lunar-date text-dark small mb-0">{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក
-                    ព.ស.២៥៧០</div>
-                <div class="lbl-solar-date text-dark small mb-1">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
-                    ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
-                <div class="fw-bold" style="font-size: 0.95rem;">អ្នករៀបចំរបាយការណ៍</div>
+                <!-- Right: Reporter Signature -->
+                <div class="col-6 text-center">
+                    <div class="lbl-lunar-date text-dark small mb-0">{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក
+                        ព.ស.២៥៧០</div>
+                    <div class="lbl-solar-date text-dark small mb-1">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
+                        ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
+                    <div class="fw-bold" style="font-size: 0.95rem;">អ្នករៀបចំរបាយការណ៍</div>
+                </div>
             </div>
+            {% else %}
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 text-muted small border-top">
+                <span>(តទៅទំព័រទី {{ subpage.page_num|add:1 }})</span>
+                <span>ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}</span>
+            </div>
+            {% endif %}
         </div>
-    </div>
+        {% endfor %}
     {% empty %}
     <div class="card p-5 text-center text-muted border-0 shadow-sm">
         <i class="fa-solid fa-file-excel fa-3x mb-3 text-secondary"></i>
@@ -702,8 +732,271 @@
         });
     }
 
+    // ============================================================
+    // 🌟 PRINT PAGES CONFIGURATION MODAL LOGIC
+    // ============================================================
+    let currentPrintConfigs = [];
+    let printConfigModalInstance = null;
+
+    async function openPrintConfigModal() {
+        if (!printConfigModalInstance) {
+            const modalEl = document.getElementById('dailyReportPrintConfigModal');
+            if (modalEl) {
+                printConfigModalInstance = new bootstrap.Modal(modalEl);
+            }
+        }
+        if (printConfigModalInstance) {
+            printConfigModalInstance.show();
+        }
+        await loadPrintConfigs();
+    }
+
+    async function loadPrintConfigs() {
+        const tbody = document.getElementById('printConfigTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>កំពុងផ្ទុកទិន្នន័យ...</td></tr>`;
+        }
+
+        try {
+            const resp = await fetch('{% url "api_get_daily_report_print_config" %}');
+            const data = await resp.json();
+            if (data.status === 'success') {
+                currentPrintConfigs = data.configs || [];
+                renderPrintConfigTable();
+            } else {
+                if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="py-3 text-center text-danger">មានបញ្ហាក្នុងការទាញយកទិន្នន័យ!</td></tr>`;
+            }
+        } catch (e) {
+            console.error('Failed to load print configs:', e);
+            if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="py-3 text-center text-danger">បរាជ័យក្នុងការតភ្ជាប់ទៅ Server!</td></tr>`;
+        }
+    }
+
+    function renderPrintConfigTable() {
+        const tbody = document.getElementById('printConfigTableBody');
+        if (!tbody) return;
+
+        const byDay = {};
+        currentPrintConfigs.forEach(item => {
+            if (!byDay[item.day_num]) {
+                byDay[item.day_num] = {
+                    day_num: item.day_num,
+                    day_name: item.day_name,
+                    morning: null,
+                    afternoon: null
+                };
+            }
+            if (item.session === 'morning') byDay[item.day_num].morning = item;
+            if (item.session === 'afternoon') byDay[item.day_num].afternoon = item;
+        });
+
+        let html = '';
+        Object.values(byDay).sort((a, b) => a.day_num - b.day_num).forEach(d => {
+            const m = d.morning || { teacher_count: 0, target_pages: 1 };
+            const a = d.afternoon || { teacher_count: 0, target_pages: 1 };
+
+            html += `
+            <tr>
+                <td class="text-start ps-3 fw-bold text-dark">
+                    <i class="fa-solid fa-calendar-day text-primary me-1"></i> ថ្ងៃ ${d.day_name}
+                </td>
+                <!-- Morning Column -->
+                <td class="p-2">
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        <span class="badge bg-light text-primary border fw-normal" title="ចំនួនគ្រូមានម៉ោង/ប្រចាំការ">
+                            <i class="fa-solid fa-user-tie me-1"></i> ${m.teacher_count} នាក់
+                        </span>
+                        <select class="form-select form-select-sm fw-bold border-primary-subtle print-page-select" 
+                            style="width: 125px;"
+                            data-day="${d.day_num}" 
+                            data-session="morning"
+                            data-count="${m.teacher_count}">
+                            <option value="1" ${m.target_pages === 1 ? 'selected' : ''}>១ ទំព័រ A4</option>
+                            <option value="2" ${m.target_pages === 2 ? 'selected' : ''}>២ ទំព័រ A4</option>
+                            <option value="3" ${m.target_pages === 3 ? 'selected' : ''}>៣ ទំព័រ A4</option>
+                            <option value="4" ${m.target_pages === 4 ? 'selected' : ''}>៤ ទំព័រ A4</option>
+                        </select>
+                    </div>
+                </td>
+                <!-- Afternoon Column -->
+                <td class="p-2">
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        <span class="badge bg-light text-warning border text-dark fw-normal" title="ចំនួនគ្រូមានម៉ោង/ប្រចាំការ">
+                            <i class="fa-solid fa-user-tie me-1"></i> ${a.teacher_count} នាក់
+                        </span>
+                        <select class="form-select form-select-sm fw-bold border-warning-subtle print-page-select" 
+                            style="width: 125px;"
+                            data-day="${d.day_num}" 
+                            data-session="afternoon"
+                            data-count="${a.teacher_count}">
+                            <option value="1" ${a.target_pages === 1 ? 'selected' : ''}>១ ទំព័រ A4</option>
+                            <option value="2" ${a.target_pages === 2 ? 'selected' : ''}>២ ទំព័រ A4</option>
+                            <option value="3" ${a.target_pages === 3 ? 'selected' : ''}>៣ ទំព័រ A4</option>
+                            <option value="4" ${a.target_pages === 4 ? 'selected' : ''}>៤ ទំព័រ A4</option>
+                        </select>
+                    </div>
+                </td>
+            </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    function autoCalculatePages() {
+        document.querySelectorAll('.print-page-select').forEach(sel => {
+            const count = parseInt(sel.getAttribute('data-count') || '0', 10);
+            if (count > 22) {
+                sel.value = "2";
+            } else {
+                sel.value = "1";
+            }
+        });
+    }
+
+    function setAllPages(num) {
+        document.querySelectorAll('.print-page-select').forEach(sel => {
+            sel.value = String(num);
+        });
+    }
+
+    async function savePrintConfig() {
+        const btn = document.getElementById('btnSavePrintConfig');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
+        }
+
+        const payloadConfigs = [];
+        document.querySelectorAll('.print-page-select').forEach(sel => {
+            payloadConfigs.push({
+                day_of_week: parseInt(sel.getAttribute('data-day'), 10),
+                session: sel.getAttribute('data-session'),
+                target_pages: parseInt(sel.value, 10)
+            });
+        });
+
+        try {
+            const resp = await fetch('{% url "api_save_daily_report_print_config" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    configs: payloadConfigs
+                })
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                if (printConfigModalInstance) printConfigModalInstance.hide();
+                location.reload();
+            } else {
+                alert(data.message || 'មានបញ្ហាក្នុងការរក្សាទុក!');
+            }
+        } catch (e) {
+            console.error('Save print configs error:', e);
+            alert('បរាជ័យក្នុងការតភ្ជាប់ទៅ Server!');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ (Save)';
+            }
+        }
+    }
+
+    function getCsrfToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '{{ csrf_token }}';
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         updateCustomDates();
     });
 </script>
+
+<!-- ================== MODAL: DAILY REPORT PRINT PAGES CONFIGURATION ================== -->
+<div class="modal fade" id="dailyReportPrintConfigModal" tabindex="-1" aria-labelledby="printConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white py-3 px-4 rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fa-solid fa-file-invoice fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="printConfigModalLabel">កំណត់ចំនួនទំព័រសម្រាប់ព្រីន (Print Pages Settings)</h5>
+                        <div class="small text-white-50">កំណត់ចំនួនទំព័រក្រដាស A4 តាមថ្ងៃ និងវេននីមួយៗ (សម្រាប់ Print & Excel Export)</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- Info Alert -->
+                <div class="alert alert-info border-0 rounded-3 d-flex align-items-center gap-3 py-2.5 px-3 mb-3 bg-info-subtle text-info-emphasis">
+                    <i class="fa-solid fa-circle-info fs-5 flex-shrink-0 text-info"></i>
+                    <div class="small">
+                        អ្នកអាចកំណត់ចំនួនទំព័រ A4 សម្រាប់ព្រីនតាមថ្ងៃនីមួយៗ (ឧ. <strong>ថ្ងៃចន្ទ ព្រឹក: ២ ទំព័រ A4</strong>, <strong>ថ្ងៃចន្ទ រសៀល: ១ ទំព័រ A4</strong>)។ ប្រព័ន្ធនឹងបែងចែកទិន្នន័យគ្រូស្មើគ្នា និងរៀបចំ Page Break ដោយស្វ័យប្រវត្តិ។
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                    <div class="small fw-bold text-muted">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> ឧបករណ៍កំណត់រហ័ស៖
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="autoCalculatePages()">
+                            <i class="fa-solid fa-calculator me-1"></i> គណនាស្វ័យប្រវត្តិតាមចំនួនគ្រូ
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold" onclick="setAllPages(1)">
+                            កំណត់ទាំងអស់ ១ ទំព័រ
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold" onclick="setAllPages(2)">
+                            កំណត់ទាំងអស់ ២ ទំព័រ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Print Configuration Grid / Table -->
+                <div class="table-responsive rounded-3 border">
+                    <table class="table table-bordered table-hover align-middle mb-0 text-center">
+                        <thead class="table-light fw-bold">
+                            <tr>
+                                <th style="width: 140px;" class="text-start ps-3">ថ្ងៃនៃសប្តាហ៍</th>
+                                <th>
+                                    <span class="text-primary"><i class="fa-solid fa-sun me-1"></i> វេនពេលព្រឹក (Morning)</span>
+                                </th>
+                                <th>
+                                    <span class="text-warning"><i class="fa-solid fa-cloud-sun me-1"></i> វេនពេលរសៀល (Afternoon)</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="printConfigTableBody">
+                            <tr>
+                                <td colspan="3" class="py-4 text-center text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    កំពុងផ្ទុកទិន្នន័យការកំណត់...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2.5 px-4 rounded-bottom-4 justify-content-between">
+                <button type="button" class="btn btn-secondary fw-semibold px-3" data-bs-dismiss="modal">
+                    បិទ
+                </button>
+                <button type="button" class="btn btn-primary fw-bold px-4" id="btnSavePrintConfig" onclick="savePrintConfig()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ (Save)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -333,6 +333,95 @@ def api_get_grade_options(request):
     })
 
 
+def api_check_student_id(request):
+    """
+    AJAX API: Real-time Live Check for Student ID Uniqueness.
+    Params:
+      - student_id: String (The student ID being tested)
+      - exclude_id: Optional Int (Current student PK if editing)
+      - academic_year_id: Optional Int (Target academic year)
+    Returns:
+      - is_available: Boolean
+      - message: String (Descriptive feedback in Khmer)
+      - suggested_id: String (Next available collision-free ID)
+    """
+    from django.http import JsonResponse
+    from apps.academics.utils import get_active_academic_year
+
+    sid = request.GET.get('student_id', '').strip()
+    exclude_id = request.GET.get('exclude_id')
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+
+    target_year = None
+    if year_id:
+        target_year = AcademicYear.objects.filter(id=year_id).first()
+    if not target_year:
+        target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+
+    suggested_id = Student.generate_unique_student_id(target_year, exclude_pk=exclude_id)
+
+    if not sid:
+        return JsonResponse({
+            'status': 'success',
+            'is_blank': True,
+            'is_available': True,
+            'message': f'⚡ ប្រព័ន្ធនឹងបង្កើតអត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា (ឧ. {suggested_id})',
+            'suggested_id': suggested_id
+        })
+
+    qs = Student.objects.filter(student_id__iexact=sid)
+    if exclude_id:
+        try:
+            qs = qs.exclude(pk=int(exclude_id))
+        except (ValueError, TypeError):
+            pass
+
+    if qs.exists():
+        existing = qs.first()
+        class_str = f" ({existing.classroom.name})" if existing.classroom else ""
+        return JsonResponse({
+            'status': 'duplicate',
+            'is_blank': False,
+            'is_available': False,
+            'message': f"❌ អត្តលេខ '{sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}!",
+            'existing_student': {
+                'id': existing.id,
+                'name': existing.khmer_name,
+                'classroom': existing.classroom.name if existing.classroom else 'គ្មានថ្នាក់'
+            },
+            'suggested_id': suggested_id
+        })
+
+    return JsonResponse({
+        'status': 'available',
+        'is_blank': False,
+        'is_available': True,
+        'message': f"✅ អត្តលេខ '{sid}' ទំនេរ អាចប្រើប្រាស់បាន!",
+        'suggested_id': suggested_id
+    })
+
+
+def api_generate_student_id(request):
+    """
+    AJAX API: Returns next guaranteed collision-free Student ID.
+    """
+    from django.http import JsonResponse
+    from apps.academics.utils import get_active_academic_year
+
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+    target_year = None
+    if year_id:
+        target_year = AcademicYear.objects.filter(id=year_id).first()
+    if not target_year:
+        target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+
+    student_id = Student.generate_unique_student_id(target_year)
+    return JsonResponse({
+        'status': 'success',
+        'student_id': student_id
+    })
+
+
 # ----------------- SCHOLARSHIP / FEE TYPES CRUD (ADMIN ONLY) -----------------
 
 @login_required
@@ -952,6 +1041,7 @@ def student_import(request):
         skipped_count = 0
         error_list = []
         imported_students = []
+        seen_import_ids = set()
 
         for idx, row in enumerate(raw_rows, start=2):
             khmer_name = row.get('khmer_name', '')
@@ -987,7 +1077,23 @@ def student_import(request):
             guardian_name = row.get('guardian_name', '')
             emergency_phone = row.get('emergency_phone', '')
             telegram_chat_id = row.get('telegram_chat_id', '')
-            student_id_custom = row.get('student_id', '')
+            student_id_custom = str(row.get('student_id', '')).strip()
+
+            # Check duplicate student_id if provided in Excel
+            if student_id_custom:
+                if student_id_custom.lower() in seen_import_ids or Student.objects.filter(student_id__iexact=student_id_custom).exists():
+                    existing_st = Student.objects.filter(student_id__iexact=student_id_custom).first()
+                    err_msg = f"អត្តលេខសិស្ស '{student_id_custom}' ស្ទួនជាមួយសិស្សដែលមានរួចហើយក្នុងប្រព័ន្ធ"
+                    if existing_st:
+                        err_msg += f" ({existing_st.khmer_name} - {existing_st.classroom.name if existing_st.classroom else 'គ្មានថ្នាក់'})"
+                    error_list.append({
+                        'row': idx,
+                        'name': khmer_name,
+                        'error': err_msg
+                    })
+                    skipped_count += 1
+                    continue
+                seen_import_ids.add(student_id_custom.lower())
 
             try:
                 with transaction.atomic():

@@ -15,7 +15,7 @@ import os
 import re
 import string
 from apps.accounts.decorators import role_required
-from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule, TeacherDutyType
+from .models import AcademicYear, Classroom, Subject, ClassSubject, Timetable, TimetableVersion, DailyReportPrintConfig, GradeLevelRule, SavedDefaultConfig, GradeLevel, Province, District, Commune, Village, GradeEnrollmentOption, AcademicTrack, TeacherDutySchedule, TeacherDutyType
 from .forms import ClassroomForm, SubjectForm, TimetableForm, GradeLevelForm, AcademicYearForm, GradeEnrollmentOptionForm, AcademicTrackForm
 from apps.students.models import Student
 from apps.teachers.models import Teacher
@@ -1960,6 +1960,26 @@ def timetable_view(request):
     subjects_list = [{'id': s.id, 'name_kh': s.name_kh, 'code': s.code, 'category': s.category} for s in subjects]
     classrooms_list = [{'id': c.id, 'name': c.name, 'grade_level': c.grade_level, 'track': c.track} for c in classrooms]
 
+    timetable_versions = list(TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number', '-created_at')) if active_year else []
+    active_version = next((v for v in timetable_versions if v.is_active_applied), None)
+    latest_ver = timetable_versions[0] if timetable_versions else None
+    next_version_num = (latest_ver.version_number + 1) if latest_ver else 1
+
+    versions_summary_list = []
+    for v in timetable_versions:
+        creator_name = (v.created_by.get_full_name() or v.created_by.username) if v.created_by else 'Admin'
+        versions_summary_list.append({
+            'id': v.id,
+            'version_number': v.version_number,
+            'title': v.title,
+            'note': v.note or '',
+            'total_slots': v.total_slots,
+            'total_classrooms': v.total_classrooms,
+            'is_active_applied': v.is_active_applied,
+            'created_by': creator_name,
+            'created_at': v.created_at.strftime('%d/%m/%Y %H:%M'),
+        })
+
     context = {
         'active_year': active_year,
         'academic_years': academic_years,
@@ -1980,8 +2000,381 @@ def timetable_view(request):
         'classrooms_json': json.dumps(classrooms_list),
         'teacher_hours_report': teacher_hours_report,
         'teacher_code_directory': teacher_code_directory,
+        'timetable_versions': timetable_versions,
+        'timetable_versions_json': json.dumps(versions_summary_list),
+        'active_version': active_version,
+        'next_version_number': next_version_num,
     }
     return render(request, 'academics/timetable.html', context)
+
+
+# ----------------- TIMETABLE VERSIONING & REVISION SYSTEM -----------------
+
+@login_required
+def timetable_versions_list(request):
+    """
+    Returns JSON list of saved timetable versions/revisions for the active academic year.
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    year_id = request.GET.get('year') or request.GET.get('academic_year_id')
+    if year_id and str(year_id).isdigit():
+        found_year = AcademicYear.objects.filter(id=int(year_id)).first()
+        if found_year:
+            active_year = found_year
+
+    if not active_year:
+        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    versions = list(TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number', '-created_at')) if active_year else []
+    
+    latest_ver = versions[0] if versions else None
+    next_ver_num = (latest_ver.version_number + 1) if latest_ver else 1
+
+    versions_data = []
+    for v in versions:
+        creator_name = (v.created_by.get_full_name() or v.created_by.username) if v.created_by else 'Admin'
+        versions_data.append({
+            'id': v.id,
+            'version_number': v.version_number,
+            'title': v.title,
+            'note': v.note or '',
+            'total_slots': v.total_slots,
+            'total_classrooms': v.total_classrooms,
+            'is_active_applied': v.is_active_applied,
+            'created_by': creator_name,
+            'created_at': v.created_at.strftime('%d/%m/%Y %H:%M'),
+            'updated_at': v.updated_at.strftime('%d/%m/%Y %H:%M'),
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'academic_year': {
+            'id': active_year.id if active_year else None,
+            'name': active_year.name if active_year else '',
+        },
+        'next_version_number': next_ver_num,
+        'versions': versions_data,
+        'count': len(versions_data),
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_version_save(request):
+    """
+    Saves a new timetable snapshot version/revision (e.g. លើកទី ១, លើកទី ២...)
+    or updates an existing revision for the active academic year.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        year_param = data.get('academic_year_id') or data.get('year')
+        if year_param:
+            if str(year_param).isdigit():
+                found_year = AcademicYear.objects.filter(id=int(year_param)).first()
+            else:
+                found_year = AcademicYear.objects.filter(name=str(year_param).strip()).first()
+            if found_year:
+                active_year = found_year
+
+        if not active_year:
+            return JsonResponse({'status': 'error', 'message': 'មិនមានឆ្នាំសិក្សាសកម្មឡើយ'}, status=400)
+
+        # Compute next version number if not explicitly specified
+        version_num = data.get('version_number')
+        if not version_num or not str(version_num).isdigit():
+            latest = TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number').first()
+            version_num = (latest.version_number + 1) if latest else 1
+        else:
+            version_num = int(version_num)
+
+        title = (data.get('title') or f"លើកទី {version_num}").strip()
+        note = data.get('note', '').strip()
+        set_active = data.get('set_active', True)
+
+        matrix_items = data.get('matrix')
+        blocked_items = data.get('blocked_slots') or []
+        class_subjects_data = data.get('class_subject_assignments') or data.get('class_subjects') or {}
+
+        # If matrix not supplied in payload, extract from current live Timetable table
+        if matrix_items is None:
+            live_entries = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher')
+            matrix_items = []
+            for e in live_entries:
+                matrix_items.append({
+                    'classroom_id': e.classroom_id,
+                    'classroom_name': e.classroom.name if e.classroom else '',
+                    'subject_id': e.subject_id,
+                    'subject_name': e.subject.name_kh if e.subject else '',
+                    'teacher_id': e.teacher_id,
+                    'teacher_name': e.teacher.khmer_name if e.teacher else '',
+                    'day_of_week': e.day_of_week,
+                    'period_number': e.period_number,
+                    'start_time': e.start_time.strftime('%H:%M') if e.start_time else None,
+                    'end_time': e.end_time.strftime('%H:%M') if e.end_time else None,
+                    'room': e.room or '',
+                })
+
+        # Calculate counts
+        class_ids = set()
+        for item in matrix_items:
+            cid = item.get('classroom_id')
+            if cid:
+                class_ids.add(cid)
+
+        total_slots = len(matrix_items)
+        total_classrooms = len(class_ids)
+
+        # Snapshot current ClassSubject assignments if empty
+        if not class_subjects_data:
+            cs_qs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('subject', 'teacher')
+            cs_map = defaultdict(list)
+            for cs in cs_qs:
+                cs_map[str(cs.classroom_id)].append({
+                    'classroom_id': cs.classroom_id,
+                    'subject_id': cs.subject_id,
+                    'teacher_id': cs.teacher_id,
+                    'teacher_name': cs.teacher.khmer_name if cs.teacher else '',
+                    'weekly_hours': cs.weekly_hours,
+                })
+            class_subjects_data = dict(cs_map)
+
+        with transaction.atomic():
+            if set_active:
+                TimetableVersion.objects.filter(academic_year=active_year).update(is_active_applied=False)
+
+            # Create or update version
+            ver_obj, created = TimetableVersion.objects.update_or_create(
+                academic_year=active_year,
+                version_number=version_num,
+                defaults={
+                    'title': title,
+                    'note': note,
+                    'matrix_data': matrix_items,
+                    'blocked_slots': blocked_items,
+                    'class_subject_assignments': class_subjects_data,
+                    'total_slots': total_slots,
+                    'total_classrooms': total_classrooms,
+                    'is_active_applied': set_active,
+                    'created_by': request.user if request.user.is_authenticated else None,
+                }
+            )
+
+        action_word = "បង្កើត" if created else "កែប្រែ"
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បាន{action_word} និងរក្សាទុកកាលវិភាគលើកទី {version_num} "{title}" ({total_slots} ម៉ោង, {total_classrooms} ថ្នាក់) ដោយជោគជ័យ!',
+            'version': {
+                'id': ver_obj.id,
+                'version_number': ver_obj.version_number,
+                'title': ver_obj.title,
+                'note': ver_obj.note,
+                'total_slots': ver_obj.total_slots,
+                'total_classrooms': ver_obj.total_classrooms,
+                'is_active_applied': ver_obj.is_active_applied,
+                'created_at': ver_obj.created_at.strftime('%d/%m/%Y %H:%M'),
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_version_restore(request, version_id):
+    """
+    Restores / applies a saved TimetableVersion to the live Master Timetable database table!
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    version = get_object_or_404(TimetableVersion, id=version_id)
+    active_year = version.academic_year
+
+    try:
+        sync_teachers = True
+        if request.body:
+            try:
+                b_data = json.loads(request.body.decode('utf-8'))
+                sync_teachers = b_data.get('sync_teachers', True)
+            except Exception:
+                pass
+
+        with transaction.atomic():
+            # 1. Clear active year live timetables
+            Timetable.objects.filter(classroom__academic_year=active_year).delete()
+
+            # 2. Restore timetable slots
+            restored_entries = []
+            for item in version.matrix_data:
+                cls_id = item.get('classroom_id')
+                day_num = int(item.get('day_of_week'))
+                p_num = int(item.get('period_number'))
+                sub_id = item.get('subject_id')
+                tch_id = item.get('teacher_id')
+
+                if cls_id and sub_id and tch_id:
+                    st_time, et_time = STANDARD_PERIOD_TIMES.get(
+                        p_num, 
+                        (datetime.time(7, 0), datetime.time(7, 50))
+                    )
+                    restored_entries.append(Timetable(
+                        classroom_id=cls_id,
+                        subject_id=sub_id,
+                        teacher_id=tch_id,
+                        day_of_week=day_num,
+                        period_number=p_num,
+                        start_time=st_time,
+                        end_time=et_time,
+                        room=item.get('room') or ''
+                    ))
+
+            if restored_entries:
+                Timetable.objects.bulk_create(restored_entries)
+
+            # 3. Restore ClassSubject teacher assignments if available
+            if sync_teachers and version.class_subject_assignments:
+                cs_data = version.class_subject_assignments
+                if isinstance(cs_data, dict):
+                    for cid_str, items in cs_data.items():
+                        try:
+                            c_id = int(cid_str)
+                            for itm in items:
+                                s_id = itm.get('subject_id')
+                                t_id = itm.get('teacher_id')
+                                if s_id and t_id:
+                                    ClassSubject.objects.update_or_create(
+                                        classroom_id=c_id,
+                                        subject_id=s_id,
+                                        defaults={'teacher_id': t_id}
+                                    )
+                        except Exception:
+                            pass
+                elif isinstance(cs_data, list):
+                    for itm in cs_data:
+                        c_id = itm.get('classroom_id')
+                        s_id = itm.get('subject_id')
+                        t_id = itm.get('teacher_id')
+                        if c_id and s_id and t_id:
+                            ClassSubject.objects.update_or_create(
+                                classroom_id=c_id,
+                                subject_id=s_id,
+                                defaults={'teacher_id': t_id}
+                            )
+
+            # 4. Mark active version
+            TimetableVersion.objects.filter(academic_year=active_year).update(is_active_applied=False)
+            version.is_active_applied = True
+            version.save(update_fields=['is_active_applied', 'updated_at'])
+
+            # 5. Restore blocked slots to session
+            if version.blocked_slots and hasattr(request, 'session'):
+                session_key = f"blocked_slots_{active_year.id}"
+                request.session[session_key] = version.blocked_slots
+                request.session.modified = True
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បានទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគលើកទី {version.version_number} "{version.title}" ({len(restored_entries)} ម៉ោង) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!',
+            'version_id': version.id,
+            'version_number': version.version_number,
+            'title': version.title,
+            'count': len(restored_entries),
+            'matrix_data': version.matrix_data,
+            'blocked_slots': version.blocked_slots,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_version_delete(request, version_id):
+    """
+    Deletes a specific timetable version snapshot.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    version = get_object_or_404(TimetableVersion, id=version_id)
+    v_num = version.version_number
+    v_title = version.title
+    version.delete()
+    return JsonResponse({
+        'status': 'success',
+        'message': f'បានលុបកំណែកាលវិភាគ លើកទី {v_num} "{v_title}" ដោយជោគជ័យ!'
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_version_update(request, version_id):
+    """
+    Updates title and note of an existing timetable version snapshot.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    version = get_object_or_404(TimetableVersion, id=version_id)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        title = data.get('title')
+        note = data.get('note')
+        if title:
+            version.title = title.strip()
+        if note is not None:
+            version.note = note.strip()
+        version.save()
+        return JsonResponse({
+            'status': 'success',
+            'message': f'បានកែប្រែព័ត៌មានកាលវិភាគ លើកទី {version.version_number} ដោយជោគជ័យ!',
+            'version': {
+                'id': version.id,
+                'version_number': version.version_number,
+                'title': version.title,
+                'note': version.note,
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@login_required
+def timetable_version_export(request, version_id):
+    """
+    Exports a specific TimetableVersion snapshot as a downloadable JSON file.
+    """
+    version = get_object_or_404(TimetableVersion, id=version_id)
+    creator_name = (version.created_by.get_full_name() or version.created_by.username) if version.created_by else 'Admin'
+    export_dict = {
+        'app': 'SchoolSM',
+        'type': 'timetable_version_snapshot',
+        'version_number': version.version_number,
+        'title': version.title,
+        'note': version.note or '',
+        'academic_year': {
+            'id': version.academic_year_id,
+            'name': version.academic_year.name,
+        },
+        'total_slots': version.total_slots,
+        'total_classrooms': version.total_classrooms,
+        'created_by': creator_name,
+        'created_at': version.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'matrix_data': version.matrix_data,
+        'blocked_slots': version.blocked_slots,
+        'class_subject_assignments': version.class_subject_assignments,
+    }
+    filename = f"SchoolSM_Timetable_{version.academic_year.name}_V{version.version_number}.json"
+    response = HttpResponse(json.dumps(export_dict, indent=2, ensure_ascii=False), content_type='application/json; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
 
 
 @login_required
@@ -3323,6 +3716,13 @@ def timetable_daily_reports_view(request):
         if duty_s.teacher_id:
             duty_by_teacher[duty_s.teacher_id] += 1
 
+    # Load Print Page Configs for each day & session
+    import math
+    print_configs = {}
+    if active_year:
+        for cfg in DailyReportPrintConfig.objects.filter(academic_year=active_year):
+            print_configs[(cfg.day_of_week, cfg.session)] = cfg.target_pages
+
     # Build Duty Sign-In Sheets (Includes Classroom Teaching & On-Duty Staff/Teachers)
     duty_sheets = []
     for d in days_to_render:
@@ -3377,6 +3777,22 @@ def timetable_daily_reports_view(request):
                     })
                     no_idx += 1
 
+            m_target_pages = print_configs.get((d['num'], 'morning'), 2 if len(morning_rows) > 22 else 1)
+            if m_target_pages > 1 and len(morning_rows) > 0:
+                chunk_size = math.ceil(len(morning_rows) / m_target_pages)
+                m_chunks = [morning_rows[i:i + chunk_size] for i in range(0, len(morning_rows), chunk_size)]
+            else:
+                m_chunks = [morning_rows] if morning_rows else [[]]
+
+            m_subpages = []
+            for p_idx, chunk in enumerate(m_chunks, 1):
+                m_subpages.append({
+                    'page_num': p_idx,
+                    'total_pages': len(m_chunks),
+                    'is_last_page': (p_idx == len(m_chunks)),
+                    'rows': chunk,
+                })
+
             duty_sheets.append({
                 'day_num': d['num'],
                 'day_name': d['name_kh'],
@@ -3385,6 +3801,8 @@ def timetable_daily_reports_view(request):
                 'session_badge': 'ព្រឹក (ម៉ោង ១-៤)',
                 'period_labels': ['ម៉ោងទី១', 'ម៉ោងទី២', 'ម៉ោងទី៣', 'ម៉ោងទី៤'],
                 'rows': morning_rows,
+                'subpages': m_subpages,
+                'target_pages': m_target_pages,
                 'total_teachers': len(morning_rows),
             })
 
@@ -3415,6 +3833,22 @@ def timetable_daily_reports_view(request):
                     })
                     no_idx += 1
 
+            a_target_pages = print_configs.get((d['num'], 'afternoon'), 2 if len(afternoon_rows) > 22 else 1)
+            if a_target_pages > 1 and len(afternoon_rows) > 0:
+                chunk_size = math.ceil(len(afternoon_rows) / a_target_pages)
+                a_chunks = [afternoon_rows[i:i + chunk_size] for i in range(0, len(afternoon_rows), chunk_size)]
+            else:
+                a_chunks = [afternoon_rows] if afternoon_rows else [[]]
+
+            a_subpages = []
+            for p_idx, chunk in enumerate(a_chunks, 1):
+                a_subpages.append({
+                    'page_num': p_idx,
+                    'total_pages': len(a_chunks),
+                    'is_last_page': (p_idx == len(a_chunks)),
+                    'rows': chunk,
+                })
+
             duty_sheets.append({
                 'day_num': d['num'],
                 'day_name': d['name_kh'],
@@ -3423,6 +3857,8 @@ def timetable_daily_reports_view(request):
                 'session_badge': 'រសៀល (ម៉ោង ៥-៨)',
                 'period_labels': ['ម៉ោងទី៥', 'ម៉ោងទី៦', 'ម៉ោងទី៧', 'ម៉ោងទី៨'],
                 'rows': afternoon_rows,
+                'subpages': a_subpages,
+                'target_pages': a_target_pages,
                 'total_teachers': len(afternoon_rows),
             })
 
@@ -3539,6 +3975,136 @@ def timetable_daily_reports_view(request):
         'today_kh_dow': today_kh_dow,
     }
     return render(request, 'academics/daily_reports.html', context)
+
+
+@login_required
+def api_get_daily_report_print_config(request):
+    """
+    Returns the print page configs (target pages per Day & Session) and teacher counts
+    for the active academic year.
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year')
+    if year_id:
+        found_year = AcademicYear.objects.filter(id=year_id).first()
+        if found_year:
+            active_year = found_year
+
+    saved_configs = {}
+    if active_year:
+        qs = DailyReportPrintConfig.objects.filter(academic_year=active_year)
+        for cfg in qs:
+            saved_configs[(cfg.day_of_week, cfg.session)] = cfg.target_pages
+
+    # Count teachers with classes/duty in each day & session
+    timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year) if active_year else Timetable.objects.all()
+    duties_qs = TeacherDutySchedule.objects.filter(academic_year=active_year) if active_year else TeacherDutySchedule.objects.all()
+
+    morning_teachers_by_day = defaultdict(set)
+    afternoon_teachers_by_day = defaultdict(set)
+
+    for tt in timetables_qs:
+        if tt.teacher_id and tt.period_number:
+            if tt.period_number <= 4:
+                morning_teachers_by_day[tt.day_of_week].add(tt.teacher_id)
+            else:
+                afternoon_teachers_by_day[tt.day_of_week].add(tt.teacher_id)
+
+    for dt in duties_qs:
+        if dt.teacher_id and dt.period_number:
+            if dt.period_number <= 4:
+                morning_teachers_by_day[dt.day_of_week].add(dt.teacher_id)
+            else:
+                afternoon_teachers_by_day[dt.day_of_week].add(dt.teacher_id)
+
+    configs_list = []
+    for d in DAYS_OF_WEEK:
+        m_count = len(morning_teachers_by_day.get(d['num'], set()))
+        m_default_pages = 2 if m_count > 22 else 1
+        m_target_pages = saved_configs.get((d['num'], 'morning'), m_default_pages)
+
+        configs_list.append({
+            'day_num': d['num'],
+            'day_name': d['name_kh'],
+            'session': 'morning',
+            'session_name': 'ពេលព្រឹក',
+            'session_badge': 'ព្រឹក (ម៉ោង ១-៤)',
+            'teacher_count': m_count,
+            'target_pages': m_target_pages,
+            'default_pages': m_default_pages,
+        })
+
+        a_count = len(afternoon_teachers_by_day.get(d['num'], set()))
+        a_default_pages = 2 if a_count > 22 else 1
+        a_target_pages = saved_configs.get((d['num'], 'afternoon'), a_default_pages)
+
+        configs_list.append({
+            'day_num': d['num'],
+            'day_name': d['name_kh'],
+            'session': 'afternoon',
+            'session_name': 'ពេលរសៀល',
+            'session_badge': 'រសៀល (ម៉ោង ៥-៨)',
+            'teacher_count': a_count,
+            'target_pages': a_target_pages,
+            'default_pages': a_default_pages,
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'academic_year_id': active_year.id if active_year else None,
+        'academic_year_name': active_year.name if active_year else '',
+        'configs': configs_list
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_save_daily_report_print_config(request):
+    """
+    Saves Admin configuration for A4 print pages per Day & Session.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST method required'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    year_id = data.get('academic_year_id')
+    if year_id:
+        found_year = AcademicYear.objects.filter(id=year_id).first()
+        if found_year:
+            active_year = found_year
+
+    if not active_year:
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសឆ្នាំសិក្សា!'}, status=400)
+
+    configs_payload = data.get('configs', [])
+    if not isinstance(configs_payload, list):
+        return JsonResponse({'status': 'error', 'message': 'ទិន្នន័យ configs មិនត្រឹមត្រូវ!'}, status=400)
+
+    with transaction.atomic():
+        for item in configs_payload:
+            d_num = int(item.get('day_of_week') or item.get('day_num') or 1)
+            sess = str(item.get('session') or 'morning').strip().lower()
+            pages = max(1, min(int(item.get('target_pages') or 1), 6))
+
+            DailyReportPrintConfig.objects.update_or_create(
+                academic_year=active_year,
+                day_of_week=d_num,
+                session=sess,
+                defaults={'target_pages': pages}
+            )
+
+    return JsonResponse({
+        'status': 'success',
+        'message': '🎉 បានរក្សាទុកការកំណត់ចំនួនទំព័រសម្រាប់ព្រីនដោយជោគជ័យ!'
+    })
 
 
 @login_required
@@ -3921,6 +4487,13 @@ def timetable_daily_reports_export_excel(request):
     def build_duty_sheets(workbook):
         days_to_render = DAYS_OF_WEEK if selected_day == 'all' else [d for d in DAYS_OF_WEEK if str(d['num']) == str(selected_day)]
 
+        import math
+        from openpyxl.worksheet.pagebreak import Break
+        print_configs = {}
+        if academic_year:
+            for cfg in DailyReportPrintConfig.objects.filter(academic_year=academic_year):
+                print_configs[(cfg.day_of_week, cfg.session)] = cfg.target_pages
+
         for d in days_to_render:
             d_entries = [e for e in timetables if e.day_of_week == d['num']]
             d_duties = [duty for duty in all_duties if duty.day_of_week == d['num']]
@@ -3985,6 +4558,7 @@ def timetable_daily_reports_export_excel(request):
 
                 current_row = 6
                 no_idx = 1
+                row_count = 0
                 for tch in teachers:
                     tch_slots = day_teacher_slots.get(tch.id, {})
                     p_vals = [tch_slots.get(p, '-') for p in p_nums]
@@ -4004,6 +4578,23 @@ def timetable_daily_reports_export_excel(request):
 
                         current_row += 1
                         no_idx += 1
+                        row_count += 1
+
+                # Target A4 Pages Configuration for Excel Print Setup
+                target_pages = print_configs.get((d['num'], sess_code), 2 if row_count > 22 else 1)
+                ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
+                ws.page_setup.paperSize = ws.PAPERSIZE_A4
+                ws.page_setup.fitToPage = True
+                ws.page_setup.fitToWidth = 1
+                ws.page_setup.fitToHeight = target_pages
+                ws.print_title_rows = '1:5'
+
+                if target_pages > 1 and row_count > 0:
+                    chunk_size = math.ceil(row_count / target_pages)
+                    for p_i in range(1, target_pages):
+                        break_row = 5 + p_i * chunk_size
+                        if break_row < current_row:
+                            ws.row_breaks.append(Break(id=break_row))
 
                 # Footer Signatures
                 current_row += 2

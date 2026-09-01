@@ -530,6 +530,23 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <!-- Timetable Revision / Version Dropdown -->
+            <div class="d-inline-flex align-items-center gap-1.5 bg-light p-1 px-2.5 rounded-3 border shadow-sm" id="versionSelectorContainer">
+                <label for="selectTimetableVersion" class="small fw-bold text-muted mb-0 text-nowrap">
+                    <i class="fa-solid fa-code-branch me-1" style="color: #7c3aed;"></i>កំណែ៖
+                </label>
+                <select id="selectTimetableVersion" class="form-select form-select-sm fw-bold border-0 bg-transparent" style="width: auto; min-width: 135px; cursor: pointer; color: #6b21a8;" onchange="handleVersionDropdownSelect(this.value)">
+                    <option value="LIVE" {% if not active_version %}selected{% endif %}>
+                        ⚡ កាលវិភាគបច្ចុប្បន្ន (Live)
+                    </option>
+                    {% for v in timetable_versions %}
+                    <option value="{{ v.id }}" {% if active_version and active_version.id == v.id %}selected{% endif %}>
+                        លើកទី {{ v.version_number }}: {{ v.title|truncatechars:18 }}{% if v.is_active_applied %} ★{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
             
             <div class="d-flex align-items-center gap-1">
                 <button type="button" class="btn-undo-redo" id="btnUndo" title="Undo (Ctrl+Z)" onclick="undoAction()" disabled>
@@ -561,6 +578,16 @@
             <!-- បិទពេលសិក្សា (Session Blocking Manager) -->
             <button type="button" class="btn-action-custom" style="background: #334155; color: #fff;" data-bs-toggle="modal" data-bs-target="#sessionBlockModal" title="កំណត់បិទពេលព្រឹក ឬពេលរសៀល មិនឱ្យ Auto-Gen រៀបចំ">
                 <i class="fa-solid fa-ban text-danger me-1"></i> បិទពេលសិក្សា
+            </button>
+
+            <!-- រក្សាទុកជាលើកថ្មី (Save Version: លើកទី១ ទី២...) -->
+            <button type="button" class="btn-action-custom" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);" onclick="openSaveVersionModal()" title="រក្សាទុកកាលវិភាគនេះជា លើកទី១, លើកទី២... សម្រាប់ឆ្នាំសិក្សា">
+                <i class="fa-solid fa-bookmark"></i> រក្សាទុកលើកថ្មី
+            </button>
+
+            <!-- បញ្ជីកំណែកាលវិភាគ (Revisions History) -->
+            <button type="button" class="btn-action-custom" style="background: #475569;" onclick="openVersionsHistoryModal()" title="មើលបញ្ជីកំណែកាលវិភាគដែលបានរក្សាទុក (លើកទី១, ទី២...) និងទាញយកមកប្រើវិញ">
+                <i class="fa-solid fa-clock-rotate-left"></i> កំណែកាលវិភាគ <span class="badge bg-white text-dark rounded-pill px-1.5" id="headerVersionCountBadge">{{ timetable_versions|length }}</span>
             </button>
 
             <!-- នាំចេញ Excel -->
@@ -1144,7 +1171,160 @@
     </div>
 </div>
 
+<!-- Modal: Save Timetable Version (រក្សាទុកកាលវិភាគជាលើកថ្មី) -->
+<div class="modal fade" id="saveTimetableVersionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-bookmark me-2"></i>រក្សាទុកកាលវិភាគជាលើកថ្មី (Save Timetable Revision)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3 rounded-3 border-0 bg-info-subtle text-info-emphasis">
+                    <i class="fa-solid fa-circle-info fs-5 me-2 text-info"></i>
+                    <div>
+                        រក្សាទុកគ្រោងកាលវិភាគបច្ចុប្បន្នជា <strong>លើកទី ១, លើកទី ២...</strong> សម្រាប់ឆ្នាំសិក្សា <strong>{{ active_year.name }}</strong> ដើម្បីអាចទាញយកមកប្រើប្រាស់ (Restore) វិញបានគ្រប់ពេលវេលា។
+                    </div>
+                </div>
+
+                <form id="formSaveTimetableVersion" onsubmit="event.preventDefault(); executeSaveTimetableVersion();">
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-4">
+                            <label class="form-label fw-bold text-dark small">
+                                លើកទី (No.) <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" id="saveVersionNumberInput" class="form-control fw-bold text-primary text-center" min="1" max="99" value="{{ next_version_number|default:1 }}" required>
+                        </div>
+                        <div class="col-sm-8">
+                            <label class="form-label fw-bold text-dark small">
+                                ចំណងជើង/ឈ្មោះកាលវិភាគ <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="saveVersionTitleInput" class="form-control fw-bold" placeholder="ឧ. លើកទី {{ next_version_number|default:1 }} - កាលវិភាគដើមឆ្នាំ" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">
+                            កំណត់សម្គាល់/ការកែប្រែ (Notes & Remarks)
+                        </label>
+                        <textarea id="saveVersionNoteInput" class="form-control" rows="2" placeholder="ឧ. កែសម្រួលគ្រូបង្រៀនគណិតវិទ្យាថ្នាក់ទី 7A និងរៀបចំម៉ោងថ្មី..."></textarea>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small fw-bold text-muted">ទិន្នន័យដែលត្រូវរក្សាទុក៖</span>
+                            <span class="badge bg-primary text-white" id="saveVersionSlotsSummaryBadge">0 ម៉ោង</span>
+                        </div>
+                        <div class="form-check form-switch mb-1.5">
+                            <input class="form-check-input" type="checkbox" id="chkSaveSetActive" checked>
+                            <label class="form-check-label small fw-bold text-dark cursor-pointer" for="chkSaveSetActive">
+                                <i class="fa-solid fa-circle-check text-success me-1"></i> កំណត់ជាកំណែកំពុងប្រើប្រាស់ផ្លូវការ (Set Active)
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="chkSaveIncludeAssignments" checked>
+                            <label class="form-check-label small fw-bold text-dark cursor-pointer" for="chkSaveIncludeAssignments">
+                                <i class="fa-solid fa-chalkboard-user text-primary me-1"></i> រក្សាទុកទិន្នន័យចាត់តាំងគ្រូតាមថ្នាក់ (Class Subject Assignments)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnSubmitSaveVersion" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border: none;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកំណែ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Timetable Versions History & Management (បញ្ជីកំណែកាលវិភាគប្រចាំឆ្នាំ) -->
+<div class="modal fade" id="timetableVersionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left fs-5 text-warning"></i>
+                    <h5 class="modal-title fw-bold mb-0">
+                        ប្រវត្តិកំណែកាលវិភាគប្រចាំឆ្នាំ (Annual Timetable Revision History)
+                    </h5>
+                    <span class="badge bg-primary px-2.5 py-1 ms-2" id="versionsModalYearBadge">{{ active_year.name }}</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Action Bar Inside Modal -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">
+                            <i class="fa-solid fa-list-check text-primary me-1"></i> កំណែកាលវិភាគដែលបានរក្សាទុក (លើកទី១, លើកទី២...)
+                        </h6>
+                        <p class="text-muted small mb-0">
+                            លោកអ្នកអាចចុច <strong>"ទាញយកមកប្រើ (Restore)"</strong> លើកំណែណាមួយ ដើម្បីដាក់ឱ្យដំណើរការលើកាលវិភាគរួមភ្លាមៗ។
+                        </p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openSaveVersionModal()" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border: none;">
+                            <i class="fa-solid fa-plus me-1"></i> រក្សាទុកលើកថ្មី
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshVersionsList()">
+                            <i class="fa-solid fa-rotate me-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Versions List Container -->
+                <div id="timetableVersionsListContainer">
+                    <!-- Populated via JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Timetable Version (កែប្រែព័ត៌មានកំណែកាលវិភាគ) -->
+<div class="modal fade" id="editTimetableVersionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>កែប្រែព័ត៌មានកំណែកាលវិភាគ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formEditTimetableVersion" onsubmit="event.preventDefault(); executeEditTimetableVersion();">
+                    <input type="hidden" id="editVersionIdInput">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">ចំណងជើង/ឈ្មោះកាលវិភាគ <span class="text-danger">*</span></label>
+                        <input type="text" id="editVersionTitleInput" class="form-control fw-bold" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">កំណត់សម្គាល់/ការកែប្រែ</label>
+                        <textarea id="editVersionNoteInput" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnSubmitEditVersion">
+                            <i class="fa-solid fa-check me-1"></i> រក្សាទុកការកែប្រែ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Embedded JSON Data & Master Engine -->
+
 <script>
     const CLASS_OPTIONS = {{ class_options_json|safe }};
     const CLASS_REQUIREMENTS = {{ class_requirements_json|safe }};
@@ -1155,6 +1335,10 @@
     const CLASSROOMS_LIST = {{ classrooms_json|safe }};
     let MATRIX_STATE = {{ matrix_state_json|safe }};
     const ACTIVE_YEAR_ID = {{ active_year.id|default:0 }};
+    let TIMETABLE_VERSIONS = {{ timetable_versions_json|safe }};
+    let NEXT_VERSION_NUMBER = {{ next_version_number|default:1 }};
+    let ACTIVE_VERSION_ID = {% if active_version %}{{ active_version.id }}{% else %}null{% endif %};
+
     const LOCAL_STORAGE_KEY = 'schoolsm_timetable_draft_y' + ACTIVE_YEAR_ID;
     const COLOR_STORAGE_KEY = 'schoolsm_timetable_custom_palette';
     const BLOCKED_STORAGE_KEY = 'schoolsm_timetable_blocked_y' + ACTIVE_YEAR_ID;
@@ -2923,6 +3107,561 @@
             }
         }
     }
+
+    // ==========================================
+    // 🌟 ANNUAL TIMETABLE VERSIONING & REVISION SYSTEM (លើកទី១ ទី២...)
+    // ==========================================
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function escapeJs(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+    }
+
+    function openSaveVersionModal() {
+        const modalEl = document.getElementById('saveTimetableVersionModal');
+        if (!modalEl) return;
+
+        // Calculate total teaching slots in current MATRIX_STATE
+        const totalSlots = Object.values(MATRIX_STATE).filter(s => s && s.subject_id && !s.is_blocked).length;
+        const totalClassrooms = Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.length : 0;
+
+        const summaryBadge = document.getElementById('saveVersionSlotsSummaryBadge');
+        if (summaryBadge) {
+            summaryBadge.innerText = `${totalSlots} ម៉ោង (${totalClassrooms} ថ្នាក់)`;
+        }
+
+        const numInput = document.getElementById('saveVersionNumberInput');
+        const titleInput = document.getElementById('saveVersionTitleInput');
+        const noteInput = document.getElementById('saveVersionNoteInput');
+
+        if (numInput) numInput.value = NEXT_VERSION_NUMBER;
+        if (titleInput) {
+            const today = new Date();
+            const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+            titleInput.value = `លើកទី ${NEXT_VERSION_NUMBER} - ${dateStr}`;
+        }
+        if (noteInput) noteInput.value = '';
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    async function executeSaveTimetableVersion() {
+        const numInput = document.getElementById('saveVersionNumberInput');
+        const titleInput = document.getElementById('saveVersionTitleInput');
+        const noteInput = document.getElementById('saveVersionNoteInput');
+        const setActive = document.getElementById('chkSaveSetActive')?.checked ?? true;
+        const includeCs = document.getElementById('chkSaveIncludeAssignments')?.checked ?? true;
+        const btn = document.getElementById('btnSubmitSaveVersion');
+
+        const vNum = parseInt(numInput?.value) || NEXT_VERSION_NUMBER;
+        const vTitle = titleInput?.value?.trim() || `លើកទី ${vNum}`;
+        const vNote = noteInput?.value?.trim() || '';
+
+        if (!vTitle) {
+            alert('សូមបញ្ចូលចំណងជើង/ឈ្មោះកាលវិភាគ!');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+        }
+
+        try {
+            // Build current matrix slots array from MATRIX_STATE
+            const matrixArray = [];
+            const blockedArray = [];
+
+            for (const [key, slot] of Object.entries(MATRIX_STATE)) {
+                const parts = key.split('_');
+                if (slot && slot.is_blocked) {
+                    blockedArray.push({
+                        classroom_id: parseInt(parts[0]),
+                        day_of_week: parseInt(parts[1]),
+                        period_number: parseInt(parts[2]),
+                        is_blocked: true,
+                    });
+                } else if (slot && slot.subject_id && slot.teacher_id) {
+                    matrixArray.push({
+                        classroom_id: parseInt(parts[0]),
+                        day_of_week: parseInt(parts[1]),
+                        period_number: parseInt(parts[2]),
+                        subject_id: slot.subject_id,
+                        teacher_id: slot.teacher_id,
+                        slot_code: slot.slot_code || '',
+                    });
+                }
+            }
+
+            const payload = {
+                academic_year_id: ACTIVE_YEAR_ID,
+                version_number: vNum,
+                title: vTitle,
+                note: vNote,
+                set_active: setActive,
+                matrix: matrixArray,
+                blocked_slots: blockedArray,
+                class_subject_assignments: includeCs ? CLASS_OPTIONS : null,
+            };
+
+            const response = await fetch('/academics/timetable/versions/save/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                // Close modal
+                const modalEl = document.getElementById('saveTimetableVersionModal');
+                if (modalEl) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                }
+
+                // Update local version list
+                NEXT_VERSION_NUMBER = Math.max(NEXT_VERSION_NUMBER, vNum + 1);
+                if (setActive && res.version) {
+                    ACTIVE_VERSION_ID = res.version.id;
+                }
+
+                await refreshVersionsList(false);
+                updateVersionDropdownUI(res.version);
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'រក្សាទុកកំណែជោគជ័យ!',
+                        text: res.message,
+                        confirmButtonColor: '#7c3aed',
+                        confirmButtonText: 'យល់ព្រម'
+                    });
+                } else {
+                    alert('✅ ' + res.message);
+                }
+            } else {
+                alert('⚠️ បរាជ័យ៖ ' + (res.message || 'Error saving version'));
+            }
+        } catch (err) {
+            console.error('Save Version Error:', err);
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកំណែ`;
+            }
+        }
+    }
+
+    async function openVersionsHistoryModal() {
+        const modalEl = document.getElementById('timetableVersionsModal');
+        if (!modalEl) return;
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        await refreshVersionsList(true);
+    }
+
+    async function refreshVersionsList(showLoading = false) {
+        const container = document.getElementById('timetableVersionsListContainer');
+        if (showLoading && container) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-spinner fa-spin fs-2 text-primary mb-2"></i>
+                    <div>កំពុងទាញយកបញ្ជីកំណែកាលវិភាគ...</div>
+                </div>
+            `;
+        }
+
+        try {
+            const resp = await fetch(`/academics/timetable/versions/?academic_year_id=${ACTIVE_YEAR_ID}`);
+            const data = await resp.json();
+
+            if (data.status === 'success') {
+                TIMETABLE_VERSIONS = data.versions || [];
+                NEXT_VERSION_NUMBER = data.next_version_number || (TIMETABLE_VERSIONS.length + 1);
+
+                // Update Header Count Badge
+                const countBadge = document.getElementById('headerVersionCountBadge');
+                if (countBadge) countBadge.innerText = TIMETABLE_VERSIONS.length;
+
+                renderVersionsList(TIMETABLE_VERSIONS);
+                updateVersionDropdownFromList(TIMETABLE_VERSIONS);
+            } else if (container) {
+                container.innerHTML = `<div class="alert alert-danger">មិនអាចទាញយកទិន្នន័យបានឡើយ៖ ${data.message}</div>`;
+            }
+        } catch (err) {
+            if (container) {
+                container.innerHTML = `<div class="alert alert-danger">កំហុសក្នុងការតភ្ជាប់៖ ${err.message}</div>`;
+            }
+        }
+    }
+
+    function renderVersionsList(versions) {
+        const container = document.getElementById('timetableVersionsListContainer');
+        if (!container) return;
+
+        if (!versions || versions.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 bg-light rounded-4 border">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-folder-open text-muted opacity-50" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">មិនទាន់មានកំណែកាលវិភាគដែលបានរក្សាទុកនៅឡើយទេ</h6>
+                    <p class="text-muted small mb-3">លោកអ្នកអាចរក្សាទុកកាលវិភាគបច្ចុប្បន្នជា លើកទី ១, លើកទី ២... ដើម្បីងាយស្រួលទាញយកមកប្រើវិញ។</p>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold px-3 py-2" onclick="openSaveVersionModal()" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border: none;">
+                        <i class="fa-solid fa-bookmark me-1"></i> រក្សាទុកកាលវិភាគជា លើកទី ១
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="d-flex flex-column gap-3">';
+
+        versions.forEach(v => {
+            const isActive = v.is_active_applied;
+            const cardBorder = isActive ? 'border-primary shadow-sm bg-primary-subtle bg-opacity-10' : 'border-light-subtle bg-white';
+            const activeBadge = isActive 
+                ? '<span class="badge bg-success px-2.5 py-1 text-white shadow-sm"><i class="fa-solid fa-circle-check me-1"></i> កំពុងប្រើប្រាស់ផ្លូវការ (Active)</span>' 
+                : '<span class="badge bg-secondary-subtle text-secondary px-2.5 py-1 border"><i class="fa-solid fa-box-archive me-1"></i> កំណែចាស់ (Snapshot)</span>';
+
+            html += `
+                <div class="card rounded-3 ${cardBorder} transition-all p-3" id="versionCard_${v.id}">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-purple px-2.5 py-1.5 fs-6 fw-bold" style="background: #7c3aed; color: #fff;">
+                                <i class="fa-solid fa-bookmark me-1"></i> លើកទី ${v.version_number}
+                            </span>
+                            <h6 class="fw-bold text-dark mb-0 fs-6">${escapeHtml(v.title)}</h6>
+                            ${activeBadge}
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small">
+                                <i class="fa-regular fa-clock me-1"></i> ${v.created_at}
+                            </span>
+                            <span class="text-muted small">
+                                <i class="fa-solid fa-user-pen me-1"></i> ${escapeHtml(v.created_by)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-7">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">
+                                    <i class="fa-solid fa-calendar-days me-1"></i> ${v.total_slots} ម៉ោងសិក្សា
+                                </span>
+                                <span class="badge bg-light text-dark border px-2 py-1">
+                                    <i class="fa-solid fa-school me-1"></i> ${v.total_classrooms} ថ្នាក់រៀន
+                                </span>
+                            </div>
+                            ${v.note ? `<div class="small text-muted bg-light p-2 rounded border"><i class="fa-solid fa-quote-left me-1 text-primary"></i> ${escapeHtml(v.note)}</div>` : '<div class="small text-muted fst-italic">គ្មានកំណត់សម្គាល់បន្ថែម</div>'}
+                        </div>
+                        <div class="col-md-5 d-flex flex-wrap justify-content-md-end align-items-center gap-2">
+                            <!-- Restore Button -->
+                            <button type="button" class="btn btn-sm ${isActive ? 'btn-outline-success' : 'btn-success'} fw-bold px-3 shadow-sm" onclick="restoreTimetableVersion(${v.id}, ${v.version_number}, '${escapeJs(v.title)}')" title="ទាញយកកំណែនេះមកដាក់ប្រើប្រាស់ជាកាលវិភាគផ្លូវការ">
+                                <i class="fa-solid fa-arrow-rotate-left me-1"></i> ${isActive ? 'ទាញយកម្តងទៀត' : 'ទាញយកមកប្រើ (Apply)'}
+                            </button>
+
+                            <!-- Edit Button -->
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditVersionModal(${v.id}, '${escapeJs(v.title)}', '${escapeJs(v.note || '')}')" title="កែប្រែឈ្មោះ និងកំណត់សម្គាល់">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+
+                            <!-- Export JSON Button -->
+                            <a href="/academics/timetable/versions/${v.id}/export/" class="btn btn-sm btn-outline-primary" title="ទាញយកឯកសារ JSON Backup">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+
+                            <!-- Delete Button -->
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTimetableVersion(${v.id}, ${v.version_number})" title="លុបកំណែនេះ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function updateVersionDropdownFromList(versions) {
+        const select = document.getElementById('selectTimetableVersion');
+        if (!select) return;
+
+        let optionsHtml = `<option value="LIVE">⚡ កាលវិភាគបច្ចុប្បន្ន (Live)</option>`;
+        versions.forEach(v => {
+            const isSel = (v.is_active_applied || (ACTIVE_VERSION_ID && ACTIVE_VERSION_ID === v.id)) ? 'selected' : '';
+            const activeStar = v.is_active_applied ? ' ★' : '';
+            const titleSnippet = v.title.length > 18 ? v.title.substring(0, 18) + '...' : v.title;
+            optionsHtml += `<option value="${v.id}" ${isSel}>លើកទី ${v.version_number}: ${titleSnippet}${activeStar}</option>`;
+        });
+
+        select.innerHTML = optionsHtml;
+    }
+
+    function updateVersionDropdownUI(version) {
+        if (!version) return;
+        const select = document.getElementById('selectTimetableVersion');
+        if (!select) return;
+
+        // Check if option exists, otherwise add
+        let exists = false;
+        for (let opt of select.options) {
+            if (opt.value === String(version.id)) {
+                exists = true;
+                opt.selected = true;
+                break;
+            }
+        }
+        if (!exists) {
+            const titleSnippet = version.title.length > 18 ? version.title.substring(0, 18) + '...' : version.title;
+            const newOpt = new Option(`លើកទី ${version.version_number}: ${titleSnippet} ★`, version.id, true, true);
+            select.add(newOpt);
+        }
+    }
+
+    function handleVersionDropdownSelect(val) {
+        if (val === 'LIVE') {
+            return;
+        }
+        const vId = parseInt(val);
+        const version = TIMETABLE_VERSIONS.find(v => v.id === vId);
+        if (version) {
+            if (confirm(`🔄 តើលោកអ្នកចង់ទាញយកកាលវិភាគ "លើកទី ${version.version_number}: ${version.title}" មកដាក់ប្រើប្រាស់មែនទេ?`)) {
+                restoreTimetableVersion(version.id, version.version_number, version.title);
+            } else {
+                // Revert dropdown to active
+                const activeVer = TIMETABLE_VERSIONS.find(v => v.is_active_applied);
+                const select = document.getElementById('selectTimetableVersion');
+                if (select) select.value = activeVer ? String(activeVer.id) : 'LIVE';
+            }
+        }
+    }
+
+    async function restoreTimetableVersion(versionId, vNum, vTitle) {
+        if (!confirm(`🚀 តើលោកអ្នកពិតជាចង់ទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគលើកទី ${vNum} "${vTitle}" ជំនួសកាលវិភាគបច្ចុប្បន្នមែនទេ?`)) {
+            return;
+        }
+
+        try {
+            pushHistoryState();
+
+            const resp = await fetch(`/academics/timetable/versions/${versionId}/restore/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ sync_teachers: true })
+            });
+
+            const res = await resp.json();
+
+            if (res.status === 'success') {
+                ACTIVE_VERSION_ID = versionId;
+
+                // Re-build MATRIX_STATE from returned matrix_data
+                MATRIX_STATE = {};
+
+                // Blocked slots
+                if (Array.isArray(res.blocked_slots)) {
+                    res.blocked_slots.forEach(blk => {
+                        const key = `${blk.classroom_id}_${blk.day_of_week}_${blk.period_number}`;
+                        MATRIX_STATE[key] = { is_blocked: true, is_locked: true };
+                    });
+                }
+
+                // Matrix slots
+                if (Array.isArray(res.matrix_data)) {
+                    res.matrix_data.forEach(itm => {
+                        const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
+                        const sub = SUBJECTS_MAP[itm.subject_id];
+                        const tch = TEACHERS_MAP[itm.teacher_id];
+                        const slotCode = itm.slot_code || TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+
+                        MATRIX_STATE[key] = {
+                            subject_id: itm.subject_id,
+                            teacher_id: itm.teacher_id,
+                            subject_name: sub?.name_kh || itm.subject_name || '',
+                            teacher_name: tch?.khmer_name || itm.teacher_name || '',
+                            slot_code: slotCode,
+                            subject_color: sub?.color_code || '#4f46e5',
+                        };
+                    });
+                }
+
+                renderAllMatrixCells();
+                updateAllHoursCounters();
+                saveToLocalStorage();
+
+                // Close versions modal if open
+                const modalEl = document.getElementById('timetableVersionsModal');
+                if (modalEl) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                }
+
+                await refreshVersionsList(false);
+
+                const select = document.getElementById('selectTimetableVersion');
+                if (select) select.value = String(versionId);
+
+                showAutoSaveStatus(res.message);
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ទាញយក និងដាក់ប្រើប្រាស់ជោគជ័យ!',
+                        text: res.message,
+                        confirmButtonColor: '#7c3aed',
+                        confirmButtonText: 'យល់ព្រម'
+                    });
+                } else {
+                    alert('✅ ' + res.message);
+                }
+            } else {
+                alert('⚠️ មិនអាចទាញយកកំណែបានឡើយ៖ ' + res.message);
+            }
+        } catch (err) {
+            console.error('Restore Version Error:', err);
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        }
+    }
+
+    async function deleteTimetableVersion(versionId, vNum) {
+        if (!confirm(`⚠️ តើលោកអ្នកប្រាកដជាចង់លុបកំណែកាលវិភាគលើកទី ${vNum} នេះចេញពីប្រព័ន្ធមែនទេ?`)) {
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/academics/timetable/versions/${versionId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
+                }
+            });
+            const res = await resp.json();
+
+            if (res.status === 'success') {
+                await refreshVersionsList(false);
+                showAutoSaveStatus(res.message);
+            } else {
+                alert('⚠️ មិនអាចលុបបានឡើយ៖ ' + res.message);
+            }
+        } catch (err) {
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        }
+    }
+
+    function openEditVersionModal(versionId, curTitle, curNote) {
+        const idInput = document.getElementById('editVersionIdInput');
+        const titleInput = document.getElementById('editVersionTitleInput');
+        const noteInput = document.getElementById('editVersionNoteInput');
+
+        if (idInput) idInput.value = versionId;
+        if (titleInput) titleInput.value = curTitle;
+        if (noteInput) noteInput.value = curNote;
+
+        const modalEl = document.getElementById('editTimetableVersionModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    }
+
+    async function executeEditTimetableVersion() {
+        const idInput = document.getElementById('editVersionIdInput');
+        const titleInput = document.getElementById('editVersionTitleInput');
+        const noteInput = document.getElementById('editVersionNoteInput');
+        const btn = document.getElementById('btnSubmitEditVersion');
+
+        const vId = idInput?.value;
+        const vTitle = titleInput?.value?.trim();
+        const vNote = noteInput?.value?.trim();
+
+        if (!vId || !vTitle) {
+            alert('សូមបញ្ចូលចំណងជើង!');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+        }
+
+        try {
+            const resp = await fetch(`/academics/timetable/versions/${vId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ title: vTitle, note: vNote })
+            });
+            const res = await resp.json();
+
+            if (res.status === 'success') {
+                const modalEl = document.getElementById('editTimetableVersionModal');
+                if (modalEl) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                }
+                await refreshVersionsList(false);
+                showAutoSaveStatus(res.message);
+            } else {
+                alert('⚠️ បរាជ័យ៖ ' + res.message);
+            }
+        } catch (err) {
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-check me-1"></i> រក្សាទុកការកែប្រែ`;
+            }
+        }
+    }
 </script>
 {% endblock %}
+
 

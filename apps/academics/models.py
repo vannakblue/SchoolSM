@@ -336,6 +336,98 @@ class Timetable(models.Model):
         return f"{self.classroom.name} | {self.get_day_of_week_display()} | {self.start_time.strftime('%H:%M')}-{self.end_time.strftime('%H:%M')} | {self.subject.name_kh} ({self.teacher.khmer_name})"
 
 
+class TimetableVersion(models.Model):
+    """
+    Stores annual timetable snapshot versions / revisions (លើកទី១, លើកទី២, លើកទី៣...)
+    per Academic Year, allowing revision history tracking, backup, and one-click restore.
+    """
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.CASCADE,
+        related_name='timetable_versions',
+        verbose_name="ឆ្នាំសិក្សា / Academic Year"
+    )
+    version_number = models.IntegerField(default=1, verbose_name="លើកទី / Version Number")
+    title = models.CharField(max_length=200, verbose_name="ឈ្មោះកាលវិភាគ/ចំណងជើង / Version Title")
+    note = models.TextField(blank=True, null=True, verbose_name="កំណត់សម្គាល់ / Note/Description")
+    matrix_data = models.JSONField(default=list, verbose_name="ទិន្នន័យកាលវិភាគ / Matrix Data")
+    blocked_slots = models.JSONField(default=list, blank=True, verbose_name="ម៉ោងបិទ / Blocked Slots")
+    class_subject_assignments = models.JSONField(default=dict, blank=True, verbose_name="ការចាត់តាំងគ្រូតាមថ្នាក់ / Class Subject Assignments")
+    total_slots = models.IntegerField(default=0, verbose_name="ចំនួនម៉ោងសរុប / Total Hours")
+    total_classrooms = models.IntegerField(default=0, verbose_name="ចំនួនថ្នាក់ / Total Classrooms")
+    is_active_applied = models.BooleanField(default=False, verbose_name="កំពុងប្រើប្រាស់ / Currently Active")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_timetable_versions',
+        verbose_name="អ្នកបង្កើត / Created By"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="កាលបរិច្ឆេទបង្កើត / Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="កាលបរិច្ឆេទកែប្រែ / Updated At")
+
+    class Meta:
+        ordering = ['academic_year', '-version_number', '-created_at']
+        unique_together = ('academic_year', 'version_number')
+        verbose_name = "កំណែកាលវិភាគប្រចាំឆ្នាំ / Annual Timetable Version"
+        verbose_name_plural = "កំណែកាលវិភាគប្រចាំឆ្នាំទាំងអស់ / Annual Timetable Versions"
+
+    def __str__(self):
+        return f"{self.academic_year.name} - លើកទី {self.version_number}: {self.title}"
+
+
+class DailyReportPrintConfig(models.Model):
+    """
+    Stores Admin configuration for the number of A4 print pages per Day and Shift (Session).
+    e.g. Monday Morning -> 2 A4 pages, Monday Afternoon -> 1 A4 page.
+    """
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.CASCADE,
+        related_name='daily_report_print_configs',
+        verbose_name="ឆ្នាំសិក្សា / Academic Year"
+    )
+    day_of_week = models.IntegerField(
+        choices=[
+            (1, 'ចន្ទ / Monday'),
+            (2, 'អង្គារ / Tuesday'),
+            (3, 'ពុធ / Wednesday'),
+            (4, 'ព្រហស្បតិ៍ / Thursday'),
+            (5, 'សុក្រ / Friday'),
+            (6, 'សៅរ៍ / Saturday'),
+            (7, 'អាទិត្យ / Sunday'),
+        ],
+        verbose_name="ថ្ងៃនៃសប្តាហ៍ / Day of Week"
+    )
+    session = models.CharField(
+        max_length=20,
+        choices=[
+            ('morning', 'ពេលព្រឹក (Morning)'),
+            ('afternoon', 'ពេលរសៀល (Afternoon)'),
+        ],
+        default='morning',
+        verbose_name="វេន / ពេលសិក្សា / Session"
+    )
+    target_pages = models.PositiveIntegerField(
+        default=1,
+        verbose_name="ចំនួនទំព័រ A4 / Target A4 Pages"
+    )
+    note = models.CharField(max_length=255, blank=True, null=True, verbose_name="កំណត់សម្គាល់ / Note")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('academic_year', 'day_of_week', 'session')
+        ordering = ['academic_year', 'day_of_week', 'session']
+        verbose_name = "ការកំណត់ទំព័រព្រីនរបាយការណ៍ប្រចាំថ្ងៃ / Daily Report Print Config"
+        verbose_name_plural = "ការកំណត់ទំព័រព្រីនរបាយការណ៍ប្រចាំថ្ងៃទាំងអស់ / Daily Report Print Configs"
+
+    def __str__(self):
+        return f"{self.academic_year.name} - ថ្ងៃទី {self.day_of_week} ({self.session}): {self.target_pages} ទំព័រ"
+
+
+
+
 # =========================================================================
 # Cambodia Administrative Hierarchy (ខេត្ត, ស្រុក, ឃុំ, ភូមិ)
 # =========================================================================

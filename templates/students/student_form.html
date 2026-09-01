@@ -44,6 +44,32 @@
                     <i class="fa-solid fa-user-graduate me-2"></i>១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
                 </h5>
                 <div class="row g-3">
+                    <div class="col-md-12">
+                        <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1" style="background: #f8fafc;">
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="form-label fw-bold small mb-0 text-dark">
+                                    <i class="fa-solid fa-id-card text-primary me-1"></i> អត្តលេខសិស្ស / Student ID
+                                </label>
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small" id="badgeStudentIdStatus">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2.5 fw-semibold" id="btnAutoGenerateStudentId" onclick="fetchNextAvailableStudentId()">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)
+                            </button>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted border-end-0"><i class="fa-solid fa-hashtag"></i></span>
+                            {{ form.student_id }}
+                        </div>
+                        <div class="small mt-1" id="studentIdFeedbackText"></div>
+                        {% if form.student_id.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for err in form.student_id.errors %}{{ err }}{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
                         {{ form.khmer_name }}
@@ -314,6 +340,9 @@ try {
 
 document.addEventListener('DOMContentLoaded', function() {
     let globalProvinces = [];
+
+    // Initialize Student ID Live Uniqueness Checker
+    initStudentIdLiveChecker();
 
     // Elements for POB
     const pobProv = document.getElementById('pob_province');
@@ -942,6 +971,125 @@ function saveCardLayout() {
 function resetCardLayout() {
     localStorage.removeItem('schoolsm_enroll_card_layout');
     location.reload();
+}
+
+// ============================================================
+// 🌟 STUDENT ID REAL-TIME LIVE UNIQUENESS CHECK & AUTO-SUGGEST
+// ============================================================
+let studentIdDebounceTimer = null;
+const CURRENT_STUDENT_PK = "{{ student.id|default:'' }}";
+
+function initStudentIdLiveChecker() {
+    const input = document.getElementById('id_student_id');
+    if (!input) return;
+
+    input.addEventListener('input', function() {
+        clearTimeout(studentIdDebounceTimer);
+        studentIdDebounceTimer = setTimeout(() => {
+            checkStudentIdAvailability(this.value.trim());
+        }, 300);
+    });
+
+    input.addEventListener('blur', function() {
+        checkStudentIdAvailability(this.value.trim());
+    });
+
+    // Run initial check if field already has value
+    if (input.value.trim()) {
+        checkStudentIdAvailability(input.value.trim());
+    }
+}
+
+async function checkStudentIdAvailability(val) {
+    const badge = document.getElementById('badgeStudentIdStatus');
+    const feedback = document.getElementById('studentIdFeedbackText');
+    const input = document.getElementById('id_student_id');
+    const yearSelect = document.getElementById('id_academic_year');
+    const yearId = yearSelect ? yearSelect.value : '';
+
+    if (!val) {
+        if (badge) {
+            badge.className = 'badge bg-secondary-subtle text-secondary border px-2 py-0.5 small';
+            badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ';
+        }
+        if (feedback) feedback.innerHTML = '';
+        if (input) {
+            input.classList.remove('is-invalid', 'is-valid');
+        }
+        return;
+    }
+
+    try {
+        const url = `/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${CURRENT_STUDENT_PK}&year_id=${yearId}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.is_available) {
+            if (badge) {
+                badge.className = 'badge bg-success-subtle text-success border border-success px-2 py-0.5 small';
+                badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> អត្តលេខទំនេរ អាចប្រើបាន';
+            }
+            if (feedback) {
+                feedback.className = 'small text-success mt-1 fw-semibold';
+                feedback.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i> ${data.message}`;
+            }
+            if (input) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            }
+        } else {
+            if (badge) {
+                badge.className = 'badge bg-danger-subtle text-danger border border-danger px-2 py-0.5 small';
+                badge.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i> ស្ទួនរួចហើយ!';
+            }
+            if (feedback) {
+                feedback.className = 'small text-danger mt-1 fw-bold';
+                feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> ${data.message} <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-decoration-none fw-bold" onclick="applySuggestedStudentId('${data.suggested_id}')">👉 ប្រើ ${data.suggested_id}</button>`;
+            }
+            if (input) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+        }
+    } catch (e) {
+        console.error('Check student ID error:', e);
+    }
+}
+
+async function fetchNextAvailableStudentId() {
+    const yearSelect = document.getElementById('id_academic_year');
+    const yearId = yearSelect ? yearSelect.value : '';
+    const input = document.getElementById('id_student_id');
+    const btn = document.getElementById('btnAutoGenerateStudentId');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងទាញយក...';
+    }
+
+    try {
+        const resp = await fetch(`/students/api/generate-student-id/?year_id=${yearId}`);
+        const data = await resp.json();
+        if (data.status === 'success' && data.student_id) {
+            applySuggestedStudentId(data.student_id);
+        }
+    } catch (e) {
+        console.error('Fetch next ID error:', e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)';
+        }
+    }
+}
+
+function applySuggestedStudentId(suggestedId) {
+    const input = document.getElementById('id_student_id');
+    if (input && suggestedId) {
+        input.value = suggestedId;
+        checkStudentIdAvailability(suggestedId);
+        input.focus();
+    }
 }
 </script>
 

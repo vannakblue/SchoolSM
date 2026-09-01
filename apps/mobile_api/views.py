@@ -1595,3 +1595,204 @@ class MobileStudentPromotionSubmitAPIView(APIView):
         })
 
 
+# =========================================================================
+# 9. Student Registration & ID Uniqueness APIs for Mobile App
+# =========================================================================
+
+class MobileStudentCheckIDAPIView(APIView):
+    """
+    Mobile API: Check student_id availability and get next suggested ID.
+    GET /api/v1/students/check-id/?student_id=...&academic_year_id=...
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        sid = request.GET.get('student_id', '').strip()
+        exclude_id = request.GET.get('exclude_id')
+        year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+
+        target_year = None
+        if year_id:
+            target_year = AcademicYear.objects.filter(id=year_id).first()
+        if not target_year:
+            target_year = AcademicYear.objects.filter(is_current=True).first()
+
+        suggested_id = Student.generate_unique_student_id(target_year, exclude_pk=exclude_id)
+
+        if not sid:
+            return Response({
+                'status': 'success',
+                'is_blank': True,
+                'is_available': True,
+                'message': f'⚡ ប្រព័ន្ធនឹងបង្កើតអត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា (ឧ. {suggested_id})',
+                'suggested_id': suggested_id
+            })
+
+        qs = Student.objects.filter(student_id__iexact=sid)
+        if exclude_id:
+            try:
+                qs = qs.exclude(pk=int(exclude_id))
+            except (ValueError, TypeError):
+                pass
+
+        if qs.exists():
+            existing = qs.first()
+            class_str = f" ({existing.classroom.name})" if existing.classroom else ""
+            return Response({
+                'status': 'duplicate',
+                'is_blank': False,
+                'is_available': False,
+                'message': f"❌ អត្តលេខ '{sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}!",
+                'existing_student': {
+                    'id': existing.id,
+                    'name': existing.khmer_name,
+                    'classroom': existing.classroom.name if existing.classroom else 'គ្មានថ្នាក់'
+                },
+                'suggested_id': suggested_id
+            })
+
+        return Response({
+            'status': 'available',
+            'is_blank': False,
+            'is_available': True,
+            'message': f"✅ អត្តលេខ '{sid}' ទំនេរ អាចប្រើប្រាស់បាន!",
+            'suggested_id': suggested_id
+        })
+
+
+class MobileStudentEnrollAPIView(APIView):
+    """
+    Mobile API: Student Registration / Self-Enrollment Endpoint.
+    Guarantees 100% collision-free student_id uniqueness.
+    POST /api/v1/students/enroll/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        data = request.data
+        khmer_name = str(data.get('khmer_name', '')).strip()
+        latin_name = str(data.get('latin_name', '')).strip()
+        gender = str(data.get('gender', 'M')).upper()
+        dob_str = data.get('date_of_birth')
+        phone = str(data.get('phone', '')).strip()
+        pob = str(data.get('place_of_birth', '')).strip()
+        current_address = str(data.get('current_address', '')).strip()
+        classroom_id = data.get('classroom_id')
+        academic_year_id = data.get('academic_year_id')
+        scholarship_type = data.get('scholarship_type', 'FULL_PAY')
+        custom_sid = str(data.get('student_id', '')).strip()
+
+        # Parent info
+        father_name = str(data.get('father_name', '')).strip()
+        father_phone = str(data.get('father_phone', '')).strip()
+        father_job = str(data.get('father_job', '')).strip()
+        mother_name = str(data.get('mother_name', '')).strip()
+        mother_phone = str(data.get('mother_phone', '')).strip()
+        mother_job = str(data.get('mother_job', '')).strip()
+        guardian_name = str(data.get('guardian_name', '')).strip()
+        emergency_phone = str(data.get('emergency_phone', '')).strip()
+
+        if not khmer_name:
+            return Response({'status': 'error', 'message': 'សូមបញ្ចូលឈ្មោះជាភាសាខ្មែរ!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse DOB
+        dob = None
+        if dob_str:
+            try:
+                dob = datetime.datetime.strptime(dob_str, '%Y-%m-%d').date()
+            except Exception:
+                pass
+        if not dob:
+            dob = datetime.date(datetime.datetime.now().year - 15, 1, 1)
+
+        # Resolve Academic Year & Classroom
+        target_year = None
+        if academic_year_id:
+            target_year = AcademicYear.objects.filter(id=academic_year_id).first()
+        if not target_year and classroom_id:
+            cls_obj = Classroom.objects.filter(id=classroom_id).first()
+            if cls_obj:
+                target_year = cls_obj.academic_year
+        if not target_year:
+            target_year = AcademicYear.objects.filter(is_current=True).first()
+
+        classroom = None
+        if classroom_id:
+            classroom = Classroom.objects.filter(id=classroom_id).first()
+
+        # Check manual student_id uniqueness if provided
+        if custom_sid:
+            if Student.objects.filter(student_id__iexact=custom_sid).exists():
+                existing = Student.objects.filter(student_id__iexact=custom_sid).first()
+                class_str = f" ({existing.classroom.name})" if existing.classroom else ""
+                return Response({
+                    'status': 'error',
+                    'message': f"❌ អត្តលេខ '{custom_sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}! សូមប្រើអត្តលេខផ្សេង ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ។"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                student = Student(
+                    student_id=custom_sid if custom_sid else '',
+                    khmer_name=khmer_name,
+                    latin_name=latin_name,
+                    gender=gender,
+                    date_of_birth=dob,
+                    place_of_birth=pob,
+                    current_address=current_address,
+                    phone=phone,
+                    classroom=classroom,
+                    academic_year=target_year,
+                    status=Student.Status.ACTIVE,
+                    scholarship_type=scholarship_type,
+                    father_name=father_name,
+                    father_phone=father_phone,
+                    father_job=father_job,
+                    mother_name=mother_name,
+                    mother_phone=mother_phone,
+                    mother_job=mother_job,
+                    guardian_name=guardian_name,
+                    emergency_phone=emergency_phone,
+                )
+                student.save()
+
+                # Create user account for student login
+                username = student.student_id.lower().replace('-', '_')
+                user = User.objects.filter(username=username).first()
+                if not user:
+                    user = User.objects.create_user(
+                        username=username,
+                        password='p123456',
+                        role=User.Role.STUDENT,
+                        khmer_name=student.khmer_name,
+                        latin_name=student.latin_name,
+                        phone=student.phone or student.father_phone or ''
+                    )
+                student.user = user
+                student.save(update_fields=['user'])
+
+            return Response({
+                'status': 'success',
+                'message': f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) ដោយជោគជ័យ!",
+                'student': {
+                    'id': student.id,
+                    'student_id': student.student_id,
+                    'khmer_name': student.khmer_name,
+                    'latin_name': student.latin_name,
+                    'gender': student.gender,
+                    'date_of_birth': str(student.date_of_birth),
+                    'classroom_id': student.classroom.id if student.classroom else None,
+                    'classroom_name': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
+                    'academic_year': student.academic_year.name if student.academic_year else '',
+                    'status': student.status
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f"កំហុសក្នុងការចុះឈ្មោះ៖ {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from datetime import datetime
 
 class StudentCategory(models.Model):
@@ -339,29 +340,82 @@ class Student(models.Model):
     def get_exam_suspension_reason_display(self):
         return self.effective_exam_exclusion_reason
 
-    def save(self, *args, **kwargs):
-        if not self.student_id:
-            import re
+    @classmethod
+    def generate_unique_student_id(cls, academic_year=None, exclude_pk=None, custom_prefix=None):
+        """
+        Generates a guaranteed collision-free, strictly unique student ID.
+        Format: {2-digit year prefix}{4-digit sequence number}, e.g. '260001', '260002'...
+        """
+        import re
+        if custom_prefix:
+            year_prefix = str(custom_prefix).strip()
+        else:
             year_prefix = f"{datetime.now().year % 100:02d}"
-            if self.academic_year:
-                if self.academic_year.start_date:
-                    year_prefix = f"{self.academic_year.start_date.year % 100:02d}"
-                elif self.academic_year.name:
-                    m = re.search(r'(\d{4})', self.academic_year.name)
+            if academic_year:
+                if getattr(academic_year, 'start_date', None):
+                    year_prefix = f"{academic_year.start_date.year % 100:02d}"
+                elif getattr(academic_year, 'name', None):
+                    m = re.search(r'(\d{4})', academic_year.name)
                     if m:
                         year_prefix = f"{int(m.group(1)) % 100:02d}"
 
-            candidates = Student.objects.filter(student_id__regex=rf'^{year_prefix}\d{{4}}$').values_list('student_id', flat=True)
-            max_num = 0
-            for sid in candidates:
-                try:
-                    num = int(sid[len(year_prefix):])
-                    if num > max_num:
-                        max_num = num
-                except (ValueError, TypeError):
-                    continue
-            new_num = max_num + 1
-            self.student_id = f"{year_prefix}{new_num:04d}"
+        # Find existing IDs matching prefix + digits
+        candidates = cls.objects.filter(student_id__regex=rf'^{year_prefix}\d{{4,}}$').values_list('student_id', flat=True)
+        max_num = 0
+        for sid in candidates:
+            try:
+                num = int(sid[len(year_prefix):])
+                if num > max_num:
+                    max_num = num
+            except (ValueError, TypeError):
+                continue
+
+        new_num = max_num + 1
+        candidate_id = f"{year_prefix}{new_num:04d}"
+
+        # Collision detection loop to guarantee 100% uniqueness
+        qs = cls.objects.filter(student_id__iexact=candidate_id)
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+
+        while qs.exists():
+            new_num += 1
+            candidate_id = f"{year_prefix}{new_num:04d}"
+            qs = cls.objects.filter(student_id__iexact=candidate_id)
+            if exclude_pk:
+                qs = qs.exclude(pk=exclude_pk)
+
+        return candidate_id
+
+    def clean(self):
+        super().clean()
+        if self.student_id:
+            self.student_id = str(self.student_id).strip()
+            qs = Student.objects.filter(student_id__iexact=self.student_id)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                existing = qs.first()
+                class_info = f" ({existing.classroom.name})" if existing.classroom else ""
+                raise ValidationError({
+                    'student_id': f"អត្តលេខសិស្ស '{self.student_id}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_info}! សូមបញ្ចូលអត្តលេខផ្សេង ឬទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ។"
+                })
+
+    def save(self, *args, **kwargs):
+        if not self.student_id or str(self.student_id).strip() == '':
+            self.student_id = Student.generate_unique_student_id(self.academic_year, exclude_pk=self.pk)
+        else:
+            self.student_id = str(self.student_id).strip()
+            # Double check collision on save
+            qs = Student.objects.filter(student_id__iexact=self.student_id)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                existing = qs.first()
+                class_info = f" ({existing.classroom.name})" if existing.classroom else ""
+                raise ValidationError({
+                    'student_id': f"អត្តលេខសិស្ស '{self.student_id}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_info}!"
+                })
 
         super().save(*args, **kwargs)
 
