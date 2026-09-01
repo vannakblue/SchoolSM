@@ -3956,18 +3956,18 @@ def timetable_daily_reports_export_excel(request):
                 ws.views.sheetView[0].showGridLines = True
 
                 # Title
-                ws.merge_cells('A1:J1')
+                ws.merge_cells('A1:D1')
                 ws['A1'] = "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត"
                 ws['A1'].font = font_title
-                ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+                ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
 
                 ws.merge_cells('A2:J2')
-                ws['A2'] = f"បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ {sess_name} - ថ្ងៃ{d['name_kh']}"
+                ws['A2'] = "បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ"
                 ws['A2'].font = font_sub
                 ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
 
                 ws.merge_cells('A3:J3')
-                ws['A3'] = f"ឆ្នាំសិក្សា៖ {year_name}"
+                ws['A3'] = f"ឆ្នាំសិក្សា៖ {year_name} ថ្ងៃ {d['name_kh']} {sess_name}"
                 ws['A3'].font = font_meta
                 ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -4011,7 +4011,7 @@ def timetable_daily_reports_export_excel(request):
                 ws.cell(row=current_row + 1, column=7, value="នាយកសាលា").font = font_bold
                 ws.cell(row=current_row, column=2, value="អ្នករៀបចំរបាយការណ៍").font = font_bold
 
-                auto_fit_columns(ws, {1: 6, 2: 14, 3: 24, 4: 14, 5: 14, 6: 14, 7: 14, 8: 16, 9: 16, 10: 16})
+                auto_fit_columns(ws, {1: 5, 2: 12, 3: 18, 4: 10, 5: 10, 6: 10, 7: 10, 8: 15, 9: 15, 10: 12})
 
     # ROUTING TO THE REQUESTED REPORT BUILDER
     if report_type == 'teacher_load':
