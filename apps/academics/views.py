@@ -4622,7 +4622,12 @@ def teacher_assignments_manager(request):
             )
 
         all_assignments = {}
-        cs_query = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('teacher') if active_year else ClassSubject.objects.filter(teacher__isnull=False).select_related('teacher')
+        cs_query = ClassSubject.objects.filter(
+            classroom__academic_year=active_year, 
+            teacher__isnull=False
+        ).select_related('teacher', 'classroom', 'subject') if active_year else ClassSubject.objects.filter(
+            teacher__isnull=False
+        ).select_related('teacher', 'classroom', 'subject')
         
         teacher_assigned_map = defaultdict(list)
         for cs in cs_query:
@@ -4666,8 +4671,8 @@ def teacher_assignments_manager(request):
             })
 
         timetables_active = list(
-            Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher')
-            if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
+            Timetable.objects.filter(classroom__academic_year=active_year).select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name')
+            if active_year else Timetable.objects.select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name').all()
         )
         tt_slot_count_map = defaultdict(int)
         tt_teacher_map = {}
