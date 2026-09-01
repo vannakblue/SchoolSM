@@ -1011,7 +1011,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
                     },
                     body: JSON.stringify({
                         source_year_id: sourceYearId,
@@ -1020,20 +1020,36 @@
                         note: 'ផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ទូទាំងសាលា'
                     })
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        Swal.fire('ជោគជ័យ!', data.message, 'success').then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        Swal.fire('បរាជ័យ!', data.message || 'មានបញ្ហាមិនអាចដំណើរការបាន', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = `<i class="fa-solid fa-rocket me-1"></i> ដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ភ្លាមៗ`;
+                .then(async res => {
+                    const text = await res.text();
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error(res.ok ? 'ទិន្នន័យត្រឡប់មកវិញមិនត្រឹមត្រូវ' : `កំហុស Server (HTTP ${res.status}): ${text.slice(0, 150)}`);
                     }
+                    if (!res.ok || data.status !== 'success') {
+                        throw new Error(data.message || 'មានបញ្ហាមិនអាចដំណើរការបាន');
+                    }
+                    return data;
+                })
+                .then(data => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ជោគជ័យ!',
+                        text: data.message,
+                        confirmButtonText: 'យល់ព្រម'
+                    }).then(() => {
+                        window.location.reload();
+                    });
                 })
                 .catch(err => {
-                    Swal.fire('កំហុសប្រព័ន្ធ!', err.toString(), 'error');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'បរាជ័យ!',
+                        text: err.message || err.toString(),
+                        confirmButtonText: 'បិទ'
+                    });
                     btn.disabled = false;
                     btn.innerHTML = `<i class="fa-solid fa-rocket me-1"></i> ដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ភ្លាមៗ`;
                 });
