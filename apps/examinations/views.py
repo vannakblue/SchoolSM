@@ -116,23 +116,14 @@ def grade_entry_matrix(request):
     terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
     all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
-    selected_term_id = request.GET.get('term') or request.POST.get('term') or str(terms.first().id if terms.first() else '')
-    selected_class_id = request.GET.get('classroom') or request.POST.get('classroom') or str(classrooms.first().id if classrooms.first() else '')
-    selected_subject_id = request.GET.get('subject') or request.POST.get('subject') or ''
-
-    selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else terms.first()
-    selected_class = Classroom.objects.filter(id=selected_class_id).first() if (selected_class_id and str(selected_class_id).isdigit()) else classrooms.first()
-
-    effective_year = selected_term.academic_year if selected_term else active_year
-
     # Teacher assigned classes and subjects filtering
     teacher_assigned_classes = set()
     teacher_assigned_subjects = set()
     homeroom_cls_ids = set()
     if teacher_profile:
         cs_qs = ClassSubject.objects.filter(teacher=teacher_profile)
-        if effective_year:
-            cs_qs = cs_qs.filter(classroom__academic_year=effective_year)
+        if active_year:
+            cs_qs = cs_qs.filter(classroom__academic_year=active_year)
         teacher_assigned_classes = set(cs_qs.values_list('classroom_id', flat=True))
         teacher_assigned_subjects = set(cs_qs.values_list('subject_id', flat=True))
         # Add homeroom classroom
@@ -143,6 +134,15 @@ def grade_entry_matrix(request):
         classrooms = all_classrooms.filter(id__in=teacher_assigned_classes) if teacher_assigned_classes else all_classrooms
     else:
         classrooms = all_classrooms
+
+    selected_term_id = request.GET.get('term') or request.POST.get('term') or str(terms.first().id if terms.first() else '')
+    selected_class_id = request.GET.get('classroom') or request.POST.get('classroom') or str(classrooms.first().id if classrooms.first() else '')
+    selected_subject_id = request.GET.get('subject') or request.POST.get('subject') or ''
+
+    selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else terms.first()
+    selected_class = Classroom.objects.filter(id=selected_class_id).first() if (selected_class_id and str(selected_class_id).isdigit()) else classrooms.first()
+
+    effective_year = selected_term.academic_year if selected_term else active_year
 
     subject_rules = []
     students = []
