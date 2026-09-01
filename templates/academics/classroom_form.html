@@ -65,7 +65,10 @@
                             </h5>
                             <span class="text-muted small">គូសធីក (Tick) ជ្រើសរើសមុខវិជ្ជាណាដែលត្រូវបង្រៀន និងប្រឡងក្នុងថ្នាក់នេះ</span>
                         </div>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="autoSelectSubjectsForCurrentTrack(true)" title="ជ្រើសរើសមុខវិជ្ជាស្វ័យប្រវត្តិទៅតាមជំនាញ (វិទ្យាសាស្ត្រ ឬ សង្គម)">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ផ្ទុកមុខវិជ្ជាតាមជំនាញ
+                            </button>
                             <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="toggleFormSubjects(true)">
                                 <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
                             </button>
@@ -135,7 +138,69 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', updateFormSubjectStyles);
+    function autoSelectSubjectsForCurrentTrack(showFeedback = false) {
+        const gradeInput = document.querySelector('[name="grade_level"]');
+        const trackSelect = document.querySelector('[name="track"]');
+        if (!gradeInput || !trackSelect) return;
+
+        const grade = gradeInput.value || 10;
+        const track = trackSelect.value || 'GENERAL';
+
+        fetch(`/academics/api/track-subjects/?grade_level=${encodeURIComponent(grade)}&track=${encodeURIComponent(track)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.subject_ids) {
+                    const targetSubIds = new Set(data.subject_ids);
+                    document.querySelectorAll('.form-sub-check').forEach(cb => {
+                        cb.checked = targetSubIds.has(parseInt(cb.value));
+                    });
+                    updateFormSubjectStyles();
+                    if (showFeedback && typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'បានផ្គូផ្គងមុខវិជ្ជា!',
+                            text: `បានជ្រើសរើសមុខវិជ្ជាស្វ័យប្រវត្តិ ${data.total_count} មុខ សម្រាប់ជំនាញ ${track} (ថ្នាក់ទី ${grade})`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching track subjects:', err);
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateFormSubjectStyles();
+
+        // Listen for track changes to offer auto subject selection
+        const trackSelect = document.querySelector('[name="track"]');
+        const gradeInput = document.querySelector('[name="grade_level"]');
+
+        if (trackSelect) {
+            trackSelect.addEventListener('change', () => {
+                const trackName = trackSelect.options[trackSelect.selectedIndex]?.text || trackSelect.value;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'ប្តូរជំនាញសិក្សា?',
+                        text: `តើលោកអ្នកចង់ជ្រើសរើសមុខវិជ្ជាស្តង់ដារដោយស្វ័យប្រវត្តិសម្រាប់ជំនាញ "${trackName}" ដែរឬទេ?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: '✨ ផ្គូផ្គងមុខវិជ្ជាស្វ័យប្រវត្តិ',
+                        cancelButtonText: 'រក្សាមុខវិជ្ជាបច្ចុប្បន្ន',
+                        confirmButtonColor: '#4f46e5',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            autoSelectSubjectsForCurrentTrack(true);
+                        }
+                    });
+                } else {
+                    autoSelectSubjectsForCurrentTrack(false);
+                }
+            });
+        }
+    });
 </script>
 <style>
     .cursor-pointer { cursor: pointer; }

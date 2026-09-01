@@ -249,6 +249,53 @@ def api_academic_tracks(request):
     return JsonResponse({'success': True, 'tracks': data})
 
 
+@login_required
+def api_get_track_subjects(request):
+    """
+    Returns standard subject IDs and meta rules for a specific (grade_level, track).
+    Useful for auto-selecting standard curriculum subjects when creating or editing classrooms.
+    """
+    grade_level = request.GET.get('grade_level')
+    track = request.GET.get('track', 'GENERAL')
+
+    if not grade_level or not str(grade_level).isdigit():
+        return JsonResponse({'success': False, 'message': 'Invalid grade_level'}, status=400)
+
+    grade_num = int(grade_level)
+    rules = GradeLevelRule.objects.filter(
+        grade_level=grade_num,
+        track=track
+    ).select_related('subject').order_by('subject__order', 'id')
+
+    # If no specific rules found for this track, fallback to general rules
+    if not rules.exists() and track != 'GENERAL':
+        rules = GradeLevelRule.objects.filter(
+            grade_level=grade_num,
+            track='GENERAL'
+        ).select_related('subject').order_by('subject__order', 'id')
+
+    subject_ids = [r.subject_id for r in rules]
+    subjects_data = [
+        {
+            'subject_id': r.subject_id,
+            'subject_code': r.subject.code,
+            'subject_name_kh': r.subject.name_kh,
+            'max_score': float(r.max_score),
+            'weekly_hours': r.weekly_hours,
+        }
+        for r in rules
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'grade_level': grade_num,
+        'track': track,
+        'subject_ids': subject_ids,
+        'subjects': subjects_data,
+        'total_count': len(subject_ids),
+    })
+
+
 # ----------------- GRADE ENROLLMENT OPTIONS (CUSTOM FIELDS) -----------------
 
 @login_required

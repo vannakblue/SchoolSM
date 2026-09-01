@@ -40,6 +40,7 @@ urlpatterns = [
     path('tracks/<int:pk>/edit/', views.academic_track_edit, name='academic_track_edit'),
     path('tracks/<int:pk>/delete/', views.academic_track_delete, name='academic_track_delete'),
     path('api/tracks/', views.api_academic_tracks, name='api_academic_tracks'),
+    path('api/track-subjects/', views.api_get_track_subjects, name='api_get_track_subjects'),
 
     # Grade Level Enrollment Options (បែបបទបំពេញតាមកម្រិតថ្នាក់)
     path('grade-options/', views.grade_options_manager, name='grade_options_manager'),
