@@ -26,23 +26,36 @@ from apps.extras.models import BookBorrowing
 def student_list(request):
     from apps.academics.utils import get_active_academic_year
     active_year = get_active_academic_year(request)
-    selected_year = request.GET.get('year') or request.GET.get('academic_year')
-    if selected_year:
-        if selected_year == 'all':
+    
+    selected_year = ''
+    if 'academic_year' in request.GET or 'year' in request.GET:
+        raw_year = (request.GET.get('academic_year') if 'academic_year' in request.GET else request.GET.get('year') or '').strip()
+        if raw_year == '' or raw_year.lower() == 'all':
             active_year = None
-        elif str(selected_year).isdigit():
-            found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
+            selected_year = ''
+        elif raw_year.isdigit():
+            found_year = AcademicYear.objects.filter(id=int(raw_year)).first()
             if found_year:
                 active_year = found_year
+                selected_year = str(found_year.id)
+            else:
+                active_year = None
+                selected_year = ''
         else:
-            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
+            found_year = AcademicYear.objects.filter(name=raw_year).first()
             if found_year:
                 active_year = found_year
+                selected_year = str(found_year.id)
+            else:
+                active_year = None
+                selected_year = ''
+    elif active_year:
+        selected_year = str(active_year.id)
 
     query = request.GET.get('q', '').strip()
-    class_id = request.GET.get('classroom', '')
-    status_filter = request.GET.get('status', '')
-    scholarship_filter = request.GET.get('scholarship', '')
+    class_id = request.GET.get('classroom', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    scholarship_filter = request.GET.get('scholarship', '').strip()
     exam_status_filter = request.GET.get('exam_status', '').strip()
 
     students = Student.objects.select_related('classroom', 'academic_year').all()
@@ -60,8 +73,8 @@ def student_list(request):
             Q(mother_name__icontains=query)
         )
 
-    if class_id:
-        students = students.filter(classroom_id=class_id)
+    if class_id and class_id.isdigit():
+        students = students.filter(classroom_id=int(class_id))
 
     if status_filter:
         students = students.filter(status=status_filter)

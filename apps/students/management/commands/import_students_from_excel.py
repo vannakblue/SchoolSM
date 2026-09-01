@@ -51,6 +51,11 @@ class Command(BaseCommand):
             default='2025-2026',
             help='Academic Year name (defaults to 2025-2026)'
         )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Force re-import even if students already exist'
+        )
 
     def handle(self, *args, **options):
         if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
@@ -61,6 +66,22 @@ class Command(BaseCommand):
 
         file_path = options['file']
         year_name = options['year']
+        force = options.get('force', False)
+
+        # 1. Setup or get Academic Year
+        academic_year, _ = AcademicYear.objects.get_or_create(
+            name=year_name,
+            defaults={
+                'start_date': date(2025, 9, 1),
+                'end_date': date(2026, 7, 31),
+                'is_current': False
+            }
+        )
+
+        existing_count = Student.objects.filter(academic_year=academic_year).count()
+        if existing_count > 0 and not force:
+            self.stdout.write(self.style.SUCCESS(f"Year {academic_year.name} already has {existing_count} students. Skipping import."))
+            return
 
         if not os.path.isabs(file_path):
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -75,16 +96,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Reading Excel file: {file_path}"))
 
         wb = openpyxl.load_workbook(file_path, data_only=True)
-
-        # 1. Setup or get Academic Year
-        academic_year, _ = AcademicYear.objects.get_or_create(
-            name=year_name,
-            defaults={
-                'start_date': date(2025, 9, 1),
-                'end_date': date(2026, 7, 31),
-                'is_current': False
-            }
-        )
         self.stdout.write(f"Target Academic Year: {academic_year.name} (ID: {academic_year.id})")
 
         # 2. Parse all students from sheets '7' through '12'
