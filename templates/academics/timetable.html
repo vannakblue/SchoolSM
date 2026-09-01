@@ -1332,7 +1332,26 @@
     const TEACHER_MAX_HOURS = {{ teacher_max_hours_json|safe }};
     const TEACHER_ASSIGNED_HOURS = {{ teacher_assigned_hours_json|safe }};
     const SUBJECTS_LIST = {{ subjects_json|safe }};
+    const TEACHERS_LIST = {{ teachers_json|safe|default:"[]" }};
     const CLASSROOMS_LIST = {{ classrooms_json|safe }};
+    const TEACHER_SUBJECT_CODE_MAP = {{ teacher_subject_code_map_json|safe|default:"{}" }};
+
+    // Fast O(1) Lookups for Subjects, Teachers, and Classrooms
+    const SUBJECTS_MAP = {};
+    if (Array.isArray(SUBJECTS_LIST)) {
+        SUBJECTS_LIST.forEach(s => { SUBJECTS_MAP[s.id] = s; });
+    }
+
+    const TEACHERS_MAP = {};
+    if (Array.isArray(TEACHERS_LIST)) {
+        TEACHERS_LIST.forEach(t => { TEACHERS_MAP[t.id] = t; });
+    }
+
+    const CLASSROOMS_MAP = {};
+    if (Array.isArray(CLASSROOMS_LIST)) {
+        CLASSROOMS_LIST.forEach(c => { CLASSROOMS_MAP[c.id] = c; });
+    }
+
     let MATRIX_STATE = {{ matrix_state_json|safe }};
     const ACTIVE_YEAR_ID = {{ active_year.id|default:0 }};
     let TIMETABLE_VERSIONS = {{ timetable_versions_json|safe }};
@@ -3044,14 +3063,14 @@
                     if (res.source_entries) {
                         for (const itm of res.source_entries) {
                             const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
-                            const sub = SUBJECTS_MAP[itm.subject_id];
-                            const tch = TEACHERS_MAP[itm.teacher_id];
-                            const slotCode = TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+                            const sub = (SUBJECTS_MAP && SUBJECTS_MAP[itm.subject_id]) || null;
+                            const tch = (TEACHERS_MAP && TEACHERS_MAP[itm.teacher_id]) || null;
+                            const slotCode = (TEACHER_SUBJECT_CODE_MAP && TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`]) || sub?.code || 'S';
                             MATRIX_STATE[key] = {
                                 subject_id: itm.subject_id,
                                 teacher_id: itm.teacher_id,
-                                subject_name: sub?.name_kh || '',
-                                teacher_name: tch?.khmer_name || '',
+                                subject_name: sub?.name_kh || itm.subject_name || '',
+                                teacher_name: tch?.khmer_name || tch?.name || itm.teacher_name || '',
                                 slot_code: slotCode,
                                 subject_color: sub?.color_code || '#4f46e5',
                             };
@@ -3070,14 +3089,14 @@
                 if (res.target_entries) {
                     for (const itm of res.target_entries) {
                         const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
-                        const sub = SUBJECTS_MAP[itm.subject_id];
-                        const tch = TEACHERS_MAP[itm.teacher_id];
-                        const slotCode = TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+                        const sub = (SUBJECTS_MAP && SUBJECTS_MAP[itm.subject_id]) || null;
+                        const tch = (TEACHERS_MAP && TEACHERS_MAP[itm.teacher_id]) || null;
+                        const slotCode = (TEACHER_SUBJECT_CODE_MAP && TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`]) || sub?.code || 'S';
                         MATRIX_STATE[key] = {
                             subject_id: itm.subject_id,
                             teacher_id: itm.teacher_id,
-                            subject_name: sub?.name_kh || '',
-                            teacher_name: tch?.khmer_name || '',
+                            subject_name: sub?.name_kh || itm.subject_name || '',
+                            teacher_name: tch?.khmer_name || tch?.name || itm.teacher_name || '',
                             slot_code: slotCode,
                             subject_color: sub?.color_code || '#4f46e5',
                         };
@@ -3515,15 +3534,15 @@
                 if (Array.isArray(res.matrix_data)) {
                     res.matrix_data.forEach(itm => {
                         const key = `${itm.classroom_id}_${itm.day_of_week}_${itm.period_number}`;
-                        const sub = SUBJECTS_MAP[itm.subject_id];
-                        const tch = TEACHERS_MAP[itm.teacher_id];
-                        const slotCode = itm.slot_code || TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`] || sub?.code || 'S';
+                        const sub = (SUBJECTS_MAP && SUBJECTS_MAP[itm.subject_id]) || null;
+                        const tch = (TEACHERS_MAP && TEACHERS_MAP[itm.teacher_id]) || null;
+                        const slotCode = itm.slot_code || (TEACHER_SUBJECT_CODE_MAP && TEACHER_SUBJECT_CODE_MAP[`${itm.subject_id}_${itm.teacher_id}`]) || sub?.code || 'S';
 
                         MATRIX_STATE[key] = {
                             subject_id: itm.subject_id,
                             teacher_id: itm.teacher_id,
                             subject_name: sub?.name_kh || itm.subject_name || '',
-                            teacher_name: tch?.khmer_name || itm.teacher_name || '',
+                            teacher_name: tch?.khmer_name || tch?.name || itm.teacher_name || '',
                             slot_code: slotCode,
                             subject_color: sub?.color_code || '#4f46e5',
                         };

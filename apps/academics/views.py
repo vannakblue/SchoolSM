@@ -2004,8 +2004,10 @@ def timetable_view(request):
                     'teacher': tch,
                 })
 
-    subjects_list = [{'id': s.id, 'name_kh': s.name_kh, 'code': s.code, 'category': s.category} for s in subjects]
+    subjects_list = [{'id': s.id, 'name_kh': s.name_kh, 'code': s.code, 'color_code': s.color_code if hasattr(s, 'color_code') and s.color_code else '#4f46e5', 'category': s.category} for s in subjects]
     classrooms_list = [{'id': c.id, 'name': c.name, 'grade_level': c.grade_level, 'track': c.track} for c in classrooms]
+    teachers_list = [{'id': t.id, 'name': t.khmer_name or t.name, 'khmer_name': t.khmer_name or t.name, 'gender': getattr(t, 'gender', 'M')} for t in teachers]
+    teacher_subject_code_map_dict = {f"{s_id}_{t_id}": code for (s_id, t_id), code in teacher_subject_code_map.items()}
 
     timetable_versions = list(TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number', '-created_at')) if active_year else []
     active_version = next((v for v in timetable_versions if v.is_active_applied), None)
@@ -2044,7 +2046,9 @@ def timetable_view(request):
         'teacher_max_hours_json': json.dumps(teacher_max_hours_map),
         'teacher_assigned_hours_json': json.dumps(teacher_assigned_hours_map),
         'subjects_json': json.dumps(subjects_list),
+        'teachers_json': json.dumps(teachers_list),
         'classrooms_json': json.dumps(classrooms_list),
+        'teacher_subject_code_map_json': json.dumps(teacher_subject_code_map_dict),
         'teacher_hours_report': teacher_hours_report,
         'teacher_code_directory': teacher_code_directory,
         'timetable_versions': timetable_versions,
