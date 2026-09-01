@@ -6639,19 +6639,22 @@ def api_execute_all_grades_bulk_promotion(request):
                         if cache_key in target_classes_cache:
                             target_class = target_classes_cache[cache_key]
                         else:
-                            code_to_use = cls_name_to_use.replace(' ', '').upper()
-                            target_class, created = Classroom.objects.get_or_create(
-                                name=cls_name_to_use,
-                                academic_year=target_year,
-                                defaults={
-                                    'code': code_to_use,
-                                    'grade_level': target_grade_level,
-                                    'track': getattr(source_class, 'track', 'GENERAL'),
-                                    'capacity': source_class.capacity or 45,
-                                }
-                            )
-                            if created:
+                            code_to_use = (cls_name_to_use.replace(' ', '').upper())[:40]
+                            target_class = Classroom.objects.filter(academic_year=target_year).filter(
+                                Q(name__iexact=cls_name_to_use) | Q(code__iexact=code_to_use)
+                            ).first()
+
+                            if not target_class:
+                                target_class = Classroom.objects.create(
+                                    name=cls_name_to_use,
+                                    code=code_to_use,
+                                    academic_year=target_year,
+                                    grade_level=target_grade_level,
+                                    track=getattr(source_class, 'track', 'GENERAL'),
+                                    capacity=source_class.capacity or 45,
+                                )
                                 created_classes_count += 1
+
                             target_classes_cache[cache_key] = target_class
                             existing_target_classes[target_class.id] = target_class
 

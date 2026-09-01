@@ -100,8 +100,8 @@ class Classroom(models.Model):
         SCIENCE = 'SCIENCE', 'ថ្នាក់វិទ្យាសាស្ត្រ (Science Track)'
         SOCIAL = 'SOCIAL', 'ថ្នាក់វិទ្យាសាស្ត្រសង្គម (Social Science Track)'
 
-    name = models.CharField(max_length=100, verbose_name="ឈ្មោះថ្នាក់រៀន / Class Name (e.g. ថ្នាក់ទី៧A, ទី១១ វិទ្យាសាស្ត្រ)")
-    code = models.CharField(max_length=20, verbose_name="កូដថ្នាក់ / Class Code (e.g. 7A, 11-SCI)")
+    name = models.CharField(max_length=150, verbose_name="ឈ្មោះថ្នាក់រៀន / Class Name (e.g. ថ្នាក់ទី៧A, ទី១១ វិទ្យាសាស្ត្រ)")
+    code = models.CharField(max_length=100, verbose_name="កូដថ្នាក់ / Class Code (e.g. 7A, 11-SCI)")
     grade_level = models.IntegerField(default=10, verbose_name="កម្រិតថ្នាក់ (៧-១២) / Grade Level (7-12)")
     track = models.CharField(max_length=50, choices=Track.choices, default=Track.GENERAL, verbose_name="ជំនាញសិក្សា / Academic Track")
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='classrooms', verbose_name="ឆ្នាំសិក្សា / Academic Year")
