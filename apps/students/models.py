@@ -37,17 +37,39 @@ class ScholarshipType(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _cached_map = None
+
     class Meta:
         ordering = ['order', 'id']
         verbose_name = "ប្រភេទកម្រៃ & អាហារូបករណ៍ / Scholarship & Fee Type"
         verbose_name_plural = "ប្រភេទកម្រៃ & អាហារូបករណ៍ទាំងអស់ / Scholarship & Fee Types"
 
+    @classmethod
+    def get_cached_map(cls):
+        if cls._cached_map is None:
+            try:
+                cls._cached_map = {s.code: s for s in cls.objects.all()}
+            except Exception:
+                cls._cached_map = {}
+        return cls._cached_map
+
+    @classmethod
+    def invalidate_cache(cls):
+        cls._cached_map = None
+
     def save(self, *args, **kwargs):
+        ScholarshipType.invalidate_cache()
         if not self.code:
             import re
             cleaned = re.sub(r'[^a-zA-Z0-9]', '_', self.name.strip().upper())
             self.code = cleaned[:30] or f"SCH_{ScholarshipType.objects.count() + 1}"
         super().save(*args, **kwargs)
+        ScholarshipType.invalidate_cache()
+
+    def delete(self, *args, **kwargs):
+        ScholarshipType.invalidate_cache()
+        super().delete(*args, **kwargs)
+        ScholarshipType.invalidate_cache()
 
     def __str__(self):
         discount_text = f" ({self.discount_percentage:.0f}%)" if self.discount_percentage > 0 else ""
@@ -86,17 +108,39 @@ class StudentStatusConfig(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _cached_map = None
+
     class Meta:
         ordering = ['order', 'id']
         verbose_name = "ការកំណត់ស្ថានភាពសិក្សា / Student Status Config"
         verbose_name_plural = "ការកំណត់ស្ថានភាពសិក្សាទាំងអស់ / Student Status Configs"
 
+    @classmethod
+    def get_cached_map(cls):
+        if cls._cached_map is None:
+            try:
+                cls._cached_map = {s.code: s for s in cls.objects.all()}
+            except Exception:
+                cls._cached_map = {}
+        return cls._cached_map
+
+    @classmethod
+    def invalidate_cache(cls):
+        cls._cached_map = None
+
     def save(self, *args, **kwargs):
+        StudentStatusConfig.invalidate_cache()
         if not self.code:
             import re
             cleaned = re.sub(r'[^a-zA-Z0-9]', '_', self.name.strip().upper())
             self.code = cleaned[:30] or f"STATUS_{StudentStatusConfig.objects.count() + 1}"
         super().save(*args, **kwargs)
+        StudentStatusConfig.invalidate_cache()
+
+    def delete(self, *args, **kwargs):
+        StudentStatusConfig.invalidate_cache()
+        super().delete(*args, **kwargs)
+        StudentStatusConfig.invalidate_cache()
 
     def __str__(self):
         return f"{self.name} ({self.code})"
@@ -111,8 +155,15 @@ class StudentStatusConfig(models.Model):
             {'code': 'TRANSFERRED', 'name': 'ផ្ទេរការសិក្សា', 'name_en': 'Transferred', 'badge_color': 'info', 'category_type': 'LEFT_SCHOOL', 'order': 4, 'is_system_default': True, 'description': 'សិស្សផ្ទេរទៅសាលារៀនផ្សេង'},
             {'code': 'GRADUATED', 'name': 'បញ្ចប់ការសិក្សា', 'name_en': 'Graduated', 'badge_color': 'primary', 'category_type': 'COMPLETED', 'order': 5, 'is_system_default': True, 'description': 'សិស្សបានបញ្ចប់ការសិក្សាដោយជោគជ័យ'},
         ]
-        for item in defaults:
-            cls.objects.get_or_create(code=item['code'], defaults=item)
+        try:
+            existing_codes = set(cls.objects.values_list('code', flat=True))
+            existing_names = set(cls.objects.values_list('name', flat=True))
+            for item in defaults:
+                if item['code'] not in existing_codes and item['name'] not in existing_names:
+                    cls.objects.create(**item)
+            cls.invalidate_cache()
+        except Exception:
+            pass
 
 
 class Student(models.Model):
@@ -245,9 +296,12 @@ class Student(models.Model):
     @property
     def scholarship_name(self):
         """Returns dynamic scholarship name if available, fallback to choice label or raw string"""
-        st = ScholarshipType.objects.filter(code=self.scholarship_type).first()
-        if st:
-            return st.name
+        try:
+            st = ScholarshipType.get_cached_map().get(self.scholarship_type)
+            if st:
+                return st.name
+        except Exception:
+            pass
         try:
             return dict(Student.ScholarshipType.choices).get(self.scholarship_type, self.scholarship_type)
         except Exception:
@@ -256,9 +310,12 @@ class Student(models.Model):
     @property
     def scholarship_discount_percentage(self):
         """Returns discount percentage as a decimal/float"""
-        st = ScholarshipType.objects.filter(code=self.scholarship_type).first()
-        if st:
-            return float(st.discount_percentage)
+        try:
+            st = ScholarshipType.get_cached_map().get(self.scholarship_type)
+            if st:
+                return float(st.discount_percentage)
+        except Exception:
+            pass
         if self.scholarship_type == 'SCHOLARSHIP_50':
             return 50.0
         elif self.scholarship_type == 'SCHOLARSHIP_100':
@@ -272,7 +329,7 @@ class Student(models.Model):
     def status_config(self):
         """Returns the dynamic StudentStatusConfig object for this student's status"""
         try:
-            return StudentStatusConfig.objects.filter(code=self.status).first()
+            return StudentStatusConfig.get_cached_map().get(self.status)
         except Exception:
             return None
 

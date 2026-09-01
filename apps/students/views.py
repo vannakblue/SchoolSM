@@ -86,8 +86,39 @@ def student_list(request):
     StudentStatusConfig.ensure_default_statuses()
     available_statuses = StudentStatusConfig.objects.filter(is_active=True).order_by('order', 'id')
 
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+    total_count = students.count()
+    per_page_param = request.GET.get('per_page', '50').strip()
+
+    if per_page_param == 'all':
+        students_page = students
+        paginator = None
+        is_paginated = False
+    else:
+        try:
+            per_page = int(per_page_param)
+            if per_page not in [25, 50, 100, 200]:
+                per_page = 50
+        except (ValueError, TypeError):
+            per_page = 50
+
+        paginator = Paginator(students, per_page)
+        page = request.GET.get('page', 1)
+        try:
+            students_page = paginator.page(page)
+        except PageNotAnInteger:
+            students_page = paginator.page(1)
+        except EmptyPage:
+            students_page = paginator.page(paginator.num_pages)
+        is_paginated = paginator.num_pages > 1
+
     return render(request, 'students/student_list.html', {
-        'students': students,
+        'students': students_page,
+        'paginator': paginator,
+        'page_obj': students_page if is_paginated else None,
+        'is_paginated': is_paginated,
+        'per_page': per_page_param,
         'classrooms': classrooms,
         'academic_years': academic_years,
         'active_year': active_year,
@@ -99,7 +130,7 @@ def student_list(request):
         'selected_exam_status': exam_status_filter,
         'available_statuses': available_statuses,
         'exam_reasons': Student.ExamExclusionReason.choices,
-        'total_count': students.count(),
+        'total_count': total_count,
     })
 
 

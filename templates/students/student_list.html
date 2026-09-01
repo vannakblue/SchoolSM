@@ -265,6 +265,69 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination & Display Controls -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 p-3 border-top bg-light rounded-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">
+                {% if is_khmer %}បង្ហាញទិន្នន័យ៖{% else %}Showing:{% endif %}
+                <strong>{{ students|length }}</strong> / <strong>{{ total_count }}</strong> {% if is_khmer %}នាក់{% else %}students{% endif %}
+            </span>
+            <form method="GET" class="d-inline-flex align-items-center gap-1 ms-2">
+                <input type="hidden" name="q" value="{{ query }}">
+                <input type="hidden" name="academic_year" value="{{ selected_year }}">
+                <input type="hidden" name="classroom" value="{{ selected_class }}">
+                <input type="hidden" name="status" value="{{ selected_status }}">
+                <input type="hidden" name="exam_status" value="{{ selected_exam_status }}">
+                <label class="text-muted small">{% if is_khmer %}ក្នុងមួយទំព័រ៖{% else %}Per page:{% endif %}</label>
+                <select name="per_page" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                    <option value="25" {% if per_page == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == '50' or not per_page %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+                    <option value="200" {% if per_page == '200' %}selected{% endif %}>200</option>
+                    <option value="all" {% if per_page == 'all' %}selected{% endif %}>{% if is_khmer %}ទាំងអស់{% else %}All{% endif %}</option>
+                </select>
+            </form>
+        </div>
+
+        {% if is_paginated %}
+        <nav aria-label="Student directory pagination">
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if query %}&q={{ query }}{% endif %}{% if selected_year %}&academic_year={{ selected_year }}{% endif %}{% if selected_class %}&classroom={{ selected_class }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_exam_status %}&exam_status={{ selected_exam_status }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
+                        <i class="fa-solid fa-angles-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_year %}&academic_year={{ selected_year }}{% endif %}{% if selected_class %}&classroom={{ selected_class }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_exam_status %}&exam_status={{ selected_exam_status }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
+                        <i class="fa-solid fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link fw-bold px-3">
+                        {% if is_khmer %}ទំព័រ{% else %}Page{% endif %} {{ page_obj.number }} / {{ paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_year %}&academic_year={{ selected_year }}{% endif %}{% if selected_class %}&classroom={{ selected_class }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_exam_status %}&exam_status={{ selected_exam_status }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
+                        <i class="fa-solid fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if selected_year %}&academic_year={{ selected_year }}{% endif %}{% if selected_class %}&classroom={{ selected_class }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_exam_status %}&exam_status={{ selected_exam_status }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">
+                        <i class="fa-solid fa-angles-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Modal 1: Single Student Exam Exclusion Settings -->
@@ -370,6 +433,9 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
 <!-- Modal 3: Fast Student Academic Status Changer -->
 <div class="modal fade" id="quickStatusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
