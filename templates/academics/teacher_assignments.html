@@ -80,32 +80,32 @@
 <ul class="nav nav-tabs-custom">
     <li class="nav-item">
         <a class="nav-link" href="{% url 'timetable_view' %}">
-            <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម (Master Timetable)
+            <i class="fa-solid fa-calendar-days me-2"></i>កាលវិភាគរួម
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'timetable_daily_reports_view' %}">
-            <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)
+            <i class="fa-solid fa-file-signature me-2"></i>របាយការណ៍ប្រចាំថ្ងៃ
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'student_teacher_timetable_view' %}">
-            <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables)
+            <i class="fa-solid fa-print me-2"></i>កាលវិភាគសិស្ស-គ្រូ
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'subject_requirements_manager' %}">
-            <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា (Requirements Matrix)
+            <i class="fa-solid fa-sliders me-2"></i>មុខវិជ្ជា និងម៉ោងសិក្សា
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link active" href="{% url 'teacher_assignments_manager' %}">
-            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់ (Teacher Assignments)
+            <i class="fa-solid fa-chalkboard-user me-2"></i>គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'teacher_duty_manager' %}">
-            <i class="fa-solid fa-clock text-danger me-2"></i>គ្រប់គ្រងម៉ោងប្រចាំការ (Duty Roster)
+            <i class="fa-solid fa-clock text-danger me-2"></i>គ្រប់គ្រងម៉ោងប្រចាំការ
         </a>
     </li>
 </ul>
@@ -131,7 +131,7 @@
 
         <!-- Reset All Assignments -->
         <a href="{% url 'teacher_assignments_reset_all' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-outline-danger btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('⚠️ ការព្រមាន៖ តើលោកអ្នកប្រាកដជាចង់សម្អាតការចាត់តាំងគ្រូទាំងអស់ (Reset All Assignments) ឱ្យទៅជាទទេវិញមែនទេ?')">
-            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់ (Reset)
+            <i class="fa-solid fa-trash-can me-1"></i> សម្អាតទាំងអស់
         </a>
 
         <div class="vr mx-1 d-none d-md-block"></div>
@@ -215,7 +215,7 @@
                             <i class="fa-solid fa-chalkboard-user"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name|default:selected_teacher.latin_name }}{% if selected_teacher.latin_name %} ({{ selected_teacher.latin_name }}){% endif %}</h5>
+                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name|default:selected_teacher.latin_name }}</h5>
                             <div class="small text-dark mt-1 d-flex flex-wrap align-items-center gap-1">
                                 <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id|default:"-" }}</span>
                                 <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization|default:"-" }}</span>
@@ -279,12 +279,12 @@
                     <i class="fa-solid fa-bell text-warning fs-4 mt-0.5"></i>
                     <div class="w-100">
                         <div class="fw-bold text-dark mb-1">
-                            <span>🔔 សេចក្តីជូនដំណឹងអំពីបម្រែបម្រួលគ្រូបង្រៀន និងកាលវិភាគរួម (Pending Changes)៖</span>
+                            <span>🔔 សេចក្តីជូនដំណឹងអំពីបម្រែបម្រួលគ្រូបង្រៀន និងកាលវិភាគរួម៖</span>
                         </div>
                         <div id="liveChangesList" class="small text-dark"></div>
                         <div class="mt-2 text-muted" style="font-size: 0.78rem;">
                             <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                            នៅពេលចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពបញ្ជីគ្រូ និង <strong>Sync ម៉ោងបង្រៀនក្នុងកាលវិភាគរួម (Master Timetable) ដោយស្វ័យប្រវត្តិ</strong>។
+                            នៅពេលចុច «រក្សាទុកការចាត់តាំង» ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពបញ្ជីគ្រូ និង <strong>Sync ម៉ោងបង្រៀនក្នុងកាលវិភាគរួមដោយស្វ័យប្រវត្តិ</strong>។
                         </div>
                     </div>
                 </div>
@@ -631,9 +631,9 @@
                                         <div class="fw-bold text-dark">{{ item.name }}</div>
                                         <small class="text-muted">
                                             {% if 'ទុតិយភូមិ' in item.name %}
-                                            បង្រៀនកម្រិតវិទ្យាល័យ (Grades 10-12)
+                                            បង្រៀនកម្រិតវិទ្យាល័យ
                                             {% else %}
-                                            បង្រៀនកម្រិតអនុវិទ្យាល័យ (Grades 7-9)
+                                            បង្រៀនកម្រិតអនុវិទ្យាល័យ
                                             {% endif %}
                                         </small>
                                     </td>
@@ -650,7 +650,7 @@
                                 {% endfor %}
                                 <tr class="table-light">
                                     <td class="ps-3 py-2">
-                                        <div class="fw-bold text-dark">កម្រិតផ្សេងៗ (Default / Other)</div>
+                                        <div class="fw-bold text-dark">កម្រិតផ្សេងៗ</div>
                                         <small class="text-muted">គ្រូដែលមិនមានក្នុងបញ្ជីខាងលើ</small>
                                     </td>
                                     <td class="text-center">-</td>
