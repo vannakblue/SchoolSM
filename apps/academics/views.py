@@ -3967,7 +3967,7 @@ def timetable_daily_reports_export_excel(request):
                 ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
 
                 ws.merge_cells('A3:J3')
-                ws['A3'] = f"ឆ្នាំសិក្សា៖ {year_name} ថ្ងៃ {d['name_kh']} {sess_name}"
+                ws['A3'] = f"ឆ្នាំសិក្សា៖ {year_name} សម្រាប់ ថ្ងៃ {d['name_kh']} {sess_name}"
                 ws['A3'].font = font_meta
                 ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -4011,7 +4011,7 @@ def timetable_daily_reports_export_excel(request):
                 ws.cell(row=current_row + 1, column=7, value="នាយកសាលា").font = font_bold
                 ws.cell(row=current_row, column=2, value="អ្នករៀបចំរបាយការណ៍").font = font_bold
 
-                auto_fit_columns(ws, {1: 5, 2: 12, 3: 18, 4: 10, 5: 10, 6: 10, 7: 10, 8: 15, 9: 15, 10: 12})
+                auto_fit_columns(ws, {1: 5, 2: 10, 3: 15, 4: 10, 5: 10, 6: 10, 7: 10, 8: 16, 9: 16, 10: 12})
 
     # ROUTING TO THE REQUESTED REPORT BUILDER
     if report_type == 'teacher_load':

@@ -382,7 +382,7 @@
                     បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
                 </div>
                 <div class="text-dark small fw-bold">
-                    ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }} ថ្ងៃ {{ sheet.day_name }} {{ sheet.session_name }}
+                    ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }} សម្រាប់ ថ្ងៃ {{ sheet.day_name }} {{ sheet.session_name }}
                 </div>
             </div>
         </div>
@@ -391,27 +391,27 @@
         <table class="duty-sheet-table">
             <thead>
                 <tr>
-                    <th style="width: 38px; text-align: center;">ល.រ</th>
-                    <th style="width: 95px; text-align: center; white-space: nowrap;">អត្តលេខ</th>
-                    <th style="width: 140px; text-align: left; padding-left: 8px; white-space: nowrap;">ឈ្មោះគ្រូបង្រៀន</th>
+                    <th style="width: 35px; text-align: center;">ល.រ</th>
+                    <th style="width: 82px; text-align: center; white-space: nowrap;">អត្តលេខ</th>
+                    <th style="width: 122px; text-align: left; padding-left: 6px; white-space: nowrap;">ឈ្មោះគ្រូបង្រៀន</th>
                     {% for p_lbl in sheet.period_labels %}
-                    <th style="width: 78px; text-align: center; white-space: nowrap;">{{ p_lbl }}</th>
+                    <th style="width: 72px; text-align: center; white-space: nowrap;">{{ p_lbl }}</th>
                     {% endfor %}
-                    <th style="width: 125px; text-align: center;">ហត្ថលេខាចូល</th>
-                    <th style="width: 125px; text-align: center;">ហត្ថលេខាចេញ</th>
-                    <th style="width: 95px; text-align: center;">ផ្សេងៗ</th>
+                    <th style="width: 135px; text-align: center;">ហត្ថលេខាចូល</th>
+                    <th style="width: 135px; text-align: center;">ហត្ថលេខាចេញ</th>
+                    <th style="width: 90px; text-align: center;">ផ្សេងៗ</th>
                 </tr>
             </thead>
             <tbody>
                 {% for row in sheet.rows %}
                 <tr>
                     <td class="text-center fw-bold">{{ row.no }}</td>
-                    <td class="text-center font-monospace" style="padding: 4px 6px; white-space: nowrap;">{{ row.teacher_id }}</td>
-                    <td class="text-start fw-bold text-dark" style="padding: 4px 8px; white-space: nowrap;">{{ row.teacher_name }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 4px 4px; white-space: nowrap;">{{ row.p1 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 4px 4px; white-space: nowrap;">{{ row.p2 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 4px 4px; white-space: nowrap;">{{ row.p3 }}</td>
-                    <td class="text-center fw-bold text-primary" style="padding: 4px 4px; white-space: nowrap;">{{ row.p4 }}</td>
+                    <td class="text-center font-monospace" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
+                    <td class="text-start fw-bold text-dark" style="padding: 3px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
+                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
+                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
+                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
+                    <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
                     <td></td>
                     <td></td>
                     <td class="text-center text-muted small"></td>
