@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from .models import Student, ScholarshipType, StudentStatusConfig
 from apps.academics.models import Classroom, AcademicYear
 
@@ -84,6 +85,70 @@ class StudentEnrollmentForm(forms.ModelForm):
                         f"⚠️ អត្តលេខសិស្ស '{sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_info}! សូមបញ្ចូលអត្តលេខផ្សេង ឬទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ។"
                     )
         return sid or ''
+
+    def clean(self):
+        cleaned_data = super().clean()
+        khmer_name = (cleaned_data.get('khmer_name') or '').strip()
+        dob = cleaned_data.get('date_of_birth')
+        academic_year = cleaned_data.get('academic_year')
+        classroom = cleaned_data.get('classroom')
+        if not academic_year and classroom:
+            academic_year = classroom.academic_year
+
+        father_name = (cleaned_data.get('father_name') or '').strip()
+        mother_name = (cleaned_data.get('mother_name') or '').strip()
+        father_phone = (cleaned_data.get('father_phone') or '').strip().replace(' ', '').replace('-', '')
+        mother_phone = (cleaned_data.get('mother_phone') or '').strip().replace(' ', '').replace('-', '')
+        student_phone = (cleaned_data.get('phone') or '').strip().replace(' ', '').replace('-', '')
+        emergency_phone = (cleaned_data.get('emergency_phone') or '').strip().replace(' ', '').replace('-', '')
+
+        if khmer_name and dob:
+            # Combined Rule 1 (Name + DOB) & Rule 2 (Guardian / Phone)
+            qs = Student.objects.filter(
+                khmer_name__iexact=khmer_name,
+                date_of_birth=dob
+            )
+            if academic_year:
+                qs = qs.filter(Q(academic_year=academic_year) | Q(classroom__academic_year=academic_year))
+
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            for existing in qs:
+                exist_father = (existing.father_name or '').strip()
+                exist_mother = (existing.mother_name or '').strip()
+                exist_f_phone = (existing.father_phone or '').strip().replace(' ', '').replace('-', '')
+                exist_m_phone = (existing.mother_phone or '').strip().replace(' ', '').replace('-', '')
+                exist_s_phone = (existing.phone or '').strip().replace(' ', '').replace('-', '')
+                exist_e_phone = (existing.emergency_phone or '').strip().replace(' ', '').replace('-', '')
+
+                parent_match = False
+                if (father_name and exist_father and father_name.lower() == exist_father.lower()) or \
+                   (mother_name and exist_mother and mother_name.lower() == exist_mother.lower()):
+                    parent_match = True
+
+                phone_match = False
+                phones_submitted = {p for p in [father_phone, mother_phone, student_phone, emergency_phone] if p}
+                phones_existing = {p for p in [exist_f_phone, exist_m_phone, exist_s_phone, exist_e_phone] if p}
+                if phones_submitted and phones_existing and (phones_submitted & phones_existing):
+                    phone_match = True
+
+                class_str = f"ថ្នាក់ {existing.classroom.name}" if existing.classroom else "មិនទាន់មានថ្នាក់"
+                dob_str = dob.strftime('%d/%m/%Y') if hasattr(dob, 'strftime') else str(dob)
+                
+                detail_reasons = []
+                if parent_match:
+                    detail_reasons.append("ឈ្មោះឪពុក/ម្តាយដូចគ្នា")
+                if phone_match:
+                    detail_reasons.append("លេខទូរស័ព្ទដូចគ្នា")
+
+                reason_text = f" (ផ្ទៀងផ្ទាត់ឃើញ៖ {', '.join(detail_reasons)})" if detail_reasons else ""
+
+                raise forms.ValidationError(
+                    f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! ដើម្បីការពារទិន្នន័យស្ទួន សូមកុំចុះឈ្មោះឡើងវិញ។"
+                )
+
+        return cleaned_data
 
     class Meta:
         model = Student

@@ -26,6 +26,7 @@ urlpatterns = [
     # AJAX API for Grade-Specific Enrollment Options & Student ID Validation
     path('api/grade-options/', views.api_get_grade_options, name='api_get_grade_options'),
     path('api/check-student-id/', views.api_check_student_id, name='api_check_student_id'),
+    path('api/check-duplicate/', views.api_check_duplicate_student, name='api_check_duplicate_student'),
     path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),
 
     path('<int:pk>/', views.student_detail, name='student_detail'),

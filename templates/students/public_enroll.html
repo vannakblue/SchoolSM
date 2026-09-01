@@ -176,6 +176,14 @@
                         </div>
                     </div>
 
+                    <!-- Live Duplicate Check Status Banner -->
+                    <div id="duplicateStudentAlert" class="alert alert-warning border-warning shadow-sm mt-3 py-2 px-3 small rounded-3" style="display: none;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-warning fs-5 flex-shrink-0"></i>
+                            <div id="duplicateStudentAlertText" class="fw-semibold"></div>
+                        </div>
+                    </div>
+
                     <!-- 📍 ទីកន្លែងកំណើត (Place of Birth Dropdowns) -->
                     <div class="card border rounded-3 p-3 mt-3 bg-light" style="border-color: #e2e8f0;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -800,11 +808,65 @@
         if (classroomSelect) {
             classroomSelect.addEventListener('change', function() {
                 loadGradeOptions(this.value);
+                triggerDuplicateCheck();
             });
             if (classroomSelect.value) {
                 loadGradeOptions(classroomSelect.value);
             }
         }
+
+        // Live Simultaneous Dual-Rule Duplicate Detection (Name + DOB + Parents/Phone)
+        const khmerNameInput = document.querySelector('input[name="khmer_name"]');
+        const dobInput = document.querySelector('input[name="date_of_birth"]');
+        const fatherNameInput = document.querySelector('input[name="father_name"]');
+        const motherNameInput = document.querySelector('input[name="mother_name"]');
+        const fatherPhoneInput = document.querySelector('input[name="father_phone"]');
+        const phoneInput = document.querySelector('input[name="phone"]');
+        const alertBox = document.getElementById('duplicateStudentAlert');
+        const alertText = document.getElementById('duplicateStudentAlertText');
+
+        let dupTimer = null;
+        function triggerDuplicateCheck() {
+            if (dupTimer) clearTimeout(dupTimer);
+            dupTimer = setTimeout(() => {
+                const kname = khmerNameInput ? khmerNameInput.value.trim() : '';
+                const dob = dobInput ? dobInput.value.trim() : '';
+                if (!kname || !dob) {
+                    if (alertBox) alertBox.style.display = 'none';
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    khmer_name: kname,
+                    date_of_birth: dob,
+                    father_name: fatherNameInput ? fatherNameInput.value.trim() : '',
+                    mother_name: motherNameInput ? motherNameInput.value.trim() : '',
+                    father_phone: fatherPhoneInput ? fatherPhoneInput.value.trim() : '',
+                    phone: phoneInput ? phoneInput.value.trim() : '',
+                    academic_year_id: '{{ current_year.id|default:"" }}'
+                });
+
+                fetch(`/students/api/check-duplicate/?${params.toString()}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.is_duplicate) {
+                            if (alertBox && alertText) {
+                                alertBox.className = 'alert alert-danger border-danger shadow-sm mt-3 py-2 px-3 small rounded-3';
+                                alertText.innerHTML = `<strong>⚠️ ដំណឹងស្ទួន៖</strong> ${data.message}`;
+                                alertBox.style.display = 'block';
+                            }
+                        } else {
+                            if (alertBox) alertBox.style.display = 'none';
+                        }
+                    })
+                    .catch(err => console.error('Duplicate check error:', err));
+            }, 500);
+        }
+
+        if (khmerNameInput) khmerNameInput.addEventListener('input', triggerDuplicateCheck);
+        if (dobInput) dobInput.addEventListener('change', triggerDuplicateCheck);
+        if (fatherNameInput) fatherNameInput.addEventListener('input', triggerDuplicateCheck);
+        if (fatherPhoneInput) fatherPhoneInput.addEventListener('input', triggerDuplicateCheck);
 
         // Form submit loading
         const form = document.getElementById('publicEnrollForm');

@@ -445,6 +445,111 @@ def api_check_student_id(request):
     })
 
 
+def api_check_duplicate_student(request):
+    """
+    AJAX API: Simultaneous Dual-Rule Duplicate Student Detection.
+    Rule 1: Same Khmer Name + Date of Birth in the same Academic Year
+    Rule 2: Guardian Phone / Parent Name confirmation matching
+    """
+    from django.http import JsonResponse
+    from datetime import datetime
+    from apps.academics.utils import get_active_academic_year
+
+    khmer_name = request.GET.get('khmer_name', '').strip()
+    raw_dob = request.GET.get('date_of_birth', '').strip()
+    father_name = request.GET.get('father_name', '').strip()
+    mother_name = request.GET.get('mother_name', '').strip()
+    father_phone = request.GET.get('father_phone', '').strip().replace(' ', '').replace('-', '')
+    mother_phone = request.GET.get('mother_phone', '').strip().replace(' ', '').replace('-', '')
+    student_phone = request.GET.get('phone', '').strip().replace(' ', '').replace('-', '')
+    exclude_id = request.GET.get('exclude_id')
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+
+    if not khmer_name or not raw_dob:
+        return JsonResponse({
+            'status': 'idle',
+            'is_duplicate': False,
+            'message': ''
+        })
+
+    try:
+        dob = datetime.strptime(raw_dob, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return JsonResponse({
+            'status': 'idle',
+            'is_duplicate': False,
+            'message': ''
+        })
+
+    target_year = None
+    if year_id:
+        target_year = AcademicYear.objects.filter(id=year_id).first()
+    if not target_year:
+        target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+
+    qs = Student.objects.filter(
+        khmer_name__iexact=khmer_name,
+        date_of_birth=dob
+    )
+    if target_year:
+        qs = qs.filter(Q(academic_year=target_year) | Q(classroom__academic_year=target_year))
+    if exclude_id:
+        try:
+            qs = qs.exclude(pk=int(exclude_id))
+        except (ValueError, TypeError):
+            pass
+
+    if qs.exists():
+        existing = qs.first()
+        exist_father = (existing.father_name or '').strip()
+        exist_mother = (existing.mother_name or '').strip()
+        exist_f_phone = (existing.father_phone or '').strip().replace(' ', '').replace('-', '')
+        exist_m_phone = (existing.mother_phone or '').strip().replace(' ', '').replace('-', '')
+        exist_s_phone = (existing.phone or '').strip().replace(' ', '').replace('-', '')
+
+        parent_match = False
+        if (father_name and exist_father and father_name.lower() == exist_father.lower()) or \
+           (mother_name and exist_mother and mother_name.lower() == exist_mother.lower()):
+            parent_match = True
+
+        phone_match = False
+        phones_sub = {p for p in [father_phone, mother_phone, student_phone] if p}
+        phones_exist = {p for p in [exist_f_phone, exist_m_phone, exist_s_phone] if p}
+        if phones_sub and phones_exist and (phones_sub & phones_exist):
+            phone_match = True
+
+        class_str = f"ថ្នាក់ {existing.classroom.name}" if existing.classroom else "មិនទាន់មានថ្នាក់"
+        dob_str = dob.strftime('%d/%m/%Y')
+        
+        detail_reasons = []
+        if parent_match:
+            detail_reasons.append("ឈ្មោះឪពុក/ម្តាយដូចគ្នា")
+        if phone_match:
+            detail_reasons.append("លេខទូរស័ព្ទដូចគ្នា")
+
+        reason_text = f" (ផ្ទៀងផ្ទាត់ឃើញ៖ {', '.join(detail_reasons)})" if detail_reasons else ""
+
+        return JsonResponse({
+            'status': 'duplicate',
+            'is_duplicate': True,
+            'message': f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃ {dob_str} បានចុះឈ្មោះក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text} រួចរាល់ហើយ!",
+            'existing_student': {
+                'id': existing.id,
+                'student_id': existing.student_id,
+                'name': existing.khmer_name,
+                'classroom': existing.classroom.name if existing.classroom else 'គ្មានថ្នាក់',
+                'father_name': existing.father_name or '',
+                'phone': existing.phone or existing.father_phone or ''
+            }
+        })
+
+    return JsonResponse({
+        'status': 'unique',
+        'is_duplicate': False,
+        'message': f"✅ ឈ្មោះ និងថ្ងៃខែឆ្នាំកំណើត មិនទាន់មានក្នុងប្រព័ន្ធឡើយ អាចចុះឈ្មោះបាន!"
+    })
+
+
 def api_generate_student_id(request):
     """
     AJAX API: Returns next guaranteed collision-free Student ID.
