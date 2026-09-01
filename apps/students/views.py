@@ -1439,3 +1439,489 @@ def api_batch_set_student_exam_status(request):
     return redirect('student_list')
 
 
+# =========================================================================
+# Academic Year Safe Student Purge & Historical Archival System
+# =========================================================================
+
+def _generate_archive_excel_bytes(payload, year_name):
+    wb = openpyxl.Workbook()
+    header_font = Font(name='Hanuman', size=11, bold=True, color='FFFFFF')
+    header_fill = PatternFill(start_color='1E3A8A', end_color='1E3A8A', fill_type='solid')
+    title_font = Font(name='Hanuman', size=14, bold=True, color='1E3A8A')
+    body_font = Font(name='Hanuman', size=10)
+    thin_border = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+    center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_align = Alignment(horizontal='left', vertical='center')
+
+    # Sheet 1: Students Directory
+    ws_students = wb.active
+    ws_students.title = "1. បញ្ជីសិស្ស"
+    ws_students.views.sheetView[0].showGridLines = True
+
+    ws_students.merge_cells('A1:J1')
+    title_cell = ws_students.cell(row=1, column=1, value=f"ប័ណ្ណសារបញ្ជីសិស្ស - ឆ្នាំសិក្សា {year_name}")
+    title_cell.font = title_font
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws_students.row_dimensions[1].height = 35
+
+    headers_students = ['ល.រ', 'អត្តលេខ (ID)', 'ឈ្មោះខ្មែរ', 'ឈ្មោះឡាតាំង', 'ភេទ', 'ថ្ងៃខែឆ្នាំកំណើត', 'ថ្នាក់រៀន', 'លេខទូរស័ព្ទ', 'អាហារូបករណ៍', 'ស្ថានភាព']
+    for col_idx, h in enumerate(headers_students, 1):
+        c = ws_students.cell(row=3, column=col_idx, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = center_align
+        c.border = thin_border
+    ws_students.row_dimensions[3].height = 25
+
+    row_idx = 4
+    for s_idx, s in enumerate(payload.get('students', []), 1):
+        row_vals = [
+            s_idx,
+            s.get('student_id', ''),
+            s.get('khmer_name', ''),
+            s.get('latin_name', ''),
+            s.get('gender_display', s.get('gender', '')),
+            s.get('date_of_birth', ''),
+            s.get('classroom_name', ''),
+            s.get('phone', ''),
+            s.get('scholarship_type', ''),
+            s.get('status_display', s.get('status', ''))
+        ]
+        for col_idx, val in enumerate(row_vals, 1):
+            c = ws_students.cell(row=row_idx, column=col_idx, value=val)
+            c.font = body_font
+            c.border = thin_border
+            if col_idx in [1, 2, 5, 6, 7, 10]:
+                c.alignment = center_align
+            else:
+                c.alignment = left_align
+        ws_students.row_dimensions[row_idx].height = 22
+        row_idx += 1
+
+    for col in ws_students.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws_students.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # Sheet 2: Grades
+    ws_grades = wb.create_sheet(title="2. តារាងពិន្ទុ")
+    ws_grades.views.sheetView[0].showGridLines = True
+    ws_grades.merge_cells('A1:H1')
+    t_cell2 = ws_grades.cell(row=1, column=1, value=f"ប័ណ្ណសារលទ្ធផលពិន្ទុសិស្ស - ឆ្នាំសិក្សា {year_name}")
+    t_cell2.font = title_font
+    t_cell2.alignment = Alignment(horizontal='center', vertical='center')
+    ws_grades.row_dimensions[1].height = 35
+
+    headers_grades = ['ល.រ', 'អត្តលេខ', 'ឈ្មោះសិស្ស', 'ថ្នាក់រៀន', 'មុខវិជ្ជា', 'សម័យប្រឡង', 'ពិន្ទុទទួលបាន', 'និទ្ទេស']
+    for col_idx, h in enumerate(headers_grades, 1):
+        c = ws_grades.cell(row=3, column=col_idx, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = center_align
+        c.border = thin_border
+    ws_grades.row_dimensions[3].height = 25
+
+    row_idx = 4
+    for g_idx, g in enumerate(payload.get('grades', []), 1):
+        row_vals = [
+            g_idx,
+            g.get('student_id', ''),
+            g.get('student_name', ''),
+            g.get('classroom_name', ''),
+            g.get('subject_name', ''),
+            g.get('exam_term_name', ''),
+            f"{g.get('score', 0)} / {g.get('max_score', 100)}",
+            g.get('grade_letter', '')
+        ]
+        for col_idx, val in enumerate(row_vals, 1):
+            c = ws_grades.cell(row=row_idx, column=col_idx, value=val)
+            c.font = body_font
+            c.border = thin_border
+            if col_idx in [1, 2, 4, 7, 8]:
+                c.alignment = center_align
+            else:
+                c.alignment = left_align
+        ws_grades.row_dimensions[row_idx].height = 22
+        row_idx += 1
+
+    for col in ws_grades.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws_grades.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # Sheet 3: Attendances
+    ws_att = wb.create_sheet(title="3. វត្តមានសិស្ស")
+    ws_att.views.sheetView[0].showGridLines = True
+    ws_att.merge_cells('A1:G1')
+    t_cell3 = ws_att.cell(row=1, column=1, value=f"ប័ណ្ណសារវត្តមានសិស្ស - ឆ្នាំសិក្សា {year_name}")
+    t_cell3.font = title_font
+    t_cell3.alignment = Alignment(horizontal='center', vertical='center')
+    ws_att.row_dimensions[1].height = 35
+
+    headers_att = ['ល.រ', 'អត្តលេខ', 'ឈ្មោះសិស្ស', 'ថ្នាក់រៀន', 'កាលបរិច្ឆេទ', 'ស្ថានភាពវត្តមាន', 'សម្គាល់/ច្បាប់']
+    for col_idx, h in enumerate(headers_att, 1):
+        c = ws_att.cell(row=3, column=col_idx, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = center_align
+        c.border = thin_border
+    ws_att.row_dimensions[3].height = 25
+
+    row_idx = 4
+    for a_idx, a in enumerate(payload.get('attendances', []), 1):
+        row_vals = [
+            a_idx,
+            a.get('student_id', ''),
+            a.get('student_name', ''),
+            a.get('classroom_name', ''),
+            a.get('date', ''),
+            a.get('status_display', a.get('status', '')),
+            a.get('remarks', '')
+        ]
+        for col_idx, val in enumerate(row_vals, 1):
+            c = ws_att.cell(row=row_idx, column=col_idx, value=val)
+            c.font = body_font
+            c.border = thin_border
+            if col_idx in [1, 2, 4, 5, 6]:
+                c.alignment = center_align
+            else:
+                c.alignment = left_align
+        ws_att.row_dimensions[row_idx].height = 22
+        row_idx += 1
+
+    for col in ws_att.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws_att.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    # Sheet 4: Invoices
+    ws_fees = wb.create_sheet(title="4. វិក្កយបត្រ")
+    ws_fees.views.sheetView[0].showGridLines = True
+    ws_fees.merge_cells('A1:G1')
+    t_cell4 = ws_fees.cell(row=1, column=1, value=f"ប័ណ្ណសារវិក្កយបត្រសិស្ស - ឆ្នាំសិក្សា {year_name}")
+    t_cell4.font = title_font
+    t_cell4.alignment = Alignment(horizontal='center', vertical='center')
+    ws_fees.row_dimensions[1].height = 35
+
+    headers_fees = ['ល.រ', 'លេខវិក្កយបត្រ', 'អត្តលេខ', 'ឈ្មោះសិស្ស', 'ទឹកប្រាក់សរុប ($)', 'បានបង់ ($)', 'ស្ថានភាព']
+    for col_idx, h in enumerate(headers_fees, 1):
+        c = ws_fees.cell(row=3, column=col_idx, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = center_align
+        c.border = thin_border
+    ws_fees.row_dimensions[3].height = 25
+
+    row_idx = 4
+    for f_idx, f in enumerate(payload.get('fees', []), 1):
+        row_vals = [
+            f_idx,
+            f.get('invoice_number', ''),
+            f.get('student_id', ''),
+            f.get('student_name', ''),
+            str(f.get('total_amount', '0.00')),
+            str(f.get('paid_amount', '0.00')),
+            f.get('status_display', f.get('status', ''))
+        ]
+        for col_idx, val in enumerate(row_vals, 1):
+            c = ws_fees.cell(row=row_idx, column=col_idx, value=val)
+            c.font = body_font
+            c.border = thin_border
+            if col_idx in [1, 2, 3, 7]:
+                c.alignment = center_align
+            elif col_idx in [5, 6]:
+                c.alignment = Alignment(horizontal='right', vertical='center')
+            else:
+                c.alignment = left_align
+        ws_fees.row_dimensions[row_idx].height = 22
+        row_idx += 1
+
+    for col in ws_fees.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws_fees.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_get_academic_year_purge_preview(request):
+    """
+    Returns real-time counts and challenge code for an Academic Year prior to purging/archiving.
+    """
+    from .models import AcademicYearStudentArchive
+    from django.http import JsonResponse
+    import json
+
+    year_id = request.GET.get('academic_year_id')
+    if not year_id:
+        return JsonResponse({'status': 'error', 'message': 'academic_year_id is required'}, status=400)
+
+    ay = get_object_or_404(AcademicYear, id=year_id)
+    students_qs = Student.objects.filter(Q(academic_year=ay) | Q(classroom__academic_year=ay)).distinct()
+    students_count = students_qs.count()
+    classrooms_count = ay.classrooms.count()
+    grades_count = Grade.objects.filter(Q(classroom__academic_year=ay) | Q(exam_term__academic_year=ay)).count()
+    attendances_count = StudentAttendance.objects.filter(classroom__academic_year=ay).count()
+    fees_count = Invoice.objects.filter(Q(academic_year=ay) | Q(student__in=students_qs)).distinct().count()
+
+    return JsonResponse({
+        'status': 'success',
+        'academic_year_id': ay.id,
+        'academic_year_name': ay.name,
+        'is_current': ay.is_current,
+        'students_count': students_count,
+        'classrooms_count': classrooms_count,
+        'grades_count': grades_count,
+        'attendances_count': attendances_count,
+        'fees_count': fees_count,
+        'challenge_text': ay.name,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_execute_academic_year_purge(request):
+    """
+    Atomically archives all student data, grades, attendances, and fees for a specified
+    Academic Year and then executes either Soft Unenroll or Hard Purge with full data preservation.
+    """
+    from .models import AcademicYearStudentArchive
+    from django.core.files.base import ContentFile
+    from django.http import JsonResponse
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    year_id = data.get('academic_year_id')
+    action_type = data.get('action_type', AcademicYearStudentArchive.ActionType.SOFT_UNENROLL)
+    confirmation_text = str(data.get('confirmation_text', '')).strip()
+    note = str(data.get('note', '')).strip()
+
+    if not year_id:
+        return JsonResponse({'status': 'error', 'message': 'សូមបញ្ជាក់ឆ្នាំសិក្សាដែលត្រូវសម្អាត!'}, status=400)
+
+    ay = get_object_or_404(AcademicYear, id=year_id)
+
+    # Security check: must match exact year name
+    if confirmation_text != ay.name.strip():
+        return JsonResponse({
+            'status': 'error',
+            'message': f'⚠️ ពាក្យផ្ទៀងផ្ទាត់មិនត្រឹមត្រូវឡើយ! សូមវាយឈ្មោះឆ្នាំសិក្សា "{ay.name}" ឱ្យបានត្រឹមត្រូវ។'
+        }, status=400)
+
+    with transaction.atomic():
+        students_qs = Student.objects.filter(Q(academic_year=ay) | Q(classroom__academic_year=ay)).select_related('classroom', 'category').distinct()
+        students_count = students_qs.count()
+        classrooms_count = ay.classrooms.count()
+        
+        grades_qs = Grade.objects.filter(Q(classroom__academic_year=ay) | Q(exam_term__academic_year=ay)).select_related('student', 'subject', 'exam_term', 'classroom')
+        grades_count = grades_qs.count()
+
+        attendances_qs = StudentAttendance.objects.filter(classroom__academic_year=ay).select_related('student', 'classroom', 'subject')
+        attendances_count = attendances_qs.count()
+
+        fees_qs = Invoice.objects.filter(Q(academic_year=ay) | Q(student__in=students_qs)).select_related('student').distinct()
+        fees_count = fees_qs.count()
+
+        # 1. Build Comprehensive Snapshot Payload
+        students_data = []
+        for s in students_qs:
+            students_data.append({
+                'id': s.id,
+                'student_id': s.student_id,
+                'khmer_name': s.khmer_name,
+                'latin_name': s.latin_name,
+                'gender': s.gender,
+                'gender_display': s.get_gender_display(),
+                'date_of_birth': str(s.date_of_birth) if s.date_of_birth else '',
+                'classroom_id': s.classroom.id if s.classroom else None,
+                'classroom_name': s.classroom.name if s.classroom else '',
+                'phone': s.phone or '',
+                'scholarship_type': s.scholarship_type or '',
+                'status': s.status,
+                'status_display': s.get_status_display(),
+                'enrollment_data': s.enrollment_data or {},
+                'is_repeating_grade': s.is_repeating_grade,
+                'is_exam_suspended': s.is_exam_suspended,
+            })
+
+        grades_data = []
+        for g in grades_qs:
+            grades_data.append({
+                'id': g.id,
+                'student_id': g.student.student_id if g.student else '',
+                'student_name': g.student.khmer_name if g.student else '',
+                'classroom_name': g.classroom.name if g.classroom else '',
+                'subject_code': g.subject.code if g.subject else '',
+                'subject_name': g.subject.name_kh if g.subject else '',
+                'exam_term_name': g.exam_term.name if g.exam_term else '',
+                'score': float(g.score) if g.score is not None else 0.0,
+                'max_score': float(g.max_score) if g.max_score is not None else 100.0,
+                'grade_letter': g.grade_letter or '',
+                'remarks': g.remarks or '',
+            })
+
+        attendances_data = []
+        for a in attendances_qs:
+            attendances_data.append({
+                'id': a.id,
+                'student_id': a.student.student_id if a.student else '',
+                'student_name': a.student.khmer_name if a.student else '',
+                'classroom_name': a.classroom.name if a.classroom else '',
+                'date': str(a.date) if a.date else '',
+                'session': getattr(a, 'session', 'ALL'),
+                'status': a.status,
+                'status_display': a.get_status_display() if hasattr(a, 'get_status_display') else str(a.status),
+                'remarks': getattr(a, 'notes', '') or getattr(a, 'remarks', '') or '',
+            })
+
+        fees_data = []
+        for f in fees_qs:
+            fees_data.append({
+                'id': f.id,
+                'invoice_number': f.invoice_number if hasattr(f, 'invoice_number') else f"INV-{f.id}",
+                'student_id': f.student.student_id if f.student else '',
+                'student_name': f.student.khmer_name if f.student else '',
+                'total_amount': float(f.total_amount) if hasattr(f, 'total_amount') and f.total_amount else 0.0,
+                'paid_amount': float(f.paid_amount) if hasattr(f, 'paid_amount') and f.paid_amount else 0.0,
+                'status': f.status if hasattr(f, 'status') else 'PAID',
+                'status_display': f.get_status_display() if hasattr(f, 'get_status_display') else str(getattr(f, 'status', '')),
+            })
+
+        archive_payload = {
+            'academic_year_id': ay.id,
+            'academic_year_name': ay.name,
+            'archived_at': datetime.now().isoformat(),
+            'archived_by_username': request.user.username,
+            'action_type': action_type,
+            'students_count': students_count,
+            'classrooms_count': classrooms_count,
+            'grades_count': grades_count,
+            'attendances_count': attendances_count,
+            'fees_count': fees_count,
+            'students': students_data,
+            'grades': grades_data,
+            'attendances': attendances_data,
+            'fees': fees_data,
+            'note': note,
+        }
+
+        # 2. Generate Master Excel Archive
+        excel_bytes = _generate_archive_excel_bytes(archive_payload, ay.name)
+        excel_filename = f"StudentArchive_{ay.name.replace(' ', '_').replace('/', '-')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        # 3. Save AcademicYearStudentArchive Record
+        archive = AcademicYearStudentArchive.objects.create(
+            academic_year=ay,
+            academic_year_name=ay.name,
+            archived_by=request.user,
+            action_type=action_type,
+            students_count=students_count,
+            classrooms_count=classrooms_count,
+            grades_count=grades_count,
+            attendances_count=attendances_count,
+            fees_count=fees_count,
+            archive_payload=archive_payload,
+            confirmation_note=note or f"សម្អាតសិស្សដោយ {request.user.get_full_name() or request.user.username}",
+        )
+        archive.archive_excel.save(excel_filename, ContentFile(excel_bytes), save=True)
+
+        # 4. Perform Execution according to Selected Mode
+        if action_type == AcademicYearStudentArchive.ActionType.SOFT_UNENROLL:
+            # Soft Unenroll: unassign from classrooms & academic year
+            students_qs.update(classroom=None, academic_year=None)
+            action_desc = f"បានរក្សាទុកប័ណ្ណសារ និងដកសិស្សចំនួន {students_count} នាក់ចេញពីឆ្នាំសិក្សា {ay.name}"
+        else:
+            # Full Purge: delete student records belonging to this year
+            # Note: Teacher attendance & other years remain 100% untouched
+            students_qs.delete()
+            action_desc = f"បានរក្សាទុកប័ណ្ណសារ និងលុបសិស្សចំនួន {students_count} នាក់ចេញពីប្រព័ន្ធដោយសុវត្ថិភាព"
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f"🎉 {action_desc} ដោយជោគជ័យ! ប័ណ្ណសារត្រូវបានរក្សាទុកក្នុងប្រព័ន្ធ។",
+        'archive_id': archive.id,
+        'students_count': students_count,
+        'grades_count': grades_count,
+        'attendances_count': attendances_count,
+        'download_url': f"/students/archives/{archive.id}/download/",
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def student_archives_list(request):
+    """
+    Displays list of all historical student archives with details and 1-click Excel download.
+    """
+    from .models import AcademicYearStudentArchive
+    archives = AcademicYearStudentArchive.objects.select_related('academic_year', 'archived_by').all().order_by('-archived_at')
+    return render(request, 'students/student_archives_list.html', {
+        'archives': archives,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def download_student_archive_excel(request, pk):
+    """
+    Download pre-generated archive spreadsheet file.
+    """
+    from .models import AcademicYearStudentArchive
+    from django.http import Http404, HttpResponse
+
+    archive = get_object_or_404(AcademicYearStudentArchive, pk=pk)
+    if not archive.archive_excel or not archive.archive_excel.storage.exists(archive.archive_excel.name):
+        # Regenerate on the fly if file is missing
+        excel_bytes = _generate_archive_excel_bytes(archive.archive_payload, archive.academic_year_name)
+        response = HttpResponse(excel_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        clean_name = f"Student_Archive_{archive.academic_year_name.replace(' ', '_')}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{clean_name}"'
+        return response
+
+    response = HttpResponse(archive.archive_excel.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    clean_name = f"Student_Archive_{archive.academic_year_name.replace(' ', '_')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{clean_name}"'
+    return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_get_archive_json_snapshot(request, pk):
+    """
+    Returns JSON payload of a specific student archive snapshot.
+    """
+    from .models import AcademicYearStudentArchive
+    from django.http import JsonResponse
+
+    archive = get_object_or_404(AcademicYearStudentArchive, pk=pk)
+    return JsonResponse({
+        'status': 'success',
+        'archive_id': archive.id,
+        'academic_year_name': archive.academic_year_name,
+        'archived_at': archive.archived_at.strftime('%d/%m/%Y %H:%M'),
+        'archived_by': archive.archived_by.get_full_name() or archive.archived_by.username if archive.archived_by else 'Admin',
+        'action_type': archive.get_action_type_display(),
+        'students_count': archive.students_count,
+        'grades_count': archive.grades_count,
+        'attendances_count': archive.attendances_count,
+        'payload': archive.archive_payload,
+    })
+
+
+

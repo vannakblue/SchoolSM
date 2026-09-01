@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_khmer %}ប័ណ្ណសារសិស្សប្រចាំឆ្នាំសិក្សា{% else %}Student Year Archives{% endif %} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'student_list' %}">{% if is_khmer %}បញ្ជីសិស្ស{% else %}Students{% endif %}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{% if is_khmer %}ប័ណ្ណសារសិស្ស{% else %}Archives{% endif %}</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-1">{% if is_khmer %}ប័ណ្ណសារទិន្នន័យសិស្សប្រចាំឆ្នាំសិក្សា{% else %}Student Academic Year Archives{% endif %}</h2>
+        <p class="text-muted small mb-0">{% if is_khmer %}ប្រព័ន្ធរក្សាទុកប័ណ្ណសារពិន្ទុ វត្តមាន និងព័ត៌មានសិស្សដោយសុវត្ថិភាព មុនពេលសម្អាត ឬដកសិស្សចេញពីឆ្នាំសិក្សា{% else %}Safely preserved student snapshots, historical grades, and attendances before clearing academic years{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'student_list' %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> {% if is_khmer %}ត្រឡប់ទៅបញ្ជីសិស្ស{% else %}Back to Students{% endif %}
+        </a>
+        <a href="{% url 'academic_year_list' %}" class="btn btn-outline-primary">
+            <i class="fa-solid fa-calendar-days me-1"></i> {% if is_khmer %}គ្រប់គ្រងឆ្នាំសិក្សា{% else %}Academic Years{% endif %}
+        </a>
+    </div>
+</div>
+
+<!-- Info Alert Card -->
+<div class="alert alert-info border-0 shadow-xs rounded-3 d-flex align-items-start gap-3 mb-4">
+    <i class="fa-solid fa-shield-halved fs-4 text-primary mt-1"></i>
+    <div class="small">
+        <div class="fw-bold">{% if is_khmer %}ការរក្សាទុកទិន្នន័យ និងសុវត្ថិភាពប្រវត្តិសិក្សា (Historical Archival Guarantee){% else %}Historical Archival Guarantee{% endif %}</div>
+        <div>{% if is_khmer %}រាល់ពេល Admin ធ្វើការសម្អាត ឬដកសិស្សចេញពីឆ្នាំសិក្សាណាមួយ ប្រព័ន្ធនឹងបង្កើត Snapshot ប័ណ្ណសារពេញលេញ រួមមាន៖ ព័ត៌មានសិស្ស ពិន្ទុគ្រប់ឆមាស វត្តមាន និងវិក្កយបត្រ ព្រមទាំងបង្កើត File Excel ដោយស្វ័យប្រវត្តិ។ លោកអ្នកអាចទាញយក Excel ប័ណ្ណសារមកពិនិត្យបានគ្រប់ពេលវេលា។{% else %}Every time an academic year is purged or unenrolled, a full snapshot is archived including students, grades, attendances, and invoices with 1-click Excel export.{% endif %}</div>
+    </div>
+</div>
+
+<!-- Archives Table Card -->
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% if is_khmer %}ឆ្នាំសិក្សា{% else %}Academic Year{% endif %}</th>
+                    <th>{% if is_khmer %}កាលបរិច្ឆេទរក្សាទុក{% else %}Archived At{% endif %}</th>
+                    <th>{% if is_khmer %}ចាត់ចែងដោយ{% else %}Archived By{% endif %}</th>
+                    <th>{% if is_khmer %}ប្រភេទប្រតិបត្តិការ{% else %}Action Type{% endif %}</th>
+                    <th class="text-center">{% if is_khmer %}ចំនួនសិស្ស{% else %}Students{% endif %}</th>
+                    <th class="text-center">{% if is_khmer %}កំណត់ត្រាពិន្ទុ{% else %}Grades{% endif %}</th>
+                    <th class="text-center">{% if is_khmer %}កំណត់ត្រាវត្តមាន{% else %}Attendances{% endif %}</th>
+                    <th class="text-center">{% if is_khmer %}វិក្កយបត្រ{% else %}Invoices{% endif %}</th>
+                    <th class="text-end">{% if is_khmer %}សកម្មភាព{% else %}Actions{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in archives %}
+                <tr>
+                    <td class="text-muted small">{{ forloop.counter }}</td>
+                    <td>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 fw-bold fs-6">
+                            📅 {{ a.academic_year_name }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="fw-semibold text-dark">{{ a.archived_at|date:"d/m/Y H:i" }}</div>
+                        <div class="text-muted small" style="font-size: 0.72rem;">{{ a.archived_at|timesince }} មុន</div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1.5">
+                            <i class="fa-solid fa-user-shield text-secondary"></i>
+                            <span class="small">{{ a.archived_by.get_full_name|default:a.archived_by.username|default:"Admin" }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if a.action_type == 'SOFT_UNENROLL' %}
+                            <span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1">
+                                <i class="fa-solid fa-user-minus me-1"></i> {% if is_khmer %}ដកសិស្សចេញពីឆ្នាំ{% else %}Soft Unenroll{% endif %}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                                <i class="fa-solid fa-trash-can me-1"></i> {% if is_khmer %}លុបសិស្សចេញពីប្រព័ន្ធ{% else %}Full Purge{% endif %}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark fw-bold border px-2.5 py-1">{{ a.students_count }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-primary fw-bold border px-2.5 py-1">{{ a.grades_count }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-success fw-bold border px-2.5 py-1">{{ a.attendances_count }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-info fw-bold border px-2.5 py-1">{{ a.fees_count }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" onclick="viewArchiveSnapshot({{ a.id }})" title="{% if is_khmer %}មើលទិន្នន័យ Snapshot (JSON){% else %}View JSON Snapshot{% endif %}">
+                                <i class="fa-solid fa-code"></i>
+                            </button>
+                            <a href="{% url 'download_student_archive_excel' a.id %}" class="btn btn-success" title="{% if is_khmer %}ទាញយក Excel ប័ណ្ណសារ (.xlsx){% else %}Download Excel (.xlsx){% endif %}">
+                                <i class="fa-solid fa-file-excel me-1"></i> {% if is_khmer %}ទាញយក Excel{% else %}Download Excel{% endif %}
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-box-archive fa-3x mb-3 text-secondary"></i>
+                        <h5>{% if is_khmer %}មិនទាន់មានប័ណ្ណសារសិស្សនៅឡើយទេ{% else %}No student archives recorded yet{% endif %}</h5>
+                        <p class="small text-secondary">{% if is_khmer %}នៅពេល Admin ធ្វើការសម្អាតសិស្សតាមឆ្នាំសិក្សា ប័ណ្ណសារនឹងត្រូវរក្សាទុកនៅទីនេះដោយស្វ័យប្រវត្តិ។{% else %}When an academic year is purged, archive files will automatically appear here.{% endif %}</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: View Archive JSON Snapshot -->
+<div class="modal fade" id="archiveJsonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0">
+                <h5 class="modal-title fw-bold" id="archiveJsonTitle">
+                    <i class="fa-solid fa-box-archive text-warning me-2"></i>{% if is_khmer %}ព័ត៌មានប័ណ្ណសារសិស្ស Snapshot{% else %}Archive Snapshot Details{% endif %}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-6">
+                        <div class="p-2.5 bg-white rounded-3 border">
+                            <span class="text-muted small">{% if is_khmer %}ឆ្នាំសិក្សា៖{% else %}Academic Year:{% endif %}</span>
+                            <div class="fw-bold fs-6 text-primary" id="modalYearName">-</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-2.5 bg-white rounded-3 border">
+                            <span class="text-muted small">{% if is_khmer %}កាលបរិច្ឆេទ & រៀបចំដោយ៖{% else %}Archived Date & By:{% endif %}</span>
+                            <div class="fw-bold small text-dark" id="modalArchivedMeta">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mb-3 flex-wrap">
+                    <span class="badge bg-primary px-3 py-2 fs-7" id="modalStudentsCount">សិស្ស៖ 0</span>
+                    <span class="badge bg-info text-dark px-3 py-2 fs-7" id="modalGradesCount">ពិន្ទុ៖ 0</span>
+                    <span class="badge bg-success px-3 py-2 fs-7" id="modalAttCount">វត្តមាន៖ 0</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label fw-bold text-dark small mb-1"><i class="fa-solid fa-code me-1"></i> JSON Snapshot Raw Data:</label>
+                    <pre class="bg-dark text-light p-3 rounded-3 small font-monospace" style="max-height: 380px; overflow-y: auto;" id="modalJsonContent"></pre>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-white">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">{% if is_khmer %}បិទ{% else %}Close{% endif %}</button>
+                <a href="#" class="btn btn-success rounded-pill px-4" id="modalDownloadBtn">
+                    <i class="fa-solid fa-file-excel me-1"></i> {% if is_khmer %}ទាញយក Excel ប័ណ្ណសារ{% else %}Download Excel Archive{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewArchiveSnapshot(archiveId) {
+    fetch(`/students/archives/${archiveId}/json/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('modalYearName').innerText = '📅 ' + data.academic_year_name;
+                document.getElementById('modalArchivedMeta').innerText = data.archived_at + ' (ដោយ ' + data.archived_by + ')';
+                document.getElementById('modalStudentsCount').innerText = '👥 សិស្ស៖ ' + data.students_count + ' នាក់';
+                document.getElementById('modalGradesCount').innerText = '📝 ពិន្ទុ៖ ' + data.grades_count + ' កំណត់ត្រា';
+                document.getElementById('modalAttCount').innerText = '📅 វត្តមាន៖ ' + data.attendances_count + ' កំណត់ត្រា';
+                document.getElementById('modalJsonContent').innerText = JSON.stringify(data.payload, null, 2);
+                document.getElementById('modalDownloadBtn').href = `/students/archives/${archiveId}/download/`;
+                new bootstrap.Modal(document.getElementById('archiveJsonModal')).show();
+            }
+        })
+        .catch(err => {
+            alert('ពុំអាចទាញយកទិន្នន័យប័ណ្ណសារបានឡើយ៖ ' + err);
+        });
+}
+</script>
+{% endblock %}

@@ -465,3 +465,32 @@ class StudentPromotionRecord(models.Model):
         from_c = self.from_classroom.name if self.from_classroom else 'គ្មាន'
         to_c = self.to_classroom.name if self.to_classroom else 'គ្មាន'
         return f"{self.student.khmer_name} - {self.get_action_display()} ({from_c} ➡️ {to_c})"
+
+
+class AcademicYearStudentArchive(models.Model):
+    class ActionType(models.TextChoices):
+        SOFT_UNENROLL = 'SOFT_UNENROLL', 'ដកសិស្សចេញពីឆ្នាំ (Soft Unenroll & Clear)'
+        PURGE_DELETE = 'PURGE_DELETE', 'លុបសិស្សចេញពីប្រព័ន្ធ (Full Purge & Delete)'
+
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='student_archives', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    academic_year_name = models.CharField(max_length=150, verbose_name="ឈ្មោះឆ្នាំសិក្សា / Academic Year Name")
+    archived_at = models.DateTimeField(auto_now_add=True, verbose_name="កាលបរិច្ឆេទរក្សាទុក / Archived At")
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='student_archives_created', verbose_name="រៀបចំដោយ / Archived By")
+    action_type = models.CharField(max_length=30, choices=ActionType.choices, default=ActionType.SOFT_UNENROLL, verbose_name="ប្រភេទប្រតិបត្តិការ / Action Type")
+    students_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនសិស្ស / Students Count")
+    classrooms_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនថ្នាក់ / Classrooms Count")
+    grades_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនកំណត់ត្រាពិន្ទុ / Grades Count")
+    attendances_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនកំណត់ត្រាវត្តមាន / Attendances Count")
+    fees_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនវិក្កយបត្រ / Fees Count")
+    archive_payload = models.JSONField(default=dict, blank=True, verbose_name="ទិន្នន័យ Snapshot (JSON) / Archive Payload")
+    archive_excel = models.FileField(upload_to='archives/students/', blank=True, null=True, verbose_name="ឯកសារ Excel ប័ណ្ណសារ / Archive Excel File")
+    confirmation_note = models.TextField(blank=True, null=True, verbose_name="កំណត់សម្គាល់សុវត្ថិភាព / Confirmation Note")
+
+    class Meta:
+        ordering = ['-archived_at']
+        verbose_name = "ប័ណ្ណសារសិស្សប្រចាំឆ្នាំ / Student Year Archive"
+        verbose_name_plural = "ប័ណ្ណសារសិស្សប្រចាំឆ្នាំទាំងអស់ / Student Year Archives"
+
+    def __str__(self):
+        return f"ប័ណ្ណសារ {self.academic_year_name} ({self.students_count} នាក់) - {self.archived_at.strftime('%d/%m/%Y %H:%M')}"
+

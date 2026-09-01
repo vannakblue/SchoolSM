@@ -6382,8 +6382,319 @@ def student_promotion_view(request):
 
 
 # =========================================================================
+# All-Grades Bulk Student Transfer & Promotion APIs
+# =========================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def api_get_all_grades_promotion_matrix(request):
+    """
+    Returns hierarchical matrix of all grade levels and classrooms in source academic year,
+    with smart suggested mappings for the target academic year.
+    """
+    import re
+    from django.http import JsonResponse
+
+    source_year_id = request.GET.get('source_year_id')
+    target_year_id = request.GET.get('target_year_id')
+
+    if not source_year_id or not target_year_id:
+        return JsonResponse({'status': 'error', 'message': 'source_year_id and target_year_id are required'}, status=400)
+
+    source_year = get_object_or_404(AcademicYear, id=source_year_id)
+    target_year = get_object_or_404(AcademicYear, id=target_year_id)
+
+    source_classrooms = Classroom.objects.filter(academic_year=source_year).order_by('grade_level', 'name')
+    target_classrooms = Classroom.objects.filter(academic_year=target_year).order_by('grade_level', 'name')
+
+    target_classes_by_grade = {}
+    for tc in target_classrooms:
+        target_classes_by_grade.setdefault(tc.grade_level, []).append({
+            'id': tc.id,
+            'name': tc.name,
+            'grade_level': tc.grade_level,
+            'capacity': tc.capacity or 45,
+            'current_students': tc.students.count(),
+        })
+
+    # Group source classrooms by grade level
+    grade_groups_map = {}
+    total_active_students = 0
+
+    for sc in source_classrooms:
+        active_students = sc.students.filter(status='ACTIVE')
+        student_count = active_students.count()
+        total_active_students += student_count
+
+        cur_grade = sc.grade_level or 7
+        target_grade = cur_grade + 1 if cur_grade < 12 else 12
+        suggested_action = 'GRADUATE' if cur_grade >= 12 else 'PROMOTE'
+
+        # Derive suggested target class name (e.g. 7A -> 8A, ថ្នាក់ទី ៧ក -> ថ្នាក់ទី ៨ក)
+        match_digits = re.search(r'\d+', sc.name)
+        if match_digits and cur_grade < 12:
+            suggested_target_name = sc.name[:match_digits.start()] + str(target_grade) + sc.name[match_digits.end():]
+        else:
+            suggested_target_name = f"{target_grade}A" if cur_grade < 12 else "បញ្ចប់ការសិក្សា"
+
+        # Check if matching class already exists in target year
+        matching_target_class = next(
+            (tc for tc in target_classes_by_grade.get(target_grade, []) if tc['name'].strip().lower() == suggested_target_name.strip().lower()),
+            None
+        )
+
+        class_info = {
+            'id': sc.id,
+            'name': sc.name,
+            'grade_level': cur_grade,
+            'students_count': student_count,
+            'suggested_action': suggested_action,
+            'suggested_target_grade': target_grade,
+            'suggested_target_name': suggested_target_name,
+            'suggested_target_class_id': matching_target_class['id'] if matching_target_class else None,
+            'target_options': target_classes_by_grade.get(target_grade, []),
+            'all_target_options': [
+                {'id': tc.id, 'name': f"{tc.name} (ថ្នាក់ទី {tc.grade_level})", 'grade_level': tc.grade_level}
+                for tc in target_classrooms
+            ]
+        }
+
+        grade_groups_map.setdefault(cur_grade, []).append(class_info)
+
+    grade_groups = []
+    for g_lvl in sorted(grade_groups_map.keys()):
+        grade_groups.append({
+            'grade_level': g_lvl,
+            'grade_label': f"កម្រិតថ្នាក់ទី {g_lvl} (Grade {g_lvl})",
+            'total_students_in_grade': sum(c['students_count'] for c in grade_groups_map[g_lvl]),
+            'classes': grade_groups_map[g_lvl],
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'source_year': {'id': source_year.id, 'name': source_year.name},
+        'target_year': {'id': target_year.id, 'name': target_year.name},
+        'total_students': total_active_students,
+        'total_classes': source_classrooms.count(),
+        'grade_groups': grade_groups,
+        'target_classrooms_all': [{'id': tc.id, 'name': tc.name, 'grade_level': tc.grade_level} for tc in target_classrooms]
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_get_classroom_students_for_promotion(request, class_id):
+    """
+    Returns active students in a specific classroom for individual exception checks.
+    """
+    from django.http import JsonResponse
+    classroom = get_object_or_404(Classroom, id=class_id)
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+    students_data = []
+    for s in students:
+        students_data.append({
+            'id': s.id,
+            'student_id': s.student_id,
+            'khmer_name': s.khmer_name,
+            'latin_name': s.latin_name,
+            'gender': s.get_gender_display(),
+            'is_repeating_grade': s.is_repeating_grade,
+        })
+    return JsonResponse({
+        'status': 'success',
+        'classroom_id': classroom.id,
+        'classroom_name': classroom.name,
+        'students_count': len(students_data),
+        'students': students_data
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_execute_all_grades_bulk_promotion(request):
+    """
+    Executes bulk promotion across all grade levels to another academic year.
+    Creates missing target classrooms if specified, updates student profiles,
+    and logs complete audit records into StudentPromotionRecord.
+    """
+    import json
+    from django.http import JsonResponse
+    from apps.students.models import StudentPromotionRecord
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST request required'}, status=400)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        data = request.POST
+
+    source_year_id = data.get('source_year_id')
+    target_year_id = data.get('target_year_id')
+    mappings = data.get('mappings', [])
+    note = str(data.get('note', '')).strip()
+
+    if not source_year_id or not target_year_id:
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសឆ្នាំសិក្សាដើម និងឆ្នាំសិក្សាគោលដៅ!'}, status=400)
+
+    source_year = get_object_or_404(AcademicYear, id=source_year_id)
+    target_year = get_object_or_404(AcademicYear, id=target_year_id)
+
+    if source_year.id == target_year.id:
+        return JsonResponse({'status': 'error', 'message': 'ឆ្នាំសិក្សាដើម និងឆ្នាំសិក្សាគោលដៅមិនអាចដូចគ្នាបានទេ!'}, status=400)
+
+    promoted_count = 0
+    retained_count = 0
+    graduated_count = 0
+    transferred_count = 0
+    created_classes_count = 0
+
+    with transaction.atomic():
+        # Cache of target classrooms created during this operation
+        target_classes_cache = {}
+
+        for item in mappings:
+            source_class_id = item.get('source_class_id')
+            action = item.get('action', 'PROMOTE')
+            target_class_id = item.get('target_class_id')
+            target_class_name = str(item.get('target_class_name', '')).strip()
+            target_grade_level = int(item.get('target_grade_level', 7)) if str(item.get('target_grade_level', '')).isdigit() else 7
+            auto_create_target = item.get('auto_create_target', False)
+            student_exceptions = item.get('student_exceptions', {})
+
+            if action == 'SKIP':
+                continue
+
+            source_class = Classroom.objects.filter(id=source_class_id, academic_year=source_year).first()
+            if not source_class:
+                continue
+
+            target_class = None
+            if action in ['PROMOTE', 'RETAIN']:
+                if target_class_id and str(target_class_id).isdigit():
+                    target_class = Classroom.objects.filter(id=int(target_class_id), academic_year=target_year).first()
+
+                # If no target class specified but auto_create is True, find or create one
+                if not target_class and (auto_create_target or target_class_name):
+                    cls_name_to_use = target_class_name or f"{target_grade_level}A"
+                    cache_key = f"{target_year.id}_{cls_name_to_use}"
+                    if cache_key in target_classes_cache:
+                        target_class = target_classes_cache[cache_key]
+                    else:
+                        code_to_use = cls_name_to_use.replace(' ', '').upper()
+                        target_class, created = Classroom.objects.get_or_create(
+                            name=cls_name_to_use,
+                            academic_year=target_year,
+                            defaults={
+                                'code': code_to_use,
+                                'grade_level': target_grade_level,
+                                'track': getattr(source_class, 'track', 'GENERAL'),
+                                'capacity': source_class.capacity or 45,
+                            }
+                        )
+                        if created:
+                            created_classes_count += 1
+                        target_classes_cache[cache_key] = target_class
+
+            # Get all active students in source class
+            students = Student.objects.filter(classroom=source_class, status='ACTIVE')
+
+            for s in students:
+                # Check for individual student exception
+                st_str_id = str(s.id)
+                st_action = action
+                st_target_class = target_class
+                st_reason = 'PASSED_YEAR'
+                st_notes = note
+
+                if st_str_id in student_exceptions:
+                    exc = student_exceptions[st_str_id]
+                    st_action = exc.get('action', action)
+                    st_reason = exc.get('reason', 'PASSED_YEAR')
+                    st_notes = exc.get('notes', note)
+                    exc_target_id = exc.get('target_class_id')
+                    if exc_target_id and str(exc_target_id).isdigit():
+                        st_target_class = Classroom.objects.filter(id=int(exc_target_id)).first()
+
+                old_class = s.classroom
+                old_year = s.academic_year
+
+                reason_display = dict(StudentPromotionRecord.StandardReason.choices).get(st_reason, st_reason)
+                full_reason = f"{reason_display}" + (f" ({st_notes})" if st_notes else "")
+
+                if st_action == 'PROMOTE':
+                    s.academic_year = target_year
+                    if st_target_class:
+                        s.classroom = st_target_class
+                    s.status = 'ACTIVE'
+                    s.is_repeating_grade = False
+                    s.last_promotion_status = 'ឡើងថ្នាក់'
+                    s.last_promotion_reason = full_reason or f"ឡើងថ្នាក់ពី {source_class.name} ទៅ {st_target_class.name if st_target_class else 'ថ្នាក់ថ្មី'}"
+                    s.save()
+                    promoted_count += 1
+
+                elif st_action == 'RETAIN':
+                    s.academic_year = target_year
+                    if st_target_class:
+                        s.classroom = st_target_class
+                    s.status = 'ACTIVE'
+                    s.is_repeating_grade = True
+                    s.last_promotion_status = 'ត្រួតថ្នាក់'
+                    s.last_promotion_reason = full_reason or "ត្រួតថ្នាក់ក្នុងកម្រិតដដែល"
+                    s.save()
+                    retained_count += 1
+
+                elif st_action == 'GRADUATE':
+                    s.status = 'GRADUATED'
+                    s.is_repeating_grade = False
+                    s.last_promotion_status = 'បញ្ចប់ការសិក្សា'
+                    s.last_promotion_reason = full_reason or "បញ្ចប់ការសិក្សាថ្នាក់ទី១២"
+                    s.save()
+                    graduated_count += 1
+
+                elif st_action == 'TRANSFER':
+                    s.status = 'TRANSFERRED'
+                    s.last_promotion_status = 'ផ្ទេរចេញ'
+                    s.last_promotion_reason = full_reason or "ផ្ទេរចេញទៅសាលាផ្សេង"
+                    s.save()
+                    transferred_count += 1
+
+                # Record Audit Trail
+                StudentPromotionRecord.objects.create(
+                    student=s,
+                    from_academic_year=old_year,
+                    to_academic_year=target_year if st_action in ['PROMOTE', 'RETAIN'] else old_year,
+                    from_classroom=old_class,
+                    to_classroom=st_target_class if st_action in ['PROMOTE', 'RETAIN'] else None,
+                    action=st_action,
+                    standard_reason=st_reason,
+                    custom_notes=st_notes or f"ផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ពី {source_year.name} ទៅ {target_year.name}",
+                    processed_by=request.user
+                )
+
+    total_moved = promoted_count + retained_count + graduated_count + transferred_count
+    msg = (
+        f"🎉 ជោគជ័យ! បានផ្លាស់ប្តូរ និងឡើងថ្នាក់សិស្សគ្រប់កម្រិតថ្នាក់សរុប {total_moved} នាក់ ទៅកាន់ឆ្នាំសិក្សា {target_year.name} "
+        f"(ឡើងថ្នាក់: {promoted_count} នាក់, ត្រួតថ្នាក់: {retained_count} នាក់, បញ្ចប់ការសិក្សា: {graduated_count} នាក់"
+        f"{f', បង្កើតថ្នាក់ថ្មី: {created_classes_count} ថ្នាក់' if created_classes_count > 0 else ''})!"
+    )
+
+    return JsonResponse({
+        'status': 'success',
+        'message': msg,
+        'total_moved': total_moved,
+        'promoted_count': promoted_count,
+        'retained_count': retained_count,
+        'graduated_count': graduated_count,
+        'transferred_count': transferred_count,
+        'created_classes_count': created_classes_count,
+    })
+
+
+# =========================================================================
 # Academic Years Manager (គ្រប់គ្រងឆ្នាំសិក្សា)
 # =========================================================================
+
 @login_required
 @role_required(['ADMIN'])
 def academic_year_list(request):

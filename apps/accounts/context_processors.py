@@ -6,11 +6,19 @@ from .menu_registry import get_role_permissions_map, get_menu_catalog
 from apps.academics.utils import get_active_academic_year
 from apps.academics.models import AcademicYear
 
+from .translation_service import get_current_language, TranslationProxy, SUPPORTED_LANGUAGES
+
 def user_role_context(request):
     """
     Context processor to pass user role flags, active academic year, global school profile,
-    and dynamic database-driven sidebar catalog & permissions to all templates
+    bilingual language context, and dynamic database-driven sidebar catalog & permissions to all templates
     """
+    current_language = get_current_language(request)
+    is_khmer = (current_language == 'km')
+    is_english = (current_language == 'en')
+    lang_info = SUPPORTED_LANGUAGES.get(current_language, SUPPORTED_LANGUAGES['km'])
+    t_proxy = TranslationProxy(current_language)
+
     is_maintenance_mode = (Path(settings.BASE_DIR) / 'maintenance.flag').exists() or os.environ.get('MAINTENANCE_MODE') == '1'
     if not is_maintenance_mode:
         try:
@@ -39,6 +47,13 @@ def user_role_context(request):
             'is_teacher': False,
             'is_student': False,
             'current_user_role': 'ANONYMOUS',
+            'current_role_name': 'ភ្ញៀវ' if is_khmer else 'Guest',
+            'current_language': current_language,
+            'is_khmer': is_khmer,
+            'is_english': is_english,
+            'current_language_name': lang_info['name'],
+            'current_language_flag': lang_info['flag'],
+            't': t_proxy,
             'school_info': school_info,
             'active_academic_year': active_academic_year,
             'all_academic_years': all_academic_years,
@@ -54,6 +69,15 @@ def user_role_context(request):
     is_accountant = role == 'ACCOUNTANT'
     is_teacher = role == 'TEACHER'
     is_student = role == 'STUDENT'
+
+    # Localized role title
+    role_names_map = {
+        'ADMIN': 'អ្នកគ្រប់គ្រងប្រព័ន្ធ' if is_khmer else 'Super Admin',
+        'ACCOUNTANT': 'គណនេយ្យករ' if is_khmer else 'Accountant',
+        'TEACHER': 'គ្រូបង្រៀន' if is_khmer else 'Teacher',
+        'STUDENT': 'សិស្ស-អាណាព្យាបាល' if is_khmer else 'Student / Parent',
+    }
+    current_role_name = role_names_map.get(role, role)
 
     # Check fee collection authorization
     is_fee_collector = is_admin or is_accountant
@@ -109,7 +133,7 @@ def user_role_context(request):
                         best_active_key = item.get('key')
                         break
 
-        # 3. Build sidebar catalog structure with single active highlight
+        # 3. Build sidebar catalog structure with clean bilingual separation
         for sec in raw_catalog:
             sec_allowed = is_admin or menu_perms.get(sec['key'], False)
             visible_items = []
@@ -119,12 +143,16 @@ def user_role_context(request):
                 if is_admin or menu_perms.get(item['key'], False):
                     item_dict = dict(item)
                     item_dict['is_current_active'] = (item.get('key') == best_active_key)
+                    # Clean display name based on current language
+                    item_dict['display_name'] = item.get('name_en') if is_english else item.get('name_kh')
                     visible_items.append(item_dict)
 
             if (is_admin or sec_allowed) and visible_items:
                 sec_dict = dict(sec)
                 sec_dict['visible_items'] = visible_items
                 sec_dict['html_id'] = sec['key'].replace('_', '-')
+                # Clean display header based on current language
+                sec_dict['display_name'] = sec.get('name_en') if is_english else sec.get('name_kh')
                 sidebar_catalog.append(sec_dict)
     except Exception:
         sidebar_catalog = []
@@ -145,6 +173,13 @@ def user_role_context(request):
         'is_student': is_student,
         'is_fee_collector': is_fee_collector,
         'current_user_role': role,
+        'current_role_name': current_role_name,
+        'current_language': current_language,
+        'is_khmer': is_khmer,
+        'is_english': is_english,
+        'current_language_name': lang_info['name'],
+        'current_language_flag': lang_info['flag'],
+        't': t_proxy,
         'user_display_name': user.display_name if hasattr(user, 'display_name') else user.username,
         'school_info': school_info,
         'active_academic_year': active_academic_year,

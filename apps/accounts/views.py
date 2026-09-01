@@ -1370,5 +1370,25 @@ def api_delete_user(request, user_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
+def set_language_preference_view(request):
+    """
+    Switch language preference ('km' or 'en') and redirect back to the originating page.
+    """
+    from .translation_service import set_current_language, SUPPORTED_LANGUAGES
+
+    lang = request.GET.get('lang', 'km').lower().strip()
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = 'km'
+
+    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or '/'
+    if not next_url.startswith('/'):
+        next_url = '/'
+
+    response = redirect(next_url)
+    set_current_language(request, response, lang)
+    return response
+
+
+
 
 

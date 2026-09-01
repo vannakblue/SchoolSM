@@ -132,4 +132,7 @@ urlpatterns = [
 
     # Student Promotion / Academic Year Transfer
     path('promotion/', views.student_promotion_view, name='student_promotion'),
+    path('promotion/api/all-grades-matrix/', views.api_get_all_grades_promotion_matrix, name='api_get_all_grades_promotion_matrix'),
+    path('promotion/api/all-grades-execute/', views.api_execute_all_grades_bulk_promotion, name='api_execute_all_grades_bulk_promotion'),
+    path('promotion/api/classroom-students/<int:class_id>/', views.api_get_classroom_students_for_promotion, name='api_get_classroom_students_for_promotion'),
 ]

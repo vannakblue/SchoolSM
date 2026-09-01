@@ -117,7 +117,7 @@
                     <button type="button" class="menu-header-toggle" onclick="toggleMenuSection('{{ sec.html_id }}')" id="btn-{{ sec.html_id }}" aria-expanded="true">
                         <span class="menu-header-title">
                             <i class="{{ sec.icon }} header-icon text-{{ sec.color }}"></i>
-                            <span>{{ sec.name_kh }} / {{ sec.name_en|upper }}</span>
+                            <span>{{ sec.display_name|default:sec.name_kh }}</span>
                         </span>
                         <i class="fa-solid fa-chevron-down chevron-icon"></i>
                     </button>
@@ -126,7 +126,7 @@
                         <li class="menu-item">
                             <a href="{{ item.url }}" class="menu-link {% if item.is_current_active %}active{% endif %}">
                                 <i class="{{ item.icon }}"></i>
-                                <span>{{ item.name_kh }}</span>
+                                <span>{{ item.display_name|default:item.name_kh }}</span>
                             </a>
                         </li>
                         {% endfor %}
@@ -184,22 +184,12 @@
                         });
                     }
 
+                    var activeLink = document.querySelector('.menu-link.active');
                     var sidebar = document.querySelector('.app-sidebar');
-                    if (sidebar) {
-                        var activeLink = sidebar.querySelector('.menu-link.active');
-                        if (activeLink) {
-                            var brand = sidebar.querySelector('.sidebar-brand');
-                            var brandHeight = brand ? brand.offsetHeight : 0;
-                            var sidebarRect = sidebar.getBoundingClientRect();
-                            var activeRect = activeLink.getBoundingClientRect();
-                            var availableHeight = sidebar.clientHeight - brandHeight;
-                            var targetScrollTop = (sidebar.scrollTop + (activeRect.top - sidebarRect.top)) - brandHeight - (availableHeight / 2) + (activeLink.clientHeight / 2);
-                            sidebar.scrollTop = Math.max(0, targetScrollTop);
-                        } else {
-                            var savedScroll = sessionStorage.getItem('sidebar_scroll_pos');
-                            if (savedScroll !== null) {
-                                sidebar.scrollTop = parseInt(savedScroll, 10);
-                            }
+                    if (activeLink && sidebar) {
+                        var savedScroll = sessionStorage.getItem('sidebar_scroll_pos');
+                        if (savedScroll !== null) {
+                            sidebar.scrollTop = parseInt(savedScroll, 10);
                         }
                     }
                 } catch(e) {}
@@ -211,26 +201,26 @@
             <!-- Header Navbar -->
             <header class="app-header no-print">
                 <div class="header-left">
-                    <button type="button" class="btn btn-light border d-flex align-items-center justify-content-center shadow-sm" id="sidebarToggle" onclick="toggleAppSidebar()" title="បិទ/បើកផ្ទាំង Sidebar (Toggle Sidebar)" style="width: 38px; height: 38px; border-radius: 10px; padding: 0; cursor: pointer;">
+                    <button type="button" class="btn btn-light border d-flex align-items-center justify-content-center shadow-sm" id="sidebarToggle" onclick="toggleAppSidebar()" title="{% if is_khmer %}បិទ/បើកផ្ទាំង Sidebar{% else %}Toggle Sidebar{% endif %}" style="width: 38px; height: 38px; border-radius: 10px; padding: 0; cursor: pointer;">
                         <i class="fa-solid fa-bars text-secondary" style="pointer-events: none;"></i>
                     </button>
                     <div class="d-none d-md-flex align-items-center gap-2">
                         <span class="badge badge-pill-custom badge-primary-soft">
                             <i class="fa-solid fa-shield-halved"></i> 
-                            {{ request.user.get_role_display }}
+                            {{ current_role_name }}
                         </span>
                         
                         <!-- Dynamic Academic Year Switcher Dropdown -->
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1 py-1 px-2 border-0 bg-light rounded-pill shadow-xs text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="ចុចដើម្បីប្តូរឆ្នាំសិក្សាដែលកំពុងមើល">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1 py-1 px-2 border-0 bg-light rounded-pill shadow-xs text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{% if is_khmer %}ចុចដើម្បីប្តូរឆ្នាំសិក្សាដែលកំពុងមើល{% else %}Click to switch active academic year{% endif %}">
                                 <i class="fa-solid fa-calendar-check text-primary"></i>
-                                <span class="fw-semibold small">ឆ្នាំសិក្សា៖ {{ active_academic_year.name|default:"២០២៥-២០២៦" }}</span>
+                                <span class="fw-semibold small">{% if is_khmer %}ឆ្នាំសិក្សា៖{% else %}Academic Year:{% endif %} {{ active_academic_year.name|default:"2026-2027" }}</span>
                                 {% if active_academic_year.is_current %}
-                                    <span class="badge bg-success" style="font-size: 0.65rem; padding: 2px 5px;">បច្ចុប្បន្ន</span>
+                                    <span class="badge bg-success" style="font-size: 0.65rem; padding: 2px 5px;">{% if is_khmer %}បច្ចុប្បន្ន{% else %}Current{% endif %}</span>
                                 {% endif %}
                             </button>
                             <ul class="dropdown-menu shadow border-0" style="min-width: 230px;">
-                                <li><h6 class="dropdown-header text-primary"><i class="fa-solid fa-calendar-days me-1"></i> ជ្រើសរើសឆ្នាំសិក្សា / Switch Year</h6></li>
+                                <li><h6 class="dropdown-header text-primary"><i class="fa-solid fa-calendar-days me-1"></i> {% if is_khmer %}ជ្រើសរើសឆ្នាំសិក្សា{% else %}Switch Academic Year{% endif %}</h6></li>
                                 {% for ay in all_academic_years %}
                                 <li>
                                     <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if active_academic_year and active_academic_year.id == ay.id %}active bg-primary text-white{% endif %}" href="{% url 'academic_year_switch' ay.id %}">
@@ -239,16 +229,16 @@
                                             {{ ay.name }}
                                         </span>
                                         {% if ay.is_current %}
-                                            <span class="badge {% if active_academic_year and active_academic_year.id == ay.id %}bg-light text-primary{% else %}bg-success-subtle text-success{% endif %}" style="font-size: 0.65rem;">បច្ចុប្បន្ន</span>
+                                            <span class="badge {% if active_academic_year and active_academic_year.id == ay.id %}bg-light text-primary{% else %}bg-success-subtle text-success{% endif %}" style="font-size: 0.65rem;">{% if is_khmer %}បច្ចុប្បន្ន{% else %}Current{% endif %}</span>
                                         {% endif %}
                                     </a>
                                 </li>
                                 {% empty %}
-                                <li><span class="dropdown-item text-muted small">មិនមានឆ្នាំសិក្សា</span></li>
+                                <li><span class="dropdown-item text-muted small">{% if is_khmer %}មិនមានឆ្នាំសិក្សា{% else %}No academic years{% endif %}</span></li>
                                 {% endfor %}
                                 {% if is_admin %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item small text-primary" href="{% url 'academic_year_list' %}"><i class="fa-solid fa-gear me-1"></i> គ្រប់គ្រងឆ្នាំសិក្សាទាំងអស់...</a></li>
+                                <li><a class="dropdown-item small text-primary" href="{% url 'academic_year_list' %}"><i class="fa-solid fa-gear me-1"></i> {% if is_khmer %}គ្រប់គ្រងឆ្នាំសិក្សាទាំងអស់...{% else %}Manage All Academic Years...{% endif %}</a></li>
                                 {% endif %}
                             </ul>
                         </div>
@@ -257,30 +247,53 @@
 
                 <div class="header-right d-flex align-items-center gap-2">
                     <!-- Global Omnisearch (Ctrl+K) Trigger Button -->
-                    <button type="button" class="btn btn-light border rounded-pill d-flex align-items-center gap-2 text-muted px-3 py-1 shadow-xs" onclick="openOmnisearchModal()" title="ស្វែងរក... (Ctrl+K)">
+                    <button type="button" class="btn btn-light border rounded-pill d-flex align-items-center gap-2 text-muted px-3 py-1 shadow-xs" onclick="openOmnisearchModal()" title="{% if is_khmer %}ស្វែងរក... (Ctrl+K){% else %}Search... (Ctrl+K){% endif %}">
                         <i class="fa-solid fa-magnifying-glass text-primary"></i>
-                        <span class="d-none d-lg-inline small text-secondary">ស្វែងរក...</span>
+                        <span class="d-none d-lg-inline small text-secondary">{% if is_khmer %}ស្វែងរក...{% else %}Search...{% endif %}</span>
                         <kbd class="badge bg-white border text-dark ms-1 font-monospace shadow-xs d-none d-sm-inline" style="font-size: 0.65rem; border-color: #cbd5e1 !important;">Ctrl+K</kbd>
                     </button>
+
+                    <!-- Bilingual Language Switcher Dropdown (Khmer 🇰🇭 / English 🇬🇧) -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light border rounded-pill dropdown-toggle d-flex align-items-center gap-1.5 px-2.5 py-1 text-dark shadow-xs" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{% if is_khmer %}ជ្រើសរើសភាសា{% else %}Select Language{% endif %}">
+                            <span>{{ current_language_flag }}</span>
+                            <span class="d-none d-sm-inline small fw-medium">{{ current_language_name }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 180px;">
+                            <li><h6 class="dropdown-header small text-muted">{% if is_khmer %}ជ្រើសរើសភាសា / Language{% else %}Select Language / ភាសា{% endif %}</h6></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if is_khmer %}active bg-primary text-white fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}">
+                                    <span>🇰🇭 ភាសាខ្មែរ (Khmer)</span>
+                                    {% if is_khmer %}<i class="fa-solid fa-check ms-2"></i>{% endif %}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between py-2 {% if is_english %}active bg-primary text-white fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}">
+                                    <span>🇬🇧 English (អង់គ្លេស)</span>
+                                    {% if is_english %}<i class="fa-solid fa-check ms-2"></i>{% endif %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
 
                     <!-- Quick Role Switch Dropdown for Easy Demo Testing -->
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-primary dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-arrows-rotate me-1"></i> Switch Demo Role
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> {% if is_khmer %}ប្តូរ Role សាកល្បង{% else %}Switch Demo Role{% endif %}
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><h6 class="dropdown-header">ប្តូរ Role សាកល្បងភ្លាមៗ</h6></li>
-                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ADMIN' %}"><i class="fa-solid fa-crown text-warning me-2"></i>Super Admin</a></li>
-                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ACCOUNTANT' %}"><i class="fa-solid fa-calculator text-info me-2"></i>Accountant (គណនេយ្យ)</a></li>
-                            <li><a class="dropdown-item" href="{% url 'demo_login' 'TEACHER' %}"><i class="fa-solid fa-chalkboard-user text-success me-2"></i>Teacher (គ្រូបង្រៀន)</a></li>
-                            <li><a class="dropdown-item" href="{% url 'demo_login' 'STUDENT' %}"><i class="fa-solid fa-user-graduate text-primary me-2"></i>Student / Parent (សិស្ស)</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                            <li><h6 class="dropdown-header">{% if is_khmer %}ប្តូរ Role សាកល្បងភ្លាមៗ{% else %}Quick Role Switcher{% endif %}</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ADMIN' %}"><i class="fa-solid fa-crown text-warning me-2"></i>{% if is_khmer %}Super Admin (អ្នកគ្រប់គ្រង){% else %}Super Admin{% endif %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'ACCOUNTANT' %}"><i class="fa-solid fa-calculator text-info me-2"></i>{% if is_khmer %}Accountant (គណនេយ្យករ){% else %}Accountant{% endif %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'TEACHER' %}"><i class="fa-solid fa-chalkboard-user text-success me-2"></i>{% if is_khmer %}Teacher (គ្រូបង្រៀន){% else %}Teacher{% endif %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'demo_login' 'STUDENT' %}"><i class="fa-solid fa-user-graduate text-primary me-2"></i>{% if is_khmer %}Student / Parent (សិស្ស){% else %}Student / Parent{% endif %}</a></li>
                         </ul>
                     </div>
 
                     <!-- In-App Notification Bell -->
                     {% if is_admin %}
                     <div class="dropdown">
-                        <a href="{% url 'teacher_leave_list' %}?status=PENDING" class="btn btn-light border rounded-circle position-relative d-flex align-items-center justify-content-center shadow-xs" style="width: 38px; height: 38px;" title="ពាក្យសុំច្បាប់គ្រូថ្មី (Teacher Leave Requests)">
+                        <a href="{% url 'teacher_leave_list' %}?status=PENDING" class="btn btn-light border rounded-circle position-relative d-flex align-items-center justify-content-center shadow-xs" style="width: 38px; height: 38px;" title="{% if is_khmer %}ពាក្យសុំច្បាប់គ្រូថ្មី{% else %}Teacher Leave Requests{% endif %}">
                             <i class="fa-solid fa-bell {% if pending_teacher_leaves_count > 0 %}text-warning{% else %}text-muted{% endif %} fs-5"></i>
                             {% if pending_teacher_leaves_count > 0 %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.65rem;">
@@ -304,11 +317,11 @@
                             </div>
                             <i class="fa-solid fa-chevron-down text-muted small ms-1"></i>
                         </div>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fa-solid fa-user-gear me-2"></i>ព័ត៌មានគណនី (Profile)</a></li>
-                            <li><a class="dropdown-item" href="{% url 'profile' %}#change-password-section"><i class="fa-solid fa-key me-2"></i>ប្តូរពាក្យសម្ងាត់ (Change Password)</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                            <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fa-solid fa-user-gear me-2"></i>{% if is_khmer %}ព័ត៌មានគណនី{% else %}My Profile{% endif %}</a></li>
+                            <li><a class="dropdown-item" href="{% url 'profile' %}#change-password-section"><i class="fa-solid fa-key me-2"></i>{% if is_khmer %}ប្តូរពាក្យសម្ងាត់{% else %}Change Password{% endif %}</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="fa-solid fa-right-from-bracket me-2"></i>ចាកចេញ (Logout)</a></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="fa-solid fa-right-from-bracket me-2"></i>{% if is_khmer %}ចាកចេញ{% else %}Logout{% endif %}</a></li>
                         </ul>
                     </div>
                 </div>

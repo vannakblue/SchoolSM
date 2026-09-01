@@ -19,7 +19,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'admin_dashboard',
-                'name_kh': 'ផ្ទាំង Admin (Dashboard)',
+                'name_kh': 'ផ្ទាំងគ្រប់គ្រងទូទៅ',
                 'name_en': 'Admin Dashboard',
                 'icon': 'fa-solid fa-gauge-high',
                 'default_roles': ['ADMIN'],
@@ -28,7 +28,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'moeys_reports',
-                'name_kh': 'ស្ថិតិអប់រំ MoEYS (EMIS)',
+                'name_kh': 'ស្ថិតិអប់រំ MoEYS',
                 'name_en': 'MoEYS EMIS Statistics',
                 'icon': 'fa-solid fa-file-waveform text-info',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -36,7 +36,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'finance_dashboard',
-                'name_kh': 'ផ្ទាំងគណនេយ្យករ (Finance)',
+                'name_kh': 'ផ្ទាំងគណនេយ្យករ',
                 'name_en': 'Accountant Dashboard',
                 'icon': 'fa-solid fa-wallet',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -44,7 +44,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'teacher_dashboard',
-                'name_kh': 'ផ្ទាំងគ្រូបង្រៀន (Teacher)',
+                'name_kh': 'ផ្ទាំងគ្រូបង្រៀន',
                 'name_en': 'Teacher Dashboard',
                 'icon': 'fa-solid fa-chalkboard-user',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -60,7 +60,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'announcement_list',
-                'name_kh': 'សេចក្តីជូនដំណឹង (Notices)',
+                'name_kh': 'សេចក្តីជូនដំណឹង',
                 'name_en': 'Announcements & Notices',
                 'icon': 'fa-solid fa-bullhorn text-warning',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -78,7 +78,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'student_list',
-                'name_kh': 'បញ្ជីសិស្ស (Students)',
+                'name_kh': 'បញ្ជីសិស្ស',
                 'name_en': 'Student Directory',
                 'icon': 'fa-solid fa-users',
                 'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
@@ -86,7 +86,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'student_enroll',
-                'name_kh': 'ចុះឈ្មោះសិស្សថ្មី (Enroll)',
+                'name_kh': 'ចុះឈ្មោះសិស្សថ្មី',
                 'name_en': 'New Student Enrollment',
                 'icon': 'fa-solid fa-user-plus',
                 'default_roles': ['ADMIN'],
@@ -94,7 +94,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'classroom_list',
-                'name_kh': 'ថ្នាក់រៀន (Classrooms)',
+                'name_kh': 'ថ្នាក់រៀន',
                 'name_en': 'Classrooms Management',
                 'icon': 'fa-solid fa-school',
                 'default_roles': ['ADMIN'],
@@ -102,7 +102,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'subject_list',
-                'name_kh': 'មុខវិជ្ជាសិក្សា (Subjects)',
+                'name_kh': 'មុខវិជ្ជាសិក្សា',
                 'name_en': 'Subjects & Curriculum',
                 'icon': 'fa-solid fa-book-bookmark',
                 'default_roles': ['ADMIN'],
@@ -110,7 +110,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'academic_year_list',
-                'name_kh': 'ឆ្នាំសិក្សា (Academic Years)',
+                'name_kh': 'ឆ្នាំសិក្សា',
                 'name_en': 'Academic Years Setup',
                 'icon': 'fa-solid fa-calendar-days text-primary',
                 'default_roles': ['ADMIN'],
@@ -126,7 +126,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'student_promotion',
-                'name_kh': 'ផ្ទេរ/ឡើងថ្នាក់ (Promotion)',
+                'name_kh': 'ផ្ទេរ/ឡើងថ្នាក់',
                 'name_en': 'Student Promotion & Transfer',
                 'icon': 'fa-solid fa-arrow-up-right-dots',
                 'default_roles': ['ADMIN'],
@@ -134,7 +134,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'student_status_list',
-                'name_kh': 'ស្ថានភាពសិក្សា (Statuses)',
+                'name_kh': 'ស្ថានភាពសិក្សា',
                 'name_en': 'Student Statuses Config',
                 'icon': 'fa-solid fa-tags text-info',
                 'default_roles': ['ADMIN'],
@@ -152,7 +152,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'timetable_view',
-                'name_kh': 'កាលវិភាគរួម (Master Matrix)',
+                'name_kh': 'កាលវិភាគរួម',
                 'name_en': 'Master Timetable Matrix',
                 'icon': 'fa-solid fa-calendar-days text-primary',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -160,7 +160,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'timetable_daily_reports_view',
-                'name_kh': 'របាយការណ៍ប្រចាំថ្ងៃ (Daily Duty)',
+                'name_kh': 'របាយការណ៍ប្រចាំថ្ងៃ',
                 'name_en': 'Daily Duty & Teaching Log',
                 'icon': 'fa-solid fa-file-signature text-purple',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -234,7 +234,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'at_risk_attendance',
-                'name_kh': 'សិស្សអវត្តមានច្រើន (At-Risk)',
+                'name_kh': 'សិស្សអវត្តមានច្រើន',
                 'name_en': 'At-Risk Attendance Warning',
                 'icon': 'fa-solid fa-triangle-exclamation text-danger',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -242,7 +242,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'grade_entry_matrix',
-                'name_kh': 'បញ្ចូលពិន្ទុ (Grade Entry)',
+                'name_kh': 'បញ្ចូលពិន្ទុ',
                 'name_en': 'Grade Entry Matrix',
                 'icon': 'fa-solid fa-pen-to-square',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -258,7 +258,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'semester_results',
-                'name_kh': 'លទ្ធផលប្រចាំឆមាស (Semester)',
+                'name_kh': 'លទ្ធផលប្រចាំឆមាស',
                 'name_en': 'Semester Results & Rankings',
                 'icon': 'fa-solid fa-file-signature text-info',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -266,7 +266,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'annual_results',
-                'name_kh': 'លទ្ធផលប្រចាំឆ្នាំ (Annual)',
+                'name_kh': 'លទ្ធផលប្រចាំឆ្នាំ',
                 'name_en': 'Annual Overall Results & Promotion',
                 'icon': 'fa-solid fa-award text-success',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -274,7 +274,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'standardized_exam_list',
-                'name_kh': 'តេស្តស្តង់ដា (Standardized Exams)',
+                'name_kh': 'តេស្តស្តង់ដា',
                 'name_en': 'Standardized Exams',
                 'icon': 'fa-solid fa-graduation-cap text-warning',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -282,7 +282,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'exam_blind_scoring_portal',
-                'name_kh': 'បញ្ចូលពិន្ទុកូដសម្ងាត់ (Blind)',
+                'name_kh': 'បញ្ចូលពិន្ទុកូដសម្ងាត់',
                 'name_en': 'Blind Scoring Portal',
                 'icon': 'fa-solid fa-user-secret text-danger',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -290,7 +290,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'grade_rules_manager',
-                'name_kh': 'ច្បាប់ពិន្ទុ (Scoring Rules)',
+                'name_kh': 'ច្បាប់ពិន្ទុ & លក្ខខណ្ឌ',
                 'name_en': 'Scoring & Assessment Rules',
                 'icon': 'fa-solid fa-scale-balanced text-primary',
                 'default_roles': ['ADMIN'],
@@ -316,7 +316,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'teacher_list',
-                'name_kh': 'បញ្ជីគ្រូបង្រៀន (Teachers)',
+                'name_kh': 'បញ្ជីគ្រូបង្រៀន',
                 'name_en': 'Teachers Directory',
                 'icon': 'fa-solid fa-chalkboard-user',
                 'default_roles': ['ADMIN'],
@@ -332,7 +332,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'teacher_kiosk_view',
-                'name_kh': 'Kiosk ស្កេនវត្តមាន (QR/Face)',
+                'name_kh': 'Kiosk ស្កេនវត្តមាន',
                 'name_en': 'Attendance Kiosk Display',
                 'icon': 'fa-solid fa-qrcode text-primary',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -356,7 +356,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'teacher_punch_logs',
-                'name_kh': 'កំណត់ត្រាស្កេន Logs (Audit)',
+                'name_kh': 'កំណត់ត្រាស្កេនវត្តមាន',
                 'name_en': 'Teacher Punch Logs',
                 'icon': 'fa-solid fa-list-check text-info',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -380,7 +380,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'teacher_leave_list',
-                'name_kh': 'ច្បាប់គ្រូបង្រៀន (Leaves)',
+                'name_kh': 'ច្បាប់ឈប់សម្រាកគ្រូ',
                 'name_en': 'Teacher Leave Requests',
                 'icon': 'fa-solid fa-envelope-open-text text-warning',
                 'default_roles': ['ADMIN', 'TEACHER'],
@@ -390,7 +390,7 @@ MENU_SECTIONS_CATALOG = [
     },
     {
         'key': 'sec_finance',
-        'name_kh': 'ហិរញ្ញវត្ថុ & ទឹកភ្លើងប្រចាំខែ',
+        'name_kh': 'ហិរញ្ញវត្ថុ & ទឹកភ្លើង',
         'name_en': 'Finance & Utilities',
         'icon': 'fa-solid fa-coins',
         'color': 'warning',
@@ -406,7 +406,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'invoice_list',
-                'name_kh': 'វិក្កយបត្រ (Invoices)',
+                'name_kh': 'វិក្កយបត្រសិស្ស',
                 'name_en': 'Student Invoices',
                 'icon': 'fa-solid fa-file-invoice-dollar',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -414,7 +414,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'expense_list',
-                'name_kh': 'ចំណាយសាលា (Expenses)',
+                'name_kh': 'ចំណាយសាលា',
                 'name_en': 'School Expenses',
                 'icon': 'fa-solid fa-money-bill-transfer',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -430,7 +430,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'payroll_list',
-                'name_kh': 'ប្រាក់ខែគ្រូ (Payroll)',
+                'name_kh': 'ប្រាក់ខែបុគ្គលិក-គ្រូ',
                 'name_en': 'Staff & Teacher Payroll',
                 'icon': 'fa-solid fa-hand-holding-dollar',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -448,7 +448,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'book_list',
-                'name_kh': 'បណ្ណាល័យ (Library)',
+                'name_kh': 'បណ្ណាល័យសាលា',
                 'name_en': 'Library Books & Borrowing',
                 'icon': 'fa-solid fa-book-bookmark',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -456,7 +456,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'inventory_list',
-                'name_kh': 'ស្តុកសម្ភារៈ (Inventory)',
+                'name_kh': 'ស្តុកសម្ភារៈសាលា',
                 'name_en': 'School Inventory & Asset Stock',
                 'icon': 'fa-solid fa-boxes-stacked',
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
@@ -466,7 +466,7 @@ MENU_SECTIONS_CATALOG = [
     },
     {
         'key': 'sec_tools',
-        'name_kh': 'ឧបករណ៍ឌីជីថល (Tools)',
+        'name_kh': 'ឧបករណ៍ឌីជីថល',
         'name_en': 'Digital Tools Hub',
         'icon': 'fa-solid fa-wand-magic-sparkles',
         'color': 'warning',
@@ -474,7 +474,7 @@ MENU_SECTIONS_CATALOG = [
         'items': [
             {
                 'key': 'tools_hub',
-                'name_kh': 'ផ្ទាំងឧបករណ៍សរុប (Tools Hub)',
+                'name_kh': 'ផ្ទាំងឧបករណ៍សរុប',
                 'name_en': 'Tools Hub Dashboard',
                 'icon': 'fa-solid fa-grip text-primary',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -482,7 +482,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'tool_pdf_merge',
-                'name_kh': 'បញ្ចូល PDF (PDF Merge)',
+                'name_kh': 'បញ្ចូលឯកសារ PDF',
                 'name_en': 'PDF Merge Tool',
                 'icon': 'fa-solid fa-file-pdf text-danger',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -490,7 +490,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'tool_pdf_split',
-                'name_kh': 'បំបែក PDF (PDF Split)',
+                'name_kh': 'បំបែកឯកសារ PDF',
                 'name_en': 'PDF Split Tool',
                 'icon': 'fa-solid fa-file-export text-danger',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -514,7 +514,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'tool_image_editor',
-                'name_kh': 'កែសម្រួលរូបភាព (Studio)',
+                'name_kh': 'កែសម្រួលរូបភាព',
                 'name_en': 'Image Editor Studio',
                 'icon': 'fa-solid fa-crop-simple text-success',
                 'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
@@ -612,7 +612,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'school_profile_settings',
-                'name_kh': 'ព័ត៌មានសាលា (School Info)',
+                'name_kh': 'ព័ត៌មានសាលារៀន',
                 'name_en': 'School Profile & Identity',
                 'icon': 'fa-solid fa-school-flag text-warning',
                 'default_roles': ['ADMIN'],
@@ -620,7 +620,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'telegram_settings',
-                'name_kh': 'Telegram Notifications',
+                'name_kh': 'ការជូនដំណឹង Telegram',
                 'name_en': 'Telegram Bot Settings',
                 'icon': 'fa-brands fa-telegram text-info',
                 'default_roles': ['ADMIN'],
@@ -628,7 +628,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'user_management',
-                'name_kh': 'គ្រប់គ្រងគណនី (User Management)',
+                'name_kh': 'គ្រប់គ្រងគណនីប្រើប្រាស់',
                 'name_en': 'User Accounts Management',
                 'icon': 'fa-solid fa-users-gear text-primary',
                 'default_roles': ['ADMIN'],
@@ -644,7 +644,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'tool_database_backup',
-                'name_kh': 'Database Backup & Snapshot',
+                'name_kh': 'បម្រុងទុកទិន្នន័យ (Backup)',
                 'name_en': 'Database Backup & Snapshot',
                 'icon': 'fa-solid fa-database text-success',
                 'default_roles': ['ADMIN'],

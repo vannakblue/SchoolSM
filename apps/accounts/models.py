@@ -18,6 +18,12 @@ class User(AbstractUser):
     khmer_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ឈ្មោះខ្មែរ / Khmer Name")
     latin_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ឈ្មោះឡាតាំង / Latin Name")
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, verbose_name="រូបថត / Avatar")
+    language_preference = models.CharField(
+        max_length=10,
+        choices=[('km', 'ភាសាខ្មែរ (Khmer)'), ('en', 'English')],
+        default='km',
+        verbose_name="ជម្រើសភាសា / Language Preference"
+    )
 
     @property
     def display_name(self):

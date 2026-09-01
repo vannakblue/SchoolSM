@@ -57,24 +57,129 @@
     </div>
 </div>
 
-<!-- Nav Tabs: 1. Promotion Matrix, 2. History Logs -->
+<!-- Nav Tabs: 1. All Grades Bulk Transfer, 2. Single Class Promotion Matrix, 3. History Logs -->
 <ul class="nav nav-pills mb-4 gap-2" id="promotionTabs" role="tablist">
+    {% if is_admin %}
     <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-bold px-4 shadow-sm" id="matrix-tab" data-bs-toggle="pill" data-bs-target="#matrix-pane" type="button" role="tab">
-            <i class="fa-solid fa-table-list me-2"></i>ឧបករណ៍ឡើងថ្នាក់/ត្រួតថ្នាក់
+        <button class="nav-link active fw-bold px-4 shadow-sm" id="all-grades-tab" data-bs-toggle="pill" data-bs-target="#all-grades-pane" type="button" role="tab">
+            <i class="fa-solid fa-bolt text-warning me-2"></i>{% if is_khmer %}ផ្លាស់ប្តូរគ្រប់កម្រិតថ្នាក់ (All-Grades Bulk){% else %}All-Grades Bulk Transfer{% endif %}
+        </button>
+    </li>
+    {% endif %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if not is_admin %}active{% else %}bg-white{% endif %} fw-bold px-4 shadow-sm" id="matrix-tab" data-bs-toggle="pill" data-bs-target="#matrix-pane" type="button" role="tab">
+            <i class="fa-solid fa-table-list me-2"></i>{% if is_khmer %}ឡើងថ្នាក់តាមថ្នាក់នីមួយៗ (Single Class){% else %}Single Class Promotion{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link fw-bold px-4 shadow-sm bg-white" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-pane" type="button" role="tab">
-            <i class="fa-solid fa-clock-rotate-left me-2"></i>ប្រវត្តិកំណត់ត្រាឡើងថ្នាក់
+            <i class="fa-solid fa-clock-rotate-left me-2"></i>{% if is_khmer %}ប្រវត្តិកំណត់ត្រាឡើងថ្នាក់{% else %}Promotion History{% endif %}
             <span class="badge bg-secondary ms-1">{{ recent_promotions.count }}</span>
         </button>
     </li>
 </ul>
 
 <div class="tab-content" id="promotionTabsContent">
-    <!-- TAB 1: Promotion Matrix -->
-    <div class="tab-pane fade show active" id="matrix-pane" role="tabpanel">
+    {% if is_admin %}
+    <!-- TAB 0: All-Grades Bulk Transfer & Promotion -->
+    <div class="tab-pane fade show active" id="all-grades-pane" role="tabpanel">
+        
+        <!-- Year Selection & Strategy Control Card -->
+        <div class="custom-card p-4 mb-4 border-0 shadow-sm bg-white">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 pb-3 mb-3 border-bottom">
+                <div>
+                    <h5 class="fw-bold text-primary mb-1">
+                        <i class="fa-solid fa-graduation-cap text-warning me-2"></i>{% if is_khmer %}ផ្លាស់ប្តូរ និងឡើងថ្នាក់សិស្សគ្រប់កម្រិតថ្នាក់ទូទាំងសាលា{% else %}All Grade Levels Bulk Transfer & Promotion{% endif %}
+                    </h5>
+                    <p class="text-muted small mb-0">{% if is_khmer %}ជ្រើសរើសឆ្នាំសិក្សាដើម និងឆ្នាំសិក្សាគោលដៅ ដើម្បីផ្ទេរសិស្សទាំងអស់ទូទាំងសាលាដោយស្វ័យប្រវត្តិតាមកម្រិតថ្នាក់ ឬតាមជម្រើស{% else %}Select source and target academic years to rollover/promote all students school-wide{% endif %}</p>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-end mb-4">
+                <div class="col-md-5">
+                    <label class="form-label fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-calendar text-secondary me-1"></i> {% if is_khmer %}១. ឆ្នាំសិក្សាដើម (Source Year){% else %}Source Academic Year{% endif %} <span class="text-danger">*</span>
+                    </label>
+                    <select id="bulkSourceYearSelect" class="form-select form-select-lg fw-bold shadow-sm" onchange="loadAllGradesMatrix()">
+                        {% for y in academic_years %}
+                        <option value="{{ y.id }}" {% if forloop.first %}selected{% endif %}>
+                            📅 ឆ្នាំសិក្សា {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-5">
+                    <label class="form-label fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-calendar-check text-success me-1"></i> {% if is_khmer %}២. ឆ្នាំសិក្សាគោលដៅ (Target Year){% else %}Target Academic Year{% endif %} <span class="text-danger">*</span>
+                    </label>
+                    <select id="bulkTargetYearSelect" class="form-select form-select-lg fw-bold text-primary border-primary shadow-sm" onchange="loadAllGradesMatrix()">
+                        {% for y in academic_years %}
+                        <option value="{{ y.id }}" {% if forloop.counter == 2 or academic_years.count == 1 %}selected{% endif %}>
+                            🎯 ឆ្នាំសិក្សា {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" onclick="loadAllGradesMatrix()">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i> {% if is_khmer %}ទាញយក{% else %}Fetch{% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Strategy Buttons Bar -->
+            <div class="p-3 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="fw-bold small text-dark"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> យុទ្ធសាស្ត្រផ្ទេររហ័ស៖</span>
+                    <button type="button" class="btn btn-sm btn-outline-success active fw-bold px-3 py-1.5 rounded-pill" id="btnStratAutoPromote" onclick="applyAllGradesStrategy('AUTO_PROMOTE')">
+                        <i class="fa-solid fa-arrow-up me-1"></i> ឡើងថ្នាក់ស្វ័យប្រវត្តិ (+1 Grade: 7➡️8, 8➡️9, 9➡️10...)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3 py-1.5 rounded-pill" id="btnStratSameGrade" onclick="applyAllGradesStrategy('SAME_GRADE')">
+                        <i class="fa-solid fa-rotate-left me-1"></i> រក្សាកម្រិតថ្នាក់ដដែល (7➡️7, 8➡️8...)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-1.5 rounded-pill" id="btnStratCustom" onclick="applyAllGradesStrategy('CUSTOM')">
+                        <i class="fa-solid fa-sliders me-1"></i> កំណត់តាមជម្រើស (Custom)
+                    </button>
+                </div>
+                <div class="small text-muted" id="matrixLiveStatusText">កំពុងដំណើរការ...</div>
+            </div>
+        </div>
+
+        <!-- Matrix Content Container -->
+        <div id="allGradesMatrixContainer">
+            <div class="text-center py-5">
+                <span class="spinner-border text-primary"></span>
+                <p class="text-muted small mt-2">កំពុងផ្ទុកម៉ាទ្រីសកម្រិតថ្នាក់...</p>
+            </div>
+        </div>
+
+        <!-- Execution Bottom Sticky Toolbar -->
+        <div class="custom-card p-4 mt-4 border-0 shadow-lg bg-dark text-white rounded-4" id="bulkExecutionToolbar" style="display: none;">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1 text-warning"><i class="fa-solid fa-circle-check me-2"></i>សង្ខេបស្ថិតិផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់</h5>
+                    <div class="d-flex gap-3 small text-light flex-wrap">
+                        <span>សិស្សឡើងថ្នាក់៖ <strong class="text-success fs-6" id="summaryCountPromote">0</strong> នាក់</span>
+                        <span>សិស្សបញ្ចប់ការសិក្សា៖ <strong class="text-info fs-6" id="summaryCountGraduate">0</strong> នាក់</span>
+                        <span>សិស្សត្រួតថ្នាក់៖ <strong class="text-warning fs-6" id="summaryCountRetain">0</strong> នាក់</span>
+                        <span>ថ្នាក់ថ្មីដែលនឹងបង្កើត៖ <strong class="text-primary-subtle fs-6" id="summaryCountCreateClass">0</strong> ថ្នាក់</span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill shadow" id="btnExecuteBulkPromotion" onclick="confirmExecuteAllGradesBulkPromotion()">
+                        <i class="fa-solid fa-rocket me-1"></i> ដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ភ្លាមៗ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+
+    <!-- TAB 1: Promotion Matrix (Single Class) -->
+    <div class="tab-pane fade {% if not is_admin %}show active{% endif %}" id="matrix-pane" role="tabpanel">
         
         <!-- Step 1: Select Source Class -->
         <div class="custom-card p-4 mb-4 border-0 shadow-sm">
@@ -465,8 +570,522 @@
         });
     }
 
+    // =========================================================================
+    // All-Grades Bulk Student Transfer & Promotion Engine
+    // =========================================================================
+    let allGradesMatrixData = null;
+    let globalStudentExceptions = {}; // classId -> { studentId: { action, reason, notes, target_class_id } }
+    let currentStrategy = 'AUTO_PROMOTE';
+
+    function loadAllGradesMatrix() {
+        const sourceYearId = document.getElementById('bulkSourceYearSelect')?.value;
+        const targetYearId = document.getElementById('bulkTargetYearSelect')?.value;
+        const container = document.getElementById('allGradesMatrixContainer');
+        const toolbar = document.getElementById('bulkExecutionToolbar');
+
+        if (!sourceYearId || !targetYearId || !container) return;
+
+        if (sourceYearId === targetYearId) {
+            container.innerHTML = `
+                <div class="alert alert-warning border-0 rounded-4 p-4 text-center shadow-sm">
+                    <i class="fa-solid fa-triangle-exclamation fa-2x text-warning mb-2"></i>
+                    <h5 class="fw-bold">ឆ្នាំសិក្សាដើម និងឆ្នាំសិក្សាគោលដៅមិនអាចដូចគ្នាបានទេ!</h5>
+                    <p class="small text-muted mb-0">សូមជ្រើសរើសឆ្នាំសិក្សាគោលដៅផ្សេងគ្នា ដើម្បីដំណើរការផ្ទេរសិស្ស។</p>
+                </div>
+            `;
+            if (toolbar) toolbar.style.display = 'none';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <span class="spinner-border text-primary"></span>
+                <p class="text-muted small mt-2">កំពុងទាញយកទិន្នន័យម៉ាទ្រីសកម្រិតថ្នាក់...</p>
+            </div>
+        `;
+
+        fetch(`/academics/promotion/api/all-grades-matrix/?source_year_id=${sourceYearId}&target_year_id=${targetYearId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    allGradesMatrixData = data;
+                    renderAllGradesMatrix(data);
+                    applyAllGradesStrategy(currentStrategy);
+                    if (toolbar) toolbar.style.display = 'block';
+                    document.getElementById('matrixLiveStatusText').innerText = `រកឃើញសិស្សសរុប ${data.total_students} នាក់ ក្នុង ${data.total_classes} ថ្នាក់`;
+                } else {
+                    container.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<div class="alert alert-danger">ពុំអាចផ្ទុកទិន្នន័យបានឡើយ៖ ${err}</div>`;
+            });
+    }
+
+    function renderAllGradesMatrix(data) {
+        const container = document.getElementById('allGradesMatrixContainer');
+        if (!data.grade_groups || data.grade_groups.length === 0) {
+            container.innerHTML = `
+                <div class="custom-card p-5 text-center text-muted">
+                    <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
+                    <h5>មិនមានថ្នាក់រៀន ឬសិស្សក្នុងឆ្នាំសិក្សាដើម ${data.source_year.name} ឡើយ</h5>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        data.grade_groups.forEach(group => {
+            html += `
+                <div class="custom-card mb-4 border-0 shadow-sm overflow-hidden">
+                    <div class="card-header bg-light border-0 py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary fs-6 px-3 py-1.5 rounded-pill">${group.grade_label}</span>
+                            <span class="text-secondary small fw-bold">(${group.classes.length} ថ្នាក់រៀន)</span>
+                        </div>
+                        <span class="badge bg-white text-dark border px-3 py-1.5 fw-bold shadow-xs">
+                            <i class="fa-solid fa-users text-primary me-1"></i> សិស្សសរុប៖ ${group.total_students_in_grade} នាក់
+                        </span>
+                    </div>
+                    <div class="table-responsive p-0">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-muted text-uppercase">
+                                <tr>
+                                    <th style="width: 200px;">ថ្នាក់រៀនដើម (${data.source_year.name})</th>
+                                    <th style="width: 130px;" class="text-center">សិស្សសកម្ម</th>
+                                    <th style="width: 220px;">សកម្មភាពផ្ទេរ</th>
+                                    <th>ថ្នាក់រៀនគោលដៅ (${data.target_year.name})</th>
+                                    <th style="width: 170px;" class="text-end">ពិនិត្យសិស្ស</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            group.classes.forEach(c => {
+                let targetOptionsHtml = `<option value="">-- ជ្រើសរើសថ្នាក់គោលដៅ --</option>`;
+                data.target_classrooms_all.forEach(tc => {
+                    const isSelected = (c.suggested_target_class_id === tc.id) ? 'selected' : '';
+                    targetOptionsHtml += `<option value="${tc.id}" ${isSelected}>${tc.name} (ថ្នាក់ទី ${tc.grade_level})</option>`;
+                });
+                targetOptionsHtml += `<option value="NEW" class="text-primary fw-bold" ${!c.suggested_target_class_id && c.suggested_action === 'PROMOTE' ? 'selected' : ''}>✨ បង្កើតថ្នាក់ថ្មី (${c.suggested_target_name})</option>`;
+
+                html += `
+                    <tr id="matrix_row_${c.id}">
+                        <td>
+                            <div class="fw-bold fs-6 text-dark">${c.name}</div>
+                            <div class="text-muted small" style="font-size: 0.75rem;">កម្រិតថ្នាក់ទី ${c.grade_level}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-light text-primary fw-bold border fs-6 px-3 py-1">${c.students_count}</span>
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm fw-bold border-2 class-action-select" id="action_class_${c.id}" onchange="onClassActionChange(${c.id})">
+                                <option value="PROMOTE" ${c.suggested_action === 'PROMOTE' ? 'selected' : ''} class="text-success">🟢 ឡើងថ្នាក់ (Promote)</option>
+                                <option value="RETAIN" ${c.suggested_action === 'RETAIN' ? 'selected' : ''} class="text-warning">🟡 ត្រួតថ្នាក់ (Retain)</option>
+                                <option value="GRADUATE" ${c.suggested_action === 'GRADUATE' ? 'selected' : ''} class="text-info">🎓 បញ្ចប់ការសិក្សា (Graduate)</option>
+                                <option value="SKIP" class="text-secondary">⚪ មិនទាន់ផ្ទេរ (Skip)</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2 align-items-center">
+                                <select class="form-select form-select-sm shadow-xs class-target-select" id="target_class_${c.id}" onchange="onTargetSelectChange(${c.id})">
+                                    ${targetOptionsHtml}
+                                </select>
+                                <input type="text" class="form-control form-control-sm border-primary fw-bold shadow-xs class-new-name-input" id="new_name_${c.id}" value="${c.suggested_target_name}" placeholder="ឈ្មោះថ្នាក់ថ្មី" style="${c.suggested_target_class_id || c.suggested_action === 'GRADUATE' ? 'display: none;' : 'width: 140px;'}">
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" onclick="openClassroomStudentsModal(${c.id}, '${c.name}')">
+                                <i class="fa-solid fa-user-pen me-1"></i> សិស្ស (<span id="exc_badge_${c.id}">0</span> ប្តូរ)
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        updateAllGradesSummaryCounts();
+    }
+
+    function applyAllGradesStrategy(strat) {
+        currentStrategy = strat;
+        document.querySelectorAll('#btnStratAutoPromote, #btnStratSameGrade, #btnStratCustom').forEach(b => b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-secondary'));
+        
+        if (strat === 'AUTO_PROMOTE') {
+            document.getElementById('btnStratAutoPromote').classList.add('active', 'btn-success');
+            if (allGradesMatrixData) {
+                allGradesMatrixData.grade_groups.forEach(g => {
+                    g.classes.forEach(c => {
+                        const actSel = document.getElementById(`action_class_${c.id}`);
+                        if (actSel) {
+                            actSel.value = (c.grade_level >= 12) ? 'GRADUATE' : 'PROMOTE';
+                            onClassActionChange(c.id);
+                        }
+                    });
+                });
+            }
+        } else if (strat === 'SAME_GRADE') {
+            document.getElementById('btnStratSameGrade').classList.add('active', 'btn-primary');
+            if (allGradesMatrixData) {
+                allGradesMatrixData.grade_groups.forEach(g => {
+                    g.classes.forEach(c => {
+                        const actSel = document.getElementById(`action_class_${c.id}`);
+                        if (actSel) {
+                            actSel.value = 'PROMOTE'; // Promote into same grade level of new year
+                            const nameInput = document.getElementById(`new_name_${c.id}`);
+                            if (nameInput) nameInput.value = c.name;
+                            onClassActionChange(c.id);
+                        }
+                    });
+                });
+            }
+        } else {
+            document.getElementById('btnStratCustom').classList.add('active', 'btn-secondary');
+        }
+        updateAllGradesSummaryCounts();
+    }
+
+    function onClassActionChange(classId) {
+        const actSel = document.getElementById(`action_class_${classId}`);
+        const targetSel = document.getElementById(`target_class_${classId}`);
+        const newNameInput = document.getElementById(`new_name_${classId}`);
+
+        if (!actSel || !targetSel) return;
+        const action = actSel.value;
+
+        if (action === 'GRADUATE' || action === 'SKIP') {
+            targetSel.disabled = true;
+            if (newNameInput) newNameInput.style.display = 'none';
+        } else {
+            targetSel.disabled = false;
+            if (targetSel.value === 'NEW' && newNameInput) {
+                newNameInput.style.display = 'inline-block';
+            } else if (newNameInput) {
+                newNameInput.style.display = 'none';
+            }
+        }
+        updateAllGradesSummaryCounts();
+    }
+
+    function onTargetSelectChange(classId) {
+        const targetSel = document.getElementById(`target_class_${classId}`);
+        const newNameInput = document.getElementById(`new_name_${classId}`);
+        if (!targetSel || !newNameInput) return;
+
+        if (targetSel.value === 'NEW') {
+            newNameInput.style.display = 'inline-block';
+        } else {
+            newNameInput.style.display = 'none';
+        }
+        updateAllGradesSummaryCounts();
+    }
+
+    function updateAllGradesSummaryCounts() {
+        if (!allGradesMatrixData) return;
+
+        let promoteCount = 0;
+        let graduateCount = 0;
+        let retainCount = 0;
+        let createClassCount = 0;
+
+        allGradesMatrixData.grade_groups.forEach(g => {
+            g.classes.forEach(c => {
+                const actSel = document.getElementById(`action_class_${c.id}`);
+                const targetSel = document.getElementById(`target_class_${c.id}`);
+                if (!actSel) return;
+
+                const action = actSel.value;
+                const classExceptions = globalStudentExceptions[c.id] || {};
+                const excStudentCount = Object.keys(classExceptions).length;
+
+                // Base count for class minus exceptions
+                const baseStudents = c.students_count - excStudentCount;
+
+                if (action === 'PROMOTE') promoteCount += baseStudents;
+                else if (action === 'GRADUATE') graduateCount += baseStudents;
+                else if (action === 'RETAIN') retainCount += baseStudents;
+
+                // Add exceptions
+                Object.values(classExceptions).forEach(exc => {
+                    if (exc.action === 'PROMOTE') promoteCount += 1;
+                    else if (exc.action === 'GRADUATE') graduateCount += 1;
+                    else if (exc.action === 'RETAIN') retainCount += 1;
+                });
+
+                if (targetSel && targetSel.value === 'NEW' && action !== 'GRADUATE' && action !== 'SKIP') {
+                    createClassCount += 1;
+                }
+            });
+        });
+
+        document.getElementById('summaryCountPromote').innerText = promoteCount;
+        document.getElementById('summaryCountGraduate').innerText = graduateCount;
+        document.getElementById('summaryCountRetain').innerText = retainCount;
+        document.getElementById('summaryCountCreateClass').innerText = createClassCount;
+    }
+
+    // Modal for Individual Student Exceptions in a Class
+    let currentModalClassId = null;
+
+    function openClassroomStudentsModal(classId, className) {
+        currentModalClassId = classId;
+        document.getElementById('modalClassNameTitle').innerText = className;
+        const tbody = document.getElementById('modalClassStudentsTbody');
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>កំពុងផ្ទុកបញ្ជីសិស្ស...</td></tr>`;
+
+        const modal = new bootstrap.Modal(document.getElementById('classroomStudentsModal'));
+        modal.show();
+
+        fetch(`/academics/promotion/api/classroom-students/${classId}/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    renderModalStudentsTable(data.students);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">${data.message}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">ពុំអាចផ្ទុកទិន្នន័យបានឡើយ៖ ${err}</td></tr>`;
+            });
+    }
+
+    function renderModalStudentsTable(students) {
+        const tbody = document.getElementById('modalClassStudentsTbody');
+        if (!students || students.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-muted text-center py-3">មិនមានសិស្សសកម្មក្នុងថ្នាក់នេះឡើយ</td></tr>`;
+            return;
+        }
+
+        const classExceptions = globalStudentExceptions[currentModalClassId] || {};
+        const defaultClassAction = document.getElementById(`action_class_${currentModalClassId}`)?.value || 'PROMOTE';
+
+        let html = '';
+        students.forEach((s, idx) => {
+            const hasExc = classExceptions[s.id];
+            const currentAction = hasExc ? hasExc.action : defaultClassAction;
+            const currentReason = hasExc ? hasExc.reason : (currentAction === 'RETAIN' ? 'FAILED_YEAR' : 'PASSED_YEAR');
+            const currentNotes = hasExc ? hasExc.notes : '';
+
+            html += `
+                <tr id="exc_row_${s.id}" class="${hasExc ? 'table-warning' : ''}">
+                    <td class="text-muted small">${idx + 1}</td>
+                    <td>
+                        <div class="fw-bold text-dark">${s.khmer_name}</div>
+                        <div class="text-muted small font-monospace">${s.student_id} (${s.gender})</div>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm exc-action-select" id="modal_st_action_${s.id}">
+                            <option value="DEFAULT" ${!hasExc ? 'selected' : ''}>-- តាមថ្នាក់រួម (${defaultClassAction}) --</option>
+                            <option value="PROMOTE" ${hasExc && currentAction === 'PROMOTE' ? 'selected' : ''}>🟢 ឡើងថ្នាក់ (Promote)</option>
+                            <option value="RETAIN" ${hasExc && currentAction === 'RETAIN' ? 'selected' : ''}>🟡 ត្រួតថ្នាក់ (Retain)</option>
+                            <option value="GRADUATE" ${hasExc && currentAction === 'GRADUATE' ? 'selected' : ''}>🎓 បញ្ចប់ការសិក្សា (Graduate)</option>
+                            <option value="TRANSFER" ${hasExc && currentAction === 'TRANSFER' ? 'selected' : ''}>🔵 ផ្ទេរចេញ (Transfer)</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" id="modal_st_notes_${s.id}" value="${currentNotes}" placeholder="សម្គាល់ (ឧ. ត្រួតថ្នាក់)">
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    function saveClassroomStudentsExceptions() {
+        if (!currentModalClassId) return;
+
+        const defaultClassAction = document.getElementById(`action_class_${currentModalClassId}`)?.value || 'PROMOTE';
+        const exceptions = {};
+
+        document.querySelectorAll('.exc-action-select').forEach(sel => {
+            const sId = sel.id.replace('modal_st_action_', '');
+            const actionVal = sel.value;
+            const notesVal = document.getElementById(`modal_st_notes_${sId}`)?.value || '';
+
+            if (actionVal !== 'DEFAULT' && actionVal !== defaultClassAction) {
+                exceptions[sId] = {
+                    action: actionVal,
+                    reason: (actionVal === 'RETAIN') ? 'FAILED_YEAR' : 'PASSED_YEAR',
+                    notes: notesVal
+                };
+            }
+        });
+
+        globalStudentExceptions[currentModalClassId] = exceptions;
+        const excCount = Object.keys(exceptions).length;
+        const badge = document.getElementById(`exc_badge_${currentModalClassId}`);
+        if (badge) {
+            badge.innerText = excCount;
+            if (excCount > 0) badge.parentElement.classList.add('btn-warning', 'text-dark');
+            else badge.parentElement.classList.remove('btn-warning', 'text-dark');
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('classroomStudentsModal')).hide();
+        updateAllGradesSummaryCounts();
+    }
+
+    // Execute Bulk All-Grades Promotion
+    function confirmExecuteAllGradesBulkPromotion() {
+        if (!allGradesMatrixData) return;
+
+        const sourceYearId = document.getElementById('bulkSourceYearSelect').value;
+        const targetYearId = document.getElementById('bulkTargetYearSelect').value;
+        const btn = document.getElementById('btnExecuteBulkPromotion');
+
+        const pCount = document.getElementById('summaryCountPromote').innerText;
+        const gCount = document.getElementById('summaryCountGraduate').innerText;
+        const rCount = document.getElementById('summaryCountRetain').innerText;
+        const cCount = document.getElementById('summaryCountCreateClass').innerText;
+
+        const mappings = [];
+
+        allGradesMatrixData.grade_groups.forEach(g => {
+            g.classes.forEach(c => {
+                const actSel = document.getElementById(`action_class_${c.id}`);
+                const targetSel = document.getElementById(`target_class_${c.id}`);
+                const newNameInput = document.getElementById(`new_name_${c.id}`);
+
+                if (!actSel) return;
+                const action = actSel.value;
+                const targetVal = targetSel ? targetSel.value : '';
+                const isAutoCreate = (targetVal === 'NEW');
+
+                mappings.push({
+                    source_class_id: c.id,
+                    action: action,
+                    target_class_id: (targetVal && targetVal !== 'NEW') ? parseInt(targetVal) : null,
+                    auto_create_target: isAutoCreate,
+                    target_class_name: isAutoCreate ? (newNameInput ? newNameInput.value.trim() : c.suggested_target_name) : '',
+                    target_grade_level: c.suggested_target_grade,
+                    student_exceptions: globalStudentExceptions[c.id] || {}
+                });
+            });
+        });
+
+        Swal.fire({
+            title: 'បញ្ជាក់ការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ទូទាំងសាលា',
+            html: `
+                <div class="text-start small">
+                    <p class="mb-2">តើលោកអ្នកពិតជាចង់ដំណើរការផ្ទេរ និងឡើងថ្នាក់សិស្សទាំងអស់ពីឆ្នាំ <strong>${allGradesMatrixData.source_year.name}</strong> ទៅកាន់ឆ្នាំ <strong>${allGradesMatrixData.target_year.name}</strong> មែនទេ?</p>
+                    <div class="p-3 bg-light rounded-3 border mb-2">
+                        <div class="d-flex justify-content-between text-success fw-bold py-1">
+                            <span><i class="fa-solid fa-arrow-up me-1"></i> សិស្សឡើងថ្នាក់៖</span>
+                            <span>${pCount} នាក់</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-info fw-bold py-1">
+                            <span><i class="fa-solid fa-graduation-cap me-1"></i> សិស្សបញ្ចប់ការសិក្សា៖</span>
+                            <span>${gCount} នាក់</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-warning fw-bold py-1">
+                            <span><i class="fa-solid fa-rotate-left me-1"></i> សិស្សត្រួតថ្នាក់៖</span>
+                            <span>${rCount} នាក់</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-primary fw-bold py-1">
+                            <span><i class="fa-solid fa-chalkboard me-1"></i> ថ្នាក់ថ្មីដែលនឹងបង្កើត៖</span>
+                            <span>${cCount} ថ្នាក់</span>
+                        </div>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '🚀 យល់ព្រម អនុវត្តភ្លាម',
+            cancelButtonText: 'បោះបង់',
+            confirmButtonColor: '#f59e0b',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>កំពុងដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់...`;
+
+                fetch('/academics/promotion/api/all-grades-execute/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        source_year_id: sourceYearId,
+                        target_year_id: targetYearId,
+                        mappings: mappings,
+                        note: 'ផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ទូទាំងសាលា'
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('ជោគជ័យ!', data.message, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('បរាជ័យ!', data.message || 'មានបញ្ហាមិនអាចដំណើរការបាន', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = `<i class="fa-solid fa-rocket me-1"></i> ដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ភ្លាមៗ`;
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('កំហុសប្រព័ន្ធ!', err.toString(), 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-rocket me-1"></i> ដំណើរការផ្ទេរសិស្សគ្រប់កម្រិតថ្នាក់ភ្លាមៗ`;
+                });
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         updateLiveStats();
+        {% if is_admin %}
+        loadAllGradesMatrix();
+        {% endif %}
     });
 </script>
+
+<!-- Modal: Classroom Individual Student Exceptions -->
+<div class="modal fade" id="classroomStudentsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-users-gear me-2"></i>ពិនិត្យ និងកំណត់សិស្សបុគ្គលក្នុងថ្នាក់ <span id="modalClassNameTitle" class="badge bg-white text-primary">ថ្នាក់</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info border-0 rounded-3 small mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i> លោកអ្នកអាចកំណត់សិស្សជាក់លាក់ឱ្យ <strong>ត្រួតថ្នាក់ (Retain)</strong> ឬ <strong>ផ្ទេរចេញ</strong> ដោយឡែកពីសេចក្តីសម្រេចរួមរបស់ថ្នាក់។
+                </div>
+                <div class="table-responsive bg-white rounded-3 border">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-muted">
+                            <tr>
+                                <th style="width: 40px;">#</th>
+                                <th>ឈ្មោះសិស្ស (ID)</th>
+                                <th style="width: 220px;">សកម្មភាពបុគ្គល</th>
+                                <th>កំណត់ចំណាំ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalClassStudentsTbody">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-white">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">បិទ</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="saveClassroomStudentsExceptions()">
+                    <i class="fa-solid fa-check me-1"></i> រក្សាទុកជម្រើសសិស្ស
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

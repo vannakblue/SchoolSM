@@ -6,6 +6,7 @@ urlpatterns = [
     path('demo-login/<str:role>/', views.demo_login_view, name='demo_login'),
     path('init-admin/', views.init_admin_view, name='init_admin'),
     path('logout/', views.logout_view, name='logout'),
+    path('set-language/', views.set_language_preference_view, name='set_language_preference'),
     path('redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/request-change/', views.teacher_request_profile_change, name='teacher_request_profile_change'),
