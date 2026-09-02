@@ -295,18 +295,21 @@ def student_dashboard(request):
     student = getattr(user, 'student_profile', None)
     
     if not student:
-        # 1. Match by username, phone, or student_id
+        # 1. Match by user, username, phone, student_id, or full name
         student = Student.objects.filter(
+            Q(user=user) |
             Q(student_id__iexact=user.username) | 
             Q(phone__iexact=user.username) | 
-            Q(student_id__iexact=user.phone)
+            Q(student_id__iexact=user.phone) |
+            Q(khmer_name__iexact=user.khmer_name) |
+            Q(latin_name__iexact=user.latin_name)
         ).first()
         if student and not student.user:
             student.user = user
             student.save(update_fields=['user'])
 
-    if not student and (user.is_superuser or user.role in ['ADMIN', 'STUDENT']):
-        # If still not found, fallback to the first active student
+    if not student and (user.is_superuser or user.role == 'ADMIN'):
+        # If admin/superuser, fallback to first active student
         student = Student.objects.filter(status='ACTIVE').first() or Student.objects.first()
 
     today_weekday = datetime.now().weekday() + 1
