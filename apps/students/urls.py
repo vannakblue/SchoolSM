@@ -35,6 +35,8 @@ urlpatterns = [
     path('<int:pk>/quick-status/', views.api_quick_set_student_status, name='student_quick_status'),
     path('<int:pk>/exam-status/', views.api_set_student_exam_status, name='student_set_exam_status'),
     path('batch/exam-status/', views.api_batch_set_student_exam_status, name='student_batch_set_exam_status'),
+    path('batch-romanize/', views.batch_romanize_latin_names, name='batch_romanize_latin_names'),
+    path('api/romanize/', views.api_romanize_khmer_name, name='api_romanize_khmer_name'),
 
     # Academic Year Student Archive & Safe Purge URLs
     path('archives/', views.student_archives_list, name='student_archives_list'),

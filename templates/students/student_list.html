@@ -53,6 +53,12 @@
             <i class="fa-solid fa-box-archive me-1"></i> {% if is_khmer %}ប័ណ្ណសារសិស្ស{% else %}Archives{% endif %}
         </a>
         {% if is_admin %}
+        <form method="POST" action="{% url 'batch_romanize_latin_names' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់កែតម្រូវឈ្មោះជាអក្សរឡាតាំងរបស់សិស្សទាំងអស់ដោយស្វ័យប្រវត្តិមែនទេ?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-warning text-dark fw-semibold" title="{% if is_khmer %}កែតម្រូវឈ្មោះឡាតាំងរបស់សិស្សទាំងអស់ដោយស្វ័យប្រវត្តិ{% else %}Auto-Fix & Romanize All Latin Names{% endif %}">
+                <i class="fa-solid fa-spell-check text-warning me-1"></i> {% if is_khmer %}កែឈ្មោះឡាតាំង{% else %}Fix Latin Names{% endif %}
+            </button>
+        </form>
         <button type="button" class="btn btn-outline-danger" onclick="openPurgeAcademicYearModal()" title="{% if is_khmer %}សម្អាតសិស្សតាមឆ្នាំសិក្សាដោយសុវត្ថិភាពខ្ពស់{% else %}Safe Purge by Academic Year{% endif %}">
             <i class="fa-solid fa-trash-can me-1"></i> {% if is_khmer %}សម្អាតតាមឆ្នាំ{% else %}Purge Year{% endif %}
         </button>
@@ -188,7 +194,7 @@
                                 <a href="{% url 'student_detail' s.id %}" class="fw-bold text-dark text-decoration-none hover-primary">
                                     {{ s.khmer_name }}
                                 </a>
-                                <div class="text-muted small" style="font-size: 0.75rem;">{{ s.latin_name }}</div>
+                                <div class="text-muted small" style="font-size: 0.75rem;">{{ s.clean_latin_name|default:s.latin_name }}</div>
                             </div>
                         </div>
                     </td>

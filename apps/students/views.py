@@ -2073,4 +2073,56 @@ def api_get_archive_json_snapshot(request, pk):
     })
 
 
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def batch_romanize_latin_names(request):
+    """
+    1-Click batch romanization: Scans all students, converts Khmer names into standardized
+    Latin names, and saves them to the database.
+    """
+    import re
+    from .khmer_romanizer import romanize_khmer_name
+    from django.contrib import messages
+
+    force = request.GET.get('force') == '1' or request.POST.get('force') == '1'
+    kh_re = re.compile(r'[\u1780-\u17FF]')
+    
+    students_qs = Student.objects.all()
+    updated_count = 0
+
+    for student in students_qs:
+        curr_latin = str(student.latin_name or '').strip()
+        # If missing, corrupted with Khmer chars, or force is requested
+        if force or not curr_latin or kh_re.search(curr_latin):
+            clean_latin = romanize_khmer_name(student.khmer_name)
+            if clean_latin and clean_latin != curr_latin:
+                student.latin_name = clean_latin
+                student.save(update_fields=['latin_name'])
+                updated_count += 1
+
+    messages.success(request, f"✅ បានកែតម្រូវឈ្មោះជាអក្សរឡាតាំងរបស់សិស្សចំនួន {updated_count} នាក់ឱ្យបានត្រឹមត្រូវ ១០០% រួចរាល់ហើយ!")
+    referer = request.META.get('HTTP_REFERER') or '/students/'
+    return redirect(referer)
+
+
+@login_required
+def api_romanize_khmer_name(request):
+    """
+    AJAX API endpoint for instant client-side transliteration.
+    """
+    from django.http import JsonResponse
+    from .khmer_romanizer import romanize_khmer_name
+
+    name_kh = request.GET.get('name', '').strip() or request.POST.get('name', '').strip()
+    if not name_kh:
+        return JsonResponse({'status': 'error', 'message': 'Missing Khmer name', 'latin_name': ''})
+
+    latin_name = romanize_khmer_name(name_kh)
+    return JsonResponse({
+        'status': 'success',
+        'khmer_name': name_kh,
+        'latin_name': latin_name
+    })
+
+
 

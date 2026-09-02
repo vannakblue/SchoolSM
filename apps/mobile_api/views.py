@@ -1795,4 +1795,32 @@ class MobileStudentEnrollAPIView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class MobileStudentRomanizeAPIView(APIView):
+    """
+    Mobile API: Automatic Khmer-to-Latin Name Transliteration / Romanization.
+    Supports GET /api/v1/students/romanize/?name=... and POST /api/v1/students/romanize/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        name_kh = str(request.GET.get('name', '')).strip()
+        from apps.students.khmer_romanizer import romanize_khmer_name
+        latin_name = romanize_khmer_name(name_kh) if name_kh else ''
+        return Response({
+            'status': 'success',
+            'khmer_name': name_kh,
+            'latin_name': latin_name
+        })
+
+    def post(self, request):
+        name_kh = str(request.data.get('khmer_name', '') or request.data.get('name', '')).strip()
+        from apps.students.khmer_romanizer import romanize_khmer_name
+        latin_name = romanize_khmer_name(name_kh) if name_kh else ''
+        return Response({
+            'status': 'success',
+            'khmer_name': name_kh,
+            'latin_name': latin_name
+        })
+
+
 

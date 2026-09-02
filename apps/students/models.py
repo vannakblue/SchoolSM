@@ -444,6 +444,15 @@ class Student(models.Model):
 
         return candidate_id
 
+    @property
+    def clean_latin_name(self):
+        """Returns clean Latin name without any leftover Khmer characters"""
+        import re
+        from .khmer_romanizer import romanize_khmer_name
+        if not self.latin_name or re.search(r'[\u1780-\u17FF]', str(self.latin_name)):
+            return romanize_khmer_name(self.khmer_name)
+        return self.latin_name
+
     def clean(self):
         super().clean()
         if self.student_id:
@@ -459,6 +468,7 @@ class Student(models.Model):
                 })
 
     def save(self, *args, **kwargs):
+        # Auto-generate or format student ID
         if not self.student_id or str(self.student_id).strip() == '':
             self.student_id = Student.generate_unique_student_id(self.academic_year, exclude_pk=self.pk)
         else:
@@ -473,6 +483,12 @@ class Student(models.Model):
                 raise ValidationError({
                     'student_id': f"អត្តលេខសិស្ស '{self.student_id}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_info}!"
                 })
+
+        # Auto-clean and romanize Latin name if missing or corrupted
+        import re
+        from .khmer_romanizer import romanize_khmer_name
+        if not self.latin_name or re.search(r'[\u1780-\u17FF]', str(self.latin_name)):
+            self.latin_name = romanize_khmer_name(self.khmer_name)
 
         super().save(*args, **kwargs)
 

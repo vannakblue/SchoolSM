@@ -47,4 +47,5 @@ urlpatterns = [
     # 9. Student Registration & ID Uniqueness APIs
     path('students/check-id/', views.MobileStudentCheckIDAPIView.as_view(), name='mobile_api_student_check_id'),
     path('students/enroll/', views.MobileStudentEnrollAPIView.as_view(), name='mobile_api_student_enroll'),
+    path('students/romanize/', views.MobileStudentRomanizeAPIView.as_view(), name='mobile_api_student_romanize'),
 ]
