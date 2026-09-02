@@ -71,9 +71,6 @@
                 <div class="p-3 bg-danger bg-opacity-10 rounded-4 border border-danger border-opacity-25">
                     <small class="text-danger text-uppercase fw-bold">អវត្តមានឥតច្បាប់</small>
                     <h3 class="fw-bold text-danger mb-0 mt-1">{{ total_unexcused }} <small class="fs-6">ថ្ងៃ</small></h3>
-                    {% if total_deduction > 0 %}
-                    <small class="text-danger d-block mt-1">កាត់ប្រាក់៖ -${{ total_deduction|floatformat:2 }}</small>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -99,7 +96,6 @@
                         <th>ម៉ោង Check-out</th>
                         <th>វិធីសាស្ត្រ</th>
                         <th>ស្ថានភាព</th>
-                        <th>កាត់ប្រាក់ខែ ($)</th>
                         <th>កំណត់ចំណាំ</th>
                     </tr>
                 </thead>
@@ -157,20 +153,13 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td class="fw-bold {% if att.deduction_amount > 0 %}text-danger{% else %}text-muted{% endif %}">
-                            {% if att.deduction_amount > 0 %}
-                            -${{ att.deduction_amount|floatformat:2 }}
-                            {% else %}
-                            $0.00
-                            {% endif %}
-                        </td>
                         <td class="small text-muted">
                             {{ att.notes|default:"-" }}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="6" class="text-center py-5 text-muted">
                             <i class="fa-solid fa-calendar-xmark display-4 mb-2 d-block opacity-25"></i>
                             មិនទាន់មានកំណត់ត្រាវត្តមានសម្រាប់ខែ {{ selected_month }} នេះនៅឡើយទេ
                         </td>

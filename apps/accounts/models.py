@@ -238,6 +238,18 @@ class SchoolProfile(models.Model):
         blank=True,
         verbose_name="កម្រិតសិក្សា / Education Levels"
     )
+    date_format = models.CharField(
+        max_length=20,
+        default="dd-mm-yyyy",
+        choices=[
+            ('dd-mm-yyyy', 'dd-mm-yyyy (ឧ. 02-09-2026) - លំនាំដើម'),
+            ('dd/mm/yyyy', 'dd/mm/yyyy (ឧ. 02/09/2026)'),
+            ('yyyy-mm-dd', 'yyyy-mm-dd (ឧ. 2026-09-02)'),
+            ('dd.mm.yyyy', 'dd.mm.yyyy (ឧ. 02.09.2026)'),
+        ],
+        blank=True,
+        verbose_name="ទម្រង់កាលបរិច្ឆេទ / Date Format"
+    )
 
     # MoEYS Administrative & Hierarchy
     ministry_name = models.CharField(

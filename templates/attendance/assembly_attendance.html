@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static i18n_extras %}
 
 {% block title %}ស្រង់វត្តមានពេលគោរពទង់ជាតិ / Assembly Attendance | SchoolSM{% endblock %}
 
@@ -126,7 +126,7 @@
         <!-- Window Helper Notice -->
         <div class="mt-3 pt-2 border-top border-white border-opacity-25 d-flex align-items-center justify-content-between small text-white-50">
             <span><i class="fa-solid fa-circle-info me-1"></i> {{ window_message }}</span>
-            <span>{{ today_date|date:"l ទី d ខែ m ឆ្នាំ Y" }}</span>
+            <span class="fw-semibold"><i class="fa-solid fa-calendar-day me-1"></i> {{ today_date_kh|default:today_date|khmer_full_date }}</span>
         </div>
     </div>
 

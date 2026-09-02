@@ -294,8 +294,20 @@ def student_dashboard(request):
     user = request.user
     student = getattr(user, 'student_profile', None)
     
-    if not student and user.is_superuser:
-        student = Student.objects.first()
+    if not student:
+        # 1. Match by username, phone, or student_id
+        student = Student.objects.filter(
+            Q(student_id__iexact=user.username) | 
+            Q(phone__iexact=user.username) | 
+            Q(student_id__iexact=user.phone)
+        ).first()
+        if student and not student.user:
+            student.user = user
+            student.save(update_fields=['user'])
+
+    if not student and (user.is_superuser or user.role in ['ADMIN', 'STUDENT']):
+        # If still not found, fallback to the first active student
+        student = Student.objects.filter(status='ACTIVE').first() or Student.objects.first()
 
     today_weekday = datetime.now().weekday() + 1
     today_schedule = []
@@ -307,8 +319,13 @@ def student_dashboard(request):
         ).select_related('subject', 'teacher').order_by('start_time')
 
     recent_grades = []
+    avg_score = 0.0
     if student:
         recent_grades = Grade.objects.filter(student=student).select_related('subject', 'exam_term').order_by('-exam_term__start_date')[:6]
+        if recent_grades.exists():
+            scores = [g.score for g in recent_grades if g.score is not None]
+            if scores:
+                avg_score = round(sum(scores) / len(scores), 2)
 
     invoices = []
     if student:
@@ -319,12 +336,30 @@ def student_dashboard(request):
         is_published=True
     )[:4]
 
+    latest_term = ExamTerm.objects.order_by('-start_date').first()
+
+    # Attendance stats
+    absent_days = 0
+    att_rate = 100.0
+    if student:
+        total_att = StudentAttendance.objects.filter(student=student).count()
+        unexcused_att = StudentAttendance.objects.filter(student=student, status='UNEXCUSED_ABSENCE').count()
+        absent_days = unexcused_att
+        if total_att > 0:
+            att_rate = round(((total_att - unexcused_att) / total_att) * 100, 1)
+
     return render(request, 'dashboard/student_dashboard.html', {
         'student': student,
+        'classroom': student.classroom if student else None,
         'today_schedule': today_schedule,
         'recent_grades': recent_grades,
+        'my_grades': recent_grades,
         'invoices': invoices,
         'announcements': announcements,
+        'latest_term': latest_term,
+        'att_rate': att_rate,
+        'absent_days': absent_days,
+        'avg_score': avg_score,
     })
 
 

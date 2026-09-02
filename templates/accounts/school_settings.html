@@ -126,9 +126,13 @@
                     <i class="fa-solid fa-phone text-warning me-1"></i>
                     <strong>ទូរស័ព្ទ:</strong> {{ school_profile.phone }}
                 </div>
-                <div>
+                <div class="mb-1">
                     <i class="fa-solid fa-envelope text-primary me-1"></i>
                     <strong>អ៊ីមែល:</strong> {{ school_profile.email }}
+                </div>
+                <div>
+                    <i class="fa-solid fa-calendar-days text-primary me-1"></i>
+                    <strong>ទម្រង់កាលបរិច្ឆេទ:</strong> <code>{{ school_profile.date_format|default:"dd-mm-yyyy" }}</code>
                 </div>
             </div>
 
@@ -245,6 +249,11 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">បាវចនាសាលា (Motto)</label>
                                 {{ form.motto }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small"><i class="fa-solid fa-calendar-days me-1 text-primary"></i>ទម្រង់កាលបរិច្ឆេទ (Date Format) <span class="text-danger">*</span></label>
+                                {{ form.date_format }}
+                                <div class="form-text small">ស្តង់ដារលំនាំដើម៖ <code>dd-mm-yyyy</code> (ឧ. 02-09-2026)</div>
                             </div>
                         </div>
 

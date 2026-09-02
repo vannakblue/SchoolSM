@@ -543,7 +543,11 @@
                     </option>
                     {% for v in timetable_versions %}
                     <option value="{{ v.id }}" {% if active_version and active_version.id == v.id %}selected{% endif %}>
-                        លើកទី {{ v.version_number }}: {{ v.title|truncatechars:18 }}{% if v.is_active_applied %} ★{% endif %}
+                        {% if "លើកទី" in v.title %}
+                            {{ v.title|truncatechars:24 }}{% if v.is_active_applied %} ★{% endif %}
+                        {% else %}
+                            លើកទី {{ v.version_number }}: {{ v.title|truncatechars:18 }}{% if v.is_active_applied %} ★{% endif %}
+                        {% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -3227,7 +3231,7 @@
         if (numInput) numInput.value = NEXT_VERSION_NUMBER;
         if (titleInput) {
             const today = new Date();
-            const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+            const dateStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
             titleInput.value = `លើកទី ${NEXT_VERSION_NUMBER} - ${dateStr}`;
         }
         if (noteInput) noteInput.value = '';
@@ -3478,6 +3482,15 @@
         container.innerHTML = html;
     }
 
+    function formatVersionDisplay(vNum, title) {
+        if (!title) return `លើកទី ${vNum}`;
+        const trimmed = String(title).trim();
+        if (trimmed.startsWith(`លើកទី ${vNum}`) || trimmed.startsWith(`លើកទី${vNum}`) || trimmed.startsWith('លើកទី')) {
+            return trimmed;
+        }
+        return `លើកទី ${vNum}: ${trimmed}`;
+    }
+
     function updateVersionDropdownFromList(versions) {
         const select = document.getElementById('selectTimetableVersion');
         if (!select) return;
@@ -3486,8 +3499,9 @@
         versions.forEach(v => {
             const isSel = (v.is_active_applied || (ACTIVE_VERSION_ID && ACTIVE_VERSION_ID === v.id)) ? 'selected' : '';
             const activeStar = v.is_active_applied ? ' ★' : '';
-            const titleSnippet = v.title.length > 18 ? v.title.substring(0, 18) + '...' : v.title;
-            optionsHtml += `<option value="${v.id}" ${isSel}>លើកទី ${v.version_number}: ${titleSnippet}${activeStar}</option>`;
+            const fullLabel = formatVersionDisplay(v.version_number, v.title);
+            const labelSnippet = fullLabel.length > 25 ? fullLabel.substring(0, 25) + '...' : fullLabel;
+            optionsHtml += `<option value="${v.id}" ${isSel}>${labelSnippet}${activeStar}</option>`;
         });
 
         select.innerHTML = optionsHtml;
@@ -3508,8 +3522,9 @@
             }
         }
         if (!exists) {
-            const titleSnippet = version.title.length > 18 ? version.title.substring(0, 18) + '...' : version.title;
-            const newOpt = new Option(`លើកទី ${version.version_number}: ${titleSnippet} ★`, version.id, true, true);
+            const fullLabel = formatVersionDisplay(version.version_number, version.title);
+            const labelSnippet = fullLabel.length > 25 ? fullLabel.substring(0, 25) + '...' : fullLabel;
+            const newOpt = new Option(`${labelSnippet} ★`, version.id, true, true);
             select.add(newOpt);
         }
     }
@@ -3521,7 +3536,8 @@
         const vId = parseInt(val);
         const version = TIMETABLE_VERSIONS.find(v => v.id === vId);
         if (version) {
-            if (confirm(`🔄 តើលោកអ្នកចង់ទាញយកកាលវិភាគ "លើកទី ${version.version_number}: ${version.title}" មកដាក់ប្រើប្រាស់មែនទេ?`)) {
+            const disp = formatVersionDisplay(version.version_number, version.title);
+            if (confirm(`🔄 តើលោកអ្នកចង់ទាញយកកាលវិភាគ "${disp}" មកដាក់ប្រើប្រាស់មែនទេ?`)) {
                 restoreTimetableVersion(version.id, version.version_number, version.title);
             } else {
                 // Revert dropdown to active
@@ -3533,7 +3549,8 @@
     }
 
     async function restoreTimetableVersion(versionId, vNum, vTitle) {
-        if (!confirm(`🚀 តើលោកអ្នកពិតជាចង់ទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគលើកទី ${vNum} "${vTitle}" ជំនួសកាលវិភាគបច្ចុប្បន្នមែនទេ?`)) {
+        const disp = formatVersionDisplay(vNum, vTitle);
+        if (!confirm(`🚀 តើលោកអ្នកពិតជាចង់ទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគ "${disp}" ជំនួសកាលវិភាគបច្ចុប្បន្នមែនទេ?`)) {
             return;
         }
 

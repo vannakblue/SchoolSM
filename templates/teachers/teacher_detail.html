@@ -128,7 +128,6 @@
                         <tr>
                             <th>កាលបរិច្ឆេទ</th>
                             <th>ស្ថានភាព</th>
-                            <th>កាត់ប្រាក់ខែ</th>
                             <th>កំណត់ចំណាំ</th>
                         </tr>
                     </thead>
@@ -141,12 +140,11 @@
                                     {{ att.get_status_display }}
                                 </span>
                             </td>
-                            <td class="text-danger fw-bold">{% if att.deduction_amount > 0 %}-${{ att.deduction_amount }}{% else %}$0{% endif %}</td>
                             <td>{{ att.notes|default:"-" }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center py-3 text-muted">មិនទាន់មានទិន្នន័យវត្តមានឡើយ</td>
+                            <td colspan="3" class="text-center py-3 text-muted">មិនទាន់មានទិន្នន័យវត្តមានឡើយ</td>
                         </tr>
                         {% endfor %}
                     </tbody>

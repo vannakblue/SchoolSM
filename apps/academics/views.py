@@ -2356,9 +2356,10 @@ def timetable_version_restore(request, version_id):
                 request.session[session_key] = version.blocked_slots
                 request.session.modified = True
 
+        v_display = f'"{version.title}"' if (version.title and 'លើកទី' in version.title) else f'លើកទី {version.version_number} "{version.title}"'
         return JsonResponse({
             'status': 'success',
-            'message': f'បានទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគលើកទី {version.version_number} "{version.title}" ({len(restored_entries)} ម៉ោង) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!',
+            'message': f'បានទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគ {v_display} ({len(restored_entries)} ម៉ោង) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!',
             'version_id': version.id,
             'version_number': version.version_number,
             'title': version.title,
@@ -5595,12 +5596,55 @@ def teacher_assignments_reset_all(request):
     return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
 
 
-@login_required
+def is_teacher_subject_match(teacher, subject):
+    """
+    Checks if a teacher's specialization matches a subject, supporting both Khmer, English,
+    and MoEYS compound specialization formats (e.g. គណិត-រូប, គីមី-ជីវៈ, ប្រវត្តិ-ភូមិ).
+    """
+    spec = (teacher.specialization or '').strip().lower()
+    if not spec:
+        return False
+    
+    sub_kh = (subject.name_kh or '').strip().lower()
+    sub_en = (subject.name_en or '').strip().lower()
+    sub_code = (subject.code or '').strip().upper()
+
+    if sub_kh and (sub_kh in spec or spec in sub_kh):
+        return True
+    if sub_en and sub_en in spec:
+        return True
+
+    # Common Cambodian curriculum specialization synonym maps
+    keyword_map = {
+        'M': ['គណិត', 'គណិតវិទ្យា', 'math'],
+        'K': ['ខ្មែរ', 'ភាសាខ្មែរ', 'អក្សរសាស្ត្រ', 'khmer'],
+        'P': ['រូប', 'រូបវិទ្យា', 'physics'],
+        'C': ['គីមី', 'គីមីវិទ្យា', 'chemistry', 'chem'],
+        'B': ['ជីវ', 'ជីវវិទ្យា', 'biology', 'bio'],
+        'E': ['អង់គ្លេស', 'ភាសាអង់គ្លេស', 'english', 'eng'],
+        'H': ['ប្រវត្តិ', 'ប្រវត្តិវិទ្យា', 'history'],
+        'G': ['ភូមិ', 'ភូមិវិទ្យា', 'geography', 'geo'],
+        'I': ['សីលធម៌', 'ពលរដ្ឋ', 'ពលរដ្ឋវិទ្យា', 'civic', 'moral'],
+        'Es': ['ផែនដី', 'បរិស្ថាន', 'ផែនដីវិទ្យា', 'earth'],
+        'PE': ['កីឡា', 'អប់រំកាយ', 'pe', 'sport'],
+        'ICT': ['កុំព្យូទ័រ', 'ព័ត៌មានវិទ្យា', 'ict', 'computer'],
+        'HE': ['គេហ', 'គេហវិទ្យា', 'home'],
+        'EC': ['សេដ្ឋកិច្ច', 'economics', 'econ'],
+        'A': ['សិល្បៈ', 'គំនូរ', 'តន្ត្រី', 'art'],
+    }
+    keywords = keyword_map.get(sub_code, [])
+    for kw in keywords:
+        if kw in spec:
+            return True
+    return False
+
+
 @role_required(['ADMIN'])
 def teacher_assignments_auto_assign(request):
     """
     Intelligently auto-assign active teachers to classes based on their subject specialization
     and pedagogical training level quota (គ្រូទុតិយភូមិ = 16h, ផ្សេងៗ = 18h).
+    STRICT ENFORCEMENT: Never exceeds any teacher's max weekly hours quota under any circumstances.
     """
     active_year = None
     try:
@@ -5614,7 +5658,7 @@ def teacher_assignments_auto_assign(request):
             messages.warning(request, "មិនទាន់មានគ្រូបង្រៀនសកម្ម (ACTIVE) ក្នុងប្រព័ន្ធដើម្បីចាត់តាំងស្វ័យប្រវត្តិឡើយ!")
             return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
 
-        # 1. Sync / Update teacher max hours based on training level in bulk
+        # 1. Sync / Update teacher max hours based on training level in bulk (preserving custom max hours if set)
         teachers_to_update = []
         for t in teachers:
             t_level = (t.training_level or '').strip()
@@ -5653,6 +5697,7 @@ def teacher_assignments_auto_assign(request):
         teacher_loads = {t.id: 0 for t in teachers}
         teacher_max = {t.id: (t.max_weekly_hours or 18) for t in teachers}
         assigned_count = 0
+        unassigned_count = 0
 
         # Pre-fetch existing ClassSubject mapping to avoid N+1 DB calls
         existing_cs_map = {}
@@ -5662,6 +5707,7 @@ def teacher_assignments_auto_assign(request):
 
         cs_to_update = []
         cs_to_create = []
+        tt_synced_total = 0
 
         for cls in classrooms:
             cls_grade = cls.grade_level if cls.grade_level is not None else 10
@@ -5676,43 +5722,46 @@ def teacher_assignments_auto_assign(request):
                 if not h_req or h_req <= 0:
                     continue
 
-                sub_kh = (sub.name_kh or '').strip()
-                sub_en = (sub.name_en or '').strip().lower()
-
-                # Find candidate teachers specializing in this subject
-                candidates = []
-                for t in teachers:
-                    spec = (t.specialization or '').strip().lower()
-                    if sub_kh and sub_kh.lower() in spec:
-                        candidates.append(t)
-                    elif sub_en and sub_en in spec:
-                        candidates.append(t)
+                # 1. Find candidate teachers specializing in this subject
+                specialized_teachers = [t for t in teachers if is_teacher_subject_match(t, sub)]
                 
-                if not candidates:
-                    candidates = list(teachers)  # Fallback to any teacher
+                # Filter candidates strictly to those who CAN FIT h_req without exceeding max_weekly_hours
+                valid_specialized = [
+                    t for t in specialized_teachers
+                    if teacher_loads.get(t.id, 0) + h_req <= teacher_max.get(t.id, 18)
+                ]
 
-                # Score candidates: Prioritize High School Teachers (គ្រូទុតិយភូមិ) for Grades 10-12, Middle School (គ្រូបឋមភូមិ) for Grades 7-9
-                def score_candidate(cand):
-                    is_tutiya = 'ទុតិយភូមិ' in (cand.training_level or '')
-                    level_match_bonus = 0
-                    if is_high_school and is_tutiya:
-                        level_match_bonus = -50  # Lower score is prioritized
-                    elif not is_high_school and not is_tutiya:
-                        level_match_bonus = -50
-                    return (level_match_bonus, teacher_loads.get(cand.id, 0), cand.id)
-
-                candidates.sort(key=score_candidate)
-                
                 chosen = None
-                for cand in candidates:
-                    if teacher_loads.get(cand.id, 0) + h_req <= teacher_max.get(cand.id, 18):
-                        chosen = cand
-                        break
-                if not chosen and candidates:
-                    # Over-quota fallback candidate with minimum load
-                    candidates.sort(key=lambda t: (teacher_loads.get(t.id, 0), t.id))
-                    chosen = candidates[0]
+                if valid_specialized:
+                    # Score candidates: Prioritize High School Teachers (គ្រូទុតិយភូមិ) for Grades 10-12, Middle School (គ្រូបឋមភូមិ) for Grades 7-9
+                    def score_candidate(cand):
+                        is_tutiya = 'ទុតិយភូមិ' in (cand.training_level or '')
+                        level_match_bonus = 0
+                        if is_high_school and is_tutiya:
+                            level_match_bonus = -100  # High school match bonus
+                        elif not is_high_school and not is_tutiya:
+                            level_match_bonus = -100  # Middle school match bonus
+                        
+                        # Equitable load balancing: lower assigned load prioritized first
+                        current_load = teacher_loads.get(cand.id, 0)
+                        return (level_match_bonus, current_load, cand.id)
 
+                    valid_specialized.sort(key=score_candidate)
+                    chosen = valid_specialized[0]
+                else:
+                    # If specialized teachers have reached max quota, search fallback teachers who strictly fit h_req
+                    valid_fallback = [
+                        t for t in teachers
+                        if teacher_loads.get(t.id, 0) + h_req <= teacher_max.get(t.id, 18)
+                    ]
+                    if valid_fallback:
+                        # Prioritize teachers with fewest assigned hours
+                        valid_fallback.sort(key=lambda t: (teacher_loads.get(t.id, 0), t.id))
+                        # Only assign fallback if no specialization teacher exists in system or general subjects
+                        if not specialized_teachers:
+                            chosen = valid_fallback[0]
+
+                # STRICT RULE: If chosen is None (i.e. all candidates would exceed max hours), DO NOT OVER-ASSIGN!
                 if chosen:
                     cs = existing_cs_map.get((cls.id, sub.id))
                     if not cs:
@@ -5732,6 +5781,15 @@ def teacher_assignments_auto_assign(request):
                     
                     teacher_loads[chosen.id] = teacher_loads.get(chosen.id, 0) + h_req
                     assigned_count += 1
+                else:
+                    unassigned_count += 1
+                    # Clean up existing assignment if it previously belonged to an over-quota teacher
+                    cs = existing_cs_map.get((cls.id, sub.id))
+                    if cs and cs.teacher_id:
+                        cs.teacher = None
+                        if h_req:
+                            cs.weekly_hours = h_req
+                        cs_to_update.append(cs)
 
         with transaction.atomic():
             if cs_to_create:
@@ -5739,7 +5797,23 @@ def teacher_assignments_auto_assign(request):
             if cs_to_update:
                 ClassSubject.objects.bulk_update(cs_to_update, ['teacher', 'weekly_hours'])
 
-        messages.success(request, f"បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេស និងកម្រិតបណ្តុះបណ្តាលស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង, គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h) ជោគជ័យ!")
+            # Sync timetable slots to match class-subject teacher assignments
+            for cs in cs_to_update + cs_to_create:
+                tt_qs = Timetable.objects.filter(classroom_id=cs.classroom_id, subject_id=cs.subject_id)
+                if active_year:
+                    tt_qs = tt_qs.filter(classroom__academic_year=active_year)
+                tt_synced_total += tt_qs.exclude(teacher=cs.teacher).update(teacher=cs.teacher)
+
+        # Calculate quota statistics
+        full_quota_count = sum(1 for t in teachers if teacher_loads.get(t.id, 0) == teacher_max.get(t.id, 18))
+        active_teaching_count = sum(1 for t in teachers if teacher_loads.get(t.id, 0) > 0)
+        over_quota_count = sum(1 for t in teachers if teacher_loads.get(t.id, 0) > teacher_max.get(t.id, 18))
+
+        msg = f"✨ បានចាត់តាំងគ្រូបង្រៀនតាមឯកទេសស្វ័យប្រវត្តិ ({assigned_count} ការចាត់តាំង) ដោយរក្សានៅត្រឹមម៉ោងកំណត់របស់គ្រូម្នាក់ៗយ៉ាងតឹងរ៉ឹង (គ្រូបង្រៀនពេញកូតា: {full_quota_count} នាក់, គ្មានគ្រូណាម្នាក់លើសម៉ោងកំណត់ឡើយ {over_quota_count}/0)!"
+        if unassigned_count > 0:
+            msg += f" (ចំណាំ៖ មាន {unassigned_count} ថ្នាក់-មុខវិជ្ជា ពុំទាន់ចាត់តាំង ដោយសារគ្រូឯកទេសបានបង្រៀនពេញកូតាអតិបរមារួចរាល់)។"
+
+        messages.success(request, msg)
     except Exception as e:
         messages.error(request, f"កំហុសក្នុងការចាត់តាំងស្វ័យប្រវត្តិ៖ {str(e)}")
         

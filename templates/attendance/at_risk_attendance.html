@@ -21,42 +21,104 @@
 </div>
 
 <!-- Filter Bar -->
-<div class="custom-card p-3 mb-4">
-    <form method="GET" class="row g-3 align-items-center">
-        <div class="col-md-5">
-            <label class="form-label fw-bold small text-muted">ចម្រាញ់តាមថ្នាក់រៀន</label>
-            <select name="classroom" class="form-select" onchange="this.form.submit()">
+<div class="custom-card p-3 mb-4 shadow-sm">
+    <form method="GET" class="row g-3 align-items-end">
+        <!-- 1. Classroom Selection -->
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label fw-bold small text-muted">
+                <i class="fa-solid fa-chalkboard me-1 text-primary"></i> ចម្រាញ់តាមថ្នាក់រៀន
+            </label>
+            <select name="classroom" class="form-select">
                 <option value="">-- គ្រប់ថ្នាក់រៀនទាំងអស់ --</option>
                 {% for c in classrooms %}
                 <option value="{{ c.id }}" {% if selected_class == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-4">
-            <label class="form-label fw-bold small text-muted">កម្រិតកំណត់អវត្តមានឥតច្បាប់ (យ៉ាងហោចណាស់)</label>
-            <select name="threshold" class="form-select" onchange="this.form.submit()">
-                <option value="1" {% if threshold == 1 %}selected{% endif %}>ចាប់ពី ១ ថ្ងៃឡើងទៅ</option>
-                <option value="2" {% if threshold == 2 %}selected{% endif %}>ចាប់ពី ២ ថ្ងៃឡើងទៅ (កម្រិតប្រកាសអាសន្ន)</option>
-                <option value="3" {% if threshold == 3 %}selected{% endif %}>ចាប់ពី ៣ ថ្ងៃឡើងទៅ (កម្រិតធ្ងន់ធ្ងរ)</option>
-                <option value="5" {% if threshold == 5 %}selected{% endif %}>ចាប់ពី ៥ ថ្ងៃឡើងទៅ (ប្រឈមបោះបង់)</option>
+
+        <!-- 2. Absence Type Selection -->
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label fw-bold small text-muted">
+                <i class="fa-solid fa-filter me-1 text-primary"></i> ប្រភេទអវត្តមាន
+            </label>
+            <select name="absence_type" class="form-select">
+                <option value="UNEXCUSED" {% if absence_type == 'UNEXCUSED' %}selected{% endif %}>អវត្តមានឥតច្បាប់</option>
+                <option value="PERMISSION" {% if absence_type == 'PERMISSION' %}selected{% endif %}>សុំច្បាប់</option>
+                <option value="TOTAL" {% if absence_type == 'TOTAL' %}selected{% endif %}>សរុបទាំងពីរ</option>
             </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end">
-            <a href="{% url 'at_risk_attendance' %}" class="btn btn-light w-100">កំណត់ឡើងវិញ</a>
+
+        <!-- 3. Unit Mode (Days vs Session Times) -->
+        <div class="col-lg-2 col-md-6">
+            <label class="form-label fw-bold small text-muted">
+                <i class="fa-solid fa-scale-balanced me-1 text-primary"></i> គិតជា (ខ្នាតរាប់)
+            </label>
+            <select name="unit" class="form-select fw-bold text-primary">
+                <option value="DAYS" {% if unit == 'DAYS' %}selected{% endif %}>គិតជា «ថ្ងៃ» (0.5 ថ្ងៃ/វេន)</option>
+                <option value="TIMES" {% if unit == 'TIMES' %}selected{% endif %}>គិតជា «ចំនួនដង» (1 វេន = 1 ដង)</option>
+            </select>
+        </div>
+
+        <!-- 4. Min & Max Range Inputs -->
+        <div class="col-lg-3 col-md-6">
+            <label class="form-label fw-bold small text-muted">
+                <i class="fa-solid fa-arrow-down-up-across-line me-1 text-primary"></i> ចន្លោះអវត្តមាន (ពី ... ដល់ ...)
+            </label>
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted small fw-bold">ចាប់ពី</span>
+                <input type="number" step="0.5" name="min_absences" class="form-control text-center fw-bold text-danger" value="{{ min_absences }}" min="0.5" max="365" placeholder="{% if unit == 'TIMES' %}2{% else %}1{% endif %}">
+                <span class="input-group-text bg-light text-muted small fw-bold">ដល់</span>
+                <input type="number" step="0.5" name="max_absences" class="form-control text-center fw-bold text-danger" value="{{ max_absences }}" min="0.5" max="365" placeholder="មិនកំណត់">
+                <span class="input-group-text bg-light text-muted small">{% if unit == 'TIMES' %}ដង{% else %}ថ្ងៃ{% endif %}</span>
+            </div>
+        </div>
+
+        <!-- 5. Submit & Reset Actions -->
+        <div class="col-lg-2 col-md-6 d-flex gap-2">
+            <button type="submit" class="btn btn-primary fw-bold flex-grow-1 shadow-sm">
+                <i class="fa-solid fa-magnifying-glass me-1"></i> ចម្រាញ់
+            </button>
+            <a href="{% url 'at_risk_attendance' %}" class="btn btn-light border" title="កំណត់ឡើងវិញ">
+                <i class="fa-solid fa-rotate-left"></i>
+            </a>
         </div>
     </form>
+
+    <!-- Quick Filter Preset Chips -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-2 border-top">
+        <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-bolt text-warning me-1"></i> កម្រិតកំណត់រហ័ស៖</span>
+        <a href="{% url 'at_risk_attendance' %}?classroom={{ selected_class }}&absence_type={{ absence_type }}&unit=TIMES&min_absences=1" class="badge rounded-pill {% if unit == 'TIMES' and min_absences == '1' and not max_absences %}bg-primary text-white{% else %}bg-light text-dark border{% endif %} text-decoration-none px-2.5 py-1.5">
+            ចាប់ពី ១ ដង (0.5 ថ្ងៃ)
+        </a>
+        <a href="{% url 'at_risk_attendance' %}?classroom={{ selected_class }}&absence_type={{ absence_type }}&unit=TIMES&min_absences=2" class="badge rounded-pill {% if unit == 'TIMES' and min_absences == '2' and not max_absences %}bg-info text-dark{% else %}bg-light text-dark border{% endif %} text-decoration-none px-2.5 py-1.5">
+            ចាប់ពី ២ ដង (1.0 ថ្ងៃ)
+        </a>
+        <a href="{% url 'at_risk_attendance' %}?classroom={{ selected_class }}&absence_type={{ absence_type }}&unit=TIMES&min_absences=4" class="badge rounded-pill {% if unit == 'TIMES' and min_absences == '4' and not max_absences %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %} text-decoration-none px-2.5 py-1.5">
+            ចាប់ពី ៤ ដង (2.0 ថ្ងៃ) [ប្រកាសអាសន្ន]
+        </a>
+        <a href="{% url 'at_risk_attendance' %}?classroom={{ selected_class }}&absence_type={{ absence_type }}&unit=TIMES&min_absences=6" class="badge rounded-pill {% if unit == 'TIMES' and min_absences == '6' and not max_absences %}bg-danger text-white{% else %}bg-light text-dark border{% endif %} text-decoration-none px-2.5 py-1.5">
+            ចាប់ពី ៦ ដង (3.0 ថ្ងៃ) [កម្រិតធ្ងន់ធ្ងរ]
+        </a>
+        <a href="{% url 'at_risk_attendance' %}?classroom={{ selected_class }}&absence_type={{ absence_type }}&unit=TIMES&min_absences=10" class="badge rounded-pill {% if unit == 'TIMES' and min_absences == '10' and not max_absences %}bg-dark text-white{% else %}bg-light text-dark border{% endif %} text-decoration-none px-2.5 py-1.5">
+            ចាប់ពី ១០ ដង (5.0 ថ្ងៃ) [ប្រឈមបោះបង់]
+        </a>
+        <span class="ms-auto small fw-bold text-dark">
+            <i class="fa-solid fa-users text-primary me-1"></i> រកឃើញសិស្ស៖ <strong class="text-danger fs-6">{{ total_found }}</strong> នាក់
+        </span>
+    </div>
 </div>
 
 <!-- At-Risk Table -->
-<div class="custom-card">
+<div class="custom-card shadow-sm">
     <div class="table-responsive">
-        <table class="table-custom">
+        <table class="table-custom align-middle">
             <thead>
                 <tr>
                     <th>កូដ & ឈ្មោះសិស្ស</th>
                     <th>ថ្នាក់រៀន</th>
-                    <th>អវត្តមានឥតច្បាប់</th>
-                    <th>សុំច្បាប់</th>
+                    <th>អវត្តមានឥតច្បាប់ (Absent)</th>
+                    <th>សុំច្បាប់ (Permission)</th>
+                    <th>សរុបអវត្តមាន (Total)</th>
                     <th>អត្រាវត្តមាន</th>
                     <th>កម្រិតហានិភ័យ</th>
                     <th>ព័ត៌មានអាណាព្យាបាល</th>
@@ -79,21 +141,32 @@
                             </div>
                         </div>
                     </td>
-                    <td><span class="badge bg-light text-dark">{{ item.student.classroom.name|default:"-" }}</span></td>
+                    <td><span class="badge bg-light text-dark border">{{ item.student.classroom.name|default:"-" }}</span></td>
                     <td>
-                        <span class="badge bg-danger fs-6 px-3 py-1">
-                            {{ item.absent_count }} ថ្ងៃ
+                        <span class="badge bg-danger fs-6 px-2.5 py-1">
+                            {{ item.absent_days }} ថ្ងៃ <span class="opacity-75 small">({{ item.absent_times }} ដង)</span>
                         </span>
                     </td>
-                    <td><span class="badge bg-warning text-dark">{{ item.perm_count }} ថ្ងៃ</span></td>
+                    <td>
+                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2.5 py-1">
+                            {{ item.perm_days }} ថ្ងៃ <span class="text-muted small">({{ item.perm_times }} ដង)</span>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="fw-bold text-dark">
+                            {{ item.total_absent_days }} ថ្ងៃ <span class="text-muted small">({{ item.total_absent_times }} ដង)</span>
+                        </span>
+                    </td>
                     <td class="fw-bold {% if item.attendance_rate < 80 %}text-danger{% else %}text-warning{% endif %}">
                         {{ item.attendance_rate }}%
                     </td>
                     <td>
                         {% if item.risk_level == 'HIGH' %}
                         <span class="badge bg-danger"><i class="fa-solid fa-circle-radiation me-1"></i> ហានិភ័យខ្ពស់</span>
-                        {% else %}
+                        {% elif item.risk_level == 'MEDIUM' %}
                         <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i> មធ្យម</span>
+                        {% else %}
+                        <span class="badge bg-secondary"><i class="fa-solid fa-info-circle me-1"></i> ទាប</span>
                         {% endif %}
                     </td>
                     <td>
@@ -107,8 +180,9 @@
                             {% csrf_token %}
                             <input type="hidden" name="send_warning" value="1">
                             <input type="hidden" name="student_id" value="{{ item.student.id }}">
-                            <input type="hidden" name="absent_days" value="{{ item.absent_count }}">
-                            <button type="submit" class="btn btn-sm btn-danger fw-bold" title="ផ្ញើសារកោះហៅមាតាបិតា">
+                            <input type="hidden" name="absent_days" value="{{ item.absent_days }}">
+                            <input type="hidden" name="absent_times" value="{{ item.absent_times }}">
+                            <button type="submit" class="btn btn-sm btn-danger fw-bold shadow-xs" title="ផ្ញើសារកោះហៅមាតាបិតា">
                                 <i class="fa-brands fa-telegram me-1"></i> កោះហៅមាតាបិតា
                             </button>
                         </form>

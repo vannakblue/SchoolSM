@@ -783,13 +783,30 @@ def attendance_report(request):
 @role_required(['ADMIN', 'TEACHER'])
 def at_risk_attendance_view(request):
     """
-    At-Risk Attendance & Chronic Absentee Warning Tracker
-    Identifies students with high unexcused absences (>= 3 days) and allows urgent parent contact.
-    Strictly isolated per Academic Year!
+    At-Risk Attendance & Chronic Absentee Warning Tracker.
+    Calculates absences based on academic sessions (1 session = 1 time = 0.5 day).
+    Allows Admin & Teachers to filter students by custom absence thresholds in either DAYS (ថ្ងៃ) or TIMES (ចំនួនដង)
+    and by absence type (Unexcused, Excused, Total).
+    Strictly isolated per Academic Year.
     """
     active_year = get_active_academic_year(request)
-    min_absences = int(request.GET.get('threshold', 2))
-    class_id = request.GET.get('classroom', '')
+    
+    # Filter parameters
+    unit = request.GET.get('unit', 'DAYS').upper().strip() # 'DAYS' or 'TIMES'
+    min_str = request.GET.get('min_absences', request.GET.get('threshold', '1' if unit == 'DAYS' else '2')).strip()
+    max_str = request.GET.get('max_absences', '').strip()
+    absence_type = request.GET.get('absence_type', 'UNEXCUSED').strip() # 'UNEXCUSED', 'PERMISSION', 'TOTAL'
+    class_id = request.GET.get('classroom', '').strip()
+
+    try:
+        min_val = float(min_str) if min_str else (1.0 if unit == 'DAYS' else 2.0)
+    except Exception:
+        min_val = 1.0 if unit == 'DAYS' else 2.0
+
+    try:
+        max_val = float(max_str) if (max_str and max_str.replace('.', '', 1).isdigit()) else None
+    except Exception:
+        max_val = None
 
     students = Student.objects.filter(status='ACTIVE').select_related('classroom')
     if active_year:
@@ -799,43 +816,90 @@ def at_risk_attendance_view(request):
 
     at_risk_list = []
     for s in students:
-        absent_cnt = StudentAttendance.objects.filter(
+        # Get unique (date, session) pairs for distinct session absences
+        # 1 Session absent = 1 Time = 0.5 Day
+        absent_records = StudentAttendance.objects.filter(
             student=s,
             status=StudentAttendance.Status.ABSENT
-        ).count()
+        ).values('date', 'session').distinct()
+        absent_times = absent_records.count()
+        absent_days = round(absent_times * 0.5, 1)
 
-        perm_cnt = StudentAttendance.objects.filter(
+        perm_records = StudentAttendance.objects.filter(
             student=s,
             status=StudentAttendance.Status.PERMISSION
-        ).count()
+        ).values('date', 'session').distinct()
+        perm_times = perm_records.count()
+        perm_days = round(perm_times * 0.5, 1)
 
-        total_cnt = StudentAttendance.objects.filter(student=s).count()
+        total_absent_times = absent_times + perm_times
+        total_absent_days = round(total_absent_times * 0.5, 1)
 
-        if absent_cnt >= min_absences:
-            rate = round(((total_cnt - absent_cnt) / total_cnt) * 100, 1) if total_cnt > 0 else 100.0
-            risk_level = 'HIGH' if absent_cnt >= 4 else 'MEDIUM'
+        total_sessions = StudentAttendance.objects.filter(student=s).values('date', 'session').distinct().count()
+        total_days = round(total_sessions * 0.5, 1)
+
+        # Determine target metric based on filter type and unit
+        if absence_type == 'PERMISSION':
+            target_metric = perm_days if unit == 'DAYS' else perm_times
+            target_times = perm_times
+            target_days = perm_days
+        elif absence_type == 'TOTAL':
+            target_metric = total_absent_days if unit == 'DAYS' else total_absent_times
+            target_times = total_absent_times
+            target_days = total_absent_days
+        else: # UNEXCUSED
+            target_metric = absent_days if unit == 'DAYS' else absent_times
+            target_times = absent_times
+            target_days = absent_days
+
+        # Check range (min_val <= target_metric <= max_val)
+        matches_min = target_metric >= min_val
+        matches_max = (max_val is None) or (target_metric <= max_val)
+
+        if matches_min and matches_max and target_times > 0:
+            rate = round(((total_sessions - absent_times) / total_sessions) * 100, 1) if total_sessions > 0 else 100.0
+            if absent_times >= 8 or total_absent_times >= 12: # >= 4 days absent
+                risk_level = 'HIGH'
+            elif absent_times >= 4 or total_absent_times >= 6: # >= 2 days absent
+                risk_level = 'MEDIUM'
+            else:
+                risk_level = 'LOW'
+
             at_risk_list.append({
                 'student': s,
-                'absent_count': absent_cnt,
-                'perm_count': perm_cnt,
-                'total_days': total_cnt,
+                'absent_times': absent_times,
+                'absent_days': absent_days,
+                'perm_times': perm_times,
+                'perm_days': perm_days,
+                'total_absent_times': total_absent_times,
+                'total_absent_days': total_absent_days,
+                'target_times': target_times,
+                'target_days': target_days,
+                'target_metric': target_metric,
+                'total_sessions': total_sessions,
+                'total_days': total_days,
                 'attendance_rate': rate,
                 'risk_level': risk_level,
             })
 
-    # Sort descending by absent count
-    at_risk_list.sort(key=lambda x: x['absent_count'], reverse=True)
+    # Sort descending by target metric
+    at_risk_list.sort(key=lambda x: (x['target_metric'], x['absent_times']), reverse=True)
 
     if request.method == 'POST' and 'send_warning' in request.POST:
         student_id = request.POST.get('student_id')
         stu = get_object_or_404(Student, pk=student_id)
-        absent_days = request.POST.get('absent_days', '៣')
+        absent_days_str = request.POST.get('absent_days', '៣')
+        absent_times_str = request.POST.get('absent_times', '')
         class_name = stu.classroom.name if stu.classroom else '-'
         
+        detail_txt = f"{absent_days_str} ថ្ងៃ"
+        if absent_times_str:
+            detail_txt += f" ({absent_times_str} ដង/វេន)"
+
         msg = (
             f"🚨 *លិខិតអញ្ជើញ & សេចក្តីជូនដំណឹងបន្ទាន់អំពីអវត្តមានសិស្ស*\n\n"
             f"សូមគោរពជម្រាបជូនលោក/លោកស្រីអាណាព្យាបាលសិស្ស *{stu.khmer_name}* (ថ្នាក់៖ {class_name})!\n\n"
-            f"សាលាជម្រាបជូនថាសិស្សបានអវត្តមានឥតច្បាប់ចំនួន *{absent_days} ថ្ងៃ* ដែលប្រឈមនឹងការធ្លាក់ការសិក្សា ឬលុបឈ្មោះ។ "
+            f"សាលាជម្រាបជូនថាសិស្សបានអវត្តមានចំនួន *{detail_txt}* ដែលប្រឈមនឹងការធ្លាក់ការសិក្សា ឬលុបឈ្មោះ។ "
             f"សូមលោក/លោកស្រីមេត្តាអញ្ជើញមកជួបគណៈគ្រប់គ្រងសាលា និងគ្រូបន្ទុកថ្នាក់ជាបន្ទាន់។ សូមអរគុណ!"
         )
         send_telegram_notification(
@@ -846,8 +910,7 @@ def at_risk_attendance_view(request):
             custom_chat_id=stu.telegram_chat_id
         )
         messages.success(request, f"🔔 បានផ្ញើសារក្រើនរំលឹកបន្ទាន់ទៅកាន់អាណាព្យាបាលសិស្ស {stu.khmer_name} ជោគជ័យ!")
-        return redirect('at_risk_attendance')
-
+        return redirect(f"/attendance/at-risk/?classroom={class_id}&unit={unit}&min_absences={min_str}&max_absences={max_str}&absence_type={absence_type}")
 
     classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
@@ -855,8 +918,12 @@ def at_risk_attendance_view(request):
         'at_risk_list': at_risk_list,
         'classrooms': classrooms,
         'selected_class': class_id,
-        'threshold': min_absences,
+        'unit': unit,
+        'min_absences': min_str,
+        'max_absences': max_str,
+        'absence_type': absence_type,
         'active_year': active_year,
+        'total_found': len(at_risk_list),
     })
 
 
@@ -1614,6 +1681,15 @@ def assembly_attendance_view(request):
         period_number=0
     ).select_related('recorded_by').first() if selected_class else None
 
+    # Format Khmer Date: ថ្ងៃ ពុធ ទី ២ ខែ កញ្ញា ឆ្នាំ ២០២៦
+    kh_days = {0: 'ចន្ទ', 1: 'អង្គារ', 2: 'ពុធ', 3: 'ព្រហស្បតិ៍', 4: 'សុក្រ', 5: 'សៅរ៍', 6: 'អាទិត្យ'}
+    kh_months = {1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា', 5: 'ឧសភា', 6: 'មិថុនា', 7: 'កក្កដា', 8: 'សីហា', 9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ'}
+    kh_digits = {'0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤', '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'}
+    
+    day_kh = ''.join(kh_digits.get(c, c) for c in str(today_date.day))
+    year_kh = ''.join(kh_digits.get(c, c) for c in str(today_date.year))
+    today_date_kh = f"ថ្ងៃ {kh_days.get(today_date.weekday(), '')} ទី {day_kh} ខែ {kh_months.get(today_date.month, '')} ឆ្នាំ {year_kh}"
+
     context = {
         'active_year': active_year,
         'att_settings': att_settings,
@@ -1622,6 +1698,7 @@ def assembly_attendance_view(request):
         'selected_session': selected_session,
         'session_title': session_title,
         'today_date': today_date,
+        'today_date_kh': today_date_kh,
         'current_time': current_time,
         'window_start': window_start,
         'window_end': window_end,

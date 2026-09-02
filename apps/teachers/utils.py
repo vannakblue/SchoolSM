@@ -260,13 +260,8 @@ def get_teacher_daily_attendance_data(teachers, target_date, active_year=None, c
 
         compliance_rate = round((recorded_count / scheduled_count * 100), 1) if scheduled_count > 0 else 100.0
 
-        # Deduction calculation
+        # Deduction calculation disabled
         deduction = Decimal('0.00')
-        if existing_att and existing_att.deduction_amount > 0:
-            deduction = existing_att.deduction_amount
-        elif daily_status == 'UNEXCUSED_ABSENCE' and teacher.base_salary:
-            daily_rate = teacher.base_salary / Decimal('26')
-            deduction = round(daily_rate, 2)
 
         # Accumulate summary stats
         summary_stats['total_scheduled_periods'] += scheduled_count
@@ -387,11 +382,8 @@ def get_teacher_range_attendance_report(teachers, start_date, end_date, active_y
 
         compliance_rate = round((recorded_hours / scheduled_hours * 100), 1) if scheduled_hours > 0 else 100.0
 
-        # Estimated deduction
+        # Estimated deduction disabled
         estimated_deduction = Decimal('0.00')
-        if teacher.base_salary and unrecorded_days_count > 0:
-            daily_rate = teacher.base_salary / Decimal('26')
-            estimated_deduction = round(daily_rate * Decimal(str(unrecorded_days_count)), 2)
 
         total_scheduled_accum += scheduled_hours
         total_recorded_accum += recorded_hours

@@ -54,7 +54,7 @@ def run_tests():
     catalog = get_menu_catalog()
     assert len(catalog) >= 8, f"Expected at least 8 sections, found {len(catalog)}"
     section_keys = [s['key'] for s in catalog]
-    for required_sec in ['sec_dashboard', 'sec_students', 'sec_timetable', 'sec_attendance', 'sec_tools', 'sec_settings']:
+    for required_sec in ['sec_dashboard', 'sec_students', 'sec_timetable', 'sec_attendance', 'sec_examinations', 'sec_tools', 'sec_settings']:
         assert required_sec in section_keys, f"Missing section {required_sec}"
     print(f"  [PASS] 2. Menu Catalog correctly loaded from Database ({len(catalog)} sections).")
 

@@ -493,7 +493,6 @@
                         <th class="text-center">មិនបានចុះ</th>
                         <th class="text-center">អត្រា %</th>
                         <th class="text-center">ស្ថានភាពវត្តមានគ្រូ</th>
-                        <th class="text-end">កាត់ប្រាក់ ($)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -535,13 +534,10 @@
                         <td class="text-center">
                             <span class="badge bg-{{ item.badge_class }} px-2 py-1">{{ item.status_label }}</span>
                         </td>
-                        <td class="text-end fw-bold {% if item.deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
-                            {% if item.deduction > 0 %}-${{ item.deduction }}{% else %}$0.00{% endif %}
-                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់កាលបរិច្ឆេទនេះឡើយ</td>
+                        <td colspan="10" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់កាលបរិច្ឆេទនេះឡើយ</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -658,7 +654,6 @@
                         <th class="text-center">ថ្ងៃអវត្តមាន</th>
                         <th class="text-center">ច្បាប់</th>
                         <th class="text-center">អត្រាអនុលោមភាព</th>
-                        <th class="text-end">ប៉ាន់ស្មានកាត់ប្រាក់</th>
                         <th class="text-center">ស្ថានភាព</th>
                     </tr>
                 </thead>
@@ -692,9 +687,6 @@
                                 </span>
                             </div>
                         </td>
-                        <td class="text-end fw-bold {% if item.estimated_deduction > 0 %}text-danger{% else %}text-muted{% endif %}">
-                            {% if item.estimated_deduction > 0 %}-${{ item.estimated_deduction }}{% else %}$0.00{% endif %}
-                        </td>
                         <td class="text-center">
                             {% if item.no_schedule %}
                             <span class="badge bg-secondary">គ្មានម៉ោងបង្រៀន</span>
@@ -709,7 +701,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="13" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់ចន្លោះកាលបរិច្ឆេទនេះឡើយ</td>
+                        <td colspan="12" class="text-center py-4 text-muted">ពុំមានទិន្នន័យស្រង់វត្តមានសម្រាប់ចន្លោះកាលបរិច្ឆេទនេះឡើយ</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -724,7 +716,7 @@
             <i class="fa-solid fa-circle-info text-primary mt-1"></i>
             <div class="small text-muted">
                 <strong class="text-dark">គោលការណ៍កំណត់អវត្តមានគ្រូបង្រៀន៖</strong>
-                ប្រព័ន្ធស្រង់វត្តមានគ្រូគឺផ្អែកទៅលើការចុះវត្តមានសិស្សតាមកាលវិភាគបង្រៀនជាក់ស្តែង។ ប្រសិនបើគ្រូមិនបានចុះវត្តមានសិស្សក្នុងម៉ោងបង្រៀនណាមួយនោះ ម៉ោងនោះនឹងត្រូវចាត់ចូលជា "មិនបានចុះវត្តមាន (អវត្តមាន)"។ ចំនួនថ្ងៃអវត្តមានឥតច្បាប់នឹងត្រូវកត់ត្រាចូលទៅកាន់ប្រព័ន្ធបើកប្រាក់ខែដើម្បីធ្វើការកាត់ប្រាក់ខែដោយស្វ័យប្រវត្តិ។
+                ប្រព័ន្ធស្រង់វត្តមានគ្រូគឺផ្អែកទៅលើការចុះវត្តមានសិស្សតាមកាលវិភាគបង្រៀនជាក់ស្តែង។ ប្រសិនបើគ្រូមិនបានចុះវត្តមានសិស្សក្នុងម៉ោងបង្រៀនណាមួយនោះ ម៉ោងនោះនឹងត្រូវចាត់ចូលជា "មិនបានចុះវត្តមាន (អវត្តមាន)" ដើម្បីតាមដាន និងរក្សាស្ថិតិអនុលោមភាពរបស់បុគ្គលិកបង្រៀន។
             </div>
         </div>
     </div>

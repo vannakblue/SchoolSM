@@ -150,6 +150,27 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Standard Date & DateTime Formats (Default: dd-mm-yyyy / d-m-Y)
+DATE_FORMAT = 'd-m-Y'
+SHORT_DATE_FORMAT = 'd-m-Y'
+DATETIME_FORMAT = 'd-m-Y H:i:s'
+SHORT_DATETIME_FORMAT = 'd-m-Y H:i'
+
+DATE_INPUT_FORMATS = [
+    '%d-%m-%Y',
+    '%d/%m/%Y',
+    '%Y-%m-%d',
+]
+
+DATETIME_INPUT_FORMATS = [
+    '%d-%m-%Y %H:%M:%S',
+    '%d-%m-%Y %H:%M',
+    '%d/%m/%Y %H:%M:%S',
+    '%d/%m/%Y %H:%M',
+    '%Y-%m-%d %H:%M:%S',
+    '%Y-%m-%d %H:%M',
+]
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
