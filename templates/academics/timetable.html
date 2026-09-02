@@ -1649,6 +1649,10 @@
         }
     }
 
+    function showAutoSaveStatus(text, type = 'success') {
+        showAutoSaveBadge(text, type);
+    }
+
     function pushHistoryState() {
         historyStack.push(JSON.stringify(MATRIX_STATE));
         redoStack.length = 0; // Clear redo
