@@ -1,0 +1,556 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}កំណត់ត្រាបង់ប្រាក់ & Firestore Logs | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-card {
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+    }
+    .kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+    }
+    .badge-event-inquiry { background-color: #e0f2fe; color: #0369a1; }
+    .badge-event-qr { background-color: #fef3c7; color: #b45309; }
+    .badge-event-slip { background-color: #f3e8ff; color: #7e22ce; }
+    .badge-event-payment { background-color: #dcfce7; color: #15803d; }
+    .badge-channel-tg { background-color: #229ED9; color: #ffffff; font-size: 0.75rem; }
+    .badge-channel-web { background-color: #475569; color: #ffffff; font-size: 0.75rem; }
+    .bank-card {
+        border-radius: 16px;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .bank-card.aba-card {
+        background: linear-gradient(135deg, #003366 0%, #001f3f 100%);
+    }
+    .bank-card.bakong-card {
+        background: linear-gradient(135deg, #c0392b 0%, #8e1b10 100%);
+    }
+    .qr-preview-thumb {
+        width: 44px;
+        height: 44px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-cloud-bolt me-1"></i> Real-Time</span>
+                <h2 class="fw-bold mb-0 text-dark">កំណត់ត្រាបង់ប្រាក់ & Firestore Logs</h2>
+            </div>
+            <p class="text-muted small mb-0">
+                <i class="fa-brands fa-telegram text-info me-1"></i> Telegram Bot Inquiries, Bank QR Dispatches, Payment Slips &amp; Google Firebase Firestore Sync
+            </p>
+        </div>
+
+        <!-- 1-Click Any-Time Backup & Action Suite -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'api_sync_firestore' %}" class="btn btn-outline-primary fw-bold shadow-sm">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Firestore
+            </a>
+
+            <!-- Backup Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-primary fw-bold dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-download me-1"></i> 1-Click Backup
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="border-radius: 12px; min-width: 220px;">
+                    <li>
+                        <a class="dropdown-item py-2 fw-medium rounded" href="{% url 'export_payment_logs_excel' %}">
+                            <i class="fa-solid fa-file-excel text-success me-2 fs-5"></i> Export Excel (.xlsx)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-medium rounded" href="{% url 'export_payment_logs_json' %}">
+                            <i class="fa-solid fa-file-code text-warning me-2 fs-5"></i> Export JSON Snapshot
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-medium rounded text-primary" href="{% url 'api_send_payment_backup_telegram' %}">
+                            <i class="fa-brands fa-telegram text-info me-2 fs-5"></i> ផ្ញើ Backup ទៅ Telegram
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <button type="button" class="btn btn-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#bankModal">
+                <i class="fa-solid fa-qrcode me-1"></i> កំណត់ ABA / Bank QR
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Monthly Utility Collected -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">ថ្លៃទឹកភ្លើងប្រមូលបាន</span>
+                    <h3 class="fw-bold text-success mb-0 mt-1">{{ total_monthly_khr|floatformat:0 }} ៛</h3>
+                    <span class="text-muted" style="font-size: 0.75rem;">ឆ្នាំសិក្សា៖ {{ active_year.name|default:"បច្ចុប្បន្ន" }}</span>
+                </div>
+                <div class="kpi-icon bg-success-subtle text-success">
+                    <i class="fa-solid fa-bolt-lightning"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices Paid (USD) -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">ថវិកាដើមឆ្នាំ &amp; វិក្កយបត្រ</span>
+                    <h3 class="fw-bold text-primary mb-0 mt-1">${{ total_invoices_usd|floatformat:2 }}</h3>
+                    <span class="text-muted" style="font-size: 0.75rem;">Registration &amp; Tuition</span>
+                </div>
+                <div class="kpi-icon bg-primary-subtle text-primary">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telegram Inquiries & Cloud Sync -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">Telegram Inquiries &amp; Bot</span>
+                    <h3 class="fw-bold text-info mb-0 mt-1">{{ total_inquiries_count }} ដង</h3>
+                    <div class="d-flex align-items-center gap-1 mt-1">
+                        {% if firestore_connected %}
+                            <span class="badge bg-success-subtle text-success" style="font-size: 0.7rem;"><i class="fa-solid fa-circle-check me-1"></i> Firestore Connected</span>
+                        {% else %}
+                            <span class="badge bg-warning-subtle text-warning" style="font-size: 0.7rem;"><i class="fa-solid fa-circle-exclamation me-1"></i> Local Offline</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="kpi-icon bg-info-subtle text-info">
+                    <i class="fa-brands fa-telegram"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Payment Slips -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">បង្កាន់ដៃរង់ចាំផ្ទៀងផ្ទាត់</span>
+                    <h3 class="fw-bold {% if pending_slips_count > 0 %}text-danger{% else %}text-muted{% endif %} mb-0 mt-1">
+                        {{ pending_slips_count }} សន្លឹក
+                    </h3>
+                    <span class="text-muted" style="font-size: 0.75rem;">Synced to Firestore: {{ synced_logs_count }}</span>
+                </div>
+                <div class="kpi-icon {% if pending_slips_count > 0 %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="paymentTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-3 py-2 rounded-pill" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-pane" type="button" role="tab">
+                <i class="fa-solid fa-list-check me-1"></i> កំណត់ត្រា Logs &amp; Firestore ({{ logs_list|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 py-2 rounded-pill position-relative" id="slips-tab" data-bs-toggle="tab" data-bs-target="#slips-pane" type="button" role="tab">
+                <i class="fa-solid fa-receipt me-1"></i> បង្កាន់ដៃពី Telegram
+                {% if pending_slips_count > 0 %}
+                    <span class="badge rounded-pill bg-danger ms-1">{{ pending_slips_count }}</span>
+                {% endif %}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-3 py-2 rounded-pill" id="banks-tab" data-bs-toggle="tab" data-bs-target="#banks-pane" type="button" role="tab">
+                <i class="fa-solid fa-building-columns me-1"></i> គណនីធនាគារ &amp; ABA QR ({{ payment_methods|length }})
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="paymentTabsContent">
+        
+        <!-- Tab 1: Live Audit Logs & Firestore -->
+        <div class="tab-pane fade show active" id="logs-pane" role="tabpanel">
+            <div class="custom-card shadow-sm p-4">
+                <!-- Filter Bar -->
+                <form method="GET" class="row g-2 align-items-center mb-4">
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="ស្វែងរកតាម អត្តលេខ, ឈ្មោះសិស្ស, ឬ Telegram...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="event" class="form-select">
+                            <option value="">-- ប្រភេទព្រឹត្តិការណ៍ទាំងអស់ --</option>
+                            <option value="INQUIRY" {% if event_filter == 'INQUIRY' %}selected{% endif %}>សាកសួរព័ត៌មាន (Inquiry)</option>
+                            <option value="QR_DISPATCH" {% if event_filter == 'QR_DISPATCH' %}selected{% endif %}>បង្ហាញ Bank QR Code</option>
+                            <option value="SLIP_SUBMISSION" {% if event_filter == 'SLIP_SUBMISSION' %}selected{% endif %}>ផ្ញើបង្កាន់ដៃបង់ប្រាក់</option>
+                            <option value="PAYMENT_CONFIRMED" {% if event_filter == 'PAYMENT_CONFIRMED' %}selected{% endif %}>បញ្ជាក់ការបង់ប្រាក់រួច</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="fa-solid fa-filter me-1"></i> ចម្រាញ់
+                        </button>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        {% if query or event_filter %}
+                            <a href="{% url 'payment_logs_dashboard' %}" class="btn btn-outline-secondary w-100">
+                                <i class="fa-solid fa-xmark me-1"></i> សម្អាត
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
+
+                <!-- Logs Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-custom mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ពេលវេលា</th>
+                                <th>ព្រឹត្តិការណ៍</th>
+                                <th>អត្តលេខ &amp; សិស្ស</th>
+                                <th>ថ្នាក់</th>
+                                <th>កម្រៃ / ចំណងជើង</th>
+                                <th>ចំនួនទឹកប្រាក់</th>
+                                <th>ប៉ុស្តិ៍ / អ្នកប្រើប្រាស់</th>
+                                <th class="text-center">Firestore Cloud</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs_list %}
+                            <tr>
+                                <td class="text-nowrap small text-muted">
+                                    <i class="fa-regular fa-clock me-1"></i>{{ log.created_at|date:"d/m/Y H:i" }}
+                                </td>
+                                <td>
+                                    {% if log.event_type == 'INQUIRY' %}
+                                        <span class="badge badge-event-inquiry px-2 py-1"><i class="fa-solid fa-magnifying-glass me-1"></i> Inquiry</span>
+                                    {% elif log.event_type == 'QR_DISPATCH' %}
+                                        <span class="badge badge-event-qr px-2 py-1"><i class="fa-solid fa-qrcode me-1"></i> QR Sent</span>
+                                    {% elif log.event_type == 'SLIP_SUBMISSION' %}
+                                        <span class="badge badge-event-slip px-2 py-1"><i class="fa-solid fa-receipt me-1"></i> Slip Upload</span>
+                                    {% elif log.event_type == 'PAYMENT_CONFIRMED' %}
+                                        <span class="badge badge-event-payment px-2 py-1"><i class="fa-solid fa-check-double me-1"></i> Paid Confirmed</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary px-2 py-1">{{ log.get_event_type_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.student %}
+                                        <span class="fw-bold text-dark">{{ log.student.khmer_name }}</span>
+                                        <br>
+                                        <code class="text-primary small">{{ log.student_id_str }}</code>
+                                    {% else %}
+                                        <span class="fw-bold">{{ log.student_name|default:"-" }}</span>
+                                        <br>
+                                        <code class="text-muted small">{{ log.student_id_str|default:"-" }}</code>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ log.classroom_name|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    <span class="small fw-semibold">{{ log.fee_category_name|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    {% if log.amount > 0 %}
+                                        <span class="fw-bold text-success">{{ log.amount|floatformat:0 }} {{ log.currency }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.channel == 'TELEGRAM_BOT' %}
+                                        <span class="badge badge-channel-tg"><i class="fa-brands fa-telegram me-1"></i> Telegram</span>
+                                    {% else %}
+                                        <span class="badge badge-channel-web"><i class="fa-solid fa-globe me-1"></i> Web</span>
+                                    {% endif %}
+                                    <div class="small text-muted text-truncate" style="max-width: 150px;">{{ log.telegram_user_info }}</div>
+                                </td>
+                                <td class="text-center">
+                                    {% if log.is_synced_to_firestore %}
+                                        <span class="badge bg-success-subtle text-success" title="Doc: {{ log.firestore_doc_id }}">
+                                            <i class="fa-solid fa-cloud-check me-1"></i> Synced
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary" title="Pending Sync">
+                                            <i class="fa-solid fa-cloud me-1"></i> Local
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="fa-solid fa-database fs-2 mb-2 d-block text-secondary"></i>
+                                    មិនទាន់មានកំណត់ត្រា Log នៅឡើយទេ
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Parent Payment Slips Review -->
+        <div class="tab-pane fade" id="slips-pane" role="tabpanel">
+            <div class="custom-card shadow-sm p-4">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h5 class="fw-bold mb-0">បង្កាន់ដៃបង់ប្រាក់ដែលផ្ញើតាម Telegram</h5>
+                    <span class="text-muted small">ចុចលើរូបភាពដើម្បីពិនិត្យ និងយល់ព្រម</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-custom mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>កាលបរិច្ឆេទ</th>
+                                <th>រូបភាពបង្កាន់ដៃ</th>
+                                <th>អត្តលេខ &amp; សិស្ស</th>
+                                <th>ថ្នាក់</th>
+                                <th>ប្រភេទកម្រៃ</th>
+                                <th>Telegram Sender</th>
+                                <th>ស្ថានភាព</th>
+                                <th class="text-end">សកម្មភាព</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slip in slips_list %}
+                            <tr>
+                                <td class="small text-muted text-nowrap">
+                                    {{ slip.created_at|date:"d/m/Y H:i" }}
+                                </td>
+                                <td>
+                                    {% if slip.slip_image %}
+                                        <a href="{{ slip.slip_image.url }}" target="_blank">
+                                            <img src="{{ slip.slip_image.url }}" alt="Slip" class="qr-preview-thumb shadow-sm">
+                                        </a>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border"><i class="fa-regular fa-image me-1"></i> គ្មានរូប</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ slip.student.khmer_name }}</span>
+                                    <br>
+                                    <code class="text-primary small">{{ slip.student.student_id }}</code>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ slip.student.classroom.name|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    <span class="small fw-semibold">{{ slip.get_fee_type_display }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info">@{{ slip.telegram_username|default:"user" }}</span>
+                                    <div class="small text-muted">{{ slip.telegram_chat_id }}</div>
+                                </td>
+                                <td>
+                                    {% if slip.status == 'PENDING' %}
+                                        <span class="badge bg-warning text-dark"><i class="fa-regular fa-clock me-1"></i> រង់ចាំពិនិត្យ</span>
+                                    {% elif slip.status == 'APPROVED' %}
+                                        <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> យល់ព្រម</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i> បដិសេធ</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if slip.status == 'PENDING' %}
+                                        <form method="POST" action="{% url 'api_review_payment_slip' slip.pk %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold me-1" onclick="return confirm('តើលោកអ្នកពិតជាចង់យល់ព្រមបង្កាន់ដៃនេះមែនទេ?');">
+                                                <i class="fa-solid fa-check me-1"></i> យល់ព្រម
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{% url 'api_review_payment_slip' slip.pk %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('តើលោកអ្នកពិតជាចង់បដិសេធបង្កាន់ដៃនេះមែនទេ?');">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="small text-muted">ផ្ទៀងផ្ទាត់ដោយ {{ slip.reviewed_by.username|default:"Admin" }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="fa-solid fa-receipt fs-2 mb-2 d-block text-secondary"></i>
+                                    មិនទាន់មានបង្កាន់ដៃផ្ញើមកនៅឡើយទេ
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: School Bank Accounts & ABA QR Codes -->
+        <div class="tab-pane fade" id="banks-pane" role="tabpanel">
+            <div class="row g-4">
+                {% for bm in payment_methods %}
+                <div class="col-lg-4 col-md-6">
+                    <div class="bank-card {% if 'ABA' in bm.bank_name %}aba-card{% elif 'Bakong' in bm.bank_name %}bakong-card{% endif %} shadow">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="badge {% if bm.is_default %}bg-warning text-dark{% else %}bg-white bg-opacity-25 text-white{% endif %} px-2 py-1">
+                                {% if bm.is_default %}<i class="fa-solid fa-star me-1"></i> លំនាំដើម (Default){% else %}Active{% endif %}
+                            </span>
+                            <span class="fw-bold fs-5">{{ bm.bank_name }}</span>
+                        </div>
+                        
+                        <div class="d-flex align-items-center gap-3 my-3">
+                            {% if bm.qr_image %}
+                                <a href="{{ bm.qr_image.url }}" target="_blank">
+                                    <img src="{{ bm.qr_image.url }}" alt="QR Code" class="bg-white p-1 rounded shadow" style="width: 72px; height: 72px; object-fit: contain;">
+                                </a>
+                            {% else %}
+                                <div class="bg-white bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+                                    <i class="fa-solid fa-qrcode fs-2 text-white"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <div class="small opacity-75">ឈ្មោះម្ចាស់គណនី</div>
+                                <h6 class="fw-bold mb-1 text-white">{{ bm.account_name }}</h6>
+                                <div class="small opacity-75">លេខគណនី (Account No)</div>
+                                <code class="text-warning fw-bold fs-6">{{ bm.account_number }}</code>
+                            </div>
+                        </div>
+
+                        <p class="small opacity-75 mb-3 text-truncate" title="{{ bm.instructions }}">{{ bm.instructions|default:"ស្កេនដើម្បីបង់ប្រាក់" }}</p>
+
+                        <div class="d-flex align-items-center justify-content-between border-top border-white border-opacity-25 pt-3">
+                            <span class="small badge bg-light bg-opacity-25">{{ bm.get_currency_display }}</span>
+                            <div class="d-flex gap-1">
+                                {% if not bm.is_default %}
+                                    <form method="POST" action="{% url 'api_manage_payment_methods' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="set_default">
+                                        <input type="hidden" name="method_id" value="{{ bm.id }}">
+                                        <button type="submit" class="btn btn-sm btn-warning py-0 px-2 fw-bold" style="font-size: 0.75rem;">
+                                            Set Default
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                <form method="POST" action="{% url 'api_manage_payment_methods' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបគណនីនេះមែនទេ?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="method_id" value="{{ bm.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2 text-white border-white border-opacity-50" style="font-size: 0.75rem;">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5 text-muted">
+                    <i class="fa-solid fa-building-columns fs-1 mb-2 d-block text-secondary"></i>
+                    មិនទាន់មានការកំណត់គណនីធនាគារឡើយ។ សូមចុចប៊ូតុងខាងលើដើម្បីបន្ថែម ABA Bank QR Code!
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal: Add / Configure Bank & ABA QR Code -->
+<div class="modal fade" id="bankModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-qrcode text-primary me-2"></i> បន្ថែមគណនីធនាគារ &amp; ABA QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'api_manage_payment_methods' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ឈ្មោះធនាគារ (Bank Name) *</label>
+                        <select name="bank_name" class="form-select">
+                            <option value="ABA Bank">ABA Bank (ABA Pay / KHQR)</option>
+                            <option value="Bakong KHQR">Bakong KHQR (គ្រប់ធនាគារទាំងអស់)</option>
+                            <option value="ACLEDA Bank">ACLEDA Bank Plc.</option>
+                            <option value="Canadia Bank">Canadia Bank</option>
+                            <option value="Wing Bank">Wing Bank</option>
+                            <option value="Other Bank">ធនាគារផ្សេងៗ</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ឈ្មោះម្ចាស់គណនី (Account Name) *</label>
+                        <input type="text" name="account_name" required class="form-control" placeholder="ឧ. SCHOOL MANAGEMENT ACCOUNT">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">លេខគណនី (Account Number) *</label>
+                        <input type="text" name="account_number" required class="form-control" placeholder="ឧ. 000 123 456">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">រូបិយប័ណ្ណ (Currency)</label>
+                            <select name="currency" class="form-select">
+                                <option value="KHR">រៀល (KHR ៛)</option>
+                                <option value="USD">ដុល្លារ (USD $)</option>
+                                <option value="BOTH">ទាំងពីរ (KHR / USD)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">រូបភាព QR Code</label>
+                            <input type="file" name="qr_image" accept="image/*" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ការណែនាំសម្រាប់ការបង់ប្រាក់ (Instructions)</label>
+                        <textarea name="instructions" rows="2" class="form-control" placeholder="សូមស្កេន QR Code ខាងលើដើម្បីបង់ប្រាក់ និងដាក់ Memo ជាអត្តលេខសិស្ស"></textarea>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="is_default" id="isDefaultCheck" checked>
+                        <label class="form-check-label fw-semibold small" for="isDefaultCheck">កំណត់ជាគណនីលំនាំដើម (Default Account)</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light fw-semibold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">រក្សាទុក</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

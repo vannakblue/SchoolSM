@@ -1,4 +1,7 @@
+import json
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Q
@@ -1864,4 +1867,523 @@ def api_search_student_qr(request):
             'months': months_list,
         }
     })
+
+
+# ==============================================================================
+# PAYMENT LOGS, FIRESTORE CLOUD SYNC & ANY-TIME BACKUP PORTAL
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def payment_logs_dashboard(request):
+    """
+    Live Payment Audit Logs & Firebase Firestore Sync Dashboard:
+    - Real-time audit logs of Telegram inquiries, QR scans, and confirmed payments.
+    - Review and 1-click Approve/Reject for parent payment slips.
+    - Bank Account & ABA / Bakong QR Code management.
+    - 1-Click Any-Time Backup Suite (Excel, JSON, Cloud Sync, Telegram dispatch).
+    """
+    from apps.finance.models import (
+        SchoolPaymentMethod,
+        PaymentSlipSubmission,
+        FirestorePaymentAuditLog,
+        StudentMonthlyPayment,
+        Invoice
+    )
+    from apps.finance.firebase_service import get_firestore_db
+
+    # Filter params
+    query = request.GET.get('q', '').strip()
+    event_filter = request.GET.get('event', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    audit_logs = FirestorePaymentAuditLog.objects.all().select_related('student', 'student__classroom')
+    if query:
+        audit_logs = audit_logs.filter(
+            models.Q(student_id_str__icontains=query) |
+            models.Q(student_name__icontains=query) |
+            models.Q(fee_category_name__icontains=query) |
+            models.Q(telegram_user_info__icontains=query)
+        )
+    if event_filter:
+        audit_logs = audit_logs.filter(event_type=event_filter)
+
+    logs_list = audit_logs[:200]
+
+    # Payment Slips
+    slips = PaymentSlipSubmission.objects.all().select_related('student', 'student__classroom', 'reviewed_by')
+    if status_filter:
+        slips = slips.filter(status=status_filter)
+    slips_list = slips[:50]
+    pending_slips_count = PaymentSlipSubmission.objects.filter(status=PaymentSlipSubmission.Status.PENDING).count()
+
+    # Bank Payment Methods
+    payment_methods = SchoolPaymentMethod.objects.all()
+
+    # Firestore status
+    db = get_firestore_db()
+    firestore_connected = (db is not None)
+
+    # Summary KPIs
+    active_year = AcademicYear.objects.filter(is_current=True).first()
+    total_monthly_khr = StudentMonthlyPayment.objects.filter(paid_amount__gt=0).aggregate(models.Sum('paid_amount'))['paid_amount__sum'] or Decimal('0.00')
+    total_invoices_usd = Invoice.objects.filter(paid_amount__gt=0).aggregate(models.Sum('paid_amount'))['paid_amount__sum'] or Decimal('0.00')
+    total_inquiries_count = FirestorePaymentAuditLog.objects.filter(event_type=FirestorePaymentAuditLog.EventType.INQUIRY).count()
+    synced_logs_count = FirestorePaymentAuditLog.objects.filter(is_synced_to_firestore=True).count()
+    unsynced_logs_count = FirestorePaymentAuditLog.objects.filter(is_synced_to_firestore=False).count()
+
+    context = {
+        'active_tab': 'payment_logs',
+        'logs_list': logs_list,
+        'slips_list': slips_list,
+        'pending_slips_count': pending_slips_count,
+        'payment_methods': payment_methods,
+        'firestore_connected': firestore_connected,
+        'total_monthly_khr': total_monthly_khr,
+        'total_invoices_usd': total_invoices_usd,
+        'total_inquiries_count': total_inquiries_count,
+        'synced_logs_count': synced_logs_count,
+        'unsynced_logs_count': unsynced_logs_count,
+        'query': query,
+        'event_filter': event_filter,
+        'status_filter': status_filter,
+        'active_year': active_year,
+    }
+    return render(request, 'finance/payment_logs_dashboard.html', context)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_manage_payment_methods(request):
+    """
+    Handles creating, updating, toggling, or deleting School Bank / ABA QR payment methods.
+    """
+    from apps.finance.models import SchoolPaymentMethod
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'save')
+        method_id = request.POST.get('method_id')
+
+        if action == 'delete' and method_id:
+            SchoolPaymentMethod.objects.filter(id=method_id).delete()
+            messages.success(request, "បានលុបគណនីធនាគារជោគជ័យ!")
+            return redirect('payment_logs_dashboard')
+
+        if action == 'set_default' and method_id:
+            SchoolPaymentMethod.objects.exclude(id=method_id).update(is_default=False)
+            SchoolPaymentMethod.objects.filter(id=method_id).update(is_default=True)
+            messages.success(request, "បានកំណត់ជាគណនីលំនាំដើម (Default) ជោគជ័យ!")
+            return redirect('payment_logs_dashboard')
+
+        bank_name = request.POST.get('bank_name', 'ABA Bank').strip()
+        account_name = request.POST.get('account_name', '').strip()
+        account_number = request.POST.get('account_number', '').strip()
+        currency = request.POST.get('currency', 'KHR')
+        instructions = request.POST.get('instructions', '').strip()
+        is_default = request.POST.get('is_default') == 'on'
+        is_active = request.POST.get('is_active') != 'off'
+
+        if method_id:
+            pm = get_object_or_404(SchoolPaymentMethod, id=method_id)
+            pm.bank_name = bank_name
+            pm.account_name = account_name
+            pm.account_number = account_number
+            pm.currency = currency
+            pm.instructions = instructions
+            pm.is_default = is_default
+            pm.is_active = is_active
+            if 'qr_image' in request.FILES:
+                pm.qr_image = request.FILES['qr_image']
+            pm.save()
+            messages.success(request, f"បានកែប្រែគណនី {pm.bank_name} ជោគជ័យ!")
+        else:
+            pm = SchoolPaymentMethod.objects.create(
+                bank_name=bank_name,
+                account_name=account_name,
+                account_number=account_number,
+                currency=currency,
+                instructions=instructions,
+                is_default=is_default,
+                is_active=is_active,
+                qr_image=request.FILES.get('qr_image')
+            )
+            messages.success(request, f"បានបង្កើតគណនីធនាគារ {pm.bank_name} ជោគជ័យ!")
+
+    return redirect('payment_logs_dashboard')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def api_review_payment_slip(request, pk):
+    """
+    Approves or rejects a parent payment slip from the web dashboard.
+    """
+    from apps.finance.models import (
+        PaymentSlipSubmission,
+        MonthlyFeeConfig,
+        MonthlyFeeRate,
+        StudentMonthlyPayment,
+        StudentMonthlyCategory
+    )
+    from apps.finance.firebase_service import log_payment_slip_to_firestore, log_payment_transaction_to_firestore
+    from apps.accounts.utils import send_telegram_notification
+
+    slip = get_object_or_404(PaymentSlipSubmission, pk=pk)
+    action = request.POST.get('action', 'approve')
+    notes = request.POST.get('notes', '').strip()
+
+    student = slip.student
+    active_year = slip.academic_year or AcademicYear.objects.filter(is_current=True).first()
+
+    if action == 'approve':
+        config = MonthlyFeeConfig.get_or_create_for_year(active_year)
+        month_seq = config.get_month_sequence() if config else []
+        ticked_set = set(config.ticked_months or []) if config else set()
+        rates = {(r.category_id, r.month): r.amount for r in MonthlyFeeRate.objects.filter(config=config)} if config else {}
+        monthly_cats = {mc.month: mc.category for mc in StudentMonthlyCategory.objects.filter(student=student, academic_year=active_year)}
+
+        fee_start_idx = month_seq.index(student.fee_start_month) if student.fee_start_month in month_seq else 0
+        fee_end_idx = month_seq.index(student.fee_end_month) if student.fee_end_month in month_seq else len(month_seq) - 1
+
+        approved_months = []
+        total_paid_rec = Decimal('0.00')
+
+        with transaction.atomic():
+            for idx, m in enumerate(month_seq):
+                is_attending = (fee_start_idx <= idx <= fee_end_idx)
+                if not ((m in ticked_set) and is_attending):
+                    continue
+
+                m_cat = monthly_cats.get(m, student.category)
+                m_cat_id = m_cat.id if m_cat else None
+                expected = rates.get((m_cat_id, m), Decimal('20000.00')) if m_cat_id else Decimal('20000.00')
+
+                p, _ = StudentMonthlyPayment.objects.get_or_create(
+                    student=student,
+                    academic_year=active_year,
+                    month=m,
+                    defaults={'expected_amount': expected, 'paid_amount': Decimal('0.00')}
+                )
+                if p.paid_amount < expected:
+                    p.expected_amount = expected
+                    p.paid_amount = expected
+                    p.status = StudentMonthlyPayment.Status.PAID
+                    p.payment_date = timezone.now()
+                    p.payment_method = StudentMonthlyPayment.PaymentMethod.ABA_BANK
+                    p.collected_by = request.user
+                    p.notes = f"ផ្ទៀងផ្ទាត់ និងអនុម័តបង្កាន់ដៃ #SLIP-{slip.id} ដោយ {request.user.get_full_name() or request.user.username}"
+                    p.save()
+                    approved_months.append(MONTH_NAMES_KM.get(m, f"ខែ {m}"))
+                    total_paid_rec += expected
+                    log_payment_transaction_to_firestore(p, user_disp=f"Web Admin: {request.user.username}")
+
+            slip.status = PaymentSlipSubmission.Status.APPROVED
+            slip.claimed_amount = total_paid_rec
+            slip.reviewed_by = request.user
+            slip.reviewed_at = timezone.now()
+            slip.notes = notes or f"បានអនុម័តដោយ {request.user.get_full_name() or request.user.username}"
+            slip.save()
+            log_payment_slip_to_firestore(slip)
+
+        if slip.telegram_chat_id:
+            parent_msg = (
+                f"🎉 *បង្កាន់ដៃបង់ប្រាក់ត្រូវបានផ្ទៀងផ្ទាត់ និងយល់ព្រមរួចរាល់!*\n\n"
+                f"• សិស្ស៖ *{student.khmer_name}* ({student.student_id})\n"
+                f"• ខែដែលបានបង់៖ {', '.join(approved_months) if approved_months else 'គ្រប់ខែ'}\n"
+                f"• ចំនួនទឹកប្រាក់៖ *{total_paid_rec:,.0f} ៛*\n"
+                f"• កាលបរិច្ឆេទ៖ {timezone.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+                f"🙏 *សូមអរគុណចំពោះការបង់ប្រាក់ទាន់ពេលវេលា!*"
+            )
+            send_telegram_notification(
+                title="✅ បញ្ជាក់ការបង់ប្រាក់ជោគជ័យ",
+                message=parent_msg,
+                custom_chat_id=slip.telegram_chat_id
+            )
+
+        messages.success(request, f"បានយល់ព្រមបង្កាន់ដៃ #{slip.id} (ចំនួន {total_paid_rec:,.0f} ៛) ជោគជ័យ!")
+    else:
+        slip.status = PaymentSlipSubmission.Status.REJECTED
+        slip.reviewed_by = request.user
+        slip.reviewed_at = timezone.now()
+        slip.notes = notes or f"បានបដិសេធដោយ {request.user.get_full_name() or request.user.username}"
+        slip.save()
+        log_payment_slip_to_firestore(slip)
+
+        if slip.telegram_chat_id:
+            send_telegram_notification(
+                title="❌ បង្កាន់ដៃបង់ប្រាក់មិនត្រឹមត្រូវ",
+                message=(
+                    f"⚠️ បង្កាន់ដៃបង់ប្រាក់របស់សិស្ស *{student.khmer_name}* ({student.student_id}) មិនទាន់ត្រឹមត្រូវឡើយ。\n"
+                    f"មូលហេតុ៖ {notes or 'សូមពិនិត្យចំនួនទឹកប្រាក់ ឬផ្ញើរូបភាពច្បាស់ឡើងវិញ'}"
+                ),
+                custom_chat_id=slip.telegram_chat_id
+            )
+
+        messages.warning(request, f"បានបដិសេធបង្កាន់ដៃ #{slip.id}!")
+
+    return redirect('payment_logs_dashboard')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def export_payment_logs_excel(request):
+    """
+    Exports full financial payment ledger, monthly utilities, and Firestore logs to Excel (.xlsx).
+    """
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from apps.finance.models import StudentMonthlyPayment, Invoice, PaymentSlipSubmission, FirestorePaymentAuditLog
+
+    wb = openpyxl.Workbook()
+    
+    # Sheet 1: Monthly Utility Payments
+    ws1 = wb.active
+    ws1.title = "ថ្លៃទឹកភ្លើងប្រចាំខែ"
+
+    # Header style
+    header_fill = PatternFill(start_color="1B365D", end_color="1B365D", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    align_center = Alignment(horizontal="center", vertical="center")
+    border_thin = Border(
+        left=Side(style='thin', color='D9D9D9'),
+        right=Side(style='thin', color='D9D9D9'),
+        top=Side(style='thin', color='D9D9D9'),
+        bottom=Side(style='thin', color='D9D9D9')
+    )
+
+    headers1 = [
+        "ល.រ", "អត្តលេខ", "ឈ្មោះសិស្ស", "ភេទ", "ថ្នាក់", "ខែ", "ចំនួនត្រូវបង់ (៛)",
+        "ចំនួនបានបង់ (៛)", "ស្ថានភាព", "វិធីសាស្ត្រ", "លេខបង្កាន់ដៃ", "ថ្ងៃបង់ប្រាក់", "អ្នកប្រមូល"
+    ]
+    ws1.append(headers1)
+    for col_idx, col in enumerate(ws1.iter_cols(min_row=1, max_row=1), 1):
+        for cell in col:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = align_center
+
+    monthly_payments = StudentMonthlyPayment.objects.all().select_related('student', 'student__classroom', 'collected_by').order_by('student__classroom__name', 'student__student_id', 'month')
+    for idx, p in enumerate(monthly_payments, 1):
+        st = p.student
+        m_name = MONTH_NAMES_KM.get(p.month, f"ខែ {p.month}")
+        ws1.append([
+            idx,
+            st.student_id,
+            st.khmer_name,
+            st.get_gender_display(),
+            st.classroom.name if st.classroom else '-',
+            m_name,
+            float(p.expected_amount),
+            float(p.paid_amount),
+            p.get_status_display(),
+            p.get_payment_method_display(),
+            p.receipt_no or '-',
+            p.payment_date.strftime('%Y-%m-%d %H:%M') if p.payment_date else '-',
+            str(p.collected_by.username) if p.collected_by else 'Admin'
+        ])
+
+    # Sheet 2: Early Year & Standard Invoices
+    ws2 = wb.create_sheet(title="ថវិកាដើមឆ្នាំ & វិក្កយបត្រ")
+    headers2 = [
+        "ល.រ", "លេខវិក្កយបត្រ", "អត្តលេខ", "ឈ្មោះសិស្ស", "ថ្នាក់", "ប្រភេទកម្រៃ",
+        "តម្លៃដើម ($)", "បញ្ចុះតម្លៃ (%)", "តម្លៃសុទ្ធ ($)", "បានបង់ ($)", "នៅជំពាក់ ($)", "ស្ថានភាព", "កាលបរិច្ឆេទ"
+    ]
+    ws2.append(headers2)
+    for col_idx, col in enumerate(ws2.iter_cols(min_row=1, max_row=1), 1):
+        for cell in col:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = align_center
+
+    invoices = Invoice.objects.all().select_related('student', 'student__classroom', 'fee_category').order_by('-created_at')
+    for idx, inv in enumerate(invoices, 1):
+        st = inv.student
+        ws2.append([
+            idx,
+            inv.invoice_no,
+            st.student_id,
+            st.khmer_name,
+            st.classroom.name if st.classroom else '-',
+            inv.fee_category.name,
+            float(inv.original_amount),
+            float(inv.discount_percent),
+            float(inv.final_amount),
+            float(inv.paid_amount),
+            float(inv.remaining_balance),
+            inv.get_status_display(),
+            inv.created_at.strftime('%Y-%m-%d')
+        ])
+
+    # Sheet 3: Telegram & Firestore Audit Logs
+    ws3 = wb.create_sheet(title="កំណត់ត្រា Firestore & Telegram")
+    headers3 = [
+        "ល.រ", "ប្រភេទព្រឹត្តិការណ៍", "អត្តលេខ", "ឈ្មោះសិស្ស", "ថ្នាក់", "ចំនួនទឹកប្រាក់", "រូបិយប័ណ្ណ",
+        "កម្រៃ/ចំណងជើង", "ប៉ុស្តិ៍ទាក់ទង", "ព័ត៌មាន Telegram", "Firestore Synced", "កាលបរិច្ឆេទ"
+    ]
+    ws3.append(headers3)
+    for col_idx, col in enumerate(ws3.iter_cols(min_row=1, max_row=1), 1):
+        for cell in col:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = align_center
+
+    logs = FirestorePaymentAuditLog.objects.all().order_by('-created_at')[:500]
+    for idx, l in enumerate(logs, 1):
+        ws3.append([
+            idx,
+            l.get_event_type_display(),
+            l.student_id_str or '-',
+            l.student_name or '-',
+            l.classroom_name or '-',
+            float(l.amount),
+            l.currency,
+            l.fee_category_name or '-',
+            l.channel,
+            l.telegram_user_info or '-',
+            "YES" if l.is_synced_to_firestore else "NO",
+            l.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"SchoolSM_Payment_Logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def export_payment_logs_json(request):
+    """
+    Exports structured JSON snapshot of all payment logs and Firestore records.
+    """
+    from apps.finance.models import StudentMonthlyPayment, Invoice, PaymentSlipSubmission, FirestorePaymentAuditLog
+
+    data = {
+        'exported_at': timezone.now().isoformat(),
+        'exported_by': request.user.username,
+        'monthly_payments': [
+            {
+                'id': p.id,
+                'student_id': p.student.student_id,
+                'student_name': p.student.khmer_name,
+                'month': p.month,
+                'expected_amount': float(p.expected_amount),
+                'paid_amount': float(p.paid_amount),
+                'status': p.status,
+                'payment_method': p.payment_method,
+                'receipt_no': p.receipt_no,
+                'payment_date': p.payment_date.isoformat() if p.payment_date else None,
+            }
+            for p in StudentMonthlyPayment.objects.all().select_related('student')
+        ],
+        'invoices': [
+            {
+                'invoice_no': inv.invoice_no,
+                'student_id': inv.student.student_id,
+                'fee_category': inv.fee_category.name,
+                'final_amount': float(inv.final_amount),
+                'paid_amount': float(inv.paid_amount),
+                'status': inv.status,
+                'created_at': inv.created_at.isoformat(),
+            }
+            for inv in Invoice.objects.all().select_related('student', 'fee_category')
+        ],
+        'payment_slips': [
+            {
+                'id': s.id,
+                'student_id': s.student.student_id,
+                'fee_type': s.fee_type,
+                'claimed_amount': float(s.claimed_amount),
+                'status': s.status,
+                'telegram_username': s.telegram_username,
+                'submitted_at': s.created_at.isoformat(),
+            }
+            for s in PaymentSlipSubmission.objects.all().select_related('student')
+        ],
+        'firestore_logs': [
+            {
+                'id': l.id,
+                'event_type': l.event_type,
+                'student_id': l.student_id_str,
+                'student_name': l.student_name,
+                'amount': float(l.amount),
+                'currency': l.currency,
+                'fee_category': l.fee_category_name,
+                'firestore_doc_id': l.firestore_doc_id,
+                'is_synced': l.is_synced_to_firestore,
+                'created_at': l.created_at.isoformat(),
+            }
+            for l in FirestorePaymentAuditLog.objects.all()
+        ]
+    }
+
+    response = HttpResponse(json.dumps(data, indent=2, ensure_ascii=False), content_type='application/json')
+    filename = f"SchoolSM_Payment_Snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def api_sync_firestore(request):
+    """
+    AJAX endpoint to trigger full synchronization to Firebase Firestore.
+    """
+    from apps.finance.firebase_service import sync_all_local_payments_to_firestore
+    res = sync_all_local_payments_to_firestore()
+    if res.get('success'):
+        messages.success(request, res.get('message', 'បាន Sync ទៅ Firestore ជោគជ័យ!'))
+    else:
+        messages.error(request, res.get('message', 'ការ Sync ទៅ Firestore បានបរាជ័យ!'))
+    return redirect('payment_logs_dashboard')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def api_send_payment_backup_telegram(request):
+    """
+    Generates Excel ledger snapshot and dispatches directly to Admin's Telegram Channel.
+    """
+    from apps.accounts.utils import send_telegram_document
+    from apps.accounts.models import TelegramConfig
+
+    tconfig = TelegramConfig.objects.first()
+    if not (tconfig and tconfig.is_active and tconfig.bot_token):
+        messages.error(request, "⚠️ Telegram Bot មិនទាន់ត្រូវបានកំណត់ ឬមិនទាន់សកម្មឡើយ!")
+        return redirect('payment_logs_dashboard')
+
+    # Generate Excel in memory
+    excel_response = export_payment_logs_excel(request)
+    excel_bytes = excel_response.content
+    filename = f"SchoolSM_Payment_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    caption = (
+        f"📊 *របាយការណ៍បង់ប្រាក់ & ទឹកភ្លើង (Financial Backup)*\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"• ស្ថាប័ន៖ សាលារៀន SM\n"
+        f"• ទម្រង់ឯកសារ៖ Microsoft Excel (.xlsx)\n"
+        f"• កាលបរិច្ឆេទ Backup៖ {timezone.now().strftime('%d/%m/%Y %H:%M')}\n"
+        f"• បង្កើតដោយ៖ {request.user.get_full_name() or request.user.username}\n\n"
+        f"🔒 _ទិន្នន័យត្រូវបានផ្ទៀងផ្ទាត់ និង Sync ជាមួយ Google Firebase Firestore រួចរាល់។_"
+    )
+
+    send_telegram_document(
+        document_bytes=excel_bytes,
+        filename=filename,
+        caption=caption,
+        recipient_name="Admin Management",
+        custom_chat_id=tconfig.chat_id
+    )
+
+    messages.success(request, f"បានផ្ញើឯកសារ Backup របាយការណ៍បង់ប្រាក់ទៅកាន់ Telegram Channel ជោគជ័យ!")
+    return redirect('payment_logs_dashboard')
+
 

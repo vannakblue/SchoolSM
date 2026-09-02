@@ -714,7 +714,7 @@ def telegram_webhook(request):
                 }
                 return JsonResponse({'status': 'ok', 'result': clean_res})
 
-        elif cb_data.startswith('feepay:'):
+        elif cb_data.startswith(('feepay:', 'feeqr:', 'feedetail:', 'feeslip:', 'feerefresh:', 'feereceipt:')):
             from apps.finance.telegram_bot import process_telegram_fee_callback
             res = process_telegram_fee_callback(cb_data, user_disp, chat_id, message_id)
             toast_text = res.get('message', 'បានកត់ត្រារួចរាល់!')
@@ -728,11 +728,16 @@ def telegram_webhook(request):
                 )
             return JsonResponse({'status': 'ok', 'result': res})
 
-    # 2. Handle Text Messages & Bot Commands
+    # 2. Handle Text Messages, Photos & Bot Commands
     if 'message' in data:
         msg = data['message']
-        text = msg.get('text', '')
-        if text.startswith(('/fees', '/fee', '/due', '/pay', '/collect')):
+        if 'photo' in msg:
+            from apps.finance.telegram_bot import handle_telegram_photo_message
+            handle_telegram_photo_message(msg)
+            return JsonResponse({'status': 'ok'})
+
+        text = msg.get('text', '').strip()
+        if text:
             from apps.finance.telegram_bot import handle_telegram_fees_message
             handle_telegram_fees_message(msg)
             return JsonResponse({'status': 'ok'})

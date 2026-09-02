@@ -68,6 +68,33 @@ class Command(BaseCommand):
                                             text=res['updated_text'],
                                             reply_markup=None
                                         )
+
+                            elif cb_data.startswith(('feepay:', 'feeqr:', 'feedetail:', 'feeslip:', 'feerefresh:', 'feereceipt:')):
+                                from apps.finance.telegram_bot import process_telegram_fee_callback
+                                res = process_telegram_fee_callback(cb_data, user_disp, chat_id, message_id)
+                                toast_text = res.get('message', 'បានដំណើរការរួចរាល់!')
+                                answer_telegram_callback_query(cb_id, text=toast_text, show_alert=True)
+                                if chat_id and message_id and 'updated_text' in res:
+                                    edit_telegram_message(
+                                        chat_id=chat_id,
+                                        message_id=message_id,
+                                        text=res['updated_text'],
+                                        reply_markup=None
+                                    )
+                                self.stdout.write(self.style.SUCCESS(f"Processed fee callback {cb_data}: {res.get('message')}"))
+
+                        # Handle Incoming Messages (Text & Photos)
+                        if 'message' in u:
+                            msg = u['message']
+                            if 'photo' in msg:
+                                from apps.finance.telegram_bot import handle_telegram_photo_message
+                                handle_telegram_photo_message(msg)
+                                self.stdout.write(self.style.SUCCESS("Processed photo message (Payment Slip)."))
+                            elif 'text' in msg:
+                                from apps.finance.telegram_bot import handle_telegram_fees_message
+                                handle_telegram_fees_message(msg)
+                                self.stdout.write(self.style.SUCCESS(f"Processed text message: {msg.get('text', '')[:30]}"))
+
                 time.sleep(1)
             except KeyboardInterrupt:
                 self.stdout.write(self.style.NOTICE("Telegram Bot Poller stopped."))

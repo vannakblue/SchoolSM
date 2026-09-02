@@ -196,10 +196,12 @@ def send_telegram_document(document_bytes, filename, caption, recipient_name="�
     return log
 
 
-def send_telegram_photo(photo_bytes, filename, caption, recipient_name="សិស្ស / អាណាព្យាបាល", recipient_type="Parent", custom_chat_id=None):
+def send_telegram_photo(photo_bytes, filename, caption, recipient_name="សិស្ស / អាណាព្យាបាល", recipient_type="Parent", custom_chat_id=None, reply_markup=None):
     """
-    Dispatches a photo/image snapshot (e.g. Report Card Image) to Telegram.
+    Dispatches a photo/image snapshot (e.g. Report Card Image, Bank QR Code, Receipt Slip) to Telegram.
+    Optionally accepts reply_markup (inline keyboard).
     """
+    import json
     config = TelegramConfig.objects.first()
     target_raw = custom_chat_id or (config.chat_id if config else None)
     chat_ids = extract_chat_ids(target_raw)
@@ -220,6 +222,11 @@ def send_telegram_photo(photo_bytes, filename, caption, recipient_name="សិ�
                     'caption': caption,
                     'parse_mode': 'Markdown'
                 }
+                if reply_markup:
+                    if isinstance(reply_markup, dict):
+                        data['reply_markup'] = json.dumps(reply_markup)
+                    else:
+                        data['reply_markup'] = reply_markup
                 resp = requests.post(url, data=data, files=files, timeout=15)
                 if resp.status_code == 200:
                     any_success = True

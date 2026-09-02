@@ -41,4 +41,14 @@ urlpatterns = [
     path('payroll/', views.payroll_list, name='payroll_list'),
     path('payroll/generate/', views.payroll_generate, name='payroll_generate'),
     path('payroll/<int:pk>/mark-paid/', views.payroll_mark_paid, name='payroll_mark_paid'),
+
+    # Payment Audit Logs, Firestore Cloud Sync & Any-Time Backup Suite
+    path('payment-logs/', views.payment_logs_dashboard, name='payment_logs_dashboard'),
+    path('payment-logs/methods/', views.api_manage_payment_methods, name='api_manage_payment_methods'),
+    path('payment-logs/slips/<int:pk>/review/', views.api_review_payment_slip, name='api_review_payment_slip'),
+    path('payment-logs/export-excel/', views.export_payment_logs_excel, name='export_payment_logs_excel'),
+    path('payment-logs/export-json/', views.export_payment_logs_json, name='export_payment_logs_json'),
+    path('payment-logs/sync-firestore/', views.api_sync_firestore, name='api_sync_firestore'),
+    path('payment-logs/send-telegram/', views.api_send_payment_backup_telegram, name='api_send_payment_backup_telegram'),
 ]
+

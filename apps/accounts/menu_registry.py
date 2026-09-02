@@ -436,6 +436,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN', 'ACCOUNTANT'],
                 'url_name': 'payroll_list',
             },
+            {
+                'key': 'payment_logs_dashboard',
+                'name_kh': 'កំណត់ត្រាបង់ប្រាក់ & Firestore',
+                'name_en': 'Payment Logs & Firestore',
+                'icon': 'fa-solid fa-cloud-bolt text-primary',
+                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'url_name': 'payment_logs_dashboard',
+            },
         ]
     },
     {
@@ -636,7 +644,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'menu_permissions',
-                'name_kh': 'កំណត់សិទ្ធិ Menu & Submenu',
+                'name_kh': 'កំណត់សិទ្ធិមឺនុយ',
                 'name_en': 'Menu & Submenu Permissions',
                 'icon': 'fa-solid fa-user-shield text-danger',
                 'default_roles': ['ADMIN'],
@@ -644,7 +652,7 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'tool_database_backup',
-                'name_kh': 'បម្រុងទុកទិន្នន័យ (Backup)',
+                'name_kh': 'បម្រុងទុកទិន្នន័យ',
                 'name_en': 'Database Backup & Snapshot',
                 'icon': 'fa-solid fa-database text-success',
                 'default_roles': ['ADMIN'],

@@ -347,3 +347,139 @@ class StudentMonthlyCategory(models.Model):
         cat_name = self.category.name if self.category else "ទូទៅ (Normal)"
         return f"{self.student.khmer_name} - ខែ {self.month}: {cat_name}"
 
+
+# ==========================================================
+# School Bank Account & Payment Method Configuration
+# ==========================================================
+
+class SchoolPaymentMethod(models.Model):
+    class BankType(models.TextChoices):
+        ABA = 'ABA', 'ABA Bank (ABA Pay / KHQR)'
+        BAKONG = 'BAKONG', 'Bakong KHQR (គ្រប់ធនាគារ)'
+        ACLEDA = 'ACLEDA', 'ACLEDA Bank Plc.'
+        CANADIA = 'CANADIA', 'Canadia Bank'
+        WING = 'WING', 'Wing Bank'
+        OTHER = 'OTHER', 'ធនាគារផ្សេងៗ / Other Bank'
+
+    class Currency(models.TextChoices):
+        KHR = 'KHR', 'រៀល (KHR ៛)'
+        USD = 'USD', 'ដុល្លារ (USD $)'
+        BOTH = 'BOTH', 'ទាំងពីរ (KHR / USD)'
+
+    bank_type = models.CharField(max_length=30, choices=BankType.choices, default=BankType.ABA, verbose_name="ប្រភេទធនាគារ / Bank")
+    bank_name = models.CharField(max_length=150, default="ABA Bank", verbose_name="ឈ្មោះធនាគារ / Bank Name")
+    account_name = models.CharField(max_length=150, verbose_name="ឈ្មោះម្ចាស់គណនី / Account Name")
+    account_number = models.CharField(max_length=100, verbose_name="លេខគណនី / Account Number")
+    currency = models.CharField(max_length=10, choices=Currency.choices, default=Currency.KHR, verbose_name="រូបិយប័ណ្ណ / Currency")
+    qr_image = models.ImageField(upload_to='bank_qr/', blank=True, null=True, verbose_name="រូបភាព QR Code / Bank QR Code Image")
+    khqr_payload = models.TextField(blank=True, null=True, verbose_name="ទិន្នន័យ Bakong KHQR String / Payload")
+    instructions = models.TextField(
+        blank=True,
+        null=True,
+        default="សូមស្កេន QR Code ខាងលើដើម្បីបង់ប្រាក់។ បន្ទាប់មក សូមដាក់កំណត់សម្គាល់ (Memo) ជា «អត្តលេខសិស្ស» ហើយផ្ញើរូបថតបង្កាន់ដៃ (Receipt) មកទីនេះ។",
+        verbose_name="ការណែនាំសម្រាប់ការបង់ប្រាក់ / Payment Instructions"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="សកម្ម / Active")
+    is_default = models.BooleanField(default=False, verbose_name="គណនីលំនាំដើម / Default Account")
+    display_order = models.PositiveIntegerField(default=1, verbose_name="លំដាប់លំដោយ / Display Order")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_default', 'display_order', 'id']
+        verbose_name = "គណនីធនាគារ & QR Code / School Payment Method"
+        verbose_name_plural = "គណនីធនាគារ & QR Code ទាំងអស់ / School Payment Methods"
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            SchoolPaymentMethod.objects.exclude(id=self.id).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_default_or_first(cls):
+        return cls.objects.filter(is_active=True, is_default=True).first() or cls.objects.filter(is_active=True).first()
+
+    def __str__(self):
+        return f"{self.bank_name} - {self.account_name} ({self.account_number})"
+
+
+# ==========================================================
+# Parent Payment Slip Submission (បង្កាន់ដៃបង់ប្រាក់តាម Telegram)
+# ==========================================================
+
+class PaymentSlipSubmission(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'រង់ចាំផ្ទៀងផ្ទាត់ / Pending Verification'
+        APPROVED = 'APPROVED', 'បានយល់ព្រម / Approved'
+        REJECTED = 'REJECTED', 'បដិសេធ / Rejected'
+
+    class FeeType(models.TextChoices):
+        MONTHLY_UTILITY = 'MONTHLY_UTILITY', 'ថ្លៃទឹកភ្លើងប្រចាំខែ / Monthly Utilities'
+        EARLY_YEAR_INVOICE = 'EARLY_YEAR_INVOICE', 'ថវិកាដើមឆ្នាំ/វិក្កយបត្រ / Early Year Invoice'
+        ALL_DUE = 'ALL_DUE', 'ទូទាត់ជំពាក់ទាំងអស់ / All Due Fees'
+        OTHER = 'OTHER', 'ផ្សេងៗ / Other'
+
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='payment_slips', verbose_name="សិស្ស / Student")
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    fee_type = models.CharField(max_length=30, choices=FeeType.choices, default=FeeType.MONTHLY_UTILITY, verbose_name="ប្រភេទកម្រៃ / Fee Type")
+    target_months = models.JSONField(default=list, blank=True, verbose_name="ខែដែលបានបង់ / Target Months")
+    invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='slip_submissions', verbose_name="វិក្កយបត្រ / Invoice")
+    claimed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់បង់ ($ / ៛) / Amount")
+    currency = models.CharField(max_length=10, default="៛", verbose_name="រូបិយប័ណ្ណ / Currency")
+    slip_image = models.ImageField(upload_to='payment_slips/%Y/%m/', blank=True, null=True, verbose_name="រូបថតបង្កាន់ដៃ / Slip Image")
+    telegram_file_id = models.CharField(max_length=255, blank=True, null=True, verbose_name="Telegram File ID")
+    telegram_user_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram User ID")
+    telegram_username = models.CharField(max_length=150, blank=True, null=True, verbose_name="Telegram Username")
+    telegram_chat_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Telegram Chat ID")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name="ស្ថានភាព / Status")
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="អ្នកផ្ទៀងផ្ទាត់ / Reviewed By")
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទផ្ទៀងផ្ទាត់ / Reviewed At")
+    notes = models.TextField(blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+    firestore_doc_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Firestore Doc ID")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "បង្កាន់ដៃបង់ប្រាក់អាណាព្យាបាល / Payment Slip Submission"
+        verbose_name_plural = "បង្កាន់ដៃបង់ប្រាក់អាណាព្យាបាលទាំងអស់ / Payment Slip Submissions"
+
+    def __str__(self):
+        return f"Slip #{self.id} - {self.student.khmer_name} ({self.get_status_display()})"
+
+
+# ==========================================================
+# Local Firestore Payment Audit Log Mirror
+# ==========================================================
+
+class FirestorePaymentAuditLog(models.Model):
+    class EventType(models.TextChoices):
+        INQUIRY = 'INQUIRY', 'សាកសួរព័ត៌មានកម្រៃ / Student Fee Inquiry'
+        QR_DISPATCH = 'QR_DISPATCH', 'បង្ហាញ QR Code / Bank QR Dispatched'
+        SLIP_SUBMISSION = 'SLIP_SUBMISSION', 'ផ្ញើបង្កាន់ដៃបង់ប្រាក់ / Slip Submitted'
+        PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED', 'បញ្ជាក់ការបង់ប្រាក់ / Payment Confirmed'
+        CLOUD_SYNC = 'CLOUD_SYNC', 'Sync Cloud Firestore / Cloud Sync'
+
+    event_type = models.CharField(max_length=30, choices=EventType.choices, default=EventType.INQUIRY, verbose_name="ប្រភេទព្រឹត្តិការណ៍ / Event Type")
+    student = models.ForeignKey('students.Student', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="សិស្ស / Student")
+    student_id_str = models.CharField(max_length=50, blank=True, null=True, verbose_name="អត្តលេខសិស្ស / Student ID")
+    student_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ឈ្មោះសិស្ស / Student Name")
+    classroom_name = models.CharField(max_length=100, blank=True, null=True, verbose_name="ថ្នាក់ / Classroom")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់ / Amount")
+    currency = models.CharField(max_length=10, default="៛", verbose_name="រូបិយប័ណ្ណ / Currency")
+    fee_category_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ប្រភេទកម្រៃ / Fee Category")
+    channel = models.CharField(max_length=50, default="TELEGRAM_BOT", verbose_name="ប៉ុស្តិ៍ទាក់ទង / Channel")
+    telegram_user_info = models.CharField(max_length=200, blank=True, null=True, verbose_name="ព័ត៌មានអ្នកប្រើប្រាស់ Telegram")
+    firestore_doc_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Firestore Doc ID")
+    is_synced_to_firestore = models.BooleanField(default=False, verbose_name="បាន Sync ទៅ Firestore / Synced to Firestore")
+    payload_data = models.JSONField(default=dict, blank=True, verbose_name="ទិន្នន័យលម្អិត / Payload Data")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="កាលបរិច្ឆេទ / Created At")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "កំណត់ត្រា Firestore Payment Log / Payment Audit Log"
+        verbose_name_plural = "កំណត់ត្រា Firestore Payment Logs ទាំងអស់ / Payment Audit Logs"
+
+    def __str__(self):
+        return f"[{self.get_event_type_display()}] {self.student_name} - {self.amount:,.0f} {self.currency}"
+
