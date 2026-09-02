@@ -2262,7 +2262,10 @@ def timetable_version_restore(request, version_id):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
 
-    version = get_object_or_404(TimetableVersion, id=version_id)
+    version = TimetableVersion.objects.filter(id=version_id).first()
+    if not version:
+        return JsonResponse({'status': 'error', 'message': f'រកមិនឃើញកំណែកាលវិភាគ ID {version_id} ឡើយ!'}, status=404)
+        
     active_year = version.academic_year
 
     try:
@@ -2278,16 +2281,21 @@ def timetable_version_restore(request, version_id):
             # 1. Clear active year live timetables
             Timetable.objects.filter(classroom__academic_year=active_year).delete()
 
+            # Cache valid IDs to prevent integrity errors if objects were deleted in DB
+            valid_classroom_ids = set(Classroom.objects.filter(academic_year=active_year).values_list('id', flat=True))
+            valid_subject_ids = set(Subject.objects.values_list('id', flat=True))
+            valid_teacher_ids = set(Teacher.objects.values_list('id', flat=True))
+
             # 2. Restore timetable slots
             restored_entries = []
-            for item in version.matrix_data:
+            for item in (version.matrix_data or []):
                 cls_id = item.get('classroom_id')
-                day_num = int(item.get('day_of_week'))
-                p_num = int(item.get('period_number'))
+                day_num = int(item.get('day_of_week') or 1)
+                p_num = int(item.get('period_number') or 1)
                 sub_id = item.get('subject_id')
                 tch_id = item.get('teacher_id')
 
-                if cls_id and sub_id and tch_id:
+                if cls_id in valid_classroom_ids and sub_id in valid_subject_ids and tch_id in valid_teacher_ids:
                     st_time, et_time = STANDARD_PERIOD_TIMES.get(
                         p_num, 
                         (datetime.time(7, 0), datetime.time(7, 50))
@@ -2313,15 +2321,16 @@ def timetable_version_restore(request, version_id):
                     for cid_str, items in cs_data.items():
                         try:
                             c_id = int(cid_str)
-                            for itm in items:
-                                s_id = itm.get('subject_id')
-                                t_id = itm.get('teacher_id')
-                                if s_id and t_id:
-                                    ClassSubject.objects.update_or_create(
-                                        classroom_id=c_id,
-                                        subject_id=s_id,
-                                        defaults={'teacher_id': t_id}
-                                    )
+                            if c_id in valid_classroom_ids:
+                                for itm in items:
+                                    s_id = itm.get('subject_id')
+                                    t_id = itm.get('teacher_id')
+                                    if s_id in valid_subject_ids and t_id in valid_teacher_ids:
+                                        ClassSubject.objects.update_or_create(
+                                            classroom_id=c_id,
+                                            subject_id=s_id,
+                                            defaults={'teacher_id': t_id}
+                                        )
                         except Exception:
                             pass
                 elif isinstance(cs_data, list):
@@ -2329,7 +2338,7 @@ def timetable_version_restore(request, version_id):
                         c_id = itm.get('classroom_id')
                         s_id = itm.get('subject_id')
                         t_id = itm.get('teacher_id')
-                        if c_id and s_id and t_id:
+                        if c_id in valid_classroom_ids and s_id in valid_subject_ids and t_id in valid_teacher_ids:
                             ClassSubject.objects.update_or_create(
                                 classroom_id=c_id,
                                 subject_id=s_id,
@@ -2370,7 +2379,10 @@ def timetable_version_delete(request, version_id):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
 
-    version = get_object_or_404(TimetableVersion, id=version_id)
+    version = TimetableVersion.objects.filter(id=version_id).first()
+    if not version:
+        return JsonResponse({'status': 'error', 'message': f'រកមិនឃើញកំណែកាលវិភាគ ID {version_id} ឡើយ!'}, status=404)
+        
     v_num = version.version_number
     v_title = version.title
     version.delete()
@@ -2389,7 +2401,10 @@ def timetable_version_update(request, version_id):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
 
-    version = get_object_or_404(TimetableVersion, id=version_id)
+    version = TimetableVersion.objects.filter(id=version_id).first()
+    if not version:
+        return JsonResponse({'status': 'error', 'message': f'រកមិនឃើញកំណែកាលវិភាគ ID {version_id} ឡើយ!'}, status=404)
+        
     try:
         data = json.loads(request.body.decode('utf-8'))
         title = data.get('title')
@@ -2418,7 +2433,10 @@ def timetable_version_export(request, version_id):
     """
     Exports a specific TimetableVersion snapshot as a downloadable JSON file.
     """
-    version = get_object_or_404(TimetableVersion, id=version_id)
+    version = TimetableVersion.objects.filter(id=version_id).first()
+    if not version:
+        return HttpResponse('Timetable version not found', status=404)
+        
     creator_name = (version.created_by.get_full_name() or version.created_by.username) if version.created_by else 'Admin'
     export_dict = {
         'app': 'SchoolSM',

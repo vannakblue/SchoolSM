@@ -475,6 +475,7 @@
 
 {% block content %}
 <div id="masterTimetableContainer">
+    <div style="display: none;">{% csrf_token %}</div>
     <!-- Sub-Menu Navigation Tabs -->
     <ul class="nav nav-tabs-custom no-print">
         <li class="nav-item">
@@ -1362,6 +1363,89 @@
     const COLOR_STORAGE_KEY = 'schoolsm_timetable_custom_palette';
     const BLOCKED_STORAGE_KEY = 'schoolsm_timetable_blocked_y' + ACTIVE_YEAR_ID;
 
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function getCsrfToken() {
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) return input.value;
+        const cookie = getCookie('csrftoken');
+        if (cookie) return cookie;
+        return '{{ csrf_token }}';
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function escapeJs(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+    }
+
+    async function safeFetchJson(url, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            ...(options.headers || {})
+        };
+
+        const resp = await fetch(url, { ...options, headers });
+        const contentType = resp.headers.get('content-type') || '';
+        
+        let resData = null;
+        if (contentType.includes('application/json')) {
+            try {
+                resData = await resp.json();
+            } catch (e) {
+                throw new Error('មិនអាចអានទិន្នន័យ JSON ពី Server បានទេ៖ ' + e.message);
+            }
+        } else {
+            const text = await resp.text();
+            if (resp.status === 403) {
+                throw new Error('សិទ្ធិត្រូវបានបដិសេធ ឬផុតសុពលភាព CSRF (403 Forbidden) - សូម Refresh ទំព័រឡើងវិញ');
+            } else if (resp.status === 401) {
+                throw new Error('សម័យកាលប្រើប្រាស់បានផុតកំណត់ សូមចូលគណនីឡើងវិញ (Session Expired)');
+            } else if (resp.status === 404) {
+                throw new Error('រកមិនឃើញទិន្នន័យ ឬ API Endpoint ឡើយ (404 Not Found)');
+            } else {
+                throw new Error(`កំហុសម៉ាស៊ីនបម្រើ (HTTP ${resp.status})`);
+            }
+        }
+
+        if (!resp.ok) {
+            const msg = (resData && resData.message) ? resData.message : `HTTP Error ${resp.status}`;
+            throw new Error(msg);
+        }
+
+        return resData;
+    }
+
     const DEFAULT_PALETTE = {
         exact: '#3b82f6',
         under: '#10b981',
@@ -1996,26 +2080,22 @@
                 payload.class_subject_assignments = classSubjectsToSync;
             }
 
-            const res = await fetch('/academics/timetable/save-matrix/', {
+            const data = await safeFetchJson('/academics/timetable/save-matrix/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
                 body: JSON.stringify(payload),
             });
-            const data = await res.json();
             if (data.status === 'success') {
                 saveToLocalStorage();
                 showAutoSaveBadge('✅ រក្សាទុកស្វ័យប្រវត្តិរួចរាល់ (Saved)');
                 if (showPrompt) alert('✅ ' + data.message);
             } else {
                 showAutoSaveBadge('⚠️ បរាជ័យក្នុងការ Save', 'danger');
-                if (showPrompt) alert('⚠️ បរាជ័យ៖ ' + data.message);
+                if (showPrompt) alert('⚠️ បរាជ័យ៖ ' + (data.message || 'Error saving matrix'));
             }
         } catch (err) {
+            console.error('Save Matrix Error:', err);
             showAutoSaveBadge('⚠️ បាត់បង់ការតភ្ជាប់ (Draft ត្រូវបាន Save ក្នុងម៉ាស៊ីន)', 'warning');
-            if (showPrompt) alert('⚠️ មានបញ្ហាក្នុងការតភ្ជាប់បណ្តាញ! ទិន្នន័យត្រូវបានរក្សាទុកក្នុងម៉ាស៊ីនរបស់អ្នករួចរាល់។');
+            if (showPrompt) alert('⚠️ មានបញ្ហាក្នុងការរក្សាទុក៖ ' + err.message);
         } finally {
             if (saveBtn) {
                 saveBtn.disabled = false;
@@ -2058,20 +2138,14 @@
         } catch (e) {}
 
         try {
-            const res = await fetch('/academics/timetable/auto-generate/', {
+            const data = await safeFetchJson('/academics/timetable/auto-generate/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
                 body: JSON.stringify({ 
                     academic_year_id: ACTIVE_YEAR_ID,
                     clear_existing: true,
                     locked_slots: lockedList
                 }),
             });
-            const data = await res.json();
             if (data.status === 'success') {
                 alert('✅ ' + data.message);
                 window.location.reload();
@@ -2079,7 +2153,10 @@
                 alert('⚠️ បរាជ័យ៖ ' + (data.message || 'Auto-generation error'));
             }
         } catch (err) {
-            window.location.reload();
+            console.error('Auto Generation Error:', err);
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
         }
     }
 
@@ -3027,12 +3104,8 @@
         try {
             pushHistoryState();
             
-            const response = await fetch('/academics/timetable/transfer-class/', {
+            const res = await safeFetchJson('/academics/timetable/transfer-class/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify({
                     source_class_id: sourceId,
                     target_class_id: targetId,
@@ -3040,8 +3113,6 @@
                     overwrite: overwrite,
                 })
             });
-            
-            const res = await response.json();
             
             if (res.status === 'success') {
                 // Apply updated slots to MATRIX_STATE
@@ -3118,7 +3189,8 @@
                 alert('កំហុស៖ ' + (res.message || 'មិនអាចផ្ទេរកាលវិភាគបានឡើយ'));
             }
         } catch(err) {
-            alert('កំហុសប្រព័ន្ធ៖ ' + err.message);
+            console.error('Class Transfer Error:', err);
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -3130,41 +3202,6 @@
     // ==========================================
     // 🌟 ANNUAL TIMETABLE VERSIONING & REVISION SYSTEM (លើកទី១ ទី២...)
     // ==========================================
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    function escapeJs(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/\\/g, "\\\\")
-            .replace(/'/g, "\\'")
-            .replace(/"/g, '\\"')
-            .replace(/\n/g, "\\n")
-            .replace(/\r/g, "\\r");
-    }
 
     function openSaveVersionModal() {
         const modalEl = document.getElementById('saveTimetableVersionModal');
@@ -3254,16 +3291,10 @@
                 class_subject_assignments: includeCs ? CLASS_OPTIONS : null,
             };
 
-            const response = await fetch('/academics/timetable/versions/save/', {
+            const res = await safeFetchJson('/academics/timetable/versions/save/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
-                },
                 body: JSON.stringify(payload)
             });
-
-            const res = await response.json();
 
             if (res.status === 'success') {
                 // Close modal
@@ -3329,8 +3360,7 @@
         }
 
         try {
-            const resp = await fetch(`/academics/timetable/versions/?academic_year_id=${ACTIVE_YEAR_ID}`);
-            const data = await resp.json();
+            const data = await safeFetchJson(`/academics/timetable/versions/?academic_year_id=${ACTIVE_YEAR_ID}`);
 
             if (data.status === 'success') {
                 TIMETABLE_VERSIONS = data.versions || [];
@@ -3346,6 +3376,7 @@
                 container.innerHTML = `<div class="alert alert-danger">មិនអាចទាញយកទិន្នន័យបានឡើយ៖ ${data.message}</div>`;
             }
         } catch (err) {
+            console.error('Refresh Versions Error:', err);
             if (container) {
                 container.innerHTML = `<div class="alert alert-danger">កំហុសក្នុងការតភ្ជាប់៖ ${err.message}</div>`;
             }
@@ -3505,16 +3536,10 @@
         try {
             pushHistoryState();
 
-            const resp = await fetch(`/academics/timetable/versions/${versionId}/restore/`, {
+            const res = await safeFetchJson(`/academics/timetable/versions/${versionId}/restore/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
-                },
                 body: JSON.stringify({ sync_teachers: true })
             });
-
-            const res = await resp.json();
 
             if (res.status === 'success') {
                 ACTIVE_VERSION_ID = versionId;
@@ -3593,14 +3618,9 @@
         }
 
         try {
-            const resp = await fetch(`/academics/timetable/versions/${versionId}/delete/`, {
+            const res = await safeFetchJson(`/academics/timetable/versions/${versionId}/delete/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
-                }
             });
-            const res = await resp.json();
 
             if (res.status === 'success') {
                 await refreshVersionsList(false);
@@ -3609,6 +3629,7 @@
                 alert('⚠️ មិនអាចលុបបានឡើយ៖ ' + res.message);
             }
         } catch (err) {
+            console.error('Delete Version Error:', err);
             alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
         }
     }
@@ -3650,15 +3671,10 @@
         }
 
         try {
-            const resp = await fetch(`/academics/timetable/versions/${vId}/update/`, {
+            const res = await safeFetchJson(`/academics/timetable/versions/${vId}/update/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}',
-                },
                 body: JSON.stringify({ title: vTitle, note: vNote })
             });
-            const res = await resp.json();
 
             if (res.status === 'success') {
                 const modalEl = document.getElementById('editTimetableVersionModal');
@@ -3672,6 +3688,7 @@
                 alert('⚠️ បរាជ័យ៖ ' + res.message);
             }
         } catch (err) {
+            console.error('Edit Version Error:', err);
             alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
         } finally {
             if (btn) {
