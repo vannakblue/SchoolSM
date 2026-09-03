@@ -251,9 +251,6 @@
         .duty-sheet-paper {
             width: 100% !important;
             max-width: 194mm !important;
-            height: 278mm !important;
-            max-height: 278mm !important;
-            min-height: 275mm !important;
             box-sizing: border-box !important;
             border: none !important;
             box-shadow: none !important;
@@ -263,9 +260,7 @@
             break-inside: avoid !important;
             page-break-after: always !important;
             break-after: page !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
+            display: block !important;
             overflow: hidden !important;
         }
 
@@ -1466,46 +1461,50 @@
                 if (Array.isArray(widths)) applyColumnWidths(widths);
             }
     // ==========================================
-    // SMART A4 AUTO-FIT SCALING ENGINE
+    // SMART A4 AUTO-FIT SCALING & FULL-PAGE STRETCH ENGINE
     // ==========================================
     function applySmartAutoFitA4() {
         const papers = document.querySelectorAll('.duty-sheet-paper');
         papers.forEach(paper => {
             const tbody = paper.querySelector('.duty-sheet-table tbody');
-            const rowCount = tbody ? tbody.querySelectorAll('tr').length : 0;
+            const rows = tbody ? tbody.querySelectorAll('tr') : [];
+            const rowCount = rows.length;
             const table = paper.querySelector('.duty-sheet-table');
-            if (!table) return;
+            const hasSignatures = paper.querySelector('.duty-sheet-signatures') !== null;
+            if (!table || rowCount === 0) return;
 
-            // Auto fit font size and line height per page density
-            if (rowCount > 24) {
-                table.style.setProperty('--report-table-font-size', '7.2pt');
-                table.style.setProperty('--report-row-height', '23px');
-                table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.padding = '1.5px 1.5px';
-                    cell.style.fontSize = '7.2pt';
-                });
-            } else if (rowCount > 18) {
-                table.style.setProperty('--report-table-font-size', '7.8pt');
-                table.style.setProperty('--report-row-height', '26px');
-                table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.padding = '2px 2px';
-                    cell.style.fontSize = '7.8pt';
-                });
-            } else if (rowCount > 12) {
-                table.style.setProperty('--report-table-font-size', '8.2pt');
-                table.style.setProperty('--report-row-height', '30px');
-                table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.padding = '2.5px 2px';
-                    cell.style.fontSize = '8.2pt';
-                });
-            } else {
-                table.style.setProperty('--report-table-font-size', '8.6pt');
-                table.style.setProperty('--report-row-height', '34px');
-                table.querySelectorAll('td, th').forEach(cell => {
-                    cell.style.padding = '3.5px 3px';
-                    cell.style.fontSize = '8.6pt';
-                });
+            // Total available printable height on A4 (approx 980px - 1040px)
+            // Header block takes ~75px, footer note takes ~25px, signatures block takes ~120px
+            let availableHeight = hasSignatures ? 820 : 900;
+            let calculatedRowHeight = Math.floor(availableHeight / rowCount);
+
+            // Proportional row height: minimum 32px, maximum 45px
+            calculatedRowHeight = Math.max(32, Math.min(46, calculatedRowHeight));
+
+            // Sharp, highly readable font size matching row height
+            let calculatedFontSize = '8.8pt';
+            if (calculatedRowHeight < 34) {
+                calculatedFontSize = '8.2pt';
+            } else if (calculatedRowHeight >= 40) {
+                calculatedFontSize = '9.2pt';
             }
+
+            table.style.setProperty('--report-table-font-size', calculatedFontSize);
+            table.style.setProperty('--report-row-height', `${calculatedRowHeight}px`);
+
+            rows.forEach(tr => {
+                tr.style.height = `${calculatedRowHeight}px`;
+                tr.querySelectorAll('td').forEach(td => {
+                    td.style.height = `${calculatedRowHeight}px`;
+                    td.style.fontSize = calculatedFontSize;
+                    td.style.padding = calculatedRowHeight >= 36 ? '4px 3px' : '2.5px 2px';
+                });
+            });
+
+            table.querySelectorAll('th').forEach(th => {
+                th.style.fontSize = calculatedFontSize;
+                th.style.height = '32px';
+            });
         });
     }
 
