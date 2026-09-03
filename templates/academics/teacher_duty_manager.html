@@ -278,10 +278,11 @@
                     <input type="text" class="form-control" id="staffSearchInput" placeholder="ស្វែងរកឈ្មោះ ឬកូដគ្រូ..." oninput="filterStaffList()">
                 </div>
                 <div class="d-flex flex-wrap gap-1">
-                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 active filter-btn" data-filter="all" onclick="setStaffFilter('all', this)">ទាំងអស់</button>
-                    <button class="btn btn-sm btn-outline-warning py-0 px-2 filter-btn" data-filter="deficit" onclick="setStaffFilter('deficit', this)">ខ្វះម៉ោង</button>
-                    <button class="btn btn-sm btn-outline-info py-0 px-2 filter-btn" data-filter="office" onclick="setStaffFilter('office', this)">ការិយាល័យ</button>
-                    <button class="btn btn-sm btn-outline-success py-0 px-2 filter-btn" data-filter="exact" onclick="setStaffFilter('exact', this)">គ្រប់ម៉ោង</button>
+                    <button class="btn btn-sm btn-outline-secondary py-0.5 px-2 active filter-btn" data-filter="all" onclick="setStaffFilter('all', this)">ទាំងអស់</button>
+                    <button class="btn btn-sm btn-outline-primary py-0.5 px-2 filter-btn" data-filter="teacher" onclick="setStaffFilter('teacher', this)"><i class="fa-solid fa-chalkboard-user me-1"></i>បុគ្គលិកបង្រៀន</button>
+                    <button class="btn btn-sm btn-outline-info py-0.5 px-2 filter-btn" data-filter="office" onclick="setStaffFilter('office', this)"><i class="fa-solid fa-building-user me-1"></i>បុគ្គលិកការិយាល័យ</button>
+                    <button class="btn btn-sm btn-outline-warning py-0.5 px-2 filter-btn" data-filter="deficit" onclick="setStaffFilter('deficit', this)"><i class="fa-solid fa-triangle-exclamation me-1"></i>គ្រូខ្វះម៉ោង</button>
+                    <button class="btn btn-sm btn-outline-success py-0.5 px-2 filter-btn" data-filter="exact" onclick="setStaffFilter('exact', this)"><i class="fa-solid fa-check me-1"></i>គ្រប់ម៉ោង</button>
                 </div>
             </div>
 
@@ -299,7 +300,7 @@
                         </div>
                         <div>
                             {% if st.is_office %}
-                                <span class="badge bg-info-subtle text-info border border-info-subtle duty-badge-pill">ការិយាល័យ</span>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle duty-badge-pill"><i class="fa-solid fa-building-user me-1"></i>ការិយាល័យ</span>
                             {% elif st.status == 'EXACT' %}
                                 <span class="badge bg-success-subtle text-success border border-success-subtle duty-badge-pill">គ្រប់ម៉ោង</span>
                             {% elif st.status == 'DEFICIT' %}
@@ -354,6 +355,43 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Staff Role & Quick Shift Preset Banner -->
+            {% if selected_teacher_is_office %}
+            <div class="alert alert-info border border-info-subtle d-flex flex-wrap align-items-center justify-content-between py-2 px-3 mb-3 rounded-3 shadow-xs" style="background: #f0fdf4;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info text-white fs-7 py-1 px-2"><i class="fa-solid fa-building-user me-1"></i>បុគ្គលិកការិយាល័យ / រដ្ឋបាល</span>
+                    <span class="small text-dark fw-bold">កំណត់វេនប្រចាំការពេញស្វ័យប្រវត្តិ៖</span>
+                </div>
+                <div class="d-flex align-items-center gap-1.5">
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold py-1 px-2 shadow-2xs" onclick="applyOfficeQuickShift('morning')" title="ដាក់ប្រចាំការពេលព្រឹកពេញ (ចន្ទ-សៅរ៍ ម៉ោង ១-៤)">
+                        <i class="fa-solid fa-sun text-warning me-1"></i> វេនព្រឹកពេញ (ច-ស)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning fw-bold text-dark py-1 px-2 shadow-2xs" onclick="applyOfficeQuickShift('afternoon')" title="ដាក់ប្រចាំការពេលរសៀលពេញ (ចន្ទ-សៅរ៍ ម៉ោង ៥-៨)">
+                        <i class="fa-solid fa-cloud-sun text-warning me-1"></i> វេនរសៀលពេញ (ច-ស)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success fw-bold py-1 px-2 shadow-2xs" onclick="applyOfficeQuickShift('weekday_full')" title="ដាក់ប្រចាំការពេញម៉ោងធ្វើការ (ចន្ទ-សុក្រ ម៉ោង ១-៦)">
+                        <i class="fa-solid fa-calendar-check me-1"></i> ចន្ទ-សុក្រ ពេញម៉ោង
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-primary-subtle border border-primary-subtle d-flex flex-wrap align-items-center justify-content-between py-2 px-3 mb-3 rounded-3 shadow-xs">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary text-white fs-7 py-1 px-2"><i class="fa-solid fa-chalkboard-user me-1"></i>បុគ្គលិកបង្រៀន (Teaching Staff)</span>
+                    <span class="small text-dark">
+                        បង្រៀនជាក់ស្តែង៖ <strong class="text-primary">{{ active_staff_teaching_slots|length }} ម៉ោង</strong> | កូតាគោល៖ <strong>{{ selected_teacher.max_weekly_hours|default:18 }} ម៉ោង</strong>
+                    </span>
+                </div>
+                {% if selected_teacher_deficit > 0 %}
+                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2 shadow-2xs" onclick="autoAssignSingleTeacher()" title="បែងចែកម៉ោងខ្វះស្វ័យប្រវត្តិ">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បំពេញម៉ោងខ្វះ (ខ្វះ {{ selected_teacher_deficit }} ម៉ោង)
+                </button>
+                {% else %}
+                <span class="badge bg-success text-white"><i class="fa-solid fa-check me-1"></i>គ្រប់ម៉ោងបង្រៀនហើយ</span>
+                {% endif %}
+            </div>
+            {% endif %}
 
             <!-- Duty Summary Counter Banner -->
             <div class="alert alert-light border d-flex flex-wrap align-items-center justify-content-between py-2 px-3 mb-3 rounded-2">
@@ -499,6 +537,36 @@
                 <p class="small text-muted mb-3">
                     ប្រព័ន្ធនឹងស្វែងរកគ្រូទាំងអស់ដែលមានម៉ោងបង្រៀនមិនទាន់គ្រប់កូតា (ឧ. ១៨ ម៉ោង) ហើយបំពេញម៉ោងប្រចាំការដោយស្វ័យប្រវត្តិចូលទៅក្នុងម៉ោងទំនេរ (ដែលមិនជាន់ម៉ោងបង្រៀន)។
                 </p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-dark">ជ្រើសរើសក្រុមគោលដៅ (Target Scope)៖</label>
+                    <div class="d-flex flex-column gap-2 border rounded-3 p-2.5 bg-light">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="autoAssignScopeRadio" id="scopeDeficit" value="deficit_teachers" checked>
+                            <label class="form-check-label fw-bold small text-dark" for="scopeDeficit">
+                                <i class="fa-solid fa-chalkboard-user text-primary me-1"></i> បុគ្គលិកបង្រៀន (តែគ្រូខ្វះម៉ោងបង្រៀនប៉ុណ្ណោះ)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.76rem; margin-left: 1.25rem;">
+                                បំពេញតែម៉ោងដែលខ្វះតាមកូតាគោល និងមិនជាន់ម៉ោងកំពុងបង្រៀន
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="autoAssignScopeRadio" id="scopeOffice" value="office_staff">
+                            <label class="form-check-label fw-bold small text-dark" for="scopeOffice">
+                                <i class="fa-solid fa-building-user text-info me-1"></i> បុគ្គលិកការិយាល័យ (រដ្ឋបាល/បណ្ណារក្ស/គណនេយ្យ...)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.76rem; margin-left: 1.25rem;">
+                                បែងចែកម៉ោងប្រចាំការពេញ ១០០% សម្រាប់បុគ្គលិកដែលពុំមានម៉ោងបង្រៀន
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="autoAssignScopeRadio" id="scopeAll" value="all">
+                            <label class="form-check-label fw-bold small text-dark" for="scopeAll">
+                                <i class="fa-solid fa-users text-success me-1"></i> បុគ្គលិក និងគ្រូទាំងអស់ទូទាំងសាលា
+                            </label>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold small">ប្រភេទប្រចាំការលំនាំដើម (Default Duty Type)៖</label>
@@ -913,6 +981,7 @@
     async function executeSchoolWideAutoAssign() {
         const dtype = document.getElementById('autoAssignDutyTypeSelect').value;
         const resetAuto = document.getElementById('resetExistingAutoCheck').checked;
+        const scope = document.querySelector('input[name="autoAssignScopeRadio"]:checked')?.value || 'deficit_teachers';
 
         try {
             const res = await fetch('/academics/duty-schedule/auto-assign/', {
@@ -924,6 +993,7 @@
                 body: JSON.stringify({
                     academic_year_id: ACTIVE_YEAR_ID,
                     duty_type: dtype,
+                    target_scope: scope,
                     reset_existing_auto: resetAuto
                 }),
             });
@@ -951,6 +1021,61 @@
         }
     }
 
+    // Quick Shift Presets for Office/Administrative Staff
+    function applyOfficeQuickShift(presetType) {
+        if (!CURRENT_TEACHER_ID) return;
+        const defaultType = getSelectedDutyType() || 'OFFICE';
+        const typeInfo = DUTY_TYPES_MAP[defaultType] || { name: 'ប្រចាំការការិយាល័យ', color: '#4f46e5' };
+
+        // Reset duty state
+        CURRENT_DUTY_STATE = {};
+
+        if (presetType === 'morning') {
+            // Monday to Saturday (1 to 6), Periods 1, 2, 3, 4
+            for (let d = 1; d <= 6; d++) {
+                for (let p = 1; p <= 4; p++) {
+                    const k = `${d}_${p}`;
+                    CURRENT_DUTY_STATE[k] = {
+                        duty_type: defaultType,
+                        duty_label: typeInfo.name,
+                        is_auto: false,
+                        notes: 'វេនព្រឹកពេញ'
+                    };
+                }
+            }
+        } else if (presetType === 'afternoon') {
+            // Monday to Saturday (1 to 6), Periods 5, 6, 7, 8
+            for (let d = 1; d <= 6; d++) {
+                for (let p = 5; p <= 8; p++) {
+                    const k = `${d}_${p}`;
+                    CURRENT_DUTY_STATE[k] = {
+                        duty_type: defaultType,
+                        duty_label: typeInfo.name,
+                        is_auto: false,
+                        notes: 'វេនរសៀលពេញ'
+                    };
+                }
+            }
+        } else if (presetType === 'weekday_full') {
+            // Monday to Friday (1 to 5), Periods 1 to 6 (30 hours)
+            for (let d = 1; d <= 5; d++) {
+                for (let p = 1; p <= 6; p++) {
+                    const k = `${d}_${p}`;
+                    CURRENT_DUTY_STATE[k] = {
+                        duty_type: defaultType,
+                        duty_label: typeInfo.name,
+                        is_auto: false,
+                        notes: 'ម៉ោងធ្វើការរដ្ឋបាល'
+                    };
+                }
+            }
+        }
+
+        renderDutyMatrix();
+        updateDutyCounters();
+        saveCurrentStaffDuty();
+    }
+
     // Filter Staff List
     let currentCategoryFilter = 'all';
     function setStaffFilter(filter, btn) {
@@ -972,8 +1097,9 @@
 
             const matchesQuery = !query || name.includes(query);
             let matchesCategory = true;
-            if (currentCategoryFilter === 'deficit') matchesCategory = (status === 'DEFICIT');
+            if (currentCategoryFilter === 'teacher') matchesCategory = !isOffice;
             else if (currentCategoryFilter === 'office') matchesCategory = isOffice;
+            else if (currentCategoryFilter === 'deficit') matchesCategory = (!isOffice && status === 'DEFICIT');
             else if (currentCategoryFilter === 'exact') matchesCategory = (status === 'EXACT');
 
             if (matchesQuery && matchesCategory) {

@@ -6126,12 +6126,18 @@ def teacher_duty_manager(request):
         for dt in raw_duty_types
     ]
 
+    selected_staff_info = next((s for s in staff_list if s['id'] == (selected_teacher.id if selected_teacher else None)), None)
+    selected_teacher_is_office = selected_staff_info['is_office'] if selected_staff_info else False
+    selected_teacher_deficit = selected_staff_info['remaining_needed'] if selected_staff_info else 0
+
     context = {
         'active_year': active_year,
         'academic_years': academic_years,
         'staff_list': staff_list,
         'staff_list_json': json.dumps(staff_list, ensure_ascii=False),
         'selected_teacher': selected_teacher,
+        'selected_teacher_is_office': selected_teacher_is_office,
+        'selected_teacher_deficit': selected_teacher_deficit,
         'active_staff_duty_slots': active_staff_duty_slots,
         'active_staff_duty_slots_json': json.dumps(active_staff_duty_slots, ensure_ascii=False),
         'active_staff_teaching_slots': active_staff_teaching_slots,
@@ -6290,14 +6296,27 @@ def teacher_duty_auto_assign(request):
                     ).delete()
 
             new_duty_entries = []
+            office_keywords = ['ការិយាល័យ', 'រដ្ឋបាល', 'បណ្ណារក្ស', 'គណនេយ្យ', 'នាយក', 'នាយករង', 'បុគ្គលិក', 'សន្តិសុខ', 'អនាម័យ']
 
             for teacher in teachers_query:
+                t_duty_str = (teacher.current_duty or '').strip()
+                t_spec_str = (teacher.specialization or '').strip()
                 t_teach_slots = teaching_slots_by_teacher.get(teacher.id, set())
                 t_manual_slots = manual_duties_by_teacher.get(teacher.id, set())
                 
                 teaching_count = len(t_teach_slots)
                 manual_duty_count = len(t_manual_slots)
                 target_max = teacher.max_weekly_hours or 18
+
+                is_office = any(kw in t_duty_str for kw in office_keywords) or any(kw in t_spec_str for kw in office_keywords)
+                if teaching_count == 0 and not t_spec_str:
+                    is_office = True
+
+                # Scope filter check
+                if target_scope == 'deficit_teachers' and (is_office or teaching_count == 0):
+                    continue
+                elif target_scope == 'office_staff' and not is_office and teaching_count > 0:
+                    continue
 
                 needed_duty = target_max - (teaching_count + manual_duty_count)
                 if needed_duty <= 0:
