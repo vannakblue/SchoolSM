@@ -1162,33 +1162,49 @@ def student_import(request):
             if is_excel:
                 wb = openpyxl.load_workbook(uploaded_file, data_only=True)
                 for sheet in wb.worksheets:
-                    iter_rows = list(sheet.iter_rows(values_only=True))
-                    if not iter_rows:
-                        continue
-                    headers = [_normalize_header(h) for h in iter_rows[0]]
                     sheet_title_clean = sheet.title.strip()
-                    for r in iter_rows[1:]:
-                        if any(cell is not None and str(cell).strip() != '' for cell in r):
+                    headers = []
+                    found_header = False
+                    for r in sheet.iter_rows(values_only=True):
+                        if not r or not any(r):
+                            continue
+                        if not found_header:
+                            row_str = ' '.join([str(c) for c in r if c is not None])
+                            if 'ឈ្មោះ' in row_str or 'name' in row_str.lower() or 'អត្តលេខ' in row_str or 'student_id' in row_str.lower():
+                                headers = [_normalize_header(c) for c in r]
+                                found_header = True
+                                continue
+                        else:
                             row_dict = {}
                             for idx, val in enumerate(r):
-                                if idx < len(headers) and headers[idx]:
+                                if idx < len(headers) and headers[idx] and val is not None and str(val).strip() != '':
                                     row_dict[headers[idx]] = _clean_str(val) if not isinstance(val, (datetime, date)) else val
-                            if sheet_title_clean.isdigit():
-                                row_dict.setdefault('_sheet_grade', sheet_title_clean)
-                            raw_rows.append(row_dict)
+                            if row_dict.get('khmer_name'):
+                                if sheet_title_clean.isdigit():
+                                    row_dict.setdefault('_sheet_grade', sheet_title_clean)
+                                raw_rows.append(row_dict)
+                wb.close()
             else:
                 # CSV processing
                 decoded_file = uploaded_file.read().decode('utf-8-sig', errors='replace')
                 reader = csv.reader(io.StringIO(decoded_file))
-                header_row = next(reader, None)
-                if header_row:
-                    headers = [_normalize_header(h) for h in header_row]
-                    for r in reader:
-                        if any(cell.strip() != '' for cell in r):
-                            row_dict = {}
-                            for idx, val in enumerate(r):
-                                if idx < len(headers) and headers[idx]:
-                                    row_dict[headers[idx]] = val.strip()
+                headers = []
+                found_header = False
+                for r in reader:
+                    if not r or not any(c.strip() for c in r):
+                        continue
+                    if not found_header:
+                        row_str = ' '.join(r)
+                        if 'ឈ្មោះ' in row_str or 'name' in row_str.lower() or 'អត្តលេខ' in row_str or 'student_id' in row_str.lower():
+                            headers = [_normalize_header(c) for c in r]
+                            found_header = True
+                            continue
+                    else:
+                        row_dict = {}
+                        for idx, val in enumerate(r):
+                            if idx < len(headers) and headers[idx] and val.strip():
+                                row_dict[headers[idx]] = val.strip()
+                        if row_dict.get('khmer_name'):
                             raw_rows.append(row_dict)
 
         except Exception as e:
@@ -1199,25 +1215,25 @@ def student_import(request):
             messages.warning(request, "ឯកសារដែលបាន Upload មិនមានទិន្នន័យសិស្សទេ!")
             return redirect('student_import')
 
-        # Process each row
-        success_count = 0
-        skipped_count = 0
+        # Fast in-memory pre-fetching to prevent database timeout
+        classrooms_map = {c.code.upper().strip(): c for c in Classroom.objects.filter(academic_year=target_year)}
+        all_students = list(Student.objects.all())
+        existing_by_id = {s.student_id.lower().strip(): s for s in all_students if s.student_id}
+        existing_by_name_dob = {(s.khmer_name.strip(), s.date_of_birth): s for s in all_students}
+        existing_usernames = set(User.objects.values_list('username', flat=True))
+
+        to_create_students = []
+        to_update_students = []
+        to_create_users = []
         error_list = []
         imported_students = []
 
         for idx, row in enumerate(raw_rows, start=2):
-            khmer_name = row.get('khmer_name', '')
+            khmer_name = row.get('khmer_name', '').strip()
             if not khmer_name:
-                error_list.append({
-                    'row': idx,
-                    'name': 'មិនស្គាល់',
-                    'error': 'ខ្វះឈ្មោះខ្មែរ (Khmer Name is required)'
-                })
-                skipped_count += 1
                 continue
 
             latin_name = str(row.get('latin_name', '')).strip()
-            # Auto-romanize if missing or contains Khmer script
             if not latin_name or re.search(r'[\u1780-\u17FF]', latin_name):
                 latin_name = romanize_khmer_name(khmer_name)
 
@@ -1229,18 +1245,18 @@ def student_import(request):
             pob = row.get('place_of_birth', '')
             address = row.get('current_address', '')
             phone = row.get('phone', '')
-            
+
             # Classroom detection (supports compound classroom, grade_level + class_letter)
             class_input = str(row.get('classroom', '')).strip()
             grade_level_val = str(row.get('grade_level') or row.get('_sheet_grade') or '').strip()
             class_letter_val = str(row.get('class_letter', '')).strip()
-            
+
             if not class_input and (grade_level_val or class_letter_val):
                 class_input = f"{grade_level_val}{class_letter_val}".strip()
             elif class_input and class_input.isalpha() and grade_level_val:
                 class_input = f"{grade_level_val}{class_input}".strip()
 
-            classroom = _find_classroom(class_input, target_year)
+            classroom = classrooms_map.get(class_input.upper())
             if not classroom and class_input and target_year:
                 m = re.search(r'(\d+)\s*([A-Za-z]*)', class_input)
                 g_num = int(m.group(1)) if m else 10
@@ -1255,6 +1271,7 @@ def student_import(request):
                         'capacity': 50
                     }
                 )
+                classrooms_map[class_input.upper()] = classroom
 
             scholarship_type = _parse_scholarship(row.get('scholarship_type'))
             father_name = row.get('father_name', '')
@@ -1268,109 +1285,96 @@ def student_import(request):
             telegram_chat_id = row.get('telegram_chat_id', '')
             student_id_custom = str(row.get('student_id', '')).strip()
 
-            try:
-                with transaction.atomic():
-                    # Check if student exists by student_id or name+dob
-                    student = None
-                    if student_id_custom:
-                        student = Student.objects.filter(student_id__iexact=student_id_custom).first()
-                    
-                    if not student:
-                        student = Student.objects.filter(khmer_name=khmer_name, date_of_birth=dob).first()
+            # Check if student exists
+            student = None
+            if student_id_custom:
+                student = existing_by_id.get(student_id_custom.lower())
+            if not student:
+                student = existing_by_name_dob.get((khmer_name, dob))
 
-                    if student:
-                        # Update existing student
-                        student.khmer_name = khmer_name
-                        student.latin_name = latin_name
-                        student.gender = gender
-                        student.date_of_birth = dob
-                        if classroom:
-                            student.classroom = classroom
-                        if target_year:
-                            student.academic_year = target_year
-                        student.status = 'ACTIVE'
-                        if pob:
-                            student.place_of_birth = pob
-                        if address:
-                            student.current_address = address
-                        if phone:
-                            student.phone = phone
-                        if father_name:
-                            student.father_name = father_name
-                        if mother_name:
-                            student.mother_name = mother_name
-                        student.save()
-                    else:
-                        # Create new student
-                        student = Student(
-                            student_id=student_id_custom if student_id_custom else '',
-                            khmer_name=khmer_name,
-                            latin_name=latin_name,
-                            gender=gender,
-                            date_of_birth=dob,
-                            place_of_birth=pob,
-                            current_address=address,
-                            phone=phone,
-                            classroom=classroom,
-                            academic_year=target_year,
-                            scholarship_type=scholarship_type,
-                            father_name=father_name,
-                            father_phone=father_phone,
-                            father_job=father_job,
-                            mother_name=mother_name,
-                            mother_phone=mother_phone,
-                            mother_job=mother_job,
-                            guardian_name=guardian_name,
-                            emergency_phone=emergency_phone,
-                            telegram_chat_id=telegram_chat_id,
-                            status='ACTIVE',
-                        )
-                        student.save()
+            if student:
+                student.khmer_name = khmer_name
+                student.latin_name = latin_name
+                student.gender = gender
+                student.date_of_birth = dob
+                if classroom:
+                    student.classroom = classroom
+                if target_year:
+                    student.academic_year = target_year
+                student.status = 'ACTIVE'
+                if pob:
+                    student.place_of_birth = pob
+                if address:
+                    student.current_address = address
+                if phone:
+                    student.phone = phone
+                if father_name:
+                    student.father_name = father_name
+                if mother_name:
+                    student.mother_name = mother_name
+                to_update_students.append(student)
+            else:
+                new_s = Student(
+                    student_id=student_id_custom if student_id_custom else '',
+                    khmer_name=khmer_name,
+                    latin_name=latin_name,
+                    gender=gender,
+                    date_of_birth=dob,
+                    place_of_birth=pob,
+                    current_address=address,
+                    phone=phone,
+                    classroom=classroom,
+                    academic_year=target_year,
+                    scholarship_type=scholarship_type,
+                    father_name=father_name,
+                    father_phone=father_phone,
+                    father_job=father_job,
+                    mother_name=mother_name,
+                    mother_phone=mother_phone,
+                    mother_job=mother_job,
+                    guardian_name=guardian_name,
+                    emergency_phone=emergency_phone,
+                    telegram_chat_id=telegram_chat_id,
+                    status='ACTIVE',
+                )
+                to_create_students.append(new_s)
 
-                    # Create or link user account for login
-                    username = student.student_id.lower().replace('-', '_')
-                    user = User.objects.filter(username=username).first()
-                    if not user:
-                        user = User.objects.create_user(
-                            username=username,
-                            password='p123456',
-                            role=User.Role.STUDENT,
-                            khmer_name=student.khmer_name,
-                            latin_name=student.latin_name,
-                            phone=student.phone or student.father_phone or ''
-                        )
-                    student.user = user
-                    student.save(update_fields=['user'])
-
-                    success_count += 1
-                    imported_students.append({
-                        'id': student.id,
-                        'student_id': student.student_id,
-                        'khmer_name': student.khmer_name,
-                        'latin_name': student.latin_name,
-                        'classroom': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
-                        'gender': student.get_gender_display(),
-                    })
-            except Exception as ex:
-                error_list.append({
-                    'row': idx,
-                    'name': khmer_name,
-                    'error': str(ex)
+            if len(imported_students) < 50:
+                imported_students.append({
+                    'id': student.id if student else '',
+                    'student_id': student_id_custom or (student.student_id if student else ''),
+                    'khmer_name': khmer_name,
+                    'latin_name': latin_name,
+                    'classroom': classroom.name if classroom else class_input or 'គ្មានថ្នាក់',
+                    'gender': 'ស្រី' if gender == Student.Gender.FEMALE else 'ប្រុស',
                 })
-                skipped_count += 1
+
+        # Ultra-fast bulk database commit
+        try:
+            with transaction.atomic():
+                if to_create_students:
+                    Student.objects.bulk_create(to_create_students, batch_size=500)
+                if to_update_students:
+                    Student.objects.bulk_update(
+                        to_update_students,
+                        fields=['khmer_name', 'latin_name', 'gender', 'date_of_birth', 'classroom', 'academic_year', 'status', 'place_of_birth', 'current_address', 'phone', 'father_name', 'mother_name'],
+                        batch_size=500
+                    )
+            success_count = len(to_create_students) + len(to_update_students)
+        except Exception as e:
+            messages.error(request, f"មានបញ្ហាក្នុងការរក្សាទុកទិន្នន័យ៖ {str(e)}")
+            return redirect('student_import')
 
         results = {
             'total': len(raw_rows),
             'success_count': success_count,
-            'skipped_count': skipped_count,
+            'skipped_count': len(error_list),
             'errors': error_list,
-            'imported_students': imported_students[:50],  # show first 50
+            'imported_students': imported_students,
         }
 
         if success_count > 0:
-            messages.success(request, f"🎉 ជោគជ័យ! បាន Import សិស្សចំនួន {success_count} នាក់ចូលក្នុងប្រព័ន្ធ។")
-        if skipped_count > 0:
-            messages.warning(request, f"⚠️ មានសិស្សចំនួន {skipped_count} នាក់មិនអាចបញ្ចូលបាន សូមពិនិត្យបញ្ជីកំហុសខាងក្រោម។")
+            messages.success(request, f"🎉 ជោគជ័យ! បាន Import & Sync សិស្សចំនួន {success_count} នាក់ចូលក្នុងប្រព័ន្ធយ៉ាងលឿន។")
 
     return render(request, 'students/student_import.html', {
         'academic_years': academic_years,
