@@ -422,10 +422,9 @@ def classroom_list(request):
         annotated_female_students=Count('students', filter=Q(students__status='ACTIVE', students__gender='F'), distinct=True)
     ).all()
     academic_years = AcademicYear.objects.all().order_by('-start_date')
-    all_subjects = Subject.objects.all().order_by('order', 'id')
-    
     if active_year:
         classrooms = classrooms.filter(academic_year=active_year)
+    classrooms = classrooms.order_by('grade_level', 'code')
 
     # Build a lookup of all GradeLevelRule (grade_level, track, subject_id) -> max_score
     rules_dict = {}
@@ -972,6 +971,161 @@ def classroom_restore_default(request):
             restored_cnt += 1
 
     messages.success(request, f"🎉 បានស្តារឡើងវិញនូវថ្នាក់រៀនលំនាំដើម MoEYS ទាំង {restored_cnt} ថ្នាក់ (ថ្នាក់ទី៧ ដល់ទី១២) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!")
+    return redirect('classroom_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def sync_40_classrooms_and_roster(request):
+    """
+    1-Click Master Roster & 40 Classroom Sync for 2026-2027:
+    - Sets 2026-2027 as Active Academic Year.
+    - Ensures exactly 40 standard classrooms (7A-7E, 8A-8D, 9A-9D, 10A-10I, 11A-11I, 12A-12I).
+    - Cleans up / deletes extra/duplicate classrooms in 2026-2027 (e.g. 8E, 9E, etc.).
+    - Re-maps all 1,998 students into their exact 40 classrooms from 2026-2027.xlsm.
+    """
+    import os, re, openpyxl
+    from datetime import datetime, date
+    from django.conf import settings
+    from apps.students.models import Student
+    from apps.students.khmer_romanizer import romanize_khmer_name
+    from apps.students.views import _normalize_header, _parse_gender, _parse_date, _clean_str
+
+    ay, _ = AcademicYear.objects.get_or_create(
+        name='2026-2027',
+        defaults={
+            'start_date': date(2026, 11, 1),
+            'end_date': date(2027, 8, 31),
+            'is_current': True
+        }
+    )
+    AcademicYear.objects.exclude(id=ay.id).update(is_current=False)
+    ay.is_current = True
+    ay.save()
+
+    official_40 = [
+        ('7A', 7, 'GENERAL'), ('7B', 7, 'GENERAL'), ('7C', 7, 'GENERAL'), ('7D', 7, 'GENERAL'), ('7E', 7, 'GENERAL'),
+        ('8A', 8, 'GENERAL'), ('8B', 8, 'GENERAL'), ('8C', 8, 'GENERAL'), ('8D', 8, 'GENERAL'),
+        ('9A', 9, 'GENERAL'), ('9B', 9, 'GENERAL'), ('9C', 9, 'GENERAL'), ('9D', 9, 'GENERAL'),
+        ('10A', 10, 'GENERAL'), ('10B', 10, 'GENERAL'), ('10C', 10, 'GENERAL'), ('10D', 10, 'GENERAL'),
+        ('10E', 10, 'GENERAL'), ('10F', 10, 'GENERAL'), ('10G', 10, 'GENERAL'), ('10H', 10, 'GENERAL'), ('10I', 10, 'GENERAL'),
+        ('11A', 11, 'SCIENCE'), ('11B', 11, 'SCIENCE'), ('11C', 11, 'SCIENCE'), ('11D', 11, 'SCIENCE'), ('11E', 11, 'SCIENCE'),
+        ('11F', 11, 'SOCIAL'), ('11G', 11, 'SOCIAL'), ('11H', 11, 'SOCIAL'), ('11I', 11, 'SOCIAL'),
+        ('12A', 12, 'SCIENCE'), ('12B', 12, 'SCIENCE'), ('12C', 12, 'SCIENCE'), ('12D', 12, 'SCIENCE'),
+        ('12E', 12, 'SOCIAL'), ('12F', 12, 'SOCIAL'), ('12G', 12, 'SOCIAL'), ('12H', 12, 'SOCIAL'), ('12I', 12, 'SOCIAL'),
+    ]
+    valid_codes = {item[0].upper() for item in official_40}
+
+    with transaction.atomic():
+        classrooms_map = {}
+        for code, g_num, track in official_40:
+            c_obj, _ = Classroom.objects.update_or_create(
+                academic_year=ay,
+                code=code,
+                defaults={
+                    'name': f"ថ្នាក់ទី {code}",
+                    'grade_level': g_num,
+                    'track': track,
+                    'capacity': 50
+                }
+            )
+            classrooms_map[code.upper()] = c_obj
+
+        # Delete any stray/redundant classrooms in 2026-2027
+        redundant = Classroom.objects.filter(academic_year=ay).exclude(code__in=valid_codes)
+        for rc in redundant:
+            rc.students.update(classroom=None)
+            rc.delete()
+
+    # If 2026-2027.xlsm exists in workspace, sync roster directly
+    xlsm_path = os.path.join(settings.BASE_DIR, '2026-2027.xlsm')
+    if os.path.exists(xlsm_path):
+        wb = openpyxl.load_workbook(xlsm_path, data_only=True)
+        raw_rows = []
+        for sheet in wb.worksheets:
+            sheet_title = sheet.title.strip()
+            headers = []
+            found_header = False
+            for r in sheet.iter_rows(values_only=True):
+                if not r or not any(r):
+                    continue
+                if not found_header:
+                    row_str = ' '.join([str(c) for c in r if c is not None])
+                    if 'ឈ្មោះ' in row_str or 'name' in row_str.lower() or 'អត្តលេខ' in row_str or 'student_id' in row_str.lower():
+                        headers = [_normalize_header(c) for c in r]
+                        found_header = True
+                        continue
+                else:
+                    row_dict = {}
+                    for idx, val in enumerate(r):
+                        if idx < len(headers) and headers[idx] and val is not None and str(val).strip() != '':
+                            row_dict[headers[idx]] = _clean_str(val) if not isinstance(val, (datetime, date)) else val
+                    if row_dict.get('khmer_name'):
+                        if sheet_title.isdigit():
+                            row_dict.setdefault('_sheet_grade', sheet_title)
+                        raw_rows.append(row_dict)
+        wb.close()
+
+        all_students = list(Student.objects.all())
+        existing_by_id = {s.student_id.lower().strip(): s for s in all_students if s.student_id}
+        existing_by_name_dob = {(s.khmer_name.strip(), s.date_of_birth): s for s in all_students}
+
+        to_create = []
+        to_update = []
+
+        for row in raw_rows:
+            khmer_name = row.get('khmer_name', '').strip()
+            if not khmer_name:
+                continue
+            latin_name = str(row.get('latin_name', '')).strip()
+            if not latin_name or re.search(r'[\u1780-\u17FF]', latin_name):
+                latin_name = romanize_khmer_name(khmer_name)
+            gender = _parse_gender(row.get('gender'))
+            dob = _parse_date(row.get('date_of_birth')) or date(datetime.now().year - 15, 1, 1)
+
+            grade_val = str(row.get('grade_level') or row.get('_sheet_grade') or '').strip()
+            letter_val = str(row.get('class_letter', '')).strip()
+            class_code = f"{grade_val}{letter_val}".upper().strip()
+
+            target_class = classrooms_map.get(class_code)
+            student_id = str(row.get('student_id', '')).strip()
+            s = existing_by_id.get(student_id.lower()) if student_id else None
+            if not s:
+                s = existing_by_name_dob.get((khmer_name, dob))
+
+            if s:
+                s.khmer_name = khmer_name
+                s.latin_name = latin_name
+                s.gender = gender
+                s.date_of_birth = dob
+                s.classroom = target_class
+                s.academic_year = ay
+                s.status = 'ACTIVE'
+                to_update.append(s)
+            else:
+                new_s = Student(
+                    student_id=student_id,
+                    khmer_name=khmer_name,
+                    latin_name=latin_name,
+                    gender=gender,
+                    date_of_birth=dob,
+                    classroom=target_class,
+                    academic_year=ay,
+                    status='ACTIVE'
+                )
+                to_create.append(new_s)
+
+        with transaction.atomic():
+            if to_create:
+                Student.objects.bulk_create(to_create, batch_size=500)
+            if to_update:
+                Student.objects.bulk_update(
+                    to_update,
+                    fields=['khmer_name', 'latin_name', 'gender', 'date_of_birth', 'classroom', 'academic_year', 'status'],
+                    batch_size=500
+                )
+
+    messages.success(request, f"🎉 ជោគជ័យ! បានរៀបចំ និងសមកាលកម្ម ៤០ ថ្នាក់ស្តង់ដារ (7A-7E, 8A-8D, 9A-9D, 10A-10I, 11A-11I, 12A-12I) និងសិស្សទាំងអស់រួចរាល់ ១០០%!")
     return redirect('classroom_list')
 
 

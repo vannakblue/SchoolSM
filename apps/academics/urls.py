@@ -61,6 +61,7 @@ urlpatterns = [
     path('classrooms/bulk-delete/', views.classroom_bulk_delete, name='classroom_bulk_delete'),
     path('classrooms/delete-all/', views.classroom_delete_all, name='classroom_delete_all'),
     path('classrooms/restore-default/', views.classroom_restore_default, name='classroom_restore_default'),
+    path('classrooms/sync-40-classes/', views.sync_40_classrooms_and_roster, name='sync_40_classrooms_and_roster'),
 
     # Subjects
     path('subjects/', views.subject_list, name='subject_list'),

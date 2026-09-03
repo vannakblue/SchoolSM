@@ -21,6 +21,12 @@
         <a href="{% url 'classroom_create' %}" class="btn btn-primary fw-bold shadow-sm">
             <i class="fa-solid fa-plus me-1"></i> បង្កើតថ្នាក់ថ្មី
         </a>
+        <form method="POST" action="{% url 'sync_40_classrooms_and_roster' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់រៀបចំ និងសមកាលកម្ម ៤០ ថ្នាក់ស្តង់ដារ (7A-7E, 8A-8D, 9A-9D, 10A-10I, 11A-11I, 12A-12I) និងសិស្សទាំងអស់ឡើងវិញមែនទេ?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm" title="សមកាលកម្ម ៤០ ថ្នាក់ស្តង់ដារ ២០២៦-២០២៧ និងរៀបចំសិស្ស">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> រៀបចំ ៤០ ថ្នាក់ស្តង់ដារ
+            </button>
+        </form>
         <a href="{% url 'classroom_restore_default' %}" class="btn btn-outline-success fw-bold" onclick="return confirm('តើលោកអ្នកចង់ស្តារថ្នាក់រៀនលំនាំដើម MoEYS ទាំង ៨ ថ្នាក់ (ថ្នាក់ទី៧ ដល់ទី១២) ឡើងវិញមែនទេ?')">
             <i class="fa-solid fa-rotate-left me-1"></i> ស្តារថ្នាក់លំនាំដើម MoEYS
         </a>
