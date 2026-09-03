@@ -9,7 +9,7 @@
             <i class="fa-solid fa-user-slash me-2"></i>គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡង (Exam Exclusions)
         </h2>
         <p class="text-muted small mb-0">
-            កំណត់សិស្សដែលឈប់រៀន, ផ្អាកការសិក្សា, ឬមានបញ្ហាវិន័យ មិនឱ្យមានឈ្មោះប្រឡងតាមខែនីមួយៗ (ពិន្ទុ ០ ដោយស្វ័យប្រវត្តិ)
+            កំណត់សិស្សដែលឈប់រៀន ផ្អាកការសិក្សា ឬមានបញ្ហាវិន័យ មិនឱ្យមានឈ្មោះប្រឡង ដោយការកំណត់ និងសម្រេចផ្ទាល់ពី Admin / គណៈគ្រប់គ្រងសាលារៀន (Manual Control)
         </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
@@ -52,9 +52,9 @@
     </div>
     <div class="col-6 col-md-3">
         <div class="custom-card p-3 border-start border-4 border-warning h-100 shadow-sm">
-            <div class="text-muted small fw-bold">ច្បាប់ពិន្ទុប្រឡង</div>
-            <div class="fs-5 fw-bold text-warning-emphasis mt-1">ពិន្ទុ ០ (សូន្យ)</div>
-            <div class="text-muted small">កែប្រែដោយ៖ <strong>Admin តែម្នាក់គត់</strong></div>
+            <div class="text-muted small fw-bold">ការកំណត់សិទ្ធិប្រឡង</div>
+            <div class="fs-6 fw-bold text-warning-emphasis mt-1">Admin / គណៈគ្រប់គ្រង</div>
+            <div class="text-muted small">កំណត់ដោយផ្ទាល់ (គ្មានស្វ័យប្រវត្តិ)</div>
         </div>
     </div>
 </div>
@@ -134,7 +134,7 @@
             <i class="fa-solid fa-list-check me-2"></i>បញ្ជីសិស្សដែលត្រូវបានលើកលែងមិនឱ្យប្រឡង ({{ exclusions.count }} នាក់)
         </h5>
         <div class="small text-muted">
-            <i class="fa-solid fa-shield-halved text-warning me-1"></i>សិស្សទាំងនេះទទួលបាន <strong>ពិន្ទុ ០ (សូន្យ)</strong> ដោយស្វ័យប្រវត្តិ
+            <i class="fa-solid fa-user-shield text-primary me-1"></i>កំណត់ដោយផ្ទាល់ពី៖ <strong>Admin / គណៈគ្រប់គ្រងសាលារៀន</strong> (Manual Control)
         </div>
     </div>
 
@@ -203,7 +203,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <div class="small fw-semibold">{{ exc.excluded_by.username|default:"ប្រព័ន្ធ" }}</div>
+                        <div class="small fw-semibold">{{ exc.excluded_by.get_full_name|default:exc.excluded_by.username|default:"គណៈគ្រប់គ្រង" }}</div>
                         <div class="text-muted" style="font-size: 0.72rem;">{{ exc.created_at|date:"d/m/Y H:i" }}</div>
                     </td>
                     <td class="text-center">
@@ -325,7 +325,7 @@
 
                     <div class="alert alert-info py-2 px-3 small mt-3 mb-0 border-0">
                         <i class="fa-solid fa-circle-info me-1"></i>
-                        សិស្សដែលត្រូវបានកំណត់លើកលែង នឹងមិនមានឈ្មោះក្នុងបញ្ជីប្រឡងខែនោះទេ និងទទួលបាន <strong>ពិន្ទុ ០</strong> ដោយស្វ័យប្រវត្តិ។
+                        ការលើកលែងសិស្សមិនឱ្យប្រឡង ត្រូវកំណត់ដោយផ្ទាល់ពី Admin ឬគណៈគ្រប់គ្រងសាលារៀន សម្រាប់សិស្សដែលឈប់រៀន ផ្អាកការសិក្សា ឬជាប់វិន័យ។
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">

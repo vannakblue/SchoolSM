@@ -583,24 +583,34 @@ function batchSetDiscipline(action) {
                         </div>
                     </div>
 
-                    <div class="row g-2 mb-2">
+                    <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label small fw-bold text-muted mb-1">ចំនួនបេក្ខជនក្នុងមួយបន្ទប់</label>
                             <div class="input-group input-group-sm">
-                                <input type="number" min="5" max="60" class="form-control" name="candidates_per_room" value="{{ exam.candidates_per_room|default:'25' }}">
+                                <input type="number" min="5" max="60" class="form-control text-center fw-bold" name="candidates_per_room" value="{{ exam.candidates_per_room|default:'25' }}">
                                 <span class="input-group-text">នាក់</span>
                             </div>
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-bold text-muted mb-1">ឈ្មោះអគារ</label>
-                            <input type="text" class="form-control form-control-sm" name="building" value="អគារ A">
+                            <label class="form-label small fw-bold text-muted mb-1">លំដាប់តម្រៀបសិស្ស</label>
+                            <select name="candidate_order" class="form-select form-select-sm">
+                                <option value="ALPHABETICAL" selected>តាមអក្ខរក្រមខ្មែរ (A-Z)</option>
+                                <option value="CLASS_ALPHABETICAL">តាមថ្នាក់ដើម & អក្ខរក្រម</option>
+                                <option value="STUDENT_ID">តាមអត្តលេខសិស្ស</option>
+                                <option value="RANDOM">ច្របល់ចៃដន្យ</option>
+                            </select>
                         </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-muted mb-1">ឈ្មោះអគារប្រឡង</label>
+                        <input type="text" class="form-control form-control-sm" name="building" value="អគារ A">
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-success fw-bold px-4">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់ឥឡូវនេះ
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់ និងកំណត់លេខតុឥឡូវនេះ
                     </button>
                 </div>
             </form>

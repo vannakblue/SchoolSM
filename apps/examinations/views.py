@@ -202,7 +202,7 @@ def grade_entry_matrix(request):
             saved_count = 0
             blocked_count = 0
             for student in students:
-                is_student_excluded = (student.id in excluded_students_map) or (student.status != 'ACTIVE') or getattr(student, 'is_exam_suspended', False)
+                is_student_excluded = (student.id in excluded_students_map) or getattr(student, 'is_exam_suspended', False)
                 
                 # Non-admin cannot submit/modify positive scores for excluded/missed students
                 if is_student_excluded and not is_admin:
@@ -245,19 +245,17 @@ def grade_entry_matrix(request):
                         pass
 
             if blocked_count > 0:
-                messages.warning(request, f"⚠️ មានសិស្សចំនួន {blocked_count} នាក់ជាសិស្សផ្អាក/ឈប់រៀន ឬត្រូវបានលើកលែងមិនឱ្យប្រឡង ដែលមានតែ Admin ប៉ុណ្ណោះដែលអាចកែប្រែពិន្ទុបាន!")
+                messages.warning(request, f"⚠️ មានសិស្សចំនួន {blocked_count} នាក់ត្រូវបានលើកលែងមិនឱ្យប្រឡង (កំណត់ដោយ Admin) ដែលមានតែ Admin ប៉ុណ្ណោះដែលអាចកែប្រែពិន្ទុបាន!")
             messages.success(request, f"🎉 បានរក្សាទុកពិន្ទុសិស្សថ្នាក់ {selected_class.name} ចំនួន {saved_count} មុខវិជ្ជាជោគជ័យ!")
             return redirect(f"/examinations/matrix/?term={selected_term.id}&classroom={selected_class.id}{f'&subject={selected_subject_id}' if selected_subject_id else ''}")
 
         for student in students:
-            is_excluded = (student.id in excluded_students_map) or (student.status != 'ACTIVE') or getattr(student, 'is_exam_suspended', False)
+            is_excluded = (student.id in excluded_students_map) or getattr(student, 'is_exam_suspended', False)
             exc_obj = excluded_students_map.get(student.id)
             if getattr(student, 'is_exam_suspended', False):
                 exc_reason = student.get_exam_suspension_reason_display()
             elif exc_obj:
                 exc_reason = exc_obj.get_reason_display()
-            elif student.status != 'ACTIVE':
-                exc_reason = student.get_status_display()
             else:
                 exc_reason = ''
 
@@ -625,14 +623,6 @@ def standardized_exam_list(request):
     if search_q:
         exams_qs = exams_qs.filter(Q(name__icontains=search_q) | Q(description__icontains=search_q))
 
-    # Group exams by (academic_year_id, exam_date, clean_title)
-    sessions_map = {}
-    for ex in exams_qs:
-        clean_title = get_clean_exam_session_title(ex.name)
-        date_key = str(ex.exam_date)
-        year_key = str(ex.academic_year_id)
-        group_key = f"{year_key}_{date_key}_{clean_title}"
-
         if group_key not in sessions_map:
             sessions_map[group_key] = {
                 'group_key': group_key,
@@ -689,9 +679,37 @@ def standardized_exam_list(request):
     total_all_candidates = sum(s['total_candidates'] for s in exam_sessions)
     total_all_rooms = sum(s['total_rooms'] for s in exam_sessions)
 
+    # Build full list of all sessions across all years for the batch modal
+    all_exams_all_years = StandardizedExam.objects.select_related('academic_year').all().order_by('-exam_date', 'grade_level')
+    modal_sessions_map = {}
+    for ex in all_exams_all_years:
+        clean_title = get_clean_exam_session_title(ex.name)
+        date_key = str(ex.exam_date)
+        year_key = str(ex.academic_year_id)
+        group_key = f"{year_key}_{date_key}_{clean_title}"
+        if group_key not in modal_sessions_map:
+            modal_sessions_map[group_key] = {
+                'group_key': group_key,
+                'title': clean_title,
+                'academic_year_id': ex.academic_year_id,
+                'academic_year_name': ex.academic_year.name,
+                'exam_date': ex.exam_date,
+                'grades_list': [],
+                'exam_count': 0
+            }
+        ms = modal_sessions_map[group_key]
+        ms['exam_count'] += 1
+        if ex.grade_level not in ms['grades_list']:
+            ms['grades_list'].append(ex.grade_level)
+            ms['grades_list'].sort()
+
+    all_modal_sessions = list(modal_sessions_map.values())
+    all_modal_sessions.sort(key=lambda s: s['exam_date'], reverse=True)
+
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     return render(request, 'examinations/standardized/exam_list.html', {
         'exam_sessions': exam_sessions,
+        'all_modal_sessions': all_modal_sessions,
         'total_sessions_count': len(exam_sessions),
         'total_all_exams': total_all_exams,
         'total_all_candidates': total_all_candidates,
@@ -917,6 +935,7 @@ def standardized_exam_edit(request, exam_id):
     })
 
 
+
 @login_required
 @role_required(['ADMIN'])
 def standardized_exam_delete(request, exam_id):
@@ -930,6 +949,7 @@ def standardized_exam_delete(request, exam_id):
         messages.success(request, f"បានលុបសម័យប្រឡង «{name}» ដោយជោគជ័យ!")
         return redirect('standardized_exam_list')
     return redirect('standardized_exam_manage', exam_id=exam.id)
+
 
 
 @login_required
@@ -1059,14 +1079,30 @@ def exam_pull_candidates(request, exam_id):
     return redirect('standardized_exam_manage', exam_id=exam.id)
 
 
-def partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=25, building="អគារ A"):
+def partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=25, building="អគារ A", candidate_order='ALPHABETICAL'):
     """
     Helper to partition candidates into rooms and assign desk/roll numbers according to parameters.
+    - Desk numbers are assigned 1..cap in each room.
+    - Roll numbers start from start_roll_number.
+    - Candidates are ordered by candidate_order (ALPHABETICAL, CLASS_ALPHABETICAL, STUDENT_ID, RANDOM).
     Returns: (total_candidates, needed_rooms, next_start_room, next_start_roll)
     """
-    candidates = list(exam.candidates.all().order_by('origin_class', 'candidate_name_kh', 'id'))
+    candidates = list(exam.candidates.all())
     if not candidates:
         return 0, 0, start_room_number, start_roll_number
+
+    # Order candidates according to chosen policy
+    if candidate_order == 'ALPHABETICAL':
+        candidates.sort(key=lambda c: (c.candidate_name_kh or '', c.id))
+    elif candidate_order == 'CLASS_ALPHABETICAL':
+        candidates.sort(key=lambda c: (c.origin_class or '', c.candidate_name_kh or '', c.id))
+    elif candidate_order == 'STUDENT_ID':
+        candidates.sort(key=lambda c: (c.student_code or '', c.roll_number or '', c.candidate_name_kh or '', c.id))
+    elif candidate_order == 'RANDOM':
+        random.seed(exam.id + 42)
+        random.shuffle(candidates)
+    else:
+        candidates.sort(key=lambda c: (c.candidate_name_kh or '', c.id))
 
     cap = cap or exam.candidates_per_room or 25
     total_candidates = len(candidates)
@@ -1110,8 +1146,8 @@ def exam_generate_rooms(request, exam_id):
     Auto-Partitions candidates into 25 candidates per room (or custom cap),
     generating Rooms and assigning Desk/Roll Numbers based on selected policy:
     - RESET_PER_GRADE: Starts from Room 01 and Roll No 001 for this grade.
-    - CONTINUOUS_IN_SHIFT: Continues room & roll numbers from previous grades in the same shift (Morning / Afternoon).
-    - CONTINUOUS_ALL_GRADES: Continues room & roll numbers across all grades.
+    - CONTINUOUS_IN_SHIFT: Continues room & roll numbers from previous grades in the same shift (Morning / Afternoon) within this specific exam session.
+    - CONTINUOUS_ALL_GRADES: Continues room & roll numbers across all grades within this specific exam session.
     - CUSTOM: Starts from custom start_room_number and start_roll_number specified by Admin.
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
@@ -1119,18 +1155,23 @@ def exam_generate_rooms(request, exam_id):
     numbering_mode = request.POST.get('numbering_mode', 'RESET_PER_GRADE')
     custom_cpr = request.POST.get('candidates_per_room')
     cap = int(custom_cpr) if custom_cpr and custom_cpr.isdigit() else (exam.candidates_per_room or 25)
+    candidate_order = request.POST.get('candidate_order', 'ALPHABETICAL')
     building = request.POST.get('building', 'អគារ A')
 
     start_room_number = 1
     start_roll_number = 1
 
+    clean_title = get_clean_exam_session_title(exam.name)
+
     if numbering_mode == 'CONTINUOUS_IN_SHIFT':
-        # Find previous exams in the same academic year and same shift (session) with lower grade_level
-        prior_exams = StandardizedExam.objects.filter(
+        # Find previous exams in the SAME EXAM SESSION (matching academic year, exam date, clean title) and same shift with lower grade_level
+        same_session_exams = StandardizedExam.objects.filter(
             academic_year=exam.academic_year,
+            exam_date=exam.exam_date,
             session=exam.session,
             grade_level__lt=exam.grade_level
-        ).order_by('grade_level', 'id')
+        )
+        prior_exams = [e for e in same_session_exams if get_clean_exam_session_title(e.name) == clean_title]
         
         total_prior_rooms = sum(e.rooms.count() for e in prior_exams)
         total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
@@ -1138,11 +1179,13 @@ def exam_generate_rooms(request, exam_id):
         start_roll_number = total_prior_candidates + 1
 
     elif numbering_mode == 'CONTINUOUS_ALL_GRADES':
-        # Find previous exams in the same academic year with lower grade_level
-        prior_exams = StandardizedExam.objects.filter(
+        # Find previous exams in the SAME EXAM SESSION with lower grade_level
+        same_session_exams = StandardizedExam.objects.filter(
             academic_year=exam.academic_year,
+            exam_date=exam.exam_date,
             grade_level__lt=exam.grade_level
-        ).order_by('grade_level', 'id')
+        )
+        prior_exams = [e for e in same_session_exams if get_clean_exam_session_title(e.name) == clean_title]
         
         total_prior_rooms = sum(e.rooms.count() for e in prior_exams)
         total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
@@ -1161,7 +1204,8 @@ def exam_generate_rooms(request, exam_id):
             start_room_number=start_room_number,
             start_roll_number=start_roll_number,
             cap=cap,
-            building=building
+            building=building,
+            candidate_order=candidate_order
         )
 
     if total_cands == 0:
@@ -1171,7 +1215,7 @@ def exam_generate_rooms(request, exam_id):
     mode_labels = {
         'RESET_PER_GRADE': 'រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នេះ',
         'CONTINUOUS_IN_SHIFT': f'រាប់បន្តគ្នាក្នុង {exam.get_session_display()}',
-        'CONTINUOUS_ALL_GRADES': 'រាប់បន្តគ្នាគ្រប់កម្រិតថ្នាក់',
+        'CONTINUOUS_ALL_GRADES': 'រាប់បន្តគ្នាគ្រប់កម្រិតថ្នាក់ក្នុងសម័យប្រឡងនេះ',
         'CUSTOM': f'កំណត់ដោយខ្លួនឯង (បន្ទប់ទី {start_room_number:02d}, អត្តលេខ {start_roll_number:03d})'
     }
     mode_text = mode_labels.get(numbering_mode, 'ស្តង់ដារ')
@@ -1183,11 +1227,11 @@ def exam_generate_rooms(request, exam_id):
 @role_required(['ADMIN'])
 def exam_batch_generate_rooms(request):
     """
-    Batch Auto-Partitions all standardized exams across multiple grades in one click.
+    Batch Auto-Partitions standardized exams per exam session (សម័យប្រឡងនីមួយៗ) or across multiple grades in one click.
     Supports Numbering Policies:
+    - CONTINUOUS_IN_SHIFT: Sequential room & roll numbers within Morning shift (7-10) and Afternoon shift (11-12) for the specific session.
     - RESET_PER_GRADE: Each grade resets to Room 01 and Roll 001.
-    - CONTINUOUS_IN_SHIFT: Sequential room & roll numbers within Morning shift (7-10) and Afternoon shift (11-12).
-    - CONTINUOUS_ALL_GRADES: Sequential room & roll numbers across all grades (7-12).
+    - CONTINUOUS_ALL_GRADES: Sequential room & roll numbers across all grades in this session.
     """
     if request.method != 'POST':
         return redirect('standardized_exam_list')
@@ -1198,13 +1242,48 @@ def exam_batch_generate_rooms(request):
     academic_year_id = request.POST.get('academic_year')
     ay = AcademicYear.objects.filter(id=academic_year_id).first() if academic_year_id else active_year
     
+    session_key = request.POST.get('session_key', '').strip()
+    session_title = request.POST.get('session_title', '').strip()
+    exam_date_str = request.POST.get('exam_date', '').strip()
+    
     scope = request.POST.get('scope', 'ALL_GRADES')
     numbering_mode = request.POST.get('numbering_mode', 'CONTINUOUS_IN_SHIFT')
     custom_cpr = request.POST.get('candidates_per_room')
     cap = int(custom_cpr) if custom_cpr and custom_cpr.isdigit() else 25
+    candidate_order = request.POST.get('candidate_order', 'ALPHABETICAL')
     building = request.POST.get('building', 'អគារ A')
 
-    exams_qs = StandardizedExam.objects.filter(academic_year=ay)
+    exams_qs = StandardizedExam.objects.all()
+    if ay:
+        exams_qs = exams_qs.filter(academic_year=ay)
+
+    # Filter to specific Exam Session if specified
+    target_session_name = ""
+    if session_key and session_key != 'ALL':
+        # Group key format: {year_id}_{exam_date}_{clean_title}
+        matching_exams = []
+        for ex in exams_qs:
+            ex_clean_title = get_clean_exam_session_title(ex.name)
+            ex_date_key = str(ex.exam_date)
+            ex_year_key = str(ex.academic_year_id)
+            ex_group_key = f"{ex_year_key}_{ex_date_key}_{ex_clean_title}"
+            
+            if ex_group_key == session_key or ex_clean_title == session_key:
+                matching_exams.append(ex)
+                if not target_session_name:
+                    target_session_name = ex_clean_title
+        
+        exams_qs = exams_qs.filter(id__in=[e.id for e in matching_exams])
+    elif session_title:
+        matching_exams = []
+        for ex in exams_qs:
+            ex_clean_title = get_clean_exam_session_title(ex.name)
+            if ex_clean_title == session_title:
+                if not exam_date_str or str(ex.exam_date) == exam_date_str:
+                    matching_exams.append(ex)
+                    target_session_name = ex_clean_title
+        exams_qs = exams_qs.filter(id__in=[e.id for e in matching_exams])
+
     if scope == 'MORNING_SHIFT':
         exams_qs = exams_qs.filter(session='MORNING')
     elif scope == 'AFTERNOON_SHIFT':
@@ -1222,14 +1301,21 @@ def exam_batch_generate_rooms(request):
     with transaction.atomic():
         if numbering_mode == 'RESET_PER_GRADE':
             for exam in exams:
-                c_count, r_count, _, _ = partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=cap, building=building)
+                c_count, r_count, _, _ = partition_exam_rooms(
+                    exam,
+                    start_room_number=1,
+                    start_roll_number=1,
+                    cap=cap,
+                    building=building,
+                    candidate_order=candidate_order
+                )
                 if c_count > 0:
                     total_exams_processed += 1
                     total_candidates_partitioned += c_count
                     total_rooms_created += r_count
 
         elif numbering_mode == 'CONTINUOUS_IN_SHIFT':
-            # Group by session
+            # Group by session within this exam batch
             shift_counters = {
                 'MORNING': {'room': 1, 'roll': 1},
                 'AFTERNOON': {'room': 1, 'roll': 1},
@@ -1244,7 +1330,8 @@ def exam_batch_generate_rooms(request):
                     start_room_number=curr_room,
                     start_roll_number=curr_roll,
                     cap=cap,
-                    building=building
+                    building=building,
+                    candidate_order=candidate_order
                 )
                 if c_count > 0:
                     shift_counters[sess]['room'] = next_room
@@ -1262,7 +1349,8 @@ def exam_batch_generate_rooms(request):
                     start_room_number=curr_room,
                     start_roll_number=curr_roll,
                     cap=cap,
-                    building=building
+                    building=building,
+                    candidate_order=candidate_order
                 )
                 if c_count > 0:
                     curr_room = next_room
@@ -1271,7 +1359,8 @@ def exam_batch_generate_rooms(request):
                     total_candidates_partitioned += c_count
                     total_rooms_created += r_count
 
-    messages.success(request, f"⚡ បានរៀបចំ និងចែកបន្ទប់ស្វ័យប្រវត្តិសរុប {total_exams_processed} សម័យប្រឡង (បេក្ខជន {total_candidates_partitioned} នាក់, បន្ទប់ {total_rooms_created} បន្ទប់) ដោយជោគជ័យ!")
+    session_label = f" «{target_session_name}»" if target_session_name else ""
+    messages.success(request, f"⚡ បានរៀបចំ និងចែកបន្ទប់ស្វ័យប្រវត្តិតាមសម័យប្រឡង{session_label} សរុប {total_exams_processed} កម្រិតថ្នាក់ (បេក្ខជន {total_candidates_partitioned} នាក់, បន្ទប់ {total_rooms_created} បន្ទប់) ដោយជោគជ័យ!")
     return redirect('standardized_exam_list')
 
 

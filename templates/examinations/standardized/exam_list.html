@@ -185,7 +185,7 @@
 
                 <!-- Toggle Icon & Quick Batch Rooms Button -->
                 <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
-                    <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#batchGenerateRoomsModal">
+                    <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" onclick="openSessionBatchModal('{{ sess.group_key|escapejs }}', '{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'Y-m-d' }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.id }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}')">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់
                     </button>
                     <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}">
@@ -364,44 +364,87 @@
     {% endfor %}
 </div>
 
-<!-- Modal Batch Generate Rooms across Grade Levels & Shifts -->
+<!-- Modal Batch Generate Rooms per Exam Session (តាមសម័យប្រឡងនីមួយៗ) -->
 <div class="modal fade" id="batchGenerateRoomsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
             <div class="modal-header bg-success text-white py-3">
                 <h5 class="modal-title fw-bold">
-                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>ចែកបន្ទប់ និងកំណត់លេខតុស្វ័យប្រវត្តិតាមវេន (Batch Auto-Rooms)
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>ចែកបន្ទប់ និងកំណត់លេខតុតាមសម័យប្រឡង (Auto-Rooms per Session)
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{% url 'exam_batch_generate_rooms' %}">
                 {% csrf_token %}
                 <div class="modal-body p-4">
-                    <div class="alert alert-info py-2 px-3 small border-0 mb-3">
-                        <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                        មុខងារនេះនឹងចែកបន្ទប់ប្រឡងស្វ័យប្រវត្តិជូនសិស្សគ្រប់កម្រិតថ្នាក់ទាំងអស់ ព្រមទាំងអនុវត្តគោលការណ៍រាប់លេខតុ និងលេខបន្ទប់បន្តគ្នាតាមវេនប្រឡង (ព្រឹក/រសៀល)។
+                    <!-- Session Active Notice Banner -->
+                    <div id="modalSelectedSessionBanner" class="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 small border-0 mb-3" style="display: none;">
+                        <div>
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>
+                            <strong>សម័យប្រឡងគោលដៅ៖</strong> <span id="bannerSessionTitle" class="fw-bold"></span>
+                            (<span id="bannerSessionDate"></span> • <span id="bannerSessionGrades"></span> កម្រិតថ្នាក់)
+                        </div>
+                        <span class="badge bg-success">តាមសម័យប្រឡង</span>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសឆ្នាំសិក្សា (Academic Year) *</label>
-                        <select name="academic_year" class="form-select" required>
-                            {% for y in academic_years %}
-                            <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>{{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="alert alert-info py-2 px-3 small border-0 mb-3">
+                        <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                        ការកំណត់លេខតុ និងចែកបន្ទប់ត្រូវបានធ្វើឡើងទៅតាម <strong>សម័យប្រឡងនីមួយៗ</strong> ដោយឡែកពីគ្នា ព្រមទាំងអនុវត្តគោលការណ៍រាប់លេខតុ ០១-២៥ ក្នុងបន្ទប់ និងលេខបន្ទប់បន្តគ្នាតាមវេនប្រឡង (ព្រឹក/រសៀល)។
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-dark">ឆ្នាំសិក្សា (Academic Year) *</label>
+                            <select name="academic_year" id="batch_academic_year_select" class="form-select" onchange="onModalYearChange(this.value)" required>
+                                {% for y in academic_years %}
+                                <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>{{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small text-dark">ជ្រើសរើសសម័យប្រឡង (Exam Session) *</label>
+                            <select name="session_key" id="batch_session_select" class="form-select fw-bold" required onchange="onModalSessionChange(this.value)">
+                                <option value="">-- សូមជ្រើសរើសសម័យប្រឡង --</option>
+                                {% for ms in all_modal_sessions %}
+                                <option value="{{ ms.group_key }}" 
+                                        data-year="{{ ms.academic_year_id }}" 
+                                        data-title="{{ ms.title }}" 
+                                        data-date="{{ ms.exam_date|date:'d/m/Y' }}" 
+                                        data-count="{{ ms.exam_count }}"
+                                        {% if forloop.first and active_year and ms.academic_year_id == active_year.id %}selected{% endif %}>
+                                    📅 {{ ms.title }} • {{ ms.exam_date|date:"d/m/Y" }} ({{ ms.academic_year_name }} • {{ ms.exam_count }} កម្រិតថ្នាក់)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">វិសាលភាពកម្រិតថ្នាក់ (Grade Scope)</label>
+                            <select name="scope" class="form-select">
+                                <option value="ALL_GRADES" selected>គ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ (All Grades)</option>
+                                <option value="MORNING_SHIFT">🌅 តែវេនពេលព្រឹក (Morning Shift Only)</option>
+                                <option value="AFTERNOON_SHIFT">⛅ តែវេនពេលរសៀល (Afternoon Shift Only)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">ឈ្មោះអគារប្រឡង (Building)</label>
+                            <input type="text" class="form-control" name="building" value="អគារ A">
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-dark">គោលការណ៍រាប់លេខបន្ទប់ និងលេខតុ (Numbering Policy) *</label>
                         <select name="numbering_mode" class="form-select" id="batch_numbering_mode">
                             <option value="CONTINUOUS_IN_SHIFT" selected>
-                                ⚡ រាប់បន្តគ្នាតាមវេនប្រឡង (Continuous in Shift - ព្រឹកបន្តព្រឹក បន្ទប់ ០១ ដល់ ..., រសៀលចាប់ពី បន្ទប់ ០១ ឡើងវិញ)
+                                ⚡ រាប់បន្តគ្នាតាមវេនប្រឡងក្នុងសម័យប្រឡងនេះ (Continuous in Shift - ព្រឹកបន្តព្រឹក បន្ទប់ ០១ ដល់ ..., រសៀលចាប់ពី បន្ទប់ ០១ ឡើងវិញ)
                             </option>
                             <option value="RESET_PER_GRADE">
                                 🔄 រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នីមួយៗដាច់ដោយឡែក (Reset per Grade - បន្ទប់ ០១ លេខតុ ០១ គ្រប់កម្រិត)
                             </option>
                             <option value="CONTINUOUS_ALL_GRADES">
-                                🔢 រាប់បន្តគ្នារហូតគ្រប់កម្រិតថ្នាក់ទាំងអស់ (Continuous across All Grades - បន្ទប់ ០១ រហូតដល់ចុងក្រោយ)
+                                🔢 រាប់បន្តគ្នារហូតគ្រប់កម្រិតថ្នាក់ទាំងអស់ក្នុងសម័យប្រឡងនេះ (Continuous across All Grades - បន្ទប់ ០១ រហូតដល់ចុងក្រោយ)
                             </option>
                         </select>
                     </div>
@@ -418,6 +461,7 @@
                             <label class="form-label fw-bold small text-dark">លំដាប់តម្រៀបសិស្សក្នុងបន្ទប់ (Candidate Order)</label>
                             <select name="candidate_order" class="form-select">
                                 <option value="ALPHABETICAL" selected>តាមអក្ខរក្រមឈ្មោះខ្មែរ (A-Z Khmer)</option>
+                                <option value="CLASS_ALPHABETICAL">តាមថ្នាក់ដើម និងអក្ខរក្រមខ្មែរ (Class then A-Z)</option>
                                 <option value="STUDENT_ID">តាមអត្តលេខសិស្ស (Student ID)</option>
                                 <option value="RANDOM">ច្របល់ចៃដន្យ (Random)</option>
                             </select>
@@ -427,7 +471,7 @@
                 <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-success fw-bold px-4">
-                        <i class="fa-solid fa-bolt me-1"></i> ចែកបន្ទប់គ្រប់កម្រិតថ្នាក់ឥឡូវនេះ
+                        <i class="fa-solid fa-bolt me-1"></i> ចែកបន្ទប់ និងកំណត់លេខតុឥឡូវនេះ
                     </button>
                 </div>
             </form>
@@ -447,5 +491,105 @@ function toggleAllSessions(expand) {
         }
     });
 }
+
+function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, yearName, gradesCount) {
+    const yearSelect = document.getElementById('batch_academic_year_select');
+    const sessionSelect = document.getElementById('batch_session_select');
+    const banner = document.getElementById('modalSelectedSessionBanner');
+    const bannerTitle = document.getElementById('bannerSessionTitle');
+    const bannerDate = document.getElementById('bannerSessionDate');
+    const bannerGrades = document.getElementById('bannerSessionGrades');
+
+    if (yearSelect && yearId) {
+        yearSelect.value = yearId;
+        filterSessionsByYear(yearId);
+    }
+
+    if (sessionSelect) {
+        sessionSelect.value = sessionKey;
+    }
+
+    if (banner) {
+        banner.style.display = 'flex';
+        if (bannerTitle) bannerTitle.textContent = title;
+        if (bannerDate) bannerDate.textContent = dateDisplay || dateRaw;
+        if (bannerGrades) bannerGrades.textContent = gradesCount || 'ច្រើន';
+    }
+
+    const modalEl = document.getElementById('batchGenerateRoomsModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+
+function openGlobalBatchModal() {
+    const yearSelect = document.getElementById('batch_academic_year_select');
+    const banner = document.getElementById('modalSelectedSessionBanner');
+    if (banner) banner.style.display = 'none';
+
+    if (yearSelect) {
+        filterSessionsByYear(yearSelect.value);
+    }
+    const modalEl = document.getElementById('batchGenerateRoomsModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+
+function filterSessionsByYear(yearId) {
+    const sessionSelect = document.getElementById('batch_session_select');
+    if (!sessionSelect) return;
+
+    let firstMatch = null;
+    Array.from(sessionSelect.options).forEach(opt => {
+        if (!opt.value) return;
+        const optYear = opt.getAttribute('data-year');
+        if (!yearId || optYear === yearId) {
+            opt.style.display = '';
+            if (!firstMatch) firstMatch = opt;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+
+    if (firstMatch && (!sessionSelect.value || sessionSelect.selectedOptions[0].style.display === 'none')) {
+        sessionSelect.value = firstMatch.value;
+        onModalSessionChange(firstMatch.value);
+    }
+}
+
+function onModalYearChange(yearId) {
+    filterSessionsByYear(yearId);
+}
+
+function onModalSessionChange(sessionKey) {
+    const sessionSelect = document.getElementById('batch_session_select');
+    const banner = document.getElementById('modalSelectedSessionBanner');
+    const bannerTitle = document.getElementById('bannerSessionTitle');
+    const bannerDate = document.getElementById('bannerSessionDate');
+    const bannerGrades = document.getElementById('bannerSessionGrades');
+
+    if (!sessionSelect || !sessionKey) {
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    const selectedOpt = sessionSelect.selectedOptions[0];
+    if (selectedOpt && banner) {
+        banner.style.display = 'flex';
+        if (bannerTitle) bannerTitle.textContent = selectedOpt.getAttribute('data-title') || '';
+        if (bannerDate) bannerDate.textContent = selectedOpt.getAttribute('data-date') || '';
+        if (bannerGrades) bannerGrades.textContent = selectedOpt.getAttribute('data-count') || '1+';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const yearSelect = document.getElementById('batch_academic_year_select');
+    if (yearSelect) {
+        filterSessionsByYear(yearSelect.value);
+    }
+});
 </script>
 {% endblock %}
