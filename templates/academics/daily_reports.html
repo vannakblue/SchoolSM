@@ -694,31 +694,31 @@
             <!-- School Header (Official Cambodian MoEYS Letterhead matching sample) -->
             <div class="duty-sheet-header-block mb-3">
                 <div class="d-flex justify-content-between align-items-start">
-                    <!-- Left Side: Circular Logo + Ministry + School Name -->
-                    <div class="text-start" style="min-width: 260px;">
+                    <!-- Left Side: Circular Logo + Ministry + School Name (Centered relative to each other) -->
+                    <div class="text-center" style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center;">
                         {% if school_info and school_info.logo %}
-                        <div class="mb-1">
+                        <div class="mb-1 d-flex justify-content-center">
                             <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 52px; width: 52px; object-fit: contain; border-radius: 50%;">
                         </div>
                         {% endif %}
-                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
                             {{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
                         </div>
-                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
                             {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែនកំពង់កណ្តួត" }}
                         </div>
                     </div>
 
                     <!-- Right Side: Royal Kingdom Motto & Page Badge -->
-                    <div class="text-center" style="min-width: 220px; padding-top: 10px;">
-                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11.5pt; line-height: 1.4;">
+                    <div class="text-center" style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 10px;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11.5pt; line-height: 1.4;">
                             ព្រះរាជាណាចក្រកម្ពុជា
                         </div>
-                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
                             ជាតិ សាសនា ព្រះមហាក្សត្រ
                         </div>
                         {% if subpage.total_pages > 1 %}
-                        <div class="text-end mt-1">
+                        <div class="text-end w-100 mt-1">
                             <span class="badge bg-light text-dark border fw-bold" style="font-size: 7.5pt; padding: 2px 6px;">
                                 ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}
                             </span>
@@ -733,7 +733,7 @@
                         បញ្ជីស្រង់វត្តមានប្រចាំថ្ងៃរបស់មន្ត្រីរាជការស៊ីវិល
                     </div>
                     <div class="text-dark fw-bold" style="font-size: 9.5pt;">
-                        ថ្ងៃ{{ sheet.day_name }} ទី..........ខែ...............ឆ្នាំ............. វេន{{ sheet.session_name|slice:"4:"|default:"ព្រឹក" }}
+                        ថ្ងៃ{{ sheet.day_name }} ទី..........ខែ...............ឆ្នាំ............. វេន{% if sheet.session == 'afternoon' %}រសៀល{% else %}ព្រឹក{% endif %}
                     </div>
                 </div>
             </div>
