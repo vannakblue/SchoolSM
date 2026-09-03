@@ -1460,6 +1460,11 @@
                 const widths = JSON.parse(savedWidths);
                 if (Array.isArray(widths)) applyColumnWidths(widths);
             }
+        } catch (e) {
+            console.warn('Failed to load saved margin settings:', e);
+        }
+    }
+
     // ==========================================
     // SMART A4 AUTO-FIT SCALING & FULL-PAGE STRETCH ENGINE
     // ==========================================
