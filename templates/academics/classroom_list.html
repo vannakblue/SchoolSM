@@ -34,17 +34,36 @@
     </div>
 </div>
 
-<!-- Academic Year Filter & Quick Stats -->
+<!-- Academic Year Filter, Live Search & View Mode Switcher -->
 <div class="custom-card p-3 mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
-    <form method="GET" class="d-flex align-items-center gap-2">
-        <label class="fw-bold small mb-0 text-muted">ឆ្នាំសិក្សា៖</label>
-        <select name="year" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-            {% for y in academic_years %}
-            <option value="{{ y.id }}" {% if selected_year == y.id|stringformat:"i" %}selected{% endif %}>{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
-            {% endfor %}
-        </select>
-    </form>
-    <div class="d-flex align-items-center gap-3 small">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <label class="fw-bold small mb-0 text-muted">ឆ្នាំសិក្សា៖</label>
+            <select name="year" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if selected_year == y.id|stringformat:"i" %}selected{% endif %}>{{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <!-- Live Classroom Search Input -->
+        <div class="input-group input-group-sm" style="max-width: 250px;">
+            <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+            <input type="text" id="classroomSearchInput" class="form-control border-start-0" placeholder="ស្វែងរកថ្នាក់រៀន...">
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <!-- View Mode Switcher (Grid vs Row/Table) -->
+        <div class="btn-group btn-group-sm shadow-sm" role="group" aria-label="View Mode">
+            <button type="button" class="btn btn-primary active fw-semibold" id="btnViewGrid" onclick="switchClassroomView('grid')" title="បង្ហាញជាផ្ទាំងប្រអប់ (Grid Cards)">
+                <i class="fa-solid fa-border-all me-1"></i> ប្លង់ប្រអប់ (Grid)
+            </button>
+            <button type="button" class="btn btn-outline-primary fw-semibold" id="btnViewRow" onclick="switchClassroomView('row')" title="បង្ហាញជាជួរដេក (Table Rows)">
+                <i class="fa-solid fa-list-ul me-1"></i> ប្លង់ជួរដេក (Rows)
+            </button>
+        </div>
+
         <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3 py-1.5 rounded-pill shadow-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalSchoolClassroomsOverview" title="ចុចដើម្បីមើលរបាយការណ៍ស្ថិតិថ្នាក់រៀនទូទាំងសាលា">
             <i class="fa-solid fa-chart-pie text-primary"></i> សរុប <strong>{{ classroom_items|length }}</strong> ថ្នាក់រៀន <span class="badge bg-primary text-white ms-1" style="font-size: 0.7rem;"><i class="fa-solid fa-eye me-1"></i>មើលស្ថិតិ</span>
         </button>
@@ -69,12 +88,12 @@
     </div>
     {% endif %}
 
-    <!-- Classrooms Grid Cards -->
-    <div class="row g-4">
+    <!-- 1. Classrooms Grid Cards View (ប្លង់ប្រអប់) -->
+    <div id="classroomGridView" class="row g-4">
         {% for item in classroom_items %}
         {% with c=item.classroom %}
-        <div class="col-md-6 col-xl-4">
-            <div class="custom-card h-100 position-relative d-flex flex-column justify-content-between">
+        <div class="col-md-6 col-xl-4 classroom-grid-col" data-search="{{ c.name|lower }} {{ c.code|lower }} {{ c.grade_level }} {{ c.get_track_display|lower }} {{ c.homeroom_teacher.khmer_name|default:''|lower }} {{ c.room_number|default:''|lower }}">
+            <div class="custom-card h-100 position-relative d-flex flex-column justify-content-between shadow-sm">
                 {% if is_admin %}
                 <div class="position-absolute top-0 start-0 m-3 z-1">
                     <input class="form-check-input class-checkbox" type="checkbox" name="classroom_ids" value="{{ c.id }}">
@@ -150,7 +169,7 @@
                         <a href="{% url 'classroom_edit' c.id %}" class="btn btn-sm btn-light text-primary" title="កែប្រែថ្នាក់">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </a>
-                        <button type="button" class="btn btn-sm btn-light text-danger" title="លុបថ្នាក់" onclick="deleteClassroom('{{ c.id }}', '{{ c.name }}')">
+                        <button type="button" class="btn btn-sm btn-light text-danger" title="លុបថ្នាក់" onclick="deleteClassroom('{{ c.id }}', '{{ c.name|escapejs }}')">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                         {% endif %}
@@ -172,6 +191,132 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- 2. Classrooms Row / Table View (ប្លង់ជួរដេក) -->
+    <div id="classroomRowView" class="custom-card p-0 overflow-hidden shadow-sm mb-4" style="display: none;">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="classroomTable">
+                <thead class="table-light text-muted small text-uppercase">
+                    <tr>
+                        {% if is_admin %}
+                        <th class="ps-3" style="width: 40px;">
+                            <input class="form-check-input" type="checkbox" id="selectAllRows">
+                        </th>
+                        {% endif %}
+                        <th class="text-center" style="width: 50px;">#</th>
+                        <th>ថ្នាក់រៀន / Class Name</th>
+                        <th class="text-center">កម្រិត</th>
+                        <th>ជំនាញសិក្សា / Track</th>
+                        <th>បន្ទប់ / Room</th>
+                        <th class="text-center">សិស្សសរុប</th>
+                        <th>គ្រូបន្ទុកថ្នាក់ / Homeroom</th>
+                        <th>មុខវិជ្ជា & ពិន្ទុពេញ</th>
+                        <th class="text-end pe-3">សកម្មភាព / Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in classroom_items %}
+                    {% with c=item.classroom %}
+                    <tr class="classroom-row-item" data-search="{{ c.name|lower }} {{ c.code|lower }} {{ c.grade_level }} {{ c.get_track_display|lower }} {{ c.homeroom_teacher.khmer_name|default:''|lower }} {{ c.room_number|default:''|lower }}">
+                        {% if is_admin %}
+                        <td class="ps-3">
+                            <input class="form-check-input class-checkbox" type="checkbox" name="classroom_ids" value="{{ c.id }}">
+                        </td>
+                        {% endif %}
+                        <td class="text-center text-muted fw-bold small">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <a href="javascript:void(0)" class="fw-bold text-primary text-decoration-none fs-6" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ចុចមើលព័ត៌មានលម្អិត">
+                                    {{ c.name }}
+                                </a>
+                                <span class="badge bg-light text-secondary border small fw-normal">{{ c.code }}</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2 py-1">
+                                ទី {{ c.grade_level }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if c.track == 'SCIENCE' %}bg-info-subtle text-info border border-info-subtle{% elif c.track == 'SOCIAL' %}bg-warning-subtle text-dark border border-warning-subtle{% else %}bg-secondary-subtle text-secondary border{% endif %} px-2 py-1 small">
+                                {{ c.get_track_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if c.room_number %}
+                            <span class="small text-dark"><i class="fa-solid fa-door-open me-1 text-secondary"></i>{{ c.room_number }}</span>
+                            {% else %}
+                            <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <strong class="text-primary fs-6">{{ c.total_students }}</strong>
+                            <div class="text-muted" style="font-size: 0.72rem;">(ស្រី: {{ c.female_students }})</div>
+                        </td>
+                        <td>
+                            {% if c.homeroom_teacher %}
+                            <div class="d-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-user-tie text-primary small"></i>
+                                <strong class="small text-dark">{{ c.homeroom_teacher.khmer_name }}</strong>
+                            </div>
+                            {% else %}
+                            <span class="badge bg-light text-muted border fw-normal small">មិនទាន់ចាត់តាំង</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-primary-soft text-primary fw-bold">{{ item.active_subjects_count }} មុខវិជ្ជា</span>
+                                <span class="small text-muted fw-bold">• {{ item.total_max_score|floatformat:0 }} ពិន្ទុ</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                {% for sub_info in item.subjects_with_meta %}
+                                    {% if sub_info.is_active %}
+                                    <span class="badge" style="background-color: {{ sub_info.subject.color_code|default:'#4f46e5' }}; color: #fff; font-size: 0.68rem; padding: 2px 5px;" title="{{ sub_info.subject.name_kh }} ({{ sub_info.max_score|floatformat:0 }} ពិន្ទុ)">
+                                        {{ sub_info.subject.code }}
+                                    </span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="text-end pe-3">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ព័ត៌មានលម្អិត">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                </button>
+                                <a href="{% url 'timetable_view' %}?classroom={{ c.id }}" class="btn btn-outline-primary" title="កាលវិភាគ">
+                                    <i class="fa-solid fa-calendar-days"></i>
+                                </a>
+                                <a href="{% url 'student_list' %}?classroom={{ c.id }}" class="btn btn-outline-secondary" title="បញ្ជីសិស្ស">
+                                    <i class="fa-solid fa-users"></i>
+                                </a>
+                                {% if is_admin %}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalClassSubjects{{ c.id }}" title="កំណត់មុខវិជ្ជា">
+                                    <i class="fa-solid fa-list-check"></i>
+                                </button>
+                                <a href="{% url 'classroom_edit' c.id %}" class="btn btn-outline-warning text-dark" title="កែប្រែថ្នាក់">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="លុបថ្នាក់" onclick="deleteClassroom('{{ c.id }}', '{{ c.name|escapejs }}')">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-school-circle-xmark fa-3x mb-3 text-secondary d-block"></i>
+                            <h5>មិនទាន់មានថ្នាក់រៀននៅក្នុងប្រព័ន្ធឡើយ</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
 </form>
 
 <!-- Single Delete Form Helper -->
@@ -782,11 +927,76 @@
 
 {% block extra_js %}
 <script>
-    // Select All Classrooms for bulk action
+    // View Switcher (Grid vs Row/Table)
+    function switchClassroomView(mode) {
+        const gridView = document.getElementById('classroomGridView');
+        const rowView = document.getElementById('classroomRowView');
+        const btnGrid = document.getElementById('btnViewGrid');
+        const btnRow = document.getElementById('btnViewRow');
+
+        if (mode === 'row') {
+            if (gridView) gridView.style.display = 'none';
+            if (rowView) rowView.style.display = 'block';
+            if (btnGrid) {
+                btnGrid.classList.remove('active', 'btn-primary');
+                btnGrid.classList.add('btn-outline-primary');
+            }
+            if (btnRow) {
+                btnRow.classList.add('active', 'btn-primary');
+                btnRow.classList.remove('btn-outline-primary');
+            }
+            localStorage.setItem('schoolsm_classroom_view_mode', 'row');
+        } else {
+            if (gridView) gridView.style.display = '';
+            if (rowView) rowView.style.display = 'none';
+            if (btnGrid) {
+                btnGrid.classList.add('active', 'btn-primary');
+                btnGrid.classList.remove('btn-outline-primary');
+            }
+            if (btnRow) {
+                btnRow.classList.remove('active', 'btn-primary');
+                btnRow.classList.add('btn-outline-primary');
+            }
+            localStorage.setItem('schoolsm_classroom_view_mode', 'grid');
+        }
+    }
+
+    // Select All Classrooms for bulk action (Sync between top bar and table header)
     const selectAll = document.getElementById('selectAll');
+    const selectAllRows = document.getElementById('selectAllRows');
+
+    function syncSelectAll(state) {
+        document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = state);
+        if (selectAll) selectAll.checked = state;
+        if (selectAllRows) selectAllRows.checked = state;
+    }
+
     if (selectAll) {
         selectAll.addEventListener('change', function() {
-            document.querySelectorAll('.class-checkbox').forEach(cb => cb.checked = selectAll.checked);
+            syncSelectAll(selectAll.checked);
+        });
+    }
+    if (selectAllRows) {
+        selectAllRows.addEventListener('change', function() {
+            syncSelectAll(selectAllRows.checked);
+        });
+    }
+
+    // Real-time Classroom Search Filter
+    const searchInput = document.getElementById('classroomSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            // Filter Grid Cards
+            document.querySelectorAll('#classroomGridView .classroom-grid-col').forEach(card => {
+                const searchData = card.getAttribute('data-search') || card.textContent.toLowerCase();
+                card.style.display = searchData.includes(query) ? '' : 'none';
+            });
+            // Filter Table Rows
+            document.querySelectorAll('#classroomRowView .classroom-row-item').forEach(row => {
+                const searchData = row.getAttribute('data-search') || row.textContent.toLowerCase();
+                row.style.display = searchData.includes(query) ? '' : 'none';
+            });
         });
     }
 
@@ -918,8 +1128,16 @@
         }, 120);
     }
 
-    // Initialize styling and preview on load
+    // Initialize styling, preview, and saved view mode on load
     document.addEventListener('DOMContentLoaded', function() {
+        // Restore view mode from localStorage
+        const savedView = localStorage.getItem('schoolsm_classroom_view_mode');
+        if (savedView === 'row') {
+            switchClassroomView('row');
+        } else {
+            switchClassroomView('grid');
+        }
+
         {% for item in classroom_items %}
         updateSubjectModalStats('{{ item.classroom.id }}');
         {% endfor %}
