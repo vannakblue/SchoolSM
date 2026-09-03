@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងគម្រោងវេនអនុរក្សប្រឡង | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold text-primary mb-1">
+            <i class="fa-solid fa-clipboard-user text-warning me-2"></i>គ្រប់គ្រងគម្រោងវេនអនុរក្សប្រឡង
+        </h2>
+        <p class="text-muted small mb-0">
+            កំណត់កាលបរិច្ឆេទប្រឡង បង្កើតវេន ចាត់ចែងកូតាគ្រូ (ធម្មតា=៤វេន, ការិយាល័យ=៥វេន) និងបើក/បិទការស្នើសុំ
+        </p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'exam_invigilator_teacher_portal' %}" class="btn btn-outline-info fw-bold shadow-xs">
+            <i class="fa-solid fa-mobile-screen me-1"></i> មើលផ្ទាំងសុំវេនរបស់គ្រូ (Teacher Portal)
+        </a>
+        <a href="{% url 'exam_invigilator_plan_create' %}" class="btn btn-primary fw-bold shadow-sm">
+            <i class="fa-solid fa-circle-plus me-1"></i> បង្កើតគម្រោងវេនអនុរក្សថ្មី
+        </a>
+    </div>
+</div>
+
+<!-- Plan Cards Grid -->
+<div class="row g-4">
+    {% for p in plans %}
+    <div class="col-12 col-lg-6">
+        <div class="custom-card p-4 h-100 border-top border-4 {% if p.is_active %}border-success shadow-sm{% else %}border-secondary{% endif %} position-relative">
+            <!-- Header Badges -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="d-flex flex-wrap gap-1.5 align-items-center">
+                    {% if p.is_active %}
+                    <span class="badge bg-success-subtle text-success border border-success px-2.5 py-1 fw-bold">
+                        <i class="fa-solid fa-circle-check me-1"></i> 🟢 កំពុងដំណើរការ (Active)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary-subtle text-muted border px-2.5 py-1 fw-bold">
+                        <i class="fa-solid fa-circle-xmark me-1"></i> 🔴 បានបិទ (Inactive)
+                    </span>
+                    {% endif %}
+                    
+                    <span class="badge bg-light text-dark border px-2 py-1">
+                        <i class="fa-solid fa-calendar-days text-primary me-1"></i>{{ p.academic_year.name }}
+                    </span>
+                </div>
+
+                <!-- 1-Click Toggle Active Form -->
+                <form method="POST" action="{% url 'exam_invigilator_plan_toggle_active' p.id %}">
+                    {% csrf_token %}
+                    {% if p.is_active %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger fw-bold py-1 px-2.5 shadow-xs" title="ចុចដើម្បីបិទការស្នើសុំ">
+                        <i class="fa-solid fa-power-off me-1"></i> បិទការស្នើសុំ
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-sm btn-success fw-bold py-1 px-2.5 shadow-xs" title="ចុចដើម្បីបើកដំណើរការការស្នើសុំ">
+                        <i class="fa-solid fa-power-off me-1"></i> បើកដំណើរការ
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- Title & Description -->
+            <h4 class="fw-bold text-primary mb-2">
+                <a href="{% url 'exam_invigilator_roster_view' p.id %}" class="text-decoration-none text-primary hover-underline">
+                    {{ p.title }}
+                </a>
+            </h4>
+            <p class="text-muted small mb-3">
+                <i class="fa-regular fa-calendar me-1"></i> កាលបរិច្ឆេទ៖ <strong>{{ p.start_date|date:"d/m/Y" }} ដល់ {{ p.end_date|date:"d/m/Y" }}</strong>
+                {% if p.description %}
+                <br><span class="opacity-75">{{ p.description|truncatewords:20 }}</span>
+                {% endif %}
+            </p>
+
+            <!-- Quotas Summary Pills -->
+            <div class="d-flex flex-wrap gap-2 mb-3 p-2 bg-light rounded-3 border">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                    គ្រូធម្មតា៖ <strong>{{ p.default_regular_quota }} វេន</strong>
+                </span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">
+                    គ្រូការិយាល័យ៖ <strong>{{ p.default_office_quota }} វេន</strong>
+                </span>
+                <span class="badge bg-white text-muted border px-2 py-1">
+                    សរុប <strong>{{ p.calc_total_slots }} វេនប្រឡង</strong>
+                </span>
+            </div>
+
+            <!-- Progress Meter -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center small fw-bold mb-1">
+                    <span class="text-muted">បេក្ខភាពអនុរក្សដែលបានចុះឈ្មោះ៖</span>
+                    <span class="{% if p.calc_percentage >= 100 %}text-success{% else %}text-primary{% endif %}">
+                        {{ p.calc_total_registered }} / {{ p.calc_total_capacity }} នាក់ ({{ p.calc_percentage }}%)
+                    </span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar {% if p.calc_percentage >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ p.calc_percentage }}%;"></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons Footer -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3 border-top">
+                <div class="d-flex flex-wrap gap-1.5">
+                    <a href="{% url 'exam_invigilator_roster_view' p.id %}" class="btn btn-sm btn-primary fw-bold">
+                        <i class="fa-solid fa-table-cells me-1"></i> តារាងម៉ាទ្រីស & ចាត់បន្ទប់
+                    </a>
+                    <a href="{% url 'exam_invigilator_quotas_manage' p.id %}" class="btn btn-sm btn-outline-primary fw-bold">
+                        <i class="fa-solid fa-users-gear me-1"></i> កំណត់កូតាគ្រូ
+                    </a>
+                    <a href="{% url 'exam_invigilator_roster_print' p.id %}" target="_blank" class="btn btn-sm btn-outline-secondary fw-bold">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព
+                    </a>
+                </div>
+
+                <div class="d-flex align-items-center gap-1">
+                    <a href="{% url 'exam_invigilator_plan_edit' p.id %}" class="btn btn-sm btn-light border text-muted" title="កែប្រែការកំណត់">
+                        <i class="fa-solid fa-gear"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-light border text-danger" title="លុបគម្រោង" data-bs-toggle="modal" data-bs-target="#deletePlanModal_{{ p.id }}">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Delete Confirmation -->
+    <div class="modal fade" id="deletePlanModal_{{ p.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>បញ្ជាក់ការលុបគម្រោង
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-dark mb-2">
+                        តើលោកអ្នកពិតជាចង់លុបគម្រោងវេនអនុរក្ស <strong>«{{ p.title }}»</strong> នេះមែនទេ?
+                    </p>
+                    <div class="alert alert-warning small mb-0 border-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        ការលុបនេះនឹងលុបចេញនូវវេនប្រឡងទាំងអស់ ការចុះឈ្មោះរបស់គ្រូ និងកូតាដែលបានកំណត់ទាំងអស់ក្នុងគម្រោងនេះ។
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <form method="POST" action="{% url 'exam_invigilator_plan_delete' p.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger fw-bold px-4">
+                            <i class="fa-solid fa-trash-can me-1"></i> លុបគម្រោងឥឡូវនេះ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="custom-card p-5 text-center text-muted">
+            <i class="fa-solid fa-clipboard-user display-3 text-muted opacity-50 mb-3"></i>
+            <h4 class="fw-bold">មិនទាន់មានគម្រោងវេនអនុរក្សប្រឡងនៅឡើយទេ</h4>
+            <p class="mb-3">បង្កើតគម្រោងថ្មីដើម្បីកំណត់ថ្ងៃប្រឡង បង្កើតវេនព្រឹក-រសៀល និងបើកឱ្យគ្រូបង្រៀនចូលសុំវេនធ្វើជាអនុរក្ស។</p>
+            <a href="{% url 'exam_invigilator_plan_create' %}" class="btn btn-primary fw-bold px-4 py-2">
+                <i class="fa-solid fa-circle-plus me-1"></i> បង្កើតគម្រោងថ្មីឥឡូវនេះ
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

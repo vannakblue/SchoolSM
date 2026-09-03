@@ -190,7 +190,7 @@
 
             <div class="main-exam-title moul-font">បញ្ជីឈ្មោះបេក្ខជនតាមបន្ទប់ប្រឡង</div>
             <div class="sub-exam-title">
-                {{ exam.name }} • កម្រិតថ្នាក់ទី {{ exam.grade_level }} ({{ exam.get_track_display }})
+                {{ exam.name }} • កម្រិតថ្នាក់ទី {{ exam.grade_level }} ({{ exam.get_track_display }}) • <strong>វេនប្រឡង៖ {{ exam.get_session_display }}</strong>
             </div>
         </div>
 
@@ -200,7 +200,10 @@
                 <i class="fa-solid fa-door-open me-1"></i>{{ r_data.room.room_name }} {% if r_data.room.building %}({{ r_data.room.building }}){% endif %}
             </div>
             <div>
-                កាលបរិច្ឆេទ៖ {{ exam.exam_date|date:"d/m/Y" }}
+                <i class="fa-solid fa-clock me-1"></i>វេនប្រឡង៖ <strong>{{ exam.get_session_display }}</strong>
+            </div>
+            <div>
+                <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទ៖ {{ exam.exam_date|date:"d/m/Y" }}
             </div>
             <div>
                 បេក្ខជនសរុប៖ <strong>{{ r_data.total_candidates }}</strong> នាក់ (ស្រី <strong>{{ r_data.female_candidates }}</strong> នាក់)

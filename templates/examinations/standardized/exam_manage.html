@@ -10,10 +10,19 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                 <span class="badge bg-primary fs-6 px-3 py-1">ថ្នាក់ទី {{ exam.grade_level }}</span>
                 <span class="badge bg-secondary fs-6 px-2.5 py-1">{{ exam.get_track_display }}</span>
-                <span class="badge bg-info text-dark fs-6 px-2.5 py-1 fw-bold">
-                    {% if exam.session == 'MORNING' %}<i class="fa-solid fa-sun text-warning me-1"></i>{% elif exam.session == 'AFTERNOON' %}<i class="fa-solid fa-cloud-sun text-primary me-1"></i>{% else %}<i class="fa-solid fa-clock me-1"></i>{% endif %}
-                    {{ exam.get_session_display }}
+                {% if exam.session == 'MORNING' %}
+                <span class="badge bg-warning-subtle text-dark border border-warning fs-6 px-2.5 py-1 fw-bold">
+                    <i class="fa-solid fa-sun text-warning me-1"></i>🌅 វេនពេលព្រឹក
                 </span>
+                {% elif exam.session == 'AFTERNOON' %}
+                <span class="badge bg-info-subtle text-dark border border-info fs-6 px-2.5 py-1 fw-bold">
+                    <i class="fa-solid fa-cloud-sun text-primary me-1"></i>⛅ វេនពេលរសៀល
+                </span>
+                {% else %}
+                <span class="badge bg-primary-subtle text-primary border border-primary fs-6 px-2.5 py-1 fw-bold">
+                    <i class="fa-solid fa-clock me-1"></i>🌞 ពេញមួយថ្ងៃ
+                </span>
+                {% endif %}
                 <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar-days text-primary me-1"></i>{{ exam.academic_year.name }}</span>
                 {% if exam.is_published %}
                 <span class="badge bg-success px-2.5 py-1"><i class="fa-solid fa-circle-check me-1"></i>បានប្រកាសលទ្ធផល</span>
@@ -56,13 +65,10 @@
                 </button>
             </form>
 
-            <!-- Auto-Generate Rooms (25/room) -->
-            <form method="POST" action="{% url 'exam_generate_rooms' exam.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់បែងចែកបេក្ខជនទាំងអស់ចូលក្នុងបន្ទប់ប្រឡង ({{ exam.candidates_per_room }} នាក់/បន្ទប់) ឡើងវិញមែនទេ?')">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm fw-bold shadow-sm">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ ២៥ នាក់/បន្ទប់ (Auto-Rooms)
-                </button>
-            </form>
+            <!-- Auto-Generate Rooms Button (Opens Modal) -->
+            <button type="button" class="btn btn-success btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#generateRoomsModal">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ & កំណត់លេខតុ (Auto-Rooms)
+            </button>
 
             <!-- Excel Import Button -->
             <button type="button" class="btn btn-teal btn-sm fw-bold text-white shadow-sm" style="background: #0d9488;" data-bs-toggle="modal" data-bs-target="#importExcelModal">
@@ -506,6 +512,113 @@ function batchSetDiscipline(action) {
         </div>
     </div>
 </div>
+
+<!-- Modal: Generate Rooms & Desk Numbers Options -->
+<div class="modal fade" id="generateRoomsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>ចែកបន្ទប់ & កំណត់លេខតុបេក្ខជន
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'exam_generate_rooms' exam.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        សម័យប្រឡង៖ <strong>{{ exam.name }}</strong> (កម្រិតថ្នាក់ទី {{ exam.grade_level }} • {{ exam.get_session_display }})
+                    </p>
+
+                    <label class="form-label fw-bold small text-dark mb-2">
+                        <i class="fa-solid fa-list-ol text-primary me-1"></i> ជ្រើសរើសរបៀបកំណត់លេខតុ និងអត្តលេខបេក្ខជន (Numbering Policy) *៖
+                    </label>
+
+                    <div class="d-flex flex-column gap-2 mb-3">
+                        <div class="form-check p-3 bg-light rounded-3 border">
+                            <input class="form-check-input" type="radio" name="numbering_mode" id="mode_reset" value="RESET_PER_GRADE" checked onchange="toggleCustomNumbering(this.value)">
+                            <label class="form-check-label fw-bold small text-dark d-block" for="mode_reset">
+                                🔘 រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នេះ (Reset per Grade Level)
+                                <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                    បន្ទប់ចាប់ពី <strong>បន្ទប់ ០១</strong>, អត្តលេខ <strong>០០១</strong> ដល់សិស្សចុងក្រោយនៃកម្រិតថ្នាក់នេះ។
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 bg-light rounded-3 border">
+                            <input class="form-check-input" type="radio" name="numbering_mode" id="mode_shift" value="CONTINUOUS_IN_SHIFT" onchange="toggleCustomNumbering(this.value)">
+                            <label class="form-check-label fw-bold small text-dark d-block" for="mode_shift">
+                                🔘 រាប់បន្តគ្នាតាម {{ exam.get_session_display }} (Sequential in Same Shift)
+                                <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                    រាប់បន្ទប់ និងអត្តលេខបន្តពីកម្រិតថ្នាក់មុនៗដែលប្រឡងក្នុង <strong>{{ exam.get_session_display }}</strong> ដូចគ្នា។
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 bg-light rounded-3 border">
+                            <input class="form-check-input" type="radio" name="numbering_mode" id="mode_all" value="CONTINUOUS_ALL_GRADES" onchange="toggleCustomNumbering(this.value)">
+                            <label class="form-check-label fw-bold small text-dark d-block" for="mode_all">
+                                🔘 រាប់បន្តគ្នាគ្រប់កម្រិតថ្នាក់ (Continuous Across All Grades)
+                                <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                    រាប់បន្ទប់ និងអត្តលេខបន្តពីថ្នាក់ទី ៧ ដល់ ទី ១២ ជាប់គ្នា។
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 bg-light rounded-3 border">
+                            <input class="form-check-input" type="radio" name="numbering_mode" id="mode_custom" value="CUSTOM" onchange="toggleCustomNumbering(this.value)">
+                            <label class="form-check-label fw-bold small text-dark d-block" for="mode_custom">
+                                🔘 កំណត់លេខចាប់ផ្តើមដោយខ្លួនឯង (Custom Starting Numbers)
+                            </label>
+                            <div id="customNumberingInputs" class="row g-2 pt-2 d-none">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">បន្ទប់ចាប់ពីលេខ</label>
+                                    <input type="number" min="1" max="999" class="form-control form-control-sm" name="start_room_number" value="1">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">អត្តលេខចាប់ពីលេខ</label>
+                                    <input type="number" min="1" max="99999" class="form-control form-control-sm" name="start_roll_number" value="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-muted mb-1">ចំនួនបេក្ខជនក្នុងមួយបន្ទប់</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" min="5" max="60" class="form-control" name="candidates_per_room" value="{{ exam.candidates_per_room|default:'25' }}">
+                                <span class="input-group-text">នាក់</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-muted mb-1">ឈ្មោះអគារ</label>
+                            <input type="text" class="form-control form-control-sm" name="building" value="អគារ A">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleCustomNumbering(val) {
+    const customDiv = document.getElementById('customNumberingInputs');
+    if (!customDiv) return;
+    if (val === 'CUSTOM') {
+        customDiv.classList.remove('d-none');
+    } else {
+        customDiv.classList.add('d-none');
+    }
+}
+</script>
 
 <!-- Modal Delete Exam Confirmation -->
 {% if is_admin %}

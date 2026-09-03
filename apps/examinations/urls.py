@@ -33,6 +33,7 @@ urlpatterns = [
     path('standardized/<int:exam_id>/import-candidates/', views.exam_import_candidates_excel, name='exam_import_candidates_excel'),
 
     # 25-Candidate Rooms Auto-Partitioning & Postings
+    path('standardized/batch-generate-rooms/', views.exam_batch_generate_rooms, name='exam_batch_generate_rooms'),
     path('standardized/<int:exam_id>/generate-rooms/', views.exam_generate_rooms, name='exam_generate_rooms'),
     path('standardized/<int:exam_id>/room-postings/', views.exam_room_postings_view, name='exam_room_postings_view'),
 
@@ -64,6 +65,21 @@ urlpatterns = [
     path('exclusions/', views.exam_exclusions_manage, name='exam_exclusions_manage'),
     path('api/exclusion/toggle/', views.api_toggle_exam_exclusion, name='api_toggle_exam_exclusion'),
     path('api/classroom/<int:classroom_id>/students/', views.api_get_students_by_classroom, name='api_get_students_by_classroom'),
+
+    # Teacher Exam Invigilator / Proctor Shift Request System (ប្រព័ន្ធសុំវេនអនុរក្ស)
+    path('invigilator-plans/', views.exam_invigilator_plans_list, name='exam_invigilator_plans_list'),
+    path('invigilator-plans/create/', views.exam_invigilator_plan_create, name='exam_invigilator_plan_create'),
+    path('invigilator-plans/<int:plan_id>/edit/', views.exam_invigilator_plan_edit, name='exam_invigilator_plan_edit'),
+    path('invigilator-plans/<int:plan_id>/toggle-active/', views.exam_invigilator_plan_toggle_active, name='exam_invigilator_plan_toggle_active'),
+    path('invigilator-plans/<int:plan_id>/delete/', views.exam_invigilator_plan_delete, name='exam_invigilator_plan_delete'),
+    path('invigilator-plans/<int:plan_id>/quotas/', views.exam_invigilator_quotas_manage, name='exam_invigilator_quotas_manage'),
+    path('invigilator-plans/<int:plan_id>/roster/', views.exam_invigilator_roster_view, name='exam_invigilator_roster_view'),
+    path('invigilator-plans/<int:plan_id>/roster/print/', views.exam_invigilator_roster_print, name='exam_invigilator_roster_print'),
+    path('invigilator-plans/<int:plan_id>/auto-assign/', views.api_invigilator_auto_assign, name='api_invigilator_auto_assign'),
+
+    # Teacher Self-Service Portal & AJAX API
+    path('invigilator-request/', views.exam_invigilator_teacher_portal, name='exam_invigilator_teacher_portal'),
+    path('api/invigilator-slot/toggle/', views.api_toggle_invigilator_slot, name='api_toggle_invigilator_slot'),
 ]
 
 

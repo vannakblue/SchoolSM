@@ -61,7 +61,7 @@
                         <label class="form-label fw-bold small text-dark mb-0">
                             <i class="fa-solid fa-graduation-cap text-primary me-1"></i> ជ្រើសរើសកម្រិតថ្នាក់ប្រឡង (Select Grade Levels) *៖
                         </label>
-                        <!-- Quick Presets -->
+                        <!-- Quick Grade Presets -->
                         <div class="btn-group btn-group-sm">
                             <button type="button" class="btn btn-outline-primary fw-bold" onclick="selectGradePreset('all')">ទាំងអស់ (7-12)</button>
                             <button type="button" class="btn btn-outline-primary fw-bold" onclick="selectGradePreset('lower')">អនុវិទ្យាល័យ (7-9)</button>
@@ -70,44 +70,101 @@
                         </div>
                     </div>
 
+                    <!-- Quick Shift Distribution Presets -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 bg-white rounded-3 border">
+                        <span class="small fw-bold text-muted"><i class="fa-solid fa-clock text-warning me-1"></i>កំណត់វេនរហ័ស (Shift Presets):</span>
+                        <button type="button" class="btn btn-sm btn-outline-success fw-bold py-0.5 px-2" style="font-size: 0.78rem;" onclick="applyShiftPreset('7_10_morning_11_12_afternoon')">
+                            🌅 ព្រឹក (៧-១០) & ⛅ រសៀល (១១-១២)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info fw-bold py-0.5 px-2" style="font-size: 0.78rem;" onclick="applyShiftPreset('7_9_morning_10_12_afternoon')">
+                            🌅 ព្រឹក (៧-៩) & ⛅ រសៀល (១០-១២)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning fw-bold py-0.5 px-2 text-dark" style="font-size: 0.78rem;" onclick="applyShiftPreset('all_morning')">
+                            🌅 ព្រឹកទាំងអស់
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold py-0.5 px-2" style="font-size: 0.78rem;" onclick="applyShiftPreset('all_afternoon')">
+                            ⛅ រសៀលទាំងអស់
+                        </button>
+                    </div>
+
                     <div class="row g-2 pt-1 mb-2">
-                        {% for g in "7,8,9,10,11,12"|make_list %}
-                        {% endfor %}
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="7" id="grade_check_7" onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_7">
-                                ថ្នាក់ទី ៧
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="7" id="grade_check_7" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_7">
+                                    ថ្នាក់ទី ៧
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_7" id="grade_session_select_7" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(7)">
+                                    <option value="MORNING" selected>🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON">⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="8" id="grade_check_8" onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_8">
-                                ថ្នាក់ទី ៨
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="8" id="grade_check_8" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_8">
+                                    ថ្នាក់ទី ៨
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_8" id="grade_session_select_8" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(8)">
+                                    <option value="MORNING" selected>🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON">⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="9" id="grade_check_9" onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_9">
-                                ថ្នាក់ទី ៩
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="9" id="grade_check_9" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_9">
+                                    ថ្នាក់ទី ៩
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_9" id="grade_session_select_9" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(9)">
+                                    <option value="MORNING" selected>🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON">⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="10" id="grade_check_10" onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_10">
-                                ថ្នាក់ទី ១០
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="10" id="grade_check_10" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_10">
+                                    ថ្នាក់ទី ១០
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_10" id="grade_session_select_10" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(10)">
+                                    <option value="MORNING" selected>🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON">⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="11" id="grade_check_11" onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_11">
-                                ថ្នាក់ទី ១១
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="11" id="grade_check_11" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_11">
+                                    ថ្នាក់ទី ១១
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_11" id="grade_session_select_11" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(11)">
+                                    <option value="MORNING">🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON" selected>⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-4 col-md-2">
-                            <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="12" id="grade_check_12" checked onchange="handleGradeSelectionChange()">
-                            <label class="btn btn-outline-primary w-100 py-2 fw-bold" for="grade_check_12">
-                                ថ្នាក់ទី ១២
-                            </label>
+                        <div class="col-6 col-md-2">
+                            <div class="p-2 bg-white rounded-3 border h-100 text-center">
+                                <input type="checkbox" class="btn-check grade-checkbox" name="selected_grades" value="12" id="grade_check_12" checked onchange="handleGradeSelectionChange()">
+                                <label class="btn btn-outline-primary w-100 py-1.5 fw-bold mb-1" for="grade_check_12">
+                                    ថ្នាក់ទី ១២
+                                </label>
+                                <select class="form-select form-select-sm text-center fw-bold py-0 px-1 border-primary" name="grade_session_12" id="grade_session_select_12" style="font-size: 0.72rem; height: 26px;" onchange="syncShiftFromSelect(12)">
+                                    <option value="MORNING">🌅 ពេលព្រឹក</option>
+                                    <option value="AFTERNOON" selected>⛅ ពេលរសៀល</option>
+                                    <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -115,10 +172,10 @@
                         <div class="form-check form-switch mb-0">
                             <input class="form-check-input" type="checkbox" id="toggleCustomPerGrade" onchange="toggleCustomGradeCards()">
                             <label class="form-check-label fw-bold small text-dark" for="toggleCustomPerGrade">
-                                ⚙️ ប្ដូរការកំណត់លម្អិតផ្សេងៗគ្នាតាមកម្រិតថ្នាក់នីមួយៗ (Customize per Grade Level)
+                                ⚙️ ប្ដូរការកំណត់លម្អិតបន្ថែមតាមកម្រិតថ្នាក់នីមួយៗ (Customize per Grade Level)
                             </label>
                         </div>
-                        <span id="selectedCountBadge" class="badge bg-primary px-2.5 py-1">ជ្រើសរើស ១ កម្រិតថ្នាក់</span>
+                        <span id="selectedCountBadge" class="badge bg-primary px-2.5 py-1">ជ្រើសរើស ៦ កម្រិតថ្នាក់</span>
                     </div>
                 </div>
                 {% endif %}
@@ -213,9 +270,14 @@
                     </span>
                 </div>
 
-                <p class="text-muted small mb-3">
-                    កំណត់ពិន្ទុពេញ (Max Score) មេគុណ (Coefficient / Weight) ថ្ងៃប្រឡង និងពេលប្រឡង (ព្រឹក/រសៀល) សម្រាប់មុខវិជ្ជានីមួយៗ៖
-                </p>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <p class="text-muted small mb-0">
+                        កំណត់ពិន្ទុពេញ (Max Score) មេគុណ (Coefficient / Weight) ថ្ងៃប្រឡង និងពេលប្រឡង (ព្រឹក/រសៀល) សម្រាប់មុខវិជ្ជានីមួយៗ៖
+                    </p>
+                    <span class="badge bg-light text-primary border px-2.5 py-1.5 small shadow-xs">
+                        <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មេគុណគណនាស្វ័យប្រវត្តិ = ពិន្ទុពេញ / ៥០ (អាចកែប្រែដោយដៃបាន)
+                    </span>
+                </div>
 
                 <div class="table-responsive border rounded-3 mb-3">
                     <table class="table table-sm table-hover align-middle mb-0 small">
@@ -223,8 +285,8 @@
                             <tr>
                                 <th style="width: 30px;">#</th>
                                 <th>មុខវិជ្ជា</th>
-                                <th style="width: 100px;">ពិន្ទុពេញ</th>
-                                <th style="width: 90px;">មេគុណ</th>
+                                <th style="width: 110px;">ពិន្ទុពេញ</th>
+                                <th style="width: 100px;">មេគុណ</th>
                                 <th style="width: 110px;">ពេលប្រឡង</th>
                                 <th style="width: 130px;">ថ្ងៃប្រឡង</th>
                             </tr>
@@ -238,10 +300,14 @@
                                     <div class="text-muted fw-normal" style="font-size: 0.72rem;">{{ es.subject.code }}</div>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.5" min="1" max="500" class="form-control form-control-sm text-center fw-bold" name="max_score_{{ es.id }}" value="{{ es.max_score|floatformat:0 }}">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.5" min="1" max="500" class="form-control form-control-sm text-center fw-bold" name="max_score_{{ es.id }}" value="{{ es.max_score|floatformat:0 }}" oninput="autoCalculateCoefficient('{{ es.id }}')">
+                                    </div>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.5" min="0.5" max="10" class="form-control form-control-sm text-center fw-bold text-primary" name="coefficient_{{ es.id }}" value="{{ es.coefficient|floatformat:1 }}">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.1" min="0.1" max="20" class="form-control form-control-sm text-center fw-bold text-primary" id="coef_input_{{ es.id }}" name="coefficient_{{ es.id }}" value="{{ es.coefficient|floatformat:1 }}">
+                                    </div>
                                 </td>
                                 <td>
                                     <select class="form-select form-select-sm" name="session_{{ es.id }}">
@@ -264,7 +330,7 @@
 
                 <div class="alert alert-info py-2 px-3 small border-0 mb-0">
                     <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                    <strong>មធ្យមភាគគិតបញ្ចូលមេគុណ៖</strong> មធ្យមភាគ = $\frac{\sum (\text{ពិន្ទុ} \times \text{មេគុណ})}{\sum \text{មេគុណ}}$ ដែលអនុវត្តតាមស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា។
+                    <strong>មធ្យមភាគគិតបញ្ចូលមេគុណ៖</strong> មធ្យមភាគ = $\frac{\sum (\text{ពិន្ទុ} \times \text{មេគុណ})}{\sum \text{មេគុណ}}$ ដែលអនុវត្តតាមស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា។ (មេគុណ = ពិន្ទុពេញ / ៥០)
                 </div>
             </div>
         </div>
@@ -311,7 +377,7 @@ const GRADE_METADATA = {
     7: { name: 'ថ្នាក់ទី ៧', defaultTrack: 'ALL', defaultSession: 'MORNING' },
     8: { name: 'ថ្នាក់ទី ៨', defaultTrack: 'ALL', defaultSession: 'MORNING' },
     9: { name: 'ថ្នាក់ទី ៩', defaultTrack: 'ALL', defaultSession: 'MORNING' },
-    10: { name: 'ថ្នាក់ទី ១០', defaultTrack: 'ALL', defaultSession: 'AFTERNOON' },
+    10: { name: 'ថ្នាក់ទី ១០', defaultTrack: 'ALL', defaultSession: 'MORNING' },
     11: { name: 'ថ្នាក់ទី ១១', defaultTrack: 'ALL', defaultSession: 'AFTERNOON' },
     12: { name: 'ថ្នាក់ទី ១២', defaultTrack: 'ALL', defaultSession: 'AFTERNOON' }
 };
@@ -331,6 +397,28 @@ function selectGradePreset(type) {
         }
     });
     handleGradeSelectionChange();
+}
+
+function applyShiftPreset(preset) {
+    const grades = [7, 8, 9, 10, 11, 12];
+    grades.forEach(g => {
+        const sel = document.getElementById(`grade_session_select_${g}`);
+        if (!sel) return;
+        if (preset === '7_10_morning_11_12_afternoon') {
+            sel.value = (g <= 10) ? 'MORNING' : 'AFTERNOON';
+        } else if (preset === '7_9_morning_10_12_afternoon') {
+            sel.value = (g <= 9) ? 'MORNING' : 'AFTERNOON';
+        } else if (preset === 'all_morning') {
+            sel.value = 'MORNING';
+        } else if (preset === 'all_afternoon') {
+            sel.value = 'AFTERNOON';
+        }
+    });
+    renderCustomGradeCards();
+}
+
+function syncShiftFromSelect(g) {
+    renderCustomGradeCards();
 }
 
 function handleGradeSelectionChange() {
@@ -368,7 +456,6 @@ function renderCustomGradeCards() {
     const checkedBoxes = Array.from(document.querySelectorAll('.grade-checkbox:checked'));
     const baseName = document.querySelector('[name="name"]')?.value.trim() || 'ការប្រឡងតេស្តស្តង់ដា';
     const baseTrack = document.querySelector('[name="track"]')?.value || 'ALL';
-    const baseSession = document.querySelector('[name="session"]')?.value || 'MORNING';
     const baseDate = document.querySelector('[name="exam_date"]')?.value || '';
     const baseCPR = document.querySelector('[name="candidates_per_room"]')?.value || '25';
 
@@ -378,7 +465,7 @@ function renderCustomGradeCards() {
         const meta = GRADE_METADATA[g] || { name: `ថ្នាក់ទី ${g}`, defaultTrack: 'ALL', defaultSession: 'MORNING' };
         
         let initialTrack = (g >= 11) ? baseTrack : 'ALL';
-        let initialSession = (g <= 9) ? 'MORNING' : 'AFTERNOON';
+        let currentSession = document.getElementById(`grade_session_select_${g}`)?.value || ((g <= 10) ? 'MORNING' : 'AFTERNOON');
 
         html += `
         <div class="card border border-2 border-primary-subtle shadow-xs rounded-3 overflow-hidden">
@@ -405,10 +492,10 @@ function renderCustomGradeCards() {
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label small fw-bold text-muted mb-1">វេនប្រឡង</label>
-                        <select class="form-select form-select-sm" name="grade_session_${g}">
-                            <option value="MORNING" ${initialSession === 'MORNING' ? 'selected' : ''}>🌅 ពេលព្រឹក</option>
-                            <option value="AFTERNOON" ${initialSession === 'AFTERNOON' ? 'selected' : ''}>⛅ ពេលរសៀល</option>
-                            <option value="FULL_DAY">🌞 ពេញមួយថ្ងៃ</option>
+                        <select class="form-select form-select-sm" name="grade_custom_session_${g}" onchange="if(document.getElementById('grade_session_select_${g}')){ document.getElementById('grade_session_select_${g}').value = this.value; }">
+                            <option value="MORNING" ${currentSession === 'MORNING' ? 'selected' : ''}>🌅 ពេលព្រឹក</option>
+                            <option value="AFTERNOON" ${currentSession === 'AFTERNOON' ? 'selected' : ''}>⛅ ពេលរសៀល</option>
+                            <option value="FULL_DAY" ${currentSession === 'FULL_DAY' ? 'selected' : ''}>🌞 ពេញមួយថ្ងៃ</option>
                         </select>
                     </div>
                     <div class="col-md-2 col-6">
@@ -430,6 +517,18 @@ function renderCustomGradeCards() {
     }
 
     container.innerHTML = html;
+}
+
+function autoCalculateCoefficient(esId) {
+    const maxInput = document.querySelector(`[name="max_score_${esId}"]`);
+    const coefInput = document.getElementById(`coef_input_${esId}`);
+    if (maxInput && coefInput) {
+        const maxVal = parseFloat(maxInput.value);
+        if (!isNaN(maxVal) && maxVal > 0) {
+            const calculated = maxVal / 50.0;
+            coefInput.value = Number.isInteger(calculated) ? calculated.toFixed(1) : parseFloat(calculated.toFixed(2));
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {

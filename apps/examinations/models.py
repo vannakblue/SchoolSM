@@ -581,3 +581,170 @@ class ExamStudentExclusion(models.Model):
         return f"{self.student.khmer_name} - លើកលែង: {target} ({self.get_reason_display()})"
 
 
+# ==============================================================================
+# TEACHER EXAM INVIGILATOR / PROCTOR SHIFT REQUEST SYSTEM (ប្រព័ន្ធសុំវេនអនុរក្ស)
+# ==============================================================================
+
+class ExamInvigilatorPlan(models.Model):
+    """
+    Master configuration plan for Exam Invigilators / Proctors shift requests.
+    Admin controls:
+    - is_active: MUST be True for the request feature to be visible or accessible to teachers.
+    - allow_teacher_registration: True when teachers can register/cancel their own slots.
+    """
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='invigilator_plans', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    title = models.CharField(max_length=200, verbose_name="ចំណងជើងគម្រោង / Plan Title")
+    description = models.TextField(blank=True, null=True, verbose_name="សេចក្តីណែនាំ / Description & Guidelines")
+    start_date = models.DateField(verbose_name="ថ្ងៃចាប់ផ្តើមប្រឡង / Exam Start Date")
+    end_date = models.DateField(verbose_name="ថ្ងៃបញ្ចប់ការប្រឡង / Exam End Date")
+    
+    is_active = models.BooleanField(default=False, verbose_name="បើកដំណើរការ (Active) / Is Active", help_text="បើក/បិទ ដំណើរការការស្នើសុំ។ លុះត្រាតែបើកទើបគ្រូអាចមើលឃើញ និងស្នើសុំបាន")
+    allow_teacher_registration = models.BooleanField(default=True, verbose_name="អនុញ្ញាតឱ្យគ្រូចុះឈ្មោះ / Allow Teacher Registration")
+    registration_deadline = models.DateTimeField(null=True, blank=True, verbose_name="ថ្ងៃផុតកំណត់ចុះឈ្មោះ / Registration Deadline")
+    
+    default_regular_quota = models.PositiveIntegerField(default=4, verbose_name="កូតាលំនាំដើមគ្រូធម្មតា / Regular Teacher Default Quota (4 វេន)")
+    default_office_quota = models.PositiveIntegerField(default=5, verbose_name="កូតាលំនាំដើមគ្រូការិយាល័យ / Office Teacher Default Quota (5 វេន)")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-start_date', '-created_at']
+        verbose_name = "គម្រោងវេនអនុរក្សប្រឡង / Exam Invigilator Plan"
+        verbose_name_plural = "គម្រោងវេនអនុរក្សប្រឡងទាំងអស់ / Exam Invigilator Plans"
+
+    def __str__(self):
+        return f"{self.title} ({self.academic_year.name}) - {'🟢 បើកដំណើរការ' if self.is_active else '🔴 បិទ'}"
+
+    @property
+    def total_slots_count(self):
+        return self.shift_slots.count()
+
+    @property
+    def total_required_spots(self):
+        return sum(s.max_invigilators for s in self.shift_slots.all())
+
+    @property
+    def total_filled_spots(self):
+        return sum(s.registered_count for s in self.shift_slots.all())
+
+
+class TeacherDutyGroup(models.Model):
+    """
+    Teacher groups (e.g. Regular Teachers = 4 shifts, Office Staff = 5 shifts, Management = 2 shifts)
+    """
+    plan = models.ForeignKey(ExamInvigilatorPlan, on_delete=models.CASCADE, related_name='duty_groups', verbose_name="គម្រោង / Plan")
+    name = models.CharField(max_length=150, verbose_name="ឈ្មោះក្រុម / Group Name")
+    required_shifts = models.PositiveIntegerField(default=4, verbose_name="ចំនួនវេនតម្រូវ / Required Shifts")
+    description = models.CharField(max_length=255, blank=True, null=True, verbose_name="ការពិពណ៌នា / Description")
+    order = models.PositiveIntegerField(default=1, verbose_name="លំដាប់ / Order")
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "ក្រុមគ្រូ & កូតាវេន / Teacher Duty Group"
+        verbose_name_plural = "ក្រុមគ្រូ & កូតាវេន / Teacher Duty Groups"
+
+    def __str__(self):
+        return f"{self.name} ({self.required_shifts} វេន)"
+
+
+class TeacherDutyQuota(models.Model):
+    """
+    Specific quota assignment for an individual teacher for a specific plan.
+    """
+    plan = models.ForeignKey(ExamInvigilatorPlan, on_delete=models.CASCADE, related_name='teacher_quotas', verbose_name="គម្រោង / Plan")
+    teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='exam_duty_quotas', verbose_name="គ្រូបង្រៀន / Teacher")
+    duty_group = models.ForeignKey(TeacherDutyGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_quotas', verbose_name="ក្រុមគ្រូ / Duty Group")
+    custom_required_shifts = models.PositiveIntegerField(null=True, blank=True, verbose_name="កូតាជាក់លាក់ (Override) / Custom Shifts")
+    is_exempt = models.BooleanField(default=False, verbose_name="លើកលែងមិនបាច់ធ្វើអនុរក្ស / Exempt")
+    exemption_reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="មូលហេតុលើកលែង / Exemption Reason")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('plan', 'teacher')
+        ordering = ['teacher__khmer_name']
+        verbose_name = "កូតាវេនគ្រូបង្រៀន / Teacher Shift Quota"
+        verbose_name_plural = "កូតាវេនគ្រូបង្រៀនទាំងអស់ / Teacher Shift Quotas"
+
+    @property
+    def effective_required_shifts(self):
+        if self.is_exempt:
+            return 0
+        if self.custom_required_shifts is not None:
+            return self.custom_required_shifts
+        if self.duty_group:
+            return self.duty_group.required_shifts
+        return self.plan.default_regular_quota
+
+    def __str__(self):
+        return f"{self.teacher.khmer_name} - កូតា: {self.effective_required_shifts} វេន"
+
+
+class ExamShiftSlot(models.Model):
+    """
+    An individual shift slot (e.g. Day 1 Morning 07:00-11:00).
+    """
+    class Session(models.TextChoices):
+        MORNING = 'MORNING', '🌅 ពេលព្រឹក (Morning 07:00 - 11:00)'
+        AFTERNOON = 'AFTERNOON', '⛅ ពេលរសៀល (Afternoon 13:00 - 17:00)'
+        CUSTOM = 'CUSTOM', '🕒 ម៉ោងជាក់លាក់ (Custom Time)'
+
+    plan = models.ForeignKey(ExamInvigilatorPlan, on_delete=models.CASCADE, related_name='shift_slots', verbose_name="គម្រោង / Plan")
+    date = models.DateField(verbose_name="កាលបរិច្ឆេទ / Date")
+    session = models.CharField(max_length=20, choices=Session.choices, default=Session.MORNING, verbose_name="វេន / Session")
+    session_name = models.CharField(max_length=150, verbose_name="ឈ្មោះវេន / Slot Name")
+    start_time = models.TimeField(default="07:00", verbose_name="ម៉ោងចាប់ផ្តើម / Start Time")
+    end_time = models.TimeField(default="11:00", verbose_name="ម៉ោងបញ្ចប់ / End Time")
+    max_invigilators = models.PositiveIntegerField(default=20, verbose_name="ចំនួនអនុរក្សអតិបរមា / Max Invigilators")
+    notes = models.CharField(max_length=255, blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+    order = models.PositiveIntegerField(default=1, verbose_name="លំដាប់ / Order")
+
+    class Meta:
+        ordering = ['date', 'start_time', 'order']
+        verbose_name = "វេនប្រឡង / Exam Shift Slot"
+        verbose_name_plural = "វេនប្រឡងទាំងអស់ / Exam Shift Slots"
+
+    @property
+    def registered_count(self):
+        return self.registrations.exclude(status='CANCELLED').count()
+
+    @property
+    def is_full(self):
+        return self.registered_count >= self.max_invigilators
+
+    @property
+    def remaining_spots(self):
+        return max(0, self.max_invigilators - self.registered_count)
+
+    def __str__(self):
+        return f"{self.date.strftime('%d/%m/%Y')} - {self.session_name} ({self.registered_count}/{self.max_invigilators})"
+
+
+class TeacherShiftRegistration(models.Model):
+    """
+    A teacher's registration / assigned slot.
+    """
+    class Status(models.TextChoices):
+        CONFIRMED = 'CONFIRMED', 'បានបញ្ជាក់ / Confirmed'
+        ADMIN_ASSIGNED = 'ADMIN_ASSIGNED', 'ចាត់តាំងដោយ Admin / Admin Assigned'
+        PENDING = 'PENDING', 'រង់ចាំការអនុម័ត / Pending'
+        CANCELLED = 'CANCELLED', 'បានបោះបង់ / Cancelled'
+
+    slot = models.ForeignKey(ExamShiftSlot, on_delete=models.CASCADE, related_name='registrations', verbose_name="វេនប្រឡង / Shift Slot")
+    teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='exam_shift_registrations', verbose_name="គ្រូបង្រៀន / Teacher")
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.CONFIRMED, verbose_name="ស្ថានភាព / Status")
+    room_assignment = models.CharField(max_length=100, blank=True, null=True, verbose_name="បន្ទប់ដែលត្រូវឈរ / Room Assignment")
+    registered_at = models.DateTimeField(auto_now_add=True)
+    notes = models.CharField(max_length=255, blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+
+    class Meta:
+        unique_together = ('slot', 'teacher')
+        ordering = ['slot__date', 'slot__start_time', 'teacher__khmer_name']
+        verbose_name = "ការចុះឈ្មោះវេនអនុរក្ស / Teacher Shift Registration"
+        verbose_name_plural = "ការចុះឈ្មោះវេនអនុរក្សទាំងអស់ / Teacher Shift Registrations"
+
+    def __str__(self):
+        return f"{self.teacher.khmer_name} -> {self.slot.session_name} ({self.slot.date})"
+
+

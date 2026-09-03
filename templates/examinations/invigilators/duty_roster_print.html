@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <title>តារាងចាត់តាំងអនុរក្សប្រឡង៖ {{ plan.title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Moul&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.2cm 1.5cm;
+        }
+
+        body {
+            font-family: 'Battambang', 'Khmer OS Battambang', 'Khmer OS', Arial, sans-serif;
+            font-size: 11pt;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .moul-font {
+            font-family: 'Moul', 'Khmer OS Muol Light', sans-serif;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .kingdom-header {
+            text-align: center;
+        }
+
+        .kingdom-title {
+            font-size: 13pt;
+            margin-bottom: 3px;
+        }
+
+        .kingdom-motto {
+            font-size: 11pt;
+        }
+
+        .ministry-header {
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+
+        .main-title {
+            text-align: center;
+            font-size: 14pt;
+            margin: 15px 0 5px 0;
+        }
+
+        .sub-title {
+            text-align: center;
+            font-size: 11pt;
+            margin-bottom: 15px;
+        }
+
+        .meta-box {
+            border: 1px solid #000;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            font-size: 10.5pt;
+            display: flex;
+            justify-content: space-between;
+            background: #f9f9f9;
+        }
+
+        .shift-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .shift-header {
+            font-size: 11pt;
+            font-weight: 700;
+            margin-bottom: 6px;
+            background: #eee;
+            padding: 4px 8px;
+            border-left: 4px solid #000;
+        }
+
+        table.duty-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 10pt;
+        }
+
+        table.duty-table th, table.duty-table td {
+            border: 1px solid #000;
+            padding: 5px 8px;
+        }
+
+        table.duty-table th {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+        .fw-bold { font-weight: 700; }
+
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            page-break-inside: avoid;
+        }
+
+        .sig-block {
+            text-align: center;
+            width: 250px;
+        }
+
+        .no-print-bar {
+            background: #1e293b;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        @media print {
+            .no-print-bar { display: none !important; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print-bar">
+        <div>
+            <strong>🖨️ ទម្រង់បោះពុម្ពតារាងចាត់តាំងអនុរក្សប្រឡង (Print Duty Roster)</strong>
+        </div>
+        <div>
+            <button onclick="window.print()" style="background: #10b981; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                បោះពុម្ពឥឡូវនេះ (Print)
+            </button>
+            <button onclick="window.close()" style="background: #64748b; color: white; border: none; padding: 6px 12px; border-radius: 6px; margin-left: 8px; cursor: pointer;">
+                បិទ
+            </button>
+        </div>
+    </div>
+
+    <div style="padding: 15px 25px;">
+        <!-- MoEYS Cambodian Header -->
+        <div class="header-section">
+            <div class="ministry-header">
+                <div class="fw-bold">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                <div>មន្ទីរអប់រំ យុវជន និងកីឡា</div>
+                <div class="fw-bold text-decoration-underline">{{ plan.academic_year.name }}</div>
+            </div>
+            <div class="kingdom-header">
+                <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div style="letter-spacing: 3px;">***</div>
+            </div>
+        </div>
+
+        <div class="main-title moul-font">បញ្ជីចាត់តាំងគណៈកម្មការអនុរក្សប្រឡង</div>
+        <div class="sub-title fw-bold">
+            {{ plan.title }} • ឆ្នាំសិក្សា {{ plan.academic_year.name }}
+        </div>
+
+        <div class="meta-box">
+            <div>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ plan.start_date|date:"d/m/Y" }} ដល់ {{ plan.end_date|date:"d/m/Y" }}</strong></div>
+            <div>សរុប៖ <strong>{{ slots|length }} វេនប្រឡង</strong></div>
+        </div>
+
+        <!-- Shift Slots Tables -->
+        {% for s in slots %}
+        <div class="shift-section">
+            <div class="shift-header">
+                📅 {{ s.date|date:"l, d F Y (d/m/Y)" }} • {{ s.session_name }} (ម៉ោង៖ {{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }}) • ចំនួនអនុរក្ស៖ {{ s.registered_count }} នាក់
+            </div>
+
+            <table class="duty-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">ល.រ</th>
+                        <th>គោត្តនាម-នាម</th>
+                        <th style="width: 50px;">ភេទ</th>
+                        <th>អត្តលេខ</th>
+                        <th>ភារកិច្ចបច្ចុប្បន្ន</th>
+                        <th style="width: 150px;">បន្ទប់ឈរប្រឡង</th>
+                        <th style="width: 120px;">ហត្ថលេខា</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in s.registrations.all %}
+                    <tr>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td class="fw-bold">{{ r.teacher.khmer_name }}</td>
+                        <td class="text-center">{{ r.teacher.get_gender_display }}</td>
+                        <td class="text-center font-monospace">{{ r.teacher.teacher_id }}</td>
+                        <td>{{ r.teacher.current_duty|default:"គ្រូបង្រៀន" }}</td>
+                        <td class="text-center fw-bold">{{ r.room_assignment|default:"-" }}</td>
+                        <td></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-2" style="color: #777;">មិនទាន់មានអនុរក្សចាត់តាំងក្នុងវេននេះនៅឡើយទេ។</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+        <!-- Signatures Box -->
+        <div class="signature-section">
+            <div class="sig-block">
+                <div>បានឃើញ និងពិនិត្យត្រឹមត្រូវ</div>
+                <div class="fw-bold" style="margin-top: 5px;">ប្រធានមណ្ឌលប្រឡង</div>
+                <div style="height: 70px;"></div>
+                <div class="fw-bold">...................................................</div>
+            </div>
+            <div class="sig-block">
+                <div>ធ្វើនៅ....................., ថ្ងៃទី........ខែ.......ឆ្នាំ២០២...</div>
+                <div class="fw-bold" style="margin-top: 5px;">ប្រធានគណៈកម្មការរៀបចំការប្រឡង</div>
+                <div style="height: 70px;"></div>
+                <div class="fw-bold">...................................................</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -18,12 +18,14 @@ from apps.accounts.utils import send_telegram_notification
 from .models import (
     ExamTerm, Grade,
     StandardizedExam, ExamRoom, ExamSubject, ExamCandidate, CandidateSubjectScore,
-    ExamRoomSubjectCode, ExamStudentExclusion
+    ExamRoomSubjectCode, ExamStudentExclusion,
+    ExamInvigilatorPlan, TeacherDutyGroup, TeacherDutyQuota, ExamShiftSlot, TeacherShiftRegistration
 )
 from .forms import ExamTermForm, StandardizedExamForm
 
 from apps.academics.models import Classroom, Subject, AcademicYear, GradeLevelRule
 from apps.students.models import Student
+from apps.teachers.models import Teacher
 
 @login_required
 def exam_term_list(request):
@@ -585,10 +587,21 @@ def api_send_class_report_cards_telegram(request):
 # STANDARDIZED EXAM MANAGEMENT VIEWS (ប្រព័ន្ធប្រឡងតេស្តស្តង់ដាវិទ្យាល័យ)
 # =========================================================================
 
+import re
+
+def get_clean_exam_session_title(name):
+    # Remove grade specifications like (ថ្នាក់ទី ៧), ថ្នាក់ទី ៧, (Grade 12), etc.
+    cleaned = re.sub(r'[\(\[\{]?\s*(?:ថ្នាក់ទី|កម្រិតទី|Grade)\s*\d+\s*[\)\]\}]?', '', name, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s*-\s*$', '', cleaned).strip(" -–—:()")
+    return cleaned if cleaned else name
+
+
 @login_required
 def standardized_exam_list(request):
     """
-    Overview list of all Standardized Exams, filterable by Academic Year and Grade Level.
+    Two-Level Hierarchical Overview of Standardized Exams:
+    Level 1: Grouped by Exam Period / Session (សម័យប្រឡងនីមួយៗ)
+    Level 2: When admin clicks/expands a session, displays all individual Grade Levels under it.
     """
     from apps.academics.utils import get_active_academic_year
     active_year = get_active_academic_year(request)
@@ -602,30 +615,92 @@ def standardized_exam_list(request):
                 active_year = found_year
 
     selected_grade = request.GET.get('grade') or request.GET.get('grade_level')
+    search_q = request.GET.get('q', '').strip()
 
-    exams_qs = StandardizedExam.objects.select_related('academic_year').all()
+    exams_qs = StandardizedExam.objects.select_related('academic_year').prefetch_related('candidates', 'rooms', 'exam_subjects').all().order_by('-exam_date', 'grade_level')
     if active_year:
         exams_qs = exams_qs.filter(academic_year=active_year)
     if selected_grade and selected_grade != 'all' and selected_grade.isdigit():
         exams_qs = exams_qs.filter(grade_level=int(selected_grade))
+    if search_q:
+        exams_qs = exams_qs.filter(Q(name__icontains=search_q) | Q(description__icontains=search_q))
 
-    exams_data = []
+    # Group exams by (academic_year_id, exam_date, clean_title)
+    sessions_map = {}
     for ex in exams_qs:
-        exams_data.append({
+        clean_title = get_clean_exam_session_title(ex.name)
+        date_key = str(ex.exam_date)
+        year_key = str(ex.academic_year_id)
+        group_key = f"{year_key}_{date_key}_{clean_title}"
+
+        if group_key not in sessions_map:
+            sessions_map[group_key] = {
+                'group_key': group_key,
+                'html_id': f"session_{abs(hash(group_key)) % 1000000}",
+                'title': clean_title,
+                'academic_year': ex.academic_year,
+                'exam_date': ex.exam_date,
+                'total_candidates': 0,
+                'female_candidates': 0,
+                'total_rooms': 0,
+                'total_subjects': 0,
+                'grades_list': [],
+                'morning_grades': [],
+                'afternoon_grades': [],
+                'exams_data': [],
+            }
+
+        cand_count = ex.candidates.count()
+        fem_count = ex.candidates.filter(gender='F').count()
+        room_count = ex.rooms.count()
+        subj_count = ex.exam_subjects.count()
+
+        sess = sessions_map[group_key]
+        sess['total_candidates'] += cand_count
+        sess['female_candidates'] += fem_count
+        sess['total_rooms'] += room_count
+        sess['total_subjects'] = max(sess['total_subjects'], subj_count)
+        
+        if ex.grade_level not in sess['grades_list']:
+            sess['grades_list'].append(ex.grade_level)
+            sess['grades_list'].sort()
+
+        if ex.session == 'MORNING' and ex.grade_level not in sess['morning_grades']:
+            sess['morning_grades'].append(ex.grade_level)
+            sess['morning_grades'].sort()
+        elif ex.session == 'AFTERNOON' and ex.grade_level not in sess['afternoon_grades']:
+            sess['afternoon_grades'].append(ex.grade_level)
+            sess['afternoon_grades'].sort()
+
+        sess['exams_data'].append({
             'exam': ex,
-            'total_candidates': ex.candidates.count(),
-            'female_candidates': ex.candidates.filter(gender='F').count(),
-            'total_rooms': ex.rooms.count(),
-            'total_subjects': ex.exam_subjects.count(),
+            'total_candidates': cand_count,
+            'female_candidates': fem_count,
+            'total_rooms': room_count,
+            'total_subjects': subj_count,
         })
+
+    # Sort sessions by exam date descending
+    exam_sessions = list(sessions_map.values())
+    exam_sessions.sort(key=lambda s: s['exam_date'], reverse=True)
+
+    # Calculate overall total counts
+    total_all_exams = exams_qs.count()
+    total_all_candidates = sum(s['total_candidates'] for s in exam_sessions)
+    total_all_rooms = sum(s['total_rooms'] for s in exam_sessions)
 
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     return render(request, 'examinations/standardized/exam_list.html', {
-        'exams_data': exams_data,
+        'exam_sessions': exam_sessions,
+        'total_sessions_count': len(exam_sessions),
+        'total_all_exams': total_all_exams,
+        'total_all_candidates': total_all_candidates,
+        'total_all_rooms': total_all_rooms,
         'academic_years': academic_years,
         'active_year': active_year,
         'selected_year': str(active_year.id) if active_year else '',
         'selected_grade': selected_grade or 'all',
+        'search_q': search_q,
     })
 
 
@@ -718,26 +793,33 @@ def standardized_exam_create(request):
 
                 seen_subjects = set()
                 order_idx = 1
+                subj_session = 'AFTERNOON' if g_session == 'AFTERNOON' else 'MORNING'
                 for r in rules.select_related('subject').order_by('subject__order', 'id'):
                     if r.subject_id not in seen_subjects:
                         seen_subjects.add(r.subject_id)
-                        coef = Decimal(str(r.subject.credit if r.subject.credit else 1))
+                        max_sc = r.max_score or Decimal('50.00')
+                        # Auto-calculate coefficient: max_score / 50
+                        calculated_coef = round(max_sc / Decimal('50.00'), 2)
                         ExamSubject.objects.create(
                             exam=exam,
                             subject=r.subject,
-                            max_score=r.max_score or Decimal('50.00'),
-                            coefficient=coef,
+                            max_score=max_sc,
+                            coefficient=calculated_coef,
+                            session=subj_session,
                             order=order_idx
                         )
                         order_idx += 1
 
                 if not seen_subjects:
                     for s in Subject.objects.all().order_by('order', 'id')[:10]:
+                        max_sc = Decimal('50.00')
+                        calculated_coef = round(max_sc / Decimal('50.00'), 2)
                         ExamSubject.objects.create(
                             exam=exam,
                             subject=s,
-                            max_score=Decimal('50.00'),
-                            coefficient=Decimal(str(s.credit or 1)),
+                            max_score=max_sc,
+                            coefficient=calculated_coef,
+                            session=subj_session,
                             order=order_idx
                         )
                         order_idx += 1
@@ -795,11 +877,19 @@ def standardized_exam_edit(request, exam_id):
                             es.max_score = Decimal(str(max_s))
                         except Exception:
                             pass
-                    if coef:
+                    if coef is not None and str(coef).strip():
                         try:
+                            # Admin manual entry
                             es.coefficient = Decimal(str(coef))
                         except Exception:
                             pass
+                    elif max_s:
+                        # Auto-calculate: max_score / 50
+                        try:
+                            es.coefficient = round(es.max_score / Decimal('50.00'), 2)
+                        except Exception:
+                            pass
+
                     if sess:
                         es.session = sess
                     if ex_date:
@@ -969,52 +1059,220 @@ def exam_pull_candidates(request, exam_id):
     return redirect('standardized_exam_manage', exam_id=exam.id)
 
 
+def partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=25, building="អគារ A"):
+    """
+    Helper to partition candidates into rooms and assign desk/roll numbers according to parameters.
+    Returns: (total_candidates, needed_rooms, next_start_room, next_start_roll)
+    """
+    candidates = list(exam.candidates.all().order_by('origin_class', 'candidate_name_kh', 'id'))
+    if not candidates:
+        return 0, 0, start_room_number, start_roll_number
+
+    cap = cap or exam.candidates_per_room or 25
+    total_candidates = len(candidates)
+    needed_rooms = (total_candidates + cap - 1) // cap
+
+    # Clear existing rooms
+    exam.rooms.all().delete()
+
+    created_rooms = []
+    for r_idx in range(needed_rooms):
+        actual_room_num = start_room_number + r_idx
+        room_obj = ExamRoom.objects.create(
+            exam=exam,
+            room_number=actual_room_num,
+            room_name=f"បន្ទប់លេខ {actual_room_num:02d}",
+            building=building or "អគារ A"
+        )
+        created_rooms.append(room_obj)
+
+    for idx, cand in enumerate(candidates):
+        room_idx = idx // cap
+        desk_num = (idx % cap) + 1
+
+        cand.room = created_rooms[room_idx]
+        cand.desk_number = desk_num
+        cand.roll_number = f"{start_roll_number + idx:03d}"
+        cand.save(update_fields=['room', 'desk_number', 'roll_number'])
+
+    # Auto-generate unique secret codes for all rooms and subject envelopes
+    exam.generate_all_secret_codes(force_regenerate=True)
+
+    next_room_number = start_room_number + needed_rooms
+    next_roll_number = start_roll_number + total_candidates
+    return total_candidates, needed_rooms, next_room_number, next_roll_number
+
+
 @login_required
 @role_required(['ADMIN'])
 def exam_generate_rooms(request, exam_id):
     """
-    Auto-Partitions all candidates into 25 candidates per room (or custom cap),
-    generating Rooms 01, 02... and assigning Desk Numbers 01 to 25.
+    Auto-Partitions candidates into 25 candidates per room (or custom cap),
+    generating Rooms and assigning Desk/Roll Numbers based on selected policy:
+    - RESET_PER_GRADE: Starts from Room 01 and Roll No 001 for this grade.
+    - CONTINUOUS_IN_SHIFT: Continues room & roll numbers from previous grades in the same shift (Morning / Afternoon).
+    - CONTINUOUS_ALL_GRADES: Continues room & roll numbers across all grades.
+    - CUSTOM: Starts from custom start_room_number and start_roll_number specified by Admin.
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
-    candidates = list(exam.candidates.all().order_by('origin_class', 'candidate_name_kh', 'id'))
 
-    if not candidates:
+    numbering_mode = request.POST.get('numbering_mode', 'RESET_PER_GRADE')
+    custom_cpr = request.POST.get('candidates_per_room')
+    cap = int(custom_cpr) if custom_cpr and custom_cpr.isdigit() else (exam.candidates_per_room or 25)
+    building = request.POST.get('building', 'អគារ A')
+
+    start_room_number = 1
+    start_roll_number = 1
+
+    if numbering_mode == 'CONTINUOUS_IN_SHIFT':
+        # Find previous exams in the same academic year and same shift (session) with lower grade_level
+        prior_exams = StandardizedExam.objects.filter(
+            academic_year=exam.academic_year,
+            session=exam.session,
+            grade_level__lt=exam.grade_level
+        ).order_by('grade_level', 'id')
+        
+        total_prior_rooms = sum(e.rooms.count() for e in prior_exams)
+        total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
+        start_room_number = total_prior_rooms + 1
+        start_roll_number = total_prior_candidates + 1
+
+    elif numbering_mode == 'CONTINUOUS_ALL_GRADES':
+        # Find previous exams in the same academic year with lower grade_level
+        prior_exams = StandardizedExam.objects.filter(
+            academic_year=exam.academic_year,
+            grade_level__lt=exam.grade_level
+        ).order_by('grade_level', 'id')
+        
+        total_prior_rooms = sum(e.rooms.count() for e in prior_exams)
+        total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
+        start_room_number = total_prior_rooms + 1
+        start_roll_number = total_prior_candidates + 1
+
+    elif numbering_mode == 'CUSTOM':
+        c_room = request.POST.get('start_room_number')
+        c_roll = request.POST.get('start_roll_number')
+        start_room_number = int(c_room) if c_room and c_room.isdigit() else 1
+        start_roll_number = int(c_roll) if c_roll and c_roll.isdigit() else 1
+
+    with transaction.atomic():
+        total_cands, needed_rooms, _, _ = partition_exam_rooms(
+            exam=exam,
+            start_room_number=start_room_number,
+            start_roll_number=start_roll_number,
+            cap=cap,
+            building=building
+        )
+
+    if total_cands == 0:
         messages.warning(request, "មិនទាន់មានបេក្ខជនក្នុងសម័យប្រឡងនេះនៅឡើយទេ! សូមទាញ ឬបញ្ចូលបញ្ជីបេក្ខជនជាមុនសិន។")
         return redirect('standardized_exam_manage', exam_id=exam.id)
 
-    cap = exam.candidates_per_room or 25
-    total_candidates = len(candidates)
-    needed_rooms = (total_candidates + cap - 1) // cap
+    mode_labels = {
+        'RESET_PER_GRADE': 'រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នេះ',
+        'CONTINUOUS_IN_SHIFT': f'រាប់បន្តគ្នាក្នុង {exam.get_session_display()}',
+        'CONTINUOUS_ALL_GRADES': 'រាប់បន្តគ្នាគ្រប់កម្រិតថ្នាក់',
+        'CUSTOM': f'កំណត់ដោយខ្លួនឯង (បន្ទប់ទី {start_room_number:02d}, អត្តលេខ {start_roll_number:03d})'
+    }
+    mode_text = mode_labels.get(numbering_mode, 'ស្តង់ដារ')
+    messages.success(request, f"🎉 បានរៀបចំ និងបែងចែកបេក្ខជនចំនួន {total_cands} នាក់ ទៅកាន់បន្ទប់ប្រឡង {needed_rooms} បន្ទប់ ({cap} នាក់/បន្ទប់) តាមទម្រង់ «{mode_text}» (បន្ទប់លេខ {start_room_number:02d} ដល់ {start_room_number+needed_rooms-1:02d}, អត្តលេខ {start_roll_number:03d} ដល់ {start_roll_number+total_cands-1:03d}) ដោយជោគជ័យ!")
+    return redirect('standardized_exam_manage', exam_id=exam.id)
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_batch_generate_rooms(request):
+    """
+    Batch Auto-Partitions all standardized exams across multiple grades in one click.
+    Supports Numbering Policies:
+    - RESET_PER_GRADE: Each grade resets to Room 01 and Roll 001.
+    - CONTINUOUS_IN_SHIFT: Sequential room & roll numbers within Morning shift (7-10) and Afternoon shift (11-12).
+    - CONTINUOUS_ALL_GRADES: Sequential room & roll numbers across all grades (7-12).
+    """
+    if request.method != 'POST':
+        return redirect('standardized_exam_list')
+
+    from apps.academics.utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    academic_year_id = request.POST.get('academic_year')
+    ay = AcademicYear.objects.filter(id=academic_year_id).first() if academic_year_id else active_year
+    
+    scope = request.POST.get('scope', 'ALL_GRADES')
+    numbering_mode = request.POST.get('numbering_mode', 'CONTINUOUS_IN_SHIFT')
+    custom_cpr = request.POST.get('candidates_per_room')
+    cap = int(custom_cpr) if custom_cpr and custom_cpr.isdigit() else 25
+    building = request.POST.get('building', 'អគារ A')
+
+    exams_qs = StandardizedExam.objects.filter(academic_year=ay)
+    if scope == 'MORNING_SHIFT':
+        exams_qs = exams_qs.filter(session='MORNING')
+    elif scope == 'AFTERNOON_SHIFT':
+        exams_qs = exams_qs.filter(session='AFTERNOON')
+
+    exams = list(exams_qs.order_by('grade_level', 'id'))
+    if not exams:
+        messages.warning(request, "មិនមានសម័យប្រឡងណាត្រូវនឹងលក្ខខណ្ឌជ្រើសរើសឡើយ!")
+        return redirect('standardized_exam_list')
+
+    total_exams_processed = 0
+    total_candidates_partitioned = 0
+    total_rooms_created = 0
 
     with transaction.atomic():
-        # Clear existing room assignments
-        exam.rooms.all().delete()
+        if numbering_mode == 'RESET_PER_GRADE':
+            for exam in exams:
+                c_count, r_count, _, _ = partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=cap, building=building)
+                if c_count > 0:
+                    total_exams_processed += 1
+                    total_candidates_partitioned += c_count
+                    total_rooms_created += r_count
 
-        created_rooms = []
-        for r_num in range(1, needed_rooms + 1):
-            room_obj = ExamRoom.objects.create(
-                exam=exam,
-                room_number=r_num,
-                room_name=f"បន្ទប់លេខ {r_num:02d}",
-                building="អគារ A"
-            )
-            created_rooms.append(room_obj)
+        elif numbering_mode == 'CONTINUOUS_IN_SHIFT':
+            # Group by session
+            shift_counters = {
+                'MORNING': {'room': 1, 'roll': 1},
+                'AFTERNOON': {'room': 1, 'roll': 1},
+                'FULL_DAY': {'room': 1, 'roll': 1},
+            }
+            for exam in exams:
+                sess = exam.session if exam.session in shift_counters else 'MORNING'
+                curr_room = shift_counters[sess]['room']
+                curr_roll = shift_counters[sess]['roll']
+                c_count, r_count, next_room, next_roll = partition_exam_rooms(
+                    exam,
+                    start_room_number=curr_room,
+                    start_roll_number=curr_roll,
+                    cap=cap,
+                    building=building
+                )
+                if c_count > 0:
+                    shift_counters[sess]['room'] = next_room
+                    shift_counters[sess]['roll'] = next_roll
+                    total_exams_processed += 1
+                    total_candidates_partitioned += c_count
+                    total_rooms_created += r_count
 
-        for idx, cand in enumerate(candidates):
-            room_idx = idx // cap
-            desk_num = (idx % cap) + 1
+        else: # CONTINUOUS_ALL_GRADES
+            curr_room = 1
+            curr_roll = 1
+            for exam in exams:
+                c_count, r_count, next_room, next_roll = partition_exam_rooms(
+                    exam,
+                    start_room_number=curr_room,
+                    start_roll_number=curr_roll,
+                    cap=cap,
+                    building=building
+                )
+                if c_count > 0:
+                    curr_room = next_room
+                    curr_roll = next_roll
+                    total_exams_processed += 1
+                    total_candidates_partitioned += c_count
+                    total_rooms_created += r_count
 
-            cand.room = created_rooms[room_idx]
-            cand.desk_number = desk_num
-            cand.roll_number = f"{idx + 1:03d}"
-            cand.save(update_fields=['room', 'desk_number', 'roll_number'])
-
-        # Auto-generate unique secret codes for all rooms and subject envelopes
-        exam.generate_all_secret_codes(force_regenerate=True)
-
-    messages.success(request, f"🎉 បានរៀបចំ និងបែងចែកបេក្ខជនចំនួន {total_candidates} នាក់ ទៅកាន់បន្ទប់ប្រឡងចំនួន {needed_rooms} បន្ទប់ ({cap} នាក់/បន្ទប់) ព្រមទាំងបង្កើតលេខកូដសម្ងាត់សម្រាប់គ្រប់កញ្ចប់វិញ្ញាសាដោយជោគជ័យ!")
-    return redirect('standardized_exam_manage', exam_id=exam.id)
+    messages.success(request, f"⚡ បានរៀបចំ និងចែកបន្ទប់ស្វ័យប្រវត្តិសរុប {total_exams_processed} សម័យប្រឡង (បេក្ខជន {total_candidates_partitioned} នាក់, បន្ទប់ {total_rooms_created} បន្ទប់) ដោយជោគជ័យ!")
+    return redirect('standardized_exam_list')
 
 
 
@@ -2651,6 +2909,723 @@ def export_annual_results_excel(request):
     response = HttpResponse(buffer.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# ==============================================================================
+# TEACHER EXAM INVIGILATOR / PROCTOR SHIFT SYSTEM VIEWS (ប្រព័ន្ធសុំវេនអនុរក្ស)
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_plans_list(request):
+    """
+    Admin View: Displays all Exam Invigilator Configuration Plans, their Active status,
+    and summary statistics (Total Slots, Spots Needed vs Filled).
+    """
+    from apps.academics.utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    plans = list(ExamInvigilatorPlan.objects.select_related('academic_year').prefetch_related('shift_slots__registrations').all().order_by('-start_date', '-created_at'))
+    
+    # Calculate statistics for each plan
+    for p in plans:
+        slots = list(p.shift_slots.all())
+        p.calc_total_slots = len(slots)
+        p.calc_total_capacity = sum(s.max_invigilators for s in slots)
+        p.calc_total_registered = sum(s.registered_count for s in slots)
+        p.calc_percentage = round((p.calc_total_registered / p.calc_total_capacity * 100), 1) if p.calc_total_capacity > 0 else 0
+
+    return render(request, 'examinations/invigilators/plan_list.html', {
+        'plans': plans,
+        'active_year': active_year,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_plan_create(request):
+    """
+    Admin View: Creates a new Exam Invigilator Plan with default teacher groups and auto-generated slots.
+    """
+    from apps.academics.utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        ay_id = request.POST.get('academic_year')
+        ay = AcademicYear.objects.filter(id=ay_id).first() if ay_id else active_year
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+        description = request.POST.get('description', '').strip()
+        
+        is_active = (request.POST.get('is_active') == 'on')
+        allow_reg = (request.POST.get('allow_teacher_registration') == 'on')
+        reg_quota = int(request.POST.get('default_regular_quota', 4))
+        off_quota = int(request.POST.get('default_office_quota', 5))
+        auto_create_slots = (request.POST.get('auto_create_slots') == 'on')
+        slots_capacity = int(request.POST.get('slots_capacity', 20))
+
+        try:
+            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except Exception:
+            messages.error(request, "កាលបរិច្ឆេទចាប់ផ្តើម និងបញ្ចប់មិនត្រឹមត្រូវឡើយ!")
+            return redirect('exam_invigilator_plan_create')
+
+        if start_date > end_date:
+            messages.error(request, "កាលបរិច្ឆេទចាប់ផ្តើមមិនអាចក្រោយកាលបរិច្ឆេទបញ្ចប់បានទេ!")
+            return redirect('exam_invigilator_plan_create')
+
+        with transaction.atomic():
+            # If set to active, deactivate other plans to avoid confusion
+            if is_active:
+                ExamInvigilatorPlan.objects.all().update(is_active=False)
+
+            plan = ExamInvigilatorPlan.objects.create(
+                academic_year=ay,
+                title=title,
+                description=description,
+                start_date=start_date,
+                end_date=end_date,
+                is_active=is_active,
+                allow_teacher_registration=allow_reg,
+                default_regular_quota=reg_quota,
+                default_office_quota=off_quota
+            )
+
+            # 1. Create Default Teacher Duty Groups
+            group_regular = TeacherDutyGroup.objects.create(
+                plan=plan,
+                name="គ្រូបង្រៀនធម្មតា (Regular Teachers)",
+                required_shifts=reg_quota,
+                description="គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់",
+                order=1
+            )
+            group_office = TeacherDutyGroup.objects.create(
+                plan=plan,
+                name="គ្រូការិយាល័យ / រដ្ឋបាល (Office Staff Teachers)",
+                required_shifts=off_quota,
+                description="គ្រូដែលបម្រើការងារនៅការិយាល័យ និងរដ្ឋបាល",
+                order=2
+            )
+            group_mgmt = TeacherDutyGroup.objects.create(
+                plan=plan,
+                name="គណៈគ្រប់គ្រង / នាយក-នាយករង (Management)",
+                required_shifts=2,
+                description="គណៈគ្រប់គ្រង និងប្រធានផ្នែក",
+                order=3
+            )
+
+            # 2. Auto-Populate Teacher Quotas from Active Teachers
+            active_teachers = Teacher.objects.filter(status=Teacher.Status.ACTIVE)
+            for t in active_teachers:
+                duty_lower = (t.current_duty or '').lower()
+                if any(kw in duty_lower for kw in ['នាយក', 'នាយករង', 'management', 'director']):
+                    assigned_group = group_mgmt
+                elif any(kw in duty_lower for kw in ['ការិយាល័យ', 'រដ្ឋបាល', 'បណ្ណារក្ស', 'គណនេយ្យ', 'office', 'admin', 'clerk']):
+                    assigned_group = group_office
+                else:
+                    assigned_group = group_regular
+
+                TeacherDutyQuota.objects.create(
+                    plan=plan,
+                    teacher=t,
+                    duty_group=assigned_group
+                )
+
+            # 3. Auto-Generate Daily Shift Slots if requested
+            if auto_create_slots:
+                curr = start_date
+                day_num = 1
+                slot_order = 1
+                while curr <= end_date:
+                    # Morning Slot
+                    ExamShiftSlot.objects.create(
+                        plan=plan,
+                        date=curr,
+                        session='MORNING',
+                        session_name=f"ថ្ងៃទី{day_num} - 🌅 ពេលព្រឹក (Day {day_num} Morning)",
+                        start_time=datetime.time(7, 0),
+                        end_time=datetime.time(11, 0),
+                        max_invigilators=slots_capacity,
+                        order=slot_order
+                    )
+                    slot_order += 1
+                    # Afternoon Slot
+                    ExamShiftSlot.objects.create(
+                        plan=plan,
+                        date=curr,
+                        session='AFTERNOON',
+                        session_name=f"ថ្ងៃទី{day_num} - ⛅ ពេលរសៀល (Day {day_num} Afternoon)",
+                        start_time=datetime.time(13, 0),
+                        end_time=datetime.time(17, 0),
+                        max_invigilators=slots_capacity,
+                        order=slot_order
+                    )
+                    slot_order += 1
+                    curr += datetime.timedelta(days=1)
+                    day_num += 1
+
+        messages.success(request, f"🎉 បានបង្កើតគម្រោងវេនអនុរក្សប្រឡង «{plan.title}» ព្រមទាំងបង្កើតវេនប្រឡង និងកំណត់កូតាគ្រូបង្រៀនស្វ័យប្រវត្តិដោយជោគជ័យ!")
+        return redirect('exam_invigilator_plans_list')
+
+    return render(request, 'examinations/invigilators/plan_form.html', {
+        'active_year': active_year,
+        'academic_years': academic_years,
+        'is_edit': False,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_plan_edit(request, plan_id):
+    """
+    Admin View: Edit plan settings, add/edit/delete shift slots.
+    """
+    plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    if request.method == 'POST':
+        action = request.POST.get('form_action', 'update_plan')
+
+        if action == 'update_plan':
+            plan.title = request.POST.get('title', '').strip()
+            ay_id = request.POST.get('academic_year')
+            if ay_id:
+                plan.academic_year_id = int(ay_id)
+            plan.description = request.POST.get('description', '').strip()
+            plan.is_active = (request.POST.get('is_active') == 'on')
+            plan.allow_teacher_registration = (request.POST.get('allow_teacher_registration') == 'on')
+            plan.default_regular_quota = int(request.POST.get('default_regular_quota', plan.default_regular_quota))
+            plan.default_office_quota = int(request.POST.get('default_office_quota', plan.default_office_quota))
+
+            if plan.is_active:
+                ExamInvigilatorPlan.objects.exclude(id=plan.id).update(is_active=False)
+
+            plan.save()
+            messages.success(request, "🎉 បានកែប្រែព័ត៌មានគម្រោងដោយជោគជ័យ!")
+            return redirect('exam_invigilator_plan_edit', plan_id=plan.id)
+
+        elif action == 'add_slot':
+            date_str = request.POST.get('slot_date')
+            session = request.POST.get('slot_session', 'MORNING')
+            name = request.POST.get('slot_name', '').strip()
+            start_str = request.POST.get('slot_start', '07:00')
+            end_str = request.POST.get('slot_end', '11:00')
+            cap = int(request.POST.get('slot_capacity', 20))
+
+            try:
+                slot_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+                st = datetime.datetime.strptime(start_str, '%H:%M').time()
+                et = datetime.datetime.strptime(end_str, '%H:%M').time()
+            except Exception:
+                messages.error(request, "កាលបរិច្ឆេទ ឬម៉ោងមិនត្រឹមត្រូវឡើយ!")
+                return redirect('exam_invigilator_plan_edit', plan_id=plan.id)
+
+            if not name:
+                name = f"{slot_date.strftime('%d/%m/%Y')} - {'ព្រឹក' if session=='MORNING' else 'រសៀល'}"
+
+            ExamShiftSlot.objects.create(
+                plan=plan,
+                date=slot_date,
+                session=session,
+                session_name=name,
+                start_time=st,
+                end_time=et,
+                max_invigilators=cap,
+                order=plan.shift_slots.count() + 1
+            )
+            messages.success(request, f"🎉 បានបន្ថែមវេនប្រឡង «{name}» ដោយជោគជ័យ!")
+            return redirect('exam_invigilator_plan_edit', plan_id=plan.id)
+
+        elif action == 'delete_slot':
+            slot_id = request.POST.get('slot_id')
+            slot = get_object_or_404(ExamShiftSlot, id=slot_id, plan=plan)
+            slot.delete()
+            messages.success(request, "🗑️ បានលុបវេនប្រឡងដោយជោគជ័យ!")
+            return redirect('exam_invigilator_plan_edit', plan_id=plan.id)
+
+    slots = list(plan.shift_slots.all().order_by('date', 'start_time'))
+    return render(request, 'examinations/invigilators/plan_form.html', {
+        'plan': plan,
+        'slots': slots,
+        'academic_years': academic_years,
+        'is_edit': True,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_plan_toggle_active(request, plan_id):
+    """
+    Admin View: 1-Click Toggle Active / Inactive switch.
+    When activated, allows teachers to view and request shifts.
+    When deactivated, strictly hides and blocks requests from teachers.
+    """
+    if request.method == 'POST':
+        plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+        if not plan.is_active:
+            # Deactivate any other active plan and activate this one
+            ExamInvigilatorPlan.objects.exclude(id=plan.id).update(is_active=False)
+            plan.is_active = True
+            plan.allow_teacher_registration = True
+            plan.save(update_fields=['is_active', 'allow_teacher_registration'])
+            messages.success(request, f"🟢 បានបើកដំណើរការការស្នើសុំវេនអនុរក្ស «{plan.title}» ជាផ្លូវការ! គ្រូបង្រៀនអាចមើលឃើញ និងស្នើសុំវេនបានហើយ។")
+        else:
+            plan.is_active = False
+            plan.save(update_fields=['is_active'])
+            messages.warning(request, f"🔴 បានបិទដំណើរការការស្នើសុំវេនអនុរក្ស «{plan.title}»! ផ្ទាំងស្នើសុំត្រូវបានលាក់ និងបិទមិនឱ្យគ្រូស្នើសុំទៀតទេ។")
+
+    return redirect('exam_invigilator_plans_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_plan_delete(request, plan_id):
+    """
+    Admin View: Deletes an Exam Invigilator Plan.
+    """
+    if request.method == 'POST':
+        plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+        title = plan.title
+        plan.delete()
+        messages.success(request, f"🗑️ បានលុបគម្រោងវេនអនុរក្ស «{title}» ដោយជោគជ័យ!")
+    return redirect('exam_invigilator_plans_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_quotas_manage(request, plan_id):
+    """
+    Admin View: Manages Teacher Duty Groups (Regular=4, Office=5, etc.) and individual teacher shift quotas.
+    """
+    plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add_group':
+            name = request.POST.get('name', '').strip()
+            shifts = int(request.POST.get('required_shifts', 4))
+            desc = request.POST.get('description', '').strip()
+            if name:
+                TeacherDutyGroup.objects.create(
+                    plan=plan,
+                    name=name,
+                    required_shifts=shifts,
+                    description=desc,
+                    order=plan.duty_groups.count() + 1
+                )
+                messages.success(request, f"🎉 បានបន្ថែមក្រុម «{name}» ({shifts} វេន) ដោយជោគជ័យ!")
+
+        elif action == 'edit_group':
+            group_id = request.POST.get('group_id')
+            grp = get_object_or_404(TeacherDutyGroup, id=group_id, plan=plan)
+            grp.name = request.POST.get('name', grp.name).strip()
+            grp.required_shifts = int(request.POST.get('required_shifts', grp.required_shifts))
+            grp.description = request.POST.get('description', grp.description).strip()
+            grp.save()
+            messages.success(request, f"🎉 បានកែប្រែក្រុម «{grp.name}» ដោយជោគជ័យ!")
+
+        elif action == 'delete_group':
+            group_id = request.POST.get('group_id')
+            grp = get_object_or_404(TeacherDutyGroup, id=group_id, plan=plan)
+            grp.delete()
+            messages.success(request, "🗑️ បានលុបក្រុមដោយជោគជ័យ!")
+
+        elif action == 'auto_classify_teachers':
+            # Auto-classify all active teachers based on their duty/position
+            active_teachers = Teacher.objects.filter(status=Teacher.Status.ACTIVE)
+            group_regular = plan.duty_groups.filter(name__icontains='ធម្មតា').first() or plan.duty_groups.first()
+            group_office = plan.duty_groups.filter(name__icontains='ការិយាល័យ').first() or plan.duty_groups.first()
+            group_mgmt = plan.duty_groups.filter(name__icontains='គ្រប់គ្រង').first() or group_office
+
+            count = 0
+            with transaction.atomic():
+                for t in active_teachers:
+                    duty_lower = (t.current_duty or '').lower()
+                    if any(kw in duty_lower for kw in ['នាយក', 'នាយករង', 'management', 'director']):
+                        assigned_group = group_mgmt
+                    elif any(kw in duty_lower for kw in ['ការិយាល័យ', 'រដ្ឋបាល', 'បណ្ណារក្ស', 'គណនេយ្យ', 'office', 'admin', 'clerk']):
+                        assigned_group = group_office
+                    else:
+                        assigned_group = group_regular
+
+                    quota_obj, created = TeacherDutyQuota.objects.get_or_create(
+                        plan=plan,
+                        teacher=t,
+                        defaults={'duty_group': assigned_group}
+                    )
+                    if not created:
+                        quota_obj.duty_group = assigned_group
+                        quota_obj.save(update_fields=['duty_group'])
+                    count += 1
+
+            messages.success(request, f"⚡ បានកំណត់ក្រុម និងកូតាស្វ័យប្រវត្តិជូនគ្រូចំនួន {count} នាក់ដោយជោគជ័យ!")
+
+        elif action == 'save_teacher_quotas':
+            # Save inline updates for teachers
+            quotas = plan.teacher_quotas.all()
+            for q in quotas:
+                grp_val = request.POST.get(f'group_{q.id}')
+                custom_val = request.POST.get(f'custom_{q.id}', '').strip()
+                exempt_val = request.POST.get(f'exempt_{q.id}') == 'on'
+
+                if grp_val and grp_val.isdigit():
+                    q.duty_group_id = int(grp_val)
+                if custom_val and custom_val.isdigit():
+                    q.custom_required_shifts = int(custom_val)
+                else:
+                    q.custom_required_shifts = None
+                q.is_exempt = exempt_val
+                q.save(update_fields=['duty_group', 'custom_required_shifts', 'is_exempt'])
+
+            messages.success(request, "🎉 បានរក្សាទុកការកំណត់កូតាគ្រូបង្រៀនដោយជោគជ័យ!")
+
+        return redirect('exam_invigilator_quotas_manage', plan_id=plan.id)
+
+    duty_groups = list(plan.duty_groups.all())
+    
+    # Ensure all active teachers have quota records
+    active_teachers = list(Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name'))
+    existing_quotas = {q.teacher_id: q for q in plan.teacher_quotas.select_related('teacher', 'duty_group').all()}
+    
+    teacher_quota_rows = []
+    default_group = duty_groups[0] if duty_groups else None
+    for t in active_teachers:
+        q_obj = existing_quotas.get(t.id)
+        if not q_obj:
+            q_obj = TeacherDutyQuota.objects.create(
+                plan=plan,
+                teacher=t,
+                duty_group=default_group
+            )
+        # Calculate how many shifts this teacher has registered so far
+        q_obj.registered_count = t.exam_shift_registrations.filter(slot__plan=plan).exclude(status='CANCELLED').count()
+        q_obj.is_fulfilled = (q_obj.registered_count >= q_obj.effective_required_shifts)
+        teacher_quota_rows.append(q_obj)
+
+    return render(request, 'examinations/invigilators/quotas_manage.html', {
+        'plan': plan,
+        'duty_groups': duty_groups,
+        'teacher_quotas': teacher_quota_rows,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_roster_view(request, plan_id):
+    """
+    Admin View: Duty Matrix of all shift slots, registered teachers, room assignments,
+    unfulfilled teachers list, and 1-click auto-assignment.
+    """
+    plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'admin_assign_teacher':
+            slot_id = request.POST.get('slot_id')
+            teacher_id = request.POST.get('teacher_id')
+            room = request.POST.get('room_assignment', '').strip()
+            slot = get_object_or_404(ExamShiftSlot, id=slot_id, plan=plan)
+            teacher = get_object_or_404(Teacher, id=teacher_id)
+
+            reg, created = TeacherShiftRegistration.objects.get_or_create(
+                slot=slot,
+                teacher=teacher,
+                defaults={'status': 'ADMIN_ASSIGNED', 'room_assignment': room}
+            )
+            if not created:
+                reg.status = 'ADMIN_ASSIGNED'
+                if room:
+                    reg.room_assignment = room
+                reg.save(update_fields=['status', 'room_assignment'])
+            messages.success(request, f"🎉 បានចាត់តាំងលោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} ចូលក្នុង {slot.session_name} ដោយជោគជ័យ!")
+
+        elif action == 'admin_remove_teacher':
+            reg_id = request.POST.get('registration_id')
+            reg = get_object_or_404(TeacherShiftRegistration, id=reg_id, slot__plan=plan)
+            t_name = reg.teacher.khmer_name
+            reg.delete()
+            messages.success(request, f"🗑️ បានដកឈ្មោះ {t_name} ចេញពីវេនប្រឡងដោយជោគជ័យ!")
+
+        elif action == 'update_room_assignments':
+            reg_id = request.POST.get('registration_id')
+            room = request.POST.get('room_assignment', '').strip()
+            reg = get_object_or_404(TeacherShiftRegistration, id=reg_id, slot__plan=plan)
+            reg.room_assignment = room
+            reg.save(update_fields=['room_assignment'])
+            messages.success(request, "🎉 បានធ្វើបច្ចុប្បន្នភាពបន្ទប់ឈរប្រឡងដោយជោគជ័យ!")
+
+        return redirect('exam_invigilator_roster_view', plan_id=plan.id)
+
+    slots = list(plan.shift_slots.prefetch_related('registrations__teacher').order_by('date', 'start_time'))
+    
+    # Build list of unfulfilled teachers
+    active_teachers = list(Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name'))
+    existing_quotas = {q.teacher_id: q for q in plan.teacher_quotas.select_related('duty_group').all()}
+    registrations_count_map = dict(
+        TeacherShiftRegistration.objects.filter(slot__plan=plan)
+        .exclude(status='CANCELLED')
+        .values('teacher_id')
+        .annotate(c=Count('id'))
+        .values_list('teacher_id', 'c')
+    )
+
+    unfulfilled_teachers = []
+    for t in active_teachers:
+        q_obj = existing_quotas.get(t.id)
+        req = q_obj.effective_required_shifts if q_obj else plan.default_regular_quota
+        reg_count = registrations_count_map.get(t.id, 0)
+        if reg_count < req:
+            unfulfilled_teachers.append({
+                'teacher': t,
+                'required': req,
+                'registered': reg_count,
+                'shortage': req - reg_count,
+                'group': q_obj.duty_group.name if (q_obj and q_obj.duty_group) else 'ធម្មតា',
+            })
+
+    unfulfilled_teachers.sort(key=lambda x: -x['shortage'])
+
+    return render(request, 'examinations/invigilators/roster_matrix.html', {
+        'plan': plan,
+        'slots': slots,
+        'unfulfilled_teachers': unfulfilled_teachers,
+        'active_teachers': active_teachers,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_invigilator_auto_assign(request, plan_id):
+    """
+    1-Click Auto-Assign: Automatically assigns unfulfilled teachers to slots that have empty spots.
+    """
+    if request.method != 'POST':
+        return redirect('exam_invigilator_roster_view', plan_id=plan_id)
+
+    plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+    slots = list(plan.shift_slots.all().order_by('date', 'start_time'))
+    
+    active_teachers = list(Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name'))
+    existing_quotas = {q.teacher_id: q for q in plan.teacher_quotas.select_related('duty_group').all()}
+    
+    # Map teacher registered slot ids & slot filled counts
+    teacher_registered_slots = {t.id: set() for t in active_teachers}
+    slot_registered_counts = {s.id: 0 for s in slots}
+    
+    for reg in TeacherShiftRegistration.objects.filter(slot__plan=plan).exclude(status='CANCELLED'):
+        if reg.teacher_id in teacher_registered_slots:
+            teacher_registered_slots[reg.teacher_id].add(reg.slot_id)
+        if reg.slot_id in slot_registered_counts:
+            slot_registered_counts[reg.slot_id] += 1
+
+    assigned_count = 0
+    with transaction.atomic():
+        # Iterate over unfulfilled teachers
+        for t in active_teachers:
+            q_obj = existing_quotas.get(t.id)
+            if q_obj and q_obj.is_exempt:
+                continue
+            req = q_obj.effective_required_shifts if q_obj else plan.default_regular_quota
+            current_count = len(teacher_registered_slots[t.id])
+
+            while current_count < req:
+                # Find available slot where teacher is not yet registered and spot is available
+                available_slot = None
+                for s in slots:
+                    if s.id not in teacher_registered_slots[t.id] and slot_registered_counts[s.id] < s.max_invigilators:
+                        available_slot = s
+                        break
+
+                if not available_slot:
+                    break # No more spots available
+
+                TeacherShiftRegistration.objects.create(
+                    slot=available_slot,
+                    teacher=t,
+                    status='ADMIN_ASSIGNED',
+                    notes='Auto-assigned by system'
+                )
+                teacher_registered_slots[t.id].add(available_slot.id)
+                slot_registered_counts[available_slot.id] += 1
+                current_count += 1
+                assigned_count += 1
+
+    messages.success(request, f"⚡ បានចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំនួន {assigned_count} វេន ដោយជោគជ័យ!")
+    return redirect('exam_invigilator_roster_view', plan_id=plan.id)
+
+
+@login_required
+@role_required(['ADMIN'])
+def exam_invigilator_roster_print(request, plan_id):
+    """
+    Official MoEYS Exam Invigilator Duty Roster (តារាងចាត់តាំងអនុរក្សប្រឡង) for printing.
+    """
+    plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
+    slots = list(plan.shift_slots.prefetch_related('registrations__teacher').order_by('date', 'start_time'))
+
+    return render(request, 'examinations/invigilators/duty_roster_print.html', {
+        'plan': plan,
+        'slots': slots,
+    })
+
+
+@login_required
+def exam_invigilator_teacher_portal(request):
+    """
+    Teacher Self-Service Portal:
+    - If is_active == False, renders inactive notice.
+    - If active, displays teacher's required quota, registered slots, interactive slot cards with touch/zoom support.
+    """
+    plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+
+    if not plan or not plan.allow_teacher_registration:
+        return render(request, 'examinations/invigilators/teacher_portal.html', {
+            'is_active': False,
+            'plan': plan,
+        })
+
+    # Find teacher profile
+    teacher = None
+    if hasattr(request.user, 'teacher_profile') and request.user.teacher_profile:
+        teacher = request.user.teacher_profile
+    elif request.user.is_superuser or request.user.role == 'ADMIN':
+        # Admin can test in name of a teacher
+        tid = request.GET.get('teacher_id')
+        if tid and tid.isdigit():
+            teacher = Teacher.objects.filter(id=int(tid)).first()
+        if not teacher:
+            teacher = Teacher.objects.filter(status=Teacher.Status.ACTIVE).first()
+
+    if not teacher:
+        messages.warning(request, "មិនមានទម្រង់គ្រូបង្រៀនដែលត្រូវគ្នានឹងគណនីរបស់អ្នកឡើយ!")
+        return render(request, 'examinations/invigilators/teacher_portal.html', {
+            'is_active': False,
+            'plan': plan,
+            'no_teacher_profile': True,
+        })
+
+    quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+    required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+    duty_group_name = quota_obj.duty_group.name if (quota_obj and quota_obj.duty_group) else "គ្រូបង្រៀនធម្មតា"
+
+    # Get teacher's registered slot IDs
+    registered_slot_ids = set(
+        TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher)
+        .exclude(status='CANCELLED')
+        .values_list('slot_id', flat=True)
+    )
+
+    # Group slots by date
+    all_slots = list(plan.shift_slots.prefetch_related('registrations').order_by('date', 'start_time'))
+    slots_by_date = {}
+    for s in all_slots:
+        s.is_teacher_registered = (s.id in registered_slot_ids)
+        d_str = s.date.strftime('%Y-%m-%d')
+        if d_str not in slots_by_date:
+            slots_by_date[d_str] = {
+                'date': s.date,
+                'slots': []
+            }
+        slots_by_date[d_str]['slots'].append(s)
+
+    current_count = len(registered_slot_ids)
+    progress_percentage = min(100, round(current_count / required_shifts * 100)) if required_shifts > 0 else 100
+
+    return render(request, 'examinations/invigilators/teacher_portal.html', {
+        'is_active': True,
+        'plan': plan,
+        'teacher': teacher,
+        'required_shifts': required_shifts,
+        'current_count': current_count,
+        'remaining_to_choose': max(0, required_shifts - current_count),
+        'progress_percentage': progress_percentage,
+        'duty_group_name': duty_group_name,
+        'slots_by_date': list(slots_by_date.values()),
+        'all_teachers': Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name') if request.user.role == 'ADMIN' else None,
+    })
+
+
+@login_required
+def api_toggle_invigilator_slot(request):
+    """
+    AJAX API for teachers to toggle selection of an exam shift slot.
+    Returns JSON with updated quota progress, slot remaining capacity, and status.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    slot_id = request.POST.get('slot_id')
+    if not slot_id or not slot_id.isdigit():
+        return JsonResponse({'success': False, 'error': 'Slot ID is required'}, status=400)
+
+    slot = get_object_or_404(ExamShiftSlot, id=int(slot_id))
+    plan = slot.plan
+
+    if not plan.is_active or not plan.allow_teacher_registration:
+        return JsonResponse({'success': False, 'error': 'ការស្នើសុំវេនអនុរក្សត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+    # Resolve Teacher
+    teacher = None
+    if hasattr(request.user, 'teacher_profile') and request.user.teacher_profile:
+        teacher = request.user.teacher_profile
+    elif request.user.is_superuser or request.user.role == 'ADMIN':
+        tid = request.POST.get('teacher_id')
+        if tid and tid.isdigit():
+            teacher = Teacher.objects.filter(id=int(tid)).first()
+
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ!'}, status=403)
+
+    with transaction.atomic():
+        # Check existing registration
+        reg = TeacherShiftRegistration.objects.filter(slot=slot, teacher=teacher).first()
+
+        if reg:
+            # Toggle OFF -> Remove registration
+            reg.delete()
+            is_registered = False
+            message = f"បានដកចេញពីវេន «{slot.session_name}» រួចរាល់!"
+        else:
+            # Toggle ON -> Check if slot is full
+            if slot.is_full:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'សូមអភ័យទោស! វេន «{slot.session_name}» បានពេញចំនួនអនុរក្ស ({slot.max_invigilators} នាក់) រួចហើយ។ សូមជ្រើសរើសវេនផ្សេងទៀត។'
+                }, status=400)
+
+            TeacherShiftRegistration.objects.create(
+                slot=slot,
+                teacher=teacher,
+                status='CONFIRMED'
+            )
+            is_registered = True
+            message = f"🎉 បានចុះឈ្មោះក្នុងវេន «{slot.session_name}» ដោយជោគជ័យ!"
+
+        # Calculate updated counts
+        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+        required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+        current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+        progress_percentage = min(100, round(current_count / required_shifts * 100)) if required_shifts > 0 else 100
+
+        return JsonResponse({
+            'success': True,
+            'is_registered': is_registered,
+            'slot_id': slot.id,
+            'slot_registered_count': slot.registered_count,
+            'slot_max': slot.max_invigilators,
+            'slot_remaining': slot.remaining_spots,
+            'slot_is_full': slot.is_full,
+            'current_count': current_count,
+            'required_shifts': required_shifts,
+            'remaining_to_choose': max(0, required_shifts - current_count),
+            'progress_percentage': progress_percentage,
+            'message': message,
+        })
 
 
 

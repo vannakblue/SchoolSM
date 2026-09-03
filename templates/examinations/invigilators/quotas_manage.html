@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}កំណត់កូតា និងក្រុមគ្រូអនុរក្ស៖ {{ plan.title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <a href="{% url 'exam_invigilator_plans_list' %}" class="text-decoration-none text-muted small fw-bold mb-1 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីគម្រោង
+        </a>
+        <h2 class="fw-bold text-primary mb-1">
+            <i class="fa-solid fa-users-gear text-primary me-2"></i>កំណត់កូតា និងក្រុមគ្រូអនុរក្សប្រឡង
+        </h2>
+        <p class="text-muted small mb-0">
+            គម្រោង៖ <strong>{{ plan.title }}</strong> ({{ plan.academic_year.name }})
+        </p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn btn-primary fw-bold shadow-sm btn-sm">
+            <i class="fa-solid fa-table-cells me-1"></i> មើលតារាងម៉ាទ្រីសអនុរក្ស
+        </a>
+    </div>
+</div>
+
+<!-- Teacher Duty Groups Section -->
+<div class="custom-card p-4 mb-4 border-top border-4 border-info shadow-sm">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="fa-solid fa-layer-group text-info me-2"></i>ក្រុមប្រភេទគ្រូ & កូតាវេន (Duty Groups)
+            </h5>
+            <small class="text-muted">បែងចែកកូតាចំនួនវេនដែលគ្រូក្នុងក្រុមនីមួយៗត្រូវជ្រើសរើស (ឧ. ធម្មតា=៤វេន, ការិយាល័យ=៥វេន)</small>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- 1-Click Auto Classify Teachers Form -->
+            <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់ថ្នាក់ និងកំណត់កូតាគ្រូទាំងអស់ស្វ័យប្រវត្តិតាមមុខតំណែង (គ្រូធម្មតា=៤, គ្រូការិយាល័យ=៥) មែនទេ?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="auto_classify_teachers">
+                <button type="submit" class="btn btn-sm btn-outline-success fw-bold shadow-xs">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់ថ្នាក់គ្រូស្វ័យប្រវត្តិតាមមុខតំណែង
+                </button>
+            </form>
+            <button type="button" class="btn btn-sm btn-info text-white fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+                <i class="fa-solid fa-plus me-1"></i> បន្ថែមក្រុមថ្មី
+            </button>
+        </div>
+    </div>
+
+    <!-- Groups Cards Row -->
+    <div class="row g-3">
+        {% for g in duty_groups %}
+        <div class="col-12 col-md-4">
+            <div class="p-3 bg-light rounded-3 border h-100 position-relative">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-primary fs-6 px-2.5 py-1">
+                        {{ g.required_shifts }} វេន / នាក់
+                    </span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light py-0 px-1 border" type="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm small">
+                            <li>
+                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#editGroupModal_{{ g.id }}">
+                                    <i class="fa-solid fa-pen-to-square me-1 text-primary"></i> កែប្រែក្រុម
+                                </button>
+                            </li>
+                            <li>
+                                <form method="POST" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបក្រុម «{{ g.name }}» នេះមែនទេ?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_group">
+                                    <input type="hidden" name="group_id" value="{{ g.id }}">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fa-solid fa-trash-can me-1"></i> លុបក្រុម
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ g.name }}</h6>
+                <p class="text-muted small mb-0">{{ g.description|default:"គ្មានការពិពណ៌នា" }}</p>
+            </div>
+        </div>
+
+        <!-- Modal Edit Group -->
+        <div class="modal fade" id="editGroupModal_{{ g.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                    <div class="modal-header bg-primary text-white py-3">
+                        <h5 class="modal-title fw-bold">កែប្រែក្រុម៖ {{ g.name }}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="edit_group">
+                        <input type="hidden" name="group_id" value="{{ g.id }}">
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted">ឈ្មោះក្រុម *</label>
+                                <input type="text" name="name" class="form-control" required value="{{ g.name }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted">ចំនួនវេនតម្រូវ (Required Shifts) *</label>
+                                <div class="input-group">
+                                    <input type="number" min="1" max="30" name="required_shifts" class="form-control text-center fw-bold" required value="{{ g.required_shifts }}">
+                                    <span class="input-group-text">វេន/នាក់</span>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small text-muted">ការពិពណ៌នា</label>
+                                <input type="text" name="description" class="form-control" value="{{ g.description|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4">រក្សាទុក</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-3 text-muted">មិនទាន់មានក្រុមគ្រូនោះទេ សូមចុច «បន្ថែមក្រុមថ្មី» ខាងលើ។</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Add Group -->
+<div class="modal fade" id="addGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-info text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-plus me-2"></i>បន្ថែមក្រុមគ្រូ & កូតាថ្មី
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_group">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">ឈ្មោះក្រុម *</label>
+                        <input type="text" name="name" class="form-control" required placeholder="ឧ. គ្រូការិយាល័យ / រដ្ឋបាល">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">ចំនួនវេនតម្រូវ (Required Shifts) *</label>
+                        <div class="input-group">
+                            <input type="number" min="1" max="30" name="required_shifts" class="form-control text-center fw-bold" required value="4">
+                            <span class="input-group-text">វេន/នាក់</span>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-muted">ការពិពណ៌នា</label>
+                        <input type="text" name="description" class="form-control" placeholder="កំណត់សម្គាល់អំពីក្រុមនេះ...">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold px-4">
+                        <i class="fa-solid fa-plus me-1"></i> បង្កើតក្រុម
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Individual Teacher Quota Table Form -->
+<div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_teacher_quotas">
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-chalkboard-user text-primary me-2"></i>តារាងកំណត់កូតាជាក់លាក់របស់គ្រូបង្រៀន (Teacher Quotas)
+                </h5>
+                <small class="text-muted">សរុប {{ teacher_quotas|length }} នាក់</small>
+            </div>
+            <button type="submit" class="btn btn-primary fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់កូតាទាំងអស់
+            </button>
+        </div>
+
+        <div class="table-responsive rounded-3 border">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th class="text-center" style="width: 50px;">ល.រ</th>
+                        <th>ឈ្មោះគ្រូបង្រៀន</th>
+                        <th>ភេទ</th>
+                        <th>ភារកិច្ច/មុខតំណែងបច្ចុប្បន្ន</th>
+                        <th>ក្រុមដែលចាត់តាំង (Group)</th>
+                        <th class="text-center" style="width: 140px;">កូតាជាក់លាក់ (Override)</th>
+                        <th class="text-center" style="width: 100px;">លើកលែង</th>
+                        <th class="text-center" style="width: 120px;">កូតាតម្រូវ</th>
+                        <th class="text-center" style="width: 130px;">ស្ថានភាពចុះឈ្មោះ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in teacher_quotas %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-bold text-primary">{{ q.teacher.khmer_name }}</div>
+                            <small class="text-muted font-monospace">{{ q.teacher.teacher_id }} • {{ q.teacher.latin_name }}</small>
+                        </td>
+                        <td>{{ q.teacher.get_gender_display }}</td>
+                        <td class="small text-muted">{{ q.teacher.current_duty|default:"គ្រូបង្រៀន" }}</td>
+                        <td>
+                            <select name="group_{{ q.id }}" class="form-select form-select-sm py-1">
+                                {% for g in duty_groups %}
+                                <option value="{{ g.id }}" {% if q.duty_group_id == g.id %}selected{% endif %}>
+                                    {{ g.name }} ({{ g.required_shifts }} វេន)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <input type="number" min="0" max="30" name="custom_{{ q.id }}" class="form-control form-control-sm text-center font-monospace" placeholder="តាមក្រុម" value="{{ q.custom_required_shifts|default:'' }}">
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" name="exempt_{{ q.id }}" {% if q.is_exempt %}checked{% endif %}>
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold fs-6 text-primary">
+                            {% if q.is_exempt %}
+                            <span class="badge bg-secondary-subtle text-muted border">លើកលែង</span>
+                            {% else %}
+                            {{ q.effective_required_shifts }} វេន
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if q.is_exempt %}
+                            <span class="badge bg-light text-muted border">មិនបាច់សុំ</span>
+                            {% elif q.is_fulfilled %}
+                            <span class="badge bg-success-subtle text-success border border-success">
+                                <i class="fa-solid fa-check me-1"></i> {{ q.registered_count }} / {{ q.effective_required_shifts }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-dark border border-warning">
+                                <i class="fa-solid fa-clock me-1"></i> {{ q.registered_count }} / {{ q.effective_required_shifts }}
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀនឡើយ។</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end pt-3">
+            <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់កូតាទាំងអស់
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

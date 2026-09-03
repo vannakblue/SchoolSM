@@ -322,6 +322,22 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'exam_exclusions_manage',
             },
+            {
+                'key': 'exam_invigilator_admin',
+                'name_kh': 'គ្រប់គ្រងវេនអនុរក្សប្រឡង',
+                'name_en': 'Exam Invigilator Shifts',
+                'icon': 'fa-solid fa-clipboard-user text-warning',
+                'default_roles': ['ADMIN'],
+                'url_name': 'exam_invigilator_plans_list',
+            },
+            {
+                'key': 'exam_invigilator_request',
+                'name_kh': 'ស្នើសុំវេនអនុរក្សប្រឡង',
+                'name_en': 'Request Invigilator Shifts',
+                'icon': 'fa-solid fa-hand-holding-hand text-success',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'exam_invigilator_teacher_portal',
+            },
         ]
     },
     {

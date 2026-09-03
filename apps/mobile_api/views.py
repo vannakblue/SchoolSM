@@ -1823,4 +1823,182 @@ class MobileStudentRomanizeAPIView(APIView):
         })
 
 
+# ==============================================================================
+# 10. Mobile Exam Invigilator / Proctor Shift Requests APIs
+# ==============================================================================
+
+class MobileExamInvigilatorStatusAPIView(APIView):
+    """
+    Mobile API: Returns active exam invigilator plan and teacher's quota progress.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.examinations.models import ExamInvigilatorPlan, TeacherDutyQuota, TeacherShiftRegistration
+        from apps.teachers.models import Teacher
+
+        plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+        if not plan:
+            return Response({
+                'is_active': False,
+                'message': 'ការស្នើសុំវេនអនុរក្សមិនទាន់ត្រូវបានបើកដំណើរការនៅឡើយទេ។'
+            })
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher and request.user.role == 'ADMIN':
+            tid = request.GET.get('teacher_id')
+            teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and tid.isdigit()) else Teacher.objects.first()
+
+        if not teacher:
+            return Response({
+                'is_active': True,
+                'has_teacher_profile': False,
+                'message': 'មិនមានទម្រង់គ្រូបង្រៀនដែលត្រូវគ្នានឹងគណនីរបស់អ្នកឡើយ'
+            })
+
+        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+        required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+        group_name = quota_obj.duty_group.name if (quota_obj and quota_obj.duty_group) else "គ្រូបង្រៀនធម្មតា"
+
+        registered_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+
+        return Response({
+            'is_active': True,
+            'has_teacher_profile': True,
+            'plan': {
+                'id': plan.id,
+                'title': plan.title,
+                'academic_year': plan.academic_year.name,
+                'start_date': str(plan.start_date),
+                'end_date': str(plan.end_date),
+                'description': plan.description,
+            },
+            'teacher': {
+                'id': teacher.id,
+                'teacher_id': teacher.teacher_id,
+                'khmer_name': teacher.khmer_name,
+                'duty_group': group_name,
+                'required_shifts': required_shifts,
+                'current_count': registered_count,
+                'remaining_to_choose': max(0, required_shifts - registered_count),
+                'is_fulfilled': (registered_count >= required_shifts),
+                'progress_percentage': min(100, round(registered_count / required_shifts * 100)) if required_shifts > 0 else 100,
+            }
+        })
+
+
+class MobileExamInvigilatorSlotsAPIView(APIView):
+    """
+    Mobile API: Lists all shift slots grouped by date with registration flags.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.examinations.models import ExamInvigilatorPlan, TeacherShiftRegistration
+        from apps.teachers.models import Teacher
+
+        plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+        if not plan:
+            return Response({'is_active': False, 'slots': []})
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher and request.user.role == 'ADMIN':
+            tid = request.GET.get('teacher_id')
+            teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and tid.isdigit()) else Teacher.objects.first()
+
+        registered_slot_ids = set()
+        if teacher:
+            registered_slot_ids = set(
+                TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher)
+                .exclude(status='CANCELLED')
+                .values_list('slot_id', flat=True)
+            )
+
+        slots_data = []
+        for s in plan.shift_slots.prefetch_related('registrations').order_by('date', 'start_time'):
+            slots_data.append({
+                'id': s.id,
+                'date': str(s.date),
+                'session': s.session,
+                'session_name': s.session_name,
+                'start_time': s.start_time.strftime('%H:%M'),
+                'end_time': s.end_time.strftime('%H:%M'),
+                'max_invigilators': s.max_invigilators,
+                'registered_count': s.registered_count,
+                'remaining_spots': s.remaining_spots,
+                'is_full': s.is_full,
+                'is_registered': (s.id in registered_slot_ids)
+            })
+
+        return Response({
+            'is_active': True,
+            'slots': slots_data
+        })
+
+
+class MobileExamInvigilatorToggleAPIView(APIView):
+    """
+    Mobile API: Toggles teacher slot registration on/off.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from apps.examinations.models import ExamShiftSlot, TeacherDutyQuota, TeacherShiftRegistration
+        from apps.teachers.models import Teacher
+
+        slot_id = request.data.get('slot_id')
+        if not slot_id:
+            return Response({'status': 'error', 'message': 'Slot ID is required'}, status=400)
+
+        slot = ExamShiftSlot.objects.filter(id=slot_id).first()
+        if not slot:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញវេនប្រឡងឡើយ'}, status=404)
+
+        plan = slot.plan
+        if not plan.is_active or not plan.allow_teacher_registration:
+            return Response({'status': 'error', 'message': 'ការស្នើសុំវេនត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher and request.user.role == 'ADMIN':
+            tid = request.data.get('teacher_id')
+            teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and str(tid).isdigit()) else Teacher.objects.first()
+
+        if not teacher:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ'}, status=403)
+
+        reg = TeacherShiftRegistration.objects.filter(slot=slot, teacher=teacher).first()
+        if reg:
+            reg.delete()
+            is_registered = False
+            msg = f"បានដកចេញពីវេន «{slot.session_name}» រួចរាល់!"
+        else:
+            if slot.is_full:
+                return Response({'status': 'error', 'message': f'វេន «{slot.session_name}» បានពេញចំនួនអនុរក្សរួចហើយ!'}, status=400)
+
+            TeacherShiftRegistration.objects.create(
+                slot=slot,
+                teacher=teacher,
+                status='CONFIRMED'
+            )
+            is_registered = True
+            msg = f"បានចុះឈ្មោះក្នុងវេន «{slot.session_name}» ដោយជោគជ័យ!"
+
+        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+        required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+        current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+
+        return Response({
+            'status': 'success',
+            'is_registered': is_registered,
+            'slot_id': slot.id,
+            'slot_remaining': slot.remaining_spots,
+            'slot_is_full': slot.is_full,
+            'current_count': current_count,
+            'required_shifts': required_shifts,
+            'remaining_to_choose': max(0, required_shifts - current_count),
+            'message': msg
+        })
+
+
+
 

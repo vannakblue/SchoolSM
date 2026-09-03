@@ -140,6 +140,13 @@ def user_role_context(request):
             for item in sec.get('items', []):
                 if item.get('is_admin_only') and not is_admin:
                     continue
+                if item.get('key') == 'exam_invigilator_request' and not is_admin:
+                    try:
+                        from apps.examinations.models import ExamInvigilatorPlan
+                        if not ExamInvigilatorPlan.objects.filter(is_active=True, allow_teacher_registration=True).exists():
+                            continue
+                    except Exception:
+                        continue
                 if is_admin or menu_perms.get(item['key'], False):
                     item_dict = dict(item)
                     item_dict['is_current_active'] = (item.get('key') == best_active_key)

@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}កែប្រែគម្រោងវេនអនុរក្ស៖ {{ plan.title }}{% else %}បង្កើតគម្រោងវេនអនុរក្សថ្មី{% endif %} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+        <!-- Breadcrumb & Header -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <a href="{% url 'exam_invigilator_plans_list' %}" class="text-decoration-none text-muted small fw-bold mb-1 d-inline-block">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីគម្រោង
+                </a>
+                <h2 class="fw-bold text-primary mb-0">
+                    {% if is_edit %}
+                    <i class="fa-solid fa-pen-to-square text-primary me-2"></i>កែប្រែការកំណត់គម្រោងវេនអនុរក្ស
+                    {% else %}
+                    <i class="fa-solid fa-circle-plus text-primary me-2"></i>បង្កើតគម្រោងវេនអនុរក្សថ្មី
+                    {% endif %}
+                </h2>
+            </div>
+            {% if is_edit %}
+            <div class="d-flex gap-2">
+                <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn btn-primary fw-bold btn-sm">
+                    <i class="fa-solid fa-table-cells me-1"></i> តារាងម៉ាទ្រីសអនុរក្ស
+                </a>
+                <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-outline-primary fw-bold btn-sm">
+                    <i class="fa-solid fa-users-gear me-1"></i> កូតាគ្រូ
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Form Card -->
+        <div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="form_action" value="update_plan">
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-dark">ចំណងជើងគម្រោងសម័យប្រឡង *</label>
+                        <input type="text" name="title" class="form-control" required placeholder="ឧ. ការស្នើសុំវេនអនុរក្សប្រឡងតេស្តស្តង់ដា ឆមាសទី១" value="{{ plan.title|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-dark">ឆ្នាំសិក្សា (Academic Year) *</label>
+                        <select name="academic_year" class="form-select" required>
+                            {% for y in academic_years %}
+                            <option value="{{ y.id }}" {% if plan and plan.academic_year_id == y.id %}selected{% elif not plan and active_year and active_year.id == y.id %}selected{% endif %}>
+                                {{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">ថ្ងៃចាប់ផ្តើមប្រឡង (Start Date) *</label>
+                        <input type="date" name="start_date" class="form-control" required value="{{ plan.start_date|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">ថ្ងៃបញ្ចប់ការប្រឡង (End Date) *</label>
+                        <input type="date" name="end_date" class="form-control" required value="{{ plan.end_date|date:'Y-m-d'|default:'' }}">
+                    </div>
+                </div>
+
+                <!-- Teacher Shift Quotas Configuration -->
+                <div class="p-3 bg-light rounded-4 border mb-3">
+                    <label class="form-label fw-bold small text-dark mb-2">
+                        <i class="fa-solid fa-users-gear text-primary me-1"></i> កំណត់កូតាចំនួនវេនតម្រូវលំនាំដើម (Default Shift Quotas) *៖
+                    </label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">
+                                👨‍🏫 គ្រូបង្រៀនធម្មតា (Regular Teachers)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" min="1" max="20" name="default_regular_quota" class="form-control fw-bold text-center" value="{{ plan.default_regular_quota|default:4 }}" required>
+                                <span class="input-group-text fw-bold">វេន / នាក់</span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">កូតាសម្រាប់គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted mb-1">
+                                💼 គ្រូការិយាល័យ / រដ្ឋបាល (Office Staff Teachers)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" min="1" max="20" name="default_office_quota" class="form-control fw-bold text-center" value="{{ plan.default_office_quota|default:5 }}" required>
+                                <span class="input-group-text fw-bold">វេន / នាក់</span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">កូតាសម្រាប់គ្រូការិយាល័យ បណ្ណារក្ស និងរដ្ឋបាល</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if not is_edit %}
+                <!-- Auto-Create Shift Slots Options -->
+                <div class="p-3 bg-light rounded-4 border mb-3">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="auto_create_slots" name="auto_create_slots" checked>
+                        <label class="form-check-label fw-bold small text-dark" for="auto_create_slots">
+                            ⚡ បង្កើតវេនប្រឡង (ព្រឹក 07:00-11:00 & រសៀល 13:00-17:00) ស្វ័យប្រវត្តិតាមថ្ងៃទាំងអស់
+                        </label>
+                    </div>
+                    <div class="row g-2 align-items-center pt-2 border-top">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted mb-0">ចំនួនអនុរក្សអតិបរមាក្នុងមួយវេន (Capacity per Shift)៖</label>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <input type="number" min="1" max="100" name="slots_capacity" class="form-control text-center fw-bold" value="20">
+                                <span class="input-group-text">នាក់/វេន</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Activation Controls -->
+                <div class="p-3 bg-light rounded-4 border mb-3">
+                    <label class="form-label fw-bold small text-dark mb-2">
+                        <i class="fa-solid fa-power-off text-warning me-1"></i> សិទ្ធិ និងស្ថានភាពដំណើរការ (Activation Controls) *៖
+                    </label>
+                    <div class="d-flex flex-column gap-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if plan.is_active %}checked{% endif %}>
+                            <label class="form-check-label fw-bold small text-dark" for="is_active">
+                                🟢 បើកដំណើរការគម្រោងនេះ (Is Active)
+                                <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                    ទាល់តែបើកដំណើរការ ទើបគ្រូបង្រៀនអាចមើលឃើញម៉ឺនុយ និងចូលទៅកាន់ផ្ទាំងស្នើសុំវេនបាន។ (បើបិទ គឺលាក់ស្វ័យប្រវត្តិ)
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="allow_teacher_registration" name="allow_teacher_registration" {% if plan.allow_teacher_registration or not is_edit %}checked{% endif %}>
+                            <label class="form-check-label fw-bold small text-dark" for="allow_teacher_registration">
+                                ✍️ អនុញ្ញាតឱ្យគ្រូចុះឈ្មោះ និងដកវេនដោយខ្លួនឯង (Allow Teacher Self-Registration)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-dark">សេចក្តីណែនាំ ឬលក្ខខណ្ឌសម្រាប់គ្រូបង្រៀន (Instructions & Guidelines)</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="សូមលោកគ្រូ-អ្នកគ្រូ ជ្រើសរើសវេនឱ្យបានគ្រប់តាមកូតាដែលបានកំណត់...">{{ plan.description|default:'' }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                    <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-secondary fw-bold px-4">
+                        <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                    </a>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> {% if is_edit %}រក្សាទុកការកែប្រែ{% else %}បង្កើតគម្រោងឥឡូវនេះ{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if is_edit %}
+        <!-- Shift Slots Management Table -->
+        <div class="custom-card p-4 mb-4 border-top border-4 border-info shadow-sm">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-clock text-info me-2"></i>បញ្ជីវេនប្រឡង (Shift Slots) នៃគម្រោងនេះ
+                    </h5>
+                    <small class="text-muted">សរុប {{ slots|length }} វេនប្រឡង</small>
+                </div>
+                <button type="button" class="btn btn-sm btn-info text-white fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#addSlotModal">
+                    <i class="fa-solid fa-plus me-1"></i> បន្ថែមវេនប្រឡង
+                </button>
+            </div>
+
+            <div class="table-responsive rounded-3 border">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="text-center" style="width: 50px;">ល.រ</th>
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>វេន / ពេល</th>
+                            <th>ឈ្មោះសម្គាល់វេន</th>
+                            <th>ម៉ោង</th>
+                            <th class="text-center">ចំណុះអនុរក្ស</th>
+                            <th class="text-center">បានចុះឈ្មោះ</th>
+                            <th class="text-center" style="width: 80px;">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in slots %}
+                        <tr>
+                            <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                            <td class="fw-bold text-primary">{{ s.date|date:"d/m/Y (D)" }}</td>
+                            <td>
+                                {% if s.session == 'MORNING' %}
+                                <span class="badge bg-warning-subtle text-dark border border-warning">🌅 ព្រឹក</span>
+                                {% elif s.session == 'AFTERNOON' %}
+                                <span class="badge bg-info-subtle text-dark border border-info">⛅ រសៀល</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-muted border">🕒 ផ្សេងៗ</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ s.session_name }}</td>
+                            <td class="small text-muted font-monospace">{{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }}</td>
+                            <td class="text-center fw-bold">{{ s.max_invigilators }} នាក់</td>
+                            <td class="text-center">
+                                <span class="badge {% if s.is_full %}bg-danger{% else %}bg-success{% endif %}">
+                                    {{ s.registered_count }} / {{ s.max_invigilators }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបវេនប្រឡង «{{ s.session_name }}» នេះមែនទេ?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_action" value="delete_slot">
+                                    <input type="hidden" name="slot_id" value="{{ s.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="លុបវេននេះ">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">មិនទាន់មានវេនប្រឡងនៅឡើយទេ។ សូមចុច «បន្ថែមវេនប្រឡង» ខាងលើ។</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal Add Slot -->
+        <div class="modal fade" id="addSlotModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                    <div class="modal-header bg-info text-white py-3">
+                        <h5 class="modal-title fw-bold">
+                            <i class="fa-solid fa-plus me-2"></i>បន្ថែមវេនប្រឡងថ្មី
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_action" value="add_slot">
+                        <div class="modal-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទប្រឡង *</label>
+                                <input type="date" name="slot_date" class="form-control" required value="{{ plan.start_date|date:'Y-m-d' }}">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">វេនប្រឡង</label>
+                                    <select name="slot_session" class="form-select form-select-sm">
+                                        <option value="MORNING" selected>🌅 ពេលព្រឹក</option>
+                                        <option value="AFTERNOON">⛅ ពេលរសៀល</option>
+                                        <option value="CUSTOM">🕒 ម៉ោងផ្សេងៗ</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ចំនួនអនុរក្សអតិបរមា</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" min="1" max="100" name="slot_capacity" class="form-control text-center fw-bold" value="20">
+                                        <span class="input-group-text">នាក់</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ម៉ោងចាប់ផ្តើម</label>
+                                    <input type="time" name="slot_start" class="form-control form-control-sm font-monospace" value="07:00">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ម៉ោងបញ្ចប់</label>
+                                    <input type="time" name="slot_end" class="form-control form-control-sm font-monospace" value="11:00">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small text-muted">ឈ្មោះសម្គាល់វេន (Slot Name)</label>
+                                <input type="text" name="slot_name" class="form-control form-control-sm" placeholder="ទុកទំនេរដើម្បីបង្កើតស្វ័យប្រវត្តិ">
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                            <button type="submit" class="btn btn-info text-white fw-bold px-4">
+                                <i class="fa-solid fa-plus me-1"></i> បន្ថែមវេន
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

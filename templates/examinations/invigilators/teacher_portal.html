@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+
+{% block title %}ស្នើសុំវេនអនុរក្សប្រឡង (Teacher Invigilator Portal) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Optimized for Touch Devices, Pin & Zoom on Smartphone & Tablets */
+.touch-container {
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+}
+
+.shift-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border-radius: 1rem;
+    border: 2px solid #e2e8f0;
+    position: relative;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.shift-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+.shift-card.selected {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.shift-card.full:not(.selected) {
+    opacity: 0.6;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.shift-checkbox {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.sticky-quota-bar {
+    position: sticky;
+    top: 70px;
+    z-index: 1020;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 1rem;
+}
+
+@media (max-width: 768px) {
+    .sticky-quota-bar {
+        top: 60px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="touch-container pb-5">
+
+    {% if not is_active %}
+    <!-- Inactive State Screen (When Admin has NOT activated registration) -->
+    <div class="row justify-content-center py-5">
+        <div class="col-12 col-md-8 col-lg-6 text-center">
+            <div class="custom-card p-5 border-0 shadow-lg" style="border-radius: 1.5rem;">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-warning-subtle text-warning rounded-circle shadow-xs" style="width: 90px; height: 90px;">
+                        <i class="fa-solid fa-lock display-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">ការស្នើសុំវេនអនុរក្សមិនទាន់បើកដំណើរការ</h3>
+                <p class="text-muted fs-6 mb-4">
+                    សូមអភ័យទោស! គម្រោងស្នើសុំវេនអនុរក្សប្រឡងបច្ចុប្បន្នមិនទាន់ត្រូវបានបើកដំណើរការ ឬត្រូវបានបិទដោយគណៈគ្រប់គ្រងសាលានៅឡើយទេ។
+                </p>
+                <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-4 text-start">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    លោកគ្រូ-អ្នកគ្រូ នឹងអាចចូលជ្រើសរើសវេនបាន នៅពេលគណៈគ្រប់គ្រងសាលាប្រកាស និងបើកដំណើរការប្រព័ន្ធជាផ្លូវការ។
+                </div>
+                <a href="{% url 'teacher_dashboard' %}" class="btn btn-primary fw-bold px-4 py-2.5 shadow-sm">
+                    <i class="fa-solid fa-house me-1"></i> ត្រឡប់ទៅផ្ទាំងដើមគ្រូបង្រៀន
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+
+    <!-- Active State: Teacher Shift Selection Portal -->
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="fa-solid fa-hand-holding-hand text-success me-2"></i>ស្នើសុំវេនអនុរក្សប្រឡង
+            </h2>
+            <p class="text-muted small mb-0">
+                គម្រោង៖ <strong>{{ plan.title }}</strong> ({{ plan.academic_year.name }})
+            </p>
+        </div>
+
+        {% if all_teachers and request.user.role == 'ADMIN' %}
+        <!-- Admin Teacher Switcher (for testing/support) -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="small fw-bold text-muted">មើលក្នុងនាម៖</span>
+            <select class="form-select form-select-sm" onchange="window.location.href='?teacher_id=' + this.value" style="width: 220px;">
+                {% for t in all_teachers %}
+                <option value="{{ t.id }}" {% if teacher and teacher.id == t.id %}selected{% endif %}>
+                    {{ t.khmer_name }} ({{ t.teacher_id }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sticky Live Quota Progress Bar -->
+    <div class="sticky-quota-bar p-3 mb-4 shadow-sm border">
+        <div class="row align-items-center g-3">
+            <div class="col-12 col-md-6">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 44px; height: 44px; flex-shrink: 0;">
+                        <i class="fa-solid fa-user-check fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">
+                            {{ teacher.khmer_name }} <span class="badge bg-primary-subtle text-primary border ms-1">{{ duty_group_name }}</span>
+                        </h6>
+                        <small class="text-muted font-monospace">{{ teacher.teacher_id }} • កូតាតម្រូវ៖ <strong>{{ required_shifts }} វេន</strong></small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <div class="d-flex justify-content-between align-items-center small fw-bold mb-1">
+                    <span class="text-muted">វឌ្ឍនភាពនៃការជ្រើសរើស៖</span>
+                    <span id="quotaText" class="{% if current_count >= required_shifts %}text-success{% else %}text-primary{% endif %} fs-6">
+                        បានជ្រើសរើស <strong><span id="currentCountSpan">{{ current_count }}</span> / {{ required_shifts }} វេន</strong>
+                    </span>
+                </div>
+                <div class="progress" style="height: 10px; border-radius: 5px;">
+                    <div id="quotaProgressBar" class="progress-bar {% if current_count >= required_shifts %}bg-success{% else %}bg-primary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ progress_percentage }}%;"></div>
+                </div>
+                <div id="quotaRemainingNote" class="small mt-1 text-end {% if current_count >= required_shifts %}text-success fw-bold{% else %}text-muted{% endif %}">
+                    {% if current_count >= required_shifts %}
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានជ្រើសរើសគ្រប់កូតារួចរាល់ហើយ!
+                    {% else %}
+                    <i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">{{ remaining_to_choose }}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if plan.description %}
+    <!-- Instructions Banner -->
+    <div class="alert alert-info border-0 rounded-4 p-3 mb-4 shadow-xs">
+        <div class="d-flex gap-2 align-items-start">
+            <i class="fa-solid fa-circle-info fs-5 text-info mt-0.5"></i>
+            <div class="small">
+                <strong>សេចក្តីណែនាំពីគណៈគ្រប់គ្រង៖</strong><br>
+                {{ plan.description|linebreaksbr }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Days & Shift Slots Grid -->
+    <div class="row g-4">
+        {% for day in slots_by_date %}
+        <div class="col-12">
+            <!-- Day Header Card -->
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="bg-primary text-white px-3 py-1.5 rounded-3 fw-bold shadow-xs">
+                    <i class="fa-regular fa-calendar-check me-1"></i> {{ day.date|date:"l, d F Y (d/m/Y)" }}
+                </div>
+                <hr class="flex-grow-1 my-0 opacity-25">
+            </div>
+
+            <!-- Shift Cards for this Day -->
+            <div class="row g-3">
+                {% for s in day.slots %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div id="slot_card_{{ s.id }}" 
+                         class="shift-card p-3.5 {% if s.is_teacher_registered %}selected{% elif s.is_full %}full{% endif %}"
+                         onclick="toggleSlotSelection({{ s.id }})">
+                        
+                        <!-- Top Header -->
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                {% if s.session == 'MORNING' %}
+                                <span class="badge bg-warning-subtle text-dark border border-warning fw-bold px-2 py-1">
+                                    🌅 ពេលព្រឹក ({{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }})
+                                </span>
+                                {% else %}
+                                <span class="badge bg-info-subtle text-dark border border-info fw-bold px-2 py-1">
+                                    ⛅ ពេលរសៀល ({{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }})
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Selection Icon / Badge -->
+                            <div id="slot_badge_{{ s.id }}">
+                                {% if s.is_teacher_registered %}
+                                <span class="badge bg-success text-white px-2.5 py-1 fw-bold">
+                                    <i class="fa-solid fa-check me-1"></i> បានជ្រើសរើស
+                                </span>
+                                {% elif s.is_full %}
+                                <span class="badge bg-secondary text-white px-2 py-1">
+                                    <i class="fa-solid fa-lock me-1"></i> ពេញហើយ
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border px-2 py-1">
+                                    <i class="fa-solid fa-plus me-1"></i> ទំនេរ
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Slot Name -->
+                        <h5 class="fw-bold text-dark mb-2">{{ s.session_name }}</h5>
+
+                        <!-- Capacity Meter -->
+                        <div class="d-flex justify-content-between align-items-center small mb-2">
+                            <span class="text-muted">ចំណុះអនុរក្ស៖</span>
+                            <span id="slot_capacity_text_{{ s.id }}" class="fw-bold {% if s.is_full %}text-danger{% else %}text-success{% endif %}">
+                                នៅសល់ <span id="slot_remaining_{{ s.id }}">{{ s.remaining_spots }}</span> / {{ s.max_invigilators }} កន្លែង
+                            </span>
+                        </div>
+
+                        <!-- Action Button / Footer -->
+                        <div class="pt-2 border-top d-flex justify-content-between align-items-center">
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                <i class="fa-solid fa-fingerprint me-1"></i> ចុចលើកាតដើម្បីជ្រើសរើស/ដកចេញ
+                            </small>
+                            <button type="button" class="btn btn-sm {% if s.is_teacher_registered %}btn-success{% elif s.is_full %}btn-secondary disabled{% else %}btn-outline-primary{% endif %} fw-bold px-3 py-1" id="slot_btn_{{ s.id }}">
+                                {% if s.is_teacher_registered %}
+                                <i class="fa-solid fa-check me-1"></i> ជ្រើសរើសហើយ
+                                {% elif s.is_full %}
+                                ពេញ
+                                {% else %}
+                                ជ្រើសរើស
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-calendar-xmark display-4 text-muted opacity-50 mb-3"></i>
+            <h5 class="fw-bold">មិនទាន់មានវេនប្រឡងនៅក្នុងគម្រោងនេះនៅឡើយទេ</h5>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% endif %}
+
+</div>
+
+<!-- Floating Toast for Feedback -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+    <div id="actionToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body fw-bold" id="toastMessage">
+                សារជូនដំណឹង
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+let isToggling = false;
+
+function showToast(message, isSuccess = true) {
+    const toastEl = document.getElementById('actionToast');
+    const msgEl = document.getElementById('toastMessage');
+    if (!toastEl || !msgEl) return;
+
+    msgEl.innerText = message;
+    toastEl.className = `toast align-items-center text-white border-0 ${isSuccess ? 'bg-success' : 'bg-danger'}`;
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+}
+
+function toggleSlotSelection(slotId) {
+    if (isToggling) return;
+    isToggling = true;
+
+    const teacherId = "{{ teacher.id }}";
+    const formData = new FormData();
+    formData.append('slot_id', slotId);
+    if (teacherId) formData.append('teacher_id', teacherId);
+
+    fetch("{% url 'api_toggle_invigilator_slot' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        isToggling = false;
+        if (!data.success) {
+            showToast(data.error || 'មានបញ្ហាក្នុងការចុះឈ្មោះ!', false);
+            return;
+        }
+
+        // Update Card UI
+        const card = document.getElementById(`slot_card_${slotId}`);
+        const badge = document.getElementById(`slot_badge_${slotId}`);
+        const btn = document.getElementById(`slot_btn_${slotId}`);
+        const remainingSpan = document.getElementById(`slot_remaining_${slotId}`);
+        const capText = document.getElementById(`slot_capacity_text_${slotId}`);
+
+        if (remainingSpan) remainingSpan.innerText = data.slot_remaining;
+
+        if (data.is_registered) {
+            if (card) {
+                card.classList.add('selected');
+                card.classList.remove('full');
+            }
+            if (badge) badge.innerHTML = '<span class="badge bg-success text-white px-2.5 py-1 fw-bold"><i class="fa-solid fa-check me-1"></i> បានជ្រើសរើស</span>';
+            if (btn) {
+                btn.className = 'btn btn-sm btn-success fw-bold px-3 py-1';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ជ្រើសរើសហើយ';
+            }
+        } else {
+            if (card) card.classList.remove('selected');
+            if (data.slot_is_full) {
+                if (card) card.classList.add('full');
+                if (badge) badge.innerHTML = '<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> ពេញហើយ</span>';
+                if (btn) {
+                    btn.className = 'btn btn-sm btn-secondary disabled fw-bold px-3 py-1';
+                    btn.innerText = 'ពេញ';
+                }
+            } else {
+                if (card) card.classList.remove('full');
+                if (badge) badge.innerHTML = '<span class="badge bg-light text-muted border px-2 py-1"><i class="fa-solid fa-plus me-1"></i> ទំនេរ</span>';
+                if (btn) {
+                    btn.className = 'btn btn-sm btn-outline-primary fw-bold px-3 py-1';
+                    btn.innerText = 'ជ្រើសរើស';
+                }
+            }
+        }
+
+        // Update Global Quota Progress
+        const countSpan = document.getElementById('currentCountSpan');
+        const progressBar = document.getElementById('quotaProgressBar');
+        const remainingNote = document.getElementById('quotaRemainingNote');
+        const quotaText = document.getElementById('quotaText');
+
+        if (countSpan) countSpan.innerText = data.current_count;
+        if (progressBar) {
+            progressBar.style.width = `${data.progress_percentage}%`;
+            if (data.current_count >= data.required_shifts) {
+                progressBar.className = 'progress-bar bg-success progress-bar-striped progress-bar-animated';
+            } else {
+                progressBar.className = 'progress-bar bg-primary progress-bar-striped progress-bar-animated';
+            }
+        }
+
+        if (quotaText) {
+            quotaText.className = (data.current_count >= data.required_shifts) ? 'text-success fs-6' : 'text-primary fs-6';
+        }
+
+        if (remainingNote) {
+            if (data.current_count >= data.required_shifts) {
+                remainingNote.className = 'small mt-1 text-end text-success fw-bold';
+                remainingNote.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានជ្រើសរើសគ្រប់កូតារួចរាល់ហើយ!';
+            } else {
+                remainingNote.className = 'small mt-1 text-end text-muted';
+                remainingNote.innerHTML = `<i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">${data.remaining_to_choose}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។`;
+            }
+        }
+
+        showToast(data.message || 'បានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ!', true);
+    })
+    .catch(err => {
+        isToggling = false;
+        showToast('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ!', false);
+    });
+}
+</script>
+{% endblock %}
