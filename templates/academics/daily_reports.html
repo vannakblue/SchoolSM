@@ -213,7 +213,7 @@
         background-color: #eff6ff !important;
     }
 
-    /* Print Styles */
+    /* Print Styles - Guaranteed Auto-Fit to A4 Paper */
     @media print {
 
         .no-print,
@@ -227,36 +227,92 @@
             display: none !important;
         }
 
-        body {
-            background: #fff !important;
-            padding: 0 !important;
+        @page {
+            size: A4 portrait;
+            margin: 6mm 8mm 8mm 8mm !important;
+        }
+
+        html, body {
+            width: 210mm !important;
+            height: auto !important;
             margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .main-content {
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
         }
 
         .duty-sheet-paper {
+            width: 100% !important;
+            max-width: 194mm !important;
+            height: 278mm !important;
+            max-height: 278mm !important;
+            min-height: 275mm !important;
+            box-sizing: border-box !important;
             border: none !important;
             box-shadow: none !important;
-            padding: var(--paper-pad-top) var(--paper-pad-right) var(--paper-pad-bottom) var(--paper-pad-left) !important;
-            margin-bottom: 0 !important;
-            page-break-after: always;
+            margin: 0 auto !important;
+            padding: var(--paper-pad-top, 6mm) var(--paper-pad-right, 4mm) var(--paper-pad-bottom, 6mm) var(--paper-pad-left, 4mm) !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            overflow: hidden !important;
+        }
+
+        .duty-sheet-paper:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+        }
+
+        .duty-sheet-table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            box-sizing: border-box !important;
         }
 
         .duty-sheet-table th,
         .duty-sheet-table td {
             border: 1px solid #000 !important;
-            font-size: var(--report-table-font-size) !important;
-            padding: 4px 3px !important;
+            font-size: var(--report-table-font-size, 8.0pt) !important;
+            padding: 2.5px 2px !important;
+            line-height: 1.15 !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
         }
 
         .duty-sheet-table th {
             background-color: #f0f0f0 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            font-weight: 700 !important;
+            height: 26px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .duty-sheet-table td {
+            height: var(--report-row-height, 28px) !important;
+        }
+
+        .duty-sheet-header-block {
+            margin-bottom: 6px !important;
+        }
+
+        .duty-sheet-signatures {
+            margin-top: 6px !important;
+            padding-top: 2px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
     }
 </style>
@@ -623,10 +679,10 @@
             </div>
 
             <!-- School Header -->
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="duty-sheet-header-block mb-2">
+                <div class="d-flex justify-content-between align-items-start mb-1">
                     <div class="fw-bold text-dark text-start"
-                        style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt; letter-spacing: 0.5px;">
+                        style="font-family: 'Khmer OS Muol Light', serif; font-size: 12pt; letter-spacing: 0.5px;">
                         {{ school_info.name|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត" }}
                     </div>
                     {% if subpage.total_pages > 1 %}
@@ -636,7 +692,7 @@
                     {% endif %}
                 </div>
                 <div class="text-center">
-                    <div class="fw-bold text-primary mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 13pt;">
+                    <div class="fw-bold text-primary mb-0" style="font-family: 'Khmer OS Muol Light', serif; font-size: 12pt;">
                         បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
                     </div>
                     <div class="text-dark small fw-bold">
@@ -685,12 +741,12 @@
                     {% for row in subpage.rows %}
                     <tr>
                         <td class="text-center fw-bold">{{ row.no }}</td>
-                        <td class="text-center font-monospace" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
-                        <td class="text-start fw-bold text-dark" style="padding: 3px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
-                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
-                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
-                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
-                        <td class="text-center fw-bold text-primary" style="padding: 3px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
+                        <td class="text-center font-monospace" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
+                        <td class="text-start fw-bold text-dark" style="padding: 2px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
+                        <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
                         <td></td>
                         <td></td>
                         <td class="text-center text-muted small"></td>
@@ -707,25 +763,25 @@
 
             <!-- Signatures & Dates (Rendered on final page of that session) -->
             {% if subpage.is_last_page %}
-            <div class="row mt-4 pt-2">
+            <div class="duty-sheet-signatures row mt-3 pt-1">
                 <!-- Left: Principal Signature -->
                 <div class="col-6 text-center">
-                    <div style="height: 38px;"></div>
-                    <div class="fw-bold" style="font-size: 0.95rem;">បានឃើញ និងឯកភាព</div>
-                    <div class="fw-bold" style="font-size: 0.95rem;">នាយកសាលា</div>
+                    <div style="height: 30px;"></div>
+                    <div class="fw-bold" style="font-size: 0.92rem;">បានឃើញ និងឯកភាព</div>
+                    <div class="fw-bold" style="font-size: 0.92rem;">នាយកសាលា</div>
                 </div>
 
                 <!-- Right: Reporter Signature -->
                 <div class="col-6 text-center">
                     <div class="lbl-lunar-date text-dark small mb-0">{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក
                         ព.ស.២៥៧០</div>
-                    <div class="lbl-solar-date text-dark small mb-1">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
+                    <div class="lbl-solar-date text-dark small mb-0">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
                         ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
-                    <div class="fw-bold" style="font-size: 0.95rem;">អ្នករៀបចំរបាយការណ៍</div>
+                    <div class="fw-bold" style="font-size: 0.92rem;">អ្នករៀបចំរបាយការណ៍</div>
                 </div>
             </div>
             {% else %}
-            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 text-muted small border-top">
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-1 text-muted small border-top">
                 <span>(តទៅទំព័រទី {{ subpage.page_num|add:1 }})</span>
                 <span>ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}</span>
             </div>
@@ -1409,15 +1465,59 @@
                 const widths = JSON.parse(savedWidths);
                 if (Array.isArray(widths)) applyColumnWidths(widths);
             }
-        } catch (e) {
-            console.warn('Failed to load saved margin settings:', e);
-        }
+    // ==========================================
+    // SMART A4 AUTO-FIT SCALING ENGINE
+    // ==========================================
+    function applySmartAutoFitA4() {
+        const papers = document.querySelectorAll('.duty-sheet-paper');
+        papers.forEach(paper => {
+            const tbody = paper.querySelector('.duty-sheet-table tbody');
+            const rowCount = tbody ? tbody.querySelectorAll('tr').length : 0;
+            const table = paper.querySelector('.duty-sheet-table');
+            if (!table) return;
+
+            // Auto fit font size and line height per page density
+            if (rowCount > 24) {
+                table.style.setProperty('--report-table-font-size', '7.2pt');
+                table.style.setProperty('--report-row-height', '23px');
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.padding = '1.5px 1.5px';
+                    cell.style.fontSize = '7.2pt';
+                });
+            } else if (rowCount > 18) {
+                table.style.setProperty('--report-table-font-size', '7.8pt');
+                table.style.setProperty('--report-row-height', '26px');
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.padding = '2px 2px';
+                    cell.style.fontSize = '7.8pt';
+                });
+            } else if (rowCount > 12) {
+                table.style.setProperty('--report-table-font-size', '8.2pt');
+                table.style.setProperty('--report-row-height', '30px');
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.padding = '2.5px 2px';
+                    cell.style.fontSize = '8.2pt';
+                });
+            } else {
+                table.style.setProperty('--report-table-font-size', '8.6pt');
+                table.style.setProperty('--report-row-height', '34px');
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.padding = '3.5px 3px';
+                    cell.style.fontSize = '8.6pt';
+                });
+            }
+        });
     }
+
+    window.addEventListener('beforeprint', () => {
+        applySmartAutoFitA4();
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         updateCustomDates();
         initColumnResizers();
         loadSavedMarginSettings();
+        applySmartAutoFitA4();
     });
 </script>
 
