@@ -8,14 +8,14 @@
         <!-- Breadcrumb & Header -->
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
             <div>
-                <a href="{% url 'exam_invigilator_plans_list' %}" class="text-decoration-none text-muted small fw-bold mb-1 d-inline-block">
-                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីគម្រោង
+                <a href="{% if linked_exam %}{% url 'standardized_exam_manage' linked_exam.id %}{% elif plan and plan.standardized_exam %}{% url 'standardized_exam_manage' plan.standardized_exam.id %}{% else %}{% url 'standardized_exam_list' %}{% endif %}" class="text-decoration-none text-muted small fw-bold mb-1 d-inline-block">
+                    <i class="fa-solid fa-arrow-left me-1"></i> {% if linked_exam %}ត្រឡប់ទៅសម័យប្រឡង «{{ linked_exam.name }}»{% elif plan and plan.standardized_exam %}ត្រឡប់ទៅសម័យប្រឡង «{{ plan.standardized_exam.name }}»{% else %}ត្រឡប់ទៅបញ្ជីសម័យប្រឡង{% endif %}
                 </a>
                 <h2 class="fw-bold text-primary mb-0">
                     {% if is_edit %}
                     <i class="fa-solid fa-pen-to-square text-primary me-2"></i>កែប្រែការកំណត់គម្រោងវេនអនុរក្ស
                     {% else %}
-                    <i class="fa-solid fa-circle-plus text-primary me-2"></i>បង្កើតគម្រោងវេនអនុរក្សថ្មី
+                    <i class="fa-solid fa-circle-plus text-primary me-2"></i>រៀបចំវេនអនុរក្សប្រឡង
                     {% endif %}
                 </h2>
             </div>
@@ -36,11 +36,30 @@
             <form method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="form_action" value="update_plan">
+                {% if linked_exam or session_key %}
+                <input type="hidden" name="standardized_exam" value="{{ linked_exam.id|default:'' }}">
+                <input type="hidden" name="session_key" value="{{ session_key|default:'' }}">
+                <div class="alert alert-primary py-2.5 px-3 rounded-3 small border-0 mb-4 d-flex align-items-center justify-content-between">
+                    <div>
+                        <i class="fa-solid fa-link text-primary me-1"></i>
+                        <strong>ភ្ជាប់ទៅកាន់សម័យប្រឡង៖</strong> 
+                        {% if linked_exam %}
+                        «<strong>{{ linked_exam.name }}</strong>» (ថ្នាក់ទី {{ linked_exam.grade_level }} • {{ linked_exam.academic_year.name }})
+                        {% else %}
+                        «<strong>{{ default_title }}</strong>»
+                        {% endif %}
+                        {% if room_count %}
+                        — មាន <strong>{{ room_count }} បន្ទប់</strong> (គណនាតម្រូវការអនុរក្សស្តង់ដារ ២ នាក់/បន្ទប់ = <strong class="text-primary">{{ default_slots_capacity }} នាក់/វេន</strong>)
+                        {% endif %}
+                    </div>
+                    <span class="badge bg-primary px-2.5 py-1">ភ្ជាប់សម័យប្រឡង</span>
+                </div>
+                {% endif %}
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-8">
                         <label class="form-label fw-bold small text-dark">ចំណងជើងគម្រោងសម័យប្រឡង *</label>
-                        <input type="text" name="title" class="form-control" required placeholder="ឧ. ការស្នើសុំវេនអនុរក្សប្រឡងតេស្តស្តង់ដា ឆមាសទី១" value="{{ plan.title|default:'' }}">
+                        <input type="text" name="title" class="form-control" required placeholder="ឧ. ការស្នើសុំវេនអនុរក្សប្រឡងតេស្តស្តង់ដា ឆមាសទី១" value="{% if plan.title %}{{ plan.title }}{% else %}{{ default_title }}{% endif %}">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold small text-dark">ឆ្នាំសិក្សា (Academic Year) *</label>
@@ -57,11 +76,11 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label fw-bold small text-dark">ថ្ងៃចាប់ផ្តើមប្រឡង (Start Date) *</label>
-                        <input type="date" name="start_date" class="form-control" required value="{{ plan.start_date|date:'Y-m-d'|default:'' }}">
+                        <input type="date" name="start_date" class="form-control" required value="{% if plan.start_date %}{{ plan.start_date|date:'Y-m-d' }}{% elif default_start_date %}{{ default_start_date|date:'Y-m-d' }}{% endif %}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-bold small text-dark">ថ្ងៃបញ្ចប់ការប្រឡង (End Date) *</label>
-                        <input type="date" name="end_date" class="form-control" required value="{{ plan.end_date|date:'Y-m-d'|default:'' }}">
+                        <input type="date" name="end_date" class="form-control" required value="{% if plan.end_date %}{{ plan.end_date|date:'Y-m-d' }}{% elif default_end_date %}{{ default_end_date|date:'Y-m-d' }}{% endif %}">
                     </div>
                 </div>
 
@@ -110,7 +129,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="input-group input-group-sm">
-                                <input type="number" min="1" max="100" name="slots_capacity" class="form-control text-center fw-bold" value="20">
+                                <input type="number" min="1" max="100" name="slots_capacity" class="form-control text-center fw-bold" value="{{ default_slots_capacity|default:20 }}">
                                 <span class="input-group-text">នាក់/វេន</span>
                             </div>
                         </div>

@@ -38,13 +38,6 @@
     cursor: not-allowed;
 }
 
-.shift-checkbox {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
 .sticky-quota-bar {
     position: sticky;
     top: 70px;
@@ -100,7 +93,11 @@
                 <i class="fa-solid fa-hand-holding-hand text-success me-2"></i>ស្នើសុំវេនអនុរក្សប្រឡង
             </h2>
             <p class="text-muted small mb-0">
-                គម្រោង៖ <strong>{{ plan.title }}</strong> ({{ plan.academic_year.name }})
+                {% if plan.standardized_exam %}
+                សម័យប្រឡង៖ <strong class="text-dark">«{{ plan.standardized_exam.name }}»</strong> • 
+                {% endif %}
+                គម្រោង៖ <strong>{{ plan.title }}</strong> ({{ plan.academic_year.name }}) • 
+                កាលបរិច្ឆេទ៖ <strong>{{ plan.start_date|date:"d/m/Y" }}{% if plan.start_date != plan.end_date %} ដល់ {{ plan.end_date|date:"d/m/Y" }}{% endif %}</strong>
             </p>
         </div>
 
@@ -108,7 +105,7 @@
         <!-- Admin Teacher Switcher (for testing/support) -->
         <div class="d-flex align-items-center gap-2">
             <span class="small fw-bold text-muted">មើលក្នុងនាម៖</span>
-            <select class="form-select form-select-sm" onchange="window.location.href='?teacher_id=' + this.value" style="width: 220px;">
+            <select class="form-select form-select-sm" onchange="window.location.href='?teacher_id=' + this.value" style="width: 240px;">
                 {% for t in all_teachers %}
                 <option value="{{ t.id }}" {% if teacher and teacher.id == t.id %}selected{% endif %}>
                     {{ t.khmer_name }} ({{ t.teacher_id }})
@@ -124,14 +121,20 @@
         <div class="row align-items-center g-3">
             <div class="col-12 col-md-6">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 44px; height: 44px; flex-shrink: 0;">
-                        <i class="fa-solid fa-user-check fs-5"></i>
+                    <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 46px; height: 46px; flex-shrink: 0;">
+                        {% if assigned_role == 'PRESIDENT' %}👑{% elif assigned_role == 'VICE_PRESIDENT' %}🎖️{% elif assigned_role == 'SECRETARIAT' %}🏢{% elif assigned_role == 'BUILDING_INSPECTOR' %}🔍{% elif assigned_role == 'TABULATOR' %}📊{% else %}👤{% endif %}
                     </div>
                     <div>
                         <h6 class="fw-bold text-dark mb-0">
-                            {{ teacher.khmer_name }} <span class="badge bg-primary-subtle text-primary border ms-1">{{ duty_group_name }}</span>
+                            {{ teacher.khmer_name }}
+                            <span class="badge {% if assigned_role == 'PRESIDENT' %}bg-warning text-dark{% elif assigned_role == 'VICE_PRESIDENT' %}bg-info text-white{% elif assigned_role == 'SECRETARIAT' %}bg-primary text-white{% elif assigned_role == 'TABULATOR' %}bg-dark text-white{% else %}bg-primary-subtle text-primary border border-primary-subtle{% endif %} ms-1">
+                                {{ assigned_role_display }}
+                            </span>
                         </h6>
-                        <small class="text-muted font-monospace">{{ teacher.teacher_id }} • កូតាតម្រូវ៖ <strong>{{ required_shifts }} វេន</strong></small>
+                        <small class="text-muted font-monospace">
+                            {{ teacher.teacher_id }} • ក្រុម៖ {{ duty_group_name }} • កូតាតម្រូវ៖ 
+                            <strong>{% if is_auto_assigned_all %}គ្រប់វេន (ចាត់តាំងដោយ Admin){% else %}{{ required_shifts }} វេន{% endif %}</strong>
+                        </small>
                     </div>
                 </div>
             </div>
@@ -140,7 +143,7 @@
                 <div class="d-flex justify-content-between align-items-center small fw-bold mb-1">
                     <span class="text-muted">វឌ្ឍនភាពនៃការជ្រើសរើស៖</span>
                     <span id="quotaText" class="{% if current_count >= required_shifts %}text-success{% else %}text-primary{% endif %} fs-6">
-                        បានជ្រើសរើស <strong><span id="currentCountSpan">{{ current_count }}</span> / {{ required_shifts }} វេន</strong>
+                        បានចុះឈ្មោះ <strong><span id="currentCountSpan">{{ current_count }}</span> / {{ required_shifts }} វេន</strong>
                     </span>
                 </div>
                 <div class="progress" style="height: 10px; border-radius: 5px;">
@@ -148,7 +151,7 @@
                 </div>
                 <div id="quotaRemainingNote" class="small mt-1 text-end {% if current_count >= required_shifts %}text-success fw-bold{% else %}text-muted{% endif %}">
                     {% if current_count >= required_shifts %}
-                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានជ្រើសរើសគ្រប់កូតារួចរាល់ហើយ!
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់កូតារួចរាល់ហើយ!
                     {% else %}
                     <i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">{{ remaining_to_choose }}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។
                     {% endif %}
@@ -156,6 +159,26 @@
             </div>
         </div>
     </div>
+
+    {% if not is_role_requestable %}
+    <!-- Banner for Pre-assigned Roles (President, Vice-President, etc.) -->
+    <div class="alert alert-warning border-0 rounded-4 p-4 mb-4 shadow-sm">
+        <div class="d-flex gap-3 align-items-start">
+            <div class="fs-2 text-warning">
+                {% if assigned_role == 'PRESIDENT' %}👑{% elif assigned_role == 'VICE_PRESIDENT' %}🎖️{% elif assigned_role == 'SECRETARIAT' %}🏢{% elif assigned_role == 'BUILDING_INSPECTOR' %}🔍{% else %}ℹ️{% endif %}
+            </div>
+            <div>
+                <h5 class="fw-bold text-dark mb-1">លោកគ្រូ-អ្នកគ្រូ ទទួលបានការចាត់តាំងជា «{{ assigned_role_display }}»</h5>
+                <p class="text-muted mb-2">
+                    មុខងារនេះត្រូវបានគណៈគ្រប់គ្រងសាលា (Admin) កំណត់ជាមុខងារចាត់តាំងជាមុន (Pre-assigned) គ្រប់វេនប្រឡងទាំងអស់។ លោកគ្រូ-អ្នកគ្រូ <strong>ពុំចាំបាច់ធ្វើការស្នើសុំវេនដោយខ្លួនឯងឡើយ</strong>។ ឈ្មោះរបស់លោកគ្រូ-អ្នកគ្រូ នឹងមានវត្តមានក្នុងគ្រប់វេនប្រឡងទាំងអស់ជាស្វ័យប្រវត្តិ។
+                </p>
+                <div class="badge bg-warning-subtle text-dark border border-warning px-3 py-1.5 fs-6">
+                    <i class="fa-solid fa-shield-halved me-1"></i> ត្រូវបានចាត់តាំងដោយស្វ័យប្រវត្តិចំនួន {{ current_count }} វេន
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if plan.description %}
     <!-- Instructions Banner -->
@@ -187,8 +210,8 @@
                 {% for s in day.slots %}
                 <div class="col-12 col-md-6 col-lg-4">
                     <div id="slot_card_{{ s.id }}" 
-                         class="shift-card p-3.5 {% if s.is_teacher_registered %}selected{% elif s.is_full %}full{% endif %}"
-                         onclick="toggleSlotSelection({{ s.id }})">
+                         class="shift-card p-3.5 {% if s.is_teacher_registered %}selected{% elif s.assigned_role_is_full %}full{% endif %}"
+                         {% if is_role_requestable %}onclick="toggleSlotSelection({{ s.id }})"{% endif %}>
                         
                         <!-- Top Header -->
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -208,11 +231,15 @@
                             <div id="slot_badge_{{ s.id }}">
                                 {% if s.is_teacher_registered %}
                                 <span class="badge bg-success text-white px-2.5 py-1 fw-bold">
-                                    <i class="fa-solid fa-check me-1"></i> បានជ្រើសរើស
+                                    <i class="fa-solid fa-check me-1"></i> បានចុះឈ្មោះ
                                 </span>
-                                {% elif s.is_full %}
+                                {% elif s.assigned_role_is_full %}
                                 <span class="badge bg-secondary text-white px-2 py-1">
-                                    <i class="fa-solid fa-lock me-1"></i> ពេញហើយ
+                                    <i class="fa-solid fa-lock me-1"></i> ពេញសម្រាប់មុខងារនេះ
+                                </span>
+                                {% elif not is_role_requestable %}
+                                <span class="badge bg-light text-muted border px-2 py-1">
+                                    ចាត់តាំងដោយ Admin
                                 </span>
                                 {% else %}
                                 <span class="badge bg-light text-muted border px-2 py-1">
@@ -225,24 +252,30 @@
                         <!-- Slot Name -->
                         <h5 class="fw-bold text-dark mb-2">{{ s.session_name }}</h5>
 
-                        <!-- Capacity Meter -->
+                        <!-- Role Capacity Meter (First-come, first-served) -->
                         <div class="d-flex justify-content-between align-items-center small mb-2">
-                            <span class="text-muted">ចំណុះអនុរក្ស៖</span>
-                            <span id="slot_capacity_text_{{ s.id }}" class="fw-bold {% if s.is_full %}text-danger{% else %}text-success{% endif %}">
-                                នៅសល់ <span id="slot_remaining_{{ s.id }}">{{ s.remaining_spots }}</span> / {{ s.max_invigilators }} កន្លែង
+                            <span class="text-muted">កូតាសម្រាប់ «{{ assigned_role_display }}»៖</span>
+                            <span id="slot_capacity_text_{{ s.id }}" class="fw-bold {% if s.assigned_role_is_full %}text-danger{% else %}text-success{% endif %}">
+                                នៅសល់ <span id="slot_remaining_{{ s.id }}">{{ s.assigned_role_remaining }}</span> / {{ s.assigned_role_capacity }} នាក់
                             </span>
                         </div>
 
                         <!-- Action Button / Footer -->
                         <div class="pt-2 border-top d-flex justify-content-between align-items-center">
                             <small class="text-muted" style="font-size: 0.75rem;">
-                                <i class="fa-solid fa-fingerprint me-1"></i> ចុចលើកាតដើម្បីជ្រើសរើស/ដកចេញ
+                                {% if is_role_requestable %}
+                                <i class="fa-solid fa-fingerprint me-1"></i> ចុចដើម្បីជ្រើសរើស/ដកចេញ (អាទិភាពអ្នកសុំមុន)
+                                {% else %}
+                                <i class="fa-solid fa-shield-halved me-1"></i> កំណត់ដោយគណៈគ្រប់គ្រង
+                                {% endif %}
                             </small>
-                            <button type="button" class="btn btn-sm {% if s.is_teacher_registered %}btn-success{% elif s.is_full %}btn-secondary disabled{% else %}btn-outline-primary{% endif %} fw-bold px-3 py-1" id="slot_btn_{{ s.id }}">
+                            <button type="button" class="btn btn-sm {% if s.is_teacher_registered %}btn-success{% elif s.assigned_role_is_full or not is_role_requestable %}btn-secondary disabled{% else %}btn-outline-primary{% endif %} fw-bold px-3 py-1" id="slot_btn_{{ s.id }}">
                                 {% if s.is_teacher_registered %}
-                                <i class="fa-solid fa-check me-1"></i> ជ្រើសរើសហើយ
-                                {% elif s.is_full %}
+                                <i class="fa-solid fa-check me-1"></i> ចុះឈ្មោះហើយ
+                                {% elif s.assigned_role_is_full %}
                                 ពេញ
+                                {% elif not is_role_requestable %}
+                                Admin
                                 {% else %}
                                 ជ្រើសរើស
                                 {% endif %}
@@ -320,25 +353,26 @@ function toggleSlotSelection(slotId) {
         const badge = document.getElementById(`slot_badge_${slotId}`);
         const btn = document.getElementById(`slot_btn_${slotId}`);
         const remainingSpan = document.getElementById(`slot_remaining_${slotId}`);
-        const capText = document.getElementById(`slot_capacity_text_${slotId}`);
 
-        if (remainingSpan) remainingSpan.innerText = data.slot_remaining;
+        if (remainingSpan && data.role_remaining !== undefined) {
+            remainingSpan.innerText = data.role_remaining;
+        }
 
         if (data.is_registered) {
             if (card) {
                 card.classList.add('selected');
                 card.classList.remove('full');
             }
-            if (badge) badge.innerHTML = '<span class="badge bg-success text-white px-2.5 py-1 fw-bold"><i class="fa-solid fa-check me-1"></i> បានជ្រើសរើស</span>';
+            if (badge) badge.innerHTML = '<span class="badge bg-success text-white px-2.5 py-1 fw-bold"><i class="fa-solid fa-check me-1"></i> បានចុះឈ្មោះ</span>';
             if (btn) {
                 btn.className = 'btn btn-sm btn-success fw-bold px-3 py-1';
-                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ជ្រើសរើសហើយ';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ចុះឈ្មោះហើយ';
             }
         } else {
             if (card) card.classList.remove('selected');
-            if (data.slot_is_full) {
+            if (data.role_is_full) {
                 if (card) card.classList.add('full');
-                if (badge) badge.innerHTML = '<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> ពេញហើយ</span>';
+                if (badge) badge.innerHTML = '<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> ពេញសម្រាប់មុខងារនេះ</span>';
                 if (btn) {
                     btn.className = 'btn btn-sm btn-secondary disabled fw-bold px-3 py-1';
                     btn.innerText = 'ពេញ';
@@ -376,7 +410,7 @@ function toggleSlotSelection(slotId) {
         if (remainingNote) {
             if (data.current_count >= data.required_shifts) {
                 remainingNote.className = 'small mt-1 text-end text-success fw-bold';
-                remainingNote.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានជ្រើសរើសគ្រប់កូតារួចរាល់ហើយ!';
+                remainingNote.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់កូតារួចរាល់ហើយ!';
             } else {
                 remainingNote.className = 'small mt-1 text-end text-muted';
                 remainingNote.innerHTML = `<i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">${data.remaining_to_choose}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។`;

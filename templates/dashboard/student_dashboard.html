@@ -41,6 +41,208 @@
     </div>
 </div>
 
+<!-- Section: ព័ត៌មានសម័យប្រឡង បន្ទប់ប្រឡង និងលេខតុ (Exam Schedule & Seating Information) -->
+<div class="custom-card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 1.25rem;">
+    <div class="card-header bg-white py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
+        <div class="d-flex align-items-center gap-2.5">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-3" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-graduation-cap fs-5"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold text-dark mb-0">ព័ត៌មានសម័យប្រឡង បន្ទប់ប្រឡង និងលេខតុ (Exam Schedule & Seating)</h5>
+                <span class="small text-muted">ព័ត៌មានលម្អិតអំពីបន្ទប់ប្រឡង លេខតុក្នុងបន្ទប់ និងស្ថានភាពសិទ្ធិចូលរួមប្រឡង</span>
+            </div>
+        </div>
+        {% if exam_seating_info %}
+        <span class="badge bg-primary px-3 py-1.5 rounded-pill shadow-xs">
+            មាន {{ exam_seating_info|length }} សម័យប្រឡង
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="p-4 bg-light">
+        {% if exam_seating_info %}
+        <div class="row g-4">
+            {% for item in exam_seating_info %}
+            <div class="col-12 col-xl-6">
+                <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden position-relative {% if item.is_excluded %}border-start border-4 border-danger{% elif item.has_room %}border-start border-4 border-success{% else %}border-start border-4 border-warning{% endif %}">
+                    
+                    <!-- Card Top Header -->
+                    <div class="p-3 bg-white border-bottom d-flex flex-wrap align-items-start justify-content-between gap-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-light text-dark border">ថ្នាក់ទី {{ item.grade_level }}</span>
+                                <span class="badge bg-primary-subtle text-primary">{{ item.session_name }}</span>
+                            </div>
+                            <h5 class="fw-bold text-dark mb-0">{{ item.name }}</h5>
+                            <div class="text-muted small mt-0.5">
+                                <i class="fa-regular fa-calendar me-1"></i> កាលបរិច្ឆេទប្រឡង៖ <strong>{{ item.exam_date|date:"d/m/Y" }}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Status Badge -->
+                        <div>
+                            {% if item.is_excluded %}
+                            <span class="badge bg-danger px-2.5 py-1.5 shadow-xs">
+                                <i class="fa-solid fa-ban me-1"></i> ពុំមានឈ្មោះប្រឡង
+                            </span>
+                            {% elif item.has_room %}
+                            <span class="badge bg-success px-2.5 py-1.5 shadow-xs">
+                                <i class="fa-solid fa-circle-check me-1"></i> មានឈ្មោះប្រឡង
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark px-2.5 py-1.5 shadow-xs">
+                                <i class="fa-solid fa-clock me-1"></i> រង់ចាំចែកបន្ទប់
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-3.5 bg-white">
+                        {% if item.is_excluded %}
+                        <!-- EXCLUDED / DISQUALIFIED NOTICE -->
+                        <div class="alert alert-danger border-0 rounded-3 p-3 mb-3">
+                            <div class="d-flex align-items-start gap-2.5">
+                                <i class="fa-solid fa-triangle-exclamation text-danger fs-4 mt-1"></i>
+                                <div>
+                                    <h6 class="fw-bold text-danger mb-1">សិស្សត្រូវបានលើកលែងមិនឱ្យចូលរួមប្រឡង (Exam Disqualified)</h6>
+                                    <div class="small text-dark mb-1">
+                                        <strong>មូលហេតុចម្បង៖</strong> 
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-7 fw-bold">
+                                            {% if item.exclusion_reason_code == 'UNEXCUSED_ABSENCE' %}
+                                            🚨 អវត្តមានច្រើន / ឈប់រៀនច្រើនឥតច្បាប់
+                                            {% elif item.exclusion_reason_code == 'FEE_OVERDUE' %}
+                                            💳 មិនទាន់បង់ប្រាក់ថ្លៃទឹកភ្លើង / ជំពាក់ប្រាក់កម្រៃសិក្សា
+                                            {% elif item.exclusion_reason_code == 'DISCIPLINARY' %}
+                                            ⚖️ បញ្ហាវិន័យ / ជាប់កិច្ចសន្យា
+                                            {% else %}
+                                            {{ item.exclusion_reason }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if item.exclusion_notes %}
+                                    <div class="small text-muted mb-2">
+                                        <strong>កំណត់សម្គាល់ពីសាលា៖</strong> {{ item.exclusion_notes }}
+                                    </div>
+                                    {% endif %}
+                                    <div class="alert alert-light border border-danger-subtle py-2 px-2.5 mb-0 small text-danger">
+                                        <i class="fa-solid fa-circle-info me-1"></i>
+                                        <strong>សេចក្តីណែនាំ៖</strong> សូមអាណាព្យាបាល ឬសិស្សានុសិស្សមេត្តាទាក់ទងមកកាន់ <strong>ការិយាល័យរដ្ឋបាល ឬគណនេយ្យសាលា</strong> ជាបន្ទាន់ ដើម្បីដោះស្រាយ និងទទួលបានសិទ្ធិចូលរួមប្រឡងឡើងវិញ។
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% elif item.has_room %}
+                        <!-- ELIGIBLE WITH ASSIGNED ROOM & DESK -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-sm-3">
+                                <div class="p-2.5 bg-light rounded-3 border text-center">
+                                    <div class="text-muted small mb-0.5">បន្ទប់ប្រឡង</div>
+                                    <div class="fw-bold text-primary fs-6">{{ item.room_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ item.building }}</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="p-2.5 bg-light rounded-3 border text-center">
+                                    <div class="text-muted small mb-0.5">លេខតុក្នុងបន្ទប់</div>
+                                    <div class="fw-bold text-success fs-5">តុលេខ {{ item.desk_number|stringformat:"02d" }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Desk No</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="p-2.5 bg-light rounded-3 border text-center">
+                                    <div class="text-muted small mb-0.5">អត្តលេខបេក្ខជន</div>
+                                    <div class="fw-bold text-dark fs-6">{{ item.roll_number }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Roll No</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-sm-3">
+                                <div class="p-2.5 bg-light rounded-3 border text-center">
+                                    <div class="text-muted small mb-0.5">វេនប្រឡង</div>
+                                    <div class="fw-bold text-dark fs-6">{{ item.session_name|slice:":10" }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">ថ្នាក់ទី {{ item.grade_level }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Button: View / Print Exam Admission Slip -->
+                        {% if item.candidate_id %}
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <span class="text-muted small">
+                                <i class="fa-solid fa-circle-check text-success me-1"></i> ទិន្នន័យបានផ្ទៀងផ្ទាត់ផ្លូវការ
+                            </span>
+                            <a href="{% url 'student_exam_admission_slip' item.candidate_id %}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-xs">
+                                <i class="fa-solid fa-id-card me-1"></i> ប័ណ្ណអនុញ្ញាតប្រឡង (Admission Pass)
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        {% else %}
+                        <!-- PENDING ROOM ALLOCATION -->
+                        <div class="alert alert-warning border-0 rounded-3 p-3 mb-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-clock text-warning fs-5"></i>
+                                <div>
+                                    <strong class="text-dark">សម័យប្រឡងនេះកំពុងរៀបចំបន្ទប់ និងលេខតុ</strong>
+                                    <p class="small text-muted mb-0 mt-0.5">
+                                        គណៈកម្មការប្រឡងកំពុងរៀបចំការបែងចែកបន្ទប់ប្រឡង និងលេខតុ។ ព័ត៌មានបន្ទប់ និងលេខតុនឹងបង្ហាញនៅទីនេះភ្លាមៗនៅពេលសាលាចែកបន្ទប់រួចរាល់។
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Exam Subject Schedule Accordion / Dropdown -->
+                        {% if item.subjects %}
+                        <div class="mt-3 pt-2 border-top">
+                            <button class="btn btn-link p-0 text-decoration-none small fw-bold text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#subjects_{{ item.exam_id }}">
+                                <i class="fa-solid fa-list-check me-1"></i> មើលមុខវិជ្ជា និងម៉ោងប្រឡង ({{ item.total_subjects }} មុខវិជ្ជា) <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.75rem;"></i>
+                            </button>
+                            <div class="collapse mt-2" id="subjects_{{ item.exam_id }}">
+                                <div class="table-responsive rounded-3 border">
+                                    <table class="table table-sm table-striped mb-0 small">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="py-1 px-2">មុខវិជ្ជា</th>
+                                                <th class="py-1 px-2 text-center">ពិន្ទុពេញ</th>
+                                                <th class="py-1 px-2 text-center">កាលបរិច្ឆេទ & ម៉ោង</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for subj in item.subjects %}
+                                            <tr>
+                                                <td class="py-1 px-2 fw-bold text-dark">{{ subj.name }}</td>
+                                                <td class="py-1 px-2 text-center">{{ subj.max_score }}</td>
+                                                <td class="py-1 px-2 text-center text-muted">
+                                                    {{ subj.exam_date|date:"d/m/Y" }}
+                                                    {% if subj.start_time %} • {{ subj.start_time|time:"H:i" }} - {{ subj.end_time|time:"H:i" }}{% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fa-solid fa-calendar-check display-4 opacity-50 mb-2"></i>
+            <h6 class="fw-bold mb-1">មិនទាន់មានសម័យប្រឡងនាពេលខាងមុខនេះនៅឡើយទេ</h6>
+            <p class="small mb-0">នៅពេលសាលាបង្កើតសម័យប្រឡងតេស្ត ឬឆមាស ព័ត៌មានបន្ទប់ និងលេខតុនឹងបង្ហាញនៅទីនេះដោយស្វ័យប្រវត្តិ។</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Metrics: Attendance & Exam Performance -->
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-md-6">

@@ -45,6 +45,10 @@
             <p class="text-muted small mb-0">
                 <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong> • 
                 <i class="fa-solid fa-door-open me-1"></i>ស្តង់ដារបន្ទប់៖ <strong>{{ exam.candidates_per_room }} នាក់/បន្ទប់</strong>
+                {% if invigilator_plan %}
+                • <i class="fa-solid fa-user-shield text-warning ms-1 me-1"></i>វេនអនុរក្ស៖ <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="fw-bold text-decoration-none {% if invigilator_plan.calc_total_registered >= invigilator_plan.calc_total_capacity %}text-success{% else %}text-dark{% endif %}">{{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }} នាក់</a>
+                {% endif %}
+                • <i class="fa-solid fa-lock text-primary ms-1 me-1"></i>របៀបបញ្ចូលពិន្ទុ៖ <span class="badge {% if exam.grading_method == 'BLIND_SECRET_CODE' %}bg-danger text-white{% elif exam.grading_method == 'TEACHER_DIRECT' %}bg-info-subtle text-dark border border-info{% else %}bg-primary-subtle text-primary border border-primary-subtle{% endif %}">{{ exam.get_grading_method_display }}</span>
                 {% if exam.grading_end_datetime %}
                 • <i class="fa-solid fa-clock text-warning ms-1 me-1"></i>ផុតកំណត់បញ្ចូលពិន្ទុ៖ <strong class="text-danger">{{ exam.grading_end_datetime|date:"d/m/Y H:i" }}</strong>
                 {% endif %}
@@ -89,10 +93,29 @@
                 <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ & កំណត់លេខតុ (Auto-Rooms)
             </button>
 
+            <!-- 3. Invigilators Management -->
+            {% if invigilator_plan %}
+            <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="btn btn-warning btn-sm fw-bold shadow-sm text-dark" title="គ្រប់គ្រង និងតាមដានវេនអនុរក្សនៃសម័យប្រឡងនេះ">
+                <i class="fa-solid fa-user-shield me-1"></i> ៣. វេនអនុរក្ស ({{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }})
+            </a>
+            {% else %}
+            <a href="{% url 'exam_invigilator_plan_create' %}?exam_id={{ exam.id }}&session_key={{ session_key }}&title={{ clean_title|urlencode }}&date={{ exam.exam_date|date:'Y-m-d' }}&rooms={{ total_rooms }}&year={{ exam.academic_year_id }}" class="btn btn-outline-warning btn-sm fw-bold text-dark shadow-sm" title="រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះ">
+                <i class="fa-solid fa-user-shield me-1"></i> ៣. រៀបចំវេនអនុរក្ស
+            </a>
+            {% endif %}
+
             <!-- Excluded Students Management for this Exam -->
-            <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ exam.academic_year_id }}&grade={{ exam.grade_level }}" class="btn btn-outline-danger btn-sm fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងសម្រាប់កម្រិតថ្នាក់នេះ">
+            <a href="{% url 'exam_exclusions_manage' %}?standardized_exam={{ exam.id }}" class="btn btn-outline-danger btn-sm fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងសម្រាប់សម័យប្រឡងនេះ">
                 <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
             </a>
+
+            <!-- Telegram Seating Notifications Broadcast -->
+            <form method="POST" action="{% url 'api_send_exam_seating_telegram' exam.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់ផ្ញើដំណឹងបន្ទប់ និងលេខតុតាម Telegram ទៅកាន់អាណាព្យាបាលសិស្សទាំងអស់នៃសម័យប្រឡងនេះមែនទេ?')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-info btn-sm fw-bold shadow-xs bg-white text-dark" title="ផ្ញើសារដំណឹងបន្ទប់ និងលេខតុទៅ Telegram អាណាព្យាបាល">
+                    <i class="fa-brands fa-telegram text-primary me-1"></i> ផ្ញើដំណឹងបន្ទប់ & តុ (Telegram)
+                </button>
+            </form>
 
             <!-- Excel Import Button -->
             <button type="button" class="btn btn-teal btn-sm fw-bold text-white shadow-sm" style="background: #0d9488;" data-bs-toggle="modal" data-bs-target="#importExcelModal">
@@ -704,6 +727,26 @@ function toggleCustomNumbering(val) {
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">
+                        <i class="fa-solid fa-user-shield text-primary me-1"></i> សិទ្ធិ និងរបៀបបញ្ចូលពិន្ទុដែលអនុញ្ញាត (Allowed Scoring Method) *
+                    </label>
+                    <select class="form-select" id="em_modal_grading_method">
+                        <option value="BOTH" {% if exam.grading_method == 'BOTH' %}selected{% endif %}>
+                            🌐 អនុញ្ញាតទាំងពីរ (គ្រូបង្រៀនផ្ទាល់ ឬ លេខកូដសម្ងាត់)
+                        </option>
+                        <option value="TEACHER_DIRECT" {% if exam.grading_method == 'TEACHER_DIRECT' %}selected{% endif %}>
+                            👨‍🏫 តាមរយៈគ្រូបង្រៀនផ្ទាល់ (Direct Teacher Entry by Room)
+                        </option>
+                        <option value="BLIND_SECRET_CODE" {% if exam.grading_method == 'BLIND_SECRET_CODE' %}selected{% endif %}>
+                            🔒 តាមរយៈលេខកូដសម្ងាត់តែប៉ុណ្ណោះ (Blind Scoring by Secret Code Only)
+                        </option>
+                    </select>
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">
+                        ជ្រើស «តាមរយៈលេខកូដសម្ងាត់» ប្រសិនបើចង់លាក់ឈ្មោះសិស្សពីគ្រូបង្រៀន ដោយតម្រូវឱ្យវាយកូដសម្ងាត់កញ្ចប់វិញ្ញាសាដើម្បីបញ្ចូលពិន្ទុ។
+                    </div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label small fw-bold text-dark">កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើម (Grading Start)</label>
                     <input type="datetime-local" class="form-control" id="em_modal_grading_start" value="{{ exam.grading_start_datetime|date:'Y-m-d\TH:i' }}">
                     <div class="form-text text-muted" style="font-size: 0.75rem;">ទុកទទេ ប្រសិនបើចង់បើកភ្លាមៗ។</div>
@@ -745,6 +788,7 @@ function saveExamManageGradingWindow() {
     const endVal = document.getElementById('em_modal_grading_end').value;
     const isLocked = document.getElementById('em_modal_grading_locked').checked;
     const applySession = document.getElementById('em_modal_apply_to_session').checked;
+    const gradingMethod = document.getElementById('em_modal_grading_method').value;
 
     fetch('{% url "api_update_exam_grading_window" exam.id %}', {
         method: 'POST',
@@ -756,7 +800,8 @@ function saveExamManageGradingWindow() {
             grading_start_datetime: startVal || null,
             grading_end_datetime: endVal || null,
             is_grading_locked: isLocked,
-            apply_to_session: applySession
+            apply_to_session: applySession,
+            grading_method: gradingMethod
         })
     })
     .then(res => res.json())

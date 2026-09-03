@@ -182,7 +182,15 @@
                     <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" onclick="openSessionBatchModal('{{ sess.group_key|escapejs }}', '{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'Y-m-d' }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.id }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}')">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់
                     </button>
-                    <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
+                    <!-- Invigilator Shifts Button for Session -->
+                    <button type="button" class="btn btn-sm {% if sess.invigilator_plan %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-bold shadow-xs" onclick="openSessionInvigilatorModal('{{ sess.html_id }}')" title="គ្រប់គ្រង និងតាមដានវេនអនុរក្សនៃសម័យប្រឡងនេះ">
+                        <i class="fa-solid fa-user-shield me-1"></i> វេនអនុរក្ស {% if sess.invigilator_plan %}({{ sess.invigilator_plan.calc_total_registered }}/{{ sess.invigilator_plan.calc_total_capacity }}){% endif %}
+                    </button>
+                    <!-- Secret Codes Button for Session -->
+                    <button type="button" class="btn btn-sm btn-outline-dark fw-bold shadow-xs" onclick="openSessionSecretCodesModal('{{ sess.html_id }}')" title="បង្កើត និងពិនិត្យលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា">
+                        <i class="fa-solid fa-key me-1 text-warning"></i> កូដសម្ងាត់
+                    </button>
+                    <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" onclick="window.location.href=this.href; event.stopPropagation();" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
                         <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
                     </a>
                     <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}">
@@ -211,6 +219,9 @@
                 <div class="d-flex align-items-center gap-3 text-muted small">
                     <div>បេក្ខជនសរុប៖ <strong class="text-primary fs-6">{{ sess.total_candidates }}</strong> នាក់ (ស្រី {{ sess.female_candidates }})</div>
                     <div class="border-start ps-3">បន្ទប់ប្រឡង៖ <strong class="text-success fs-6">{{ sess.total_rooms }}</strong> បន្ទប់</div>
+                    {% if sess.invigilator_plan %}
+                    <div class="border-start ps-3">អនុរក្ស៖ <strong class="text-warning fs-6">{{ sess.invigilator_plan.calc_total_registered }}/{{ sess.invigilator_plan.calc_total_capacity }}</strong> នាក់</div>
+                    {% endif %}
                     <div class="border-start ps-3">មុខវិជ្ជា៖ <strong class="text-info fs-6">{{ sess.total_subjects }}</strong></div>
                 </div>
             </div>
@@ -253,6 +264,11 @@
                                             🌞 ពេញមួយថ្ងៃ
                                         </span>
                                         {% endif %}
+                                        {% if ex.grading_method == 'BLIND_SECRET_CODE' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1" title="បញ្ចូលពិន្ទុតាមរយៈកូដសម្ងាត់តែប៉ុណ្ណោះ">
+                                            <i class="fa-solid fa-lock me-1"></i> កូដសម្ងាត់
+                                        </span>
+                                        {% endif %}
                                     </div>
                                     {% if ex.is_published %}
                                     <span class="badge bg-success px-2 py-0.5" style="font-size: 0.7rem;"><i class="fa-solid fa-check me-1"></i>ប្រកាស</span>
@@ -293,9 +309,15 @@
                                     <a href="{% url 'standardized_exam_manage' ex.id %}" class="btn btn-sm btn-primary fw-bold flex-grow-1">
                                         <i class="fa-solid fa-sliders me-1"></i> គ្រប់គ្រង & បន្ទប់
                                     </a>
+                                    {% if ex.grading_method == 'BLIND_SECRET_CODE' %}
+                                    <a href="{% url 'exam_blind_scoring_portal' %}?exam_id={{ ex.id }}" class="btn btn-sm btn-outline-danger fw-bold flex-grow-1" title="សម័យប្រឡងនេះអនុញ្ញាតបញ្ចូលពិន្ទុតាមរយៈកូដសម្ងាត់តែប៉ុណ្ណោះ">
+                                        <i class="fa-solid fa-lock me-1"></i> ពិន្ទុកូដសម្ងាត់
+                                    </a>
+                                    {% else %}
                                     <a href="{% url 'exam_room_scores_entry' ex.id %}" class="btn btn-sm btn-outline-primary fw-bold flex-grow-1">
                                         <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលពិន្ទុ
                                     </a>
+                                    {% endif %}
                                 </div>
 
                                 <div class="d-flex justify-content-between align-items-center">
@@ -348,6 +370,233 @@
             </div>
         </div>
 
+        <!-- Modal: Secret Codes Management for this Session -->
+        <div class="modal fade" id="secretCodesModal_{{ sess.html_id }}" tabindex="-1" aria-hidden="true" onclick="event.stopPropagation();">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                    <div class="modal-header bg-dark text-white py-3">
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0">
+                                <i class="fa-solid fa-key text-warning me-2"></i>លេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា (Secret Codes)
+                            </h5>
+                            <div class="text-white-50 small mt-0.5">
+                                សម័យប្រឡង៖ <strong>«{{ sess.title }}»</strong> • កាលបរិច្ឆេទ៖ <strong>{{ sess.exam_date|date:"d/m/Y" }}</strong> • {{ sess.academic_year.name }}
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info py-2.5 px-3 small border-0 mb-4 rounded-3 d-flex align-items-start gap-2">
+                            <i class="fa-solid fa-circle-info text-info fs-6 mt-0.5"></i>
+                            <div>
+                                <strong>គោលបំណងនៃលេខកូដសម្ងាត់៖</strong>
+                                លេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា (Envelope Secret Codes) ត្រូវបានប្រើប្រាស់សម្រាប់ការបញ្ចូលពិន្ទុដោយបិទបាំងឈ្មោះសិស្ស (Blind Scoring) ដើម្បីធានាតម្លាភាព និងយុត្តិធម៌ ១០០% ស្របតាមស្តង់ដារប្រឡងថ្នាក់ជាតិ។
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-dark mb-3">
+                            <i class="fa-solid fa-layer-group text-primary me-1"></i> កម្រិតថ្នាក់ក្នុងសម័យប្រឡងនេះ ({{ sess.exams_data|length }} កម្រិតថ្នាក់)៖
+                        </h6>
+
+                        <div class="d-flex flex-column gap-3">
+                            {% for item in sess.exams_data %}
+                            <div class="p-3 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded-3 fw-bold fs-6" style="width: 50px; height: 50px; flex-shrink: 0;">
+                                        ថ្នាក់ {{ item.exam.grade_level }}
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold text-primary mb-1">
+                                            {{ item.exam.name }}
+                                        </h6>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
+                                            <span><i class="fa-solid fa-door-open text-success me-1"></i>{{ item.total_rooms }} បន្ទប់</span>
+                                            <span>•</span>
+                                            <span><i class="fa-solid fa-book-open text-info me-1"></i>{{ item.total_subjects }} មុខវិជ្ជា</span>
+                                            <span>•</span>
+                                            <span><i class="fa-solid fa-users text-primary me-1"></i>{{ item.total_candidates }} បេក្ខជន</span>
+                                            <span>•</span>
+                                            <span>របៀបបញ្ចូលពិន្ទុ៖ 
+                                                {% if item.exam.grading_method == 'BLIND_SECRET_CODE' %}
+                                                <strong class="text-danger"><i class="fa-solid fa-lock me-1"></i>កូដសម្ងាត់តែប៉ុណ្ណោះ</strong>
+                                                {% elif item.exam.grading_method == 'TEACHER_DIRECT' %}
+                                                <strong class="text-info"><i class="fa-solid fa-chalkboard-user me-1"></i>គ្រូផ្ទាល់</strong>
+                                                {% else %}
+                                                <strong class="text-muted"><i class="fa-solid fa-globe me-1"></i>ទាំងពីរ</strong>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    {% if item.total_rooms > 0 %}
+                                    <a href="{% url 'exam_secret_codes_directory' item.exam.id %}" class="btn btn-sm btn-primary fw-bold shadow-xs">
+                                        <i class="fa-solid fa-key me-1"></i> បង្កើត & បញ្ជីកូដសម្ងាត់
+                                    </a>
+                                    <a href="{% url 'exam_blind_scoring_portal' %}?exam_id={{ item.exam.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs">
+                                        <i class="fa-solid fa-lock me-1"></i> បញ្ចូលពិន្ទុ (Blind)
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-warning-subtle text-dark border border-warning px-2.5 py-1.5 small">
+                                        <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> មិនទាន់ចែកបន្ទប់ (សូមចុច ចែកបន្ទប់ ជាមុនសិន)
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2.5 d-flex justify-content-between align-items-center">
+                        <div class="small text-muted">
+                            <i class="fa-solid fa-shield-halved text-success me-1"></i> ប្រព័ន្ធសុវត្ថិភាពទិន្នន័យប្រឡង SchoolSM
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary fw-bold btn-sm px-3" data-bs-dismiss="modal">បិទ</button>
+                            <a href="{% url 'exam_blind_scoring_portal' %}" class="btn btn-danger fw-bold btn-sm shadow-xs px-3">
+                                <i class="fa-solid fa-lock me-1"></i> ផ្ទាំងបញ្ចូលពិន្ទុកូដសម្ងាត់ (Blind Portal)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Invigilator Shift Management for this Session -->
+        <div class="modal fade" id="invigilatorModal_{{ sess.html_id }}" tabindex="-1" aria-hidden="true" onclick="event.stopPropagation();">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                    <div class="modal-header bg-warning text-dark py-3">
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0">
+                                <i class="fa-solid fa-user-shield me-2"></i>គ្រប់គ្រងវេនអនុរក្សប្រឡង (Invigilator Shifts)
+                            </h5>
+                            <div class="small mt-0.5 text-dark-50">
+                                សម័យប្រឡង៖ <strong>«{{ sess.title }}»</strong> • កាលបរិច្ឆេទ៖ <strong>{{ sess.exam_date|date:"d/m/Y" }}</strong> • {{ sess.academic_year.name }}
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        {% if sess.invigilator_plan %}
+                        <!-- Existing Plan Details Card -->
+                        <div class="p-3.5 bg-light rounded-4 border mb-4">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                                <div>
+                                    <span class="badge bg-success px-2.5 py-1 mb-1">
+                                        <i class="fa-solid fa-circle-check me-1"></i> មានគម្រោងវេនអនុរក្សរួចរាល់
+                                    </span>
+                                    <h5 class="fw-bold text-primary mb-0">
+                                        {{ sess.invigilator_plan.title }}
+                                    </h5>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fs-4 fw-bold text-dark">
+                                        {{ sess.invigilator_plan.calc_total_registered }} <span class="text-muted fs-6">/ {{ sess.invigilator_plan.calc_total_capacity }} វេន</span>
+                                    </div>
+                                    <span class="small text-muted">ចំនួនគ្រូចុះឈ្មោះសរុប</span>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 text-center pt-2 border-top">
+                                <div class="col-4">
+                                    <div class="p-2 bg-white rounded-3 border">
+                                        <div class="text-muted small">បន្ទប់ប្រឡង</div>
+                                        <div class="fw-bold text-dark fs-6">{{ sess.total_rooms }} បន្ទប់</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 bg-white rounded-3 border">
+                                        <div class="text-muted small">ស្ថានភាពចុះឈ្មោះ</div>
+                                        <div class="fw-bold fs-6">
+                                            {% if sess.invigilator_plan.is_published %}
+                                            <span class="text-success"><i class="fa-solid fa-unlock me-1"></i>កំពុងបើក</span>
+                                            {% else %}
+                                            <span class="text-danger"><i class="fa-solid fa-lock me-1"></i>បានបិទ</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 bg-white rounded-3 border">
+                                        <div class="text-muted small">សមត្ថភាពវេន</div>
+                                        <div class="fw-bold text-primary fs-6">{{ sess.invigilator_plan.calc_total_capacity }} នាក់</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons Grid -->
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <a href="{% url 'exam_invigilator_roster_view' sess.invigilator_plan.id %}" class="btn btn-primary w-100 py-2.5 fw-bold shadow-xs d-flex align-items-center justify-content-center gap-2">
+                                    <i class="fa-solid fa-table-cells fs-5"></i>
+                                    <span>តារាងម៉ាទ្រីសអនុរក្ស (Roster Matrix)</span>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{% url 'exam_invigilator_quotas_manage' sess.invigilator_plan.id %}" class="btn btn-outline-primary w-100 py-2.5 fw-bold shadow-xs d-flex align-items-center justify-content-center gap-2">
+                                    <i class="fa-solid fa-users-gear fs-5"></i>
+                                    <span>កំណត់កូតាគ្រូ (Duty Quotas)</span>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{% url 'exam_invigilator_plan_edit' sess.invigilator_plan.id %}" class="btn btn-outline-secondary w-100 py-2.5 fw-bold shadow-xs d-flex align-items-center justify-content-center gap-2">
+                                    <i class="fa-solid fa-sliders fs-5"></i>
+                                    <span>កែប្រែការកំណត់គម្រោង (Settings)</span>
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <a href="{% url 'exam_invigilator_teacher_portal' %}" target="_blank" class="btn btn-outline-success w-100 py-2.5 fw-bold shadow-xs d-flex align-items-center justify-content-center gap-2">
+                                    <i class="fa-solid fa-mobile-screen fs-5"></i>
+                                    <span>ផ្ទាំងគ្រូចុះឈ្មោះ (Teacher Portal)</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        {% else %}
+                        <!-- No Plan Created Yet -->
+                        <div class="p-4 bg-light rounded-4 border text-center mb-2">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-warning-subtle text-warning rounded-circle mb-3" style="width: 60px; height: 60px;">
+                                <i class="fa-solid fa-user-shield fs-3"></i>
+                            </div>
+                            <h5 class="fw-bold text-dark mb-1">
+                                មិនទាន់មានគម្រោងវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះនៅឡើយទេ
+                            </h5>
+                            <p class="text-muted small mb-3">
+                                លោកអ្នកអាចបង្កើត និងរៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡង <strong>«{{ sess.title }}»</strong> នេះបានភ្លាមៗ ដើម្បីឱ្យលោកគ្រូ-អ្នកគ្រូអាចចូលទៅស្នើសុំ និងចុះឈ្មោះតាមវេននីមួយៗ។
+                            </p>
+
+                            {% if sess.total_rooms > 0 %}
+                            <div class="alert alert-info py-2 px-3 small border-0 d-inline-block mb-3">
+                                <i class="fa-solid fa-calculator text-primary me-1"></i>
+                                សម័យប្រឡងនេះមាន <strong>{{ sess.total_rooms }} បន្ទប់</strong> (តម្រូវការអនុរក្សស្តង់ដារ ២ នាក់/បន្ទប់ = <strong class="text-primary">{{ sess.total_rooms|add:sess.total_rooms }} នាក់/វេន</strong>)
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning py-2 px-3 small border-0 d-inline-block mb-3">
+                                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>
+                                សម័យប្រឡងនេះមិនទាន់បានចែកបន្ទប់នៅឡើយទេ។ លោកអ្នកអាចចុច «ចែកបន្ទប់» ជាមុនសិន ឬចុចបង្កើតវេនអនុរក្សឥឡូវនេះក៏បាន។
+                            </div>
+                            {% endif %}
+
+                            <div>
+                                <a href="{% url 'exam_invigilator_plan_create' %}?session_key={{ sess.group_key|urlencode }}&year={{ sess.academic_year.id }}&date={{ sess.exam_date|date:'Y-m-d' }}&title={{ sess.title|urlencode }}&rooms={{ sess.total_rooms }}" class="btn btn-warning text-dark fw-bold px-4 py-2 shadow-xs">
+                                    <i class="fa-solid fa-plus-circle me-1"></i> រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះឥឡូវនេះ
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer bg-light py-2.5 d-flex justify-content-between align-items-center">
+                        <div class="small text-muted">
+                            <i class="fa-solid fa-shield-halved text-success me-1"></i> ប្រព័ន្ធគ្រប់គ្រងវេនអនុរក្សប្រឡង SchoolSM
+                        </div>
+                        <button type="button" class="btn btn-secondary fw-bold btn-sm px-3" data-bs-dismiss="modal">បិទ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
     {% empty %}
     <div class="custom-card p-5 text-center text-muted">
@@ -374,46 +623,30 @@
             <form method="POST" action="{% url 'exam_batch_generate_rooms' %}">
                 {% csrf_token %}
                 <div class="modal-body p-4">
+                    <!-- Hidden Target Session Identifiers (Automatically set from clicked Exam Session) -->
+                    <input type="hidden" name="academic_year" id="batch_academic_year_input">
+                    <input type="hidden" name="session_key" id="batch_session_key_input">
+                    <input type="hidden" name="building" id="batch_building_input" value="អគារ A">
+
                     <!-- Session Active Notice Banner -->
-                    <div id="modalSelectedSessionBanner" class="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 small border-0 mb-3" style="display: none;">
+                    <div id="modalSelectedSessionBanner" class="alert alert-success d-flex align-items-center justify-content-between py-2.5 px-3.5 small border-0 mb-3 rounded-3" style="display: flex;">
                         <div>
-                            <i class="fa-solid fa-circle-check text-success me-1"></i>
-                            <strong>សម័យប្រឡងគោលដៅ៖</strong> <span id="bannerSessionTitle" class="fw-bold"></span>
-                            (<span id="bannerSessionDate"></span> • <span id="bannerSessionGrades"></span> កម្រិតថ្នាក់)
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-success fs-6"></i>
+                                <span class="text-muted">សម័យប្រឡងគោលដៅ៖</span>
+                                <strong id="bannerSessionTitle" class="fw-bold text-dark fs-6"></strong>
+                            </div>
+                            <div class="text-muted small mt-1 ps-4">
+                                <span id="bannerSessionYearBadge" class="badge bg-light text-dark border me-1"></span>
+                                កាលបរិច្ឆេទ៖ <strong id="bannerSessionDate" class="text-dark"></strong> • មាន <strong id="bannerSessionGrades" class="text-primary"></strong> កម្រិតថ្នាក់
+                            </div>
                         </div>
-                        <span class="badge bg-success">តាមសម័យប្រឡង</span>
+                        <span class="badge bg-success px-2.5 py-1.5 shadow-xs">តាមសម័យប្រឡង</span>
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 small border-0 mb-3">
+                    <div class="alert alert-info py-2 px-3 small border-0 mb-3 rounded-3">
                         <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                        ការកំណត់លេខតុ និងចែកបន្ទប់ត្រូវបានធ្វើឡើងទៅតាម <strong>សម័យប្រឡងនីមួយៗ</strong> ដោយឡែកពីគ្នា ព្រមទាំងអនុវត្តគោលការណ៍រាប់លេខតុ ០១-២៥ ក្នុងបន្ទប់ និងលេខបន្ទប់បន្តគ្នាតាមវេនប្រឡង (ព្រឹក/រសៀល)។
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold small text-dark">ឆ្នាំសិក្សា (Academic Year) *</label>
-                            <select name="academic_year" id="batch_academic_year_select" class="form-select" onchange="onModalYearChange(this.value)" required>
-                                {% for y in academic_years %}
-                                <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>{{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-7">
-                            <label class="form-label fw-bold small text-dark">ជ្រើសរើសសម័យប្រឡង (Exam Session) *</label>
-                            <select name="session_key" id="batch_session_select" class="form-select fw-bold" required onchange="onModalSessionChange(this.value)">
-                                <option value="">-- សូមជ្រើសរើសសម័យប្រឡង --</option>
-                                {% for ms in all_modal_sessions %}
-                                <option value="{{ ms.group_key }}" 
-                                        data-year="{{ ms.academic_year_id }}" 
-                                        data-title="{{ ms.title }}" 
-                                        data-date="{{ ms.exam_date|date:'d/m/Y' }}" 
-                                        data-count="{{ ms.exam_count }}"
-                                        {% if forloop.first and active_year and ms.academic_year_id == active_year.id %}selected{% endif %}>
-                                    📅 {{ ms.title }} • {{ ms.exam_date|date:"d/m/Y" }} ({{ ms.academic_year_name }} • {{ ms.exam_count }} កម្រិតថ្នាក់)
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        ការកំណត់លេខតុ និងចែកបន្ទប់ត្រូវបានធ្វើឡើងទៅតាម <strong>សម័យប្រឡងនេះ</strong> ដោយស្វ័យប្រវត្តិ ព្រមទាំងអនុវត្តគោលការណ៍រាប់លេខតុ ០១-២៥ ក្នុងបន្ទប់ និងលេខបន្ទប់បន្តគ្នាតាមវេនប្រឡង (ព្រឹក/រសៀល)។
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -426,24 +659,19 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-dark">ឈ្មោះអគារប្រឡង (Building)</label>
-                            <input type="text" class="form-control" name="building" value="អគារ A">
+                            <label class="form-label fw-bold small text-dark">គោលការណ៍រាប់លេខបន្ទប់ និងលេខតុ (Numbering Policy) *</label>
+                            <select name="numbering_mode" class="form-select" id="batch_numbering_mode">
+                                <option value="CONTINUOUS_IN_SHIFT" selected>
+                                    ⚡ រាប់បន្តគ្នាតាមវេនប្រឡងក្នុងសម័យប្រឡងនេះ (Continuous in Shift - ព្រឹកបន្តព្រឹក បន្ទប់ ០១ ដល់ ..., រសៀលចាប់ពី បន្ទប់ ០១ ឡើងវិញ)
+                                </option>
+                                <option value="RESET_PER_GRADE">
+                                    🔄 រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នីមួយៗដាច់ដោយឡែក (Reset per Grade - បន្ទប់ ០១ លេខតុ ០១ គ្រប់កម្រិត)
+                                </option>
+                                <option value="CONTINUOUS_ALL_GRADES">
+                                    🔢 រាប់បន្តគ្នារហូតគ្រប់កម្រិតថ្នាក់ទាំងអស់ក្នុងសម័យប្រឡងនេះ (Continuous across All Grades - បន្ទប់ ០១ រហូតដល់ចុងក្រោយ)
+                                </option>
+                            </select>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-dark">គោលការណ៍រាប់លេខបន្ទប់ និងលេខតុ (Numbering Policy) *</label>
-                        <select name="numbering_mode" class="form-select" id="batch_numbering_mode">
-                            <option value="CONTINUOUS_IN_SHIFT" selected>
-                                ⚡ រាប់បន្តគ្នាតាមវេនប្រឡងក្នុងសម័យប្រឡងនេះ (Continuous in Shift - ព្រឹកបន្តព្រឹក បន្ទប់ ០១ ដល់ ..., រសៀលចាប់ពី បន្ទប់ ០១ ឡើងវិញ)
-                            </option>
-                            <option value="RESET_PER_GRADE">
-                                🔄 រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នីមួយៗដាច់ដោយឡែក (Reset per Grade - បន្ទប់ ០១ លេខតុ ០១ គ្រប់កម្រិត)
-                            </option>
-                            <option value="CONTINUOUS_ALL_GRADES">
-                                🔢 រាប់បន្តគ្នារហូតគ្រប់កម្រិតថ្នាក់ទាំងអស់ក្នុងសម័យប្រឡងនេះ (Continuous across All Grades - បន្ទប់ ០១ រហូតដល់ចុងក្រោយ)
-                            </option>
-                        </select>
                     </div>
 
                     <div class="row g-3">
@@ -490,20 +718,20 @@ function toggleAllSessions(expand) {
 }
 
 function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, yearName, gradesCount) {
-    const yearSelect = document.getElementById('batch_academic_year_select');
-    const sessionSelect = document.getElementById('batch_session_select');
+    const yearInput = document.getElementById('batch_academic_year_input');
+    const sessionInput = document.getElementById('batch_session_key_input');
     const banner = document.getElementById('modalSelectedSessionBanner');
     const bannerTitle = document.getElementById('bannerSessionTitle');
     const bannerDate = document.getElementById('bannerSessionDate');
     const bannerGrades = document.getElementById('bannerSessionGrades');
+    const bannerYearBadge = document.getElementById('bannerSessionYearBadge');
 
-    if (yearSelect && yearId) {
-        yearSelect.value = yearId;
-        filterSessionsByYear(yearId);
+    if (yearInput && yearId) {
+        yearInput.value = yearId;
     }
 
-    if (sessionSelect) {
-        sessionSelect.value = sessionKey;
+    if (sessionInput) {
+        sessionInput.value = sessionKey;
     }
 
     if (banner) {
@@ -511,6 +739,7 @@ function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, 
         if (bannerTitle) bannerTitle.textContent = title;
         if (bannerDate) bannerDate.textContent = dateDisplay || dateRaw;
         if (bannerGrades) bannerGrades.textContent = gradesCount || 'ច្រើន';
+        if (bannerYearBadge) bannerYearBadge.textContent = yearName || '';
     }
 
     const modalEl = document.getElementById('batchGenerateRoomsModal');
@@ -520,73 +749,21 @@ function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, 
     }
 }
 
-function openGlobalBatchModal() {
-    const yearSelect = document.getElementById('batch_academic_year_select');
-    const banner = document.getElementById('modalSelectedSessionBanner');
-    if (banner) banner.style.display = 'none';
-
-    if (yearSelect) {
-        filterSessionsByYear(yearSelect.value);
-    }
-    const modalEl = document.getElementById('batchGenerateRoomsModal');
+function openSessionSecretCodesModal(htmlId) {
+    const modalEl = document.getElementById('secretCodesModal_' + htmlId);
     if (modalEl) {
         const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalInstance.show();
     }
 }
 
-function filterSessionsByYear(yearId) {
-    const sessionSelect = document.getElementById('batch_session_select');
-    if (!sessionSelect) return;
-
-    let firstMatch = null;
-    Array.from(sessionSelect.options).forEach(opt => {
-        if (!opt.value) return;
-        const optYear = opt.getAttribute('data-year');
-        if (!yearId || optYear === yearId) {
-            opt.style.display = '';
-            if (!firstMatch) firstMatch = opt;
-        } else {
-            opt.style.display = 'none';
-        }
-    });
-
-    if (firstMatch && (!sessionSelect.value || sessionSelect.selectedOptions[0].style.display === 'none')) {
-        sessionSelect.value = firstMatch.value;
-        onModalSessionChange(firstMatch.value);
+function openSessionInvigilatorModal(htmlId) {
+    const modalEl = document.getElementById('invigilatorModal_' + htmlId);
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
     }
 }
 
-function onModalYearChange(yearId) {
-    filterSessionsByYear(yearId);
-}
-
-function onModalSessionChange(sessionKey) {
-    const sessionSelect = document.getElementById('batch_session_select');
-    const banner = document.getElementById('modalSelectedSessionBanner');
-    const bannerTitle = document.getElementById('bannerSessionTitle');
-    const bannerDate = document.getElementById('bannerSessionDate');
-    const bannerGrades = document.getElementById('bannerSessionGrades');
-
-    if (!sessionSelect || !sessionKey) {
-        if (banner) banner.style.display = 'none';
-        return;
-    }
-
-    const selectedOpt = sessionSelect.selectedOptions[0];
-    if (selectedOpt && banner) {
-        banner.style.display = 'flex';
-        if (bannerTitle) bannerTitle.textContent = selectedOpt.getAttribute('data-title') || '';
-        if (bannerDate) bannerDate.textContent = selectedOpt.getAttribute('data-date') || '';
-        if (bannerGrades) bannerGrades.textContent = selectedOpt.getAttribute('data-count') || '1+';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const yearSelect = document.getElementById('batch_academic_year_select');
-    if (yearSelect) {
-        filterSessionsByYear(yearSelect.value);
-    }
-});
 </script>
 {% endblock %}

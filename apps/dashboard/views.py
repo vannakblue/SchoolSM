@@ -15,7 +15,7 @@ from apps.students.models import Student
 from apps.teachers.models import Teacher, TeacherAttendance
 from apps.academics.models import Classroom, Subject, Timetable, AcademicYear
 from apps.attendance.models import StudentAttendance
-from apps.examinations.models import ExamTerm, Grade
+from apps.examinations.models import ExamTerm, Grade, StandardizedExam, ExamCandidate, ExamRoom, ExamStudentExclusion
 from apps.finance.models import Invoice, PaymentTransaction, Expense, Payroll
 from apps.extras.models import Book, BookBorrowing, InventoryItem, Announcement
 
@@ -351,6 +351,113 @@ def student_dashboard(request):
         if total_att > 0:
             att_rate = round(((total_att - unexcused_att) / total_att) * 100, 1)
 
+    # Standardized Exam Seating & Eligibility Information
+    exam_seating_info = []
+    if student:
+        import re
+        grade_num = student.classroom.grade_level if (student.classroom and hasattr(student.classroom, 'grade_level')) else None
+        if not grade_num and student.classroom:
+            m = re.search(r'\d+', student.classroom.name)
+            if m:
+                grade_num = int(m.group())
+
+        from apps.academics.utils import get_active_academic_year
+        ay = student.classroom.academic_year if (student.classroom and student.classroom.academic_year) else None
+        if not ay:
+            ay = get_active_academic_year(request) or AcademicYear.objects.filter(is_active=True).first()
+
+        exam_qs = StandardizedExam.objects.all().select_related('academic_year', 'exam_term').prefetch_related('exam_subjects__subject', 'rooms')
+        if ay:
+            exam_qs = exam_qs.filter(academic_year=ay)
+        if grade_num:
+            exam_qs = exam_qs.filter(grade_level=grade_num)
+
+        exams = list(exam_qs.order_by('-exam_date')[:5])
+
+        # Candidacies
+        candidacies_map = {
+            c.exam_id: c for c in ExamCandidate.objects.filter(
+                Q(student=student) | Q(student_code=student.student_id) | Q(candidate_name_kh=student.khmer_name)
+            ).select_related('exam', 'room')
+        }
+
+        # Exclusions
+        exclusions_qs = ExamStudentExclusion.objects.filter(student=student, is_active=True).select_related('standardized_exam', 'exam_term')
+        exclusions_by_exam = {}
+        global_exclusion = None
+        for ex_item in exclusions_qs:
+            if ex_item.standardized_exam_id:
+                exclusions_by_exam[ex_item.standardized_exam_id] = ex_item
+            else:
+                global_exclusion = ex_item
+
+        for cand_exam_id, cand in candidacies_map.items():
+            if cand.exam and cand.exam not in exams:
+                exams.append(cand.exam)
+
+        exams.sort(key=lambda x: x.exam_date or date.min, reverse=True)
+
+        for ex in exams:
+            cand = candidacies_map.get(ex.id)
+            exclusion = exclusions_by_exam.get(ex.id) or global_exclusion
+            is_excluded = False
+            exclusion_reason = ""
+            exclusion_reason_code = ""
+            exclusion_notes = ""
+
+            if exclusion:
+                is_excluded = True
+                exclusion_reason_code = exclusion.reason
+                exclusion_reason = exclusion.get_reason_display()
+                exclusion_notes = exclusion.notes or ""
+            elif cand and cand.is_disciplinary_blocked:
+                is_excluded = True
+                exclusion_reason_code = "DISCIPLINARY"
+                exclusion_reason = "បញ្ហាវិន័យ / ជាប់កិច្ចសន្យា (Disciplinary Hold)"
+                exclusion_notes = cand.disciplinary_reason or ""
+
+            if not is_excluded and hasattr(student, 'exam_exclusion_reason') and student.exam_exclusion_reason:
+                is_excluded = True
+                exclusion_reason_code = student.exam_exclusion_reason
+                exclusion_reason = student.get_exam_exclusion_reason_display()
+
+            has_room = bool(cand and cand.room)
+
+            exam_subjects_list = [
+                {
+                    'name': es.subject.name_kh,
+                    'max_score': es.max_score,
+                    'exam_date': es.exam_date or ex.exam_date,
+                    'start_time': es.start_time,
+                    'end_time': es.end_time,
+                    'session': es.get_session_display(),
+                }
+                for es in ex.exam_subjects.all().order_by('order')
+            ]
+
+            exam_seating_info.append({
+                'exam': ex,
+                'exam_id': ex.id,
+                'name': ex.name,
+                'exam_date': ex.exam_date,
+                'grade_level': ex.grade_level,
+                'session_name': ex.get_session_display(),
+                'track_name': ex.get_track_display(),
+                'candidate': cand,
+                'candidate_id': cand.id if cand else None,
+                'has_room': has_room,
+                'room_name': cand.room.room_name if (cand and cand.room) else "មិនទាន់កំណត់",
+                'building': cand.room.building if (cand and cand.room and cand.room.building) else "អគារ A",
+                'desk_number': cand.desk_number if cand else None,
+                'roll_number': cand.roll_number if cand else (student.student_id or "-"),
+                'is_excluded': is_excluded,
+                'exclusion_reason_code': exclusion_reason_code,
+                'exclusion_reason': exclusion_reason,
+                'exclusion_notes': exclusion_notes,
+                'subjects': exam_subjects_list,
+                'total_subjects': len(exam_subjects_list),
+            })
+
     return render(request, 'dashboard/student_dashboard.html', {
         'student': student,
         'classroom': student.classroom if student else None,
@@ -363,6 +470,7 @@ def student_dashboard(request):
         'att_rate': att_rate,
         'absent_days': absent_days,
         'avg_score': avg_score,
+        'exam_seating_info': exam_seating_info,
     })
 
 

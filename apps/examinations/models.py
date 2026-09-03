@@ -172,8 +172,19 @@ class StandardizedExam(models.Model):
         AFTERNOON = 'AFTERNOON', 'វេនពេលរសៀល (Afternoon Session: 13:00 - 17:00)'
         FULL_DAY = 'FULL_DAY', 'ពេញមួយថ្ងៃ (Full Day / Both Sessions)'
 
+    class ExamType(models.TextChoices):
+        MONTHLY = 'MONTHLY', 'ការប្រឡងប្រចាំខែ (Monthly Exam)'
+        SEMESTER_1 = 'SEMESTER_1', 'ការប្រឡងឆមាសទី១ (Semester 1 Exam)'
+        SEMESTER_2 = 'SEMESTER_2', 'ការប្រឡងឆមាសទី២ (Semester 2 Exam)'
+        BASELINE = 'BASELINE', 'ការប្រឡងតេស្តដើមឆ្នាំ (Baseline Test)'
+        MOCK = 'MOCK', 'ការប្រឡងសាកល្បង / បាក់ឌុបសាកល្បង (Mock Exam)'
+        ENDLINE = 'ENDLINE', 'ការប្រឡងតេស្តចុងឆ្នាំ (Endline Test)'
+        OTHER = 'OTHER', 'ការប្រឡងផ្សេងៗ (Other Admin Exam)'
+
     name = models.CharField(max_length=200, verbose_name="ឈ្មោះសម័យប្រឡង / Exam Title")
     academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='standardized_exams', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    exam_type = models.CharField(max_length=30, choices=ExamType.choices, default=ExamType.OTHER, verbose_name="ប្រភេទសម័យប្រឡង / Exam Type")
+    exam_term = models.ForeignKey('ExamTerm', on_delete=models.SET_NULL, null=True, blank=True, related_name='standardized_exams', verbose_name="សម័យប្រឡងប្រចាំខែ/ឆមាស / Linked Exam Term")
     grade_level = models.IntegerField(default=12, verbose_name="កម្រិតថ្នាក់ (7-12) / Grade Level")
     track = models.CharField(max_length=20, choices=Track.choices, default=Track.ALL, verbose_name="ជំនាញសិក្សា / Academic Track")
     session = models.CharField(max_length=20, choices=Session.choices, default=Session.MORNING, verbose_name="វេនប្រឡងចម្បង / Grade Exam Shift")
@@ -183,6 +194,17 @@ class StandardizedExam(models.Model):
     is_published = models.BooleanField(default=True, verbose_name="ប្រកាសលទ្ធផល / Published")
 
     # Admin Grading Window & Deadline Controls
+    class GradingMethod(models.TextChoices):
+        BOTH = 'BOTH', 'អនុញ្ញាតទាំងពីរ (គ្រូបង្រៀនផ្ទាល់ ឬ លេខកូដសម្ងាត់)'
+        TEACHER_DIRECT = 'TEACHER_DIRECT', 'តាមរយៈគ្រូបង្រៀនផ្ទាល់ (Direct Teacher Entry)'
+        BLIND_SECRET_CODE = 'BLIND_SECRET_CODE', 'តាមរយៈលេខកូដសម្ងាត់តែប៉ុណ្ណោះ (Secret Code Only)'
+
+    grading_method = models.CharField(
+        max_length=30,
+        choices=GradingMethod.choices,
+        default=GradingMethod.BOTH,
+        verbose_name="របៀបបញ្ចូលពិន្ទុអនុញ្ញាត / Allowed Grading Method"
+    )
     grading_start_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើមបញ្ចូលពិន្ទុ / Grading Start Time")
     grading_end_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់បញ្ចូលពិន្ទុ / Grading Deadline")
     is_grading_locked = models.BooleanField(default=False, verbose_name="ចាក់សោការបញ្ចូលពិន្ទុ / Lock Grade Entry")
@@ -585,6 +607,37 @@ class ExamStudentExclusion(models.Model):
 # TEACHER EXAM INVIGILATOR / PROCTOR SHIFT REQUEST SYSTEM (ប្រព័ន្ធសុំវេនអនុរក្ស)
 # ==============================================================================
 
+class ExamCommitteeRole(models.TextChoices):
+    PRESIDENT = 'PRESIDENT', 'ប្រធាន (President / Chief)'
+    VICE_PRESIDENT = 'VICE_PRESIDENT', 'អនុប្រធាន (Vice President)'
+    INVIGILATOR = 'INVIGILATOR', 'គណៈកម្មការអនុរក្ស (អនុរក្ស)'
+    SECRETARIAT = 'SECRETARIAT', 'គណៈកម្មការកណ្តាល (កណ្តាល)'
+    BUILDING_INSPECTOR = 'BUILDING_INSPECTOR', 'គណៈកម្មការត្រួតអគារ (ត្រួតអគារ)'
+    TABULATOR = 'TABULATOR', 'គណៈកម្មការបូកស្រង់ពិន្ទុ (បូកស្រង់)'
+
+
+class ExamPlanRoleSetting(models.Model):
+    """
+    Configuration for each committee role in an exam plan.
+    Determines if teachers can self-request, required capacity per shift, and auto-assign flag.
+    """
+    plan = models.ForeignKey('examinations.ExamInvigilatorPlan', on_delete=models.CASCADE, related_name='role_settings', verbose_name="គម្រោង / Plan")
+    role = models.CharField(max_length=30, choices=ExamCommitteeRole.choices, verbose_name="មុខងារគណៈកម្មការ / Role")
+    is_requestable = models.BooleanField(default=True, verbose_name="អនុញ្ញាតឱ្យគ្រូស្នើសុំវេន / Allow Teacher Request", help_text="ប្រសិនបើបិទ មានន័យថាមុខងារនេះចាត់តាំងដោយ Admin រួចជាស្រេច (គ្រូមិនអាចស្នើសុំបានទេ)")
+    capacity_per_shift = models.PositiveIntegerField(default=1, verbose_name="ចំនួនតម្រូវការក្នុង១វេន / Capacity per Shift")
+    auto_assign_all_shifts = models.BooleanField(default=False, verbose_name="ចាត់តាំងគ្រប់វេនស្វ័យប្រវត្តិ / Auto-Assign to All Shifts", help_text="សម្រាប់ប្រធាន ឬអនុប្រធានដែលត្រូវមកគ្រប់ពេលដោយមិនបាច់សុំ")
+    notes = models.CharField(max_length=255, blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+
+    class Meta:
+        unique_together = ('plan', 'role')
+        ordering = ['role']
+        verbose_name = "ការកំណត់មុខងារគណៈកម្មការ / Exam Plan Role Setting"
+        verbose_name_plural = "ការកំណត់មុខងារគណៈកម្មការទាំងអស់ / Exam Plan Role Settings"
+
+    def __str__(self):
+        return f"{self.plan.title} - {self.get_role_display()} ({self.capacity_per_shift} នាក់/វេន)"
+
+
 class ExamInvigilatorPlan(models.Model):
     """
     Master configuration plan for Exam Invigilators / Proctors shift requests.
@@ -593,6 +646,8 @@ class ExamInvigilatorPlan(models.Model):
     - allow_teacher_registration: True when teachers can register/cancel their own slots.
     """
     academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='invigilator_plans', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    standardized_exam = models.ForeignKey('examinations.StandardizedExam', on_delete=models.SET_NULL, null=True, blank=True, related_name='invigilator_plans', verbose_name="សម័យប្រឡងតេស្តស្តង់ដា / Standardized Exam")
+    session_key = models.CharField(max_length=255, blank=True, null=True, verbose_name="កូដសម័យប្រឡង / Session Key", help_text="កូដសម្គាល់សម័យប្រឡងពហុកម្រិតថ្នាក់")
     title = models.CharField(max_length=200, verbose_name="ចំណងជើងគម្រោង / Plan Title")
     description = models.TextField(blank=True, null=True, verbose_name="សេចក្តីណែនាំ / Description & Guidelines")
     start_date = models.DateField(verbose_name="ថ្ងៃចាប់ផ្តើមប្រឡង / Exam Start Date")
@@ -628,6 +683,29 @@ class ExamInvigilatorPlan(models.Model):
     def total_filled_spots(self):
         return sum(s.registered_count for s in self.shift_slots.all())
 
+    def ensure_default_role_settings(self):
+        """
+        Ensures settings for all 6 Exam Committee Roles exist for this plan.
+        """
+        defaults = {
+            ExamCommitteeRole.PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 1, 'auto_assign_all_shifts': True},
+            ExamCommitteeRole.VICE_PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.SECRETARIAT: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.BUILDING_INSPECTOR: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.INVIGILATOR: {'is_requestable': True, 'capacity_per_shift': max(20, self.total_required_spots or 20), 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.TABULATOR: {'is_requestable': True, 'capacity_per_shift': 4, 'auto_assign_all_shifts': False},
+        }
+        for role_val, conf in defaults.items():
+            ExamPlanRoleSetting.objects.get_or_create(
+                plan=self,
+                role=role_val,
+                defaults={
+                    'is_requestable': conf['is_requestable'],
+                    'capacity_per_shift': conf['capacity_per_shift'],
+                    'auto_assign_all_shifts': conf['auto_assign_all_shifts'],
+                }
+            )
+
 
 class TeacherDutyGroup(models.Model):
     """
@@ -655,6 +733,8 @@ class TeacherDutyQuota(models.Model):
     plan = models.ForeignKey(ExamInvigilatorPlan, on_delete=models.CASCADE, related_name='teacher_quotas', verbose_name="គម្រោង / Plan")
     teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='exam_duty_quotas', verbose_name="គ្រូបង្រៀន / Teacher")
     duty_group = models.ForeignKey(TeacherDutyGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_quotas', verbose_name="ក្រុមគ្រូ / Duty Group")
+    assigned_role = models.CharField(max_length=30, choices=ExamCommitteeRole.choices, default=ExamCommitteeRole.INVIGILATOR, verbose_name="មុខងារគណៈកម្មការ / Committee Role")
+    auto_assign_all_shifts = models.BooleanField(default=False, verbose_name="ចាត់តាំងគ្រប់វេនស្វ័យប្រវត្តិ / Auto-Assign to All Shifts")
     custom_required_shifts = models.PositiveIntegerField(null=True, blank=True, verbose_name="កូតាជាក់លាក់ (Override) / Custom Shifts")
     is_exempt = models.BooleanField(default=False, verbose_name="លើកលែងមិនបាច់ធ្វើអនុរក្ស / Exempt")
     exemption_reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="មូលហេតុលើកលែង / Exemption Reason")
@@ -671,6 +751,8 @@ class TeacherDutyQuota(models.Model):
     def effective_required_shifts(self):
         if self.is_exempt:
             return 0
+        if self.auto_assign_all_shifts:
+            return self.plan.shift_slots.count()
         if self.custom_required_shifts is not None:
             return self.custom_required_shifts
         if self.duty_group:
@@ -678,7 +760,7 @@ class TeacherDutyQuota(models.Model):
         return self.plan.default_regular_quota
 
     def __str__(self):
-        return f"{self.teacher.khmer_name} - កូតា: {self.effective_required_shifts} វេន"
+        return f"{self.teacher.khmer_name} ({self.get_assigned_role_display()}) - កូតា: {self.effective_required_shifts} វេន"
 
 
 class ExamShiftSlot(models.Model):
@@ -717,6 +799,42 @@ class ExamShiftSlot(models.Model):
     def remaining_spots(self):
         return max(0, self.max_invigilators - self.registered_count)
 
+    def get_role_capacity(self, role):
+        """
+        Returns designated capacity for a specific committee role in this slot.
+        """
+        setting = self.plan.role_settings.filter(role=role).first()
+        if setting:
+            return setting.capacity_per_shift
+        # Standard Fallbacks
+        defaults = {
+            ExamCommitteeRole.PRESIDENT: 1,
+            ExamCommitteeRole.VICE_PRESIDENT: 2,
+            ExamCommitteeRole.SECRETARIAT: 2,
+            ExamCommitteeRole.BUILDING_INSPECTOR: 2,
+            ExamCommitteeRole.INVIGILATOR: self.max_invigilators,
+            ExamCommitteeRole.TABULATOR: 4,
+        }
+        return defaults.get(role, 2)
+
+    def get_role_registered_count(self, role):
+        """
+        Returns number of teachers registered for this specific role in this slot.
+        """
+        return self.registrations.filter(role=role).exclude(status='CANCELLED').count()
+
+    def get_role_remaining_spots(self, role):
+        """
+        Returns spots remaining for this specific role in this slot.
+        """
+        return max(0, self.get_role_capacity(role) - self.get_role_registered_count(role))
+
+    def is_role_full(self, role):
+        """
+        Returns True if designated capacity for this role has been reached.
+        """
+        return self.get_role_registered_count(role) >= self.get_role_capacity(role)
+
     def __str__(self):
         return f"{self.date.strftime('%d/%m/%Y')} - {self.session_name} ({self.registered_count}/{self.max_invigilators})"
 
@@ -733,6 +851,7 @@ class TeacherShiftRegistration(models.Model):
 
     slot = models.ForeignKey(ExamShiftSlot, on_delete=models.CASCADE, related_name='registrations', verbose_name="វេនប្រឡង / Shift Slot")
     teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='exam_shift_registrations', verbose_name="គ្រូបង្រៀន / Teacher")
+    role = models.CharField(max_length=30, choices=ExamCommitteeRole.choices, default=ExamCommitteeRole.INVIGILATOR, verbose_name="មុខងារក្នុងវេន / Duty Role")
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.CONFIRMED, verbose_name="ស្ថានភាព / Status")
     room_assignment = models.CharField(max_length=100, blank=True, null=True, verbose_name="បន្ទប់ដែលត្រូវឈរ / Room Assignment")
     registered_at = models.DateTimeField(auto_now_add=True)
@@ -745,6 +864,6 @@ class TeacherShiftRegistration(models.Model):
         verbose_name_plural = "ការចុះឈ្មោះវេនអនុរក្សទាំងអស់ / Teacher Shift Registrations"
 
     def __str__(self):
-        return f"{self.teacher.khmer_name} -> {self.slot.session_name} ({self.slot.date})"
+        return f"{self.teacher.khmer_name} ({self.get_role_display()}) -> {self.slot.session_name} ({self.slot.date})"
 
 

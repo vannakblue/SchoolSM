@@ -22,6 +22,99 @@
     </div>
 </div>
 
+<!-- Exam Committee Roles & Request Settings Section -->
+<div class="custom-card p-4 mb-4 border-top border-4 border-warning shadow-sm">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="fa-solid fa-users-gear text-warning me-2"></i>មុខងារគណៈកម្មការទាំង ៦ & ការកំណត់សិទ្ធិស្នើសុំ (Committee Roles & Shift Capacity)
+            </h5>
+            <small class="text-muted">កំណត់មុខងារណាដែលគ្រូអាចស្នើសុំវេនបាន ឬចាត់តាំងដោយ Admin រួចជាស្រេច (ដូចជាប្រធាន/អនុប្រធាន) និងចំនួនតម្រូវការក្នុង១វេន</small>
+        </div>
+        <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ចាត់តាំងគ្រូដែលមានមុខងារជាប្រធាន ឬអនុប្រធាន (និងគ្រូដែលបានធីកមកគ្រប់វេន) ចូលគ្រប់វេនប្រឡងទាំងអស់ស្វ័យប្រវត្តិតាមមុខងារមែនទេ?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="sync_auto_assigned_teachers">
+            <button type="submit" class="btn btn-sm btn-outline-warning text-dark fw-bold shadow-xs">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ⚡ ចាត់តាំងប្រធាន/អនុប្រធានចូលគ្រប់វេនស្វ័យប្រវត្តិ
+            </button>
+        </form>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_role_settings">
+
+        <div class="table-responsive rounded-3 border">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th style="width: 250px;">មុខងារគណៈកម្មការ</th>
+                        <th class="text-center" style="width: 220px;">សិទ្ធិស្នើសុំរបស់គ្រូ (Requestable)</th>
+                        <th class="text-center" style="width: 220px;">តម្រូវការក្នុង១វេន (Capacity)</th>
+                        <th class="text-center" style="width: 200px;">មកគ្រប់វេនស្វ័យប្រវត្តិ</th>
+                        <th>កំណត់ចំណាំ / គោលការណ៍ណែនាំ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in role_settings %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold fs-6 text-dark">
+                                {% if r.role == 'PRESIDENT' %}👑 {% elif r.role == 'VICE_PRESIDENT' %}🎖️ {% elif r.role == 'SECRETARIAT' %}🏢 {% elif r.role == 'BUILDING_INSPECTOR' %}🔍 {% elif r.role == 'TABULATOR' %}📊 {% else %}👤 {% endif %}
+                                {{ r.get_role_display }}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" name="is_requestable_{{ r.role }}" id="req_{{ r.role }}" {% if r.is_requestable %}checked{% endif %}>
+                                <label class="form-check-label small fw-bold ms-1" for="req_{{ r.role }}">
+                                    {% if r.is_requestable %}<span class="text-success">គ្រូសុំបាន</span>{% else %}<span class="text-danger">Admin ចាត់តាំង</span>{% endif %}
+                                </label>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="input-group input-group-sm mx-auto" style="max-width: 140px;">
+                                <input type="number" min="1" max="100" name="capacity_{{ r.role }}" class="form-control text-center fw-bold font-monospace" value="{{ r.capacity_per_shift }}">
+                                <span class="input-group-text">នាក់/វេន</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" name="auto_assign_{{ r.role }}" id="auto_{{ r.role }}" {% if r.auto_assign_all_shifts %}checked{% endif %}>
+                                <label class="form-check-label small text-muted ms-1" for="auto_{{ r.role }}">
+                                    {% if r.auto_assign_all_shifts %}<span class="text-primary fw-bold">គ្រប់វេន</span>{% else %}តាមកូតា{% endif %}
+                                </label>
+                            </div>
+                        </td>
+                        <td class="small text-muted">
+                            {% if r.role == 'PRESIDENT' %}
+                            មាន ១ នាក់ គ្រប់គ្រងរួមមណ្ឌលប្រឡង និងត្រូវបានចាត់តាំងគ្រប់វេនដោយមិនបាច់សុំ។
+                            {% elif r.role == 'VICE_PRESIDENT' %}
+                            ជួយសម្របសម្រួលមណ្ឌលប្រឡង និងត្រួតពិនិត្យដំណើរការទូទៅ។
+                            {% elif r.role == 'SECRETARIAT' %}
+                            គ្រប់គ្រងឯកសារ កូដសម្ងាត់ វិញ្ញាសា និងកិច្ចការរដ្ឋបាលមណ្ឌល។
+                            {% elif r.role == 'BUILDING_INSPECTOR' %}
+                            ដើរត្រួតពិនិត្យតាមជាន់ និងបន្ទប់ប្រឡងនីមួយៗដើម្បីធានាសណ្តាប់ធ្នាប់។
+                            {% elif r.role == 'INVIGILATOR' %}
+                            ឈរយាមផ្ទាល់ក្នុងបន្ទប់ប្រឡង (ស្តង់ដារ ២ នាក់ក្នុងមួយបន្ទប់)។
+                            {% elif r.role == 'TABULATOR' %}
+                            បូកស្រង់ពិន្ទុ និងផ្ទៀងផ្ទាត់សន្លឹកពិន្ទុបេក្ខជន។
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end pt-3">
+            <button type="submit" class="btn btn-warning text-dark fw-bold shadow-xs px-4">
+                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់មុខងារទាំង ៦
+            </button>
+        </div>
+    </form>
+</div>
+
 <!-- Teacher Duty Groups Section -->
 <div class="custom-card p-4 mb-4 border-top border-4 border-info shadow-sm">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
@@ -189,15 +282,17 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light small">
                     <tr>
-                        <th class="text-center" style="width: 50px;">ល.រ</th>
+                        <th class="text-center" style="width: 40px;">ល.រ</th>
                         <th>ឈ្មោះគ្រូបង្រៀន</th>
                         <th>ភេទ</th>
-                        <th>ភារកិច្ច/មុខតំណែងបច្ចុប្បន្ន</th>
-                        <th>ក្រុមដែលចាត់តាំង (Group)</th>
-                        <th class="text-center" style="width: 140px;">កូតាជាក់លាក់ (Override)</th>
-                        <th class="text-center" style="width: 100px;">លើកលែង</th>
-                        <th class="text-center" style="width: 120px;">កូតាតម្រូវ</th>
-                        <th class="text-center" style="width: 130px;">ស្ថានភាពចុះឈ្មោះ</th>
+                        <th>ភារកិច្ចបច្ចុប្បន្ន</th>
+                        <th style="width: 220px;">មុខងារគណៈកម្មការ (Role)</th>
+                        <th class="text-center" style="width: 100px;">មកគ្រប់វេន</th>
+                        <th>ក្រុម (Group)</th>
+                        <th class="text-center" style="width: 110px;">កូតា Override</th>
+                        <th class="text-center" style="width: 70px;">លើកលែង</th>
+                        <th class="text-center" style="width: 100px;">កូតាតម្រូវ</th>
+                        <th class="text-center" style="width: 120px;">ស្ថានភាពចុះឈ្មោះ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -210,6 +305,20 @@
                         </td>
                         <td>{{ q.teacher.get_gender_display }}</td>
                         <td class="small text-muted">{{ q.teacher.current_duty|default:"គ្រូបង្រៀន" }}</td>
+                        <td>
+                            <select name="role_{{ q.id }}" class="form-select form-select-sm py-1 fw-bold {% if q.assigned_role == 'PRESIDENT' %}text-warning bg-warning-subtle border-warning{% elif q.assigned_role == 'VICE_PRESIDENT' %}text-info bg-info-subtle border-info{% elif q.assigned_role == 'SECRETARIAT' %}text-primary bg-primary-subtle border-primary{% endif %}">
+                                {% for r_code, r_label in committee_roles %}
+                                <option value="{{ r_code }}" {% if q.assigned_role == r_code %}selected{% endif %}>
+                                    {{ r_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block" title="ចាត់តាំងគ្រូនោះចូលគ្រប់វេនប្រឡងទាំងអស់ស្វ័យប្រវត្តិ">
+                                <input class="form-check-input" type="checkbox" name="auto_assign_{{ q.id }}" {% if q.auto_assign_all_shifts or q.assigned_role == 'PRESIDENT' %}checked{% endif %}>
+                            </div>
+                        </td>
                         <td>
                             <select name="group_{{ q.id }}" class="form-select form-select-sm py-1">
                                 {% for g in duty_groups %}
@@ -230,6 +339,8 @@
                         <td class="text-center fw-bold fs-6 text-primary">
                             {% if q.is_exempt %}
                             <span class="badge bg-secondary-subtle text-muted border">លើកលែង</span>
+                            {% elif q.auto_assign_all_shifts or q.assigned_role == 'PRESIDENT' %}
+                            <span class="badge bg-warning-subtle text-dark border border-warning">គ្រប់វេន</span>
                             {% else %}
                             {{ q.effective_required_shifts }} វេន
                             {% endif %}
@@ -250,7 +361,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀនឡើយ។</td>
+                        <td colspan="11" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀនឡើយ។</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -82,6 +82,10 @@ urlpatterns = [
     # Teacher Self-Service Portal & AJAX API
     path('invigilator-request/', views.exam_invigilator_teacher_portal, name='exam_invigilator_teacher_portal'),
     path('api/invigilator-slot/toggle/', views.api_toggle_invigilator_slot, name='api_toggle_invigilator_slot'),
+    
+    # Student & Parent Exam Admission Slip & Telegram Seating Dispatch
+    path('student/admission-slip/<int:candidate_id>/', views.student_exam_admission_slip, name='student_exam_admission_slip'),
+    path('standardized/<int:exam_id>/send-seating-telegram/', views.api_send_exam_seating_telegram, name='api_send_exam_seating_telegram'),
 ]
 
 

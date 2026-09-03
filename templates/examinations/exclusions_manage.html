@@ -27,6 +27,28 @@
     </div>
 </div>
 
+{% if selected_std_exam %}
+<!-- Linked Exam Session Indicator Banner -->
+<div class="alert alert-primary py-3 px-3.5 rounded-4 shadow-sm border-0 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center justify-content-center bg-white text-primary rounded-circle shadow-xs" style="width: 44px; height: 44px; flex-shrink: 0;">
+            <i class="fa-solid fa-award fs-5"></i>
+        </div>
+        <div>
+            <div class="fw-bold text-dark fs-6">
+                កំពុងគ្រប់គ្រងសិស្សលើកលែងសម្រាប់សម័យប្រឡង៖ <span class="text-primary">«{{ selected_std_exam.name }}»</span>
+            </div>
+            <div class="small text-muted">
+                ថ្នាក់ទី {{ selected_std_exam.grade_level }} • {{ selected_std_exam.get_track_display }} • កាលបរិច្ឆេទប្រឡង៖ <strong>{{ selected_std_exam.exam_date|date:"d/m/Y" }}</strong>
+            </div>
+        </div>
+    </div>
+    <a href="{% url 'standardized_exam_manage' selected_std_exam.id %}" class="btn btn-primary btn-sm fw-bold shadow-xs">
+        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅផ្ទាំងគ្រប់គ្រងសម័យប្រឡង
+    </a>
+</div>
+{% endif %}
+
 <!-- Stats Counter Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
@@ -68,6 +90,17 @@
             <select name="academic_year" class="form-select form-select-sm" onchange="this.form.submit()">
                 {% for y in academic_years %}
                 <option value="{{ y.id }}" {% if selected_year_id == y.id|stringformat:"s" %}selected{% endif %}>{{ y.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Standardized Exam Filter -->
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">សម័យប្រឡងតេស្តស្តង់ដា</label>
+            <select name="standardized_exam" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់សម័យប្រឡងតេស្ត --</option>
+                {% for se in standardized_exams %}
+                <option value="{{ se.id }}" {% if selected_std_exam_id == se.id|stringformat:"s" %}selected{% endif %}>{{ se.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -285,10 +318,28 @@
                         </select>
                     </div>
 
-                    <!-- 3. Scope: Term or Month -->
+                    <!-- 3. Scope: Standardized Exam or Term or Month -->
+                    {% if selected_std_exam %}
+                    <input type="hidden" name="standardized_exam_id" value="{{ selected_std_exam.id }}">
+                    <div class="alert alert-primary py-2 px-3 small border-0 mb-3">
+                        <i class="fa-solid fa-award text-primary me-1"></i>
+                        សម័យប្រឡងតេស្ត៖ <strong>«{{ selected_std_exam.name }}»</strong>
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">៣. លើកលែងសម្រាប់សម័យប្រឡងតេស្តស្តង់ដា (ជម្រើស)</label>
+                        <select name="standardized_exam_id" class="form-select">
+                            <option value="">-- មិនកំណត់សម័យប្រឡងតេស្ត --</option>
+                            {% for se in standardized_exams %}
+                            <option value="{{ se.id }}">{{ se.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
                     <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">៣. សម័យប្រឡង (ជម្រើសទី១)</label>
+                            <label class="form-label small fw-bold text-muted">សម័យប្រឡងប្រចាំខែ (ជម្រើស)</label>
                             <select name="exam_term_id" class="form-select">
                                 <option value="">-- មិនកំណត់សម័យ --</option>
                                 {% for t in exam_terms %}
@@ -297,7 +348,7 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">ខែប្រឡង (ជម្រើសទី២)</label>
+                            <label class="form-label small fw-bold text-muted">ខែប្រឡង (ជម្រើស)</label>
                             <select name="month" class="form-select">
                                 <option value="">-- គ្រប់ខែ / ទុកទទេ --</option>
                                 {% for m_num, m_name in month_choices %}

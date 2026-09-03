@@ -30,19 +30,22 @@ class StandardizedExamForm(forms.ModelForm):
     class Meta:
         model = StandardizedExam
         fields = [
-            'name', 'academic_year', 'grade_level', 'track', 'session',
-            'exam_date', 'candidates_per_room', 'description',
+            'name', 'academic_year', 'exam_type', 'exam_term', 'grade_level', 'track', 'session',
+            'exam_date', 'candidates_per_room', 'grading_method', 'description',
             'grading_start_datetime', 'grading_end_datetime', 'is_grading_locked',
             'is_published'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ការប្រឡងតេស្តស្តង់ដា ឆមាសទី១ ថ្នាក់ទី១២ ឆ្នាំសិក្សា ២០២៥-២០២៦'}),
             'academic_year': forms.Select(attrs={'class': 'form-select'}),
+            'exam_type': forms.Select(attrs={'class': 'form-select'}),
+            'exam_term': forms.Select(attrs={'class': 'form-select'}),
             'grade_level': forms.NumberInput(attrs={'class': 'form-control', 'min': 7, 'max': 12}),
             'track': forms.Select(attrs={'class': 'form-select'}),
             'session': forms.Select(attrs={'class': 'form-select'}),
             'exam_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'candidates_per_room': forms.NumberInput(attrs={'class': 'form-control', 'min': 5, 'max': 60}),
+            'grading_method': forms.Select(attrs={'class': 'form-select'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'សេចក្តីណែនាំ ឬការកំណត់សម្គាល់បន្ថែម...'}),
             'grading_start_datetime': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'grading_end_datetime': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),

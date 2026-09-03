@@ -189,13 +189,13 @@
             <table class="duty-table">
                 <thead>
                     <tr>
-                        <th style="width: 40px;">ល.រ</th>
+                        <th style="width: 35px;">ល.រ</th>
                         <th>គោត្តនាម-នាម</th>
-                        <th style="width: 50px;">ភេទ</th>
-                        <th>អត្តលេខ</th>
-                        <th>ភារកិច្ចបច្ចុប្បន្ន</th>
-                        <th style="width: 150px;">បន្ទប់ឈរប្រឡង</th>
-                        <th style="width: 120px;">ហត្ថលេខា</th>
+                        <th style="width: 45px;">ភេទ</th>
+                        <th style="width: 80px;">អត្តលេខ</th>
+                        <th style="width: 150px;">មុខងារគណៈកម្មការ</th>
+                        <th style="width: 130px;">បន្ទប់ឈរប្រឡង</th>
+                        <th style="width: 100px;">ហត្ថលេខា</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -205,13 +205,13 @@
                         <td class="fw-bold">{{ r.teacher.khmer_name }}</td>
                         <td class="text-center">{{ r.teacher.get_gender_display }}</td>
                         <td class="text-center font-monospace">{{ r.teacher.teacher_id }}</td>
-                        <td>{{ r.teacher.current_duty|default:"គ្រូបង្រៀន" }}</td>
+                        <td class="fw-bold">{{ r.get_role_display }}</td>
                         <td class="text-center fw-bold">{{ r.room_assignment|default:"-" }}</td>
                         <td></td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-2" style="color: #777;">មិនទាន់មានអនុរក្សចាត់តាំងក្នុងវេននេះនៅឡើយទេ។</td>
+                        <td colspan="7" class="text-center py-2" style="color: #777;">មិនទាន់មានគណៈកម្មការចាត់តាំងក្នុងវេននេះនៅឡើយទេ។</td>
                     </tr>
                     {% endfor %}
                 </tbody>

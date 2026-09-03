@@ -32,6 +32,90 @@
                     {% endif %}
                 </div>
 
+                <!-- Exam Source & Category Selection Section (ជ្រើសរើសប្រភព និងប្រភេទសម័យប្រឡង) -->
+                <div class="p-3 bg-light rounded-4 border mb-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <label class="form-label fw-bold small text-dark mb-0">
+                            <i class="fa-solid fa-bullseye text-primary me-1"></i> ជ្រើសរើសប្រភេទ/ប្រភពសម័យប្រឡង (Exam Source & Type) *៖
+                        </label>
+                        <span class="small text-muted" style="font-size: 0.75rem;">ចុចជ្រើសរើសដើម្បីបំពេញឈ្មោះ និងកាលបរិច្ឆេទស្វ័យប្រវត្តិ</span>
+                    </div>
+
+                    <!-- Quick Preset Category Buttons -->
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('BASELINE')">
+                            🎯 តេស្តដើមឆ្នាំ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('SEMESTER_1')">
+                            🎓 ប្រឡងឆមាសទី១
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('SEMESTER_2')">
+                            🎓 ប្រឡងឆមាសទី២
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('MOCK')">
+                            📝 ប្រឡងសាកល្បង
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('ENDLINE')">
+                            🏁 តេស្តចុងឆ្នាំ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('MONTHLY')">
+                            📅 ប្រឡងប្រចាំខែ...
+                        </button>
+                    </div>
+
+                    <!-- Dropdown selections -->
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="small fw-bold text-muted mb-1">
+                                <i class="fa-solid fa-link text-success me-1"></i> ចេញពីសម័យប្រឡងផ្លូវការ (Linked Exam Term)៖
+                            </label>
+                            <select name="exam_term" id="linked_exam_term_select" class="form-select form-select-sm" onchange="onExamTermSelected(this)">
+                                <option value="">-- ឬជ្រើសរើសពីសម័យប្រឡងក្នុងប្រព័ន្ធ --</option>
+                                {% if monthly_terms %}
+                                <optgroup label="📅 ការប្រឡងប្រចាំខែនីមួយៗ (Monthly Exams)">
+                                    {% for t in monthly_terms %}
+                                    <option value="{{ t.id }}" data-name="{{ t.name }}" data-type="MONTHLY" data-date="{{ t.start_date|date:'Y-m-d' }}" {% if form.instance.exam_term_id == t.id %}selected{% endif %}>
+                                        {{ t.name }} ({{ t.start_date|date:'d/m/Y' }})
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+                                {% if semester_terms %}
+                                <optgroup label="🎓 ការប្រឡងឆមាស (Semester Exams)">
+                                    {% for t in semester_terms %}
+                                    <option value="{{ t.id }}" data-name="{{ t.name }}" data-type="{{ t.term_type }}" data-date="{{ t.start_date|date:'Y-m-d' }}" {% if form.instance.exam_term_id == t.id %}selected{% endif %}>
+                                        {{ t.name }} ({{ t.start_date|date:'d/m/Y' }})
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="small fw-bold text-muted mb-1">ប្រភេទសម័យប្រឡង៖</label>
+                            {{ form.exam_type }}
+                        </div>
+
+                        <div class="col-md-3" id="monthlyPresetCol" style="display: none;">
+                            <label class="small fw-bold text-muted mb-1">ខែប្រឡង (ប្រចាំខែ)៖</label>
+                            <select id="monthly_month_select" class="form-select form-select-sm fw-bold border-primary" onchange="onMonthlyMonthSelected(this.value)">
+                                <option value="">-- ជ្រើសខែ --</option>
+                                <option value="តុលា">ខែ តុលា</option>
+                                <option value="វិច្ឆិកា">ខែ វិច្ឆិកា</option>
+                                <option value="ធ្នូ">ខែ ធ្នូ</option>
+                                <option value="មករា">ខែ មករា</option>
+                                <option value="កុម្ភៈ">ខែ កុម្ភៈ</option>
+                                <option value="មីនា">ខែ មីនា</option>
+                                <option value="មេសា">ខែ មេសា</option>
+                                <option value="ឧសភា">ខែ ឧសភា</option>
+                                <option value="មិថុនា">ខែ មិថុនា</option>
+                                <option value="កក្កដា">ខែ កក្កដា</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-muted">ឈ្មោះសម័យប្រឡង (Exam Title) *</label>
                     {{ form.name }}
@@ -183,32 +267,46 @@
                 <!-- Base Shared Settings -->
                 <div id="baseSettingsCard">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-{% if is_edit %}4{% else %}6{% endif %}">
                             <label class="form-label fw-bold small text-muted">ជំនាញសិក្សា (Track) *</label>
                             {{ form.track }}
                             {% if form.track.errors %}<div class="text-danger small mt-1">{{ form.track.errors }}</div>{% endif %}
                         </div>
+                        {% if is_edit %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted">វេនប្រឡង (Exam Shift) *</label>
                             {{ form.session }}
                             {% if form.session.errors %}<div class="text-danger small mt-1">{{ form.session.errors }}</div>{% endif %}
                         </div>
-                        <div class="col-md-4">
+                        {% else %}
+                        <input type="hidden" name="session" value="MORNING">
+                        {% endif %}
+                        <div class="col-md-{% if is_edit %}4{% else %}6{% endif %}">
                             <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទប្រឡង *</label>
                             {{ form.exam_date }}
                             {% if form.exam_date.errors %}<div class="text-danger small mt-1">{{ form.exam_date.errors }}</div>{% endif %}
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">ចំនួនបេក្ខជនក្នុងមួយបន្ទប់ (ស្តង់ដារ ២៥ នាក់) *</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light"><i class="fa-solid fa-door-open"></i></span>
-                            {{ form.candidates_per_room }}
-                            <span class="input-group-text bg-light">នាក់/បន្ទប់</span>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">ចំនួនបេក្ខជនក្នុងមួយបន្ទប់ (ស្តង់ដារ ២៥ នាក់) *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-door-open"></i></span>
+                                {{ form.candidates_per_room }}
+                                <span class="input-group-text bg-light">នាក់/បន្ទប់</span>
+                            </div>
+                            <div class="form-text text-muted" style="font-size: 0.75rem;">ប្រព័ន្ធនឹងបែងចែកបន្ទប់ស្វ័យប្រវត្តិតាមចំនួននេះ (ឧ. ២៥ នាក់ ក្នុងមួយបន្ទប់)។</div>
+                            {% if form.candidates_per_room.errors %}<div class="text-danger small mt-1">{{ form.candidates_per_room.errors }}</div>{% endif %}
                         </div>
-                        <div class="form-text text-muted" style="font-size: 0.75rem;">ប្រព័ន្ធនឹងបែងចែកបន្ទប់ស្វ័យប្រវត្តិតាមចំនួននេះ (ឧ. ២៥ នាក់ ក្នុងមួយបន្ទប់)។</div>
-                        {% if form.candidates_per_room.errors %}<div class="text-danger small mt-1">{{ form.candidates_per_room.errors }}</div>{% endif %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">
+                                <i class="fa-solid fa-user-shield text-primary me-1"></i> សិទ្ធិបញ្ចូលពិន្ទុ (Scoring Method) *
+                            </label>
+                            {{ form.grading_method }}
+                            <div class="form-text text-muted" style="font-size: 0.75rem;">Admin អាចអនុញ្ញាតឱ្យបញ្ចូលតាមរយៈគ្រូបង្រៀនផ្ទាល់ ឬតាមរយៈលេខកូដសម្ងាត់។</div>
+                            {% if form.grading_method.errors %}<div class="text-danger small mt-1">{{ form.grading_method.errors }}</div>{% endif %}
+                        </div>
                     </div>
                 </div>
 
@@ -531,9 +629,132 @@ function autoCalculateCoefficient(esId) {
     }
 }
 
+function selectExamPreset(type) {
+    const nameInput = document.querySelector('[name="name"]');
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    const monthlyCol = document.getElementById('monthlyPresetCol');
+    const termSelect = document.getElementById('linked_exam_term_select');
+
+    if (examTypeSelect) {
+        examTypeSelect.value = type;
+    }
+
+    if (type === 'MONTHLY') {
+        if (monthlyCol) monthlyCol.style.display = 'block';
+        if (nameInput && (!nameInput.value || nameInput.value.includes('ការប្រឡង'))) {
+            nameInput.value = 'ការប្រឡងប្រចាំខែ';
+        }
+    } else {
+        if (monthlyCol) monthlyCol.style.display = 'none';
+        
+        let title = '';
+        if (type === 'BASELINE') {
+            title = 'ការប្រឡងតេស្តដើមឆ្នាំ';
+        } else if (type === 'SEMESTER_1') {
+            title = 'ការប្រឡងឆមាសទី១';
+        } else if (type === 'SEMESTER_2') {
+            title = 'ការប្រឡងឆមាសទី២';
+        } else if (type === 'MOCK') {
+            title = 'ការប្រឡងសាកល្បង (Mock Exam)';
+        } else if (type === 'ENDLINE') {
+            title = 'ការប្រឡងតេស្តចុងឆ្នាំ';
+        }
+
+        if (title && nameInput) {
+            nameInput.value = title;
+        }
+
+        // Check if there is an exact matching term in linked_exam_term_select
+        if (termSelect) {
+            let matched = false;
+            Array.from(termSelect.options).forEach(opt => {
+                const optType = opt.getAttribute('data-type');
+                if (optType === type && !matched) {
+                    termSelect.value = opt.value;
+                    const optDate = opt.getAttribute('data-date');
+                    const dateInput = document.querySelector('[name="exam_date"]');
+                    if (optDate && dateInput) dateInput.value = optDate;
+                    matched = true;
+                }
+            });
+            if (!matched && type !== 'MONTHLY') {
+                termSelect.value = '';
+            }
+        }
+    }
+
+    // Trigger sync for multi-grade cards if present
+    if (typeof handleGradeSelectionChange === 'function') {
+        handleGradeSelectionChange();
+    }
+}
+
+function onMonthlyMonthSelected(month) {
+    if (!month) return;
+    const nameInput = document.querySelector('[name="name"]');
+    if (nameInput) {
+        nameInput.value = 'ការប្រឡងប្រចាំខែ ' + month;
+    }
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    if (examTypeSelect) examTypeSelect.value = 'MONTHLY';
+
+    // Check if there's a term with this month
+    const termSelect = document.getElementById('linked_exam_term_select');
+    if (termSelect) {
+        Array.from(termSelect.options).forEach(opt => {
+            const optName = opt.getAttribute('data-name') || '';
+            if (optName.includes(month)) {
+                termSelect.value = opt.value;
+                const optDate = opt.getAttribute('data-date');
+                const dateInput = document.querySelector('[name="exam_date"]');
+                if (optDate && dateInput) dateInput.value = optDate;
+            }
+        });
+    }
+
+    if (typeof handleGradeSelectionChange === 'function') {
+        handleGradeSelectionChange();
+    }
+}
+
+function onExamTermSelected(selectEl) {
+    if (!selectEl || !selectEl.value) return;
+    const selectedOpt = selectEl.selectedOptions[0];
+    if (!selectedOpt) return;
+
+    const termName = selectedOpt.getAttribute('data-name');
+    const termType = selectedOpt.getAttribute('data-type');
+    const termDate = selectedOpt.getAttribute('data-date');
+
+    const nameInput = document.querySelector('[name="name"]');
+    if (nameInput && termName) {
+        nameInput.value = termName;
+    }
+
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    if (examTypeSelect && termType) {
+        examTypeSelect.value = termType;
+    }
+
+    const dateInput = document.querySelector('[name="exam_date"]');
+    if (dateInput && termDate) {
+        dateInput.value = termDate;
+    }
+
+    if (typeof handleGradeSelectionChange === 'function') {
+        handleGradeSelectionChange();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.grade-checkbox')) {
         handleGradeSelectionChange();
+    }
+    // If initially monthly, show monthly selector
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    if (examTypeSelect && examTypeSelect.value === 'MONTHLY') {
+        const monthlyCol = document.getElementById('monthlyPresetCol');
+        if (monthlyCol) monthlyCol.style.display = 'block';
     }
 });
 </script>
