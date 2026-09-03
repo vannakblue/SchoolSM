@@ -700,33 +700,33 @@
             <table class="duty-sheet-table">
                 <thead>
                     <tr>
-                        <th style="width: 38px; text-align: center;" data-col="0">
+                        <th style="width: 4.5%; text-align: center;" data-col="0">
                             <span>ល.រ</span>
                             <div class="col-resizer-handle" data-col="0" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 86px; text-align: center; white-space: nowrap;" data-col="1">
+                        <th style="width: 10.5%; text-align: center; white-space: nowrap;" data-col="1">
                             <span>អត្តលេខ</span>
                             <div class="col-resizer-handle" data-col="1" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 130px; text-align: left; padding-left: 6px; white-space: nowrap;" data-col="2">
+                        <th style="width: 17.5%; text-align: left; padding-left: 5px; white-space: nowrap;" data-col="2">
                             <span>ឈ្មោះគ្រូបង្រៀន</span>
                             <div class="col-resizer-handle" data-col="2" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
                         {% for p_lbl in sheet.period_labels %}
-                        <th style="width: 74px; text-align: center; white-space: nowrap;" data-col="{{ forloop.counter|add:2 }}">
+                        <th style="width: 8.5%; text-align: center; white-space: nowrap;" data-col="{{ forloop.counter|add:2 }}">
                             <span>{{ p_lbl }}</span>
                             <div class="col-resizer-handle" data-col="{{ forloop.counter|add:2 }}" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
                         {% endfor %}
-                        <th style="width: 135px; text-align: center;" data-col="7">
+                        <th style="width: 14%; text-align: center;" data-col="7">
                             <span>ហត្ថលេខាចូល</span>
                             <div class="col-resizer-handle" data-col="7" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 135px; text-align: center;" data-col="8">
+                        <th style="width: 14%; text-align: center;" data-col="8">
                             <span>ហត្ថលេខាចេញ</span>
                             <div class="col-resizer-handle" data-col="8" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 90px; text-align: center;" data-col="9">
+                        <th style="width: 5.5%; text-align: center;" data-col="9">
                             <span>ផ្សេងៗ</span>
                             <div class="col-resizer-handle" data-col="9" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
@@ -1225,13 +1225,13 @@
     // EXCEL PRINT PREVIEW MARGINS & COLUMN RESIZER
     // ==========================================
     let isExcelMarginsActive = false;
-    const STORAGE_KEY_MARGINS = 'daily_report_excel_margins_config_v1';
-    const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v1';
+    const STORAGE_KEY_MARGINS = 'daily_report_excel_margins_config_v2';
+    const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v3';
 
     const MARGIN_PRESETS = {
-        normal: { top: 20, bottom: 20, left: 15, right: 15, fontSize: '8.5pt', density: 'normal' },
-        narrow: { top: 12, bottom: 12, left: 10, right: 10, fontSize: '8.0pt', density: 'compact' },
-        wide:   { top: 25, bottom: 25, left: 25, right: 25, fontSize: '9.0pt', density: 'relaxed' },
+        normal: { top: 15, bottom: 15, left: 10, right: 10, fontSize: '8.5pt', density: 'normal' },
+        narrow: { top: 10, bottom: 10, left: 6, right: 6, fontSize: '8.0pt', density: 'compact' },
+        wide:   { top: 20, bottom: 20, left: 15, right: 15, fontSize: '9.0pt', density: 'relaxed' },
     };
 
     function toggleExcelMarginsMode() {
@@ -1358,8 +1358,8 @@
             localStorage.removeItem(STORAGE_KEY_COL_WIDTHS);
         } catch (e) {}
         applyMarginPreset('normal');
-        // Reset column widths to default
-        const defaultWidths = ['38px', '86px', '130px', '74px', '74px', '74px', '74px', '135px', '135px', '90px'];
+        // Reset column widths to default percentages (Total = 100%)
+        const defaultWidths = ['4.5%', '10.5%', '17.5%', '8.5%', '8.5%', '8.5%', '8.5%', '14%', '14%', '5.5%'];
         applyColumnWidths(defaultWidths);
     }
 
@@ -1375,6 +1375,7 @@
         let startWidth = 0;
         let colIdx = 0;
         let activeTh = null;
+        let tableWidth = 0;
 
         document.querySelectorAll('.col-resizer-handle').forEach(handle => {
             handle.addEventListener('mousedown', function(e) {
@@ -1385,6 +1386,8 @@
                 colIdx = parseInt(activeTh.getAttribute('data-col') || '0', 10);
                 startX = e.pageX;
                 startWidth = activeTh.offsetWidth;
+                const tbl = activeTh.closest('table');
+                tableWidth = tbl ? tbl.offsetWidth : 700;
                 handle.classList.add('is-resizing');
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
@@ -1392,8 +1395,9 @@
                 function onMouseMove(moveEvent) {
                     if (!activeHandle) return;
                     const diff = moveEvent.pageX - startX;
-                    const newWidth = Math.max(30, startWidth + diff);
-                    setAllTablesColumnWidth(colIdx, `${newWidth}px`);
+                    const newPx = Math.max(25, startWidth + diff);
+                    const newPct = ((newPx / tableWidth) * 100).toFixed(1) + '%';
+                    setAllTablesColumnWidth(colIdx, newPct);
                 }
 
                 function onMouseUp() {
