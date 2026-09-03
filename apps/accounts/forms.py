@@ -60,7 +60,7 @@ class SchoolProfileForm(forms.ModelForm):
     class Meta:
         model = SchoolProfile
         fields = [
-            'name_kh', 'name_en', 'short_name', 'school_code', 'school_type', 'institution_type', 'education_levels', 'date_format', 'motto',
+            'name_kh', 'name_en', 'short_name', 'school_code', 'school_type', 'institution_type', 'education_levels', 'date_format', 'time_format', 'motto',
             'logo', 'seal', 'principal_signature',
             'ministry_name', 'poe_name', 'doe_name',
             'province', 'district', 'commune', 'village', 'street_address',
@@ -76,6 +76,7 @@ class SchoolProfileForm(forms.ModelForm):
             'institution_type': forms.Select(attrs={'class': 'form-select'}),
             'education_levels': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ'}),
             'date_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
+            'time_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'motto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌'}),
             
             'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),

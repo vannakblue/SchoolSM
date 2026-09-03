@@ -239,16 +239,39 @@ class SchoolProfile(models.Model):
         verbose_name="កម្រិតសិក្សា / Education Levels"
     )
     date_format = models.CharField(
-        max_length=20,
+        max_length=50,
         default="dd-mm-yyyy",
         choices=[
             ('dd-mm-yyyy', 'dd-mm-yyyy (ឧ. 02-09-2026) - លំនាំដើម'),
             ('dd/mm/yyyy', 'dd/mm/yyyy (ឧ. 02/09/2026)'),
             ('yyyy-mm-dd', 'yyyy-mm-dd (ឧ. 2026-09-02)'),
             ('dd.mm.yyyy', 'dd.mm.yyyy (ឧ. 02.09.2026)'),
+            ('dd-mm-yyyy HH:mm', 'dd-mm-yyyy HH:mm (ឧ. 02-09-2026 14:30)'),
+            ('dd-mm-yyyy HH:mm:ss', 'dd-mm-yyyy HH:mm:ss (ឧ. 02-09-2026 14:30:45)'),
+            ('dd/mm/yyyy HH:mm', 'dd/mm/yyyy HH:mm (ឧ. 02/09/2026 14:30)'),
+            ('dd/mm/yyyy HH:mm:ss', 'dd/mm/yyyy HH:mm:ss (ឧ. 02/09/2026 14:30:45)'),
+            ('yyyy-mm-dd HH:mm', 'yyyy-mm-dd HH:mm (ឧ. 2026-09-02 14:30)'),
+            ('yyyy-mm-dd HH:mm:ss', 'yyyy-mm-dd HH:mm:ss (ឧ. 2026-09-02 14:30:45)'),
+            ('dd.mm.yyyy HH:mm', 'dd.mm.yyyy HH:mm (ឧ. 02.09.2026 14:30)'),
+            ('dd.mm.yyyy HH:mm:ss', 'dd.mm.yyyy HH:mm:ss (ឧ. 02.09.2026 14:30:45)'),
+            ('dd-mm-yyyy hh:mm a', 'dd-mm-yyyy hh:mm A (ឧ. 02-09-2026 02:30 PM)'),
+            ('dd-mm-yyyy hh:mm:ss a', 'dd-mm-yyyy hh:mm:ss A (ឧ. 02-09-2026 02:30:45 PM)'),
+            ('dd/mm/yyyy hh:mm:ss a', 'dd/mm/yyyy hh:mm:ss A (ឧ. 02/09/2026 02:30:45 PM)'),
         ],
         blank=True,
         verbose_name="ទម្រង់កាលបរិច្ឆេទ / Date Format"
+    )
+    time_format = models.CharField(
+        max_length=30,
+        default="HH:mm",
+        choices=[
+            ('HH:mm', 'HH:mm (ឧ. 14:30 - 24 ម៉ោង គ្មានវិនាទី) - លំនាំដើម'),
+            ('HH:mm:ss', 'HH:mm:ss (ឧ. 14:30:45 - 24 ម៉ោង មានវិនាទី)'),
+            ('hh:mm a', 'hh:mm A (ឧ. 02:30 PM - 12 ម៉ោង គ្មានវិនាទី)'),
+            ('hh:mm:ss a', 'hh:mm:ss A (ឧ. 02:30:45 PM - 12 ម៉ោង មានវិនាទី)'),
+        ],
+        blank=True,
+        verbose_name="ទម្រង់ម៉ោង / Time Format"
     )
 
     # MoEYS Administrative & Hierarchy
