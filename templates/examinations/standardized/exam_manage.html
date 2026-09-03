@@ -89,6 +89,11 @@
                 <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ & កំណត់លេខតុ (Auto-Rooms)
             </button>
 
+            <!-- Excluded Students Management for this Exam -->
+            <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ exam.academic_year_id }}&grade={{ exam.grade_level }}" class="btn btn-outline-danger btn-sm fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងសម្រាប់កម្រិតថ្នាក់នេះ">
+                <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
+            </a>
+
             <!-- Excel Import Button -->
             <button type="button" class="btn btn-teal btn-sm fw-bold text-white shadow-sm" style="background: #0d9488;" data-bs-toggle="modal" data-bs-target="#importExcelModal">
                 <i class="fa-solid fa-file-excel me-1"></i> នាំចូល Excel

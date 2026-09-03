@@ -58,13 +58,7 @@
         <p class="text-muted small mb-0">គ្រប់គ្រងសម័យប្រឡងតេស្តស្តង់ដាតាមសម័យប្រឡងនីមួយៗ និងកម្រិតថ្នាក់ (៧ ដល់ ១២)</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-danger fw-bold shadow-xs btn-sm">
-            <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែងមិនឱ្យប្រឡង
-        </a>
         {% if is_admin %}
-        <button type="button" class="btn btn-outline-success fw-bold shadow-xs btn-sm" data-bs-toggle="modal" data-bs-target="#batchGenerateRoomsModal">
-            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់ស្វ័យប្រវត្តិតាមវេន (Batch Auto-Rooms)
-        </button>
         <a href="{% url 'standardized_exam_create' %}" class="btn btn-primary fw-bold shadow-sm btn-sm">
             <i class="fa-solid fa-circle-plus me-1"></i> បង្កើតសម័យប្រឡងថ្មី
         </a>
@@ -188,6 +182,9 @@
                     <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" onclick="openSessionBatchModal('{{ sess.group_key|escapejs }}', '{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'Y-m-d' }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.id }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}')">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់
                     </button>
+                    <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
+                        <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
+                    </a>
                     <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}">
                         <i class="fa-solid fa-chevron-down toggle-icon text-primary"></i>
                     </button>
