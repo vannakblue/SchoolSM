@@ -213,7 +213,7 @@
         background-color: #eff6ff !important;
     }
 
-    /* Print Styles - Guaranteed Auto-Fit to A4 Paper */
+    /* Print Styles - Guaranteed Auto-Fit to A4 Paper (Zero Page Spills) */
     @media print {
 
         .no-print,
@@ -229,12 +229,11 @@
 
         @page {
             size: A4 portrait;
-            margin: 6mm 8mm 8mm 8mm !important;
+            margin: 6mm 8mm 6mm 8mm !important;
         }
 
         html, body {
-            width: 210mm !important;
-            height: auto !important;
+            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
@@ -250,15 +249,15 @@
 
         .duty-sheet-paper {
             width: 100% !important;
-            max-width: 194mm !important;
+            max-width: 100% !important;
             box-sizing: border-box !important;
             border: none !important;
             box-shadow: none !important;
-            margin: 0 auto !important;
-            padding: var(--paper-pad-top, 6mm) var(--paper-pad-right, 4mm) var(--paper-pad-bottom, 6mm) var(--paper-pad-left, 4mm) !important;
+            margin: 0 !important;
+            padding: 0 !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            page-break-after: always !important;
+            page-break-after: page !important;
             break-after: page !important;
             display: block !important;
             overflow: hidden !important;
@@ -271,6 +270,7 @@
 
         .duty-sheet-table {
             width: 100% !important;
+            max-width: 100% !important;
             table-layout: fixed !important;
             border-collapse: collapse !important;
             box-sizing: border-box !important;
@@ -280,7 +280,7 @@
         .duty-sheet-table td {
             border: 1px solid #000 !important;
             font-size: var(--report-table-font-size, 8.0pt) !important;
-            padding: 2.5px 2px !important;
+            padding: 1.5px 2px !important;
             line-height: 1.15 !important;
             vertical-align: middle !important;
             box-sizing: border-box !important;
@@ -290,7 +290,7 @@
         .duty-sheet-table th {
             background-color: #f0f0f0 !important;
             font-weight: 700 !important;
-            height: 26px !important;
+            height: 24px !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
@@ -300,12 +300,19 @@
         }
 
         .duty-sheet-header-block {
-            margin-bottom: 6px !important;
+            margin-bottom: 3px !important;
         }
 
         .duty-sheet-signatures {
-            margin-top: 6px !important;
-            padding-top: 2px !important;
+            margin-top: 4px !important;
+            padding-top: 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .duty-sheet-footer-note {
+            margin-top: 3px !important;
+            padding-top: 1px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
@@ -776,7 +783,7 @@
                 </div>
             </div>
             {% else %}
-            <div class="d-flex justify-content-between align-items-center mt-2 pt-1 text-muted small border-top">
+            <div class="duty-sheet-footer-note d-flex justify-content-between align-items-center mt-1 pt-1 text-muted small border-top" style="font-size: 8pt;">
                 <span>(តទៅទំព័រទី {{ subpage.page_num|add:1 }})</span>
                 <span>ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}</span>
             </div>
@@ -1470,7 +1477,7 @@
     }
 
     // ==========================================
-    // SMART A4 AUTO-FIT SCALING & FULL-PAGE STRETCH ENGINE
+    // SMART A4 AUTO-FIT SCALING & FULL-PAGE FIT (ZERO SPILLS)
     // ==========================================
     function applySmartAutoFitA4() {
         const papers = document.querySelectorAll('.duty-sheet-paper');
@@ -1482,20 +1489,19 @@
             const hasSignatures = paper.querySelector('.duty-sheet-signatures') !== null;
             if (!table || rowCount === 0) return;
 
-            // Total available printable height on A4 (approx 980px - 1040px)
-            // Header block takes ~75px, footer note takes ~25px, signatures block takes ~120px
-            let availableHeight = hasSignatures ? 820 : 900;
-            let calculatedRowHeight = Math.floor(availableHeight / rowCount);
+            // Safe target tbody height to ensure ZERO spillover onto extra pages
+            let safeTbodyHeight = hasSignatures ? 690 : 780;
+            let calculatedRowHeight = Math.floor(safeTbodyHeight / rowCount);
 
-            // Proportional row height: minimum 32px, maximum 45px
-            calculatedRowHeight = Math.max(32, Math.min(46, calculatedRowHeight));
+            // Bounded row height: minimum 24px, maximum 35px
+            calculatedRowHeight = Math.max(24, Math.min(35, calculatedRowHeight));
 
-            // Sharp, highly readable font size matching row height
-            let calculatedFontSize = '8.8pt';
-            if (calculatedRowHeight < 34) {
-                calculatedFontSize = '8.2pt';
-            } else if (calculatedRowHeight >= 40) {
-                calculatedFontSize = '9.2pt';
+            // Sharp, highly readable font size
+            let calculatedFontSize = '8.0pt';
+            if (calculatedRowHeight >= 32) {
+                calculatedFontSize = '8.5pt';
+            } else if (calculatedRowHeight < 27) {
+                calculatedFontSize = '7.5pt';
             }
 
             table.style.setProperty('--report-table-font-size', calculatedFontSize);
@@ -1506,13 +1512,13 @@
                 tr.querySelectorAll('td').forEach(td => {
                     td.style.height = `${calculatedRowHeight}px`;
                     td.style.fontSize = calculatedFontSize;
-                    td.style.padding = calculatedRowHeight >= 36 ? '4px 3px' : '2.5px 2px';
+                    td.style.padding = '1.5px 2px';
                 });
             });
 
             table.querySelectorAll('th').forEach(th => {
                 th.style.fontSize = calculatedFontSize;
-                th.style.height = '32px';
+                th.style.height = '24px';
             });
         });
     }
