@@ -22,7 +22,7 @@ KHMER_NAME_DICTIONARY: Dict[str, str] = {
     'កុសល': 'Kosal', 'កឿន': 'Koeun', 'គាន': 'Kean', 'គ្រីន': 'Krin', 'ញ៉ែម': 'Nhem', 'ញឹក': 'Nhek',
     'តាំង': 'Tang', 'តូច': 'Touch', 'ថោង': 'Thaong', 'ផន': 'Phorn', 'ផល': 'Phal', 'ផាត់': 'Phat',
     'ផេង': 'Pheng', 'ពៅ': 'Pov', 'ភោគ': 'Phok', 'មុំ': 'Mom', 'មូល': 'Moul', 'មៀច': 'Miech',
-    'ម៉ម': 'Morm', 'យូ': 'You', 'រិទ្ធ': 'Rith', 'លន់': 'Lon', 'លឿង': 'Loeung', 'វណ្ណៈ': 'Vannak',
+    'ម៉ម': 'Morm', 'យូ': 'You', 'រិទ្ធ': 'Rith', 'លន់': 'Lon', 'លឿង': 'Loeung', 'វណ្ណៈ': 'Vannak', 'វណ្ណាក់': 'Vannak', 'វ៉ាន់ណាក់': 'Vannak', 'វណ្ណា': 'Vanna', 'វណ្ណដា': 'Vannda', 'វណ្ណេត': 'Vanneth', 'វណ្ណី': 'Vanny',
     'សាន': 'San', 'ស៊ា': 'Sea', 'ស្រ៊ុន': 'Srun', 'ហុង': 'Hong', 'ហួត': 'Huot', 'ហៀង': 'Heang',
     'ហ៊ឺ': 'Heu', 'ហ៊ូ': 'Hou', 'អាន': 'An', 'អៀ': 'Iea', 'អ៊ុយ': 'Uy', 'ឯក': 'Ek',
     'យ៉ាន់': 'Yann', 'យ៉ុន': 'Yon', 'យ៉ន': 'Yorn', 'យ៉ាង': 'Yang', 'យ៉េន': 'Yen', 'សាក់': 'Sak',
@@ -126,6 +126,25 @@ VOWEL_SIGNS = {
 }
 
 
+# Comprehensive List of Khmer Surnames for single-word name splitting
+KHMER_SURNAMES: List[str] = [
+    'សុខ', 'ហេង', 'សេង', 'គង់', 'រស់', 'លី', 'ចាន់', 'ឡុង', 'កែវ', 'ម៉ៅ',
+    'ជា', 'យិន', 'អ៊ុក', 'ស៊ូ', 'ឈាង', 'មាស', 'វ៉ាន់', 'នួន', 'ឌិត', 'ប៉ែន',
+    'អ៊ុំ', 'ស៊ិន', 'ពេជ្រ', 'សម្បត្តិ', 'ឃួន', 'អ៊ុច', 'ទេព', 'រិន', 'គឹម',
+    'ឃឹម', 'ស៊ុន', 'អ៊ឹង', 'ឡេង', 'អេង', 'អ៊ិន', 'សន', 'យន់', 'ខៀវ', 'ប្រាក់',
+    'ទូច', 'ទិត', 'ទិន', 'ទុន', 'ឌី', 'ដួង', 'ឈួន', 'ឆាយ', 'ឆេង', 'ចេង',
+    'ងួន', 'ខឹម', 'ខុត', 'ឃាង', 'កង', 'កុសល', 'កឿន', 'គាន', 'គ្រីន', 'ញ៉ែម',
+    'ញឹក', 'តាំង', 'តូច', 'ថោង', 'ផន', 'ផល', 'ផាត់', 'ផេង', 'ពៅ', 'ភោគ',
+    'មុំ', 'មូល', 'មៀច', 'ម៉ម', 'យូ', 'រិទ្ធ', 'លន់', 'លឿង', 'វណ្ណៈ', 'វណ្ណាក់',
+    'វ៉ាន់ណាក់', 'វណ្ណា', 'វណ្ណដា', 'វណ្ណេត', 'វណ្ណី', 'សាន', 'ស៊ា', 'ស្រ៊ុន',
+    'ហុង', 'ហួត', 'ហៀង', 'ហ៊ឺ', 'ហ៊ូ', 'អាន', 'អៀ', 'អ៊ុយ', 'ឯក', 'យ៉ាន់',
+    'យ៉ុន', 'យ៉ន', 'យ៉ាង', 'យ៉េន', 'សាក់', 'សោម', 'ស៊ុំ', 'ស៊ុយ', 'ប៉ាង',
+    'ប៉ាល់', 'ពិន', 'ខន', 'ខា', 'កេត', 'សាត', 'សាន់', 'ខាន់', 'អ៊ឹម', 'ឡុច',
+    'សួស', 'សឿន', 'សេត', 'សែត', 'ណុប', 'ណាត', 'ឌុច', 'ត្រាក់', 'ឈុំ', 'ឈឹម',
+    'ឈុត', 'ជុំ', 'ជិន', 'អៀម', 'ព្រាប', 'សំអុល', 'សំ'
+]
+
+
 def _romanize_phonetic_word(word: str) -> str:
     """
     Fallback rule-based syllable decomposition for words not in the curated dictionary.
@@ -144,10 +163,14 @@ def _romanize_phonetic_word(word: str) -> str:
     # E.g. 'សាន់ច័ន្ទណារ៉ុង' -> 'សាន់' (San) + 'ច័ន្ទ' (Chan) + 'ណារ៉ុង' (Narong)
     for l in range(min(12, len(word)), 1, -1):
         prefix = word[:l]
-        if prefix in KHMER_SYLLABLES_MAP or prefix in KHMER_NAME_DICTIONARY:
-            p_val = KHMER_SYLLABLES_MAP.get(prefix) or KHMER_NAME_DICTIONARY.get(prefix)
+        if prefix in KHMER_NAME_DICTIONARY:
+            p_val = KHMER_NAME_DICTIONARY[prefix]
             rest_val = _romanize_phonetic_word(word[l:])
-            return f"{p_val}{' ' + rest_val if rest_val else ''}".strip()
+            return f"{p_val}{rest_val}".strip()
+        if prefix in KHMER_SYLLABLES_MAP:
+            p_val = KHMER_SYLLABLES_MAP[prefix]
+            rest_val = _romanize_phonetic_word(word[l:])
+            return f"{p_val}{rest_val}".strip()
 
     # 3. Phonetic character-by-character mapping
     out = []
@@ -203,18 +226,31 @@ def _romanize_phonetic_word(word: str) -> str:
     return res.capitalize() if res else ''
 
 
+def _romanize_single_token(token: str) -> str:
+    if not token:
+        return ''
+    token = token.strip()
+    if token in KHMER_NAME_DICTIONARY:
+        return KHMER_NAME_DICTIONARY[token]
+    if token in KHMER_SYLLABLES_MAP:
+        return KHMER_SYLLABLES_MAP[token]
+    return _romanize_phonetic_word(token)
+
+
 def romanize_khmer_name(khmer_name: str) -> str:
     """
-    Translates a full Khmer name into clean, standardized Latin script.
+    Translates a full Khmer name into clean, standardized Latin script in ALL CAPITAL LETTERS.
+    Structure: [SURNAME] [GIVEN_NAME] (with no spaces inside the given name).
     
     Examples:
-    - យ៉ាន់ សាន់ច័ន្ទណារ៉ុង -> Yann Sanchan Narong
-    - យ៉ុន ភារៈ -> Yon Phearak
-    - ឡេងសាវឿន ប៊ិនណា -> Leng Savoeun Binna
-    - សំអុល ឧត្តម្ភមាសសុទ្ធ -> Sam Ol Oudom Meas Soth
-    - កេត មុន្នីនាថ -> Ket Monyneath
-    - កែវ ស្រស់ហៀង -> Keo Sros Heang
-    - គង់ សុខុមវត្តមានា -> Kong Sokhom Vattana
+    - សុខ ចាន់ណា -> SOK CHANNA
+    - សុខ ចាន់ ណា -> SOK CHANNA
+    - សុខចាន់ណា -> SOK CHANNA
+    - ជា វណ្ណៈ -> CHEA VANNAK
+    - ទុន វណ្ណាក់ -> TUN VANNAK
+    - ឡេង សាវឿន -> LENG SAVOEUN
+    - អ៊ុក សុជាតា -> OUK SOCHEATA
+    - ហេង ពិសី -> HENG PISEY
     """
     if not khmer_name:
         return ''
@@ -222,25 +258,36 @@ def romanize_khmer_name(khmer_name: str) -> str:
     # Normalize zero-width spaces and whitespace
     cleaned = khmer_name.replace('\u200b', ' ').replace('\xa0', ' ').strip()
     words = cleaned.split()
+    if not words:
+        return ''
 
-    latin_words: List[str] = []
-    for word in words:
-        w_clean = word.strip()
-        if not w_clean:
-            continue
-
-        # Check direct dictionary lookup first
-        if w_clean in KHMER_NAME_DICTIONARY:
-            latin_words.append(KHMER_NAME_DICTIONARY[w_clean])
+    # Case 1: Single unbroken word (e.g. 'សុខចាន់ណា' or 'ជាវណ្ណៈ')
+    if len(words) == 1:
+        w = words[0]
+        matched_surname = None
+        for sname in sorted(KHMER_SURNAMES, key=len, reverse=True):
+            if w.startswith(sname) and len(w) > len(sname):
+                matched_surname = sname
+                break
+        if matched_surname:
+            surname_kh = matched_surname
+            given_kh = w[len(matched_surname):]
+            sur_latin = _romanize_single_token(surname_kh).replace(' ', '').upper()
+            giv_latin = _romanize_single_token(given_kh).replace(' ', '').upper()
+            return f"{sur_latin} {giv_latin}".strip()
         else:
-            # Phonetic segmentation and conversion
-            rom_val = _romanize_phonetic_word(w_clean)
-            if rom_val:
-                latin_words.append(rom_val)
+            return _romanize_single_token(w).replace(' ', '').upper()
 
-    result = ' '.join(latin_words)
-    # Ensure 100% clean Latin with proper spacing and Title Case
-    result = re.sub(r'\s+', ' ', result).strip()
-    # Capitalize each word properly
-    words_cap = [w.capitalize() if not w.isupper() else w for w in result.split()]
-    return ' '.join(words_cap)
+    # Case 2: Multi-word name (e.g. 'សុខ ចាន់ណា' or 'សុខ ចាន់ ណា')
+    # Word 0 is Surname, Words 1..n form the Given Name (merged without internal spaces)
+    surname_kh = words[0]
+    given_kh_parts = words[1:]
+    
+    sur_latin = _romanize_single_token(surname_kh).replace(' ', '').upper()
+    giv_latin_parts = [_romanize_single_token(p).replace(' ', '').upper() for p in given_kh_parts if p.strip()]
+    giv_latin = ''.join(giv_latin_parts)
+
+    res = f"{sur_latin} {giv_latin}".strip()
+    res = re.sub(r'[\u1780-\u17FF]', '', res)
+    res = re.sub(r'\s+', ' ', res).strip()
+    return res.upper()

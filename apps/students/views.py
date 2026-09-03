@@ -2105,10 +2105,10 @@ def batch_romanize_latin_names(request):
     return redirect(referer)
 
 
-@login_required
 def api_romanize_khmer_name(request):
     """
     AJAX API endpoint for instant client-side transliteration.
+    Safe & public - does not access database or sensitive data.
     """
     from django.http import JsonResponse
     from .khmer_romanizer import romanize_khmer_name
