@@ -680,72 +680,117 @@
                 <div class="margin-line-right"><span class="margin-tag right-tag">ស្តាំ: 15mm</span></div>
             </div>
 
-            <!-- School Header with Centered Logo -->
-            <div class="duty-sheet-header-block mb-2 position-relative text-center">
-                <!-- Top Right Page Badge -->
-                {% if subpage.total_pages > 1 %}
-                <div class="position-absolute end-0 top-0">
-                    <span class="badge bg-light text-dark border fw-bold" style="font-size: 8pt; padding: 2px 6px;">
-                        ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}
-                    </span>
-                </div>
-                {% endif %}
+            <!-- School Header (Official MoEYS Cambodian Letterhead Layout) -->
+            <div class="duty-sheet-header-block mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <!-- Left Side: Logo + Ministry + School Name -->
+                    <div class="text-start" style="min-width: 260px;">
+                        {% if school_info and school_info.logo %}
+                        <div class="mb-1">
+                            <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 48px; width: 48px; object-fit: contain;">
+                        </div>
+                        {% endif %}
+                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10pt; line-height: 1.4;">
+                            {{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
+                        </div>
+                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
+                            {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែនកំពង់កណ្តួត" }}
+                        </div>
+                    </div>
 
-                <!-- Centered School Logo (if uploaded) -->
-                {% if school_info and school_info.logo %}
-                <div class="d-flex justify-content-center mb-1">
-                    <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 38px; width: 38px; object-fit: contain;">
+                    <!-- Right Side: Royal Kingdom Motto & Page Badge -->
+                    <div class="text-center" style="min-width: 240px;">
+                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
+                            ព្រះរាជាណាចក្រកម្ពុជា
+                        </div>
+                        <div class="fw-bold text-dark" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
+                            ជាតិ សាសនា ព្រះមហាក្សត្រ
+                        </div>
+                        <div class="text-center" style="font-family: 'Tacteng', 'Khmer OS Tacteng', cursive; font-size: 11pt; letter-spacing: 2px;">
+                            ***
+                        </div>
+                        {% if subpage.total_pages > 1 %}
+                        <div class="text-end mt-0.5">
+                            <span class="badge bg-light text-dark border fw-bold" style="font-size: 7.5pt; padding: 2px 6px;">
+                                ទំព័រទី {{ subpage.page_num }} / {{ subpage.total_pages }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endif %}
 
-                <!-- School Name -->
-                <div class="fw-bold text-dark text-center"
-                    style="font-family: 'Khmer OS Muol Light', serif; font-size: 11.5pt; letter-spacing: 0.5px; line-height: 1.3;">
-                    {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្តែត" }}
-                </div>
-
-                <!-- Report Title -->
-                <div class="fw-bold text-primary my-0.5" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.3;">
-                    បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ
-                </div>
-                <div class="text-dark small fw-bold" style="font-size: 8.5pt;">
-                    ឆ្នាំសិក្សា៖ {{ academic_year.name|default:"២០២៦-២០២៧" }} សម្រាប់ ថ្ងៃ {{ sheet.day_name }} {{ sheet.session_name }}
+                <!-- Center: Daily Duty Report Title -->
+                <div class="text-center mt-1">
+                    <div class="fw-bold text-primary mb-0.5" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11.5pt; line-height: 1.3;">
+                        បញ្ជីស្រង់វត្តមានប្រចាំថ្ងៃរបស់មន្ត្រីរាជការស៊ីវិលក្នុង {{ school_info.short_name|default:school_info.name_kh|default:"វិ ហស កំពង់កណ្តួត" }}
+                    </div>
+                    <div class="text-dark small fw-bold" style="font-size: 8.5pt;">
+                        ថ្ងៃ{{ sheet.day_name }} ទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }} ({{ sheet.session_name }})
+                    </div>
                 </div>
             </div>
 
-            <!-- Sheet Table -->
+            <!-- Sheet Table (Official MoEYS Multi-row Header) -->
             <table class="duty-sheet-table">
                 <thead>
                     <tr>
-                        <th style="width: 4.5%; text-align: center;" data-col="0">
+                        <th rowspan="2" style="width: 4%; text-align: center; vertical-align: middle;" data-col="0">
                             <span>ល.រ</span>
                             <div class="col-resizer-handle" data-col="0" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 10.5%; text-align: center; white-space: nowrap;" data-col="1">
-                            <span>អត្តលេខ</span>
+                        <th rowspan="2" style="width: 20%; text-align: center; vertical-align: middle; white-space: nowrap;" data-col="1">
+                            <span>គោត្តនាមនិងនាម</span>
                             <div class="col-resizer-handle" data-col="1" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 17.5%; text-align: left; padding-left: 5px; white-space: nowrap;" data-col="2">
-                            <span>ឈ្មោះគ្រូបង្រៀន</span>
+                        <th rowspan="2" style="width: 5%; text-align: center; vertical-align: middle; white-space: nowrap;" data-col="2">
+                            <span>ភេទ</span>
                             <div class="col-resizer-handle" data-col="2" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        {% for p_lbl in sheet.period_labels %}
-                        <th style="width: 8.5%; text-align: center; white-space: nowrap;" data-col="{{ forloop.counter|add:2 }}">
-                            <span>{{ p_lbl }}</span>
-                            <div class="col-resizer-handle" data-col="{{ forloop.counter|add:2 }}" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        <th colspan="4" style="width: 32%; text-align: center; vertical-align: middle;">
+                            <span>ម៉ោងបង្រៀន</span>
                         </th>
-                        {% endfor %}
-                        <th style="width: 14%; text-align: center;" data-col="7">
-                            <span>ហត្ថលេខាចូល</span>
+                        <th colspan="2" style="width: 25%; text-align: center; vertical-align: middle;">
+                            <span>ហត្ថលេខា</span>
+                        </th>
+                        <th rowspan="2" style="width: 4.5%; text-align: center; vertical-align: middle;" data-col="9" title="អវត្តមាន">
+                            <span style="font-size: 7.5pt; display: block; line-height: 1.1;">អវត្ត<br>មាន</span>
+                            <div class="col-resizer-handle" data-col="9" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <th rowspan="2" style="width: 4.5%; text-align: center; vertical-align: middle;" data-col="10" title="សិស្សអវត្តមាន">
+                            <span style="font-size: 7.5pt; display: block; line-height: 1.1;">សិស្ស<br>អវត្តមាន</span>
+                            <div class="col-resizer-handle" data-col="10" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <th rowspan="2" style="width: 5%; text-align: center; vertical-align: middle;" data-col="11">
+                            <span>ផ្សេងៗ</span>
+                            <div class="col-resizer-handle" data-col="11" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <!-- Sub Periods 1 to 4 -->
+                        <th style="width: 8%; text-align: center;" data-col="3" title="ម៉ោងទី១">
+                            <span>១</span>
+                            <div class="col-resizer-handle" data-col="3" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <th style="width: 8%; text-align: center;" data-col="4" title="ម៉ោងទី២">
+                            <span>២</span>
+                            <div class="col-resizer-handle" data-col="4" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <th style="width: 8%; text-align: center;" data-col="5" title="ម៉ោងទី៣">
+                            <span>៣</span>
+                            <div class="col-resizer-handle" data-col="5" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <th style="width: 8%; text-align: center;" data-col="6" title="ម៉ោងទី៤">
+                            <span>៤</span>
+                            <div class="col-resizer-handle" data-col="6" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
+                        </th>
+                        <!-- Sub Signatures In & Out -->
+                        <th style="width: 12.5%; text-align: center;" data-col="7">
+                            <span>ចូល</span>
                             <div class="col-resizer-handle" data-col="7" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
-                        <th style="width: 14%; text-align: center;" data-col="8">
-                            <span>ហត្ថលេខាចេញ</span>
+                        <th style="width: 12.5%; text-align: center;" data-col="8">
+                            <span>ចេញ</span>
                             <div class="col-resizer-handle" data-col="8" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
-                        </th>
-                        <th style="width: 5.5%; text-align: center;" data-col="9">
-                            <span>ផ្សេងៗ</span>
-                            <div class="col-resizer-handle" data-col="9" title="អូសដើម្បីកែទំហំជួរឈរ (Resize Column)"></div>
                         </th>
                     </tr>
                 </thead>
@@ -753,19 +798,21 @@
                     {% for row in subpage.rows %}
                     <tr>
                         <td class="text-center fw-bold">{{ row.no }}</td>
-                        <td class="text-center font-monospace" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.teacher_id }}</td>
-                        <td class="text-start fw-bold text-dark" style="padding: 2px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
+                        <td class="text-start fw-bold text-dark ps-2" style="padding: 2px 4px; white-space: nowrap; font-size: 0.86rem;">{{ row.teacher_name }}</td>
+                        <td class="text-center" style="padding: 2px 2px; white-space: nowrap; font-size: 0.82rem;">{{ row.gender|default:"-" }}</td>
                         <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p1 }}</td>
                         <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p2 }}</td>
                         <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p3 }}</td>
                         <td class="text-center fw-bold text-primary" style="padding: 2px 2px; white-space: nowrap; font-size: 0.84rem;">{{ row.p4 }}</td>
                         <td></td>
                         <td></td>
+                        <td></td>
+                        <td></td>
                         <td class="text-center text-muted small"></td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="text-center py-4 text-muted">
+                        <td colspan="12" class="text-center py-4 text-muted">
                             មិនមានម៉ោងបង្រៀនណាមួយត្រូវបានរៀបចំក្នុងពេលនេះឡើយ។
                         </td>
                     </tr>
@@ -1243,7 +1290,7 @@
     // ==========================================
     let isExcelMarginsActive = false;
     const STORAGE_KEY_MARGINS = 'daily_report_excel_margins_config_v3';
-    const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v3';
+    const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v4';
 
     const MARGIN_PRESETS = {
         normal: { top: 14, bottom: 12, left: 10, right: 10, fontSize: '8.5pt', density: 'normal' },
@@ -1376,8 +1423,8 @@
             localStorage.removeItem(STORAGE_KEY_COL_WIDTHS);
         } catch (e) {}
         applyMarginPreset('normal');
-        // Reset column widths to default percentages (Total = 100%)
-        const defaultWidths = ['4.5%', '10.5%', '17.5%', '8.5%', '8.5%', '8.5%', '8.5%', '14%', '14%', '5.5%'];
+        // Reset column widths to default percentages for 12 columns (Total = 100%)
+        const defaultWidths = ['4%', '20%', '5%', '8%', '8%', '8%', '8%', '12.5%', '12.5%', '4.5%', '4.5%', '5%'];
         applyColumnWidths(defaultWidths);
     }
 
