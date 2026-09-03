@@ -1121,9 +1121,14 @@ function initLatinNameLiveGenerator() {
 
     if (!khmerInput || !latinInput) return;
 
-    // If latinInput already has a value on page load (e.g. edit mode), mark as manual so we don't overwrite unless requested
-    if (latinInput.value.trim()) {
+    const khmerScriptRegex = /[\u1780-\u17FF]/;
+
+    // If latinInput already has a valid Latin value on page load, mark as manual;
+    // If it is empty or contains corrupted Khmer script, immediately auto-generate standard Latin!
+    if (latinInput.value.trim() && !khmerScriptRegex.test(latinInput.value)) {
         isUserManualLatinEdit = true;
+    } else if (khmerInput.value.trim()) {
+        fetchAndApplyLatinName(khmerInput.value.trim(), true);
     }
 
     // When user types in Latin name manually
