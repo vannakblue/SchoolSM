@@ -229,7 +229,7 @@
 
         @page {
             size: A4 portrait;
-            margin: 6mm 8mm 6mm 8mm !important;
+            margin: 14mm 10mm 10mm 10mm !important;
         }
 
         html, body {
@@ -1232,13 +1232,13 @@
     // EXCEL PRINT PREVIEW MARGINS & COLUMN RESIZER
     // ==========================================
     let isExcelMarginsActive = false;
-    const STORAGE_KEY_MARGINS = 'daily_report_excel_margins_config_v2';
+    const STORAGE_KEY_MARGINS = 'daily_report_excel_margins_config_v3';
     const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v3';
 
     const MARGIN_PRESETS = {
-        normal: { top: 15, bottom: 15, left: 10, right: 10, fontSize: '8.5pt', density: 'normal' },
-        narrow: { top: 10, bottom: 10, left: 6, right: 6, fontSize: '8.0pt', density: 'compact' },
-        wide:   { top: 20, bottom: 20, left: 15, right: 15, fontSize: '9.0pt', density: 'relaxed' },
+        normal: { top: 14, bottom: 12, left: 10, right: 10, fontSize: '8.5pt', density: 'normal' },
+        narrow: { top: 11, bottom: 10, left: 8, right: 8, fontSize: '8.0pt', density: 'compact' },
+        wide:   { top: 20, bottom: 18, left: 15, right: 15, fontSize: '9.0pt', density: 'relaxed' },
     };
 
     function toggleExcelMarginsMode() {
