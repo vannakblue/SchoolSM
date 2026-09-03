@@ -52,6 +52,8 @@ urlpatterns = [
     path('standardized/api/get-subjects/<int:exam_id>/', views.api_exam_get_subjects, name='api_exam_get_subjects'),
     path('standardized/api/validate-secret-code/', views.api_exam_validate_secret_code, name='api_exam_validate_secret_code'),
     path('standardized/api/save-blind-scores/', views.api_exam_save_blind_scores, name='api_exam_save_blind_scores'),
+    path('standardized/<int:exam_id>/toggle-grading-lock/', views.api_toggle_exam_grading_lock, name='api_toggle_exam_grading_lock'),
+    path('standardized/<int:exam_id>/set-grading-window/', views.api_update_exam_grading_window, name='api_update_exam_grading_window'),
 
     # Admin Secret Codes Directory & Regenerate
     path('standardized/<int:exam_id>/secret-codes/', views.exam_secret_codes_directory, name='exam_secret_codes_directory'),

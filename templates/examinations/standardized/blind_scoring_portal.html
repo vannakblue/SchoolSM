@@ -78,8 +78,8 @@
     }
 
     .desk-score-input {
-        width: 90px;
-        font-size: 1.1rem;
+        width: 100px;
+        font-size: 1.15rem;
         font-weight: 800;
         text-align: center;
         border-radius: 8px;
@@ -91,9 +91,18 @@
         box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.25);
         background-color: #f5f3ff;
     }
-    .desk-score-input.is-absent {
-        background-color: #fee2e2;
-        color: #b91c1c;
+    .desk-score-input.is-zero {
+        background-color: #fef3c7;
+        color: #92400e;
+        border-color: #f59e0b;
+    }
+
+    .envelope-pill-btn {
+        transition: all 0.2s ease;
+    }
+    .envelope-pill-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     }
 </style>
 {% endblock %}
@@ -113,13 +122,42 @@
             <p class="text-muted small mb-0">ប្រព័ន្ធបញ្ចូលពិន្ទុអនាមិកតាមរយៈលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា (កាត់ក្បាលសន្លឹក) ពីលេខរៀងទី ០១ ដល់ ២៥ ដោយមិនបង្ហាញឈ្មោះសិស្ស</p>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
             {% if is_admin %}
+            <button type="button" class="btn btn-outline-warning text-dark fw-bold btn-sm shadow-xs" data-bs-toggle="modal" data-bs-target="#adminGradingModal">
+                <i class="fa-solid fa-clock me-1"></i> កំណត់ពេលបញ្ចូលពិន្ទុ (Grading Window)
+            </button>
             <a href="{% url 'standardized_exam_list' %}" class="btn btn-outline-primary fw-bold btn-sm">
                 <i class="fa-solid fa-graduation-cap me-1"></i> សម័យប្រឡងទាំងអស់
             </a>
             {% endif %}
         </div>
+    </div>
+</div>
+
+<!-- Admin Grading Window Status Widget -->
+<div id="gradingStatusWidget" class="custom-card p-3 mb-4 shadow-sm border-start border-4 border-success d-none">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <span id="gradingStatusBadge" class="badge bg-success fs-6 px-3 py-1.5 shadow-xs">
+                <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកបញ្ចូលពិន្ទុ
+            </span>
+            <div class="small text-muted">
+                <span id="gradingStatusMessageText">កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ</span>
+                <span id="gradingDeadlineInfo" class="ms-2 fw-semibold text-dark"></span>
+            </div>
+        </div>
+
+        {% if is_admin %}
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" id="btnQuickToggleLock" onclick="quickToggleGradingLock()">
+                <i class="fa-solid fa-lock me-1"></i> ចាក់សោការបញ្ចូលពិន្ទុភ្លាមៗ
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-bs-toggle="modal" data-bs-target="#adminGradingModal">
+                <i class="fa-solid fa-calendar-check me-1"></i> កំណត់កាលវិភាគ
+            </button>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -187,10 +225,29 @@
             <i class="fa-solid fa-circle-info me-1"></i> សម័យប្រឡងដែលបានជ្រើសរើស៖ <strong id="selectedExamNameText">-</strong>
         </div>
 
-        <div class="row g-3" id="subjectsContainer">
+        <div class="row g-3 mb-4" id="subjectsContainer">
             <!-- Dynamically populated subject cards -->
             <div class="col-12 text-center py-4 text-muted">
                 <i class="fa-solid fa-spinner fa-spin me-2"></i> កំពុងផ្ទុកមុខវិជ្ជា...
+            </div>
+        </div>
+
+        <!-- Envelopes Summary List for the Selected Subject -->
+        <div id="subjectEnvelopesSection" class="p-3 bg-light rounded-4 border d-none mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-envelope-open-text text-primary me-1"></i>
+                    បញ្ជីកញ្ចប់កូដសម្ងាត់សម្រាប់មុខវិជ្ជានេះ (<span id="envelopeCountText">0</span> កញ្ចប់)៖
+                </h6>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary active" id="btnFilterAll" onclick="filterEnvelopes('ALL')">ទាំងអស់</button>
+                    <button type="button" class="btn btn-outline-success" id="btnFilterGraded" onclick="filterEnvelopes('GRADED')">បានបញ្ចូលរួច</button>
+                    <button type="button" class="btn btn-outline-warning text-dark" id="btnFilterPending" onclick="filterEnvelopes('PENDING')">មិនទាន់វាយ</button>
+                </div>
+            </div>
+
+            <div class="row g-2" id="envelopesGrid">
+                <!-- Injected via JavaScript -->
             </div>
         </div>
 
@@ -254,7 +311,7 @@
                             <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូល/កែប្រែពិន្ទុ (Enter Scores)
                         </button>
                         <button type="button" class="btn btn-outline-info fw-bold shadow-sm" id="btnReviewCodeStep3" onclick="validateSecretCode(true)">
-                            <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល (Review Scores)
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> ត្រួតពិនិត្យពិន្ទុដែលបានបញ្ចូល (Review Scores)
                         </button>
                     </div>
                 </div>
@@ -282,12 +339,17 @@
                     <i class="fa-solid fa-rotate-left me-1"></i> ប្តូរកញ្ចប់កូដថ្មី
                 </button>
                 <button type="button" class="btn btn-outline-info btn-sm fw-bold shadow-sm" onclick="openScoresReviewModal()">
-                    <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុ
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ត្រួតពិនិត្យពិន្ទុ
                 </button>
-                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="saveBlindScores()">
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" id="btnSaveScoresTop" onclick="saveBlindScores()">
                     <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុ
                 </button>
             </div>
+        </div>
+
+        <!-- Locked Warning Banner if grading closed -->
+        <div id="lockedScoringBanner" class="alert alert-danger py-2 px-3 small border-0 d-none mb-3">
+            <i class="fa-solid fa-lock me-1"></i> <strong>ការបញ្ចូលពិន្ទុត្រូវបានចាក់សោ ឬផុតកំណត់៖</strong> លោកអ្នកអាចត្រួតពិនិត្យ និងផ្ទៀងផ្ទាត់ពិន្ទុដែលបានបញ្ចូលរួចប៉ុណ្ណោះ (Review Mode)។
         </div>
 
         <!-- Warning / Status Alert if Already Graded -->
@@ -300,9 +362,9 @@
             <table class="table table-bordered table-hover align-middle mb-0 text-center" id="blindScoresTable">
                 <thead class="table-dark">
                     <tr>
-                        <th style="width: 80px;">លេខរៀងតុ</th>
-                        <th style="width: 130px;">ស្ថានភាព</th>
-                        <th style="width: 180px;">ពិន្ទុដែលទទួលបាន</th>
+                        <th style="width: 90px;">លេខរៀងតុ</th>
+                        <th style="width: 170px;">ស្ថានភាពពិន្ទុ</th>
+                        <th style="width: 190px;">ពិន្ទុដែលទទួលបាន</th>
                         <th style="text-align: left; padding-left: 15px;">កំណត់ចំណាំ / ជំនួយការវាយបញ្ចូល</th>
                     </tr>
                 </thead>
@@ -324,7 +386,7 @@
                     <div class="fs-5 fw-bold text-success" id="statEnteredCount">0 នាក់</div>
                 </div>
                 <div class="col-6 col-md-3 border-end">
-                    <div class="text-muted small">អវត្តមាន (A)</div>
+                    <div class="text-muted small">ពិន្ទុ ០ (សូន្យ/អវត្តមាន)</div>
                     <div class="fs-5 fw-bold text-danger" id="statAbsentCount">0 នាក់</div>
                 </div>
                 <div class="col-6 col-md-3">
@@ -337,11 +399,11 @@
         <!-- Save Button Footer -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
             <div class="text-muted small">
-                <i class="fa-solid fa-keyboard me-1 text-primary"></i> ប្រើប្រាស់គ្រាប់ចុច <strong>Enter</strong> ឬ <strong>ព្រួញឡើង/ចុះ</strong> ដើម្បីប្តូរលេខរៀង។ វាយអក្សរ <strong>A</strong> សម្រាប់សិស្សអវត្តមាន។
+                <i class="fa-solid fa-keyboard me-1 text-primary"></i> វាយបញ្ចូលលេខពិន្ទុ (០ ដល់ <span id="hintMaxScore">100</span>)។ <strong>បញ្ចូលលេខ ០ (សូន្យ) សម្រាប់សិស្សអវត្តមាន</strong>។ ប្រើប្រាស់ <strong>Enter</strong> ឬ <strong>ព្រួញឡើង/ចុះ</strong> ដើម្បីប្តូរលេខតុ។
             </div>
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-info btn-lg fw-bold px-4 shadow-sm" onclick="openScoresReviewModal()">
-                    <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ត្រួតពិនិត្យពិន្ទុដែលបានបញ្ចូល
                 </button>
                 <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm" id="btnSaveScoresBottom" onclick="saveBlindScores()">
                     <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកពិន្ទុឥឡូវនេះ
@@ -351,13 +413,13 @@
     </div>
 </div>
 
-<!-- Modal: Review Entered Scores (ផ្ទាំងពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល) -->
+<!-- Modal: Review Entered Scores (ផ្ទាំងត្រួតពិនិត្យពិន្ទុដែលបានបញ្ចូល) -->
 <div class="modal fade" id="reviewScoresModal" tabindex="-1" aria-labelledby="reviewScoresModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header text-white rounded-top-4" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
                 <h5 class="modal-title fw-bold" id="reviewScoresModalLabel">
-                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i>ផ្ទាំងពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល (Review Entered Scores)
+                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i>ផ្ទាំងត្រួតពិនិត្យពិន្ទុដែលបានបញ្ចូល (Review Entered Scores)
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -388,7 +450,7 @@
                     </div>
                     <div class="col-3">
                         <div class="p-2 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-3">
-                            <div class="text-muted small">អវត្តមាន (A)</div>
+                            <div class="text-muted small">ពិន្ទុ ០ (សូន្យ/អវត្តមាន)</div>
                             <div class="fs-5 fw-bold text-danger" id="revStatAbsent">0 នាក់</div>
                         </div>
                     </div>
@@ -412,7 +474,7 @@
                         <thead class="table-dark sticky-top">
                             <tr>
                                 <th style="width: 90px;">លេខរៀងតុ</th>
-                                <th style="width: 140px;">ស្ថានភាព</th>
+                                <th style="width: 170px;">ស្ថានភាព</th>
                                 <th style="width: 140px;">ពិន្ទុទទួលបាន</th>
                                 <th>របារភាគរយពិន្ទុ</th>
                             </tr>
@@ -429,7 +491,7 @@
                 </button>
                 <div>
                     <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" data-bs-dismiss="modal">
-                        <i class="fa-solid fa-pen-to-square me-1"></i> កែសម្រួលពិន្ទុបន្ត
+                        <i class="fa-solid fa-check me-1"></i> បិទផ្ទាំងត្រួតពិនិត្យ
                     </button>
                 </div>
             </div>
@@ -460,13 +522,13 @@
                         <div class="col-6">ពិន្ទុខ្ពស់បំផុត៖ <strong class="text-success" id="resMaxScore">0</strong></div>
                         <div class="col-6">ពិន្ទុទាបបំផុត៖ <strong class="text-danger" id="resMinScore">0</strong></div>
                         <div class="col-6">មធ្យមភាគ៖ <strong class="text-primary" id="resAvgScore">0</strong></div>
-                        <div class="col-6">អវត្តមាន៖ <strong class="text-muted" id="resAbsentScore">0</strong></div>
+                        <div class="col-6">ពិន្ទុ ០ (សូន្យ/អវត្តមាន)៖ <strong class="text-muted" id="resAbsentScore">0</strong></div>
                     </div>
                 </div>
 
                 <div class="d-grid gap-2">
                     <button type="button" class="btn btn-outline-info fw-bold py-2 shadow-sm" onclick="openScoresReviewFromSuccess()">
-                        <i class="fa-solid fa-magnifying-glass me-1"></i> ពិនិត្យមើលពិន្ទុដែលបានបញ្ចូល
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> ត្រួតពិនិត្យពិន្ទុដែលបានបញ្ចូល
                     </button>
                     <button type="button" class="btn btn-primary fw-bold py-2.5 shadow-sm" onclick="resetToNewEnvelope()">
                         <i class="fa-solid fa-envelope-open-text me-1"></i> បញ្ចូលកញ្ចប់កូដសម្ងាត់បន្ទាប់
@@ -482,6 +544,60 @@
     </div>
 </div>
 
+<!-- Modal: Admin Grading Window Controls (កំណត់កាលវិភាគ & ចាក់សោ) -->
+{% if is_admin %}
+<div class="modal fade" id="adminGradingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-clock me-2"></i>កំណត់កាលវិភាគបញ្ចូលពិន្ទុ (Grading Window)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small border-0 mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Admin មានសិទ្ធិបើក ឬបិទការបញ្ចូលពិន្ទុពេលណាក៏បាន ឬកំណត់កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើម និងបញ្ចប់ទុកជាមុន។
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើម (Grading Start)</label>
+                    <input type="datetime-local" class="form-control" id="modal_grading_start">
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">ទុកទទេ ប្រសិនបើចង់បើកភ្លាមៗ។</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់ / ផុតកំណត់ (Grading Deadline)</label>
+                    <input type="datetime-local" class="form-control" id="modal_grading_end">
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">បន្ទាប់ពីម៉ោងនេះ គ្រូមិនអាចបញ្ចូល ឬកែប្រែពិន្ទុបានទៀតទេ (អាចត្រួតពិនិត្យមើលបាន)។</div>
+                </div>
+
+                <div class="form-check form-switch p-3 bg-light rounded-3 border mb-3">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="modal_grading_locked">
+                    <label class="form-check-label fw-bold small text-dark" for="modal_grading_locked">
+                        🔒 ចាក់សោការបញ្ចូលពិន្ទុភ្លាមៗ (Instant Lock)
+                    </label>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="modal_apply_to_session" checked>
+                    <label class="form-check-label small fw-bold text-primary" for="modal_apply_to_session">
+                        អនុវត្តចំពោះគ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ (Apply to entire Session)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="saveAdminGradingWindow()">
+                    <i class="fa-solid fa-check me-1"></i> រក្សាទុកការកំណត់
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Core Wizard JavaScript -->
 <script>
     let currentStep = 1;
@@ -490,6 +606,7 @@
     let selectedSubjectId = null;
     let selectedSubjectData = null;
     let validatedRoomData = null;
+    let currentEnvelopeFilter = 'ALL';
 
     document.addEventListener('DOMContentLoaded', () => {
         const preExam = document.getElementById('selectExam').value;
@@ -497,7 +614,6 @@
             onExamSelected();
             const preSub = "{{ pre_subject_id }}";
             if (preSub) {
-                // Wait for subjects load then select
                 setTimeout(() => {
                     selectSubject(parseInt(preSub));
                     const preCode = "{{ pre_code }}";
@@ -549,7 +665,7 @@
             }, 200);
         } else if (stepNumber === 4) {
             setTimeout(() => {
-                const firstInput = document.querySelector('.desk-score-input');
+                const firstInput = document.querySelector('.desk-score-input:not([disabled])');
                 if (firstInput) {
                     firstInput.focus();
                     firstInput.select();
@@ -561,21 +677,145 @@
     function onExamSelected() {
         const sel = document.getElementById('selectExam');
         selectedExamId = sel.value;
-        if (!selectedExamId) return;
+        if (!selectedExamId) {
+            document.getElementById('gradingStatusWidget').classList.add('d-none');
+            return;
+        }
 
         const opt = sel.options[sel.selectedIndex];
         document.getElementById('selectedExamNameText').innerText = opt.text;
 
-        // Fetch subjects for this exam via API
+        // Fetch subjects and grading status for this exam via API
         fetch(`/examinations/standardized/api/get-subjects/${selectedExamId}/`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
                     selectedExamData = data;
+                    updateGradingStatusWidget(data);
                     renderSubjectsList(data.subjects);
                 }
             })
             .catch(err => console.error(err));
+    }
+
+    function updateGradingStatusWidget(data) {
+        const widget = document.getElementById('gradingStatusWidget');
+        const badge = document.getElementById('gradingStatusBadge');
+        const msgText = document.getElementById('gradingStatusMessageText');
+        const deadlineInfo = document.getElementById('gradingDeadlineInfo');
+        const quickToggleBtn = document.getElementById('btnQuickToggleLock');
+
+        if (!widget) return;
+        widget.classList.remove('d-none');
+
+        if (data.is_grading_locked) {
+            widget.className = 'custom-card p-3 mb-4 shadow-sm border-start border-4 border-danger';
+            badge.className = 'badge bg-danger fs-6 px-3 py-1.5 shadow-xs';
+            badge.innerHTML = '<i class="fa-solid fa-lock me-1"></i> បានចាក់សោ (Locked)';
+            msgText.innerText = 'ការបញ្ចូលពិន្ទុត្រូវបានចាក់សោដោយ Admin។';
+            if (quickToggleBtn) {
+                quickToggleBtn.className = 'btn btn-sm btn-outline-success fw-bold shadow-xs';
+                quickToggleBtn.innerHTML = '<i class="fa-solid fa-lock-open me-1"></i> បើកដំណើរការបញ្ចូលពិន្ទុភ្លាមៗ';
+            }
+        } else if (!data.is_grading_open && data.status_code === 'NOT_STARTED') {
+            widget.className = 'custom-card p-3 mb-4 shadow-sm border-start border-4 border-info';
+            badge.className = 'badge bg-info text-dark fs-6 px-3 py-1.5 shadow-xs';
+            badge.innerHTML = '<i class="fa-solid fa-clock me-1"></i> មិនទាន់ដល់ពេលបើក';
+            msgText.innerText = data.grading_status_msg;
+            if (quickToggleBtn) {
+                quickToggleBtn.className = 'btn btn-sm btn-outline-danger fw-bold shadow-xs';
+                quickToggleBtn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> ចាក់សោការបញ្ចូលពិន្ទុ';
+            }
+        } else if (!data.is_grading_open && data.status_code === 'EXPIRED') {
+            widget.className = 'custom-card p-3 mb-4 shadow-sm border-start border-4 border-warning';
+            badge.className = 'badge bg-warning text-dark fs-6 px-3 py-1.5 shadow-xs';
+            badge.innerHTML = '<i class="fa-solid fa-hourglass-end me-1"></i> ផុតកំណត់បញ្ចូលពិន្ទុ';
+            msgText.innerText = data.grading_status_msg;
+            if (quickToggleBtn) {
+                quickToggleBtn.className = 'btn btn-sm btn-outline-success fw-bold shadow-xs';
+                quickToggleBtn.innerHTML = '<i class="fa-solid fa-lock-open me-1"></i> បើកដំណើរការបញ្ចូលពិន្ទុឡើងវិញ';
+            }
+        } else {
+            widget.className = 'custom-card p-3 mb-4 shadow-sm border-start border-4 border-success';
+            badge.className = 'badge bg-success fs-6 px-3 py-1.5 shadow-xs';
+            badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកបញ្ចូលពិន្ទុ';
+            msgText.innerText = 'កំពុងបើកដំណើរការបញ្ចូលពិន្ទុជាប្រក្រតី។';
+            if (quickToggleBtn) {
+                quickToggleBtn.className = 'btn btn-sm btn-outline-danger fw-bold shadow-xs';
+                quickToggleBtn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> ចាក់សោការបញ្ចូលពិន្ទុភ្លាមៗ';
+            }
+        }
+
+        let deadlineStr = '';
+        if (data.grading_end_display) {
+            deadlineStr = `(ផុតកំណត់ត្រឹម៖ ${data.grading_end_display})`;
+        }
+        if (deadlineInfo) deadlineInfo.innerText = deadlineStr;
+
+        // Prefill admin modal
+        const mStart = document.getElementById('modal_grading_start');
+        const mEnd = document.getElementById('modal_grading_end');
+        const mLocked = document.getElementById('modal_grading_locked');
+        if (mStart) mStart.value = data.grading_start_datetime || '';
+        if (mEnd) mEnd.value = data.grading_end_datetime || '';
+        if (mLocked) mLocked.checked = data.is_grading_locked || false;
+    }
+
+    function quickToggleGradingLock() {
+        if (!selectedExamId) return;
+        fetch(`/examinations/standardized/${selectedExamId}/toggle-grading-lock/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ apply_to_session: true })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                onExamSelected();
+            } else {
+                alert('កំហុស៖ ' + data.message);
+            }
+        })
+        .catch(err => alert('មានបញ្ហាតភ្ជាប់ Server!'));
+    }
+
+    function saveAdminGradingWindow() {
+        if (!selectedExamId) return;
+        const startVal = document.getElementById('modal_grading_start').value;
+        const endVal = document.getElementById('modal_grading_end').value;
+        const isLocked = document.getElementById('modal_grading_locked').checked;
+        const applySession = document.getElementById('modal_apply_to_session').checked;
+
+        fetch(`/examinations/standardized/${selectedExamId}/set-grading-window/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                grading_start_datetime: startVal || null,
+                grading_end_datetime: endVal || null,
+                is_grading_locked: isLocked,
+                apply_to_session: applySession
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const modalEl = document.getElementById('adminGradingModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) modalInstance.hide();
+                alert(data.message);
+                onExamSelected();
+            } else {
+                alert('កំហុស៖ ' + data.message);
+            }
+        })
+        .catch(err => alert('មានបញ្ហាតភ្ជាប់ Server!'));
     }
 
     function renderSubjectsList(subjects) {
@@ -589,8 +829,8 @@
         subjects.forEach(s => {
             html += `
             <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-3 border-2 subject-card hover-shadow transition-all cursor-pointer" 
-                     id="subj_card_${s.id}" onclick="selectSubject(${s.id})" style="border-color: #e2e8f0; cursor: pointer;">
+                <div class="card h-100 p-3 border-2 subject-card hover-shadow transition-all cursor-pointer shadow-xs" 
+                     id="subj_card_${s.id}" onclick="selectSubject(${s.id})" style="border-color: #e2e8f0; cursor: pointer; border-radius: 12px;">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="badge bg-primary px-2 py-1">${s.code || 'SUB'}</span>
                         <span class="badge bg-light text-dark border">ពេល${s.session === 'Morning Session' ? 'ព្រឹក' : 'រសៀល'}</span>
@@ -627,8 +867,85 @@
         document.getElementById('btnContinueToStep3').removeAttribute('disabled');
         if (selectedSubjectData) {
             document.getElementById('step3SubjectBadge').innerText = `មុខវិជ្ជា៖ ${selectedSubjectData.name} (ពេញ ${selectedSubjectData.max_score} • មេគុណ ${selectedSubjectData.coefficient})`;
+            const hintEl = document.getElementById('hintMaxScore');
+            if (hintEl) hintEl.innerText = selectedSubjectData.max_score;
             populateSecretCodesDropdown(selectedSubjectData.secret_codes || []);
+            renderSubjectEnvelopes(selectedSubjectData.secret_codes || []);
         }
+    }
+
+    function renderSubjectEnvelopes(secretCodes) {
+        const section = document.getElementById('subjectEnvelopesSection');
+        const grid = document.getElementById('envelopesGrid');
+        const countText = document.getElementById('envelopeCountText');
+        if (!section || !grid) return;
+
+        if (!secretCodes || secretCodes.length === 0) {
+            section.classList.add('d-none');
+            return;
+        }
+
+        section.classList.remove('d-none');
+        if (countText) countText.innerText = secretCodes.length;
+
+        let html = '';
+        secretCodes.forEach(sc => {
+            const isGraded = sc.is_graded;
+            const cardBorder = isGraded ? 'border-success' : 'border-warning';
+            const badgeBg = isGraded ? 'bg-success' : 'bg-warning text-dark';
+            const statusLabel = isGraded ? '✅ បានបញ្ចូលរួច' : '⏳ មិនទាន់វាយ';
+            const filterClass = isGraded ? 'filter-graded' : 'filter-pending';
+
+            html += `
+            <div class="col-6 col-md-4 col-lg-3 envelope-card-item ${filterClass}">
+                <div class="p-2.5 bg-white border ${cardBorder} rounded-3 text-center envelope-pill-btn shadow-xs">
+                    <div class="font-monospace fw-bold text-primary fs-6 mb-1">${sc.secret_code}</div>
+                    <div class="d-flex justify-content-between align-items-center small mb-2">
+                        <span class="badge ${badgeBg} py-0.5 px-2" style="font-size: 0.72rem;">${statusLabel}</span>
+                        <span class="text-muted small">${sc.candidate_count || 25} នាក់</span>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-primary flex-grow-1 py-1 fw-bold" style="font-size: 0.75rem;" onclick="openEnvelopeDirectly('${sc.secret_code}', false)">
+                            <i class="fa-solid fa-pen-to-square"></i> វាយពិន្ទុ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info py-1 px-2 fw-bold" style="font-size: 0.75rem;" title="ត្រួតពិនិត្យពិន្ទុ" onclick="openEnvelopeDirectly('${sc.secret_code}', true)">
+                            <i class="fa-solid fa-magnifying-glass"></i> ពិនិត្យ
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        grid.innerHTML = html;
+        filterEnvelopes(currentEnvelopeFilter);
+    }
+
+    function filterEnvelopes(type) {
+        currentEnvelopeFilter = type;
+        const allBtn = document.getElementById('btnFilterAll');
+        const gradedBtn = document.getElementById('btnFilterGraded');
+        const pendingBtn = document.getElementById('btnFilterPending');
+
+        if (allBtn) allBtn.className = type === 'ALL' ? 'btn btn-outline-primary active' : 'btn btn-outline-primary';
+        if (gradedBtn) gradedBtn.className = type === 'GRADED' ? 'btn btn-outline-success active' : 'btn btn-outline-success';
+        if (pendingBtn) pendingBtn.className = type === 'PENDING' ? 'btn btn-outline-warning text-dark active' : 'btn btn-outline-warning text-dark';
+
+        const items = document.querySelectorAll('.envelope-card-item');
+        items.forEach(el => {
+            if (type === 'ALL') {
+                el.style.display = '';
+            } else if (type === 'GRADED') {
+                el.style.display = el.classList.contains('filter-graded') ? '' : 'none';
+            } else if (type === 'PENDING') {
+                el.style.display = el.classList.contains('filter-pending') ? '' : 'none';
+            }
+        });
+    }
+
+    function openEnvelopeDirectly(code, isReviewOnly) {
+        document.getElementById('inputSecretCode').value = code;
+        validateSecretCode(isReviewOnly);
     }
 
     function populateSecretCodesDropdown(secretCodes) {
@@ -720,6 +1037,25 @@
         document.getElementById('activeCoefDisplay').innerText = data.coefficient;
         document.getElementById('activeRoomDisplay').innerText = data.room_name;
 
+        const hintEl = document.getElementById('hintMaxScore');
+        if (hintEl) hintEl.innerText = data.max_score;
+
+        // Check if grading locked
+        const isLocked = !data.is_grading_open;
+        const lockedBanner = document.getElementById('lockedScoringBanner');
+        const btnSaveTop = document.getElementById('btnSaveScoresTop');
+        const btnSaveBottom = document.getElementById('btnSaveScoresBottom');
+
+        if (isLocked) {
+            lockedBanner.classList.remove('d-none');
+            if (btnSaveTop) btnSaveTop.disabled = true;
+            if (btnSaveBottom) btnSaveBottom.disabled = true;
+        } else {
+            lockedBanner.classList.add('d-none');
+            if (btnSaveTop) btnSaveTop.disabled = false;
+            if (btnSaveBottom) btnSaveBottom.disabled = false;
+        }
+
         // Banner if already graded
         const banner = document.getElementById('alreadyGradedBanner');
         if (data.is_already_graded) {
@@ -735,30 +1071,49 @@
 
         data.desks.forEach((d, idx) => {
             const deskStr = String(d.desk_number).padStart(2, '0');
-            const scoreVal = d.is_absent ? 'A' : (d.score !== '' ? d.score : '');
-            
+            const hasScore = (d.score !== null && d.score !== undefined && d.score !== '');
+            const scoreVal = hasScore ? d.score : '';
+            const isZero = hasScore && (parseFloat(scoreVal) === 0);
+            const readOnlyAttr = isLocked ? 'readonly disabled' : '';
+
+            let statusBadgeClass = 'bg-secondary-subtle text-muted';
+            let statusBadgeText = 'មិនទាន់វាយ';
+            if (hasScore) {
+                if (isZero) {
+                    statusBadgeClass = 'bg-warning-subtle text-dark border border-warning';
+                    statusBadgeText = 'ពិន្ទុ ០ (សូន្យ/អវត្តមាន)';
+                } else {
+                    statusBadgeClass = 'bg-success';
+                    statusBadgeText = 'មានពិន្ទុ';
+                }
+            }
+
             html += `
             <tr id="desk_row_${d.desk_number}">
                 <td class="fw-bold bg-light fs-5 text-primary">${deskStr}</td>
                 <td>
-                    <span id="status_badge_${d.desk_number}" class="badge ${d.is_absent ? 'bg-danger' : (scoreVal !== '' ? 'bg-success' : 'bg-secondary-subtle text-muted')}">
-                        ${d.is_absent ? 'អវត្តមាន' : (scoreVal !== '' ? 'មានពិន្ទុ' : 'មិនទាន់វាយ')}
+                    <span id="status_badge_${d.desk_number}" class="badge ${statusBadgeClass}">
+                        ${statusBadgeText}
                     </span>
                 </td>
                 <td class="p-2">
-                    <input type="text" 
-                           class="form-control desk-score-input mx-auto ${d.is_absent ? 'is-absent' : ''}" 
+                    <input type="number" 
+                           step="0.5"
+                           min="0"
+                           max="${data.max_score}"
+                           class="form-control desk-score-input mx-auto ${isZero ? 'is-zero' : ''}" 
                            id="desk_input_${d.desk_number}"
                            data-desk="${d.desk_number}"
                            data-max="${data.max_score}"
                            value="${scoreVal}"
                            placeholder="-"
                            autocomplete="off"
+                           ${readOnlyAttr}
                            oninput="onDeskScoreInput(this)"
                            onkeydown="handleScoreKeyNav(event, this)">
                 </td>
                 <td class="text-start ps-3 text-muted small">
-                    កូនក្រដាសលេខរៀងទី <strong>${deskStr}</strong> • ពិន្ទុអតិបរមា <strong>${data.max_score}</strong>
+                    កូនក្រដាសលេខរៀងទី <strong>${deskStr}</strong> • វាយលេខពិន្ទុ ឬលេខ <strong>០</strong> សម្រាប់អវត្តមាន
                 </td>
             </tr>
             `;
@@ -769,33 +1124,39 @@
     }
 
     function onDeskScoreInput(inputEl) {
-        let val = inputEl.value.trim().toUpperCase();
+        let val = inputEl.value.trim();
         const deskNum = inputEl.getAttribute('data-desk');
         const maxScore = parseFloat(inputEl.getAttribute('data-max') || '100');
         const statusBadge = document.getElementById(`status_badge_${deskNum}`);
 
-        if (val === 'A') {
-            inputEl.value = 'A';
-            inputEl.classList.add('is-absent');
+        inputEl.classList.remove('is-zero');
+
+        if (val === '') {
             if (statusBadge) {
-                statusBadge.className = 'badge bg-danger';
-                statusBadge.innerText = 'អវត្តមាន';
+                statusBadge.className = 'badge bg-secondary-subtle text-muted';
+                statusBadge.innerText = 'មិនទាន់វាយ';
             }
         } else {
-            inputEl.classList.remove('is-absent');
             const num = parseFloat(val);
             if (!isNaN(num)) {
                 if (num > maxScore) {
                     inputEl.value = maxScore;
+                } else if (num < 0) {
+                    inputEl.value = 0;
                 }
-                if (statusBadge) {
-                    statusBadge.className = 'badge bg-success';
-                    statusBadge.innerText = 'មានពិន្ទុ';
-                }
-            } else if (val === '') {
-                if (statusBadge) {
-                    statusBadge.className = 'badge bg-secondary-subtle text-muted';
-                    statusBadge.innerText = 'មិនទាន់វាយ';
+
+                const finalNum = parseFloat(inputEl.value);
+                if (finalNum === 0) {
+                    inputEl.classList.add('is-zero');
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-warning-subtle text-dark border border-warning';
+                        statusBadge.innerText = 'ពិន្ទុ ០ (សូន្យ/អវត្តមាន)';
+                    }
+                } else {
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-success';
+                        statusBadge.innerText = 'មានពិន្ទុ';
+                    }
                 }
             }
         }
@@ -808,7 +1169,7 @@
         if (!['ArrowUp', 'ArrowDown', 'Enter'].includes(key)) return;
 
         const currentDesk = parseInt(inputEl.getAttribute('data-desk'));
-        const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
+        const inputs = Array.from(document.querySelectorAll('.desk-score-input:not([disabled])'));
         const currentIndex = inputs.indexOf(inputEl);
 
         let target = null;
@@ -830,29 +1191,28 @@
         const inputs = Array.from(document.querySelectorAll('.desk-score-input'));
         const totalCount = inputs.length;
         let enteredCount = 0;
-        let absentCount = 0;
+        let zeroCount = 0;
         let scoreSum = 0;
 
         inputs.forEach(inp => {
-            const val = inp.value.trim().toUpperCase();
-            if (val === 'A') {
-                enteredCount++;
-                absentCount++;
-            } else {
+            const val = inp.value.trim();
+            if (val !== '') {
                 const num = parseFloat(val);
                 if (!isNaN(num)) {
                     enteredCount++;
                     scoreSum += num;
+                    if (num === 0) {
+                        zeroCount++;
+                    }
                 }
             }
         });
 
-        const validNumericCount = enteredCount - absentCount;
-        const avg = validNumericCount > 0 ? (scoreSum / validNumericCount) : 0;
+        const avg = enteredCount > 0 ? (scoreSum / enteredCount) : 0;
 
         document.getElementById('statTotalCount').innerText = `${totalCount} នាក់`;
         document.getElementById('statEnteredCount').innerText = `${enteredCount} នាក់`;
-        document.getElementById('statAbsentCount').innerText = `${absentCount} នាក់`;
+        document.getElementById('statAbsentCount').innerText = `${zeroCount} នាក់`;
         document.getElementById('statAverageScore').innerText = avg.toFixed(2);
     }
 
@@ -873,39 +1233,43 @@
 
         let html = '';
         let enteredCount = 0;
-        let absentCount = 0;
+        let zeroCount = 0;
         let highScore = 0;
         let scoreSum = 0;
 
         inputs.forEach((inp, idx) => {
             const deskNum = inp.getAttribute('data-desk');
             const deskStr = String(deskNum).padStart(2, '0');
-            const val = inp.value.trim().toUpperCase();
-            const isAbsent = val === 'A';
-            const numScore = parseFloat(val);
+            const val = inp.value.trim();
 
             let statusBadge = '<span class="badge bg-secondary-subtle text-muted">មិនទាន់វាយ</span>';
             let scoreText = '-';
             let progressPct = 0;
             let barColor = 'bg-primary';
 
-            if (isAbsent) {
-                enteredCount++;
-                absentCount++;
-                statusBadge = '<span class="badge bg-danger">អវត្តមាន (A)</span>';
-                scoreText = '<span class="text-danger fw-bold">០.០០</span>';
-            } else if (!isNaN(numScore)) {
-                enteredCount++;
-                scoreSum += numScore;
-                if (numScore > highScore) highScore = numScore;
-                progressPct = Math.min(100, Math.round((numScore / maxScore) * 100));
-                
-                if (progressPct >= 80) barColor = 'bg-success';
-                else if (progressPct >= 50) barColor = 'bg-primary';
-                else barColor = 'bg-warning';
+            if (val !== '') {
+                const numScore = parseFloat(val);
+                if (!isNaN(numScore)) {
+                    enteredCount++;
+                    scoreSum += numScore;
+                    if (numScore > highScore) highScore = numScore;
+                    if (numScore === 0) zeroCount++;
 
-                statusBadge = '<span class="badge bg-success">មានពិន្ទុ</span>';
-                scoreText = `<strong class="text-dark fs-6">${numScore.toFixed(2)}</strong> <span class="text-muted small">/ ${maxScore}</span>`;
+                    progressPct = Math.min(100, Math.round((numScore / maxScore) * 100));
+                    
+                    if (numScore === 0) {
+                        statusBadge = '<span class="badge bg-warning text-dark">ពិន្ទុ ០ (សូន្យ/អវត្តមាន)</span>';
+                        scoreText = '<span class="text-danger fw-bold fs-6">០.០០</span>';
+                        barColor = 'bg-secondary';
+                    } else {
+                        if (progressPct >= 80) barColor = 'bg-success';
+                        else if (progressPct >= 50) barColor = 'bg-primary';
+                        else barColor = 'bg-warning';
+
+                        statusBadge = '<span class="badge bg-success">មានពិន្ទុ</span>';
+                        scoreText = `<strong class="text-dark fs-6">${numScore.toFixed(2)}</strong> <span class="text-muted small">/ ${maxScore}</span>`;
+                    }
+                }
             }
 
             html += `
@@ -927,11 +1291,10 @@
 
         tbody.innerHTML = html;
 
-        const validNumericCount = enteredCount - absentCount;
-        const avg = validNumericCount > 0 ? (scoreSum / validNumericCount) : 0;
+        const avg = enteredCount > 0 ? (scoreSum / enteredCount) : 0;
 
         document.getElementById('revStatEntered').innerText = `${enteredCount} / ${inputs.length}`;
-        document.getElementById('revStatAbsent').innerText = `${absentCount} នាក់`;
+        document.getElementById('revStatAbsent').innerText = `${zeroCount} នាក់`;
         document.getElementById('revStatAvg').innerText = avg.toFixed(2);
         document.getElementById('revStatHigh').innerText = highScore.toFixed(2);
 
@@ -953,12 +1316,11 @@
 
         inputs.forEach(inp => {
             const deskNum = parseInt(inp.getAttribute('data-desk'));
-            const val = inp.value.trim().toUpperCase();
-            const isAbsent = val === 'A';
+            const val = inp.value.trim();
             scoresData.push({
                 desk_number: deskNum,
                 score: val,
-                is_absent: isAbsent
+                is_absent: (val === '0' || val === '0.0' || val === '0.00')
             });
         });
 

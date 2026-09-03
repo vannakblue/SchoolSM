@@ -23,6 +23,17 @@
                     <i class="fa-solid fa-clock me-1"></i>🌞 ពេញមួយថ្ងៃ
                 </span>
                 {% endif %}
+                {% with g_status=exam.get_grading_status %}
+                {% if g_status.0 %}
+                <span class="badge bg-success px-2.5 py-1" title="{{ g_status.2 }}"><i class="fa-solid fa-lock-open me-1"></i>កំពុងបើកបញ្ចូលពិន្ទុ</span>
+                {% elif g_status.1 == 'LOCKED' %}
+                <span class="badge bg-danger px-2.5 py-1" title="{{ g_status.2 }}"><i class="fa-solid fa-lock me-1"></i>បានចាក់សោ</span>
+                {% elif g_status.1 == 'NOT_STARTED' %}
+                <span class="badge bg-info text-dark px-2.5 py-1" title="{{ g_status.2 }}"><i class="fa-solid fa-clock me-1"></i>មិនទាន់បើក</span>
+                {% else %}
+                <span class="badge bg-warning text-dark px-2.5 py-1" title="{{ g_status.2 }}"><i class="fa-solid fa-hourglass-end me-1"></i>ផុតកំណត់</span>
+                {% endif %}
+                {% endwith %}
                 <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar-days text-primary me-1"></i>{{ exam.academic_year.name }}</span>
                 {% if exam.is_published %}
                 <span class="badge bg-success px-2.5 py-1"><i class="fa-solid fa-circle-check me-1"></i>បានប្រកាសលទ្ធផល</span>
@@ -34,10 +45,18 @@
             <p class="text-muted small mb-0">
                 <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong> • 
                 <i class="fa-solid fa-door-open me-1"></i>ស្តង់ដារបន្ទប់៖ <strong>{{ exam.candidates_per_room }} នាក់/បន្ទប់</strong>
+                {% if exam.grading_end_datetime %}
+                • <i class="fa-solid fa-clock text-warning ms-1 me-1"></i>ផុតកំណត់បញ្ចូលពិន្ទុ៖ <strong class="text-danger">{{ exam.grading_end_datetime|date:"d/m/Y H:i" }}</strong>
+                {% endif %}
             </p>
         </div>
 
         <div class="d-flex flex-wrap gap-2">
+            {% if is_admin %}
+            <button type="button" class="btn btn-outline-warning text-dark fw-bold btn-sm shadow-xs" data-bs-toggle="modal" data-bs-target="#examManageGradingModal">
+                <i class="fa-solid fa-clock me-1"></i> កំណត់ពេលបញ្ចូលពិន្ទុ
+            </button>
+            {% endif %}
             <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-primary fw-bold btn-sm">
                 <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែការកំណត់ & មុខវិជ្ជា
             </a>
@@ -662,6 +681,91 @@ function toggleCustomNumbering(val) {
         </div>
     </div>
 </div>
+
+<!-- Modal: Admin Grading Window Controls -->
+<div class="modal fade" id="examManageGradingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-clock me-2"></i>កំណត់កាលវិភាគបញ្ចូលពិន្ទុ (Grading Window)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 small border-0 mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Admin មានសិទ្ធិបើក ឬបិទការបញ្ចូលពិន្ទុពេលណាក៏បាន ឬកំណត់កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើម និងបញ្ចប់ទុកជាមុន។
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើម (Grading Start)</label>
+                    <input type="datetime-local" class="form-control" id="em_modal_grading_start" value="{{ exam.grading_start_datetime|date:'Y-m-d\TH:i' }}">
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">ទុកទទេ ប្រសិនបើចង់បើកភ្លាមៗ។</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់ / ផុតកំណត់ (Grading Deadline)</label>
+                    <input type="datetime-local" class="form-control" id="em_modal_grading_end" value="{{ exam.grading_end_datetime|date:'Y-m-d\TH:i' }}">
+                    <div class="form-text text-muted" style="font-size: 0.75rem;">បន្ទាប់ពីម៉ោងនេះ គ្រូមិនអាចបញ្ចូល ឬកែប្រែពិន្ទុបានទៀតទេ (អាចត្រួតពិនិត្យមើលបាន)។</div>
+                </div>
+
+                <div class="form-check form-switch p-3 bg-light rounded-3 border mb-3">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="em_modal_grading_locked" {% if exam.is_grading_locked %}checked{% endif %}>
+                    <label class="form-check-label fw-bold small text-dark" for="em_modal_grading_locked">
+                        🔒 ចាក់សោការបញ្ចូលពិន្ទុភ្លាមៗ (Instant Lock)
+                    </label>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="em_modal_apply_to_session" checked>
+                    <label class="form-check-label small fw-bold text-primary" for="em_modal_apply_to_session">
+                        អនុវត្តចំពោះគ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ (Apply to entire Session)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="saveExamManageGradingWindow()">
+                    <i class="fa-solid fa-check me-1"></i> រក្សាទុកការកំណត់
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveExamManageGradingWindow() {
+    const startVal = document.getElementById('em_modal_grading_start').value;
+    const endVal = document.getElementById('em_modal_grading_end').value;
+    const isLocked = document.getElementById('em_modal_grading_locked').checked;
+    const applySession = document.getElementById('em_modal_apply_to_session').checked;
+
+    fetch('{% url "api_update_exam_grading_window" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            grading_start_datetime: startVal || null,
+            grading_end_datetime: endVal || null,
+            is_grading_locked: isLocked,
+            apply_to_session: applySession
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + data.message);
+        }
+    })
+    .catch(err => alert('មានបញ្ហាតភ្ជាប់ Server!'));
+}
+</script>
 {% endif %}
 {% endblock %}
 

@@ -1074,23 +1074,31 @@ class MobileBlindScoringValidateAPIView(APIView):
         }
 
         desks_data = []
+        valid_scores = []
+        entered_count = 0
+        absent_count = 0
         for cand in candidates:
             sc = scores_map.get(cand.id)
             score_val = None
             is_absent = False
             if sc:
                 is_absent = sc.is_absent
-                if sc.score is not None and not is_absent:
+                if is_absent:
+                    absent_count += 1
+                    entered_count += 1
+                elif sc.score is not None:
                     score_val = float(sc.score)
+                    valid_scores.append(score_val)
+                    entered_count += 1
 
             desks_data.append({
                 'desk_number': cand.desk_number,
-                'candidate_id': cand.id,
                 'score': score_val,
                 'is_absent': is_absent,
             })
 
         display_room_name = room.room_name if is_admin else f"កញ្ចប់កូដសម្ងាត់ #{secret_code}"
+        avg_score = (sum(valid_scores) / len(valid_scores)) if valid_scores else 0.0
 
         return Response({
             'status': 'success',
@@ -1104,7 +1112,21 @@ class MobileBlindScoringValidateAPIView(APIView):
             'max_score': float(exam_subject.max_score),
             'coefficient': float(exam_subject.coefficient),
             'candidate_count': len(desks_data),
-            'is_already_graded': code_obj.is_graded if code_obj else False,
+            'is_already_graded': (code_obj.is_graded if code_obj else False) or (entered_count > 0),
+            'graded_by': (
+                (rc_user.get_full_name() or rc_user.username)
+                if (code_obj and (rc_user := code_obj.graded_by) and is_admin)
+                else ('បានបញ្ចូល' if (code_obj and code_obj.is_graded) else '')
+            ),
+            'graded_at': code_obj.graded_at.strftime('%d/%m/%Y %H:%M') if (code_obj and code_obj.graded_at) else '',
+            'summary': {
+                'total_candidates': len(desks_data),
+                'entered_count': entered_count,
+                'absent_count': absent_count,
+                'average_score': round(avg_score, 2),
+                'max_score_entered': max(valid_scores) if valid_scores else 0.0,
+                'min_score_entered': min(valid_scores) if valid_scores else 0.0,
+            },
             'desks': desks_data
         })
 
@@ -1121,6 +1143,11 @@ class MobileBlindScoringSaveAPIView(APIView):
         subject_id = data.get('subject_id')
         secret_code = str(data.get('secret_code', '')).strip().upper()
         scores_list = data.get('scores', [])
+        if isinstance(scores_list, str):
+            try:
+                scores_list = json.loads(scores_list)
+            except Exception:
+                scores_list = []
 
         if not exam_id or not subject_id or not secret_code or not scores_list:
             return Response({'status': 'error', 'message': 'ទិន្នន័យមិនពេញលេញ!'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1146,12 +1173,22 @@ class MobileBlindScoringSaveAPIView(APIView):
         candidates_by_desk = {c.desk_number: c for c in room.candidates.all()}
         saved_count = 0
         absent_count = 0
+        valid_scores = []
+        total_sum = Decimal('0.00')
 
         with transaction.atomic():
             for item in scores_list:
+                if isinstance(item, str):
+                    try:
+                        item = json.loads(item)
+                    except Exception:
+                        continue
+                if not isinstance(item, dict):
+                    continue
+
                 desk_num = int(item.get('desk_number', 0))
                 score_raw = str(item.get('score', '')).strip().upper()
-                is_absent = bool(item.get('is_absent', False)) or (score_raw == 'A')
+                is_absent_flag = bool(item.get('is_absent', False)) or (score_raw in ['0', '0.0', '0.00', 'A'])
 
                 cand = candidates_by_desk.get(desk_num)
                 if not cand:
@@ -1162,11 +1199,7 @@ class MobileBlindScoringSaveAPIView(APIView):
                     exam_subject=exam_subject
                 )
 
-                if is_absent:
-                    score_obj.is_absent = True
-                    score_obj.score = Decimal('0.00')
-                    absent_count += 1
-                elif score_raw != '' and score_raw != '-':
+                if score_raw != '' and score_raw != '-':
                     try:
                         val = Decimal(score_raw)
                         if val > exam_subject.max_score:
@@ -1174,11 +1207,23 @@ class MobileBlindScoringSaveAPIView(APIView):
                         if val < Decimal('0.00'):
                             val = Decimal('0.00')
                         score_obj.score = val
-                        score_obj.is_absent = False
+                        score_obj.is_absent = (val == Decimal('0.00')) or is_absent_flag
+                        total_sum += val
+                        valid_scores.append(float(val))
+                        if val == Decimal('0.00') or is_absent_flag:
+                            absent_count += 1
                     except Exception:
-                        continue
+                        score_obj.score = Decimal('0.00')
+                        score_obj.is_absent = True
+                        absent_count += 1
+                elif is_absent_flag:
+                    score_obj.is_absent = True
+                    score_obj.score = Decimal('0.00')
+                    absent_count += 1
+                    valid_scores.append(0.0)
                 else:
-                    continue
+                    score_obj.score = None
+                    score_obj.is_absent = False
 
                 if not score_obj.entered_by:
                     score_obj.entered_by = request.user
@@ -1198,11 +1243,18 @@ class MobileBlindScoringSaveAPIView(APIView):
 
             exam.recalculate_all_ranks()
 
+        avg_score = (sum(valid_scores) / len(valid_scores)) if valid_scores else 0.0
+
         return Response({
             'status': 'success',
             'message': f'🎉 បានរក្សាទុកពិន្ទុកញ្ចប់ {secret_code} ចំនួន {saved_count} តុជោគជ័យ!',
-            'saved_count': saved_count,
-            'absent_count': absent_count
+            'summary': {
+                'saved_count': saved_count,
+                'absent_count': absent_count,
+                'average_score': round(avg_score, 2),
+                'max_score': max(valid_scores) if valid_scores else 0.0,
+                'min_score': min(valid_scores) if valid_scores else 0.0,
+            }
         })
 
 

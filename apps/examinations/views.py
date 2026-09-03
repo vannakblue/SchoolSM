@@ -623,6 +623,14 @@ def standardized_exam_list(request):
     if search_q:
         exams_qs = exams_qs.filter(Q(name__icontains=search_q) | Q(description__icontains=search_q))
 
+    # Group exams by (academic_year_id, exam_date, clean_title)
+    sessions_map = {}
+    for ex in exams_qs:
+        clean_title = get_clean_exam_session_title(ex.name)
+        date_key = str(ex.exam_date)
+        year_key = str(ex.academic_year_id)
+        group_key = f"{year_key}_{date_key}_{clean_title}"
+
         if group_key not in sessions_map:
             sessions_map[group_key] = {
                 'group_key': group_key,
@@ -1935,27 +1943,31 @@ def exam_blind_scoring_portal(request):
 @role_required(['ADMIN', 'TEACHER'])
 def api_exam_get_subjects(request, exam_id):
     """
-    JSON API returning all subjects, grading rules, and secret codes for a standardized exam.
-    Regular teachers only get subject metadata (secret codes directory is restricted to Admin).
+    JSON API returning all subjects, grading rules, secret code envelopes, and grading window status for a standardized exam.
+    Conceals physical room names from regular teachers (anonymized as envelope codes).
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
     subjects = exam.exam_subjects.select_related('subject').order_by('order', 'id')
     is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
 
-    # Query room subject codes (Only Admin can see full directory of secret codes)
+    is_grading_open, status_code, grading_msg = exam.get_grading_status()
+
+    # Query room subject codes (anonymized for teachers, full info for Admin)
     codes_by_subject = {}
-    if is_admin:
-        room_codes_qs = ExamRoomSubjectCode.objects.filter(exam_room__exam=exam).select_related('exam_room', 'graded_by')
-        for rc in room_codes_qs:
-            if rc.exam_subject_id not in codes_by_subject:
-                codes_by_subject[rc.exam_subject_id] = []
-            codes_by_subject[rc.exam_subject_id].append({
-                'secret_code': rc.secret_code,
-                'is_graded': rc.is_graded,
-                'graded_by': rc.graded_by.username if rc.graded_by else '',
-                'graded_at': rc.graded_at.strftime('%d/%m/%Y %H:%M') if rc.graded_at else '',
-                'room_name': rc.exam_room.room_name,
-            })
+    room_codes_qs = ExamRoomSubjectCode.objects.filter(exam_room__exam=exam).select_related('exam_room', 'graded_by')
+    for rc in room_codes_qs:
+        if rc.exam_subject_id not in codes_by_subject:
+            codes_by_subject[rc.exam_subject_id] = []
+        
+        display_room = rc.exam_room.room_name if is_admin else f"កញ្ចប់កូដ #{rc.secret_code}"
+        codes_by_subject[rc.exam_subject_id].append({
+            'secret_code': rc.secret_code,
+            'is_graded': rc.is_graded,
+            'graded_by': (rc.graded_by.get_full_name() or rc.graded_by.username) if (rc.graded_by and is_admin) else ('បានបញ្ចូល' if rc.is_graded else ''),
+            'graded_at': rc.graded_at.strftime('%d/%m/%Y %H:%M') if rc.graded_at else '',
+            'room_name': display_room,
+            'candidate_count': rc.exam_room.candidates.count(),
+        })
     
     return JsonResponse({
         'status': 'success',
@@ -1964,6 +1976,14 @@ def api_exam_get_subjects(request, exam_id):
         'grade_level': exam.grade_level,
         'candidates_per_room': exam.candidates_per_room,
         'is_admin': is_admin,
+        'is_grading_open': is_grading_open or is_admin,
+        'is_grading_locked': exam.is_grading_locked,
+        'status_code': status_code,
+        'grading_status_msg': grading_msg,
+        'grading_start_datetime': exam.grading_start_datetime.strftime('%Y-%m-%dT%H:%M') if exam.grading_start_datetime else None,
+        'grading_end_datetime': exam.grading_end_datetime.strftime('%Y-%m-%dT%H:%M') if exam.grading_end_datetime else None,
+        'grading_start_display': exam.grading_start_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_start_datetime else '',
+        'grading_end_display': exam.grading_end_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_end_datetime else '',
         'subjects': [
             {
                 'id': s.id,
@@ -1973,10 +1993,136 @@ def api_exam_get_subjects(request, exam_id):
                 'coefficient': float(s.coefficient),
                 'session': s.get_session_display(),
                 'exam_date': s.exam_date.strftime('%d/%m/%Y') if s.exam_date else '',
-                'secret_codes': codes_by_subject.get(s.id, []) if is_admin else [],
+                'secret_codes': codes_by_subject.get(s.id, []),
             }
             for s in subjects
         ]
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_exam_grading_lock(request, exam_id):
+    """
+    1-Click instant toggle to lock/unlock grading for a Standardized Exam (or all exams in the same session).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST method required'}, status=405)
+
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+    except Exception:
+        data = request.POST
+
+    apply_to_session = str(data.get('apply_to_session', '')).lower() in ['true', '1', 'yes']
+
+    new_lock_state = not exam.is_grading_locked
+    if 'is_locked' in data:
+        new_lock_state = str(data.get('is_locked')).lower() in ['true', '1', 'yes']
+
+    if apply_to_session:
+        clean_title = get_clean_exam_session_title(exam.name)
+        session_exams = StandardizedExam.objects.filter(
+            academic_year=exam.academic_year,
+            exam_date=exam.exam_date
+        )
+        matched_ids = [e.id for e in session_exams if get_clean_exam_session_title(e.name) == clean_title]
+        StandardizedExam.objects.filter(id__in=matched_ids).update(
+            is_grading_locked=new_lock_state,
+            updated_at=timezone.now()
+        )
+        count = len(matched_ids)
+        action_str = "🔒 បានចាក់សោការបញ្ចូលពិន្ទុ" if new_lock_state else "🔓 បានបើកដំណើរការបញ្ចូលពិន្ទុ"
+        msg = f"{action_str} សម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡង «{clean_title}» ({count} កម្រិត) ដោយជោគជ័យ!"
+    else:
+        exam.is_grading_locked = new_lock_state
+        exam.save(update_fields=['is_grading_locked', 'updated_at'])
+        action_str = "🔒 បានចាក់សោការបញ្ចូលពិន្ទុ" if new_lock_state else "🔓 បានបើកដំណើរការបញ្ចូលពិន្ទុ"
+        msg = f"{action_str} សម្រាប់សម័យប្រឡង «{exam.name}» ដោយជោគជ័យ!"
+
+    exam.refresh_from_db()
+    is_open, status_code, status_msg = exam.get_grading_status()
+    return JsonResponse({
+        'status': 'success',
+        'message': msg,
+        'is_grading_locked': new_lock_state,
+        'is_grading_open': is_open,
+        'status_code': status_code,
+        'grading_status_msg': status_msg,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_update_exam_grading_window(request, exam_id):
+    """
+    Sets or updates the grading start and end deadline datetime for a Standardized Exam (or session).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST method required'}, status=405)
+
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+    except Exception:
+        data = request.POST
+
+    start_dt_raw = data.get('grading_start_datetime')
+    end_dt_raw = data.get('grading_end_datetime')
+    is_locked_raw = data.get('is_grading_locked')
+    apply_to_session = str(data.get('apply_to_session', '')).lower() in ['true', '1', 'yes']
+
+    start_dt = None
+    if start_dt_raw:
+        try:
+            start_dt = datetime.datetime.fromisoformat(start_dt_raw.replace('Z', '+00:00'))
+        except Exception:
+            pass
+
+    end_dt = None
+    if end_dt_raw:
+        try:
+            end_dt = datetime.datetime.fromisoformat(end_dt_raw.replace('Z', '+00:00'))
+        except Exception:
+            pass
+
+    is_locked = exam.is_grading_locked
+    if is_locked_raw is not None:
+        is_locked = str(is_locked_raw).lower() in ['true', '1', 'yes']
+
+    if apply_to_session:
+        clean_title = get_clean_exam_session_title(exam.name)
+        session_exams = StandardizedExam.objects.filter(
+            academic_year=exam.academic_year,
+            exam_date=exam.exam_date
+        )
+        matched_ids = [e.id for e in session_exams if get_clean_exam_session_title(e.name) == clean_title]
+        StandardizedExam.objects.filter(id__in=matched_ids).update(
+            grading_start_datetime=start_dt,
+            grading_end_datetime=end_dt,
+            is_grading_locked=is_locked,
+            updated_at=timezone.now()
+        )
+        msg = f"🎉 បានកំណត់កាលវិភាគបញ្ចូលពិន្ទុសម្រាប់គ្រប់កម្រិតថ្នាក់នៃសម័យប្រឡង «{clean_title}» ដោយជោគជ័យ!"
+    else:
+        exam.grading_start_datetime = start_dt
+        exam.grading_end_datetime = end_dt
+        exam.is_grading_locked = is_locked
+        exam.save(update_fields=['grading_start_datetime', 'grading_end_datetime', 'is_grading_locked', 'updated_at'])
+        msg = f"🎉 បានកំណត់កាលវិភាគបញ្ចូលពិន្ទុសម្រាប់សម័យប្រឡង «{exam.name}» ដោយជោគជ័យ!"
+
+    exam.refresh_from_db()
+    is_open, status_code, status_msg = exam.get_grading_status()
+    return JsonResponse({
+        'status': 'success',
+        'message': msg,
+        'is_grading_locked': is_locked,
+        'is_grading_open': is_open,
+        'status_code': status_code,
+        'grading_status_msg': status_msg,
+        'grading_start_datetime': exam.grading_start_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_start_datetime else None,
+        'grading_end_datetime': exam.grading_end_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_end_datetime else None,
     })
 
 
@@ -2158,7 +2304,7 @@ def api_exam_save_blind_scores(request):
         for item in scores_list:
             desk_num = int(item.get('desk_number', 0))
             score_raw = str(item.get('score', '')).strip().upper()
-            is_absent = bool(item.get('is_absent', False)) or (score_raw == 'A')
+            is_absent_flag = bool(item.get('is_absent', False)) or (score_raw in ['0', '0.0', '0.00', 'A'])
 
             cand = candidates_by_desk.get(desk_num)
             if not cand:
@@ -2169,11 +2315,7 @@ def api_exam_save_blind_scores(request):
                 exam_subject=exam_subject
             )
 
-            if is_absent:
-                score_obj.is_absent = True
-                score_obj.score = Decimal('0.00')
-                absent_count += 1
-            elif score_raw != '' and score_raw != '-':
+            if score_raw != '' and score_raw != '-':
                 try:
                     val = Decimal(score_raw)
                     if val > exam_subject.max_score:
@@ -2181,12 +2323,20 @@ def api_exam_save_blind_scores(request):
                     if val < Decimal('0.00'):
                         val = Decimal('0.00')
                     score_obj.score = val
-                    score_obj.is_absent = False
+                    score_obj.is_absent = (val == Decimal('0.00')) or is_absent_flag
                     total_score_sum += val
                     valid_scores.append(val)
+                    if val == Decimal('0.00') or is_absent_flag:
+                        absent_count += 1
                 except Exception:
                     score_obj.score = Decimal('0.00')
-                    score_obj.is_absent = False
+                    score_obj.is_absent = True
+                    absent_count += 1
+            elif is_absent_flag:
+                score_obj.is_absent = True
+                score_obj.score = Decimal('0.00')
+                absent_count += 1
+                valid_scores.append(Decimal('0.00'))
             else:
                 score_obj.score = None
                 score_obj.is_absent = False
