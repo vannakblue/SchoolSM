@@ -196,6 +196,11 @@
                     <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" onclick="window.location.href=this.href; event.stopPropagation();" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
                         <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
                     </a>
+                    {% if is_admin %}
+                    <button type="button" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" onclick="openDeleteSessionModal('{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}', '{% for item in sess.exams_data %}{{ item.exam.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ sess.group_key|escapejs }}', '{{ sess.total_candidates }}', '{{ sess.total_rooms }}', '{% for g in sess.grades_list %}ថ្នាក់ទី {{ g }}{% if not forloop.last %}, {% endif %}{% endfor %}')" title="លុបសម័យប្រឡងទាំងមូល (រួមទាំងគ្រប់កម្រិតថ្នាក់ទាំងអស់)">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡង
+                    </button>
+                    {% endif %}
                     <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}">
                         <i class="fa-solid fa-chevron-down toggle-icon text-primary"></i>
                     </button>
@@ -613,6 +618,63 @@
     {% endfor %}
 </div>
 
+<!-- Modal: Confirmation to Delete Entire Exam Session -->
+{% if is_admin %}
+<div class="modal fade" id="deleteSessionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបសម័យប្រឡងទាំងមូល
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'standardized_exam_session_delete' %}">
+                {% csrf_token %}
+                <input type="hidden" name="exam_ids" id="delete_session_exam_ids">
+                <input type="hidden" name="session_key" id="delete_session_key">
+                <input type="hidden" name="session_title" id="delete_session_title">
+                
+                <div class="modal-body p-4">
+                    <p class="text-dark mb-3 fs-6">
+                        តើលោកអ្នកពិតជាចង់លុបសម័យប្រឡងទាំងមូល <strong id="deleteModalSessionTitle" class="text-danger"></strong> នេះមែនទេ?
+                    </p>
+
+                    <!-- Session Breakdown Badges -->
+                    <div class="bg-light p-3 rounded-3 border mb-3">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge bg-secondary-subtle text-dark border px-2.5 py-1.5">
+                                <i class="fa-solid fa-calendar-days text-primary me-1"></i> <span id="deleteModalSessionDate">-</span>
+                            </span>
+                            <span class="badge bg-light text-dark border px-2.5 py-1.5">
+                                <i class="fa-solid fa-graduation-cap text-success me-1"></i> <span id="deleteModalSessionYear">-</span>
+                            </span>
+                        </div>
+                        <div class="small text-muted mb-1">
+                            កម្រិតថ្នាក់ដែលត្រូវលុប៖ <strong id="deleteModalGradesList" class="text-dark">-</strong> (<strong id="deleteModalGradesCount" class="text-danger">0</strong> កម្រិតថ្នាក់)
+                        </div>
+                        <div class="small text-muted">
+                            បេក្ខជនសរុប៖ <strong id="deleteModalCandidatesCount" class="text-dark">0</strong> នាក់ • បន្ទប់ប្រឡង៖ <strong id="deleteModalRoomsCount" class="text-dark">0</strong> បន្ទប់
+                        </div>
+                    </div>
+
+                    <div class="alert alert-danger border-0 rounded-3 small mb-0">
+                        <i class="fa-solid fa-circle-exclamation me-1 fs-6"></i>
+                        <strong>ការព្រមានសំខាន់៖</strong> ការលុបនេះនឹងលុបចេញនូវ <strong>គ្រប់កម្រិតថ្នាក់ទាំងអស់</strong> នៃសម័យប្រឡងនេះ ព្រមទាំងបញ្ជីបេក្ខជន បន្ទប់ប្រឡង លេខតុ លេខកូដសម្ងាត់ ពិន្ទុ និងគម្រោងអនុរក្សដែលពាក់ព័ន្ធទាំងអស់ ហើយមិនអាចទាញយកមកវិញបានទេ។
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 py-2.5">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4 shadow-sm">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡងទាំងមូលឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Modal Batch Generate Rooms per Exam Session (តាមសម័យប្រឡងនីមួយៗ) -->
 <div class="modal fade" id="batchGenerateRoomsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -762,6 +824,38 @@ function openSessionSecretCodesModal(htmlId) {
 
 function openSessionInvigilatorModal(htmlId) {
     const modalEl = document.getElementById('invigilatorModal_' + htmlId);
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+
+function openDeleteSessionModal(title, dateDisplay, yearName, gradesCount, examIds, sessionKey, totalCandidates, totalRooms, gradesListStr) {
+    const examIdsInput = document.getElementById('delete_session_exam_ids');
+    const sessionKeyInput = document.getElementById('delete_session_key');
+    const sessionTitleInput = document.getElementById('delete_session_title');
+
+    if (examIdsInput) examIdsInput.value = examIds || '';
+    if (sessionKeyInput) sessionKeyInput.value = sessionKey || '';
+    if (sessionTitleInput) sessionTitleInput.value = title || '';
+
+    const titleEl = document.getElementById('deleteModalSessionTitle');
+    const dateEl = document.getElementById('deleteModalSessionDate');
+    const yearEl = document.getElementById('deleteModalSessionYear');
+    const countEl = document.getElementById('deleteModalGradesCount');
+    const listEl = document.getElementById('deleteModalGradesList');
+    const candEl = document.getElementById('deleteModalCandidatesCount');
+    const roomsEl = document.getElementById('deleteModalRoomsCount');
+
+    if (titleEl) titleEl.textContent = `«${title}»`;
+    if (dateEl) dateEl.textContent = dateDisplay || '-';
+    if (yearEl) yearEl.textContent = yearName || '-';
+    if (countEl) countEl.textContent = gradesCount || '0';
+    if (listEl) listEl.textContent = gradesListStr || '-';
+    if (candEl) candEl.textContent = totalCandidates || '0';
+    if (roomsEl) roomsEl.textContent = totalRooms || '0';
+
+    const modalEl = document.getElementById('deleteSessionModal');
     if (modalEl) {
         const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalInstance.show();

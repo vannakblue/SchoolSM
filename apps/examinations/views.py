@@ -1304,6 +1304,52 @@ def standardized_exam_delete(request, exam_id):
     return redirect('standardized_exam_manage', exam_id=exam.id)
 
 
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_session_delete(request):
+    """
+    Deletes all StandardizedExam records and associated candidates, scores, rooms,
+    and invigilator plans belonging to an entire multi-grade exam session in one click.
+    """
+    if request.method == 'POST':
+        exam_ids_str = request.POST.get('exam_ids', '').strip()
+        session_key = request.POST.get('session_key', '').strip()
+        session_title = request.POST.get('session_title', '').strip()
+
+        exam_ids = [int(eid.strip()) for eid in exam_ids_str.split(',') if eid.strip().isdigit()]
+        exams_qs = StandardizedExam.objects.none()
+
+        if exam_ids:
+            exams_qs = StandardizedExam.objects.filter(id__in=exam_ids)
+        elif session_key:
+            parts = session_key.split('_', 2)
+            if len(parts) >= 3 and parts[0].isdigit():
+                y_id = int(parts[0])
+                d_str = parts[1]
+                t_str = parts[2]
+                exams_qs = StandardizedExam.objects.filter(academic_year_id=y_id, exam_date=d_str, name__icontains=t_str)
+
+        count = exams_qs.count()
+        if count > 0:
+            grades = list(exams_qs.order_by('grade_level').values_list('grade_level', flat=True).distinct())
+            grades_str = ", ".join([f"ថ្នាក់ទី {g}" for g in grades]) if grades else f"{count} កម្រិត"
+
+            # Clean up any invigilator plans linked specifically to this session or its exams
+            if session_key:
+                ExamInvigilatorPlan.objects.filter(session_key=session_key).delete()
+            ExamInvigilatorPlan.objects.filter(standardized_exam__in=exams_qs).delete()
+
+            # Cascade delete all exams in this session
+            exams_qs.delete()
+
+            title_display = session_title or "សម័យប្រឡង"
+            messages.success(request, f"🗑️ បានលុបសម័យប្រឡងទាំងមូល «{title_display}» (រួមមាន {count} កម្រិតថ្នាក់៖ {grades_str}) និងទិន្នន័យពាក់ព័ន្ធទាំងអស់ដោយជោគជ័យ!")
+        else:
+            messages.warning(request, "ពុំមានសម័យប្រឡងណាមួយត្រូវបានរកឃើញសម្រាប់លុបឡើយ។")
+
+    return redirect('standardized_exam_list')
+
+
 
 @login_required
 def standardized_exam_manage(request, exam_id):

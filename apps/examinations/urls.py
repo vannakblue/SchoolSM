@@ -30,6 +30,7 @@ urlpatterns = [
     path('standardized/<int:exam_id>/manage/', views.standardized_exam_manage, name='standardized_exam_manage'),
     path('standardized/<int:exam_id>/edit/', views.standardized_exam_edit, name='standardized_exam_edit'),
     path('standardized/<int:exam_id>/delete/', views.standardized_exam_delete, name='standardized_exam_delete'),
+    path('standardized/session/delete/', views.standardized_exam_session_delete, name='standardized_exam_session_delete'),
     path('standardized/<int:exam_id>/subjects/manage/', views.api_manage_standardized_exam_subjects, name='api_manage_standardized_exam_subjects'),
     path('standardized/<int:exam_id>/subjects/apply-preset/', views.api_apply_standardized_exam_preset, name='api_apply_standardized_exam_preset'),
 
