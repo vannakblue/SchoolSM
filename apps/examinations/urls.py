@@ -7,6 +7,10 @@ urlpatterns = [
     path('terms/create/', views.exam_term_create, name='exam_term_create'),
     path('terms/<int:term_id>/edit/', views.exam_term_edit, name='exam_term_edit'),
     path('terms/<int:term_id>/delete/', views.exam_term_delete, name='exam_term_delete'),
+    path('terms/<int:term_id>/graph/', views.term_results_graph_view, name='term_results_graph_view'),
+    path('term-subjects/', views.exam_term_subjects_manage, name='exam_term_subjects_manage'),
+    path('api/term-subject/toggle/', views.api_toggle_exam_term_subject, name='api_toggle_exam_term_subject'),
+    path('api/term-subject/apply-preset/', views.api_apply_exam_term_preset, name='api_apply_exam_term_preset'),
     path('matrix/', views.grade_entry_matrix, name='grade_entry_matrix'),
 
     path('summary/', views.grade_summary_view, name='grade_summary'),
@@ -26,6 +30,14 @@ urlpatterns = [
     path('standardized/<int:exam_id>/manage/', views.standardized_exam_manage, name='standardized_exam_manage'),
     path('standardized/<int:exam_id>/edit/', views.standardized_exam_edit, name='standardized_exam_edit'),
     path('standardized/<int:exam_id>/delete/', views.standardized_exam_delete, name='standardized_exam_delete'),
+    path('standardized/<int:exam_id>/subjects/manage/', views.api_manage_standardized_exam_subjects, name='api_manage_standardized_exam_subjects'),
+    path('standardized/<int:exam_id>/subjects/apply-preset/', views.api_apply_standardized_exam_preset, name='api_apply_standardized_exam_preset'),
+
+    # Standardized Exam Types Management (ប្រភេទសម័យប្រឡង)
+    path('standardized/types/', views.standardized_exam_type_list, name='standardized_exam_type_list'),
+    path('standardized/types/create/', views.standardized_exam_type_create, name='standardized_exam_type_create'),
+    path('standardized/types/<int:type_id>/edit/', views.standardized_exam_type_edit, name='standardized_exam_type_edit'),
+    path('standardized/types/<int:type_id>/delete/', views.standardized_exam_type_delete, name='standardized_exam_type_delete'),
 
     # Candidates Roster & Excel
     path('standardized/<int:exam_id>/pull-candidates/', views.exam_pull_candidates, name='exam_pull_candidates'),
@@ -46,6 +58,8 @@ urlpatterns = [
     # Provisional Results Board & Excel
     path('standardized/<int:exam_id>/provisional-results/', views.exam_provisional_results_view, name='exam_provisional_results_view'),
     path('standardized/<int:exam_id>/export-provisional-excel/', views.exam_export_provisional_excel, name='exam_export_provisional_excel'),
+    path('standardized/<int:exam_id>/results-sheet/', views.exam_results_sheet_print_view, name='exam_results_sheet_print_view'),
+    path('standardized/<int:exam_id>/graph/', views.exam_results_graph_view, name='exam_results_graph_view'),
 
     # Blind / Secret-Coded Exam Scoring System (៤ ជំហាន៖ កម្រិតថ្នាក់ -> មុខវិជ្ជា -> លេខកូដសម្ងាត់ -> ពិន្ទុ ០១ ដល់ ២៥)
     path('standardized/blind-scoring/', views.exam_blind_scoring_portal, name='exam_blind_scoring_portal'),

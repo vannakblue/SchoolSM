@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>បញ្ជីបិទផ្សាយតាមបន្ទប់ប្រឡង - ខែមិថុនា</title>
+    <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS for toolbar & modal only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* Base typography & reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #e2e8f0;
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+            color: #000000;
+            margin: 0;
+            padding: 20px 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .moul-font {
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
+        }
+
+        .kantumruy-font {
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+        }
+
+        /* Toolbar on screen */
+        .no-print {
+            max-width: 210mm;
+            margin: 0 auto 20px auto;
+        }
+
+        /* A4 Page Printable Sheet (210mm x 297mm with guaranteed 1.2cm - 1.5cm margins) */
+        .print-sheet {
+            background: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            max-width: 210mm;
+            margin: 0 auto 30px auto;
+            padding: 12mm 15mm 12mm 15mm;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            box-sizing: border-box;
+            color: #000000;
+            position: relative;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .print-sheet:last-child {
+            margin-bottom: 20px;
+        }
+
+        /* Top Header Grid */
+        .header-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+
+        .top-left-block {
+            text-align: center;
+            width: 44%;
+        }
+
+        .province-name {
+            font-size: 11.5pt;
+            line-height: 1.4;
+        }
+
+        .school-name {
+            font-size: 12pt;
+            line-height: 1.4;
+            margin-top: 1px;
+        }
+
+        .room-number-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-start;
+            margin-top: 5px;
+            padding-left: 8px;
+        }
+
+        .room-label {
+            font-size: 11pt;
+        }
+
+        .room-num-val {
+            font-size: 14pt;
+            margin-left: 24px;
+        }
+
+        .top-right-block {
+            text-align: center;
+            width: 44%;
+            position: relative;
+        }
+
+        .kingdom-title {
+            font-size: 12pt;
+            line-height: 1.4;
+        }
+
+        .kingdom-motto {
+            font-size: 11.5pt;
+            line-height: 1.4;
+            margin-top: 1px;
+        }
+
+        .divider-flourish {
+            font-size: 11pt;
+            line-height: 1.2;
+            margin: 2px 0 3px 0;
+            color: #000000;
+        }
+
+        .session-row {
+            text-align: right;
+            padding-right: 4px;
+            margin-top: 3px;
+        }
+
+        .session-badge-text {
+            font-size: 12.5pt;
+        }
+
+        /* Center Main Title */
+        .center-title-block {
+            text-align: center;
+            width: 100%;
+            margin-top: 6px;
+            margin-bottom: 10px;
+        }
+
+        .main-exam-title {
+            font-size: 12pt;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .sub-exam-date {
+            font-size: 11pt;
+            line-height: 1.4;
+            margin-top: 3px;
+        }
+
+        /* 8-Column MoEYS Table */
+        .show-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 5px;
+        }
+
+        .show-table th, .show-table td {
+            border: 1px solid #000000;
+            padding: 2px 4px;
+            font-size: 9.8pt;
+            height: 25px;
+            box-sizing: border-box;
+            vertical-align: middle;
+            color: #000000;
+        }
+
+        .show-table th {
+            font-weight: 700;
+            text-align: center;
+            height: 27px;
+            background-color: transparent;
+        }
+
+        /* Column Widths (Sum = 100%) */
+        .col-index     { width: 5.5%; text-align: center; }
+        .col-desk      { width: 7.5%; text-align: center; }
+        .col-id        { width: 10.5%; text-align: center; }
+        .col-name      { width: 27.5%; text-align: left; padding-left: 8px !important; }
+        .col-gender    { width: 6.0%; text-align: center; }
+        .col-dob       { width: 20.0%; text-align: center; }
+        .col-class     { width: 8.5%; text-align: center; }
+        .col-remarks   { width: 14.5%; text-align: center; }
+
+        /* Footer Section */
+        .footer-summary {
+            font-size: 10pt;
+            font-weight: 600;
+            text-align: left;
+            margin-top: 3px;
+        }
+
+        .footer-bottom-grid {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 2px;
+            padding-right: 20px;
+        }
+
+        .signature-block {
+            text-align: center;
+            min-width: 240px;
+        }
+
+        .sign-date-line {
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+
+        .principal-title {
+            font-size: 11.5pt;
+            margin-top: 3px;
+        }
+
+        .signature-spacing {
+            height: 50px;
+        }
+
+        /* Print Media Styles: Guarantees 1.2cm - 1.5cm Space Around in ALL Browsers & PDF Export */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        @media print {
+            html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-sheet {
+                box-sizing: border-box !important;
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 auto !important;
+                padding: 12mm 15mm 12mm 15mm !important; /* EXACT 1.2cm Top/Bottom, 1.5cm Left/Right space */
+                box-shadow: none !important;
+                border: none !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+
+            .print-sheet:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Control Toolbar (Hidden on Print) -->
+    <div class="no-print bg-white p-3 rounded-3 shadow-sm border">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <a href="/examinations/standardized/241/manage/" class="btn btn-outline-secondary btn-sm fw-bold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="fa-solid fa-file-lines me-1"></i> បញ្ជីបិទផ្សាយតាមបន្ទប់ (Exam Room Postings)
+                </h6>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Room Filter Form -->
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    
+                    
+                    
+                    
+
+                    <select name="room_id" class="form-select form-select-sm fw-bold" style="min-width: 240px;" onchange="this.form.submit()">
+                        <option value="">-- បោះពុម្ពគ្រប់បន្ទប់ទាំងអស់ (3 បន្ទប់) --</option>
+                        
+                        <option value="313" >បន្ទប់លេខ ០១ (25 នាក់)</option>
+                        
+                        <option value="314" >បន្ទប់លេខ ០២ (15 នាក់)</option>
+                        
+                        <option value="315" >បន្ទប់លេខ ០៣ (0 នាក់)</option>
+                        
+                    </select>
+                </form>
+
+                <!-- Settings Button -->
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="fa-solid fa-sliders me-1"></i> កំណត់ព័ត៌មានក្បាល/ជើង
+                </button>
+
+                <!-- Print Button -->
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print / PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="GET">
+                    
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-bold" id="settingsModalLabel">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> កំណត់ព័ត៌មានក្បាលទំព័រ និងជើងទំព័រ
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ខេត្ត/រាជធានី (Province / City)</label>
+                            <input type="text" name="province" class="form-control form-control-sm" value="ខេត្តកណ្តាល">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ឈ្មោះគ្រឹះស្ថានសិក្សា (School Name)</label>
+                            <input type="text" name="school_name" class="form-control form-control-sm" value="វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ទីកន្លែងចុះហត្ថលេខា (Signing Location)</label>
+                            <input type="text" name="location" class="form-control form-control-sm" value="កំពង់កន្សួត">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">កាលបរិច្ឆេទចុះហត្ថលេខា (Signing Date)</label>
+                            <input type="date" name="sign_date" class="form-control form-control-sm" value="2026-08-03">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">យល់ព្រម & អនុវត្ត</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Sheets per Room (Exactly 1 Room = 1 Page, 25 Rows) -->
+    
+    <div class="print-sheet">
+        <!-- Official Cambodian MoEYS Header -->
+        <div class="header-grid">
+            <!-- Top-Left Block -->
+            <div class="top-left-block">
+                <div class="province-name moul-font">ខេត្តកណ្តាល</div>
+                <div class="school-name moul-font">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត</div>
+                <div class="room-number-row">
+                    <span class="room-label moul-font">បន្ទប់លេខ៖</span>
+                    <span class="room-num-val moul-font">០១</span>
+                </div>
+            </div>
+
+            <!-- Top-Right Block -->
+            <div class="top-right-block">
+                <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="kingdom-motto moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="divider-flourish">― ❖ ―</div>
+                <div class="session-row">
+                    <span class="session-badge-text moul-font">ព្រឹក</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Title Block -->
+        <div class="center-title-block">
+            <h5 class="main-exam-title moul-font">បញ្ជីរាយនាមសិស្សប្រឡងខែមិថុនា ឆ្នាំសិក្សា ២០២៥-២០២៦ ថ្នាក់ទី ៧</h5>
+            <div class="sub-exam-date moul-font">សម័យប្រឡង៖ ០៣ សីហា ២០២៦</div>
+        </div>
+
+        <!-- Official MoEYS Candidates Table (Exactly 8 columns & 25 rows) -->
+        <table class="show-table">
+            <thead>
+                <tr>
+                    <th class="col-index">ល.រ</th>
+                    <th class="col-desk">លេខតុ</th>
+                    <th class="col-id">អត្តលេខ</th>
+                    <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម និងនាម</th>
+                    <th class="col-gender">ភេទ</th>
+                    <th class="col-dob">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                    <th class="col-class">មកពីថ្នាក់</th>
+                    <th class="col-remarks">ផ្សេងៗ</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td class="col-index">1</td>
+                    <td class="col-desk">1</td>
+                    <td class="col-id">26330</td>
+                    
+                    <td colspan="4" style="text-align: center; font-weight: 700; color: #b91c1c; font-size: 8.5pt;">
+                        ⚠️ [ ផ្អាកបណ្តោះអាសន្ន - សូមទាក់ទងការិយាល័យវិន័យ/រដ្ឋបាល ដើម្បីធ្វើកិច្ចសន្យាមុនចូលប្រឡង ]
+                    </td>
+                    <td class="col-remarks" style="font-weight: 700; color: #b91c1c;">ជាប់កិច្ចសន្យា</td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">2</td>
+                    <td class="col-desk">2</td>
+                    <td class="col-id">26331</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី2</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">3</td>
+                    <td class="col-desk">3</td>
+                    <td class="col-id">26332</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី3</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">4</td>
+                    <td class="col-desk">4</td>
+                    <td class="col-id">26333</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី4</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">5</td>
+                    <td class="col-desk">5</td>
+                    <td class="col-id">26334</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី5</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">6</td>
+                    <td class="col-desk">6</td>
+                    <td class="col-id">26335</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី6</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">7</td>
+                    <td class="col-desk">7</td>
+                    <td class="col-id">26336</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី7</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">8</td>
+                    <td class="col-desk">8</td>
+                    <td class="col-id">26337</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី8</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">9</td>
+                    <td class="col-desk">9</td>
+                    <td class="col-id">26338</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី9</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">10</td>
+                    <td class="col-desk">10</td>
+                    <td class="col-id">26339</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី10</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">11</td>
+                    <td class="col-desk">11</td>
+                    <td class="col-id">26340</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី11</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">12</td>
+                    <td class="col-desk">12</td>
+                    <td class="col-id">26341</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី12</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">13</td>
+                    <td class="col-desk">13</td>
+                    <td class="col-id">26342</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី13</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">14</td>
+                    <td class="col-desk">14</td>
+                    <td class="col-id">26343</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី14</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">15</td>
+                    <td class="col-desk">15</td>
+                    <td class="col-id">26344</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី15</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">16</td>
+                    <td class="col-desk">16</td>
+                    <td class="col-id">26345</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី16</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">17</td>
+                    <td class="col-desk">17</td>
+                    <td class="col-id">26346</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី17</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">18</td>
+                    <td class="col-desk">18</td>
+                    <td class="col-id">26347</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី18</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">19</td>
+                    <td class="col-desk">19</td>
+                    <td class="col-id">26348</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី19</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">20</td>
+                    <td class="col-desk">20</td>
+                    <td class="col-id">26349</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី20</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">21</td>
+                    <td class="col-desk">21</td>
+                    <td class="col-id">26350</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី21</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">22</td>
+                    <td class="col-desk">22</td>
+                    <td class="col-id">26351</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី22</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">23</td>
+                    <td class="col-desk">23</td>
+                    <td class="col-id">26352</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី23</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">24</td>
+                    <td class="col-desk">24</td>
+                    <td class="col-id">26353</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី24</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">B</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">25</td>
+                    <td class="col-desk">25</td>
+                    <td class="col-id">26354</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់មួយ ទី25</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">១២ តុលា ២០១២</td>
+                    <td class="col-class">A</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <!-- Footer Section -->
+        <div class="footer-summary">
+            បញ្ឈប់បញ្ជីត្រឹមចំនួន ២៥ នាក់ ស្រី ១៣ នាក់
+        </div>
+
+        <div class="footer-bottom-grid">
+            <div class="signature-block">
+                <div class="sign-date-line">កំពង់កន្សួត ថ្ងៃទី ០៣ ខែ សីហា ឆ្នាំ ២០២៦</div>
+                <div class="principal-title moul-font">នាយក</div>
+                <div class="signature-spacing"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-sheet">
+        <!-- Official Cambodian MoEYS Header -->
+        <div class="header-grid">
+            <!-- Top-Left Block -->
+            <div class="top-left-block">
+                <div class="province-name moul-font">ខេត្តកណ្តាល</div>
+                <div class="school-name moul-font">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត</div>
+                <div class="room-number-row">
+                    <span class="room-label moul-font">បន្ទប់លេខ៖</span>
+                    <span class="room-num-val moul-font">០២</span>
+                </div>
+            </div>
+
+            <!-- Top-Right Block -->
+            <div class="top-right-block">
+                <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="kingdom-motto moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="divider-flourish">― ❖ ―</div>
+                <div class="session-row">
+                    <span class="session-badge-text moul-font">ព្រឹក</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Title Block -->
+        <div class="center-title-block">
+            <h5 class="main-exam-title moul-font">បញ្ជីរាយនាមសិស្សប្រឡងខែមិថុនា ឆ្នាំសិក្សា ២០២៥-២០២៦ ថ្នាក់ទី ៧</h5>
+            <div class="sub-exam-date moul-font">សម័យប្រឡង៖ ០៣ សីហា ២០២៦</div>
+        </div>
+
+        <!-- Official MoEYS Candidates Table (Exactly 8 columns & 25 rows) -->
+        <table class="show-table">
+            <thead>
+                <tr>
+                    <th class="col-index">ល.រ</th>
+                    <th class="col-desk">លេខតុ</th>
+                    <th class="col-id">អត្តលេខ</th>
+                    <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម និងនាម</th>
+                    <th class="col-gender">ភេទ</th>
+                    <th class="col-dob">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                    <th class="col-class">មកពីថ្នាក់</th>
+                    <th class="col-remarks">ផ្សេងៗ</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td class="col-index">1</td>
+                    <td class="col-desk">26</td>
+                    <td class="col-id">26401</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី1</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">2</td>
+                    <td class="col-desk">27</td>
+                    <td class="col-id">26402</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី2</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">3</td>
+                    <td class="col-desk">28</td>
+                    <td class="col-id">26403</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី3</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">4</td>
+                    <td class="col-desk">29</td>
+                    <td class="col-id">26404</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី4</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">5</td>
+                    <td class="col-desk">30</td>
+                    <td class="col-id">26405</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី5</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">6</td>
+                    <td class="col-desk">31</td>
+                    <td class="col-id">26406</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី6</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">7</td>
+                    <td class="col-desk">32</td>
+                    <td class="col-id">26407</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី7</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">8</td>
+                    <td class="col-desk">33</td>
+                    <td class="col-id">26408</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី8</td>
+                    <td class="col-gender">ស</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">9</td>
+                    <td class="col-desk">34</td>
+                    <td class="col-id">26409</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី9</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">10</td>
+                    <td class="col-desk">35</td>
+                    <td class="col-id">26410</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី10</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">11</td>
+                    <td class="col-desk">36</td>
+                    <td class="col-id">26411</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី11</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">12</td>
+                    <td class="col-desk">37</td>
+                    <td class="col-id">26412</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី12</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">13</td>
+                    <td class="col-desk">38</td>
+                    <td class="col-id">26413</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី13</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">14</td>
+                    <td class="col-desk">39</td>
+                    <td class="col-id">26414</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី14</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">15</td>
+                    <td class="col-desk">40</td>
+                    <td class="col-id">26415</td>
+                    
+                    <td class="col-name">សិស្ស បន្ទប់ពីរ ទី15</td>
+                    <td class="col-gender">ប</td>
+                    <td class="col-dob">០៣ ឧសភា ២០១៣</td>
+                    <td class="col-class">C</td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">16</td>
+                    <td class="col-desk">41</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">17</td>
+                    <td class="col-desk">42</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">18</td>
+                    <td class="col-desk">43</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">19</td>
+                    <td class="col-desk">44</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">20</td>
+                    <td class="col-desk">45</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">21</td>
+                    <td class="col-desk">46</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">22</td>
+                    <td class="col-desk">47</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">23</td>
+                    <td class="col-desk">48</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">24</td>
+                    <td class="col-desk">49</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">25</td>
+                    <td class="col-desk">50</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <!-- Footer Section -->
+        <div class="footer-summary">
+            បញ្ឈប់បញ្ជីត្រឹមចំនួន ១៥ នាក់ ស្រី ០៨ នាក់
+        </div>
+
+        <div class="footer-bottom-grid">
+            <div class="signature-block">
+                <div class="sign-date-line">កំពង់កន្សួត ថ្ងៃទី ០៣ ខែ សីហា ឆ្នាំ ២០២៦</div>
+                <div class="principal-title moul-font">នាយក</div>
+                <div class="signature-spacing"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-sheet">
+        <!-- Official Cambodian MoEYS Header -->
+        <div class="header-grid">
+            <!-- Top-Left Block -->
+            <div class="top-left-block">
+                <div class="province-name moul-font">ខេត្តកណ្តាល</div>
+                <div class="school-name moul-font">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត</div>
+                <div class="room-number-row">
+                    <span class="room-label moul-font">បន្ទប់លេខ៖</span>
+                    <span class="room-num-val moul-font">០៣</span>
+                </div>
+            </div>
+
+            <!-- Top-Right Block -->
+            <div class="top-right-block">
+                <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="kingdom-motto moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="divider-flourish">― ❖ ―</div>
+                <div class="session-row">
+                    <span class="session-badge-text moul-font">ព្រឹក</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Title Block -->
+        <div class="center-title-block">
+            <h5 class="main-exam-title moul-font">បញ្ជីរាយនាមសិស្សប្រឡងខែមិថុនា ឆ្នាំសិក្សា ២០២៥-២០២៦ ថ្នាក់ទី ៧</h5>
+            <div class="sub-exam-date moul-font">សម័យប្រឡង៖ ០៣ សីហា ២០២៦</div>
+        </div>
+
+        <!-- Official MoEYS Candidates Table (Exactly 8 columns & 25 rows) -->
+        <table class="show-table">
+            <thead>
+                <tr>
+                    <th class="col-index">ល.រ</th>
+                    <th class="col-desk">លេខតុ</th>
+                    <th class="col-id">អត្តលេខ</th>
+                    <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម និងនាម</th>
+                    <th class="col-gender">ភេទ</th>
+                    <th class="col-dob">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                    <th class="col-class">មកពីថ្នាក់</th>
+                    <th class="col-remarks">ផ្សេងៗ</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td class="col-index">1</td>
+                    <td class="col-desk">51</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">2</td>
+                    <td class="col-desk">52</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">3</td>
+                    <td class="col-desk">53</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">4</td>
+                    <td class="col-desk">54</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">5</td>
+                    <td class="col-desk">55</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">6</td>
+                    <td class="col-desk">56</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">7</td>
+                    <td class="col-desk">57</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">8</td>
+                    <td class="col-desk">58</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">9</td>
+                    <td class="col-desk">59</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">10</td>
+                    <td class="col-desk">60</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">11</td>
+                    <td class="col-desk">61</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">12</td>
+                    <td class="col-desk">62</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">13</td>
+                    <td class="col-desk">63</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">14</td>
+                    <td class="col-desk">64</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">15</td>
+                    <td class="col-desk">65</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">16</td>
+                    <td class="col-desk">66</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">17</td>
+                    <td class="col-desk">67</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">18</td>
+                    <td class="col-desk">68</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">19</td>
+                    <td class="col-desk">69</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">20</td>
+                    <td class="col-desk">70</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">21</td>
+                    <td class="col-desk">71</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">22</td>
+                    <td class="col-desk">72</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">23</td>
+                    <td class="col-desk">73</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">24</td>
+                    <td class="col-desk">74</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+                <tr>
+                    <td class="col-index">25</td>
+                    <td class="col-desk">75</td>
+                    <td class="col-id"></td>
+                    
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks"></td>
+                    
+                </tr>
+                
+            </tbody>
+        </table>
+
+        <!-- Footer Section -->
+        <div class="footer-summary">
+            បញ្ឈប់បញ្ជីត្រឹមចំនួន ០០ នាក់ ស្រី ០០ នាក់
+        </div>
+
+        <div class="footer-bottom-grid">
+            <div class="signature-block">
+                <div class="sign-date-line">កំពង់កន្សួត ថ្ងៃទី ០៣ ខែ សីហា ឆ្នាំ ២០២៦</div>
+                <div class="principal-title moul-font">នាយក</div>
+                <div class="signature-spacing"></div>
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Bootstrap 5 JS for modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

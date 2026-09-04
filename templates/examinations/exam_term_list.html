@@ -17,6 +17,9 @@
         <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-danger fw-bold">
             <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែងមិនឱ្យប្រឡង
         </a>
+        <a href="{% url 'exam_term_subjects_manage' %}" class="btn btn-outline-info fw-bold">
+            <i class="fa-solid fa-book-open-reader me-1"></i> មុខវិជ្ជាប្រឡង/មិនប្រឡង
+        </a>
         <a href="{% url 'grade_entry_matrix' %}" class="btn btn-success">
             <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលពិន្ទុសិស្ស
         </a>
@@ -73,6 +76,9 @@
                             {% endif %}
                             <a href="{% url 'grade_summary' %}?term={{ t.id }}" class="btn btn-sm btn-outline-primary" title="តារាងចំណាត់ថ្នាក់">
                                 <i class="fa-solid fa-ranking-star"></i>
+                            </a>
+                            <a href="{% url 'exam_term_subjects_manage' %}?term_id={{ t.id }}" class="btn btn-sm btn-outline-info" title="កំណត់មុខវិជ្ជាប្រឡង/មិនប្រឡង">
+                                <i class="fa-solid fa-book-open-reader"></i>
                             </a>
                             {% if is_admin %}
                             <a href="{% url 'exam_term_edit' t.id %}" class="btn btn-sm btn-outline-secondary" title="កែប្រែសម័យប្រឡង">

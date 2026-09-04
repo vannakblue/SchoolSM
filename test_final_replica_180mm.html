@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<title>បញ្ជីបិទផ្សាយតាមបន្ទប់ប្រឡង</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #e2e8f0;
+    font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+    color: #000000;
+    margin: 0;
+    padding: 20px 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.moul-font {
+    font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+    font-weight: normal;
+}
+
+/* Screen Layout */
+.print-sheet {
+    background: #ffffff;
+    width: 210mm;
+    min-height: 297mm;
+    max-width: 210mm;
+    margin: 0 auto 30px auto;
+    padding: 12mm 15mm 12mm 15mm;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+    color: #000000;
+    position: relative;
+}
+
+.print-sheet:not(:last-child) {
+    margin-bottom: 30px;
+}
+
+.header-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.top-left-block {
+    text-align: center;
+    width: 44%;
+}
+
+.province-name {
+    font-size: 11.5pt;
+    line-height: 1.4;
+}
+
+.school-name {
+    font-size: 12pt;
+    line-height: 1.4;
+    margin-top: 1px;
+}
+
+.room-number-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    margin-top: 5px;
+    padding-left: 6px;
+}
+
+.room-label {
+    font-size: 11pt;
+}
+
+.room-num-val {
+    font-size: 13.5pt;
+    margin-left: 24px;
+}
+
+.top-right-block {
+    text-align: center;
+    width: 44%;
+}
+
+.kingdom-title {
+    font-size: 12pt;
+    line-height: 1.4;
+}
+
+.kingdom-motto {
+    font-size: 11.5pt;
+    line-height: 1.4;
+    margin-top: 1px;
+}
+
+.divider-flourish {
+    font-size: 11pt;
+    line-height: 1.2;
+    margin: 2px 0 3px 0;
+    color: #000000;
+}
+
+.session-row {
+    text-align: right;
+    padding-right: 4px;
+    margin-top: 3px;
+}
+
+.session-badge-text {
+    font-size: 12pt;
+}
+
+.center-title-block {
+    text-align: center;
+    width: 100%;
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+.main-exam-title {
+    font-size: 11.5pt;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.sub-exam-date {
+    font-size: 10.5pt;
+    line-height: 1.4;
+    margin-top: 3px;
+}
+
+.show-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-bottom: 5px;
+}
+
+.show-table th, .show-table td {
+    border: 1px solid #000000;
+    padding: 1px 3px;
+    font-size: 9.1pt;
+    height: 23px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    color: #000000;
+}
+
+.show-table th {
+    font-weight: 700;
+    text-align: center;
+    height: 25px;
+    background-color: transparent;
+}
+
+.footer-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.footer-summary {
+    font-size: 9.3pt;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.footer-sign-block {
+    text-align: center;
+    min-width: 240px;
+}
+
+.footer-date {
+    font-size: 9.3pt;
+    white-space: nowrap;
+}
+
+.footer-principal {
+    font-size: 10.5pt;
+    margin-top: 2px;
+}
+
+/* Print Rules - Guaranteed 1.2cm - 1.5cm Margins */
+@page {
+    size: 210mm 297mm;
+    margin: 10mm 15mm 10mm 15mm;
+}
+
+@media print {
+    html, body {
+        width: 180mm !important;
+        max-width: 180mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .print-sheet {
+        width: 180mm !important;
+        max-width: 180mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-inside: avoid !important;
+    }
+
+    .print-sheet:not(:last-child) {
+        page-break-after: always !important;
+        break-after: page !important;
+    }
+
+    .print-sheet:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="print-sheet">
+    <div class="header-grid">
+        <div class="top-left-block">
+            <div class="province-name moul-font">ខេត្តកណ្តាល</div>
+            <div class="school-name moul-font">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត</div>
+            <div class="room-number-row">
+                <span class="room-label moul-font">បន្ទប់លេខ៖</span>
+                <span class="room-num-val moul-font">០១</span>
+            </div>
+        </div>
+        <div class="top-right-block">
+            <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+            <div class="kingdom-motto moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            <div class="divider-flourish">― ❖ ―</div>
+            <div class="session-row">
+                <span class="session-badge-text moul-font">ព្រឹក</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="center-title-block">
+        <h5 class="main-exam-title moul-font">បញ្ជីរាយនាមសិស្សប្រឡងតេស្តស្តង់ដារវេនឆមាសទី១ ថ្នាក់ទី ៧ ឆ្នាំសិក្សា ២០២៦-២០២៧</h5>
+        <div class="sub-exam-date moul-font">សម័យប្រឡង៖ ១៥ កញ្ញា ២០២៦</div>
+    </div>
+
+    <table class="show-table">
+        <colgroup>
+            <col style="width: 4.5%;">
+            <col style="width: 6.0%;">
+            <col style="width: 8.5%;">
+            <col style="width: 28.5%;">
+            <col style="width: 4.5%;">
+            <col style="width: 24.5%;">
+            <col style="width: 10.5%;">
+            <col style="width: 13.0%;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>ល.រ</th>
+                <th>លេខតុ</th>
+                <th>អត្តលេខ</th>
+                <th>គោត្តនាម និងនាម</th>
+                <th>ភេទ</th>
+                <th>ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                <th>មកពីថ្នាក់</th>
+                <th>ផ្សេងៗ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="text-align:center;">1</td>
+                <td style="text-align:center;">1</td>
+                <td style="text-align:center;">26330</td>
+                <td style="text-align:left; padding-left:8px;">តាំង ស្រីរ័ត្ន</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">2</td>
+                <td style="text-align:center;">2</td>
+                <td style="text-align:center;">26332</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី2</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">3</td>
+                <td style="text-align:center;">3</td>
+                <td style="text-align:center;">26333</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី3</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">4</td>
+                <td style="text-align:center;">4</td>
+                <td style="text-align:center;">26334</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី4</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">5</td>
+                <td style="text-align:center;">5</td>
+                <td style="text-align:center;">26335</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី5</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">6</td>
+                <td style="text-align:center;">6</td>
+                <td style="text-align:center;">26336</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី6</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">7</td>
+                <td style="text-align:center;">7</td>
+                <td style="text-align:center;">26337</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី7</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">8</td>
+                <td style="text-align:center;">8</td>
+                <td style="text-align:center;">26338</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី8</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">9</td>
+                <td style="text-align:center;">9</td>
+                <td style="text-align:center;">26339</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី9</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">10</td>
+                <td style="text-align:center;">10</td>
+                <td style="text-align:center;">26340</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី10</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">11</td>
+                <td style="text-align:center;">11</td>
+                <td style="text-align:center;">26341</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី11</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">12</td>
+                <td style="text-align:center;">12</td>
+                <td style="text-align:center;">26342</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី12</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">13</td>
+                <td style="text-align:center;">13</td>
+                <td style="text-align:center;">26343</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី13</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">14</td>
+                <td style="text-align:center;">14</td>
+                <td style="text-align:center;">26344</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី14</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">15</td>
+                <td style="text-align:center;">15</td>
+                <td style="text-align:center;">26345</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី15</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">16</td>
+                <td style="text-align:center;">16</td>
+                <td style="text-align:center;">26346</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី16</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">17</td>
+                <td style="text-align:center;">17</td>
+                <td style="text-align:center;">26347</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី17</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">18</td>
+                <td style="text-align:center;">18</td>
+                <td style="text-align:center;">26348</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី18</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">19</td>
+                <td style="text-align:center;">19</td>
+                <td style="text-align:center;">26349</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី19</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">20</td>
+                <td style="text-align:center;">20</td>
+                <td style="text-align:center;">26350</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី20</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">21</td>
+                <td style="text-align:center;">21</td>
+                <td style="text-align:center;">26351</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី21</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">22</td>
+                <td style="text-align:center;">22</td>
+                <td style="text-align:center;">26352</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី22</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">23</td>
+                <td style="text-align:center;">23</td>
+                <td style="text-align:center;">26353</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី23</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">24</td>
+                <td style="text-align:center;">24</td>
+                <td style="text-align:center;">26354</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី24</td>
+                <td style="text-align:center;">ប</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">B</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+            <tr>
+                <td style="text-align:center;">25</td>
+                <td style="text-align:center;">25</td>
+                <td style="text-align:center;">26355</td>
+                <td style="text-align:left; padding-left:8px;">សិស្ស បន្ទប់មួយ ទី25</td>
+                <td style="text-align:center;">ស</td>
+                <td style="text-align:center;">១២ តុលា ២០១២</td>
+                <td style="text-align:center;">A</td>
+                <td style="text-align:center;"></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <div class="footer-grid">
+        <div class="footer-summary">
+            បញ្ឈប់បញ្ជីត្រឹមចំនួន ២៥ នាក់ ស្រី ១២ នាក់
+        </div>
+        <div class="footer-sign-block">
+            <div class="footer-date">កំពង់កន្សួត ថ្ងៃទី ២៥ ខែ កក្កដា ឆ្នាំ ២០២៦</div>
+            <div class="footer-principal moul-font">នាយក</div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

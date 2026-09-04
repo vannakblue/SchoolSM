@@ -35,32 +35,38 @@
                 <!-- Exam Source & Category Selection Section (ជ្រើសរើសប្រភព និងប្រភេទសម័យប្រឡង) -->
                 <div class="p-3 bg-light rounded-4 border mb-3">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                        <label class="form-label fw-bold small text-dark mb-0">
-                            <i class="fa-solid fa-bullseye text-primary me-1"></i> ជ្រើសរើសប្រភេទ/ប្រភពសម័យប្រឡង (Exam Source & Type) *៖
-                        </label>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label fw-bold small text-dark mb-0">
+                                <i class="fa-solid fa-bullseye text-primary me-1"></i> ជ្រើសរើសប្រភេទ/ប្រភពសម័យប្រឡង (Exam Source & Type) *៖
+                            </label>
+                            {% if is_admin %}
+                            <button type="button" class="btn btn-xs btn-outline-primary fw-bold rounded-pill px-2.5 py-0.5 shadow-xs" data-bs-toggle="modal" data-bs-target="#manageExamTypesModal" style="font-size: 0.75rem;">
+                                <i class="fa-solid fa-gear me-1"></i> គ្រប់គ្រងប្រភេទ (Manage Types)
+                            </button>
+                            {% endif %}
+                        </div>
                         <span class="small text-muted" style="font-size: 0.75rem;">ចុចជ្រើសរើសដើម្បីបំពេញឈ្មោះ និងកាលបរិច្ឆេទស្វ័យប្រវត្តិ</span>
                     </div>
 
                     <!-- Quick Preset Category Buttons -->
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('BASELINE')">
-                            🎯 តេស្តដើមឆ្នាំ
+                    <div class="d-flex flex-wrap gap-2 mb-3" id="examPresetButtonsContainer">
+                        {% for et in exam_types %}
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-primary fw-bold shadow-xs exam-preset-btn" 
+                                data-code="{{ et.code }}"
+                                data-name="{{ et.name }}"
+                                data-title="{{ et.default_title }}"
+                                data-monthly="{% if et.is_monthly %}true{% else %}false{% endif %}"
+                                data-linked-term="{{ et.linked_term_type|default:'' }}"
+                                onclick="selectExamPresetDynamic(this)">
+                            {{ et.icon }} {{ et.name }}
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('SEMESTER_1')">
-                            🎓 ប្រឡងឆមាសទី១
+                        {% endfor %}
+                        {% if is_admin %}
+                        <button type="button" class="btn btn-sm btn-light border border-dashed border-primary text-primary fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#manageExamTypesModal" title="បន្ថែម ឬកែប្រែប្រភេទសម័យប្រឡង">
+                            <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែម/កែប្រែប្រភេទ...
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('SEMESTER_2')">
-                            🎓 ប្រឡងឆមាសទី២
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('MOCK')">
-                            📝 ប្រឡងសាកល្បង
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('ENDLINE')">
-                            🏁 តេស្តចុងឆ្នាំ
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" onclick="selectExamPreset('MONTHLY')">
-                            📅 ប្រឡងប្រចាំខែ...
-                        </button>
+                        {% endif %}
                     </div>
 
                     <!-- Dropdown selections -->
@@ -101,16 +107,18 @@
                             <label class="small fw-bold text-muted mb-1">ខែប្រឡង (ប្រចាំខែ)៖</label>
                             <select id="monthly_month_select" class="form-select form-select-sm fw-bold border-primary" onchange="onMonthlyMonthSelected(this.value)">
                                 <option value="">-- ជ្រើសខែ --</option>
-                                <option value="តុលា">ខែ តុលា</option>
-                                <option value="វិច្ឆិកា">ខែ វិច្ឆិកា</option>
-                                <option value="ធ្នូ">ខែ ធ្នូ</option>
-                                <option value="មករា">ខែ មករា</option>
-                                <option value="កុម្ភៈ">ខែ កុម្ភៈ</option>
-                                <option value="មីនា">ខែ មីនា</option>
-                                <option value="មេសា">ខែ មេសា</option>
-                                <option value="ឧសភា">ខែ ឧសភា</option>
-                                <option value="មិថុនា">ខែ មិថុនា</option>
-                                <option value="កក្កដា">ខែ កក្កដា</option>
+                                <option value="តុលា">ខែ តុលា (Month 10)</option>
+                                <option value="វិច្ឆិកា">ខែ វិច្ឆិកា (Month 11)</option>
+                                <option value="ធ្នូ">ខែ ធ្នូ (Month 12)</option>
+                                <option value="មករា">ខែ មករា (Month 1)</option>
+                                <option value="កុម្ភៈ">ខែ កុម្ភៈ (Month 2)</option>
+                                <option value="មីនា">ខែ មីនា (Month 3)</option>
+                                <option value="មេសា">ខែ មេសា (Month 4)</option>
+                                <option value="ឧសភា">ខែ ឧសភា (Month 5)</option>
+                                <option value="មិថុនា">ខែ មិថុនា (Month 6)</option>
+                                <option value="កក្កដា">ខែ កក្កដា (Month 7)</option>
+                                <option value="សីហា">ខែ សីហា (Month 8)</option>
+                                <option value="កញ្ញា">ខែ កញ្ញា (Month 9)</option>
                             </select>
                         </div>
                     </div>
@@ -363,9 +371,24 @@
                     <h5 class="fw-bold text-primary mb-0">
                         <i class="fa-solid fa-book-bookmark me-2"></i>មុខវិជ្ជាប្រឡង មេគុណ & ពិន្ទុពេញ
                     </h5>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                        {{ subjects.count }} មុខវិជ្ជា
-                    </span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                            {{ subjects.count }} មុខវិជ្ជា
+                        </span>
+                        {% if is_admin and exam %}
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary fw-bold" onclick="applyFormPreset('SCIENCE_7')">
+                                <i class="fa-solid fa-atom me-1"></i> ៧ វិទ្យាសាស្ត្រ
+                            </button>
+                            <button type="button" class="btn btn-outline-warning fw-bold text-dark" onclick="applyFormPreset('SOCIAL_7')">
+                                <i class="fa-solid fa-earth-asia me-1"></i> ៧ សង្គម
+                            </button>
+                            <button type="button" class="btn btn-outline-success fw-bold" onclick="applyFormPreset('ALL_MOEYS')">
+                                <i class="fa-solid fa-check-double me-1"></i> គ្រប់មុខ
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -464,6 +487,230 @@
                         <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡងឥឡូវនេះ
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if is_admin %}
+<!-- Modal Manage Exam Types (សម្រាប់ Admin បន្ថែម កែប្រែ ឬលុបប្រភេទសម័យប្រឡង) -->
+<div class="modal fade" id="manageExamTypesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-list-check fs-5"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0">គ្រប់គ្រងប្រភេទសម័យប្រឡង (Standardized Exam Types)</h6>
+                        <span class="small text-white-50" style="font-size: 0.75rem;">Admin អាចបន្ថែមប្រភេទថ្មី កែប្រែ ឬលុបចេញភ្លាមៗដោយមិនបាត់បង់ទិន្នន័យលើទម្រង់ឡើយ</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <!-- Navigation Pills -->
+                <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded-3 border" id="typeModalTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold py-1.5" id="tab-list-btn" data-bs-toggle="pill" data-bs-target="#modal-tab-types-list" type="button" role="tab">
+                            <i class="fa-solid fa-list-check me-1"></i> បញ្ជីប្រភេទទាំងអស់ (<span id="modalTypesCount">{{ exam_types|length }}</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold py-1.5" id="tab-add-btn" data-bs-toggle="pill" data-bs-target="#modal-tab-add-type" type="button" role="tab">
+                            <i class="fa-solid fa-circle-plus me-1"></i> បន្ថែមប្រភេទថ្មី
+                        </button>
+                    </li>
+                </ul>
+
+                <div id="modalAlertBox" class="d-none alert py-2 px-3 small border-0 mb-3"></div>
+
+                <div class="tab-content" id="typeModalTabsContent">
+                    <!-- Tab 1: Types List -->
+                    <div class="tab-pane fade show active" id="modal-tab-types-list" role="tabpanel">
+                        <div class="table-responsive bg-white rounded-3 border shadow-xs">
+                            <table class="table table-hover align-middle mb-0 small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 45px;" class="text-center">#</th>
+                                        <th style="width: 50px;" class="text-center">Icon</th>
+                                        <th>ឈ្មោះប្រភេទ</th>
+                                        <th>កូដសម្គាល់</th>
+                                        <th>ទម្រង់ឈ្មោះលំនាំដើម</th>
+                                        <th class="text-center" style="width: 85px;">លក្ខណៈ</th>
+                                        <th class="text-center" style="width: 100px;">សកម្មភាព</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modalTypesTableBody">
+                                    {% for t in exam_types %}
+                                    <tr id="modal-type-row-{{ t.id }}">
+                                        <td class="text-center fw-bold text-muted">{{ t.order }}</td>
+                                        <td class="text-center fs-5">{{ t.icon }}</td>
+                                        <td class="fw-bold text-dark">{{ t.name }}</td>
+                                        <td><span class="badge bg-light text-dark border font-monospace">{{ t.code }}</span></td>
+                                        <td class="text-muted small">{{ t.default_title|default:"-" }}</td>
+                                        <td class="text-center">
+                                            {% if t.is_monthly %}
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle">ប្រចាំខែ</span>
+                                            {% elif t.linked_term_type %}
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ t.linked_term_type }}</span>
+                                            {% else %}
+                                            <span class="badge bg-light text-muted border">ទូទៅ</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2" onclick="openInlineEditType({{ t.id }}, '{{ t.name|escapejs }}', '{{ t.code|escapejs }}', '{{ t.icon|escapejs }}', '{{ t.default_title|escapejs }}', {% if t.is_monthly %}true{% else %}false{% endif %}, '{{ t.linked_term_type|default:''|escapejs }}', {{ t.order }}, {% if t.is_active %}true{% else %}false{% endif %})" title="កែប្រែ">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="confirmDeleteExamType({{ t.id }}, '{{ t.name|escapejs }}')" title="លុប">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-3 text-muted">មិនទាន់មានប្រភេទសម័យប្រឡងនៅឡើយទេ។</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Inline Edit Section -->
+                        <div id="inlineEditCard" class="d-none mt-3 p-3 bg-white rounded-3 border border-primary shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                <h6 class="fw-bold text-primary mb-0">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែប្រភេទសម័យប្រឡង៖ <span id="editTypeNameDisplay" class="text-dark"></span>
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-light border py-0 px-2" onclick="closeInlineEdit()">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <form id="inlineEditForm" onsubmit="submitInlineEdit(event)">
+                                <input type="hidden" id="edit_type_id" value="">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទ *</label>
+                                        <input type="text" id="edit_name" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">Icon/Emoji *</label>
+                                        <input type="text" id="edit_icon" class="form-control form-control-sm text-center fs-6" required>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">កូដសម្គាល់ *</label>
+                                        <input type="text" id="edit_code" class="form-control form-control-sm text-uppercase" required>
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ទម្រង់ឈ្មោះលំនាំដើម</label>
+                                        <input type="text" id="edit_default_title" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-4 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ភ្ជាប់សម័យប្រឡង</label>
+                                        <select id="edit_linked_term_type" class="form-select form-select-sm">
+                                            <option value="">-- មិនភ្ជាប់ --</option>
+                                            <option value="SEMESTER_1">ប្រឡងឆមាសទី១</option>
+                                            <option value="SEMESTER_2">ប្រឡងឆមាសទី២</option>
+                                            <option value="MONTHLY">ប្រឡងប្រចាំខែ</option>
+                                            <option value="ANNUAL">ប្រឡងចុងឆ្នាំ</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">លំដាប់</label>
+                                        <input type="number" id="edit_order" class="form-control form-control-sm text-center" min="1">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2">
+                                    <div class="d-flex gap-3">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="edit_is_monthly">
+                                            <label class="form-check-label small fw-bold text-dark" for="edit_is_monthly">ជាប្រចាំខែ</label>
+                                        </div>
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="edit_is_active">
+                                            <label class="form-check-label small fw-bold text-dark" for="edit_is_active">សកម្ម</label>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-light border" onclick="closeInlineEdit()">បោះបង់</button>
+                                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">
+                                            <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Add New Type -->
+                    <div class="tab-pane fade" id="modal-tab-add-type" role="tabpanel">
+                        <div class="bg-white p-3 rounded-3 border shadow-xs">
+                            <form id="modalAddTypeForm" onsubmit="submitModalAddType(event)">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទសម័យប្រឡង *</label>
+                                        <input type="text" id="add_modal_name" class="form-control form-control-sm" placeholder="ឧ. ប្រឡងពាក់កណ្តាលឆមាស, តេស្តវាស់កម្រិត..." required>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">Icon/Emoji *</label>
+                                        <input type="text" id="add_modal_icon" class="form-control form-control-sm text-center fs-5" value="🎯" required>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">កូដសម្គាល់ (Code)</label>
+                                        <input type="text" id="add_modal_code" class="form-control form-control-sm text-uppercase" placeholder="ឧ. MIDTERM">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ទម្រង់ឈ្មោះលំនាំដើម</label>
+                                        <input type="text" id="add_modal_default_title" class="form-control form-control-sm" placeholder="ឧ. ការប្រឡងពាក់កណ្តាលឆមាស">
+                                    </div>
+                                    <div class="col-md-4 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">ភ្ជាប់សម័យប្រឡងផ្លូវការ</label>
+                                        <select id="add_modal_linked_term_type" class="form-select form-select-sm">
+                                            <option value="">-- មិនភ្ជាប់ / None --</option>
+                                            <option value="SEMESTER_1">ប្រឡងឆមាសទី១</option>
+                                            <option value="SEMESTER_2">ប្រឡងឆមាសទី២</option>
+                                            <option value="MONTHLY">ប្រឡងប្រចាំខែ</option>
+                                            <option value="ANNUAL">ប្រឡងចុងឆ្នាំ</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">លំដាប់</label>
+                                        <input type="number" id="add_modal_order" class="form-control form-control-sm text-center" value="99" min="1">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <div class="d-flex gap-3">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="add_modal_is_monthly">
+                                            <label class="form-check-label small fw-bold text-dark" for="add_modal_is_monthly">ជាប្រចាំខែ</label>
+                                        </div>
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="add_modal_is_active" checked>
+                                            <label class="form-check-label small fw-bold text-dark" for="add_modal_is_active">សកម្ម</label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary fw-bold px-4">
+                                        <i class="fa-solid fa-plus me-1"></i> បង្កើតប្រភេទថ្មីឥឡូវនេះ
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer bg-white border-0 py-2 d-flex justify-content-between">
+                <a href="{% url 'standardized_exam_type_list' %}" class="btn btn-sm btn-link text-decoration-none text-muted small">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកទំព័រគ្រប់គ្រងពេញលេញ (Full Page)
+                </a>
+                <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">បិទផ្ទាំង</button>
             </div>
         </div>
     </div>
@@ -629,7 +876,76 @@ function autoCalculateCoefficient(esId) {
     }
 }
 
+function selectExamPresetDynamic(btn) {
+    if (!btn) return;
+    const code = btn.getAttribute('data-code');
+    const title = btn.getAttribute('data-title');
+    const isMonthly = btn.getAttribute('data-monthly') === 'true';
+    const linkedTermType = btn.getAttribute('data-linked-term') || '';
+
+    const nameInput = document.querySelector('[name="name"]');
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    const monthlyCol = document.getElementById('monthlyPresetCol');
+    const termSelect = document.getElementById('linked_exam_term_select');
+
+    if (examTypeSelect) {
+        let opt = examTypeSelect.querySelector(`option[value="${code}"]`);
+        if (!opt) {
+            opt = document.createElement('option');
+            opt.value = code;
+            opt.innerText = btn.innerText.trim();
+            examTypeSelect.appendChild(opt);
+        }
+        examTypeSelect.value = code;
+    }
+
+    if (isMonthly) {
+        if (monthlyCol) monthlyCol.style.display = 'block';
+        if (nameInput && (!nameInput.value || nameInput.value.includes('ការប្រឡង'))) {
+            nameInput.value = title || 'ការប្រឡងប្រចាំខែ';
+        }
+    } else {
+        if (monthlyCol) monthlyCol.style.display = 'none';
+        if (title && nameInput) {
+            nameInput.value = title;
+        }
+
+        if (termSelect) {
+            let matched = false;
+            Array.from(termSelect.options).forEach(opt => {
+                const optType = opt.getAttribute('data-type');
+                if (linkedTermType && optType === linkedTermType && !matched) {
+                    termSelect.value = opt.value;
+                    const optDate = opt.getAttribute('data-date');
+                    const dateInput = document.querySelector('[name="exam_date"]');
+                    if (optDate && dateInput) dateInput.value = optDate;
+                    matched = true;
+                } else if (optType === code && !matched) {
+                    termSelect.value = opt.value;
+                    const optDate = opt.getAttribute('data-date');
+                    const dateInput = document.querySelector('[name="exam_date"]');
+                    if (optDate && dateInput) dateInput.value = optDate;
+                    matched = true;
+                }
+            });
+            if (!matched && linkedTermType !== 'MONTHLY' && code !== 'MONTHLY') {
+                termSelect.value = '';
+            }
+        }
+    }
+
+    if (typeof handleGradeSelectionChange === 'function') {
+        handleGradeSelectionChange();
+    }
+}
+
 function selectExamPreset(type) {
+    const btn = document.querySelector(`.exam-preset-btn[data-code="${type}"]`);
+    if (btn) {
+        selectExamPresetDynamic(btn);
+        return;
+    }
+
     const nameInput = document.querySelector('[name="name"]');
     const examTypeSelect = document.querySelector('[name="exam_type"]');
     const monthlyCol = document.getElementById('monthlyPresetCol');
@@ -664,7 +980,6 @@ function selectExamPreset(type) {
             nameInput.value = title;
         }
 
-        // Check if there is an exact matching term in linked_exam_term_select
         if (termSelect) {
             let matched = false;
             Array.from(termSelect.options).forEach(opt => {
@@ -683,7 +998,6 @@ function selectExamPreset(type) {
         }
     }
 
-    // Trigger sync for multi-grade cards if present
     if (typeof handleGradeSelectionChange === 'function') {
         handleGradeSelectionChange();
     }
@@ -746,17 +1060,318 @@ function onExamTermSelected(selectEl) {
     }
 }
 
+/* Exam Types Management AJAX Helpers */
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function showModalAlert(message, type = 'success') {
+    const alertBox = document.getElementById('modalAlertBox');
+    if (!alertBox) return;
+    alertBox.className = `alert alert-${type} py-2 px-3 small border-0 mb-3`;
+    alertBox.innerHTML = `<i class="fa-solid fa-${type === 'success' ? 'circle-check text-success' : 'triangle-exclamation text-danger'} me-1"></i> ${message}`;
+    alertBox.classList.remove('d-none');
+    setTimeout(() => {
+        alertBox.classList.add('d-none');
+    }, 4000);
+}
+
+function renderExamTypesUI(types) {
+    if (!Array.isArray(types)) return;
+
+    // 1. Update count
+    const countSpan = document.getElementById('modalTypesCount');
+    if (countSpan) countSpan.innerText = types.length;
+
+    // 2. Update table inside modal
+    const tbody = document.getElementById('modalTypesTableBody');
+    if (tbody) {
+        let html = '';
+        types.forEach(t => {
+            const badgeHtml = t.is_monthly 
+                ? '<span class="badge bg-info-subtle text-info border border-info-subtle">ប្រចាំខែ</span>'
+                : (t.linked_term_type 
+                    ? `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">${escapeHtml(t.linked_term_type)}</span>`
+                    : '<span class="badge bg-light text-muted border">ទូទៅ</span>');
+
+            html += `
+            <tr id="modal-type-row-${t.id}">
+                <td class="text-center fw-bold text-muted">${t.order}</td>
+                <td class="text-center fs-5">${escapeHtml(t.icon)}</td>
+                <td class="fw-bold text-dark">${escapeHtml(t.name)}</td>
+                <td><span class="badge bg-light text-dark border font-monospace">${escapeHtml(t.code)}</span></td>
+                <td class="text-muted small">${escapeHtml(t.default_title || '-')}</td>
+                <td class="text-center">${badgeHtml}</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2" onclick="openInlineEditType(${t.id}, '${escapeHtml(t.name)}', '${escapeHtml(t.code)}', '${escapeHtml(t.icon)}', '${escapeHtml(t.default_title || '')}', ${t.is_monthly ? 'true' : 'false'}, '${escapeHtml(t.linked_term_type || '')}', ${t.order}, ${t.is_active ? 'true' : 'false'})" title="កែប្រែ">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="confirmDeleteExamType(${t.id}, '${escapeHtml(t.name)}')" title="លុប">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        if (types.length === 0) {
+            html = '<tr><td colspan="7" class="text-center py-3 text-muted">មិនទាន់មានប្រភេទសម័យប្រឡងនៅឡើយទេ។</td></tr>';
+        }
+        tbody.innerHTML = html;
+    }
+
+    // 3. Update preset buttons on main form
+    const buttonsContainer = document.getElementById('examPresetButtonsContainer');
+    if (buttonsContainer) {
+        let btnHtml = '';
+        types.forEach(t => {
+            if (t.is_active) {
+                btnHtml += `
+                <button type="button" 
+                        class="btn btn-sm btn-outline-primary fw-bold shadow-xs exam-preset-btn" 
+                        data-code="${escapeHtml(t.code)}"
+                        data-name="${escapeHtml(t.name)}"
+                        data-title="${escapeHtml(t.default_title || '')}"
+                        data-monthly="${t.is_monthly ? 'true' : 'false'}"
+                        data-linked-term="${escapeHtml(t.linked_term_type || '')}"
+                        onclick="selectExamPresetDynamic(this)">
+                    ${escapeHtml(t.icon)} ${escapeHtml(t.name)}
+                </button> `;
+            }
+        });
+        btnHtml += `
+        <button type="button" class="btn btn-sm btn-light border border-dashed border-primary text-primary fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#manageExamTypesModal" title="បន្ថែម ឬកែប្រែប្រភេទសម័យប្រឡង">
+            <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែម/កែប្រែប្រភេទ...
+        </button>`;
+        buttonsContainer.innerHTML = btnHtml;
+    }
+
+    // 4. Update <select name="exam_type"> options
+    const examTypeSelect = document.querySelector('[name="exam_type"]');
+    if (examTypeSelect) {
+        const currentVal = examTypeSelect.value;
+        let selectHtml = '';
+        types.forEach(t => {
+            if (t.is_active) {
+                const isSel = (t.code === currentVal) ? 'selected' : '';
+                selectHtml += `<option value="${escapeHtml(t.code)}" ${isSel}>${escapeHtml(t.icon)} ${escapeHtml(t.name)}</option>`;
+            }
+        });
+        examTypeSelect.innerHTML = selectHtml;
+    }
+}
+
+function submitModalAddType(e) {
+    e.preventDefault();
+    const name = document.getElementById('add_modal_name').value.trim();
+    const icon = document.getElementById('add_modal_icon').value.trim() || '🎯';
+    const code = document.getElementById('add_modal_code').value.trim();
+    const default_title = document.getElementById('add_modal_default_title').value.trim();
+    const linked_term_type = document.getElementById('add_modal_linked_term_type').value;
+    const order = document.getElementById('add_modal_order').value;
+    const is_monthly = document.getElementById('add_modal_is_monthly').checked;
+    const is_active = document.getElementById('add_modal_is_active').checked;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    fetch("{% url 'standardized_exam_type_create' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            name, icon, code, default_title, linked_term_type, order, is_monthly, is_active
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showModalAlert(data.message, 'success');
+            renderExamTypesUI(data.types);
+            document.getElementById('modalAddTypeForm').reset();
+            // Switch back to list tab
+            const listTabBtn = document.getElementById('tab-list-btn');
+            if (listTabBtn) {
+                const tab = new bootstrap.Tab(listTabBtn);
+                tab.show();
+            }
+        } else {
+            showModalAlert(data.message || 'មានបញ្ហាក្នុងការបង្កើតប្រភេទថ្មី', 'danger');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showModalAlert('កំហុសប្រព័ន្ធក្នុងការបញ្ជូនទិន្នន័យ', 'danger');
+    });
+}
+
+function openInlineEditType(id, name, code, icon, title, isMonthly, linkedTerm, order, isActive) {
+    const card = document.getElementById('inlineEditCard');
+    if (!card) return;
+    document.getElementById('edit_type_id').value = id;
+    document.getElementById('editTypeNameDisplay').innerText = `${icon} ${name}`;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_code').value = code;
+    document.getElementById('edit_icon').value = icon;
+    document.getElementById('edit_default_title').value = title;
+    document.getElementById('edit_linked_term_type').value = linkedTerm || '';
+    document.getElementById('edit_order').value = order;
+    document.getElementById('edit_is_monthly').checked = isMonthly;
+    document.getElementById('edit_is_active').checked = isActive;
+
+    card.classList.remove('d-none');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeInlineEdit() {
+    const card = document.getElementById('inlineEditCard');
+    if (card) card.classList.add('d-none');
+}
+
+function submitInlineEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_type_id').value;
+    if (!id) return;
+
+    const name = document.getElementById('edit_name').value.trim();
+    const icon = document.getElementById('edit_icon').value.trim();
+    const code = document.getElementById('edit_code').value.trim();
+    const default_title = document.getElementById('edit_default_title').value.trim();
+    const linked_term_type = document.getElementById('edit_linked_term_type').value;
+    const order = document.getElementById('edit_order').value;
+    const is_monthly = document.getElementById('edit_is_monthly').checked;
+    const is_active = document.getElementById('edit_is_active').checked;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    fetch(`/examinations/standardized/types/${id}/edit/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            name, icon, code, default_title, linked_term_type, order, is_monthly, is_active
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showModalAlert(data.message, 'success');
+            renderExamTypesUI(data.types);
+            closeInlineEdit();
+        } else {
+            showModalAlert(data.message || 'មានបញ្ហាក្នុងការកែប្រែ', 'danger');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showModalAlert('កំហុសប្រព័ន្ធក្នុងការបញ្ជូនទិន្នន័យ', 'danger');
+    });
+}
+
+function confirmDeleteExamType(id, name) {
+    if (!confirm(`តើលោកអ្នកពិតជាចង់លុបប្រភេទសម័យប្រឡង «${name}» នេះមែនទេ?`)) return;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    fetch(`/examinations/standardized/types/${id}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showModalAlert(data.message, 'success');
+            renderExamTypesUI(data.types);
+            closeInlineEdit();
+        } else {
+            showModalAlert(data.message || 'មានបញ្ហាក្នុងការលុប', 'danger');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showModalAlert('កំហុសប្រព័ន្ធក្នុងការបញ្ជូនទិន្នន័យ', 'danger');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.grade-checkbox')) {
         handleGradeSelectionChange();
     }
-    // If initially monthly, show monthly selector
     const examTypeSelect = document.querySelector('[name="exam_type"]');
+    // Ensure examTypeSelect options exist
+    if (examTypeSelect && examTypeSelect.options.length === 0) {
+        const btns = document.querySelectorAll('.exam-preset-btn');
+        btns.forEach(b => {
+            const code = b.getAttribute('data-code');
+            const name = b.innerText.trim();
+            if (code && !examTypeSelect.querySelector(`option[value="${code}"]`)) {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.innerText = name;
+                examTypeSelect.appendChild(opt);
+            }
+        });
+        if (!examTypeSelect.querySelector('option[value="OTHER"]')) {
+            const optOther = document.createElement('option');
+            optOther.value = 'OTHER';
+            optOther.innerText = '📌 ការប្រឡងផ្សេងៗ';
+            examTypeSelect.appendChild(optOther);
+        }
+    }
+    // If initially monthly, show monthly selector
     if (examTypeSelect && examTypeSelect.value === 'MONTHLY') {
         const monthlyCol = document.getElementById('monthlyPresetCol');
         if (monthlyCol) monthlyCol.style.display = 'block';
     }
 });
+
+function applyFormPreset(presetName) {
+    {% if exam %}
+    let presetTitle = 'កំណត់ជាប្រឡងគ្រប់មុខ';
+    if (presetName === 'SCIENCE_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Khmer 75, Math 125, Phys 75, Chem 75, Bio 75, Hist 50, Eng 50)';
+    if (presetName === 'SOCIAL_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាសង្គម (Khmer 125, Math 75, Geog 75, Hist 75, Moral 75, Earth 50, Eng 50)';
+
+    if (!confirm('តើអ្នកពិតជាចង់ ' + presetTitle + ' សម្រាប់សម័យប្រឡងនេះមែនទេ?')) {
+        return;
+    }
+
+    fetch('{% url "api_apply_standardized_exam_preset" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ preset: presetName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចកំណត់ Preset បានទេ!'));
+        }
+    })
+    .catch(err => {
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+    {% endif %}
+}
 </script>
 {% endblock %}
 

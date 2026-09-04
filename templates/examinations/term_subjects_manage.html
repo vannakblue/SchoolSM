@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងមុខវិជ្ជាប្រឡង និងមុខវិជ្ជាមិនប្រឡង (Exam Subjects Selection) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-book-open-reader me-2"></i>គ្រប់គ្រងមុខវិជ្ជាប្រឡង និងមុខវិជ្ជាមិនប្រឡង
+        </h2>
+        <p class="text-muted small mb-0">
+            កំណត់មុខវិជ្ជាដែលត្រូវប្រឡង និងមុខវិជ្ជាមិនប្រឡង (លើកលែង) តាមសម័យប្រឡង កម្រិតថ្នាក់ ឬថ្នាក់នីមួយៗ (ឧ. 11A មានបំណិនជីវិត 11B មិនមាន)
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'exam_term_list' %}" class="btn btn-outline-secondary fw-bold shadow-xs">
+            <i class="fa-solid fa-arrow-left me-1"></i> សម័យប្រឡង
+        </a>
+        <a href="{% url 'grade_entry_matrix' %}" class="btn btn-outline-primary fw-bold shadow-xs">
+            <i class="fa-solid fa-table-cells me-1"></i> បញ្ចូលពិន្ទុ (Matrix)
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body p-3 p-md-4">
+        <form method="GET" id="filterForm" class="row g-3 align-items-end">
+            <!-- Exam Term -->
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-calendar-check me-1 text-primary"></i>សម័យប្រឡង
+                </label>
+                <select name="term_id" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()">
+                    {% for t in terms %}
+                    <option value="{{ t.id }}" {% if selected_term and selected_term.id == t.id %}selected{% endif %}>
+                        {{ t.name }} ({{ t.start_date|date:"d/m/Y" }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Grade Level -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-layer-group me-1 text-info"></i>កម្រិតថ្នាក់
+                </label>
+                <select name="grade_level" class="form-select form-select-sm" onchange="onGradeChange(this.value)">
+                    {% for g in all_grades %}
+                    <option value="{{ g }}" {% if selected_grade == g %}selected{% endif %}>ថ្នាក់ទី {{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Specific Classroom (Optional Override) -->
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-chalkboard-user me-1 text-success"></i>ថ្នាក់រៀនជាក់លាក់ (Classroom)
+                </label>
+                <select name="classroom_id" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">-- កំណត់រួមទូទាំងកម្រិតថ្នាក់ (Grade-Wide) --</option>
+                    {% for c in classrooms %}
+                    <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>
+                        {{ c.name }} ({{ c.get_track_display }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Track -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1">
+                    <i class="fa-solid fa-compass me-1 text-warning"></i>ជំនាញ (Track)
+                </label>
+                <select name="track" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()" {% if selected_class %}disabled{% endif %}>
+                    <option value="GENERAL" {% if selected_track == 'GENERAL' %}selected{% endif %}>ទូទៅ (General)</option>
+                    <option value="SCIENCE" {% if selected_track == 'SCIENCE' %}selected{% endif %}>វិទ្យាសាស្ត្រ (Science)</option>
+                    <option value="SOCIAL" {% if selected_track == 'SOCIAL' %}selected{% endif %}>វិទ្យាសាស្ត្រសង្គម (Social)</option>
+                </select>
+            </div>
+
+            <!-- Filter Submit -->
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                    <i class="fa-solid fa-filter me-1"></i> ច្រោះទិន្នន័យ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Quick Presets Action Bar -->
+<div class="card shadow-sm border-0 rounded-4 mb-4 bg-light">
+    <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> កំណត់រហ័ស (1-Click Presets)
+            </span>
+            <span class="text-muted small">ជ្រើសរើសដើម្បីកំណត់មុខវិជ្ជាប្រឡងក្នុងមួយចុច៖</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-success btn-sm fw-bold rounded-pill" onclick="applyPreset('ALL')">
+                <i class="fa-solid fa-check-double me-1"></i> ប្រឡងគ្រប់មុខ (All Subjects)
+            </button>
+            <button type="button" class="btn btn-outline-info btn-sm fw-bold rounded-pill" onclick="applyPreset('SCIENCE_7')">
+                <i class="fa-solid fa-atom me-1"></i> ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Science 7)
+            </button>
+            <button type="button" class="btn btn-outline-warning btn-sm fw-bold rounded-pill" onclick="applyPreset('SOCIAL_7')">
+                <i class="fa-solid fa-earth-asia me-1"></i> ៧ មុខវិជ្ជាសង្គម (Social 7)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scope Banner -->
+<div class="alert alert-info py-2 px-3 rounded-3 d-flex align-items-center justify-content-between mb-3">
+    <div class="small">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        វិសាលភាពកំពុងកំណត់៖ 
+        <strong>{{ selected_term.name }}</strong>
+        | 
+        {% if selected_class %}
+        <span class="badge bg-success">ថ្នាក់រៀនជាក់លាក់៖ {{ selected_class.name }}</span>
+        <span class="text-muted ms-1">(ការកំណត់នេះនឹងមានអាទិភាពខ្ពស់ជាងកម្រិតថ្នាក់រួម)</span>
+        {% else %}
+        <span class="badge bg-primary">ទូទាំងកម្រិតថ្នាក់ទី {{ selected_grade }} ({{ selected_track }})</span>
+        {% endif %}
+    </div>
+    <div class="small text-muted">
+        មុខវិជ្ជាសរុប៖ <strong class="text-dark">{{ subjects_data|length }}</strong>
+    </div>
+</div>
+
+<!-- Subjects Table -->
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-secondary small fw-bold">
+                    <th style="width: 60px;" class="text-center">ល.រ</th>
+                    <th>មុខវិជ្ជា</th>
+                    <th class="text-center" style="width: 140px;">ពិន្ទុពេញ (Max)</th>
+                    <th class="text-center" style="width: 180px;">ស្ថានភាពប្រឡង</th>
+                    <th class="text-center" style="width: 220px;">សកម្មភាព (Action)</th>
+                    <th>កំណត់សម្គាល់</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in subjects_data %}
+                <tr id="row-subject-{{ r.subject.id }}" class="{% if not r.is_tested %}table-secondary bg-opacity-25 opacity-75{% endif %}">
+                    <td class="text-center fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-dark border">{{ r.subject.code }}</span>
+                            <span class="fw-bold text-dark fs-6">{{ r.subject.name_kh }}</span>
+                            {% if r.subject.name_en %}
+                            <small class="text-muted">({{ r.subject.name_en }})</small>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-primary border px-2 py-1 fs-6 fw-bold">
+                            {{ r.max_score|floatformat:0 }}
+                        </span>
+                    </td>
+                    <td class="text-center" id="status-badge-{{ r.subject.id }}">
+                        {% if r.is_tested %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                            <i class="fa-solid fa-check me-1"></i> ប្រឡង (Tested)
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">
+                            <i class="fa-solid fa-ban me-1"></i> មិនប្រឡង (Excluded)
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" role="switch" 
+                                   id="toggle-{{ r.subject.id }}" 
+                                   {% if r.is_tested %}checked{% endif %}
+                                   onchange="toggleSubjectTested({{ r.subject.id }}, this.checked)">
+                            <label class="form-check-label small fw-bold ms-1" id="label-toggle-{{ r.subject.id }}">
+                                {% if r.is_tested %}ប្រឡង{% else %}មិនប្រឡង{% endif %}
+                            </label>
+                        </div>
+                    </td>
+                    <td class="small text-muted">
+                        {% if r.setting and r.setting.notes %}
+                        {{ r.setting.notes }}
+                        {% else %}
+                        <span class="text-muted fst-italic">តាមលំនាំដើម</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-folder-open fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                        មិនមានមុខវិជ្ជាសម្រាប់កម្រិតថ្នាក់ ឬថ្នាក់នេះនៅឡើយទេ។
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function onGradeChange(grade) {
+    // When grade changes, clear classroom selection so that grade-wide defaults show
+    const url = new URL(window.location);
+    url.searchParams.set('grade_level', grade);
+    url.searchParams.delete('classroom_id');
+    window.location = url.toString();
+}
+
+function toggleSubjectTested(subjectId, isChecked) {
+    const termId = "{{ selected_term.id|default:'' }}";
+    const classroomId = "{{ selected_class.id|default:'' }}";
+    const gradeLevel = "{{ selected_grade|default:'' }}";
+    const track = "{{ selected_track|default:'GENERAL' }}";
+
+    const label = document.getElementById('label-toggle-' + subjectId);
+    const badge = document.getElementById('status-badge-' + subjectId);
+    const row = document.getElementById('row-subject-' + subjectId);
+
+    label.textContent = isChecked ? 'ប្រឡង' : 'មិនប្រឡង';
+    
+    fetch("{% url 'api_toggle_exam_term_subject' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            term_id: termId,
+            classroom_id: classroomId,
+            grade_level: gradeLevel,
+            track: track,
+            subject_id: subjectId,
+            is_tested: isChecked
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            if (isChecked) {
+                badge.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-check me-1"></i> ប្រឡង (Tested)</span>';
+                row.classList.remove('table-secondary', 'bg-opacity-25', 'opacity-75');
+            } else {
+                badge.innerHTML = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-ban me-1"></i> មិនប្រឡង (Excluded)</span>';
+                row.classList.add('table-secondary', 'bg-opacity-25', 'opacity-75');
+            }
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចផ្លាស់ប្តូរបានទេ!'));
+            document.getElementById('toggle-' + subjectId).checked = !isChecked;
+            label.textContent = !isChecked ? 'ប្រឡង' : 'មិនប្រឡង';
+        }
+    })
+    .catch(err => {
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+        document.getElementById('toggle-' + subjectId).checked = !isChecked;
+        label.textContent = !isChecked ? 'ប្រឡង' : 'មិនប្រឡង';
+    });
+}
+
+function applyPreset(presetName) {
+    let presetTitle = 'កំណត់ជាប្រឡងគ្រប់មុខ';
+    if (presetName === 'SCIENCE_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Khmer, Math, Phys, Chem, Bio, Hist, Eng)';
+    if (presetName === 'SOCIAL_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាសង្គម (Khmer, Math, Geog, Hist, Moral, Earth, Eng)';
+
+    if (!confirm('តើអ្នកពិតជាចង់ ' + presetTitle + ' សម្រាប់ជម្រើសនេះមែនទេ?')) {
+        return;
+    }
+
+    const termId = "{{ selected_term.id|default:'' }}";
+    const classroomId = "{{ selected_class.id|default:'' }}";
+    const gradeLevel = "{{ selected_grade|default:'' }}";
+    const track = "{{ selected_track|default:'GENERAL' }}";
+
+    fetch("{% url 'api_apply_exam_term_preset' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            preset: presetName,
+            term_id: termId,
+            classroom_id: classroomId,
+            grade_level: gradeLevel,
+            track: track
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចកំណត់ Preset បានទេ!'));
+        }
+    })
+    .catch(err => {
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
+</script>
+{% endblock %}

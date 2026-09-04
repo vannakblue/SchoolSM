@@ -159,6 +159,41 @@
             <a href="{% url 'exam_provisional_results_view' exam.id %}" class="btn btn-danger btn-sm fw-bold shadow-sm">
                 <i class="fa-solid fa-ranking-star me-1"></i> តារាងបិទផ្សាយបណ្តោះអាសន្ន
             </a>
+
+            <!-- Official Results Print & Mentions Sheets -->
+            <div class="dropdown d-inline">
+                <button class="btn btn-outline-danger btn-sm fw-bold dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពលទ្ធផលផ្លូវការ
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'exam_results_sheet_print_view' exam.id %}?mode=score" target="_blank">
+                            <i class="fa-solid fa-table me-2 text-primary"></i> <strong>១. លទ្ធផលជាពិន្ទុ (Scores PDF)</strong>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'exam_results_sheet_print_view' exam.id %}?mode=mention" target="_blank">
+                            <i class="fa-solid fa-award me-2 text-success"></i> <strong>២. លទ្ធផលជានិទ្ទេស (Mentions PDF)</strong>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'exam_results_sheet_print_view' exam.id %}?mode=summary" target="_blank">
+                            <i class="fa-solid fa-chart-pie me-2 text-info"></i> <strong>៣. របាយការណ៍បូកសរុប (Summary Report)</strong>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'exam_results_graph_view' exam.id %}" target="_blank">
+                            <i class="fa-solid fa-chart-column me-2 text-warning"></i> <strong>៤. ក្រាបលទ្ធផលផ្លូវការ (Graph PDF)</strong>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Direct Graph Button -->
+            <a href="{% url 'exam_results_graph_view' exam.id %}" target="_blank" class="btn btn-outline-warning btn-sm fw-bold text-dark shadow-sm bg-white">
+                <i class="fa-solid fa-chart-column me-1 text-warning"></i> ក្រាបលទ្ធផល (Graph)
+            </a>
         </div>
     </div>
 </div>
@@ -226,13 +261,20 @@
     <!-- Exam Subjects List -->
     <div class="col-lg-6">
         <div class="custom-card p-3 h-100 shadow-sm">
-            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom flex-wrap gap-2">
                 <h6 class="fw-bold text-primary mb-0">
                     <i class="fa-solid fa-book-bookmark me-2"></i>មុខវិជ្ជា & មេគុណ ({{ subjects.count }} មុខ)
                 </h6>
-                <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold" style="font-size: 0.75rem;">
-                    <i class="fa-solid fa-pen me-1"></i> កែប្រែមេគុណ/ពិន្ទុ
-                </a>
+                <div class="d-flex gap-1">
+                    {% if is_admin %}
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#manageExamSubjectsModal">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> កំណត់ ៧ មុខវិជ្ជា (Presets)
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-pen me-1"></i> កែប្រែមេគុណ
+                    </a>
+                </div>
             </div>
             <div class="d-flex flex-wrap gap-1.5 pt-1" style="max-height: 180px; overflow-y: auto;">
                 {% for s in subjects %}
@@ -814,6 +856,146 @@ function saveExamManageGradingWindow() {
         }
     })
     .catch(err => alert('មានបញ្ហាតភ្ជាប់ Server!'));
+}
+</script>
+<!-- Manage Exam Subjects & 7-Subject Presets Modal -->
+<div class="modal fade" id="manageExamSubjectsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>កំណត់មុខវិជ្ជាប្រឡងរហ័ស (1-Click Presets)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info py-2 px-3 rounded-3 d-flex align-items-center justify-content-between mb-4">
+                    <div class="small">
+                        សម័យប្រឡង៖ <strong>{{ exam.name }}</strong> | 
+                        កម្រិតថ្នាក់៖ <strong>ថ្នាក់ទី {{ exam.grade_level }}</strong> | 
+                        ជំនាញបច្ចុប្បន្ន៖ <span class="badge bg-primary">{{ exam.get_track_display }}</span>
+                    </div>
+                    <div class="small text-muted">
+                        មុខវិជ្ជាបច្ចុប្បន្ន៖ <strong class="text-primary">{{ subjects.count }} មុខ</strong>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-dark mb-3">សូមជ្រើសរើស Preset មុខវិជ្ជាដែលត្រូវកំណត់៖</h6>
+
+                <div class="row g-3">
+                    <!-- Preset Science 7 -->
+                    <div class="col-md-6">
+                        <div class="card h-100 border-primary border-2 shadow-xs rounded-3 p-3">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                    <i class="fa-solid fa-atom fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-primary">៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Science)</h6>
+                                    <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-3">
+                                <ul class="list-unstyled mb-0 lh-base">
+                                    <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
+                                    <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>រូបវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>គីមីវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>ជីវវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                    <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-primary fw-bold mt-auto w-100" onclick="applyStandardizedPreset('SCIENCE_7')">
+                                <i class="fa-solid fa-check me-1"></i> អនុវត្ត ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preset Social 7 -->
+                    <div class="col-md-6">
+                        <div class="card h-100 border-warning border-2 shadow-xs rounded-3 p-3">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                    <i class="fa-solid fa-earth-asia fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-warning-emphasis">៧ មុខវិជ្ជាសង្គម (Social)</h6>
+                                    <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-3">
+                                <ul class="list-unstyled mb-0 lh-base">
+                                    <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
+                                    <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>ភូមិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>សីលធម៌-ពលរដ្ឋ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                    <li>• <strong>ផែនដីវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                    <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-warning fw-bold mt-auto w-100 text-dark" onclick="applyStandardizedPreset('SOCIAL_7')">
+                                <i class="fa-solid fa-check me-1"></i> អនុវត្ត ៧ មុខវិជ្ជាសង្គម
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preset All MoEYS -->
+                    <div class="col-12 mt-3">
+                        <div class="card border-success border-1 shadow-xs rounded-3 p-3 bg-light">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-success">
+                                        <i class="fa-solid fa-check-double me-1"></i> ប្រឡងគ្រប់មុខវិជ្ជា MoEYS (All MoEYS Subjects)
+                                    </h6>
+                                    <small class="text-muted">ទាញមុខវិជ្ជាទាំងអស់ដែលបានកំណត់តាមកម្មវិធីសិក្សាសម្រាប់កម្រិតថ្នាក់ទី {{ exam.grade_level }}</small>
+                                </div>
+                                <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="applyStandardizedPreset('ALL_MOEYS')">
+                                    <i class="fa-solid fa-check me-1"></i> អនុវត្តគ្រប់មុខវិជ្ជា
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyStandardizedPreset(presetName) {
+    let presetTitle = 'កំណត់ជាប្រឡងគ្រប់មុខ';
+    if (presetName === 'SCIENCE_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Khmer 75, Math 125, Phys 75, Chem 75, Bio 75, Hist 50, Eng 50)';
+    if (presetName === 'SOCIAL_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាសង្គម (Khmer 125, Math 75, Geog 75, Hist 75, Moral 75, Earth 50, Eng 50)';
+
+    if (!confirm('តើអ្នកពិតជាចង់ ' + presetTitle + ' សម្រាប់សម័យប្រឡងនេះមែនទេ? (ប្រព័ន្ធនឹងគណនាចំណាត់ថ្នាក់ឡើងវិញដោយស្វ័យប្រវត្តិ)')) {
+        return;
+    }
+
+    fetch('{% url "api_apply_standardized_exam_preset" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ preset: presetName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចកំណត់ Preset បានទេ!'));
+        }
+    })
+    .catch(err => {
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
 }
 </script>
 {% endif %}

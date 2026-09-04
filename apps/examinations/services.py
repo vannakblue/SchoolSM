@@ -1,8 +1,101 @@
 from decimal import Decimal
 from django.db.models import Q
-from .models import ExamTerm, Grade, StudentTransferGrade
+from .models import ExamTerm, Grade, StudentTransferGrade, ExamTermSubjectSetting
 from apps.academics.models import GradeLevelRule, Subject
 from apps.students.models import Student
+
+
+def get_effective_term_subjects(exam_term=None, classroom=None, grade_level=None, track=None, month=None, include_non_tested=False):
+    """
+    Resolves the effective list of subject rules for an exam term, month, classroom, or grade level:
+    - Default behavior: All subjects assigned to class/grade are tested (is_tested=True).
+    - Checks ExamTermSubjectSetting for overrides per classroom or per grade_level/track.
+    - If include_non_tested=False: returns only rules where is_tested=True.
+    - If include_non_tested=True: returns all rules, each annotated with `is_tested` and `custom_max_score`.
+    """
+    g_level = grade_level or (classroom.grade_level if classroom else None)
+    t_track = track or (classroom.track if classroom else 'GENERAL')
+
+    # 1. Base rules
+    if classroom:
+        base_rules = list(classroom.get_subject_rules())
+    elif g_level:
+        base_rules = list(GradeLevelRule.objects.filter(grade_level=g_level, track=t_track).select_related('subject').order_by('subject__order', 'id'))
+    else:
+        base_rules = [
+            GradeLevelRule(grade_level=10, track='GENERAL', subject=s, max_score=Decimal('100.00'))
+            for s in Subject.objects.all().order_by('order', 'id')
+        ]
+
+    # Fallback if no rules
+    if not base_rules:
+        base_rules = [
+            GradeLevelRule(grade_level=g_level or 10, track=t_track, subject=s, max_score=Decimal('100.00'))
+            for s in Subject.objects.all().order_by('order', 'id')
+        ]
+
+    # 2. Determine term & month filters
+    t_month = month
+    if not t_month and exam_term and exam_term.start_date:
+        if hasattr(exam_term.start_date, 'month'):
+            t_month = exam_term.start_date.month
+        elif isinstance(exam_term.start_date, str):
+            try:
+                from datetime import datetime
+                t_month = datetime.strptime(str(exam_term.start_date).split('T')[0], "%Y-%m-%d").month
+            except Exception:
+                pass
+
+    # 3. Fetch overrides
+    settings_qs = ExamTermSubjectSetting.objects.all()
+    if exam_term:
+        settings_qs = settings_qs.filter(Q(exam_term=exam_term) | (Q(month=t_month) if t_month else Q()))
+    elif t_month:
+        settings_qs = settings_qs.filter(month=t_month)
+
+    class_settings = {}
+    grade_track_settings = {}
+    grade_settings = {}
+
+    for st in settings_qs:
+        if st.classroom_id:
+            class_settings[(st.classroom_id, st.subject_id)] = st
+        elif st.grade_level and st.track:
+            grade_track_settings[(st.grade_level, st.track, st.subject_id)] = st
+        elif st.grade_level:
+            grade_settings[(st.grade_level, st.subject_id)] = st
+
+    effective_rules = []
+    for r in base_rules:
+        # Match override: class first, then grade+track, then grade
+        setting = None
+        if classroom and (classroom.id, r.subject_id) in class_settings:
+            setting = class_settings[(classroom.id, r.subject_id)]
+        elif g_level and (g_level, t_track, r.subject_id) in grade_track_settings:
+            setting = grade_track_settings[(g_level, t_track, r.subject_id)]
+        elif g_level and (g_level, r.subject_id) in grade_settings:
+            setting = grade_settings[(g_level, r.subject_id)]
+
+        is_tested = setting.is_tested if setting is not None else True
+        max_score = setting.custom_max_score if (setting is not None and setting.custom_max_score is not None) else r.max_score
+
+        rule_obj = GradeLevelRule(
+            id=r.id,
+            grade_level=r.grade_level,
+            track=r.track,
+            subject=r.subject,
+            max_score=max_score,
+            weekly_hours=r.weekly_hours,
+            order=r.order
+        )
+        rule_obj.is_tested = is_tested
+        rule_obj.setting = setting
+
+        if include_non_tested or is_tested:
+            effective_rules.append(rule_obj)
+
+    return effective_rules
+
 
 class AcademicResultService:
     """
@@ -51,23 +144,38 @@ class AcademicResultService:
         total_score = Decimal('0.00')
         total_max = Decimal('0.00')
 
+        # Filter active tested rules to exclude non-tested subjects from max score calculation
+        active_rules = [r for r in subject_rules if getattr(r, 'is_tested', True)]
+
         subject_results = {}
         for rule in subject_rules:
+            is_tested = getattr(rule, 'is_tested', True)
             g = grade_map.get(rule.subject_id)
+            if not is_tested:
+                subject_results[rule.subject_id] = {
+                    'score': None,
+                    'max_score': rule.max_score,
+                    'letter': '-',
+                    'is_tested': False,
+                }
+                continue
+
             if g:
                 total_score += g.score
                 total_max += rule.max_score
                 subject_results[rule.subject_id] = {
                     'score': g.score,
                     'max_score': rule.max_score,
-                    'letter': g.grade_letter or '-'
+                    'letter': g.grade_letter or '-',
+                    'is_tested': True,
                 }
             else:
                 total_max += rule.max_score
                 subject_results[rule.subject_id] = {
                     'score': None,
                     'max_score': rule.max_score,
-                    'letter': '-'
+                    'letter': '-',
+                    'is_tested': True,
                 }
 
         percentage = round((total_score / total_max) * Decimal('100.0'), 2) if total_max > 0 else Decimal('0.00')
@@ -90,15 +198,19 @@ class AcademicResultService:
         Computes Semester 1 or Semester 2 results for all students in a classroom.
         Formula: Semester Average = (Monthly Average + Semester Exam Score) / 2
         """
-        # 1. Fetch Subject Rules for this class
-        rules_qs = classroom.get_subject_rules()
-        if rules_qs.exists():
-            subject_rules = list(rules_qs)
-        else:
-            subject_rules = [
-                GradeLevelRule(grade_level=classroom.grade_level, track=classroom.track, subject=s, max_score=Decimal('100.00'))
-                for s in Subject.objects.all()
-            ]
+        # 1. Fetch Subject Rules for this class (resolving tested subjects for semester)
+        sem_type = ExamTerm.TermType.SEMESTER_1 if semester == 1 else ExamTerm.TermType.SEMESTER_2
+        sem_exam_term = ExamTerm.objects.filter(
+            academic_year=academic_year,
+            semester=semester,
+            term_type=sem_type
+        ).first()
+
+        subject_rules = get_effective_term_subjects(
+            exam_term=sem_exam_term,
+            classroom=classroom,
+            include_non_tested=False
+        )
 
         # 2. Find Monthly Terms belonging to this semester
         monthly_terms = list(ExamTerm.objects.filter(

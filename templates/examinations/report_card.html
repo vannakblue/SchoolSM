@@ -156,10 +156,16 @@
             </thead>
             <tbody>
                 {% for g in grades %}
-                <tr>
+                <tr class="{% if not g.is_tested %}bg-light text-muted opacity-75{% endif %}">
                     <td class="text-center">{{ forloop.counter }}</td>
-                    <td class="fw-bold">{{ g.subject.name_kh }} <span class="text-muted small">({{ g.subject.name_en }})</span></td>
+                    <td class="fw-bold">
+                        {{ g.subject.name_kh }} <span class="text-muted small">({{ g.subject.name_en }})</span>
+                        {% if not g.is_tested %}
+                        <span class="badge bg-secondary-subtle text-muted border ms-1" style="font-size: 0.68rem;">មិនប្រឡង</span>
+                        {% endif %}
+                    </td>
                     <td class="text-center">{{ g.subject.credit }}</td>
+                    {% if g.is_tested %}
                     <td class="text-center fw-bold fs-6">{{ g.score|floatformat:1 }} / {{ g.max_score|floatformat:0 }}</td>
                     <td class="text-center fw-bold">
                         <span class="badge {% if g.grade_letter == 'A' %}bg-success{% elif g.grade_letter == 'B' or g.grade_letter == 'C' %}bg-primary{% elif g.grade_letter == 'D' or g.grade_letter == 'E' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
@@ -167,6 +173,11 @@
                         </span>
                     </td>
                     <td>{{ g.remarks|default:"ល្អប្រសើរ" }}</td>
+                    {% else %}
+                    <td class="text-center text-muted font-monospace">-</td>
+                    <td class="text-center text-muted">-</td>
+                    <td class="text-muted small">លើកលែងមិនប្រឡងក្នុងសម័យប្រឡងនេះ</td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>

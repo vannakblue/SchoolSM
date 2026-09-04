@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>
+        {% if view_mode == 'mention' %}
+        លទ្ធផលប្រឡងជានិទ្ទេស - {{ exam.name }}
+        {% elif view_mode == 'summary' %}
+        របាយការណ៍បូកសរុបនិទ្ទេស - {{ exam.name }}
+        {% else %}
+        លទ្ធផលប្រឡងជាពិន្ទុ - {{ exam.name }}
+        {% endif %}
+    </title>
+    <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS for toolbar & modals -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        /* Exact A4 Landscape print settings */
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        body {
+            background-color: #cbd5e1;
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+            color: #000000;
+            margin: 0;
+            padding: 20px 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .moul-font {
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
+        }
+
+        .kantumruy-font {
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+        }
+
+        /* Toolbar on screen */
+        .no-print {
+            max-width: 297mm;
+            margin: 0 auto 20px auto;
+            padding: 0 10px;
+        }
+
+        /* A4 Landscape Printable Sheet (297mm x 210mm) */
+        .print-sheet {
+            background: #ffffff;
+            width: 297mm;
+            height: 210mm;
+            max-height: 210mm;
+            max-width: 297mm;
+            margin: 0 auto 25px auto;
+            padding: 7mm 12mm 10mm 12mm; /* 1.0cm to 1.2cm margins */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            box-sizing: border-box;
+            color: #000000;
+            position: relative;
+            page-break-after: always;
+            break-after: page;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .print-sheet:last-child {
+            margin-bottom: 20px;
+        }
+
+        /* Header Layout for Page 1 */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 3px;
+        }
+
+        .top-left-block {
+            text-align: left;
+            width: 38%;
+            line-height: 1.35;
+        }
+
+        .ministry-title {
+            font-size: 9.5pt;
+            letter-spacing: 0.2px;
+        }
+
+        .dept-title {
+            font-size: 9.5pt;
+            letter-spacing: 0.2px;
+        }
+
+        .school-title {
+            font-size: 10pt;
+            letter-spacing: 0.3px;
+            margin-top: 1px;
+        }
+
+        .top-right-block {
+            text-align: center;
+            width: 35%;
+            line-height: 1.35;
+        }
+
+        .kingdom-title {
+            font-size: 10.5pt;
+            letter-spacing: 0.3px;
+        }
+
+        .motto-title {
+            font-size: 10pt;
+            letter-spacing: 0.3px;
+        }
+
+        .wavy-line {
+            font-size: 9pt;
+            letter-spacing: 3px;
+            line-height: 1;
+            margin-top: -2px;
+        }
+
+        /* Center Title */
+        .center-exam-title-box {
+            text-align: center;
+            margin-top: 1px;
+            margin-bottom: 4px;
+        }
+
+        .main-exam-title {
+            font-size: 11pt;
+            line-height: 1.3;
+            letter-spacing: 0.3px;
+            margin: 0;
+        }
+
+        .sub-exam-date {
+            font-size: 9.5pt;
+            line-height: 1.3;
+            margin-top: 1px;
+            letter-spacing: 0.2px;
+        }
+
+        /* Compact Header for Pages 2..N */
+        .continuation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #94a3b8;
+            padding-bottom: 3px;
+            margin-bottom: 4px;
+            font-size: 8.5pt;
+        }
+
+        /* Tables */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: auto;
+        }
+
+        .results-table th, .results-table td {
+            border: 1px solid #000000;
+            padding: 1px 2px;
+            font-size: 8.5pt;
+            box-sizing: border-box;
+            vertical-align: middle;
+            color: #000000;
+            line-height: 1.15;
+            text-align: center;
+        }
+
+        .results-table th {
+            font-weight: 700;
+            background-color: transparent;
+        }
+
+        .th-title-main {
+            font-size: 8.5pt;
+            height: 22px;
+            padding: 2px 2px;
+        }
+
+        .p1-row {
+            height: 19.5px;
+        }
+
+        .pn-row {
+            height: 18.2px;
+        }
+
+        /* Cell Alignments */
+        .cell-idx       { width: 3.2%; }
+        .cell-id        { width: 5.5%; }
+        .cell-name      { width: 14.5%; text-align: left !important; padding-left: 5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cell-gender    { width: 2.8%; }
+        .cell-dob       { width: 6.8%; font-size: 7.8pt !important; }
+        .cell-class     { width: 3.5%; }
+        
+        /* Scores Mode Subject Columns (13 subjects) */
+        .cell-subj-score { width: 4.9%; }
+
+        /* Mention Mode Columns (13 subjects + 1 total = 14 columns) */
+        .mention-idx    { width: 3.0%; }
+        .mention-id     { width: 5.2%; }
+        .mention-name   { width: 13.8%; text-align: left !important; padding-left: 5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mention-gender { width: 2.6%; }
+        .mention-dob    { width: 6.6%; font-size: 7.6pt !important; }
+        .mention-class  { width: 3.4%; }
+        .cell-subj-men  { width: 4.6%; font-weight: 600; }
+        .cell-subj-tot  { width: 5.4%; font-weight: 700; }
+
+        /* Mentions styling */
+        .mention-badge {
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            font-weight: 600;
+        }
+        .mention-A { color: #15803d; }
+        .mention-B { color: #0369a1; }
+        .mention-C { color: #d97706; }
+        .mention-D { color: #b45309; }
+        .mention-E { color: #4b5563; }
+        .mention-F { color: #dc2626; font-weight: 700; }
+
+        /* Summary Matrix Table */
+        .summary-matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 8px;
+        }
+
+        .summary-matrix-table th, .summary-matrix-table td {
+            border: 1px solid #000000;
+            padding: 3px 2px;
+            font-size: 9pt;
+            box-sizing: border-box;
+            vertical-align: middle;
+            color: #000000;
+            line-height: 1.25;
+            text-align: center;
+        }
+
+        .summary-matrix-table th {
+            font-weight: 700;
+            background-color: #f8fafc;
+        }
+
+        .summary-grade-badge {
+            font-weight: 700;
+            font-size: 9.5pt;
+        }
+
+        /* Distribution Table (Right Side) */
+        .dist-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 8px;
+        }
+
+        .dist-table th, .dist-table td {
+            border: 1px solid #000000;
+            padding: 4px 4px;
+            font-size: 9pt;
+            box-sizing: border-box;
+            vertical-align: middle;
+            color: #000000;
+            line-height: 1.25;
+            text-align: center;
+        }
+
+        .dist-table th {
+            font-weight: 700;
+            background-color: #f8fafc;
+        }
+
+        /* Signature block */
+        .footer-sig-block {
+            width: 100%;
+            margin-top: 4px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .sig-container {
+            text-align: center;
+            min-width: 270px;
+            padding-right: 15px;
+        }
+
+        .sig-lunar-date {
+            font-size: 8.5pt;
+            line-height: 1.35;
+            letter-spacing: 0.2px;
+        }
+
+        .sig-solar-date {
+            font-size: 8.5pt;
+            line-height: 1.35;
+            letter-spacing: 0.2px;
+            margin-top: 1px;
+        }
+
+        .principal-title {
+            font-size: 10.5pt;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            min-width: 50px;
+            padding: 0 4px;
+            border-radius: 3px;
+            outline: none;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        .principal-title:hover {
+            background-color: #f1f5f9;
+            box-shadow: 0 0 0 1px #94a3b8;
+            cursor: text;
+        }
+
+        .principal-title:focus {
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+
+        .sig-spacing {
+            height: 38px;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            html, body {
+                width: 297mm !important;
+                height: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-sheet {
+                width: 297mm !important;
+                height: 210mm !important;
+                max-height: 210mm !important;
+                margin: 0 auto !important;
+                padding: 7mm 12mm 10mm 12mm !important;
+                box-sizing: border-box !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+
+            .print-sheet:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Control Toolbar (Hidden on Print) -->
+    <div class="no-print bg-white p-3 rounded-3 shadow-sm border">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+                <div class="vr mx-1"></div>
+                <!-- Mode Switcher Buttons -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="?mode=score{% if selected_room_id %}&room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}"
+                       class="btn {% if view_mode == 'score' %}btn-primary fw-bold active{% else %}btn-outline-primary{% endif %}">
+                        <i class="fa-solid fa-table me-1"></i> ១. លទ្ធផលជាពិន្ទុ (Scores)
+                    </a>
+                    <a href="?mode=mention{% if selected_room_id %}&room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}"
+                       class="btn {% if view_mode == 'mention' %}btn-success fw-bold active{% else %}btn-outline-success{% endif %}">
+                        <i class="fa-solid fa-award me-1"></i> ២. លទ្ធផលជានិទ្ទេស (Mentions)
+                    </a>
+                    <a href="?mode=summary{% if selected_room_id %}&room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}"
+                       class="btn {% if view_mode == 'summary' %}btn-info text-white fw-bold active{% else %}btn-outline-info{% endif %}">
+                        <i class="fa-solid fa-chart-pie me-1"></i> ៣. របាយការណ៍បូកសរុប (Summary)
+                    </a>
+                    <a href="{% url 'exam_results_graph_view' exam.id %}{% if selected_room_id %}?room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}"
+                       class="btn {% if view_mode == 'graph' %}btn-warning fw-bold text-dark active{% else %}btn-outline-warning text-dark{% endif %}">
+                        <i class="fa-solid fa-chart-column me-1"></i> ៤. ក្រាបលទ្ធផល (Graph)
+                    </a>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Room & Class Filter Form -->
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <input type="hidden" name="mode" value="{{ view_mode }}">
+                    {% if request.GET.school_name %}<input type="hidden" name="school_name" value="{{ request.GET.school_name }}">{% endif %}
+                    {% if request.GET.location %}<input type="hidden" name="location" value="{{ request.GET.location }}">{% endif %}
+                    {% if request.GET.sign_date %}<input type="hidden" name="sign_date" value="{{ request.GET.sign_date }}">{% endif %}
+                    {% if request.GET.sign_role %}<input type="hidden" name="sign_role" value="{{ request.GET.sign_role }}">{% endif %}
+                    {% if request.GET.lunar_date %}<input type="hidden" name="lunar_date" value="{{ request.GET.lunar_date }}">{% endif %}
+
+                    <select name="room_id" class="form-select form-select-sm fw-bold" style="min-width: 180px;" onchange="this.form.submit()">
+                        <option value="">-- បង្ហាញគ្រប់បន្ទប់ --</option>
+                        {% for r in all_rooms %}
+                        <option value="{{ r.id }}" {% if selected_room_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.room_name }} ({{ r.candidate_count }} នាក់)</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="class_name" class="form-select form-select-sm fw-bold" style="min-width: 150px;" onchange="this.form.submit()">
+                        <option value="">-- គ្រប់ថ្នាក់ដើម --</option>
+                        {% for cls in all_classes %}
+                        <option value="{{ cls }}" {% if selected_class == cls %}selected{% endif %}>ថ្នាក់ {{ cls }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <!-- Settings Button -->
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="fa-solid fa-sliders me-1"></i> កំណត់ព័ត៌មានក្បាល/ជើង
+                </button>
+
+                <!-- Print Button -->
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print / PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="GET">
+                    <input type="hidden" name="mode" value="{{ view_mode }}">
+                    {% if selected_room_id %}<input type="hidden" name="room_id" value="{{ selected_room_id }}">{% endif %}
+                    {% if selected_class %}<input type="hidden" name="class_name" value="{{ selected_class }}">{% endif %}
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-bold" id="settingsModalLabel">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> កំណត់ព័ត៌មានក្បាលទំព័រ និងជើងទំព័រ
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ឈ្មោះគ្រឹះស្ថានសិក្សា (School Name)</label>
+                            <input type="text" name="school_name" class="form-control form-control-sm" value="{{ school_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ខេត្ត/រាជធានី (Province Name)</label>
+                            <input type="text" name="province" class="form-control form-control-sm" value="{{ province_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ទីកន្លែងចុះហត្ថលេខា (Signing Location)</label>
+                            <input type="text" name="location" class="form-control form-control-sm" value="{{ location_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">កាលបរិច្ឆេទចុះហត្ថលេខា (Signing Date)</label>
+                            <input type="date" name="sign_date" class="form-control form-control-sm" value="{{ sign_date_raw }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">កាលបរិច្ឆេទចន្ទគតិ (Lunar Date)</label>
+                            <input type="text" name="lunar_date" class="form-control form-control-sm" value="{{ lunar_date }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">តួនាទីអ្នកចុះហត្ថលេខា (Signer Title / Role)</label>
+                            <input type="text" id="inputSignRole" name="sign_role" class="form-control form-control-sm" value="{{ sign_role }}" placeholder="ឧ. នាយក, នាយិកា...">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">យល់ព្រម & អនុវត្ត</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODE 1: SCORES (result.pdf replica) & MODE 2: MENTIONS (result-mention.pdf replica) -->
+    <!-- ============================================================= -->
+    {% if view_mode == 'score' or view_mode == 'mention' %}
+
+        {% for p in pages %}
+        <div class="print-sheet">
+            <div>
+                <!-- PAGE 1 FULL HEADER -->
+                {% if p.is_first_page %}
+                <div class="header-top">
+                    <div class="top-left-block">
+                        <div class="ministry-title moul-font">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                        <div class="dept-title moul-font">មន្ទីរអប់រំ យុវជន និងកីឡា{{ province_name }}</div>
+                        <div class="school-title moul-font">{{ school_name }}</div>
+                    </div>
+                    <div class="top-right-block">
+                        <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                        <div class="motto-title moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                        <div class="wavy-line moul-font">~~~~~</div>
+                    </div>
+                </div>
+
+                <div class="center-exam-title-box">
+                    <h5 class="main-exam-title moul-font">
+                        {{ results_title_line }}
+                    </h5>
+                    <div class="sub-exam-date kantumruy-font">
+                        សម័យប្រឡង ៖ {{ exam_date_kh }}
+                    </div>
+                </div>
+                {% else %}
+                <!-- PAGES 2..N COMPACT CONTINUATION HEADER -->
+                <div class="continuation-header kantumruy-font">
+                    <div>
+                        <span class="moul-font">{{ school_name }}</span> | {{ results_title_line }} (សម័យប្រឡង ៖ {{ exam_date_kh }})
+                    </div>
+                    <div>
+                        <strong>ទំព័រទី {{ p.page_num }}</strong>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- CANDIDATES RESULTS TABLE -->
+                <table class="results-table">
+                    <thead>
+                        {% if view_mode == 'score' %}
+                        <!-- 19 COLUMNS FOR SCORES (result.pdf) -->
+                        <tr>
+                            <th class="cell-idx th-title-main">ល.រ</th>
+                            <th class="cell-id th-title-main">អត្តលេខ</th>
+                            <th class="cell-name th-title-main">គោត្តនាម និងនាម</th>
+                            <th class="cell-gender th-title-main">ភេទ</th>
+                            <th class="cell-dob th-title-main">ថ្ងៃខែឆ្នាំកំណើត</th>
+                            <th class="cell-class th-title-main">ថ្នាក់</th>
+                            {% for subj in moeys_subjects %}
+                            <th class="cell-subj-score th-title-main">{{ subj.short }}</th>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <!-- 20 COLUMNS FOR MENTIONS (result-mention.pdf) -->
+                        <tr>
+                            <th class="mention-idx th-title-main">ល.រ</th>
+                            <th class="mention-id th-title-main">អត្តលេខ</th>
+                            <th class="mention-name th-title-main">គោត្តនាម និងនាម</th>
+                            <th class="mention-gender th-title-main">ភេទ</th>
+                            <th class="mention-dob th-title-main">ថ្ងៃខែឆ្នាំកំណើត</th>
+                            <th class="mention-class th-title-main">ថ្នាក់</th>
+                            {% for subj in moeys_subjects %}
+                            <th class="cell-subj-men th-title-main">{{ subj.short }}</th>
+                            {% endfor %}
+                            <th class="cell-subj-tot th-title-main">សរុប</th>
+                        </tr>
+                        {% endif %}
+                    </thead>
+                    <tbody>
+                        {% for c in p.candidates %}
+                        <tr class="{% if p.is_first_page %}p1-row{% else %}pn-row{% endif %}">
+                            <td class="{% if view_mode == 'score' %}cell-idx{% else %}mention-idx{% endif %}">{{ c.row_num }}</td>
+                            <td class="{% if view_mode == 'score' %}cell-id{% else %}mention-id{% endif %}">{{ c.student_id }}</td>
+                            <td class="{% if view_mode == 'score' %}cell-name{% else %}mention-name{% endif %}">{{ c.candidate_name_kh }}</td>
+                            <td class="{% if view_mode == 'score' %}cell-gender{% else %}mention-gender{% endif %}">{{ c.gender_kh }}</td>
+                            <td class="{% if view_mode == 'score' %}cell-dob{% else %}mention-dob{% endif %}">{{ c.dob_str }}</td>
+                            <td class="{% if view_mode == 'score' %}cell-class{% else %}mention-class{% endif %}">{{ c.origin_class }}</td>
+                            
+                            {% if view_mode == 'score' %}
+                                {% for val in c.scores_list %}
+                                <td class="cell-subj-score">
+                                    {% if c.is_absent %}
+                                    <span class="text-muted">-</span>
+                                    {% else %}
+                                    {{ val }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            {% else %}
+                                {% for m in c.mentions_list %}
+                                <td class="cell-subj-men">
+                                    {% if c.is_absent %}
+                                    <span class="mention-badge mention-F">F</span>
+                                    {% else %}
+                                    <span class="mention-badge mention-{{ m }}">{{ m }}</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="cell-subj-tot">
+                                    <span class="mention-badge mention-{{ c.overall_mention }}">{{ c.overall_mention }}</span>
+                                </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- FOOTER SIGNATURE (Displayed on Last Page) -->
+            {% if p.is_last_page %}
+            <div class="footer-sig-block">
+                <div class="sig-container kantumruy-font">
+                    <div class="sig-lunar-date">{{ lunar_date }}</div>
+                    <div class="sig-solar-date">
+                        {{ location_name }} ថ្ងៃទី {{ sign_day_kh }} ខែ {{ sign_month_kh }} ឆ្នាំ {{ sign_year_kh }}
+                    </div>
+                    <div class="principal-title moul-font editable-sign-role" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែ">
+                        {{ sign_role }}
+                    </div>
+                    <div class="sig-spacing"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="alert alert-warning text-center my-5 p-4 max-w-lg mx-auto">
+            <i class="fa-solid fa-triangle-exclamation fa-2x mb-2"></i>
+            <h5>មិនមានទិន្នន័យបេក្ខជនសម្រាប់បង្ហាញឡើយ</h5>
+            <p class="mb-0">សូមពិនិត្យមើលថាតើការប្រឡងនេះមានបេក្ខជន និងបានបញ្ចូលពិន្ទុរួចរាល់ហើយឬនៅ។</p>
+        </div>
+        {% endfor %}
+
+    <!-- ============================================================= -->
+    <!-- MODE 3: SUMMARY REPORT (របាយការណ៍បូកសរុបនិទ្ទេស) -->
+    <!-- ============================================================= -->
+    {% elif view_mode == 'summary' %}
+        <div class="print-sheet" style="padding: 10mm 15mm 15mm 15mm;">
+            <div>
+                <!-- HEADER TOP -->
+                <div class="header-top">
+                    <div class="top-left-block">
+                        <div class="ministry-title moul-font">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                        <div class="dept-title moul-font">មន្ទីរអប់រំ យុវជន និងកីឡា{{ province_name }}</div>
+                        <div class="school-title moul-font">{{ school_name }}</div>
+                    </div>
+                    <div class="top-right-block">
+                        <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                        <div class="motto-title moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                        <div class="wavy-line moul-font">~~~~~</div>
+                    </div>
+                </div>
+
+                <div class="center-exam-title-box mb-3">
+                    <h5 class="main-exam-title moul-font">
+                        តារាងបូកសរុបនិទ្ទេសតាមមុខវិជ្ជា និងសរុបនិទ្ទេសរួម
+                    </h5>
+                    <div class="sub-exam-date kantumruy-font">
+                        {{ results_title_line }} (សម័យប្រឡង ៖ {{ exam_date_kh }})
+                    </div>
+                </div>
+
+                <!-- 2-COLUMN SUMMARY LAYOUT (Exact match of the User's Excel sheet) -->
+                <div class="row g-3">
+                    <!-- LEFT COLUMN: SUBJECT MENTIONS MATRIX TABLE (13 subjects + Total) -->
+                    <div class="col-8">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold kantumruy-font small text-dark">
+                                <i class="fa-solid fa-list-ol me-1 text-primary"></i> តារាងទី១៖ សរុបនិទ្ទេសតាមមុខវិជ្ជា (Subject Mentions)
+                            </span>
+                            <!-- Gender Tab Switcher for Screen -->
+                            <div class="btn-group btn-group-sm no-print" role="group">
+                                <button type="button" class="btn btn-outline-dark btn-sm py-0 active" onclick="switchMatrixTab('all', this)">សរុបរួម</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm py-0" onclick="switchMatrixTab('female', this)">សិស្សស្រី</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="switchMatrixTab('male', this)">សិស្សប្រុស</button>
+                            </div>
+                        </div>
+
+                        <!-- ALL CANDIDATES MATRIX -->
+                        <div id="matrix-tab-all" class="matrix-content-pane">
+                            <table class="summary-matrix-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 8%;">និទ្ទេស</th>
+                                        {% for subj in moeys_subjects %}
+                                        <th>{{ subj.short }}</th>
+                                        {% endfor %}
+                                        <th style="width: 10%; background-color: #e2e8f0;">សរុប</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in summary_rows_all %}
+                                    <tr>
+                                        <td class="summary-grade-badge mention-{{ row.grade }}">{{ row.grade }}</td>
+                                        {% for cnt in row.counts %}
+                                        <td {% if forloop.last %}style="background-color: #f1f5f9; font-weight: 700;"{% endif %}>
+                                            {{ cnt }}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- FEMALE CANDIDATES MATRIX -->
+                        <div id="matrix-tab-female" class="matrix-content-pane d-none">
+                            <div class="text-danger small fw-bold mb-1"><i class="fa-solid fa-venus me-1"></i> សិស្សស្រី (Female Students)</div>
+                            <table class="summary-matrix-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 8%;">និទ្ទេស</th>
+                                        {% for subj in moeys_subjects %}
+                                        <th>{{ subj.short }}</th>
+                                        {% endfor %}
+                                        <th style="width: 10%; background-color: #fee2e2;">សរុប</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in summary_rows_female %}
+                                    <tr>
+                                        <td class="summary-grade-badge mention-{{ row.grade }}">{{ row.grade }}</td>
+                                        {% for cnt in row.counts %}
+                                        <td {% if forloop.last %}style="background-color: #fef2f2; font-weight: 700;"{% endif %}>
+                                            {{ cnt }}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- MALE CANDIDATES MATRIX -->
+                        <div id="matrix-tab-male" class="matrix-content-pane d-none">
+                            <div class="text-primary small fw-bold mb-1"><i class="fa-solid fa-mars me-1"></i> សិស្សប្រុស (Male Students)</div>
+                            <table class="summary-matrix-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 8%;">និទ្ទេស</th>
+                                        {% for subj in moeys_subjects %}
+                                        <th>{{ subj.short }}</th>
+                                        {% endfor %}
+                                        <th style="width: 10%; background-color: #e0f2fe;">សរុប</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in summary_rows_male %}
+                                    <tr>
+                                        <td class="summary-grade-badge mention-{{ row.grade }}">{{ row.grade }}</td>
+                                        {% for cnt in row.counts %}
+                                        <td {% if forloop.last %}style="background-color: #f0f9ff; font-weight: 700;"{% endif %}>
+                                            {{ cnt }}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: OVERALL MENTION DISTRIBUTION TABLE -->
+                    <div class="col-4">
+                        <div class="mb-1">
+                            <span class="fw-bold kantumruy-font small text-dark">
+                                <i class="fa-solid fa-chart-column me-1 text-success"></i> តារាងទី២៖ សរុបនិទ្ទេសរួម (Overall Mention)
+                            </span>
+                        </div>
+                        <table class="dist-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 22%;">និទ្ទេស</th>
+                                    <th style="width: 20%;">សរុប</th>
+                                    <th style="width: 18%;">ស្រី</th>
+                                    <th style="width: 18%;">ប្រុស</th>
+                                    <th style="width: 22%;">ភាគរយ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in overall_mention_table %}
+                                <tr>
+                                    <td class="summary-grade-badge mention-{{ r.mention }}">{{ r.mention }}</td>
+                                    <td class="fw-bold">{{ r.total }}</td>
+                                    <td>{{ r.female }}</td>
+                                    <td>{{ r.male }}</td>
+                                    <td>{{ r.percentage }}%</td>
+                                </tr>
+                                {% endfor %}
+                                <!-- GRAND TOTAL ROW -->
+                                <tr style="background-color: #f1f5f9; font-weight: 700;">
+                                    <td>{{ grand_total_row.mention }}</td>
+                                    <td>{{ grand_total_row.total }}</td>
+                                    <td>{{ grand_total_row.female }}</td>
+                                    <td>{{ grand_total_row.male }}</td>
+                                    <td>{{ grand_total_row.percentage }}%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- KEY STATS CARD -->
+                        <div class="p-2 border rounded bg-light kantumruy-font small mt-2">
+                            <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+                                <span><i class="fa-solid fa-users me-1 text-secondary"></i> បេក្ខជនសរុប៖</span>
+                                <strong>{{ grand_total_row.total }} នាក់ (ស្រី {{ grand_total_row.female }})</strong>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom pb-1 mb-1 text-success">
+                                <span><i class="fa-solid fa-circle-check me-1"></i> សិស្សជាប់ (A ដល់ E)៖</span>
+                                <strong>{{ passed_count }} នាក់ ({{ passed_rate }}%)</strong>
+                            </div>
+                            <div class="d-flex justify-content-between text-danger">
+                                <span><i class="fa-solid fa-circle-xmark me-1"></i> សិស្សធ្លាក់ (F)៖</span>
+                                <strong>{{ failed_count }} នាក់ ({{ failed_rate }}%)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER SIGNATURE -->
+            <div class="footer-sig-block mt-3">
+                <div class="sig-container kantumruy-font">
+                    <div class="sig-lunar-date">{{ lunar_date }}</div>
+                    <div class="sig-solar-date">
+                        {{ location_name }} ថ្ងៃទី {{ sign_day_kh }} ខែ {{ sign_month_kh }} ឆ្នាំ {{ sign_year_kh }}
+                    </div>
+                    <div class="principal-title moul-font editable-sign-role" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែ">
+                        {{ sign_role }}
+                    </div>
+                    <div class="sig-spacing"></div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Synchronize in-place contenteditable sign_role with hidden inputs and query params
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleSpans = document.querySelectorAll('.editable-sign-role');
+            const roleInput = document.getElementById('inputSignRole');
+
+            roleSpans.forEach(span => {
+                span.addEventListener('input', function() {
+                    const newVal = this.innerText.trim();
+                    roleSpans.forEach(s => { if (s !== this) s.innerText = newVal; });
+                    if (roleInput) roleInput.value = newVal;
+
+                    // Update URL without reloading
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('sign_role', newVal);
+                    window.history.replaceState({}, '', url);
+                });
+            });
+        });
+
+        // Gender matrix tab switcher
+        function switchMatrixTab(tabName, btn) {
+            document.querySelectorAll('.matrix-content-pane').forEach(el => el.classList.add('d-none'));
+            const target = document.getElementById('matrix-tab-' + tabName);
+            if (target) target.classList.remove('d-none');
+
+            const group = btn.parentElement;
+            group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+</html>

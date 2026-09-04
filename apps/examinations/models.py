@@ -160,6 +160,54 @@ class StudentTransferGrade(models.Model):
 # CAMBODIAN HIGH SCHOOL STANDARDIZED EXAMINATION SYSTEM (តេស្តស្តង់ដា)
 # =========================================================================
 
+class StandardizedExamType(models.Model):
+    name = models.CharField(max_length=100, verbose_name="ឈ្មោះប្រភេទសម័យប្រឡង / Exam Type Name")
+    code = models.CharField(max_length=50, unique=True, verbose_name="កូដសម្គាល់ / Code Identifier")
+    icon = models.CharField(max_length=50, default="🎯", verbose_name="រូបតំណាង ឬ Emoji / Icon or Emoji")
+    default_title = models.CharField(max_length=200, blank=True, verbose_name="ទម្រង់ឈ្មោះលំនាំដើម / Default Title Template")
+    is_monthly = models.BooleanField(default=False, verbose_name="ជាការប្រឡងប្រចាំខែ / Is Monthly Exam")
+    linked_term_type = models.CharField(max_length=30, blank=True, default='', verbose_name="ភ្ជាប់ទៅសម័យប្រឡងផ្លូវការ / Linked Term Type")
+    order = models.PositiveIntegerField(default=1, verbose_name="លំដាប់លំដោយ / Order")
+    is_active = models.BooleanField(default=True, verbose_name="សកម្ម / Is Active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "ប្រភេទសម័យប្រឡងតេស្តស្តង់ដា / Standardized Exam Type"
+        verbose_name_plural = "ប្រភេទសម័យប្រឡងតេស្តស្តង់ដាទាំងអស់ / Standardized Exam Types"
+
+    DEFAULT_TYPES = [
+        {'name': 'តេស្តដើមឆ្នាំ', 'code': 'BASELINE', 'icon': '🎯', 'default_title': 'ការប្រឡងតេស្តដើមឆ្នាំ', 'order': 1, 'is_monthly': False, 'linked_term_type': ''},
+        {'name': 'ប្រឡងឆមាសទី១', 'code': 'SEMESTER_1', 'icon': '🎓', 'default_title': 'ការប្រឡងឆមាសទី១', 'order': 2, 'is_monthly': False, 'linked_term_type': 'SEMESTER_1'},
+        {'name': 'ប្រឡងឆមាសទី២', 'code': 'SEMESTER_2', 'icon': '🎓', 'default_title': 'ការប្រឡងឆមាសទី២', 'order': 3, 'is_monthly': False, 'linked_term_type': 'SEMESTER_2'},
+        {'name': 'ប្រឡងសាកល្បង', 'code': 'MOCK', 'icon': '📝', 'default_title': 'ការប្រឡងសាកល្បង (Mock Exam)', 'order': 4, 'is_monthly': False, 'linked_term_type': ''},
+        {'name': 'តេស្តចុងឆ្នាំ', 'code': 'ENDLINE', 'icon': '🏁', 'default_title': 'ការប្រឡងតេស្តចុងឆ្នាំ', 'order': 5, 'is_monthly': False, 'linked_term_type': ''},
+        {'name': 'ប្រឡងប្រចាំខែ...', 'code': 'MONTHLY', 'icon': '📅', 'default_title': 'ការប្រឡងប្រចាំខែ', 'order': 6, 'is_monthly': True, 'linked_term_type': 'MONTHLY'},
+        {'name': 'ការប្រឡងផ្សេងៗ', 'code': 'OTHER', 'icon': '📌', 'default_title': 'ការប្រឡងផ្សេងៗ', 'order': 7, 'is_monthly': False, 'linked_term_type': ''},
+    ]
+
+    @classmethod
+    def ensure_defaults(cls):
+        """
+        Seeds default presets if the table is empty.
+        """
+        if not cls.objects.exists():
+            for item in cls.DEFAULT_TYPES:
+                cls.objects.get_or_create(code=item['code'], defaults=item)
+
+    @classmethod
+    def get_active_types(cls):
+        """
+        Returns all active exam types, ensuring defaults exist first.
+        """
+        cls.ensure_defaults()
+        return cls.objects.filter(is_active=True).order_by('order', 'id')
+
+    def __str__(self):
+        return f"{self.icon} {self.name}"
+
+
 class StandardizedExam(models.Model):
     class Track(models.TextChoices):
         ALL = 'ALL', 'គ្រប់ជំនាញទាំងអស់ (All Tracks)'
@@ -183,7 +231,7 @@ class StandardizedExam(models.Model):
 
     name = models.CharField(max_length=200, verbose_name="ឈ្មោះសម័យប្រឡង / Exam Title")
     academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='standardized_exams', verbose_name="ឆ្នាំសិក្សា / Academic Year")
-    exam_type = models.CharField(max_length=30, choices=ExamType.choices, default=ExamType.OTHER, verbose_name="ប្រភេទសម័យប្រឡង / Exam Type")
+    exam_type = models.CharField(max_length=50, default='OTHER', verbose_name="ប្រភេទសម័យប្រឡង / Exam Type")
     exam_term = models.ForeignKey('ExamTerm', on_delete=models.SET_NULL, null=True, blank=True, related_name='standardized_exams', verbose_name="សម័យប្រឡងប្រចាំខែ/ឆមាស / Linked Exam Term")
     grade_level = models.IntegerField(default=12, verbose_name="កម្រិតថ្នាក់ (7-12) / Grade Level")
     track = models.CharField(max_length=20, choices=Track.choices, default=Track.ALL, verbose_name="ជំនាញសិក្សា / Academic Track")
@@ -601,6 +649,40 @@ class ExamStudentExclusion(models.Model):
     def __str__(self):
         target = self.exam_term.name if self.exam_term else (self.standardized_exam.name if self.standardized_exam else f"ខែទី {self.month}")
         return f"{self.student.khmer_name} - លើកលែង: {target} ({self.get_reason_display()})"
+
+
+class ExamTermSubjectSetting(models.Model):
+    """
+    Tracks tested vs non-tested (excluded) subjects per Exam Term / Month
+    and per Classroom or Grade Level/Track.
+    - Default behavior: All subjects assigned to class/grade are tested (is_tested=True).
+    - Admin can designate specific subjects as NOT tested (is_tested=False / មិនប្រឡង).
+    - Can be configured at Grade Level / Track level OR overridden for specific Classrooms (e.g. 11A vs 11B).
+    """
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='term_subject_settings', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    exam_term = models.ForeignKey(ExamTerm, on_delete=models.CASCADE, null=True, blank=True, related_name='subject_settings', verbose_name="សម័យប្រឡងប្រចាំខែ/ឆមាស / Exam Term")
+    month = models.PositiveSmallIntegerField(blank=True, null=True, choices=ExamStudentExclusion.MONTH_CHOICES, verbose_name="ខែប្រឡង / Exam Month (1-12)")
+    grade_level = models.IntegerField(blank=True, null=True, verbose_name="កម្រិតថ្នាក់ (7-12) / Grade Level")
+    track = models.CharField(max_length=50, blank=True, null=True, verbose_name="ជំនាញសិក្សា / Track")
+    classroom = models.ForeignKey('academics.Classroom', on_delete=models.CASCADE, null=True, blank=True, related_name='term_subject_settings', verbose_name="ថ្នាក់រៀនជាក់លាក់ / Specific Classroom")
+    subject = models.ForeignKey('academics.Subject', on_delete=models.CASCADE, related_name='term_subject_settings', verbose_name="មុខវិជ្ជា / Subject")
+    is_tested = models.BooleanField(default=True, verbose_name="ប្រឡង / Is Tested (True=ប្រឡង, False=មិនប្រឡង)")
+    custom_max_score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, verbose_name="ពិន្ទុពេញផ្ទាល់ខ្លួន / Custom Max Score")
+    notes = models.CharField(max_length=255, blank=True, default='', verbose_name="កំណត់សម្គាល់ / Notes")
+    configured_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='term_subject_settings_given', verbose_name="កំណត់ដោយ / Configured By")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['grade_level', 'classroom', 'subject__order', 'id']
+        verbose_name = "ការកំណត់មុខវិជ្ជាប្រឡង/មិនប្រឡង / Exam Term Subject Setting"
+        verbose_name_plural = "ការកំណត់មុខវិជ្ជាប្រឡង/មិនប្រឡងទាំងអស់ / Exam Term Subject Settings"
+
+    def __str__(self):
+        status = "ប្រឡង" if self.is_tested else "មិនប្រឡង"
+        scope = self.classroom.name if self.classroom else f"ថ្នាក់ទី {self.grade_level}"
+        term_str = self.exam_term.name if self.exam_term else (f"ខែទី {self.month}" if self.month else "ទូទៅ")
+        return f"[{term_str}] {scope} - {self.subject.name_kh}: {status}"
 
 
 # ==============================================================================

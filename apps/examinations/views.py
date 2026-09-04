@@ -18,11 +18,11 @@ from apps.accounts.decorators import role_required
 from apps.accounts.utils import send_telegram_notification
 from .models import (
     ExamTerm, Grade,
-    StandardizedExam, ExamRoom, ExamSubject, ExamCandidate, CandidateSubjectScore,
+    StandardizedExam, StandardizedExamType, ExamRoom, ExamSubject, ExamCandidate, CandidateSubjectScore,
     ExamRoomSubjectCode, ExamStudentExclusion,
     ExamInvigilatorPlan, TeacherDutyGroup, TeacherDutyQuota, ExamShiftSlot, TeacherShiftRegistration
 )
-from .forms import ExamTermForm, StandardizedExamForm
+from .forms import ExamTermForm, StandardizedExamForm, StandardizedExamTypeForm
 
 from apps.academics.models import Classroom, Subject, AcademicYear, GradeLevelRule
 from apps.students.models import Student
@@ -157,15 +157,18 @@ def grade_entry_matrix(request):
     if selected_term:
         is_grading_open, _, grading_status_msg = selected_term.get_grading_status()
 
+    total_tested_max = Decimal('0.00')
+
     if selected_term and selected_class:
-        # Load specific subject rules for this classroom's grade_level & track
-        rules_qs = selected_class.get_subject_rules()
-        if rules_qs.exists():
-            subject_rules = list(rules_qs)
-        else:
-            # Fallback to all subjects if no custom rules set
-            for s in Subject.objects.all():
-                subject_rules.append(GradeLevelRule(grade_level=selected_class.grade_level, track=selected_class.track, subject=s, max_score=Decimal('100.00')))
+        # Load effective subject rules (including is_tested status for this term/month)
+        from .services import get_effective_term_subjects
+        subject_rules = get_effective_term_subjects(
+            exam_term=selected_term,
+            classroom=selected_class,
+            include_non_tested=True
+        )
+
+        total_tested_max = sum(r.max_score for r in subject_rules if getattr(r, 'is_tested', True))
 
         # If a specific subject is filtered
         if selected_subject_id and str(selected_subject_id).isdigit():
@@ -211,6 +214,10 @@ def grade_entry_matrix(request):
                     continue
 
                 for rule in subject_rules:
+                    # Skip non-tested subjects from saving grades
+                    if not getattr(rule, 'is_tested', True):
+                        continue
+
                     subject = rule.subject
                     
                     # If teacher is not admin, only allow saving subjects they teach (or all in classroom if homeroom)
@@ -263,18 +270,22 @@ def grade_entry_matrix(request):
             row_scores = []
             for rule in subject_rules:
                 g = existing_grades.get((student.id, rule.subject_id))
+                is_tested = getattr(rule, 'is_tested', True)
                 
-                # If student is excluded and has no grade record, score defaults to 0.00
+                # If subject is not tested for this exam term
                 display_score = ''
                 display_letter = ''
-                if g:
+                if not is_tested:
+                    display_score = ''
+                    display_letter = 'មិនប្រឡង'
+                elif g:
                     display_score = g.score
                     display_letter = g.grade_letter
                 elif is_excluded:
                     display_score = '0.00'
                     display_letter = 'F'
 
-                can_edit_subject = (is_admin or is_grading_open) and (
+                can_edit_subject = (is_admin or is_grading_open) and is_tested and (
                     is_admin or not teacher_profile or (rule.subject_id in teacher_assigned_subjects) or (selected_class.id in homeroom_cls_ids)
                 )
 
@@ -283,6 +294,7 @@ def grade_entry_matrix(request):
                     'max_score': rule.max_score,
                     'score': display_score,
                     'grade_letter': display_letter,
+                    'is_tested': is_tested,
                     'can_edit_subject': can_edit_subject and not is_excluded,
                 })
             matrix_data.append({
@@ -304,6 +316,7 @@ def grade_entry_matrix(request):
         'selected_class': selected_class,
         'selected_subject_id': selected_subject_id,
         'subject_rules': subject_rules,
+        'total_tested_max': total_tested_max,
         'matrix_data': matrix_data,
         'active_year': active_year,
         'is_grading_open': is_grading_open,
@@ -335,13 +348,12 @@ def grade_summary_view(request):
     total_class_max = Decimal('0.00')
 
     if selected_term and selected_class:
-        rules_qs = selected_class.get_subject_rules()
-        if rules_qs.exists():
-            subject_rules = list(rules_qs)
-        else:
-            for s in Subject.objects.all():
-                subject_rules.append(GradeLevelRule(grade_level=selected_class.grade_level, track=selected_class.track, subject=s, max_score=Decimal('100.00')))
-
+        from .services import get_effective_term_subjects
+        subject_rules = get_effective_term_subjects(
+            exam_term=selected_term,
+            classroom=selected_class,
+            include_non_tested=False
+        )
         total_class_max = sum(r.max_score for r in subject_rules)
 
         students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('student_id')
@@ -441,18 +453,25 @@ def report_card_view(request, student_id, term_id):
     term = get_object_or_404(ExamTerm, pk=term_id)
     classroom = student.classroom
 
-    grades = Grade.objects.filter(student=student, exam_term=term).select_related('subject')
-    
+    from .services import get_effective_term_subjects
+    tested_rules = get_effective_term_subjects(
+        exam_term=term,
+        classroom=classroom,
+        include_non_tested=False
+    )
+    tested_subject_ids = {r.subject_id for r in tested_rules}
+    total_max = sum(r.max_score for r in tested_rules) if tested_rules else (classroom.get_total_max_score() if classroom else Decimal('0.00'))
+
+    grades = Grade.objects.filter(student=student, exam_term=term).select_related('subject').order_by('subject__order', 'id')
+    grades_list = []
     total_score = Decimal('0.00')
-    total_max = Decimal('0.00')
 
     for g in grades:
-        total_score += g.score
-        total_max += g.max_score
-
-    # Fallback to classroom total max if needed
-    if total_max == 0 and classroom:
-        total_max = classroom.get_total_max_score()
+        is_tested = g.subject_id in tested_subject_ids
+        g.is_tested = is_tested
+        grades_list.append(g)
+        if is_tested:
+            total_score += g.score
 
     percentage = round((float(total_score) / float(total_max)) * 100, 2) if total_max > 0 else 0.0
 
@@ -469,11 +488,11 @@ def report_card_view(request, student_id, term_id):
     else:
         overall_grade = 'F (ធ្លាក់)'
 
-    # Calculate class rank
+    # Calculate class rank based on tested subjects
     all_class_students = Student.objects.filter(classroom=classroom, status='ACTIVE') if classroom else []
     student_scores = []
     for s in all_class_students:
-        s_grades = Grade.objects.filter(student=s, exam_term=term)
+        s_grades = Grade.objects.filter(student=s, exam_term=term, subject_id__in=tested_subject_ids)
         s_tot = sum(g.score for g in s_grades)
         student_scores.append((s.id, s_tot))
 
@@ -488,7 +507,7 @@ def report_card_view(request, student_id, term_id):
         'student': student,
         'term': term,
         'classroom': classroom,
-        'grades': grades,
+        'grades': grades_list,
         'total_score': total_score,
         'total_max': total_max,
         'percentage': percentage,
@@ -907,14 +926,265 @@ def standardized_exam_create(request):
     if not semester_terms.exists():
         semester_terms = ExamTerm.objects.filter(Q(term_type=ExamTerm.TermType.SEMESTER_1) | Q(term_type=ExamTerm.TermType.SEMESTER_2)).select_related('academic_year').order_by('-start_date')[:10]
 
+    exam_types = StandardizedExamType.get_active_types()
     return render(request, 'examinations/standardized/exam_form.html', {
         'form': form,
         'monthly_terms': monthly_terms,
         'semester_terms': semester_terms,
+        'exam_types': exam_types,
         'title': 'បង្កើតសម័យប្រឡងតេស្តស្តង់ដាថ្មី (Create Standardized Exam)',
-        'is_edit': False
+        'is_edit': False,
+        'is_admin': (request.user.role == 'ADMIN' or request.user.is_superuser),
     })
 
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_type_list(request):
+    """
+    Lists all StandardizedExamTypes.
+    Returns JSON if AJAX/JSON request; renders management template otherwise.
+    """
+    StandardizedExamType.ensure_defaults()
+    types_qs = StandardizedExamType.objects.all().order_by('order', 'id')
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+        data = [
+            {
+                'id': t.id,
+                'name': t.name,
+                'code': t.code,
+                'icon': t.icon,
+                'default_title': t.default_title,
+                'is_monthly': t.is_monthly,
+                'linked_term_type': t.linked_term_type or '',
+                'order': t.order,
+                'is_active': t.is_active,
+            }
+            for t in types_qs
+        ]
+        return JsonResponse({'status': 'success', 'types': data})
+
+    form = StandardizedExamTypeForm()
+    return render(request, 'examinations/standardized/exam_types_manage.html', {
+        'types': types_qs,
+        'form': form,
+        'title': 'គ្រប់គ្រងប្រភេទសម័យប្រឡងតេស្តស្តង់ដា (Exam Types)',
+        'is_admin': True,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_type_create(request):
+    """
+    Creates a new StandardizedExamType.
+    Supports standard POST or AJAX/JSON POST.
+    """
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
+    
+    if request.method == 'POST':
+        if request.content_type == 'application/json':
+            try:
+                body_data = json.loads(request.body)
+            except Exception:
+                body_data = {}
+            post_data = body_data
+        else:
+            post_data = request.POST
+
+        name = post_data.get('name', '').strip()
+        code = post_data.get('code', '').strip().upper()
+        icon = post_data.get('icon', '🎯').strip() or '🎯'
+        default_title = post_data.get('default_title', '').strip()
+        is_monthly = str(post_data.get('is_monthly', '')).lower() in ['true', '1', 'on']
+        linked_term_type = post_data.get('linked_term_type', '').strip()
+        order_val = post_data.get('order', '1')
+        order = int(order_val) if str(order_val).isdigit() else 1
+        is_active = str(post_data.get('is_active', 'true')).lower() in ['true', '1', 'on']
+
+        if not name:
+            msg = "⚠️ សូមបញ្ចូលឈ្មោះប្រភេទសម័យប្រឡង!"
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect('standardized_exam_type_list')
+
+        if not code:
+            import re
+            base_code = re.sub(r'[^A-Za-z0-9_]', '', name.upper().replace(' ', '_'))
+            if not base_code:
+                base_code = f"TYPE_{int(timezone.now().timestamp())}"
+            code = base_code
+
+        orig_code = code
+        counter = 1
+        while StandardizedExamType.objects.filter(code=code).exists():
+            code = f"{orig_code}_{counter}"
+            counter += 1
+
+        obj = StandardizedExamType.objects.create(
+            name=name,
+            code=code,
+            icon=icon,
+            default_title=default_title or f"ការប្រឡង{name}",
+            is_monthly=is_monthly,
+            linked_term_type=linked_term_type,
+            order=order,
+            is_active=is_active
+        )
+
+        success_msg = f"🎉 បានបន្ថែមប្រភេទសម័យប្រឡង «{obj.icon} {obj.name}» ដោយជោគជ័យ!"
+        if is_ajax:
+            types_qs = StandardizedExamType.objects.all().order_by('order', 'id')
+            data = [
+                {
+                    'id': t.id,
+                    'name': t.name,
+                    'code': t.code,
+                    'icon': t.icon,
+                    'default_title': t.default_title,
+                    'is_monthly': t.is_monthly,
+                    'linked_term_type': t.linked_term_type or '',
+                    'order': t.order,
+                    'is_active': t.is_active,
+                }
+                for t in types_qs
+            ]
+            return JsonResponse({'status': 'success', 'message': success_msg, 'type_id': obj.id, 'types': data})
+
+        messages.success(request, success_msg)
+        return redirect('standardized_exam_type_list')
+
+    return redirect('standardized_exam_type_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_type_edit(request, type_id):
+    """
+    Edits an existing StandardizedExamType.
+    Supports standard POST or AJAX/JSON POST.
+    """
+    exam_type = get_object_or_404(StandardizedExamType, id=type_id)
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
+
+    if request.method == 'POST':
+        if request.content_type == 'application/json':
+            try:
+                body_data = json.loads(request.body)
+            except Exception:
+                body_data = {}
+            post_data = body_data
+        else:
+            post_data = request.POST
+
+        name = post_data.get('name', '').strip()
+        code = post_data.get('code', '').strip().upper()
+        icon = post_data.get('icon', '').strip()
+        default_title = post_data.get('default_title', '').strip()
+        is_monthly = str(post_data.get('is_monthly', '')).lower() in ['true', '1', 'on']
+        linked_term_type = post_data.get('linked_term_type', '').strip()
+        order_val = post_data.get('order', '')
+        is_active_val = post_data.get('is_active')
+
+        if not name:
+            msg = "⚠️ ឈ្មោះប្រភេទមិនអាចទទេបានទេ!"
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect('standardized_exam_type_list')
+
+        if code and code != exam_type.code:
+            if StandardizedExamType.objects.filter(code=code).exclude(id=exam_type.id).exists():
+                msg = f"⚠️ កូដ «{code}» ត្រូវបានប្រើប្រាស់រួចហើយ!"
+                if is_ajax:
+                    return JsonResponse({'status': 'error', 'message': msg}, status=400)
+                messages.error(request, msg)
+                return redirect('standardized_exam_type_list')
+            old_code = exam_type.code
+            exam_type.code = code
+            # Also update exams pointing to old_code
+            StandardizedExam.objects.filter(exam_type=old_code).update(exam_type=code)
+
+        exam_type.name = name
+        if icon:
+            exam_type.icon = icon
+        exam_type.default_title = default_title
+        exam_type.is_monthly = is_monthly
+        exam_type.linked_term_type = linked_term_type
+        if order_val and str(order_val).isdigit():
+            exam_type.order = int(order_val)
+        if is_active_val is not None:
+            exam_type.is_active = str(is_active_val).lower() in ['true', '1', 'on']
+        
+        exam_type.save()
+
+        success_msg = f"🎉 បានកែប្រែប្រភេទសម័យប្រឡង «{exam_type.icon} {exam_type.name}» ដោយជោគជ័យ!"
+        if is_ajax:
+            types_qs = StandardizedExamType.objects.all().order_by('order', 'id')
+            data = [
+                {
+                    'id': t.id,
+                    'name': t.name,
+                    'code': t.code,
+                    'icon': t.icon,
+                    'default_title': t.default_title,
+                    'is_monthly': t.is_monthly,
+                    'linked_term_type': t.linked_term_type or '',
+                    'order': t.order,
+                    'is_active': t.is_active,
+                }
+                for t in types_qs
+            ]
+            return JsonResponse({'status': 'success', 'message': success_msg, 'type_id': exam_type.id, 'types': data})
+
+        messages.success(request, success_msg)
+        return redirect('standardized_exam_type_list')
+
+    return redirect('standardized_exam_type_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_type_delete(request, type_id):
+    """
+    Deletes an existing StandardizedExamType.
+    If existing exams use its code, updates them safely to 'OTHER'.
+    """
+    exam_type = get_object_or_404(StandardizedExamType, id=type_id)
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
+
+    if request.method == 'POST':
+        deleted_name = f"{exam_type.icon} {exam_type.name}"
+        old_code = exam_type.code
+
+        StandardizedExam.objects.filter(exam_type=old_code).update(exam_type='OTHER')
+        exam_type.delete()
+
+        success_msg = f"🗑️ បានលុបប្រភេទសម័យប្រឡង «{deleted_name}» ដោយជោគជ័យ!"
+        if is_ajax:
+            types_qs = StandardizedExamType.objects.all().order_by('order', 'id')
+            data = [
+                {
+                    'id': t.id,
+                    'name': t.name,
+                    'code': t.code,
+                    'icon': t.icon,
+                    'default_title': t.default_title,
+                    'is_monthly': t.is_monthly,
+                    'linked_term_type': t.linked_term_type or '',
+                    'order': t.order,
+                    'is_active': t.is_active,
+                }
+                for t in types_qs
+            ]
+            return JsonResponse({'status': 'success', 'message': success_msg, 'types': data})
+
+        messages.success(request, success_msg)
+        return redirect('standardized_exam_type_list')
+
+    return redirect('standardized_exam_type_list')
 
 
 @login_required
@@ -1003,6 +1273,7 @@ def standardized_exam_edit(request, exam_id):
     monthly_terms = ExamTerm.objects.filter(academic_year=exam.academic_year, term_type=ExamTerm.TermType.MONTHLY).order_by('start_date') if exam.academic_year else []
     semester_terms = ExamTerm.objects.filter(academic_year=exam.academic_year).filter(Q(term_type=ExamTerm.TermType.SEMESTER_1) | Q(term_type=ExamTerm.TermType.SEMESTER_2)).order_by('start_date') if exam.academic_year else []
 
+    exam_types = StandardizedExamType.get_active_types()
     return render(request, 'examinations/standardized/exam_form.html', {
         'form': form,
         'exam': exam,
@@ -1010,8 +1281,10 @@ def standardized_exam_edit(request, exam_id):
         'available_subjects': available_subjects,
         'monthly_terms': monthly_terms,
         'semester_terms': semester_terms,
+        'exam_types': exam_types,
         'title': f'កែប្រែសម័យប្រឡង៖ {exam.name}',
-        'is_edit': True
+        'is_edit': True,
+        'is_admin': (request.user.role == 'ADMIN' or request.user.is_superuser),
     })
 
 
@@ -1462,27 +1735,232 @@ def exam_batch_generate_rooms(request):
 
 
 
+# Helper converters for Cambodian MoEYS official examination documents
+KHMER_DIGITS_MAP = {
+    '0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤',
+    '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'
+}
+
+KHMER_MONTH_NAMES = {
+    1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា',
+    5: 'ឧសភា', 6: 'មិថុនា', 7: 'កក្កដា', 8: 'សីហា',
+    9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ',
+}
+
+
+def to_khmer_digits(val):
+    """Convert any number or string of digits to Khmer numerals (0 -> ០, 1 -> ១...)."""
+    if val is None or val == '':
+        return ''
+    return ''.join(KHMER_DIGITS_MAP.get(c, c) for c in str(val))
+
+
+def to_khmer_2digits(val):
+    """Format an integer as 2 digits in Khmer numerals (e.g. 1 -> ០១, 8 -> ០៨, 15 -> ១៥, 0 -> ០០)."""
+    try:
+        n = int(val)
+        return to_khmer_digits(f"{n:02d}")
+    except (ValueError, TypeError):
+        return to_khmer_digits(val)
+
+
+def format_khmer_full_date(d):
+    """Format a date as 'DD ខែ YYYY' in Khmer numerals (e.g. '១២ តុលា ២០១២')."""
+    if not d:
+        return ''
+    day_str = to_khmer_2digits(d.day)
+    month_str = KHMER_MONTH_NAMES.get(d.month, '')
+    year_str = to_khmer_digits(d.year)
+    return f"{day_str} {month_str} {year_str}".strip()
+
+
+def format_origin_classroom(orig_class, grade_level):
+    """
+    Format classroom for MoEYS posting sheet matching show.pdf (e.g. '7A' -> 'A', 'A' -> 'A').
+    """
+    if not orig_class:
+        return ''
+    orig = str(orig_class).strip()
+    g_str = str(grade_level).strip() if grade_level else ''
+    
+    # Strip common prefixes like 'ថ្នាក់ទី ' or 'ថ្នាក់ '
+    for pfx in ['ថ្នាក់ទី ', 'ថ្នាក់ទី', 'ថ្នាក់ ', 'ថ្នាក់']:
+        if orig.startswith(pfx):
+            orig = orig[len(pfx):].strip()
+            break
+            
+    if g_str and orig.startswith(g_str):
+        trimmed = orig[len(g_str):].strip()
+        if trimmed:
+            return trimmed
+    return orig
+
+
 @login_required
 def exam_room_postings_view(request, exam_id):
     """
     Official MoEYS Exam Room Notice Board Posting Sheet (បញ្ជីបិទផ្សាយតាមបន្ទប់).
-    25 Candidates per Room with national header, ready for direct print or batch print.
+    Exact 1:1 replica of MoEYS standard format as exemplified in show.pdf:
+    - 25 Rows per room sheet strictly (every room renders exactly 25 rows)
+    - Continuous desk numbering across rooms (Room 1: 1-25, Room 2: 26-50, Room 10: 226-250, etc.)
+    - National header: Kingdom motto, Province, School Name, Room Number, Session (ព្រឹក/រសៀល)
+    - Centered Exam Title with Academic Year & Grade Level
+    - Full Khmer Exam Date (សម័យប្រឡង៖ ០៣ សីហា ២០២៦)
+    - 8 Columns: ល.រ, លេខតុ, អត្តលេខ, គោត្តនាម និងនាម, ភេទ, ថ្ងៃ ខែ ឆ្នាំកំណើត, មកពីថ្នាក់, ផ្សេងៗ
+    - Footer with candidate counts in 2-digit Khmer numerals and School Principal signature
     """
+    from apps.accounts.models import SchoolProfile
+    
     exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
-    rooms_qs = exam.rooms.prefetch_related('candidates').order_by('room_number')
+    school_profile = SchoolProfile.get_settings()
+    
+    rooms_qs = exam.rooms.prefetch_related('candidates__student').order_by('room_number')
 
     selected_room_id = request.GET.get('room_id')
     if selected_room_id and selected_room_id.isdigit():
         rooms_qs = rooms_qs.filter(id=int(selected_room_id))
 
+    # Session in Khmer
+    session_map = {
+        'MORNING': 'ព្រឹក',
+        'AFTERNOON': 'រសៀល',
+        'FULL_DAY': 'ពេញមួយថ្ងៃ',
+    }
+    session_kh = session_map.get(exam.session, exam.get_session_display() or 'ព្រឹក')
+
+    # Exam Title Line: Clean prefix & suffix to prevent duplication of grade/year
+    import re
+    exam_name_clean = exam.name.strip()
+    for pfx in ['បញ្ជីរាយនាមសិស្សប្រឡង', 'បញ្ជីឈ្មោះសិស្សប្រឡង', 'ប្រឡង']:
+        if exam_name_clean.startswith(pfx):
+            exam_name_clean = exam_name_clean[len(pfx):].strip()
+            break
+
+    # Strip any trailing 'ថ្នាក់ទី ...' or 'ថ្នាក់ ...' or 'ឆ្នាំសិក្សា ...' already in exam name
+    exam_name_clean = re.sub(r'\s*ថ្នាក់ទី\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ថ្នាក់\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ឆ្នាំសិក្សា\s*[\d\u17e0-\u17e9\-]+\s*$', '', exam_name_clean).strip()
+
+    academic_year_kh = to_khmer_digits(exam.academic_year.name if exam.academic_year else '')
+    grade_kh = to_khmer_digits(exam.grade_level)
+    
+    if academic_year_kh and grade_kh:
+        exam_title_line = f"បញ្ជីរាយនាមសិស្សប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh} ថ្នាក់ទី {grade_kh}".strip()
+    elif academic_year_kh:
+        exam_title_line = f"បញ្ជីរាយនាមសិស្សប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh}".strip()
+    elif grade_kh:
+        exam_title_line = f"បញ្ជីរាយនាមសិស្សប្រឡង{exam_name_clean} ថ្នាក់ទី {grade_kh}".strip()
+    else:
+        exam_title_line = f"បញ្ជីរាយនាមសិស្សប្រឡង{exam_name_clean}".strip()
+
+    # Exam Date in Khmer
+    exam_date_kh = format_khmer_full_date(exam.exam_date)
+
+    # Province & School Name (allow query param override or default to SchoolProfile / show.pdf fallback)
+    province_name = request.GET.get('province') or school_profile.province or 'ខេត្តកណ្តាល'
+    school_name = request.GET.get('school_name') or school_profile.name_kh or 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត'
+
+    # Signing Location & Date
+    location_name = request.GET.get('location', '').strip()
+    if not location_name:
+        if school_profile.commune:
+            c_name = school_profile.commune.strip()
+            for prefix in ['ឃុំ', 'សង្កាត់', 'ឃុំ ', 'សង្កាត់ ']:
+                if c_name.startswith(prefix):
+                    c_name = c_name[len(prefix):].strip()
+                    break
+            location_name = c_name
+        elif school_profile.district:
+            d_name = school_profile.district.strip()
+            for prefix in ['ស្រុក', 'ខណ្ឌ', 'ក្រុង', 'ស្រុក ', 'ខណ្ឌ ', 'ក្រុង ']:
+                if d_name.startswith(prefix):
+                    d_name = d_name[len(prefix):].strip()
+                    break
+            location_name = d_name
+        else:
+            location_name = 'កំពង់កន្សួត'
+
+    sign_date_param = request.GET.get('sign_date', '').strip()
+    sign_date = None
+    if sign_date_param:
+        try:
+            sign_date = datetime.datetime.strptime(sign_date_param, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    if not sign_date:
+        sign_date = exam.exam_date or timezone.now().date()
+
+    sign_day_kh = to_khmer_2digits(sign_date.day)
+    sign_month_kh = KHMER_MONTH_NAMES.get(sign_date.month, '')
+    sign_year_kh = to_khmer_digits(sign_date.year)
+
+    # Signer title (e.g. នាយក, នាយិកា, ប្រធានមណ្ឌល)
+    sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
+
     rooms_data = []
     for r in rooms_qs:
-        cand_list = list(r.candidates.order_by('desk_number', 'roll_number', 'id'))
+        cand_list = list(r.candidates.select_related('student').order_by('desk_number', 'roll_number', 'id'))
+        total_cands = len(cand_list)
+        female_cands = len([c for c in cand_list if c.gender == 'F'])
+
+        # Global desk base calculation: Room 1 -> 1-25; Room 2 -> 26-50; Room R -> (R-1)*25 + 1..25
+        room_num_int = r.room_number if isinstance(r.room_number, int) else 1
+        base_desk = (room_num_int - 1) * 25
+
+        rows = []
+        for i in range(1, 26):
+            default_desk = base_desk + i
+            if i <= total_cands:
+                c = cand_list[i - 1]
+                # If candidate already has global desk number assigned (> 25), preserve it, else default_desk
+                actual_desk = c.desk_number if (c.desk_number and c.desk_number > 25) else default_desk
+
+                student_id = c.student_code or (c.student.student_id if c.student else '') or c.roll_number
+                dob_kh = format_khmer_full_date(c.dob) if c.dob else ''
+                gender_kh = 'ស' if c.gender == 'F' else 'ប'
+                origin_cls = format_origin_classroom(c.origin_class, exam.grade_level)
+
+                rows.append({
+                    'row_num': i,
+                    'desk_number': actual_desk,
+                    'student_id': student_id,
+                    'candidate_name_kh': c.candidate_name_kh,
+                    'candidate_name_en': c.candidate_name_en or '',
+                    'gender_kh': gender_kh,
+                    'dob_kh': dob_kh,
+                    'origin_class': origin_cls,
+                    'remarks': c.remarks or '',
+                    'is_disciplinary_blocked': c.is_disciplinary_blocked,
+                    'has_data': True,
+                })
+            else:
+                rows.append({
+                    'row_num': i,
+                    'desk_number': default_desk,
+                    'student_id': '',
+                    'candidate_name_kh': '',
+                    'candidate_name_en': '',
+                    'gender_kh': '',
+                    'dob_kh': '',
+                    'origin_class': '',
+                    'remarks': '',
+                    'is_disciplinary_blocked': False,
+                    'has_data': False,
+                })
+
+        room_number_kh = to_khmer_2digits(room_num_int)
+        total_kh = to_khmer_2digits(total_cands)
+        female_kh = to_khmer_2digits(female_cands)
+
         rooms_data.append({
             'room': r,
-            'candidates': cand_list,
-            'total_candidates': len(cand_list),
-            'female_candidates': len([c for c in cand_list if c.gender == 'F']),
+            'room_number_kh': room_number_kh,
+            'rows': rows,
+            'candidates': cand_list,  # kept for backwards compatibility
+            'total_candidates': total_cands,
+            'female_candidates': female_cands,
+            'total_candidates_kh': total_kh,
+            'female_candidates_kh': female_kh,
         })
 
     all_rooms = exam.rooms.all().order_by('room_number')
@@ -1492,48 +1970,253 @@ def exam_room_postings_view(request, exam_id):
         'rooms_data': rooms_data,
         'all_rooms': all_rooms,
         'selected_room_id': selected_room_id or '',
+        'session_kh': session_kh,
+        'exam_title_line': exam_title_line,
+        'exam_date_kh': exam_date_kh,
+        'province_name': province_name,
+        'school_name': school_name,
+        'location_name': location_name,
+        'sign_day_kh': sign_day_kh,
+        'sign_month_kh': sign_month_kh,
+        'sign_year_kh': sign_year_kh,
+        'sign_role': sign_role,
+        'sign_date_raw': sign_date.strftime('%Y-%m-%d'),
+        'school_profile': school_profile,
     })
+
+
+SUBJECT_SHORT_NAMES = {
+    'តែងសេចក្តី': 'តែង',
+    'សរសេរតាមអាន': 'សរសេរ',
+    'ភាសាខ្មែរ': 'ខ្មែរ',
+    'សីលធម៌ ពលរដ្ឋ': 'សីល',
+    'សីលធម៌-ពលរដ្ឋ': 'សីល',
+    'សីលធម៌': 'សីល',
+    'ភូមិវិទ្យា': 'ភូមិ',
+    'ប្រវត្តិវិទ្យា': 'ប្រវត្តិ',
+    'គណិតវិទ្យា': 'គណិត',
+    'ផែនដីវិទ្យា': 'ផែនដី',
+    'ផែនដី និងបរិស្ថានវិទ្យា': 'ផែនដី',
+    'រូបវិទ្យា': 'រូប',
+    'គីមីវិទ្យា': 'គីមី',
+    'ជីវវិទ្យា': 'ជីវ',
+    'គេហវិទ្យា': 'គេហៈ',
+    'គេហសេដ្ឋកិច្ច': 'គេហៈ',
+    'ភាសាអង់គ្លេស': 'អង់គ្លេស',
+    'អង់គ្លេស': 'អង់គ្លេស',
+    'ភាសាបារាំង': 'បារាំង',
+    'បារាំង': 'បារាំង',
+    'ព័ត៌មានវិទ្យា': 'ICT',
+}
+
+DEFAULT_MOEYS_ATTENDANCE_SUBJECTS = [
+    'តែង', 'សរសេរ', 'ខ្មែរ', 'សីល', 'ភូមិ', 'ប្រវត្តិ', 'គណិត', 'ផែនដី', 'រូប', 'គីមី', 'ជីវ', 'គេហៈ', 'អង់គ្លេស'
+]
 
 
 @login_required
 def exam_subject_attendance_view(request, exam_id):
     """
-    Official MoEYS Subject Attendance & Signature Sheet per Room and per Subject (បញ្ជីវត្តមានចុះហត្ថលេខាតាមមុខវិជ្ជា).
+    Official MoEYS Candidate Attendance & Signature Sheet (បញ្ជីវត្តមានចុះហត្ថលេខាបេក្ខជនតាមបន្ទប់).
+    Exact 1:1 replica of MoEYS standard format as exemplified in show2.pdf:
+    - A4 Landscape format (297mm x 210mm)
+    - Guaranteed 1cm - 1.5cm margins all around on Print and PDF export
+    - Exactly 25 rows per room sheet strictly
+    - Continuous global desk numbering across rooms (1-25, 26-50, etc.)
+    - Multi-subject horizontal signature columns under grouped header 'ហត្ថលេខាបេក្ខជនតាមមុខវិជ្ជា'
+    - School header, Room number, Attendance title line, and footer signatures
     """
+    from apps.accounts.models import SchoolProfile
+    import re
+    
     exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
-    rooms = list(exam.rooms.all().order_by('room_number'))
-    subjects = list(exam.exam_subjects.select_related('subject').order_by('order', 'id'))
+    school_profile = SchoolProfile.get_settings()
+    
+    rooms_qs = exam.rooms.prefetch_related('candidates__student').order_by('room_number')
 
     selected_room_id = request.GET.get('room_id')
-    selected_subject_id = request.GET.get('subject_id')
-
-    target_rooms = rooms
     if selected_room_id and selected_room_id.isdigit():
-        target_rooms = [r for r in rooms if r.id == int(selected_room_id)]
+        rooms_qs = rooms_qs.filter(id=int(selected_room_id))
 
-    target_subjects = subjects
-    if selected_subject_id and selected_subject_id.isdigit():
-        target_subjects = [s for s in subjects if s.id == int(selected_subject_id)]
-
-    sheets_data = []
-    for r in target_rooms:
-        cand_list = list(r.candidates.order_by('desk_number', 'roll_number', 'id'))
-        for s in target_subjects:
-            sheets_data.append({
-                'room': r,
-                'subject': s,
-                'candidates': cand_list,
-                'total_candidates': len(cand_list),
-                'female_candidates': len([c for c in cand_list if c.gender == 'F']),
+    # Subjects for the signature columns
+    exam_subjects = list(exam.exam_subjects.select_related('subject').order_by('order', 'id'))
+    if exam_subjects:
+        display_subjects = []
+        for s in exam_subjects:
+            s_name = s.subject.name_kh.strip()
+            short_name = SUBJECT_SHORT_NAMES.get(s_name, s_name)
+            display_subjects.append({
+                'id': s.id,
+                'name': short_name,
+                'full_name': s_name,
             })
+    else:
+        display_subjects = [
+            {'id': idx, 'name': name, 'full_name': name}
+            for idx, name in enumerate(DEFAULT_MOEYS_ATTENDANCE_SUBJECTS)
+        ]
+
+    # Session in Khmer
+    session_map = {
+        'MORNING': 'ព្រឹក',
+        'AFTERNOON': 'រសៀល',
+        'FULL_DAY': 'ពេញមួយថ្ងៃ',
+    }
+    session_kh = session_map.get(exam.session, exam.get_session_display() or 'ព្រឹក')
+
+    # Exam Title Line: Clean prefix & suffix to prevent duplicate grade/year
+    exam_name_clean = exam.name.strip()
+    for pfx in ['បញ្ជីវត្តមានបេក្ខជនប្រឡង', 'បញ្ជីរាយនាមសិស្សប្រឡង', 'បញ្ជីឈ្មោះសិស្សប្រឡង', 'ប្រឡង']:
+        if exam_name_clean.startswith(pfx):
+            exam_name_clean = exam_name_clean[len(pfx):].strip()
+            break
+
+    # Strip any trailing 'ថ្នាក់ទី ...' or 'ថ្នាក់ ...' or 'ឆ្នាំសិក្សា ...' already in exam name
+    exam_name_clean = re.sub(r'\s*ថ្នាក់ទី\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ថ្នាក់\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ឆ្នាំសិក្សា\s*[\d\u17e0-\u17e9\-]+\s*$', '', exam_name_clean).strip()
+
+    academic_year_kh = to_khmer_digits(exam.academic_year.name if exam.academic_year else '')
+    grade_kh = to_khmer_digits(exam.grade_level)
+    
+    if academic_year_kh and grade_kh:
+        attendance_title_line = f"បញ្ជីវត្តមានបេក្ខជនប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh} ថ្នាក់ទី {grade_kh}".strip()
+    elif academic_year_kh:
+        attendance_title_line = f"បញ្ជីវត្តមានបេក្ខជនប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh}".strip()
+    elif grade_kh:
+        attendance_title_line = f"បញ្ជីវត្តមានបេក្ខជនប្រឡង{exam_name_clean} ថ្នាក់ទី {grade_kh}".strip()
+    else:
+        attendance_title_line = f"បញ្ជីវត្តមានបេក្ខជនប្រឡង{exam_name_clean}".strip()
+
+    # Exam Date in Khmer
+    exam_date_kh = format_khmer_full_date(exam.exam_date)
+
+    # School Name & Province
+    school_name = request.GET.get('school_name') or school_profile.name_kh or 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត'
+    province_name = request.GET.get('province') or school_profile.province or 'ខេត្តកណ្តាល'
+
+    # Signing Location & Date
+    location_name = request.GET.get('location', '').strip()
+    if not location_name:
+        if school_profile.commune:
+            c_name = school_profile.commune.strip()
+            for prefix in ['ឃុំ', 'សង្កាត់', 'ឃុំ ', 'សង្កាត់ ']:
+                if c_name.startswith(prefix):
+                    c_name = c_name[len(prefix):].strip()
+                    break
+            location_name = c_name
+        elif school_profile.district:
+            d_name = school_profile.district.strip()
+            for prefix in ['ស្រុក', 'ខណ្ឌ', 'ក្រុង', 'ស្រុក ', 'ខណ្ឌ ', 'ក្រុង ']:
+                if d_name.startswith(prefix):
+                    d_name = d_name[len(prefix):].strip()
+                    break
+            location_name = d_name
+        else:
+            location_name = 'កំពង់កន្សួត'
+
+    sign_date_param = request.GET.get('sign_date', '').strip()
+    sign_date = None
+    if sign_date_param:
+        try:
+            sign_date = datetime.datetime.strptime(sign_date_param, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    if not sign_date:
+        sign_date = exam.exam_date or timezone.now().date()
+
+    sign_day_kh = to_khmer_2digits(sign_date.day)
+    sign_month_kh = KHMER_MONTH_NAMES.get(sign_date.month, '')
+    sign_year_kh = to_khmer_digits(sign_date.year)
+
+    # Signer title (e.g. នាយក, នាយិកា, ប្រធានមណ្ឌល)
+    sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
+
+    rooms_data = []
+    for r in rooms_qs:
+        cand_list = list(r.candidates.select_related('student').order_by('desk_number', 'roll_number', 'id'))
+        total_cands = len(cand_list)
+        female_cands = len([c for c in cand_list if c.gender == 'F'])
+
+        room_num_int = r.room_number if isinstance(r.room_number, int) else 1
+        base_desk = (room_num_int - 1) * 25
+
+        rows = []
+        for i in range(1, 26):
+            default_desk = base_desk + i
+            if i <= total_cands:
+                c = cand_list[i - 1]
+                actual_desk = c.desk_number if (c.desk_number and c.desk_number > 25) else default_desk
+                student_id = c.student_code or (c.student.student_id if c.student else '') or c.roll_number
+                
+                # Compact DOB format matching show2.pdf (e.g. 12/10/12)
+                dob_compact = c.dob.strftime('%d/%m/%y') if c.dob else ''
+                gender_kh = 'ស' if c.gender == 'F' else 'ប'
+                origin_cls = format_origin_classroom(c.origin_class, exam.grade_level)
+
+                rows.append({
+                    'row_num': i,
+                    'desk_number': actual_desk,
+                    'student_id': student_id,
+                    'candidate_name_kh': c.candidate_name_kh,
+                    'gender_kh': gender_kh,
+                    'dob_str': dob_compact,
+                    'origin_class': origin_cls,
+                    'remarks': c.remarks or '',
+                    'is_disciplinary_blocked': c.is_disciplinary_blocked,
+                    'has_data': True,
+                })
+            else:
+                rows.append({
+                    'row_num': i,
+                    'desk_number': default_desk,
+                    'student_id': '',
+                    'candidate_name_kh': '',
+                    'gender_kh': '',
+                    'dob_str': '',
+                    'origin_class': '',
+                    'remarks': '',
+                    'is_disciplinary_blocked': False,
+                    'has_data': False,
+                })
+
+        room_number_kh = to_khmer_2digits(room_num_int)
+        total_kh = to_khmer_2digits(total_cands)
+        female_kh = to_khmer_2digits(female_cands)
+
+        rooms_data.append({
+            'room': r,
+            'room_number_kh': room_number_kh,
+            'rows': rows,
+            'candidates': cand_list,  # kept for test compatibility
+            'total_candidates': total_cands,
+            'female_candidates': female_cands,
+            'total_candidates_kh': total_kh,
+            'female_candidates_kh': female_kh,
+        })
+
+    all_rooms = exam.rooms.all().order_by('room_number')
 
     return render(request, 'examinations/standardized/attendance_sheets_print.html', {
         'exam': exam,
-        'sheets_data': sheets_data,
-        'rooms': rooms,
-        'subjects': subjects,
+        'rooms_data': rooms_data,
+        'sheets_data': rooms_data,  # kept for backwards compatibility
+        'rooms': all_rooms,
+        'display_subjects': display_subjects,
+        'subjects': exam_subjects,
         'selected_room_id': selected_room_id or '',
-        'selected_subject_id': selected_subject_id or '',
+        'session_kh': session_kh,
+        'attendance_title_line': attendance_title_line,
+        'exam_date_kh': exam_date_kh,
+        'school_name': school_name,
+        'province_name': province_name,
+        'location_name': location_name,
+        'sign_day_kh': sign_day_kh,
+        'sign_month_kh': sign_month_kh,
+        'sign_year_kh': sign_year_kh,
+        'sign_role': sign_role,
+        'sign_date_raw': sign_date.strftime('%Y-%m-%d'),
+        'school_profile': school_profile,
     })
 
 
@@ -1743,6 +2426,539 @@ def exam_provisional_results_view(request, exam_id):
         'selected_sort': sort_by,
         'search_q': search_q,
     })
+
+
+MOEYS_RESULT_SUBJECTS = [
+    {'key': 'taing', 'name': 'តែងសេចក្តី', 'short': 'តែង', 'max': 60.0},
+    {'key': 'sarser', 'name': 'សរសេរតាមអាន', 'short': 'សរសេរ', 'max': 40.0},
+    {'key': 'khmer', 'name': 'ភាសាខ្មែរ', 'short': 'ខ្មែរ', 'max': 100.0, 'is_composite': True},
+    {'key': 'sil', 'name': 'សីលធម៌', 'short': 'សីល', 'max': 50.0},
+    {'key': 'phum', 'name': 'ភូមិវិទ្យា', 'short': 'ភូមិ', 'max': 50.0},
+    {'key': 'pravatt', 'name': 'ប្រវត្តិវិទ្យា', 'short': 'ប្រវត្តិ', 'max': 50.0},
+    {'key': 'kanit', 'name': 'គណិតវិទ្យា', 'short': 'គណិត', 'max': 100.0},
+    {'key': 'phendey', 'name': 'ផែនដីវិទ្យា', 'short': 'ផែនដី', 'max': 50.0},
+    {'key': 'roop', 'name': 'រូបវិទ្យា', 'short': 'រូប', 'max': 50.0},
+    {'key': 'kimey', 'name': 'គីមីវិទ្យា', 'short': 'គីមី', 'max': 50.0},
+    {'key': 'chiv', 'name': 'ជីវវិទ្យា', 'short': 'ជីវ', 'max': 50.0},
+    {'key': 'keha', 'name': 'គេហវិទ្យា', 'short': 'គេហៈ', 'max': 50.0},
+    {'key': 'english', 'name': 'អង់គ្លេស', 'short': 'អង់គ្លេស', 'max': 50.0},
+]
+
+
+def get_moeys_subject_mention(score, max_score):
+    """
+    Computes official MoEYS subject letter grade (A..F):
+    - 50-pt subject: A>=45, B>=40, C>=35, D>=30, E>=25, F<25
+    - 100-pt subject: A>=90, B>=80, C>=70, D>=60, E>=50, F<50
+    - 60-pt subject (តែង): A>=54, B>=48, C>=42, D>=36, E>=30, F<30
+    - 40-pt subject (សរសេរ): A>=36, B>=32, C>=28, D>=24, E>=20, F<20
+    """
+    if score is None or float(score) <= 0:
+        return 'F'
+    s = float(score)
+    m = float(max_score) if max_score and float(max_score) > 0 else 50.0
+    if m == 50.0:
+        if s >= 45.0: return 'A'
+        if s >= 40.0: return 'B'
+        if s >= 35.0: return 'C'
+        if s >= 30.0: return 'D'
+        if s >= 25.0: return 'E'
+        return 'F'
+    elif m == 100.0:
+        if s >= 90.0: return 'A'
+        if s >= 80.0: return 'B'
+        if s >= 70.0: return 'C'
+        if s >= 60.0: return 'D'
+        if s >= 50.0: return 'E'
+        return 'F'
+    elif m == 60.0:
+        if s >= 54.0: return 'A'
+        if s >= 48.0: return 'B'
+        if s >= 42.0: return 'C'
+        if s >= 36.0: return 'D'
+        if s >= 30.0: return 'E'
+        return 'F'
+    elif m == 40.0:
+        if s >= 36.0: return 'A'
+        if s >= 32.0: return 'B'
+        if s >= 28.0: return 'C'
+        if s >= 24.0: return 'D'
+        if s >= 20.0: return 'E'
+        return 'F'
+    else:
+        pct = (s / m) * 100.0
+        if pct >= 90.0: return 'A'
+        if pct >= 80.0: return 'B'
+        if pct >= 70.0: return 'C'
+        if pct >= 60.0: return 'D'
+        if pct >= 50.0: return 'E'
+        return 'F'
+
+
+def get_moeys_overall_mention(tot_score, max_total=650.0):
+    """
+    Computes overall mention (A..F) based on total score percentage out of 650:
+    A>=90% (585), B>=80% (520), C>=70% (455), D>=60% (390), E>=50% (325), F<50%
+    """
+    if tot_score is None or float(tot_score) <= 0:
+        return 'F'
+    s = float(tot_score)
+    m = float(max_total) if max_total and float(max_total) > 0 else 650.0
+    pct = (s / m) * 100.0
+    if pct >= 90.0: return 'A'
+    if pct >= 80.0: return 'B'
+    if pct >= 70.0: return 'C'
+    if pct >= 60.0: return 'D'
+    if pct >= 50.0: return 'E'
+    return 'F'
+
+
+@login_required
+def exam_results_sheet_print_view(request, exam_id):
+    """
+    Official MoEYS Provisional Examination Results Print & Export System.
+    Exact 100% replica of result.pdf (scores), result-mention.pdf (mentions), and
+    Subject & Overall Summary Report (របាយការណ៍បូកសរុបនិទ្ទេសតាមមុខវិជ្ជា និងសរុបរួម):
+    - A4 Landscape format (297mm x 210mm)
+    - Mode: 'score' (19 columns), 'mention' (20 columns with 'សរុប'), 'summary' (Matrices)
+    - Page chunking: Page 1 = 26 rows, Pages 2..N = 33 rows, Final page = remaining rows + signatures
+    """
+    from apps.accounts.models import SchoolProfile
+    import re
+
+    exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
+    school_profile = SchoolProfile.get_settings()
+
+    # View Mode: 'score' (result.pdf), 'mention' (result-mention.pdf), 'summary' (matrices), 'graph' (Graph.pdf)
+    view_mode = request.GET.get('mode', 'score').strip().lower()
+    if view_mode not in ['score', 'mention', 'summary', 'graph']:
+        view_mode = 'score'
+
+    # Filter by Room or Origin Class
+    selected_room_id = request.GET.get('room_id', '').strip()
+    selected_class = request.GET.get('class_name', '').strip()
+
+    candidates_qs = exam.candidates.select_related('room', 'student').prefetch_related('subject_scores__exam_subject__subject')
+
+    if selected_room_id and selected_room_id.isdigit():
+        candidates_qs = candidates_qs.filter(room_id=int(selected_room_id))
+    if selected_class:
+        candidates_qs = candidates_qs.filter(origin_class__iexact=selected_class)
+
+    # Sort candidates sequentially by roll_number / desk_number / id
+    cand_list = list(candidates_qs.order_by('room__room_number', 'desk_number', 'roll_number', 'id'))
+
+    # Map exam subjects to MoEYS standard 13 subjects
+    exam_subjs = list(exam.exam_subjects.select_related('subject').all())
+    subject_mapping = {}
+    for es in exam_subjs:
+        name = es.subject.name_kh or ''
+        code = es.subject.code or ''
+        for item in MOEYS_RESULT_SUBJECTS:
+            k = item['key']
+            if k == 'khmer' and ('ភាសាខ្មែរ' in name or name == 'ខ្មែរ'):
+                subject_mapping['khmer'] = es
+            elif k == 'taing' and 'តែង' in name:
+                subject_mapping['taing'] = es
+            elif k == 'sarser' and 'សរសេរ' in name:
+                subject_mapping['sarser'] = es
+            elif k == 'sil' and 'សីល' in name:
+                subject_mapping['sil'] = es
+            elif k == 'phum' and 'ភូមិ' in name:
+                subject_mapping['phum'] = es
+            elif k == 'pravatt' and 'ប្រវត្តិ' in name:
+                subject_mapping['pravatt'] = es
+            elif k == 'kanit' and 'គណិត' in name:
+                subject_mapping['kanit'] = es
+            elif k == 'phendey' and 'ផែនដី' in name:
+                subject_mapping['phendey'] = es
+            elif k == 'roop' and 'រូប' in name:
+                subject_mapping['roop'] = es
+            elif k == 'kimey' and 'គីមី' in name:
+                subject_mapping['kimey'] = es
+            elif k == 'chiv' and 'ជីវ' in name:
+                subject_mapping['chiv'] = es
+            elif k == 'keha' and 'គេហ' in name:
+                subject_mapping['keha'] = es
+            elif k == 'english' and ('អង់គ្លេស' in name or 'English' in name or code.upper() == 'ENG'):
+                subject_mapping['english'] = es
+
+    def extract_cand_score(cand_scores_dict, key):
+        if key == 'khmer':
+            if 'khmer' in subject_mapping:
+                es = subject_mapping['khmer']
+                sc = cand_scores_dict.get(es.id)
+                if sc and sc.score is not None and not sc.is_absent:
+                    return float(sc.score)
+            taing_sc = extract_cand_score(cand_scores_dict, 'taing')
+            sarser_sc = extract_cand_score(cand_scores_dict, 'sarser')
+            return taing_sc + sarser_sc
+        es = subject_mapping.get(key)
+        if es:
+            sc = cand_scores_dict.get(es.id)
+            if sc and sc.score is not None and not sc.is_absent:
+                return float(sc.score)
+        return 0.0
+
+    subject_keys = [s['key'] for s in MOEYS_RESULT_SUBJECTS]
+
+    # Process all candidates data
+    all_cands_data = []
+    for idx, c in enumerate(cand_list):
+        cand_scores_dict = {sc.exam_subject_id: sc for sc in c.subject_scores.all()}
+        
+        scores = {}
+        mentions = {}
+        for s_def in MOEYS_RESULT_SUBJECTS:
+            k = s_def['key']
+            sc_val = extract_cand_score(cand_scores_dict, k)
+            scores[k] = sc_val
+            mentions[k] = get_moeys_subject_mention(sc_val, s_def['max'])
+
+        # Total score summing the 12 distinct subjects (out of 650)
+        tot_score = (
+            scores['taing'] + scores['sarser'] + scores['sil'] + scores['phum'] +
+            scores['pravatt'] + scores['kanit'] + scores['phendey'] + scores['roop'] +
+            scores['kimey'] + scores['chiv'] + scores['keha'] + scores['english']
+        )
+        overall_mention = get_moeys_overall_mention(tot_score, 650.0)
+
+        dob_compact = c.dob.strftime('%d/%m/%y') if c.dob else ''
+        origin_cls = format_origin_classroom(c.origin_class, exam.grade_level)
+        gender_kh = 'ស' if c.gender == 'F' else 'ប'
+        student_id = c.student_code or (c.student.student_id if c.student else '') or c.roll_number
+
+        # Format scores display: int if whole number
+        formatted_scores = {}
+        for k, v in scores.items():
+            formatted_scores[k] = int(v) if v == int(v) else f"{v:.1f}"
+
+        scores_list = [formatted_scores.get(k, '') for k in subject_keys]
+        mentions_list = [mentions.get(k, 'F') for k in subject_keys]
+
+        all_cands_data.append({
+            'row_num': idx + 1,
+            'student_id': student_id,
+            'candidate_name_kh': c.candidate_name_kh,
+            'gender': c.gender,
+            'gender_kh': gender_kh,
+            'dob_str': dob_compact,
+            'origin_class': origin_cls,
+            'scores': scores,
+            'formatted_scores': formatted_scores,
+            'scores_list': scores_list,
+            'mentions': mentions,
+            'mentions_list': mentions_list,
+            'total_score': tot_score,
+            'overall_mention': overall_mention,
+            'is_absent': not c.is_present,
+        })
+
+    # Summary Matrices Calculations
+    def build_mentions_matrix(subset):
+        matrix = {g: [0] * (len(subject_keys) + 1) for g in ['A', 'B', 'C', 'D', 'E', 'F']}
+        for cand in subset:
+            for s_idx, k in enumerate(subject_keys):
+                m = cand['mentions'][k]
+                if m in matrix:
+                    matrix[m][s_idx] += 1
+            ov = cand['overall_mention']
+            if ov in matrix:
+                matrix[ov][-1] += 1
+        return matrix
+
+    matrix_all = build_mentions_matrix(all_cands_data)
+    matrix_female = build_mentions_matrix([c for c in all_cands_data if c['gender'] == 'F'])
+    matrix_male = build_mentions_matrix([c for c in all_cands_data if c['gender'] == 'M'])
+
+    # Build rows for Subject Mentions Table
+    subject_headers = [s['name'] for s in MOEYS_RESULT_SUBJECTS] + ['សរុប']
+    
+    def format_matrix_rows(mat):
+        rows = []
+        for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+            rows.append({
+                'grade': g,
+                'counts': mat[g],
+                'counts_kh': [to_khmer_digits(x) for x in mat[g]],
+            })
+        return rows
+
+    summary_rows_all = format_matrix_rows(matrix_all)
+    summary_rows_female = format_matrix_rows(matrix_female)
+    summary_rows_male = format_matrix_rows(matrix_male)
+
+    # Overall Mention Distribution Table
+    total_count = len(all_cands_data)
+    overall_mention_table = []
+    passed_count = 0
+    passed_females = 0
+    passed_males = 0
+    failed_count = 0
+    failed_females = 0
+    failed_males = 0
+
+    for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+        cnt_tot = matrix_all[g][-1]
+        cnt_fem = matrix_female[g][-1]
+        cnt_mal = matrix_male[g][-1]
+        pct = round((cnt_tot / total_count * 100.0), 1) if total_count > 0 else 0.0
+
+        overall_mention_table.append({
+            'mention': g,
+            'total': cnt_tot,
+            'total_kh': to_khmer_2digits(cnt_tot),
+            'female': cnt_fem,
+            'female_kh': to_khmer_2digits(cnt_fem),
+            'male': cnt_mal,
+            'male_kh': to_khmer_2digits(cnt_mal),
+            'percentage': pct,
+            'percentage_kh': to_khmer_digits(f"{pct:.1f}"),
+        })
+        if g in ['A', 'B', 'C', 'D', 'E']:
+            passed_count += cnt_tot
+            passed_females += cnt_fem
+            passed_males += cnt_mal
+        else:
+            failed_count += cnt_tot
+            failed_females += cnt_fem
+            failed_males += cnt_mal
+
+    grand_total_females = sum(1 for c in all_cands_data if c['gender'] == 'F')
+    grand_total_males = sum(1 for c in all_cands_data if c['gender'] == 'M')
+
+    grand_total_row = {
+        'mention': 'សរុប',
+        'total': total_count,
+        'total_kh': to_khmer_2digits(total_count),
+        'female': grand_total_females,
+        'female_kh': to_khmer_2digits(grand_total_females),
+        'male': grand_total_males,
+        'male_kh': to_khmer_2digits(grand_total_males),
+        'percentage': 100.0,
+        'percentage_kh': '១០០',
+    }
+
+    # Pagination: Page 1 = 26 rows, Subsequent pages = 33 rows
+    pages = []
+    chunk_p1 = 26
+    chunk_rest = 33
+
+    if all_cands_data:
+        p1_cands = all_cands_data[:chunk_p1]
+        pages.append({
+            'page_num': 1,
+            'is_first_page': True,
+            'is_last_page': len(all_cands_data) <= chunk_p1,
+            'candidates': p1_cands,
+        })
+        
+        remaining = all_cands_data[chunk_p1:]
+        cur_page = 2
+        while remaining:
+            cur_chunk = remaining[:chunk_rest]
+            remaining = remaining[chunk_rest:]
+            pages.append({
+                'page_num': cur_page,
+                'is_first_page': False,
+                'is_last_page': len(remaining) == 0,
+                'candidates': cur_chunk,
+            })
+            cur_page += 1
+
+    # Title & Academic Header
+    exam_name_clean = exam.name.strip()
+    for pfx in ['លទ្ធផលប្រឡង', 'បញ្ជីរាយនាមសិស្សប្រឡង', 'ប្រឡង']:
+        if exam_name_clean.startswith(pfx):
+            exam_name_clean = exam_name_clean[len(pfx):].strip()
+            break
+
+    exam_name_clean = re.sub(r'\s*ថ្នាក់ទី\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ថ្នាក់\s*[\d\u17e0-\u17e9A-Za-z]+\s*$', '', exam_name_clean).strip()
+    exam_name_clean = re.sub(r'\s*ឆ្នាំសិក្សា\s*[\d\u17e0-\u17e9\-]+\s*$', '', exam_name_clean).strip()
+
+    academic_year_kh = to_khmer_digits(exam.academic_year.name if exam.academic_year else '')
+    grade_kh = to_khmer_digits(exam.grade_level)
+
+    if academic_year_kh and grade_kh:
+        results_title_line = f"លទ្ធផលប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh} ថ្នាក់ទី {grade_kh}".strip()
+    elif academic_year_kh:
+        results_title_line = f"លទ្ធផលប្រឡង{exam_name_clean} ឆ្នាំសិក្សា {academic_year_kh}".strip()
+    else:
+        results_title_line = f"លទ្ធផលប្រឡង{exam_name_clean}".strip()
+
+    exam_date_kh = format_khmer_full_date(exam.exam_date)
+
+    # Province, School Name & Signing Location
+    province_name = request.GET.get('province') or school_profile.province or 'ខេត្តកណ្តាល'
+    school_name = request.GET.get('school_name') or school_profile.name_kh or 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្សួត'
+
+    location_name = request.GET.get('location', '').strip()
+    if not location_name:
+        if school_profile.commune:
+            c_name = school_profile.commune.strip()
+            for prefix in ['ឃុំ', 'សង្កាត់', 'ឃុំ ', 'សង្កាត់ ']:
+                if c_name.startswith(prefix):
+                    c_name = c_name[len(prefix):].strip()
+                    break
+            location_name = c_name
+        elif school_profile.district:
+            d_name = school_profile.district.strip()
+            for prefix in ['ស្រុក', 'ខណ្ឌ', 'ក្រុង', 'ស្រុក ', 'ខណ្ឌ ', 'ក្រុង ']:
+                if d_name.startswith(prefix):
+                    d_name = d_name[len(prefix):].strip()
+                    break
+            location_name = d_name
+        else:
+            location_name = 'កំពង់កន្សួត'
+
+    sign_date_param = request.GET.get('sign_date', '').strip()
+    sign_date = None
+    if sign_date_param:
+        try:
+            sign_date = datetime.datetime.strptime(sign_date_param, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    if not sign_date:
+        sign_date = exam.exam_date or timezone.now().date()
+
+    sign_day_kh = to_khmer_2digits(sign_date.day)
+    sign_month_kh = KHMER_MONTH_NAMES.get(sign_date.month, '')
+    sign_year_kh = to_khmer_digits(sign_date.year)
+
+    # Khmer Lunar Calendar Date (e.g. ថ្ងៃសុក្រ ៥កើត ខែបឋមាសាឍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០)
+    lunar_date = request.GET.get('lunar_date', '').strip() or 'ថ្ងៃសុក្រ ៥កើត ខែបឋមាសាឍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'
+
+    # Signer Role title (principal)
+    sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
+
+    # Colors matching Graph.pdf
+    GRADE_COLORS = {
+        'A': '#1f4e79',  # Dark Navy Blue
+        'B': '#c55a11',  # Terracotta Orange
+        'C': '#276a3c',  # Forest Green
+        'D': '#00a2e8',  # Cyan / Sky Blue
+        'E': '#800080',  # Magenta / Purple
+        'F': '#548235',  # Leaf Green
+    }
+
+    # Gender filter for Graph view
+    graph_gender = request.GET.get('gender', 'ALL').strip().upper()
+    if graph_gender == 'F':
+        active_matrix = matrix_female
+    elif graph_gender == 'M':
+        active_matrix = matrix_male
+    else:
+        graph_gender = 'ALL'
+        active_matrix = matrix_all
+
+    # Calculate maximum value across all 13 subjects and 6 grades
+    max_count = 0
+    for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+        for s_idx in range(13):
+            val = active_matrix[g][s_idx]
+            if val > max_count:
+                max_count = val
+
+    import math
+    if max_count <= 120:
+        graph_y_max = 120
+        graph_y_ticks = [120, 100, 80, 60, 40, 20, 0]
+    else:
+        step = int(math.ceil(max_count / 6 / 10.0)) * 10
+        if step < 20:
+            step = 20
+        graph_y_max = step * 6
+        graph_y_ticks = [step * i for i in range(6, -1, -1)]
+
+    # Prepare chart columns (13 subjects)
+    graph_columns = []
+    for s_idx, s_def in enumerate(MOEYS_RESULT_SUBJECTS):
+        sub_bars = []
+        for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+            cnt = active_matrix[g][s_idx]
+            height_pct = f"{(cnt / graph_y_max * 100.0):.2f}" if graph_y_max > 0 else "0.00"
+            sub_bars.append({
+                'grade': g,
+                'count': cnt,
+                'count_kh': to_khmer_digits(cnt),
+                'color': GRADE_COLORS[g],
+                'height_pct': height_pct,
+            })
+        graph_columns.append({
+            'key': s_def['key'],
+            'name_kh': s_def['name'],
+            'max_score': s_def['max'],
+            'bars': sub_bars,
+        })
+
+    # Prepare integrated data table rows (6 rows: A, B, C, D, E, F)
+    graph_table_rows = []
+    for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+        row_counts = [active_matrix[g][s_idx] for s_idx in range(13)]
+        row_counts_kh = [to_khmer_digits(c) for c in row_counts]
+        graph_table_rows.append({
+            'grade': g,
+            'color': GRADE_COLORS[g],
+            'counts': row_counts,
+            'counts_kh': row_counts_kh,
+        })
+
+    # Available rooms and classes for filter dropdown
+    all_rooms = exam.rooms.all().order_by('room_number')
+    all_classes = exam.candidates.values_list('origin_class', flat=True).distinct().exclude(origin_class__isnull=True).exclude(origin_class='').order_by('origin_class')
+
+    context = {
+        'exam': exam,
+        'view_mode': view_mode,
+        'pages': pages,
+        'all_candidates_count': total_count,
+        'moeys_subjects': MOEYS_RESULT_SUBJECTS,
+        'subject_headers': subject_headers,
+        'summary_rows_all': summary_rows_all,
+        'summary_rows_female': summary_rows_female,
+        'summary_rows_male': summary_rows_male,
+        'overall_mention_table': overall_mention_table,
+        'grand_total_row': grand_total_row,
+        'passed_count': passed_count,
+        'passed_count_kh': to_khmer_digits(passed_count),
+        'passed_females': passed_females,
+        'passed_females_kh': to_khmer_digits(passed_females),
+        'passed_rate': round((passed_count / total_count * 100.0), 1) if total_count > 0 else 0.0,
+        'failed_count': failed_count,
+        'failed_count_kh': to_khmer_digits(failed_count),
+        'failed_females': failed_females,
+        'failed_females_kh': to_khmer_digits(failed_females),
+        'failed_rate': round((failed_count / total_count * 100.0), 1) if total_count > 0 else 0.0,
+        'results_title_line': results_title_line,
+        'exam_date_kh': exam_date_kh,
+        'school_name': school_name,
+        'province_name': province_name,
+        'location_name': location_name,
+        'sign_day_kh': sign_day_kh,
+        'sign_month_kh': sign_month_kh,
+        'sign_year_kh': sign_year_kh,
+        'lunar_date': lunar_date,
+        'sign_role': sign_role,
+        'sign_date_raw': sign_date.strftime('%Y-%m-%d'),
+        'all_rooms': all_rooms,
+        'all_classes': all_classes,
+        'selected_room_id': selected_room_id,
+        'selected_class': selected_class,
+        'school_profile': school_profile,
+        # Graph specific context
+        'graph_columns': graph_columns,
+        'graph_table_rows': graph_table_rows,
+        'graph_y_ticks': graph_y_ticks,
+        'graph_y_max': graph_y_max,
+        'graph_gender': graph_gender,
+        'grade_colors': GRADE_COLORS,
+    }
+
+    if view_mode == 'graph':
+        return render(request, 'examinations/standardized/results_graph_print.html', context)
+
+    return render(request, 'examinations/standardized/results_sheet_print.html', context)
 
 
 @login_required
@@ -4350,6 +5566,474 @@ def api_send_exam_seating_telegram(request, exam_id):
 
     messages.success(request, f"បានបញ្ជូនដំណឹងបន្ទប់ និងលេខតុតាម Telegram ទៅកាន់អាណាព្យាបាលចំនួន {sent_count} នាក់ជោគជ័យ (សិស្សគ្មាន Telegram ចំនួន {skipped_count} នាក់)។")
     return redirect('standardized_exam_manage', exam_id=exam.id)
+
+
+# ==============================================================================
+# EXAM SUBJECTS SELECTION & NON-TESTED SUBJECTS EXCLUSIONS MANAGEMENT
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def exam_term_subjects_manage(request):
+    """
+    Admin Management Dashboard for Exam Subjects & Non-Tested Subjects Exclusions.
+    Allows configuring which subjects are tested vs non-tested:
+    - Per Exam Term (e.g. Monthly, Semester 1, Semester 2)
+    - Per Grade Level (7-12) & Track (Science, Social, General)
+    - Per Classroom (e.g. 11A vs 11B)
+    - 1-Click Presets (All Subjects, 7 Science Subjects, 7 Social Subjects)
+    """
+    from apps.academics.utils import get_active_academic_year
+    from .services import get_effective_term_subjects
+    active_year = get_active_academic_year(request)
+    
+    terms = ExamTerm.objects.filter(academic_year=active_year).order_by('-start_date') if active_year else ExamTerm.objects.all().order_by('-start_date')
+    selected_term_id = request.GET.get('term_id') or str(terms.first().id if terms.first() else '')
+    selected_term = terms.filter(id=selected_term_id).first() if (selected_term_id and selected_term_id.isdigit()) else terms.first()
+
+    selected_grade = request.GET.get('grade_level', '').strip()
+    selected_class_id = request.GET.get('classroom_id', '').strip()
+
+    classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    if selected_grade and selected_grade.isdigit():
+        classrooms_qs = classrooms_qs.filter(grade_level=int(selected_grade))
+
+    selected_class = None
+    if selected_class_id and selected_class_id.isdigit():
+        selected_class = classrooms_qs.filter(id=int(selected_class_id)).first()
+
+    # Determine scope and load subjects
+    g_level = int(selected_grade) if (selected_grade and selected_grade.isdigit()) else (selected_class.grade_level if selected_class else 12)
+    t_track = selected_class.track if selected_class else request.GET.get('track', 'GENERAL')
+
+    subjects_data = get_effective_term_subjects(
+        exam_term=selected_term,
+        classroom=selected_class,
+        grade_level=g_level if not selected_class else None,
+        track=t_track if not selected_class else None,
+        include_non_tested=True
+    )
+
+    all_grades = [7, 8, 9, 10, 11, 12]
+    all_classrooms_list = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+
+    return render(request, 'examinations/term_subjects_manage.html', {
+        'terms': terms,
+        'selected_term': selected_term,
+        'all_grades': all_grades,
+        'selected_grade': g_level,
+        'classrooms': classrooms_qs,
+        'all_classrooms': all_classrooms_list,
+        'selected_class': selected_class,
+        'selected_track': t_track,
+        'subjects_data': subjects_data,
+        'active_year': active_year,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_exam_term_subject(request):
+    """
+    AJAX endpoint to toggle is_tested for a specific subject under term + (classroom or grade_level).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    import json
+    data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+
+    term_id = data.get('term_id')
+    classroom_id = data.get('classroom_id')
+    grade_level = data.get('grade_level')
+    track = data.get('track', 'GENERAL')
+    subject_id = data.get('subject_id')
+    is_tested = str(data.get('is_tested', 'true')).lower() in ['true', '1', 'on']
+    custom_max = data.get('custom_max_score')
+
+    exam_term = ExamTerm.objects.filter(id=term_id).first() if term_id else None
+    classroom = Classroom.objects.filter(id=classroom_id).first() if classroom_id else None
+    subject = get_object_or_404(Subject, id=subject_id)
+    ay = exam_term.academic_year if exam_term else (classroom.academic_year if classroom else None)
+
+    lookup = {
+        'academic_year': ay,
+        'exam_term': exam_term,
+        'classroom': classroom,
+        'subject': subject,
+    }
+    if not classroom:
+        lookup['grade_level'] = int(grade_level) if grade_level else None
+        lookup['track'] = track
+
+    parsed_max = Decimal(str(custom_max)) if custom_max and str(custom_max).strip() else None
+
+    setting, _ = ExamTermSubjectSetting.objects.update_or_create(
+        **lookup,
+        defaults={
+            'is_tested': is_tested,
+            'custom_max_score': parsed_max,
+            'configured_by': request.user
+        }
+    )
+
+    status_kh = "ប្រឡង" if is_tested else "មិនប្រឡង"
+    return JsonResponse({
+        'status': 'success',
+        'is_tested': is_tested,
+        'message': f"មុខវិជ្ជា «{subject.name_kh}» ត្រូវបានកំណត់ជា៖ {status_kh}"
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_apply_exam_term_preset(request):
+    """
+    Applies presets (ALL, SCIENCE_7, SOCIAL_7) to an ExamTerm + Classroom/GradeLevel.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    import json
+    data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+
+    term_id = data.get('term_id')
+    classroom_id = data.get('classroom_id')
+    grade_level = data.get('grade_level')
+    track = data.get('track', 'GENERAL')
+    preset = data.get('preset', 'ALL').strip().upper()
+
+    exam_term = ExamTerm.objects.filter(id=term_id).first() if term_id else None
+    classroom = Classroom.objects.filter(id=classroom_id).first() if classroom_id else None
+    ay = exam_term.academic_year if exam_term else (classroom.academic_year if classroom else None)
+
+    SCIENCE_7_NAMES = ['ភាសាខ្មែរ', 'គណិតវិទ្យា', 'រូបវិទ្យា', 'គីមីវិទ្យា', 'ជីវវិទ្យា', 'ប្រវត្តិវិទ្យា', 'អង់គ្លេស', 'ភាសាអង់គ្លេស', 'ភាសាបរទេស']
+    SOCIAL_7_NAMES = ['ភាសាខ្មែរ', 'គណិតវិទ្យា', 'ភូមិវិទ្យា', 'ប្រវត្តិវិទ្យា', 'សីលធម៌-ពលរដ្ឋ', 'សីលធម៌', 'ផែនដីវិទ្យា', 'ផែនដី', 'អង់គ្លេស', 'ភាសាអង់គ្លេស', 'ភាសាបរទេស']
+
+    from .services import get_effective_term_subjects
+    all_rules = get_effective_term_subjects(
+        exam_term=exam_term,
+        classroom=classroom,
+        grade_level=int(grade_level) if grade_level else None,
+        track=track,
+        include_non_tested=True
+    )
+
+    with transaction.atomic():
+        for r in all_rules:
+            sub = r.subject
+            sub_name = sub.name_kh.strip()
+            
+            if preset == 'ALL':
+                is_test = True
+            elif preset == 'SCIENCE_7':
+                is_test = any(s in sub_name for s in SCIENCE_7_NAMES)
+            elif preset == 'SOCIAL_7':
+                is_test = any(s in sub_name for s in SOCIAL_7_NAMES)
+            else:
+                is_test = True
+
+            lookup = {
+                'academic_year': ay,
+                'exam_term': exam_term,
+                'classroom': classroom,
+                'subject': sub,
+            }
+            if not classroom:
+                lookup['grade_level'] = int(grade_level) if grade_level else None
+                lookup['track'] = track
+
+            ExamTermSubjectSetting.objects.update_or_create(
+                **lookup,
+                defaults={
+                    'is_tested': is_test,
+                    'configured_by': request.user
+                }
+            )
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f"បានកំណត់ Preset «{preset}» ដោយជោគជ័យ!"
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_manage_standardized_exam_subjects(request, exam_id):
+    """
+    AJAX / POST endpoint to manage (add, remove, edit) subjects for a StandardizedExam.
+    Automatically recalculates overall and room ranks after modifications.
+    """
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+    import json
+    data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    subject_ids = data.get('subject_ids', [])
+    if isinstance(subject_ids, str):
+        subject_ids = [int(s.strip()) for s in subject_ids.split(',') if s.strip().isdigit()]
+    elif isinstance(subject_ids, list):
+        subject_ids = [int(s) for s in subject_ids if str(s).isdigit()]
+
+    if not subject_ids:
+        return JsonResponse({'status': 'error', 'message': '⚠️ សូមជ្រើសរើសយ៉ាងហោចណាស់មួយមុខវិជ្ជា!'}, status=400)
+
+    with transaction.atomic():
+        # Remove exam subjects not in subject_ids
+        exam.exam_subjects.exclude(subject_id__in=subject_ids).delete()
+
+        # Add or update
+        for order_idx, sid in enumerate(subject_ids, 1):
+            sub = Subject.objects.filter(id=sid).first()
+            if sub:
+                es = exam.exam_subjects.filter(subject=sub).first()
+                if not es:
+                    max_sc = Decimal('50.00')
+                    coef = Decimal('1.00')
+                    ExamSubject.objects.create(
+                        exam=exam,
+                        subject=sub,
+                        max_score=max_sc,
+                        coefficient=coef,
+                        session=exam.session if exam.session != 'FULL_DAY' else 'MORNING',
+                        order=order_idx
+                    )
+
+        # Recalculate ranks across all candidates in exam
+        exam.recalculate_all_ranks()
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f"🎉 បានធ្វើបច្ចុប្បន្នភាពមុខវិជ្ជាប្រឡងចំនួន {len(subject_ids)} មុខវិជ្ជា ដោយជោគជ័យ!",
+        'total_subjects': exam.exam_subjects.count()
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_apply_standardized_exam_preset(request, exam_id):
+    """
+    1-Click Preset API for Standardized Exams:
+    - SCIENCE_7: Khmer (75, 1.5), Math (125, 2.5), Physics (75, 1.5), Chemistry (75, 1.5), Biology (75, 1.5), History (50, 1.0), English (50, 1.0)
+    - SOCIAL_7: Khmer (125, 2.5), Math (75, 1.5), Geography (75, 1.5), History (75, 1.5), Moral (75, 1.5), Earth (50, 1.0), English (50, 1.0)
+    - ALL_MOEYS: All 13 MoEYS subjects
+    """
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+    import json
+    data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+    preset = str(data.get('preset', '')).strip().upper()
+
+    # Pre-defined Official MoEYS Grade 12 Presets
+    SCIENCE_PRESET = [
+        ('ភាសាខ្មែរ', Decimal('75.00'), Decimal('1.50')),
+        ('គណិតវិទ្យា', Decimal('125.00'), Decimal('2.50')),
+        ('រូបវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('គីមីវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('ជីវវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('ប្រវត្តិវិទ្យា', Decimal('50.00'), Decimal('1.00')),
+        ('ភាសាបរទេស', Decimal('50.00'), Decimal('1.00')),
+    ]
+
+    SOCIAL_PRESET = [
+        ('ភាសាខ្មែរ', Decimal('125.00'), Decimal('2.50')),
+        ('គណិតវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('ភូមិវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('ប្រវត្តិវិទ្យា', Decimal('75.00'), Decimal('1.50')),
+        ('សីលធម៌-ពលរដ្ឋ', Decimal('75.00'), Decimal('1.50')),
+        ('ផែនដីវិទ្យា', Decimal('50.00'), Decimal('1.00')),
+        ('ភាសាបរទេស', Decimal('50.00'), Decimal('1.00')),
+    ]
+
+    all_subs = list(Subject.objects.all())
+
+    def find_subject(name):
+        for s in all_subs:
+            if name in s.name_kh or (name == 'ភាសាបរទេស' and ('អង់គ្លេស' in s.name_kh or 'English' in s.name_en or s.code == 'ENG')):
+                return s
+            if name == 'សីលធម៌-ពលរដ្ឋ' and ('សីលធម៌' in s.name_kh or 'ពលរដ្ឋ' in s.name_kh):
+                return s
+        return None
+
+    with transaction.atomic():
+        exam.exam_subjects.all().delete()
+        order_idx = 1
+
+        if preset == 'SCIENCE_7':
+            target_list = SCIENCE_PRESET
+            exam.track = 'SCIENCE'
+            exam.save(update_fields=['track'])
+        elif preset == 'SOCIAL_7':
+            target_list = SOCIAL_PRESET
+            exam.track = 'SOCIAL'
+            exam.save(update_fields=['track'])
+        else:
+            # All MoEYS subjects from GradeLevelRule or Subject
+            rules = GradeLevelRule.objects.filter(grade_level=exam.grade_level)
+            target_list = []
+            for r in rules.select_related('subject').order_by('subject__order', 'id'):
+                target_list.append((r.subject.name_kh, r.max_score, round(r.max_score / Decimal('50.00'), 2)))
+
+        for sub_name, max_s, coef in target_list:
+            sub = find_subject(sub_name)
+            if sub:
+                ExamSubject.objects.create(
+                    exam=exam,
+                    subject=sub,
+                    max_score=max_s,
+                    coefficient=coef,
+                    session=exam.session if exam.session != 'FULL_DAY' else 'MORNING',
+                    order=order_idx
+                )
+                order_idx += 1
+
+        exam.recalculate_all_ranks()
+
+    count = exam.exam_subjects.count()
+    preset_label = "៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ" if preset == 'SCIENCE_7' else ("៧ មុខវិជ្ជាសង្គម" if preset == 'SOCIAL_7' else "គ្រប់មុខវិជ្ជា")
+    return JsonResponse({
+        'status': 'success',
+        'message': f"🎉 បានកំណត់ Preset «{preset_label}» ចំនួន {count} មុខវិជ្ជា សម្រាប់សម័យប្រឡងនេះដោយជោគជ័យ!",
+        'total_subjects': count
+    })
+
+
+@login_required
+def exam_results_graph_view(request, exam_id):
+    """
+    Dedicated view for Examination Results Graph (100% replica of Graph.pdf).
+    Redirects to exam_results_sheet_print_view with mode=graph, preserving query params.
+    """
+    params = request.GET.copy()
+    params['mode'] = 'graph'
+    from django.urls import reverse
+    return redirect(f"{reverse('exam_results_sheet_print_view', args=[exam_id])}?{params.urlencode()}")
+
+
+@login_required
+def term_results_graph_view(request, term_id):
+    """
+    Results Graph View for Monthly / Semester Classroom Exam Terms.
+    Builds mention distribution across classroom grades and renders results_graph_print.html.
+    """
+    term = get_object_or_404(ExamTerm.objects.select_related('academic_year'), id=term_id)
+    
+    # Check if this term is linked to a StandardizedExam
+    linked_std_exam = term.standardized_exams.first()
+    if linked_std_exam:
+        params = request.GET.copy()
+        params['mode'] = 'graph'
+        from django.urls import reverse
+        return redirect(f"{reverse('exam_results_sheet_print_view', args=[linked_std_exam.id])}?{params.urlencode()}")
+
+    classroom_id = request.GET.get('classroom_id') or request.GET.get('classroom')
+    selected_class = None
+    if classroom_id and str(classroom_id).isdigit():
+        selected_class = Classroom.objects.filter(id=int(classroom_id)).first()
+    if not selected_class:
+        selected_class = Classroom.objects.filter(academic_year=term.academic_year).order_by('grade_level', 'code').first()
+
+    grade_level = selected_class.grade_level if selected_class else 7
+    classrooms = Classroom.objects.filter(academic_year=term.academic_year).order_by('grade_level', 'code')
+
+    from .services import get_effective_term_subjects
+    subject_rules = get_effective_term_subjects(exam_term=term, classroom=selected_class, include_non_tested=False)
+    
+    students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('student_id') if selected_class else []
+    grades_map = {}
+    if selected_class:
+        for g in Grade.objects.filter(classroom=selected_class, exam_term=term):
+            grades_map[(g.student_id, g.subject_id)] = g
+
+    # Build matrix for subjects in this classroom
+    GRADE_COLORS = {
+        'A': '#1f4e79',  # Dark Navy Blue
+        'B': '#c55a11',  # Terracotta Orange
+        'C': '#276a3c',  # Forest Green
+        'D': '#00a2e8',  # Cyan / Sky Blue
+        'E': '#800080',  # Magenta / Purple
+        'F': '#548235',  # Leaf Green
+    }
+
+    # Use first 13 subject rules or available rules
+    active_rules = subject_rules[:13] if len(subject_rules) >= 13 else subject_rules
+    matrix = {g: [0] * len(active_rules) for g in ['A', 'B', 'C', 'D', 'E', 'F']}
+
+    for student in students:
+        for s_idx, rule in enumerate(active_rules):
+            g_obj = grades_map.get((student.id, rule.subject_id))
+            if g_obj and g_obj.score is not None:
+                letter = g_obj.grade_letter or get_moeys_subject_mention(float(g_obj.score), float(rule.max_score))
+            else:
+                letter = 'F'
+            if letter in matrix:
+                matrix[letter][s_idx] += 1
+
+    max_count = max([max(matrix[g]) for g in ['A', 'B', 'C', 'D', 'E', 'F']] + [0])
+    import math
+    if max_count <= 120:
+        graph_y_max = 120
+        graph_y_ticks = [120, 100, 80, 60, 40, 20, 0]
+    else:
+        step = int(math.ceil(max_count / 6 / 10.0)) * 10
+        if step < 20:
+            step = 20
+        graph_y_max = step * 6
+        graph_y_ticks = [step * i for i in range(6, -1, -1)]
+
+    graph_columns = []
+    for s_idx, rule in enumerate(active_rules):
+        sub_bars = []
+        for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+            cnt = matrix[g][s_idx]
+            height_pct = f"{(cnt / graph_y_max * 100.0):.2f}" if graph_y_max > 0 else "0.00"
+            sub_bars.append({
+                'grade': g,
+                'count': cnt,
+                'count_kh': to_khmer_digits(cnt),
+                'color': GRADE_COLORS[g],
+                'height_pct': height_pct,
+            })
+        graph_columns.append({
+            'key': rule.subject.code or f"sub_{rule.subject.id}",
+            'name_kh': rule.subject.name_kh,
+            'max_score': rule.max_score,
+            'bars': sub_bars,
+        })
+
+    graph_table_rows = []
+    for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+        row_counts = [matrix[g][s_idx] for s_idx in range(len(active_rules))]
+        row_counts_kh = [to_khmer_digits(c) for c in row_counts]
+        graph_table_rows.append({
+            'grade': g,
+            'color': GRADE_COLORS[g],
+            'counts': row_counts,
+            'counts_kh': row_counts_kh,
+        })
+
+    academic_year_kh = to_khmer_digits(term.academic_year.name if term.academic_year else '')
+    grade_kh = to_khmer_digits(grade_level)
+    cls_name = selected_class.name if selected_class else f"ថ្នាក់ទី {grade_kh}"
+    results_title_line = f"លទ្ធផលប្រឡង{term.name} ឆ្នាំសិក្សា {academic_year_kh} {cls_name}".strip()
+
+    context = {
+        'term': term,
+        'selected_class': selected_class,
+        'classrooms': classrooms,
+        'results_title_line': results_title_line,
+        'graph_columns': graph_columns,
+        'graph_table_rows': graph_table_rows,
+        'graph_y_ticks': graph_y_ticks,
+        'graph_y_max': graph_y_max,
+        'grade_colors': GRADE_COLORS,
+        'view_mode': 'graph',
+    }
+    return render(request, 'examinations/standardized/results_graph_print.html', context)
+
 
 
 

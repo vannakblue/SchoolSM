@@ -4,138 +4,305 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>បញ្ជីបិទផ្សាយតាមបន្ទប់ប្រឡង - {{ exam.name }}</title>
-    <!-- Google Fonts Kantumruy Pro & Siemreap -->
+    <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
     <!-- FontAwesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Bootstrap 5 CSS for toolbar -->
+    <!-- Bootstrap 5 CSS for toolbar & modal -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <style>
+        /* Top-level page configuration: 0 margin so container controls precise 1cm - 1.5cm margins */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        /* Base typography & reset */
         body {
-            background-color: #f1f5f9;
-            font-family: 'Kantumruy Pro', 'Siemreap', sans-serif;
+            background-color: #e2e8f0;
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
             color: #000000;
             margin: 0;
-            padding: 20px;
-        }
-
-        .no-print {
-            max-width: 900px;
-            margin: 0 auto 20px auto;
-        }
-
-        /* Printable A4 Sheet Layout */
-        .print-sheet {
-            background: #ffffff;
-            width: 100%;
-            max-width: 900px;
-            margin: 0 auto 30px auto;
-            padding: 40px 45px 35px 45px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            border-radius: 6px;
-            box-sizing: border-box;
-            color: #000000;
+            padding: 20px 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .moul-font {
-            font-family: 'Moul', cursive;
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
         }
 
-        .header-section {
-            text-align: center;
-            margin-bottom: 20px;
+        .kantumruy-font {
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
         }
-        .kingdom-title {
-            font-size: 1.1rem;
-            margin-bottom: 2px;
+
+        /* Toolbar on screen */
+        .no-print {
+            max-width: 210mm;
+            margin: 0 auto 20px auto;
         }
-        .kingdom-motto {
-            font-size: 1rem;
-            margin-bottom: 8px;
-        }
-        .main-exam-title {
-            font-size: 1.35rem;
-            font-weight: 800;
+
+        /* A4 Page Printable Sheet (Exact 2cm Bottom Space, 1.5cm Left/Right margins) */
+        .print-sheet {
+            background: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            max-width: 210mm;
+            margin: 0 auto 30px auto;
+            padding: 10mm 15mm 30mm 15mm; /* Bottom: 30mm (~3cm), Left/Right: 15mm (~1.5cm), Top: 10mm */
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            box-sizing: border-box;
             color: #000000;
-            margin-top: 10px;
-            margin-bottom: 4px;
-        }
-        .sub-exam-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 12px;
+            position: relative;
+            page-break-after: always;
+            break-after: page;
         }
 
-        .meta-box {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1.5px solid #000000;
-            background: #f8fafc;
-            padding: 8px 14px;
-            border-radius: 4px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            margin-bottom: 15px;
-        }
-
-        /* MoEYS Table */
-        .moeys-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
+        .print-sheet:last-child {
             margin-bottom: 20px;
         }
-        .moeys-table th, .moeys-table td {
-            border: 1px solid #000000;
-            padding: 6px 8px;
-            vertical-align: middle;
-        }
-        .moeys-table th {
-            background-color: #f1f5f9;
-            font-weight: 700;
-            text-align: center;
-        }
-        .moeys-table tr:nth-child(even) {
-            background-color: #fafafa;
-        }
 
-        .signature-section {
+        /* Top Header Grid */
+        .header-grid {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-top: 25px;
-            font-size: 0.9rem;
-            page-break-inside: avoid;
+            width: 100%;
+            margin-bottom: 4px;
         }
 
+        .top-left-block {
+            text-align: center;
+            width: 44%;
+        }
+
+        .province-name {
+            font-size: 11pt;
+            line-height: 1.4;
+            letter-spacing: 0.2px;
+        }
+
+        .school-name {
+            font-size: 11.5pt;
+            line-height: 1.4;
+            margin-top: 1px;
+            letter-spacing: 0.2px;
+        }
+
+        .room-number-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-start;
+            margin-top: 6px;
+            padding-left: 8px;
+        }
+
+        .room-label {
+            font-size: 10.5pt;
+            letter-spacing: 0.2px;
+        }
+
+        .room-num-val {
+            font-size: 13.5pt;
+            margin-left: 24px;
+            letter-spacing: 1px;
+        }
+
+        .top-right-block {
+            text-align: center;
+            width: 44%;
+            position: relative;
+        }
+
+        .kingdom-title {
+            font-size: 11.5pt;
+            line-height: 1.4;
+            letter-spacing: 0.2px;
+        }
+
+        .kingdom-motto {
+            font-size: 11pt;
+            line-height: 1.4;
+            margin-top: 1px;
+            letter-spacing: 0.2px;
+        }
+
+        .divider-flourish {
+            font-size: 10.5pt;
+            line-height: 1.2;
+            margin: 2px 0 3px 0;
+            letter-spacing: 2px;
+            color: #000000;
+        }
+
+        .session-row {
+            text-align: right;
+            padding-right: 5px;
+            margin-top: 4px;
+        }
+
+        .session-badge-text {
+            font-size: 12pt;
+            letter-spacing: 0.5px;
+        }
+
+        /* Center Main Title */
+        .center-title-block {
+            text-align: center;
+            width: 100%;
+            margin-top: 6px;
+            margin-bottom: 10px;
+        }
+
+        .main-exam-title {
+            font-size: 11.5pt;
+            line-height: 1.5;
+            letter-spacing: 0.2px;
+            margin: 0 auto;
+            max-width: 95%;
+            word-break: break-word;
+        }
+
+        .sub-exam-date {
+            font-size: 10.5pt;
+            line-height: 1.4;
+            margin-top: 3px;
+            letter-spacing: 0.2px;
+        }
+
+        /* 8-Column MoEYS Table */
+        .show-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 4px;
+        }
+
+        .show-table th, .show-table td {
+            border: 1px solid #000000;
+            padding: 2px 3px;
+            font-size: 9.8pt;
+            height: 30px; /* Enlarged row height for rows 1 to 25 */
+            box-sizing: border-box;
+            vertical-align: middle;
+            color: #000000;
+        }
+
+        .show-table th {
+            font-weight: 700;
+            text-align: center;
+            height: 28px;
+            background-color: transparent;
+        }
+
+        /* Column Widths (Sum = 100%) */
+        .col-index     { width: 5.5%; text-align: center; }
+        .col-desk      { width: 7.5%; text-align: center; }
+        .col-id        { width: 10.5%; text-align: center; }
+        .col-name      { width: 28.0%; text-align: left; padding-left: 6px !important; }
+        .col-gender    { width: 6.0%; text-align: center; }
+        .col-dob       { width: 19.5%; text-align: center; }
+        .col-class     { width: 8.5%; text-align: center; }
+        .col-remarks   { width: 14.5%; text-align: center; }
+
+        /* Footer Section */
+        .footer-summary {
+            font-size: 9.5pt;
+            font-weight: 600;
+            text-align: left;
+            margin-top: 3px;
+            letter-spacing: 0.2px;
+        }
+
+        .footer-bottom-grid {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+            padding-right: 25px;
+        }
+
+        .signature-block {
+            text-align: center;
+            min-width: 250px;
+        }
+
+        .sign-date-line {
+            font-size: 9.5pt;
+            line-height: 1.4;
+            letter-spacing: 0.2px;
+        }
+
+        .principal-title {
+            font-size: 11pt;
+            margin-top: 3px;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            min-width: 50px;
+            padding: 0 4px;
+            border-radius: 3px;
+            outline: none;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        .principal-title:hover {
+            background-color: #f1f5f9;
+            box-shadow: 0 0 0 1px #94a3b8;
+            cursor: text;
+        }
+
+        .principal-title:focus {
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+
+        .signature-spacing {
+            height: 32px;
+        }
+
+        /* Print Media Styles: Guaranteed 2cm Bottom Space, 1.5cm Left/Right margins */
         @media print {
-            body {
-                background: none;
-                padding: 0;
-                color: #000000;
+            html, body {
+                width: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
+
             .no-print {
                 display: none !important;
             }
+
             .print-sheet {
-                max-width: 100%;
-                margin: 0;
-                padding: 25px 25px;
-                box-shadow: none;
-                border-radius: 0;
-                page-break-after: always;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 auto !important;
+                padding: 10mm 15mm 30mm 15mm !important; /* Bottom: 30mm (~3cm), Left/Right: 15mm (~1.5cm), Top: 10mm */
+                box-sizing: border-box !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
             }
+
             .print-sheet:last-child {
-                page-break-after: auto;
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
-            @page {
-                size: A4 portrait;
-                margin: 12mm 10mm 12mm 10mm;
+
+            .principal-title {
+                background: transparent !important;
+                box-shadow: none !important;
+                outline: none !important;
             }
         }
     </style>
@@ -143,137 +310,211 @@
 <body>
 
     <!-- Control Toolbar (Hidden on Print) -->
-    <div class="no-print d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white p-3 rounded-3 shadow-sm border">
-        <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold">
-                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
-            </a>
-            <h5 class="fw-bold mb-0 text-primary">
-                <i class="fa-solid fa-door-open me-2"></i>បញ្ជីបិទផ្សាយតាមបន្ទប់ (Room Postings)
-            </h5>
-        </div>
+    <div class="no-print bg-white p-3 rounded-3 shadow-sm border">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'standardized_exam_manage' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="fa-solid fa-file-lines me-1"></i> បញ្ជីបិទផ្សាយតាមបន្ទប់ (Exam Room Postings)
+                </h6>
+            </div>
 
-        <div class="d-flex align-items-center gap-2">
-            <!-- Room Filter Dropdown -->
-            <form method="GET" class="d-flex align-items-center gap-2 mb-0">
-                <select name="room_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">-- បោះពុម្ពគ្រប់បន្ទប់ទាំងអស់ ({{ all_rooms.count }} បន្ទប់) --</option>
-                    {% for r in all_rooms %}
-                    <option value="{{ r.id }}" {% if selected_room_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.room_name }} ({{ r.candidate_count }} នាក់)</option>
-                    {% endfor %}
-                </select>
-            </form>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Room Filter Form -->
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <!-- Preserve any custom query params -->
+                    {% if request.GET.province %}<input type="hidden" name="province" value="{{ request.GET.province }}">{% endif %}
+                    {% if request.GET.school_name %}<input type="hidden" name="school_name" value="{{ request.GET.school_name }}">{% endif %}
+                    {% if request.GET.location %}<input type="hidden" name="location" value="{{ request.GET.location }}">{% endif %}
+                    {% if request.GET.sign_date %}<input type="hidden" name="sign_date" value="{{ request.GET.sign_date }}">{% endif %}
+                    {% if request.GET.sign_role %}<input type="hidden" name="sign_role" value="{{ request.GET.sign_role }}">{% endif %}
 
-            <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="window.print()">
-                <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print / PDF)
-            </button>
+                    <select name="room_id" class="form-select form-select-sm fw-bold" style="min-width: 240px;" onchange="this.form.submit()">
+                        <option value="">-- បោះពុម្ពគ្រប់បន្ទប់ទាំងអស់ ({{ all_rooms.count }} បន្ទប់) --</option>
+                        {% for r in all_rooms %}
+                        <option value="{{ r.id }}" {% if selected_room_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.room_name }} ({{ r.candidate_count }} នាក់)</option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <!-- Settings Button -->
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="fa-solid fa-sliders me-1"></i> កំណត់ព័ត៌មានក្បាល/ជើង
+                </button>
+
+                <!-- Print Button -->
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print / PDF)
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Printable Sheets per Room -->
+    <!-- Quick Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="GET">
+                    {% if selected_room_id %}<input type="hidden" name="room_id" value="{{ selected_room_id }}">{% endif %}
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-bold" id="settingsModalLabel">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> កំណត់ព័ត៌មានក្បាលទំព័រ និងជើងទំព័រ
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ខេត្ត/រាជធានី (Province / City)</label>
+                            <input type="text" name="province" class="form-control form-control-sm" value="{{ province_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ឈ្មោះគ្រឹះស្ថានសិក្សា (School Name)</label>
+                            <input type="text" name="school_name" class="form-control form-control-sm" value="{{ school_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ទីកន្លែងចុះហត្ថលេខា (Signing Location)</label>
+                            <input type="text" name="location" class="form-control form-control-sm" value="{{ location_name }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">កាលបរិច្ឆេទចុះហត្ថលេខា (Signing Date)</label>
+                            <input type="date" name="sign_date" class="form-control form-control-sm" value="{{ sign_date_raw }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">តួនាទីអ្នកចុះហត្ថលេខា (Signer Title / Role)</label>
+                            <input type="text" id="inputSignRole" name="sign_role" class="form-control form-control-sm" value="{{ sign_role }}" placeholder="ឧ. នាយក, នាយិកា, ប្រធានមណ្ឌល...">
+                            <div class="form-text text-muted" style="font-size: 0.75rem;">ចំណាំ៖ លោកអ្នកក៏អាចចុចលើពាក្យ «{{ sign_role }}» ដោយផ្ទាល់លើទំព័រដើម្បីកែប្រែបានភ្លាមៗផងដែរ។</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">យល់ព្រម & អនុវត្ត</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Sheets per Room (Exactly 1 Room = 1 Page, 25 Rows) -->
     {% for r_data in rooms_data %}
     <div class="print-sheet">
         <!-- Official Cambodian MoEYS Header -->
-        <div class="header-section">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <div class="text-start" style="font-size: 0.88rem; line-height: 1.4;">
-                    <div class="fw-bold">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
-                    <div>មន្ទីរអប់រំ យុវជន និងកីឡា</div>
-                    <div class="fw-bold text-decoration-underline">{{ exam.academic_year.name }}</div>
-                </div>
-                <div class="text-center">
-                    <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                    <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                    <div style="letter-spacing: 2px;">***</div>
+        <div class="header-grid">
+            <!-- Top-Left Block -->
+            <div class="top-left-block">
+                <div class="province-name moul-font">{{ province_name }}</div>
+                <div class="school-name moul-font">{{ school_name }}</div>
+                <div class="room-number-row">
+                    <span class="room-label moul-font">បន្ទប់លេខ៖</span>
+                    <span class="room-num-val moul-font">{{ r_data.room_number_kh }}</span>
                 </div>
             </div>
 
-            <div class="main-exam-title moul-font">បញ្ជីឈ្មោះបេក្ខជនតាមបន្ទប់ប្រឡង</div>
-            <div class="sub-exam-title">
-                {{ exam.name }} • កម្រិតថ្នាក់ទី {{ exam.grade_level }} ({{ exam.get_track_display }}) • <strong>វេនប្រឡង៖ {{ exam.get_session_display }}</strong>
+            <!-- Top-Right Block -->
+            <div class="top-right-block">
+                <div class="kingdom-title moul-font">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="kingdom-motto moul-font">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="divider-flourish">― ❖ ―</div>
+                <div class="session-row">
+                    <span class="session-badge-text moul-font">{{ session_kh }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- Room Meta Box -->
-        <div class="meta-box">
-            <div>
-                <i class="fa-solid fa-door-open me-1"></i>{{ r_data.room.room_name }} {% if r_data.room.building %}({{ r_data.room.building }}){% endif %}
-            </div>
-            <div>
-                <i class="fa-solid fa-clock me-1"></i>វេនប្រឡង៖ <strong>{{ exam.get_session_display }}</strong>
-            </div>
-            <div>
-                <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទ៖ {{ exam.exam_date|date:"d/m/Y" }}
-            </div>
-            <div>
-                បេក្ខជនសរុប៖ <strong>{{ r_data.total_candidates }}</strong> នាក់ (ស្រី <strong>{{ r_data.female_candidates }}</strong> នាក់)
-            </div>
+        <!-- Center Title Block -->
+        <div class="center-title-block">
+            <h5 class="main-exam-title moul-font">{{ exam_title_line }}</h5>
+            <div class="sub-exam-date moul-font">សម័យប្រឡង៖ {{ exam_date_kh }}</div>
         </div>
 
-        <!-- Candidates Table -->
-        <table class="moeys-table">
+        <!-- Official MoEYS Candidates Table (Exactly 8 columns & 25 rows) -->
+        <table class="show-table">
             <thead>
                 <tr>
-                    <th style="width: 40px;">ល.រ</th>
-                    <th style="width: 60px;">លេខតុ</th>
-                    <th style="width: 75px;">អត្តលេខ</th>
-                    <th style="text-align: left; padding-left: 10px;">គោត្តនាម និងនាម</th>
-                    <th style="text-align: left; padding-left: 10px;">អក្សរឡាតាំង</th>
-                    <th style="width: 50px;">ភេទ</th>
-                    <th style="width: 90px;">ថ្ងៃខែឆ្នាំកំណើត</th>
-                    <th style="width: 75px;">ថ្នាក់ដើម</th>
-                    <th style="width: 70px;">ផ្សេងៗ</th>
+                    <th class="col-index">ល.រ</th>
+                    <th class="col-desk">លេខតុ</th>
+                    <th class="col-id">អត្តលេខ</th>
+                    <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម និងនាម</th>
+                    <th class="col-gender">ភេទ</th>
+                    <th class="col-dob">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                    <th class="col-class">មកពីថ្នាក់</th>
+                    <th class="col-remarks">ផ្សេងៗ</th>
                 </tr>
             </thead>
             <tbody>
-                {% for c in r_data.candidates %}
-                <tr {% if c.is_disciplinary_blocked %}style="background-color: #fff1f2;"{% endif %}>
-                    <td style="text-align: center; font-weight: 600;">{{ forloop.counter }}</td>
-                    <td style="text-align: center; font-weight: 700;">{{ c.desk_number|stringformat:"02d" }}</td>
-                    <td style="text-align: center; font-weight: 700;">{{ c.roll_number }}</td>
-                    {% if c.is_disciplinary_blocked %}
-                    <td colspan="5" style="text-align: center; font-weight: 700; color: #b91c1c; letter-spacing: 0.3px;">
+                {% for row in r_data.rows %}
+                <tr>
+                    <td class="col-index">{{ row.row_num }}</td>
+                    <td class="col-desk">{{ row.desk_number }}</td>
+                    <td class="col-id">{{ row.student_id }}</td>
+                    {% if row.is_disciplinary_blocked %}
+                    <td colspan="4" style="text-align: center; font-weight: 700; color: #b91c1c; font-size: 8.5pt;">
                         ⚠️ [ ផ្អាកបណ្តោះអាសន្ន - សូមទាក់ទងការិយាល័យវិន័យ/រដ្ឋបាល ដើម្បីធ្វើកិច្ចសន្យាមុនចូលប្រឡង ]
                     </td>
-                    <td style="text-align: center; font-weight: 700; color: #b91c1c;">ជាប់កិច្ចសន្យា</td>
+                    <td class="col-remarks" style="font-weight: 700; color: #b91c1c;">ជាប់កិច្ចសន្យា</td>
                     {% else %}
-                    <td style="font-weight: 700; text-align: left; padding-left: 10px;">{{ c.candidate_name_kh }}</td>
-                    <td style="text-align: left; padding-left: 10px;">{{ c.candidate_name_en|default:"" }}</td>
-                    <td style="text-align: center;">{{ c.gender }}</td>
-                    <td style="text-align: center;">{{ c.dob|date:"d/m/Y"|default:"" }}</td>
-                    <td style="text-align: center; font-weight: 600;">{{ c.origin_class|default:"" }}</td>
-                    <td style="text-align: center;">{{ c.remarks|default:"" }}</td>
+                    <td class="col-name">{{ row.candidate_name_kh }}</td>
+                    <td class="col-gender">{{ row.gender_kh }}</td>
+                    <td class="col-dob">{{ row.dob_kh }}</td>
+                    <td class="col-class">{{ row.origin_class }}</td>
+                    <td class="col-remarks">{{ row.remarks }}</td>
                     {% endif %}
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="9" style="text-align: center; padding: 20px;">មិនទាន់មានបេក្ខជនក្នុងបន្ទប់នេះនៅឡើយទេ</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <!-- Official Signatures -->
-        <div class="signature-section">
-            <div class="text-center" style="width: 250px;">
-                <div class="fw-bold mb-1">គណៈកម្មការត្រួតពិនិត្យបន្ទប់</div>
-                <div class="text-muted small mb-5">អនុរក្សទី១ & អនុរក្សទី២</div>
-                <div class="border-bottom border-dark pb-1" style="width: 180px; margin: 0 auto;"></div>
-            </div>
+        <!-- Footer Section -->
+        <div class="footer-summary">
+            បញ្ឈប់បញ្ជីត្រឹមចំនួន {{ r_data.total_candidates_kh }} នាក់ ស្រី {{ r_data.female_candidates_kh }} នាក់
+        </div>
 
-            <div class="text-center" style="width: 280px;">
-                <div class="mb-1">ថ្ងៃ................ទី........ខែ........ឆ្នាំ២០២...</div>
-                <div class="fw-bold moul-font mb-5">ប្រធានមណ្ឌលប្រឡង</div>
-                <div class="border-bottom border-dark pb-1" style="width: 200px; margin: 0 auto;"></div>
+        <div class="footer-bottom-grid">
+            <div class="signature-block">
+                <div class="sign-date-line">{{ location_name }} ថ្ងៃទី {{ sign_day_kh }} ខែ {{ sign_month_kh }} ឆ្នាំ {{ sign_year_kh }}</div>
+                <div class="principal-title moul-font" contenteditable="true" spellcheck="false" title="ចុចទីនេះដើម្បីកែប្រែតួនាទី (Click to edit role)">{{ sign_role|default:"នាយក" }}</div>
+                <div class="signature-spacing"></div>
             </div>
         </div>
     </div>
     {% empty %}
     <div class="print-sheet text-center py-5">
-        <h4 class="fw-bold text-muted">មិនទាន់មានបន្ទប់ប្រឡងត្រូវបានបង្កើតនៅឡើយទេ</h4>
-        <p class="text-muted">សូមត្រឡប់ទៅផ្ទាំងគ្រប់គ្រងសម័យប្រឡង រួចចុច <strong>«ចែកបន្ទប់ ២៥ នាក់/បន្ទប់»</strong> ជាមុនសិន។</p>
+        <h5 class="fw-bold text-muted moul-font mb-3">មិនទាន់មានបន្ទប់ប្រឡងត្រូវបានបង្កើតនៅឡើយទេ</h5>
+        <p class="text-muted">សូមត្រឡប់ទៅផ្তখনគ្រប់គ្រងសម័យប្រឡង រួចចុច <strong>«ចែកបន្ទប់ ២៥ នាក់/បន្ទប់»</strong> ជាមុនសិន។</p>
     </div>
     {% endfor %}
 
+    <!-- Bootstrap 5 JS for modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleTitles = document.querySelectorAll('.principal-title');
+            const roleInput = document.getElementById('inputSignRole');
+
+            roleTitles.forEach(function(titleEl) {
+                // Prevent multi-line enter
+                titleEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+
+                // Sync across all sheets and with modal input in real-time
+                titleEl.addEventListener('input', function() {
+                    const val = this.innerText;
+                    roleTitles.forEach(function(other) {
+                        if (other !== titleEl) {
+                            other.innerText = val;
+                        }
+                    });
+                    if (roleInput) {
+                        roleInput.value = val.trim();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

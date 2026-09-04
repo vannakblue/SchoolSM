@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@page {
+    size: A4 portrait;
+    margin: 15mm;
+}
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    width: 100%;
+}
+.sheet {
+    width: 100%;
+    box-sizing: border-box;
+}
+.header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+th, td {
+    border: 1px solid black;
+    padding: 4px;
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="header">
+        <div>Left Header</div>
+        <div>Right Header</div>
+    </div>
+    <div style="text-align:center;"><h3>Center Title</h3></div>
+    <table>
+        <tr><th style="width:10%">1</th><th style="width:20%">2</th><th style="width:70%">3</th></tr>
+        <tr><td>A</td><td>B</td><td>C</td></tr>
+    </table>
+</div>
+</body>
+</html>

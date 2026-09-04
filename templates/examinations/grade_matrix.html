@@ -114,7 +114,17 @@
                 <h5 class="fw-bold mb-0 text-primary">
                     <i class="fa-solid fa-pen-to-square me-2"></i>បញ្ចូលពិន្ទុ៖ {{ selected_class.name }} ({{ selected_term.name }})
                 </h5>
-                <span class="badge bg-light text-dark mt-1">{{ selected_class.get_track_display }} | ពិន្ទុសរុបពេញ៖ {{ selected_class.get_total_max_score|floatformat:0 }} ពិន្ទុ</span>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="badge bg-light text-dark">{{ selected_class.get_track_display }}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                        ពិន្ទុសរុបមុខវិជ្ជាប្រឡង៖ <strong>{{ total_tested_max|floatformat:0 }}</strong> ពិន្ទុ
+                    </span>
+                    {% if user.role == 'ADMIN' or user.is_superuser %}
+                    <a href="{% url 'exam_term_subjects_manage' %}?term_id={{ selected_term.id }}&classroom_id={{ selected_class.id }}" class="btn btn-outline-info btn-xs py-0 px-2 rounded-pill fw-bold" title="ជ្រើសរើសមុខវិជ្ជាប្រឡង/មិនប្រឡងសម្រាប់ថ្នាក់នេះ">
+                        <i class="fa-solid fa-sliders me-1"></i> កំណត់មុខវិជ្ជាប្រឡង
+                    </a>
+                    {% endif %}
+                </div>
             </div>
             {% if is_grading_open or user.role == 'ADMIN' or user.is_superuser %}
             <button type="submit" class="btn btn-success fw-bold shadow-sm">
@@ -133,13 +143,19 @@
                     <tr>
                         <th style="min-width: 180px;">សិស្ស</th>
                         {% for rule in subject_rules %}
-                        <th class="text-center" style="min-width: 115px;">
+                        <th class="text-center {% if not rule.is_tested %}bg-light opacity-75{% endif %}" style="min-width: 115px;">
                             <div>
                                 <div class="fw-bold fs-6">{{ rule.subject.name_kh }}</div>
                             </div>
+                            {% if rule.is_tested %}
                             <div class="badge bg-primary-soft text-primary small mt-1" style="font-size: 0.72rem;">
                                 អតិបរមា {{ rule.max_score|floatformat:0 }}
                             </div>
+                            {% else %}
+                            <div class="badge bg-danger-subtle text-danger border border-danger-subtle small mt-1" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-ban me-1"></i>មិនប្រឡង
+                            </div>
+                            {% endif %}
                         </th>
                         {% endfor %}
                     </tr>
@@ -161,8 +177,12 @@
                             </div>
                         </td>
                         {% for score_item in row.scores %}
-                        <td class="text-center">
-                            {% if score_item.can_edit_subject %}
+                        <td class="text-center {% if not score_item.is_tested %}table-light opacity-75{% endif %}">
+                            {% if not score_item.is_tested %}
+                            <div class="badge bg-light text-muted border px-2 py-1" title="មុខវិជ្ជានេះត្រូវបានលើកលែងមិនប្រឡង">
+                                <i class="fa-solid fa-ban me-1 text-danger"></i>មិនប្រឡង
+                            </div>
+                            {% elif score_item.can_edit_subject %}
                             <input type="number" step="0.5" min="0" max="{{ score_item.max_score }}" 
                                    name="score_{{ row.student.id }}_{{ score_item.subject.id }}" 
                                    value="{{ score_item.score }}" 

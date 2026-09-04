@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="{% url 'standardized_exam_list' %}" class="text-decoration-none text-muted small fw-bold">
+                <i class="fa-solid fa-arrow-left me-1"></i> តេស្តស្តង់ដា
+            </a>
+            <span class="text-muted small">/</span>
+            <span class="text-primary small fw-bold">ប្រភេទសម័យប្រឡង</span>
+        </div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-list-check me-2"></i>{{ title }}
+        </h2>
+        <p class="text-muted small mb-0">កំណត់ បន្ថែម កែប្រែ ឬលុបចេញនូវប្រភេទសម័យប្រឡង និងប៊ូតុងជ្រើសរើសរហ័ស (Exam Types & Presets)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'standardized_exam_create' %}" class="btn btn-outline-primary fw-bold shadow-xs">
+            <i class="fa-solid fa-plus-circle me-1"></i> ទៅកាន់ទំព័របង្កើតការប្រឡង
+        </a>
+        <a href="{% url 'standardized_exam_list' %}" class="btn btn-light border fw-bold shadow-xs">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+        </a>
+    </div>
+</div>
+
+<!-- Overview Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="custom-card p-3 border-start border-4 border-primary text-center">
+            <div class="fs-4 fw-bold text-primary">{{ types.count }}</div>
+            <div class="small text-muted fw-bold">ប្រភេទសម័យប្រឡងសរុប</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="custom-card p-3 border-start border-4 border-success text-center">
+            <div class="fs-4 fw-bold text-success">{{ types|length }}</div>
+            <div class="small text-muted fw-bold">កំពុងដំណើរការក្នុងប្រព័ន្ធ</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="custom-card p-3 border-start border-4 border-info text-center">
+            <div class="fs-4 fw-bold text-info">
+                <i class="fa-solid fa-shield-check me-1"></i> Admin សិទ្ធិពេញលេញ
+            </div>
+            <div class="small text-muted fw-bold">បន្ថែម កែប្រែ ឬលុបដោយសេរី</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Add New Type Form -->
+    <div class="col-lg-4">
+        <div class="custom-card p-4 shadow-sm">
+            <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">
+                <i class="fa-solid fa-circle-plus me-2"></i>បន្ថែមប្រភេទថ្មី (Add Type)
+            </h5>
+            <form method="POST" action="{% url 'standardized_exam_type_create' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">ឈ្មោះប្រភេទសម័យប្រឡង *</label>
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="ឧ. តេស្តដើមឆ្នាំ, ប្រឡងពាក់កណ្តាលឆមាស..." required>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-dark">រូបតំណាង / Emoji *</label>
+                        <input type="text" name="icon" class="form-control form-control-sm text-center fs-5" value="🎯" required>
+                        <div class="form-text text-muted" style="font-size: 0.72rem;">ឧ. 🎯, 🎓, 📝, 🏁, 📅, 🏆, 💡</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-dark">កូដសម្គាល់ (Code)</label>
+                        <input type="text" name="code" class="form-control form-control-sm text-uppercase" placeholder="ឧ. MIDTERM">
+                        <div class="form-text text-muted" style="font-size: 0.72rem;">បើមិនដាក់ ប្រព័ន្ធនឹងបង្កើតស្វ័យប្រវត្តិ</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">ទម្រង់ឈ្មោះលំនាំដើម (Default Title)</label>
+                    <input type="text" name="default_title" class="form-control form-control-sm" placeholder="ឧ. ការប្រឡងពាក់កណ្តាលឆមាស">
+                    <div class="form-text text-muted" style="font-size: 0.72rem;">បំពេញស្វ័យប្រវត្តិកាលណា Admin ចុចប៊ូតុងប្រភេទនេះ</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">ភ្ជាប់សម័យប្រឡងផ្លូវការ (Linked Term)</label>
+                    <select name="linked_term_type" class="form-select form-select-sm">
+                        <option value="">-- មិនភ្ជាប់ / None --</option>
+                        <option value="SEMESTER_1">ប្រឡងឆមាសទី១ (Semester 1)</option>
+                        <option value="SEMESTER_2">ប្រឡងឆមាសទី២ (Semester 2)</option>
+                        <option value="MONTHLY">ប្រឡងប្រចាំខែ (Monthly)</option>
+                        <option value="ANNUAL">ប្រឡងចុងឆ្នាំ (Annual)</option>
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3 align-items-center">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-dark">លំដាប់តម្រៀប (Order)</label>
+                        <input type="number" name="order" class="form-control form-control-sm" value="{{ types.count|add:1 }}" min="1">
+                    </div>
+                    <div class="col-6 pt-3">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" name="is_monthly" id="add_is_monthly">
+                            <label class="form-check-label small fw-bold text-dark" for="add_is_monthly">ជាប្រចាំខែ</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="add_is_active" checked>
+                            <label class="form-check-label small fw-bold text-dark" for="add_is_active">សកម្ម</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 fw-bold shadow-xs">
+                    <i class="fa-solid fa-plus me-1"></i> បង្កើតប្រភេទថ្មី
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Existing Types Table -->
+    <div class="col-lg-8">
+        <div class="custom-card p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <h5 class="fw-bold text-primary mb-0">
+                    <i class="fa-solid fa-table-list me-2"></i>បញ្ជីប្រភេទសម័យប្រឡងទាំងអស់ ({{ types.count }})
+                </h5>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold">
+                    <i class="fa-solid fa-bolt me-1"></i> ឆ្លុះបញ្ចាំងលើ Form បង្កើតភ្លាមៗ
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;" class="text-center">លំដាប់</th>
+                            <th style="width: 60px;" class="text-center">Icon</th>
+                            <th>ឈ្មោះប្រភេទសម័យប្រឡង</th>
+                            <th>កូដសម្គាល់</th>
+                            <th>ទម្រង់ឈ្មោះលំនាំដើម</th>
+                            <th class="text-center" style="width: 90px;">លក្ខណៈ</th>
+                            <th class="text-center" style="width: 80px;">ស្ថានភាព</th>
+                            <th class="text-center" style="width: 120px;">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in types %}
+                        <tr>
+                            <td class="text-center fw-bold text-muted">{{ t.order }}</td>
+                            <td class="text-center fs-5">{{ t.icon }}</td>
+                            <td class="fw-bold text-dark">
+                                {{ t.name }}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border font-monospace">{{ t.code }}</span>
+                            </td>
+                            <td class="text-muted">
+                                {{ t.default_title|default:"-" }}
+                            </td>
+                            <td class="text-center">
+                                {% if t.is_monthly %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">ប្រចាំខែ</span>
+                                {% elif t.linked_term_type %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ t.linked_term_type }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border">ទូទៅ</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if t.is_active %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">សកម្ម</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">អសកម្ម</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2" data-bs-toggle="modal" data-bs-target="#editTypeModal_{{ t.id }}" title="កែប្រែ">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" data-bs-toggle="modal" data-bs-target="#deleteTypeModal_{{ t.id }}" title="លុប">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Modal Edit Type -->
+                        <div class="modal fade" id="editTypeModal_{{ t.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+                                    <div class="modal-header bg-primary text-white py-3">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="fa-solid fa-pen-to-square me-2"></i>កែប្រែប្រភេទសម័យប្រឡង «{{ t.name }}»
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="POST" action="{% url 'standardized_exam_type_edit' t.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body p-4 text-start">
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark">ឈ្មោះប្រភេទសម័យប្រឡង *</label>
+                                                <input type="text" name="name" class="form-control form-control-sm" value="{{ t.name }}" required>
+                                            </div>
+
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-bold text-dark">រូបតំណាង / Emoji *</label>
+                                                    <input type="text" name="icon" class="form-control form-control-sm text-center fs-5" value="{{ t.icon }}" required>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-bold text-dark">កូដសម្គាល់ (Code) *</label>
+                                                    <input type="text" name="code" class="form-control form-control-sm text-uppercase" value="{{ t.code }}" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark">ទម្រង់ឈ្មោះលំនាំដើម</label>
+                                                <input type="text" name="default_title" class="form-control form-control-sm" value="{{ t.default_title }}">
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-bold text-dark">ភ្ជាប់សម័យប្រឡងផ្លូវការ</label>
+                                                <select name="linked_term_type" class="form-select form-select-sm">
+                                                    <option value="" {% if not t.linked_term_type %}selected{% endif %}>-- មិនភ្ជាប់ / None --</option>
+                                                    <option value="SEMESTER_1" {% if t.linked_term_type == 'SEMESTER_1' %}selected{% endif %}>ប្រឡងឆមាសទី១ (Semester 1)</option>
+                                                    <option value="SEMESTER_2" {% if t.linked_term_type == 'SEMESTER_2' %}selected{% endif %}>ប្រឡងឆមាសទី២ (Semester 2)</option>
+                                                    <option value="MONTHLY" {% if t.linked_term_type == 'MONTHLY' %}selected{% endif %}>ប្រឡងប្រចាំខែ (Monthly)</option>
+                                                    <option value="ANNUAL" {% if t.linked_term_type == 'ANNUAL' %}selected{% endif %}>ប្រឡងចុងឆ្នាំ (Annual)</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="row g-2 mb-2 align-items-center">
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-bold text-dark">លំដាប់តម្រៀប</label>
+                                                    <input type="number" name="order" class="form-control form-control-sm" value="{{ t.order }}" min="1">
+                                                </div>
+                                                <div class="col-6 pt-3">
+                                                    <div class="form-check form-switch mb-1">
+                                                        <input class="form-check-input" type="checkbox" name="is_monthly" id="edit_monthly_{{ t.id }}" {% if t.is_monthly %}checked{% endif %}>
+                                                        <label class="form-check-label small fw-bold text-dark" for="edit_monthly_{{ t.id }}">ជាប្រចាំខែ</label>
+                                                    </div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" name="is_active" id="edit_active_{{ t.id }}" {% if t.is_active %}checked{% endif %}>
+                                                        <label class="form-check-label small fw-bold text-dark" for="edit_active_{{ t.id }}">សកម្ម</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light py-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                                            <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">
+                                                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Delete Type -->
+                        <div class="modal fade" id="deleteTypeModal_{{ t.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+                                    <div class="modal-header bg-danger text-white py-3">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="fa-solid fa-triangle-exclamation me-2"></i>បញ្ជាក់ការលុបប្រភេទសម័យប្រឡង
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body p-4 text-start">
+                                        <p class="mb-2 text-dark">
+                                            តើលោកអ្នកពិតជាចង់លុបប្រភេទសម័យប្រឡង <strong>«{{ t.icon }} {{ t.name }}»</strong> (កូដ: <code>{{ t.code }}</code>) នេះមែនទេ?
+                                        </p>
+                                        <div class="alert alert-warning py-2 px-3 small border-0 mb-0">
+                                            <i class="fa-solid fa-circle-info me-1"></i>
+                                            ប្រសិនបើសម័យប្រឡងណាមួយកំពុងប្រើប្រាស់កូដនេះ ប្រព័ន្ធនឹងប្តូរប្រភេទនៃការប្រឡងនោះទៅជា «ការប្រឡងផ្សេងៗ (OTHER)» ដោយស្វ័យប្រវត្តិដើម្បីការពារកុំឱ្យបាត់បង់ទិន្នន័យ។
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-light py-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                                        <form method="POST" action="{% url 'standardized_exam_type_delete' t.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger fw-bold px-3">
+                                                <i class="fa-solid fa-trash-can me-1"></i> លុបចេញឥឡូវនេះ
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                មិនទាន់មានប្រភេទសម័យប្រឡងនៅឡើយទេ។
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
