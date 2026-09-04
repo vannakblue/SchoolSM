@@ -31,6 +31,7 @@ urlpatterns = [
     path('standardized/<int:exam_id>/edit/', views.standardized_exam_edit, name='standardized_exam_edit'),
     path('standardized/<int:exam_id>/delete/', views.standardized_exam_delete, name='standardized_exam_delete'),
     path('standardized/session/delete/', views.standardized_exam_session_delete, name='standardized_exam_session_delete'),
+    path('standardized/session/pull-candidates/', views.standardized_exam_session_pull_candidates, name='standardized_exam_session_pull_candidates'),
     path('standardized/<int:exam_id>/subjects/manage/', views.api_manage_standardized_exam_subjects, name='api_manage_standardized_exam_subjects'),
     path('standardized/<int:exam_id>/subjects/apply-preset/', views.api_apply_standardized_exam_preset, name='api_apply_standardized_exam_preset'),
 
@@ -61,6 +62,9 @@ urlpatterns = [
     path('standardized/<int:exam_id>/export-provisional-excel/', views.exam_export_provisional_excel, name='exam_export_provisional_excel'),
     path('standardized/<int:exam_id>/results-sheet/', views.exam_results_sheet_print_view, name='exam_results_sheet_print_view'),
     path('standardized/<int:exam_id>/graph/', views.exam_results_graph_view, name='exam_results_graph_view'),
+    path('standardized/<int:exam_id>/analytics/', views.exam_analytics_view, name='exam_analytics_view'),
+    path('standardized/session/analytics/', views.exam_session_analytics_view, name='exam_session_analytics_view'),
+    path('standardized/analytics/mock-scores/', views.exam_generate_mock_scores_view, name='exam_generate_mock_scores'),
 
     # Blind / Secret-Coded Exam Scoring System (៤ ជំហាន៖ កម្រិតថ្នាក់ -> មុខវិជ្ជា -> លេខកូដសម្ងាត់ -> ពិន្ទុ ០១ ដល់ ២៥)
     path('standardized/blind-scoring/', views.exam_blind_scoring_portal, name='exam_blind_scoring_portal'),

@@ -1,0 +1,1322 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}របាយការណ៍វិភាគលទ្ធផលប្រឡង៖ {{ session_title }} | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Professional Khmer Typography & Theme Variables */
+    :root {
+        --theme-teal: #0f766e;
+        --theme-teal-light: #14b8a6;
+        --theme-teal-header: #10b981;
+        --theme-coral: #ef4444;
+        --theme-amber: #f59e0b;
+        --theme-indigo: #6366f1;
+    }
+
+    body {
+        background-color: #f8fafc;
+    }
+
+    .analytics-card {
+        background: #ffffff;
+        border-radius: 1rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .section-title {
+        font-family: 'Kantumruy Pro', 'Inter', sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    /* Scope Tabs Pill Bar */
+    .scope-nav-pill {
+        border-radius: 2rem;
+        padding: 0.45rem 1.1rem;
+        font-weight: 600;
+        font-size: 0.88rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border: 1px solid transparent;
+    }
+    .scope-nav-pill.active {
+        background-color: #0f766e;
+        color: #ffffff !important;
+        box-shadow: 0 2px 6px rgba(15, 118, 110, 0.25);
+    }
+    .scope-nav-pill:not(.active) {
+        background-color: #f1f5f9;
+        color: #475569;
+        border-color: #e2e8f0;
+    }
+    .scope-nav-pill:not(.active):hover {
+        background-color: #e2e8f0;
+        color: #0f172a;
+    }
+
+    /* Sub-scope buttons (Grades) */
+    .grade-chip {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        color: #334155;
+        transition: all 0.15s ease;
+    }
+    .grade-chip.active {
+        background-color: #3b82f6;
+        color: #ffffff;
+        border-color: #2563eb;
+    }
+    .grade-chip:hover:not(.active) {
+        background-color: #f8fafc;
+        border-color: #94a3b8;
+    }
+
+    /* Custom Tables */
+    .table-analytics {
+        margin-bottom: 0;
+        font-size: 0.88rem;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-analytics th {
+        font-weight: 700;
+        vertical-align: middle;
+        text-align: center;
+        padding: 0.6rem 0.5rem;
+    }
+    .table-analytics td {
+        vertical-align: middle;
+        text-align: center;
+        padding: 0.55rem 0.5rem;
+    }
+
+    /* Modern Table Header Variants */
+    .th-teal {
+        background-color: #10b981 !important;
+        color: #ffffff !important;
+    }
+    .th-cyan {
+        background-color: #0ea5e9 !important;
+        color: #ffffff !important;
+    }
+    .th-coral {
+        background-color: #f43f5e !important;
+        color: #ffffff !important;
+    }
+    .th-slate {
+        background-color: #d1dbe5 !important;
+        color: #1e293b !important;
+    }
+    .th-yellow-highlight {
+        background-color: #fef08a !important;
+        color: #854d0e !important;
+        font-weight: 800;
+    }
+    .th-green-highlight {
+        background-color: #a7f3d0 !important;
+        color: #065f46 !important;
+        font-weight: 800;
+    }
+
+    /* Checkbox & Controls Filter Box */
+    .filter-panel {
+        background-color: #fafaf9;
+        border: 1px solid #fecdd3;
+        border-radius: 0.75rem;
+        padding: 0.85rem 1.25rem;
+    }
+    .checkbox-pill-label {
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.86rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-right: 0.75rem;
+        margin-bottom: 0.3rem;
+    }
+
+    /* Weak/Failing Numbers Highlighting */
+    .val-danger {
+        color: #dc2626 !important;
+        font-weight: 700;
+    }
+    .val-female {
+        color: #db2777;
+        font-weight: 600;
+    }
+    .val-male {
+        color: #2563eb;
+        font-weight: 600;
+    }
+
+    /* Toggle Buttons (View mode) */
+    .btn-toggle-custom {
+        border-radius: 2rem;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-toggle-custom.active {
+        background-color: #ffffff;
+        color: #0284c7;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        border: 1px solid #bae6fd;
+    }
+    .btn-toggle-custom:not(.active) {
+        background-color: transparent;
+        color: #64748b;
+        border: 1px solid transparent;
+    }
+
+    /* Interactive Mention Sum Checkbox Ticks */
+    .mention-check-label {
+        cursor: pointer;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.35rem;
+        transition: all 0.15s ease;
+    }
+    .mention-check-label:hover {
+        background-color: rgba(0, 0, 0, 0.07);
+    }
+    .th-teal .mention-check-label:hover {
+        background-color: rgba(255, 255, 255, 0.22);
+    }
+    .mention-sum-tick {
+        cursor: pointer;
+        width: 14px;
+        height: 14px;
+        margin: 0;
+    }
+    .print-tick {
+        display: none;
+    }
+
+    /* Scrollable Container for Wide Tables */
+    .table-responsive-custom {
+        max-height: 720px;
+        overflow-x: auto;
+        overflow-y: auto;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Print Styles */
+    @media print {
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: 8pt !important;
+        }
+        .no-print, nav, .sidebar, header, .navbar, .btn, .scope-nav-container, .filter-panel, .dropdown {
+            display: none !important;
+        }
+        .mention-sum-tick {
+            display: none !important;
+        }
+        .print-tick {
+            display: inline !important;
+        }
+        .analytics-card {
+            border: 1px solid #000000 !important;
+            box-shadow: none !important;
+            margin-bottom: 15px !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .table-responsive-custom {
+            max-height: none !important;
+            overflow: visible !important;
+            border: none !important;
+        }
+        .table-analytics {
+            width: 100% !important;
+            font-size: 7.5pt !important;
+        }
+        .table-analytics th, .table-analytics td {
+            border: 1px solid #000000 !important;
+            padding: 2px 4px !important;
+        }
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 py-4">
+
+    <!-- Top Action & Navigation Header (Level 0) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 no-print">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                {% if target_exam %}
+                <a href="{% url 'standardized_exam_manage' target_exam.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+                {% else %}
+                <a href="{% url 'standardized_exam_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសម័យប្រឡង
+                </a>
+                {% endif %}
+                <span class="badge bg-teal-subtle text-teal border px-2.5 py-1 fw-bold" style="background-color: #ccfbf1; color: #0f766e;">
+                    <i class="fa-solid fa-chart-line me-1"></i> របាយការណ៍វិភាគលទ្ធផល
+                </span>
+                {% if session_academic_year %}
+                <span class="badge bg-light text-muted border px-2.5 py-1">
+                    {{ session_academic_year.name }}
+                </span>
+                {% endif %}
+            </div>
+            <h3 class="section-title text-dark mb-0 fw-bold">
+                {{ session_title }}
+            </h3>
+            <div class="text-muted small mt-0.5">
+                <i class="fa-regular fa-calendar-check me-1 text-primary"></i> កាលបរិច្ឆេទប្រឡង៖ <strong>{{ session_date|date:"d/m/Y (l)" }}</strong> • មានសរុប <strong>{{ session_exams|length }}</strong> កម្រិតថ្នាក់
+            </div>
+        </div>
+
+        <!-- Action Buttons & Session Selector Switcher -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Exam Session Switcher Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light border fw-bold text-dark dropdown-toggle shadow-xs px-3" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-calendar-days text-primary me-1"></i> ប្តូរសម័យប្រឡង
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="min-width: 280px; max-height: 400px; overflow-y: auto;">
+                    <li class="dropdown-header fw-bold text-muted">ជ្រើសរើសសម័យប្រឡងផ្សេងទៀត៖</li>
+                    {% for s in sessions_nav_list %}
+                    <li>
+                        <a class="dropdown-item py-2 {% if s.group_key == current_session_key %}active fw-bold{% endif %}" href="{% url 'exam_session_analytics_view' %}?session_key={{ s.group_key|urlencode }}&scope={{ scope }}">
+                            <div class="text-truncate">{{ s.title }}</div>
+                            <small class="{% if s.group_key == current_session_key %}text-light{% else %}text-muted{% endif %} d-block" style="font-size: 0.72rem;">
+                                {{ s.date|date:"d/m/Y" }} • {{ s.year }} ({{ s.exam_count }} កម្រិត)
+                            </small>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Mock Scores Generator Button -->
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#mockScoresModal" title="បង្កើតពិន្ទុតេស្តសាកល្បងនិទ្ទេស A-F">
+                <i class="fa-solid fa-wand-magic-sparkles text-danger me-1"></i> បង្កើតពិន្ទុតេស្តសាកល្បង (A-F)
+            </button>
+
+            <!-- Print Button -->
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs px-3 rounded-pill" onclick="window.print()">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ពរបាយការណ៍ (Print A4)
+            </button>
+        </div>
+    </div>
+
+    <!-- Multi-Level Scope Filter Bar (កម្រិតសាលា / តាមកម្រិតថ្នាក់ / តាមថ្នាក់) -->
+    <div class="analytics-card p-3 mb-4 scope-nav-container no-print">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted fw-bold small me-1">
+                    <i class="fa-solid fa-filter me-1 text-teal"></i> ជម្រើសកម្រិតវិភាគ៖
+                </span>
+
+                <!-- Scope 1: School Level (កម្រិតសាលា) -->
+                <a href="?session_key={{ current_session_key|urlencode }}&scope=school" class="scope-nav-pill {% if scope == 'school' %}active{% endif %}">
+                    <i class="fa-solid fa-school"></i> ១. កម្រិតសាលា (School Level)
+                </a>
+
+                <!-- Scope 2: Grade Level (តាមកម្រិតថ្នាក់) -->
+                <a href="?session_key={{ current_session_key|urlencode }}&scope=grade&grade_level={{ selected_grade|default:available_grades.0 }}" class="scope-nav-pill {% if scope == 'grade' %}active{% endif %}">
+                    <i class="fa-solid fa-graduation-cap"></i> ២. តាមកម្រិតថ្នាក់ (Grade Level)
+                </a>
+
+                <!-- Scope 3: Classroom Level (តាមថ្នាក់) -->
+                <a href="?session_key={{ current_session_key|urlencode }}&scope=class&class_name={{ selected_class|default:all_classrooms.0 }}" class="scope-nav-pill {% if scope == 'class' %}active{% endif %}">
+                    <i class="fa-solid fa-users"></i> ៣. តាមថ្នាក់ (Classroom)
+                </a>
+            </div>
+
+            <!-- Stats Summary Pill -->
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-light text-dark border px-3 py-1.5 fw-bold fs-7">
+                    បេក្ខជនសរុប៖ <strong class="text-primary">{{ total_candidates }}</strong> នាក់ 
+                    (<span class="text-danger">ស្រី {{ female_candidates }}</span>, <span class="text-primary">ប្រុស {{ male_candidates }}</span>)
+                </span>
+            </div>
+        </div>
+
+        <!-- Scope Sub-Filters (When Grade or Class is selected) -->
+        {% if scope == 'grade' %}
+        <div class="pt-3 mt-3 border-top d-flex flex-wrap align-items-center gap-2">
+            <span class="small text-muted fw-bold me-1">ជ្រើសរើសកម្រិតថ្នាក់៖</span>
+            {% for g in available_grades %}
+            <a href="?session_key={{ current_session_key|urlencode }}&scope=grade&grade_level={{ g }}" class="grade-chip {% if selected_grade|stringformat:'s' == g|stringformat:'s' %}active{% endif %}">
+                ថ្នាក់ទី {{ g }}
+            </a>
+            {% empty %}
+            <span class="text-muted small">គ្មានកម្រិតថ្នាក់</span>
+            {% endfor %}
+        </div>
+        {% elif scope == 'class' %}
+        <div class="pt-3 mt-3 border-top d-flex flex-wrap align-items-center gap-2">
+            <span class="small text-muted fw-bold me-1">ជ្រើសរើសថ្នាក់រៀនជាក់លាក់៖</span>
+            <div class="dropdown d-inline-block">
+                <select class="form-select form-select-sm fw-bold border-secondary shadow-xs" style="min-width: 200px;" onchange="window.location.href='?session_key={{ current_session_key|urlencode }}&scope=class&class_name=' + encodeURIComponent(this.value);">
+                    {% for c in all_classrooms %}
+                    <option value="{{ c }}" {% if selected_class == c %}selected{% endif %}>ថ្នាក់រៀន {{ c }}</option>
+                    {% empty %}
+                    <option value="">គ្មានថ្នាក់រៀន</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_class %}
+            <span class="badge bg-info-subtle text-info border border-info px-2.5 py-1">
+                កំពុងបង្ហាញទិន្នន័យថ្នាក់ «{{ selected_class }}»
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COMPONENT 1: សរុបនិទ្ទេសរួម & របាយការណ៍វាយតម្លៃគុណភាព (IMAGE 2)           -->
+    <!-- ========================================================================= -->
+    <div class="row g-4 mb-4">
+        <!-- 1.1 Table: សរុបនិទ្ទេសរួម (Left Card) -->
+        <div class="col-12 col-xl-6">
+            <div class="analytics-card p-3.5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="section-title mb-3" style="color: #6366f1;">
+                        <i class="fa-solid fa-chart-pie me-1.5"></i> សរុបនិទ្ទេសរួម
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-analytics align-middle text-center mb-0">
+                            <thead>
+                                <tr style="background-color: #f8fafc;">
+                                    <th style="width: 14%;" class="text-muted">ភេទ</th>
+                                    <th style="width: 10%; color: #2563eb;">
+                                        <label class="mention-check-label text-primary" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick">✓</span>A
+                                        </label>
+                                    </th>
+                                    <th style="width: 10%; color: #f97316;">
+                                        <label class="mention-check-label text-warning" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick">✓</span>B
+                                        </label>
+                                    </th>
+                                    <th style="width: 10%; color: #16a34a;">
+                                        <label class="mention-check-label text-success" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick">✓</span>C
+                                        </label>
+                                    </th>
+                                    <th style="width: 10%; color: #0284c7;">
+                                        <label class="mention-check-label text-info" title="ធីកដើម្បីបូកនិទ្ទេស D">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick" style="display: none;">✓</span>D
+                                        </label>
+                                    </th>
+                                    <th style="width: 10%; color: #9333ea;">
+                                        <label class="mention-check-label" style="color: #9333ea;" title="ធីកដើម្បីបូកនិទ្ទេស E">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick" style="display: none;">✓</span>E
+                                        </label>
+                                    </th>
+                                    <th style="width: 10%; color: #dc2626;">
+                                        <label class="mention-check-label text-danger" title="ធីកដើម្បីបូកនិទ្ទេស F">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
+                                            <span class="print-tick" style="display: none;">✓</span>F
+                                        </label>
+                                    </th>
+                                    <th style="width: 13%; background-color: #d1fae5; color: #065f46;" class="fw-bold mention-sum-header">A+B+C</th>
+                                    <th style="width: 13%; background-color: #d1fae5; color: #065f46;" class="fw-bold">សរុបរួម</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Row 1: សរុប -->
+                                <tr class="fw-bold row-overall-mentions">
+                                    <td class="text-dark bg-light">{{ overall_mentions.total_row.label }}</td>
+                                    <td style="color: #2563eb;" data-grade="A">{{ overall_mentions.total_row.counts.0 }}</td>
+                                    <td style="color: #f97316;" data-grade="B">{{ overall_mentions.total_row.counts.1 }}</td>
+                                    <td style="color: #16a34a;" data-grade="C">{{ overall_mentions.total_row.counts.2 }}</td>
+                                    <td style="color: #0284c7;" data-grade="D">{{ overall_mentions.total_row.counts.3 }}</td>
+                                    <td style="color: #9333ea;" data-grade="E">{{ overall_mentions.total_row.counts.4 }}</td>
+                                    <td style="color: #dc2626;" data-grade="F">{{ overall_mentions.total_row.counts.5 }}</td>
+                                    <td style="background-color: #ecfdf5; color: #059669;" class="fw-bold cell-sum-overall">{{ overall_mentions.total_row.sum_abc }}</td>
+                                    <td style="background-color: #ecfdf5; color: #0f172a;" class="fw-bold">{{ overall_mentions.total_row.grand_total }}</td>
+                                </tr>
+                                <!-- Row 2: ស្រី -->
+                                <tr class="val-female row-overall-mentions">
+                                    <td class="bg-light">{{ overall_mentions.female_row.label }}</td>
+                                    <td data-grade="A">{{ overall_mentions.female_row.counts.0 }}</td>
+                                    <td data-grade="B">{{ overall_mentions.female_row.counts.1 }}</td>
+                                    <td data-grade="C">{{ overall_mentions.female_row.counts.2 }}</td>
+                                    <td data-grade="D">{{ overall_mentions.female_row.counts.3 }}</td>
+                                    <td data-grade="E">{{ overall_mentions.female_row.counts.4 }}</td>
+                                    <td data-grade="F">{{ overall_mentions.female_row.counts.5 }}</td>
+                                    <td style="background-color: #ecfdf5;" class="fw-bold cell-sum-overall">{{ overall_mentions.female_row.sum_abc }}</td>
+                                    <td style="background-color: #ecfdf5;" class="fw-bold">{{ overall_mentions.female_row.grand_total }}</td>
+                                </tr>
+                                <!-- Row 3: ប្រុស -->
+                                <tr class="val-male row-overall-mentions">
+                                    <td class="bg-light text-muted">{{ overall_mentions.male_row.label }}</td>
+                                    <td data-grade="A">{{ overall_mentions.male_row.counts.0 }}</td>
+                                    <td data-grade="B">{{ overall_mentions.male_row.counts.1 }}</td>
+                                    <td data-grade="C">{{ overall_mentions.male_row.counts.2 }}</td>
+                                    <td data-grade="D">{{ overall_mentions.male_row.counts.3 }}</td>
+                                    <td data-grade="E">{{ overall_mentions.male_row.counts.4 }}</td>
+                                    <td data-grade="F">{{ overall_mentions.male_row.counts.5 }}</td>
+                                    <td style="background-color: #ecfdf5;" class="fw-bold cell-sum-overall">{{ overall_mentions.male_row.sum_abc }}</td>
+                                    <td style="background-color: #ecfdf5; color: #0f172a;" class="fw-bold">{{ overall_mentions.male_row.grand_total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1.2 Table: របាយការណ៍វាយតម្លៃគុណភាព (Right Card) -->
+        <div class="col-12 col-xl-6">
+            <div class="analytics-card p-3.5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="section-title mb-3" style="color: #0f766e;">
+                        <i class="fa-solid fa-award me-1.5"></i> របាយការណ៍វាយតម្លៃគុណភាព
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-analytics align-middle text-center mb-0">
+                            <thead>
+                                <tr style="background-color: #f8fafc;">
+                                    <th style="width: 15%;" class="text-muted">ភេទ</th>
+                                    <th style="width: 21%; color: #2563eb;">ល្អ (&gt;=40)</th>
+                                    <th style="width: 21%; color: #16a34a;">ល្អបង្គួរ (&gt;=32.5)</th>
+                                    <th style="width: 21%; color: #f97316;">មធ្យម (&gt;=25)</th>
+                                    <th style="width: 21%; color: #dc2626;">ខ្សោយ (&lt;25)</th>
+                                    <th style="width: 15%; color: #0f172a;" class="fw-bold">សរុប</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Row 1: សរុប -->
+                                <tr class="fw-bold">
+                                    <td class="text-dark bg-light">{{ quality_evaluation.total_row.label }}</td>
+                                    <td style="color: #2563eb;">{{ quality_evaluation.total_row.good }}</td>
+                                    <td style="color: #16a34a;">{{ quality_evaluation.total_row.fairly_good }}</td>
+                                    <td style="color: #f97316;">{{ quality_evaluation.total_row.average }}</td>
+                                    <td style="color: #dc2626;">{{ quality_evaluation.total_row.weak }}</td>
+                                    <td class="text-dark fw-bold">{{ quality_evaluation.total_row.grand_total }}</td>
+                                </tr>
+                                <!-- Row 2: ស្រី -->
+                                <tr class="val-female">
+                                    <td class="bg-light">{{ quality_evaluation.female_row.label }}</td>
+                                    <td>{{ quality_evaluation.female_row.good }}</td>
+                                    <td>{{ quality_evaluation.female_row.fairly_good }}</td>
+                                    <td>{{ quality_evaluation.female_row.average }}</td>
+                                    <td>{{ quality_evaluation.female_row.weak }}</td>
+                                    <td class="fw-bold">{{ quality_evaluation.female_row.grand_total }}</td>
+                                </tr>
+                                <!-- Row 3: ប្រុស -->
+                                <tr class="val-male">
+                                    <td class="bg-light text-muted">{{ quality_evaluation.male_row.label }}</td>
+                                    <td>{{ quality_evaluation.male_row.good }}</td>
+                                    <td>{{ quality_evaluation.male_row.fairly_good }}</td>
+                                    <td>{{ quality_evaluation.male_row.average }}</td>
+                                    <td>{{ quality_evaluation.male_row.weak }}</td>
+                                    <td class="text-dark fw-bold">{{ quality_evaluation.male_row.grand_total }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COMPONENT 2: សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា (IMAGES 3 & 4)                       -->
+    <!-- ========================================================================= -->
+    <div class="analytics-card p-3.5 mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <h5 class="section-title mb-0" style="color: #0f766e;">
+                <i class="fa-solid fa-table-list me-1.5"></i> សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា
+            </h5>
+
+            <!-- View Toggle Dropdown: 'បង្ហាញតែមួយ (សរុប)' vs 'បង្ហាញលម្អិត (សរុប, ស្រី, ប្រុស)' -->
+            <div class="d-flex align-items-center gap-2 no-print">
+                <select id="subjectMentionsViewToggle" class="form-select form-select-sm fw-bold border-success shadow-xs text-teal" style="min-width: 250px; background-color: #f0fdf4;" onchange="toggleSubjectMentionsView(this.value)">
+                    <option value="single" selected>បង្ហាញតែមួយ (សរុប)</option>
+                    <option value="detailed">បង្ហាញលម្អិត (សរុប, ស្រី, ប្រុស)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2.1 Single Mode (Image 3) -->
+        <div id="subjectMentionsSingleView" class="table-responsive-custom">
+            <table class="table table-bordered table-analytics align-middle text-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="th-teal text-start ps-3" style="width: 24%;">មុខវិជ្ជា (ពិន្ទុពេញ)</th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>A
+                            </label>
+                        </th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>B
+                            </label>
+                        </th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>C
+                            </label>
+                        </th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស D">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>D
+                            </label>
+                        </th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស E">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>E
+                            </label>
+                        </th>
+                        <th class="th-teal" style="width: 9%;">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស F">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>F
+                            </label>
+                        </th>
+                        <th class="th-yellow-highlight mention-sum-header" style="width: 11%;">A+B+C</th>
+                        <th class="th-teal" style="width: 11%;">សរុបរួម</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in subject_mentions_single %}
+                    <tr class="{% cycle 'bg-white' 'bg-light' %} row-subject-single">
+                        <td class="text-start ps-3 fw-bold text-dark">{{ row.title }}</td>
+                        <td class="fw-semibold" data-grade="A">{{ row.a }}</td>
+                        <td class="fw-semibold" data-grade="B">{{ row.b }}</td>
+                        <td class="fw-semibold" data-grade="C">{{ row.c }}</td>
+                        <td class="fw-semibold" data-grade="D">{{ row.d }}</td>
+                        <td class="fw-semibold" data-grade="E">{{ row.e }}</td>
+                        <td class="fw-bold val-danger" data-grade="F">{{ row.f }}</td>
+                        <td class="fw-bold cell-sum-single" style="background-color: #fefce8; color: #854d0e;">{{ row.sum_abc }}</td>
+                        <td class="fw-bold" style="background-color: #f0fdf4; color: #15803d;">{{ row.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-3">មិនមានទិន្នន័យមុខវិជ្ជា</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2.2 Detailed Mode (Image 4) -->
+        <div id="subjectMentionsDetailedView" class="table-responsive-custom d-none">
+            <table class="table table-bordered table-analytics align-middle text-center mb-0">
+                <thead>
+                    <!-- Top Row: Headers -->
+                    <tr>
+                        <th rowspan="2" class="th-teal text-start ps-3" style="width: 18%; vertical-align: middle;">មុខវិជ្ជា (ពិន្ទុពេញ)</th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>A
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>B
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick">✓</span>C
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស D">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>D
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស E">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>E
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-teal">
+                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស F">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
+                                <span class="print-tick" style="display: none;">✓</span>F
+                            </label>
+                        </th>
+                        <th colspan="3" class="th-yellow-highlight mention-sum-header">A+B+C</th>
+                        <th colspan="3" class="th-teal">សរុបរួម</th>
+                    </tr>
+                    <!-- Sub Row: ស, ស្រ, ប -->
+                    <tr class="th-teal" style="font-size: 0.8rem;">
+                        <!-- A -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- B -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- C -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- D -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- E -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- F -->
+                        <th style="background-color: #059669;">ស</th><th style="background-color: #059669;">ស្រ</th><th style="background-color: #059669;">ប</th>
+                        <!-- A+B+C -->
+                        <th style="background-color: #fef08a; color: #854d0e;">ស</th><th style="background-color: #fef08a; color: #854d0e;">ស្រ</th><th style="background-color: #fef08a; color: #854d0e;">ប</th>
+                        <!-- Total -->
+                        <th style="background-color: #047857;">ស</th><th style="background-color: #047857;">ស្រ</th><th style="background-color: #047857;">ប</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in subject_mentions_detailed %}
+                    <tr class="{% cycle 'bg-white' 'bg-light' %} row-subject-detailed" style="font-size: 0.84rem;">
+                        <td class="text-start ps-3 fw-bold text-dark">{{ row.title }}</td>
+                        <!-- A -->
+                        <td class="fw-bold" data-grade="A" data-sub="tot">{{ row.grades.A.tot }}</td><td class="val-female" data-grade="A" data-sub="fem">{{ row.grades.A.fem }}</td><td class="val-male" data-grade="A" data-sub="mal">{{ row.grades.A.mal }}</td>
+                        <!-- B -->
+                        <td class="fw-bold" data-grade="B" data-sub="tot">{{ row.grades.B.tot }}</td><td class="val-female" data-grade="B" data-sub="fem">{{ row.grades.B.fem }}</td><td class="val-male" data-grade="B" data-sub="mal">{{ row.grades.B.mal }}</td>
+                        <!-- C -->
+                        <td class="fw-bold" data-grade="C" data-sub="tot">{{ row.grades.C.tot }}</td><td class="val-female" data-grade="C" data-sub="fem">{{ row.grades.C.fem }}</td><td class="val-male" data-grade="C" data-sub="mal">{{ row.grades.C.mal }}</td>
+                        <!-- D -->
+                        <td class="fw-bold" data-grade="D" data-sub="tot">{{ row.grades.D.tot }}</td><td class="val-female" data-grade="D" data-sub="fem">{{ row.grades.D.fem }}</td><td class="val-male" data-grade="D" data-sub="mal">{{ row.grades.D.mal }}</td>
+                        <!-- E -->
+                        <td class="fw-bold" data-grade="E" data-sub="tot">{{ row.grades.E.tot }}</td><td class="val-female" data-grade="E" data-sub="fem">{{ row.grades.E.fem }}</td><td class="val-male" data-grade="E" data-sub="mal">{{ row.grades.E.mal }}</td>
+                        <!-- F -->
+                        <td class="fw-bold val-danger" data-grade="F" data-sub="tot">{{ row.grades.F.tot }}</td><td class="val-danger" data-grade="F" data-sub="fem">{{ row.grades.F.fem }}</td><td class="val-danger" data-grade="F" data-sub="mal">{{ row.grades.F.mal }}</td>
+                        <!-- A+B+C (Sum Column) -->
+                        <td class="fw-bold cell-sum-detailed-tot" style="background-color: #fefce8; color: #854d0e;">{{ row.sum_abc.tot }}</td>
+                        <td class="val-female cell-sum-detailed-fem" style="background-color: #fefce8;">{{ row.sum_abc.fem }}</td>
+                        <td class="val-male cell-sum-detailed-mal" style="background-color: #fefce8;">{{ row.sum_abc.mal }}</td>
+                        <!-- Total -->
+                        <td class="fw-bold" style="background-color: #f0fdf4; color: #15803d;">{{ row.total.tot }}</td>
+                        <td class="val-female" style="background-color: #f0fdf4;">{{ row.total.fem }}</td>
+                        <td class="val-male" style="background-color: #f0fdf4;">{{ row.total.mal }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="25" class="text-center text-muted py-3">មិនមានទិន្នន័យមុខវិជ្ជា</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COMPONENT 3: វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា) (IMAGE 5)           -->
+    <!-- ========================================================================= -->
+    <div class="analytics-card p-3.5 mb-4">
+        <h5 class="section-title mb-3" style="color: #0f766e;">
+            <i class="fa-solid fa-percent me-1.5"></i> វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា)
+        </h5>
+        <div class="table-responsive-custom">
+            <table class="table table-bordered table-analytics align-middle text-center mb-0">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="th-teal text-start ps-3" style="width: 18%; vertical-align: middle;">មុខវិជ្ជា (ពិន្ទុពេញ)</th>
+                        <th colspan="10" class="th-teal">កម្រិតភាគរយ (&gt;=)</th>
+                        <th colspan="2" class="th-cyan">ចន្លោះភាគរយ</th>
+                        <th colspan="2" class="th-coral">កម្រិតខ្សោយ (&lt;)</th>
+                    </tr>
+                    <tr style="font-size: 0.8rem;">
+                        <!-- >= Thresholds -->
+                        <th class="th-teal">95%</th>
+                        <th class="th-teal">90%</th>
+                        <th class="th-teal">85%</th>
+                        <th class="th-teal">80%</th>
+                        <th class="th-teal">75%</th>
+                        <th class="th-teal">70%</th>
+                        <th class="th-teal">65%</th>
+                        <th class="th-teal">60%</th>
+                        <th class="th-teal">55%</th>
+                        <th class="th-teal">50%</th>
+                        <!-- Ranges -->
+                        <th class="th-cyan">60-80%</th>
+                        <th class="th-cyan">50-&lt;80%</th>
+                        <!-- Weak -->
+                        <th class="th-coral">60%</th>
+                        <th class="th-coral">50%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in subject_percentage_rows %}
+                    <tr class="{% cycle 'bg-white' 'bg-light' %}">
+                        <td class="text-start ps-3 fw-bold text-dark">{{ row.title }}</td>
+                        {% for val in row.gte_counts %}
+                        <td>{{ val }}</td>
+                        {% endfor %}
+                        <!-- Ranges in blue font -->
+                        <td class="fw-bold" style="color: #0284c7;">{{ row.between_60_80 }}</td>
+                        <td class="fw-bold" style="color: #0284c7;">{{ row.between_50_80 }}</td>
+                        <!-- Weak in bold red -->
+                        <td class="fw-bold val-danger">{{ row.lt_60 }}</td>
+                        <td class="fw-bold val-danger">{{ row.lt_50 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="15" class="text-center text-muted py-3">មិនមានទិន្នន័យវិភាគភាគរយ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- COMPONENT 4: របាយការណ៍សិស្សរៀនយឺត (តាមមុខវិជ្ជា) (IMAGE 1)                 -->
+    <!-- ========================================================================= -->
+    <div class="analytics-card p-3.5 mb-5" id="slowLearnersSection">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <h5 class="section-title mb-0 text-danger">
+                <i class="fa-solid fa-triangle-exclamation me-1.5"></i> របាយការណ៍សិស្សរៀនយឺត (តាមមុខវិជ្ជា)
+            </h5>
+
+            <!-- Top-Right Toggles: 'បង្ហាញពិន្ទុ' vs 'បង្ហាញនិទ្ទេស' -->
+            <div class="d-flex align-items-center bg-light p-1 rounded-pill border no-print">
+                <button type="button" id="btnShowScore" class="btn-toggle-custom" onclick="setDisplayMode('score')">
+                    បង្ហាញពិន្ទុ
+                </button>
+                <button type="button" id="btnShowMention" class="btn-toggle-custom active" onclick="setDisplayMode('mention')">
+                    បង្ហាញនិទ្ទេស
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Panel: Checkboxes for Mentions & Subjects -->
+        <div class="filter-panel mb-3 no-print">
+            <!-- Line 1: ស្វែងរកនិទ្ទេស Checkboxes (A..F, default E & F) -->
+            <div class="d-flex flex-wrap align-items-center mb-2 pb-2 border-bottom border-danger-subtle">
+                <span class="fw-bold text-danger small me-3">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ស្វែងរកនិទ្ទេស៖
+                </span>
+                <label class="checkbox-pill-label text-dark">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="A" onchange="renderSlowLearnersTable()"> A
+                </label>
+                <label class="checkbox-pill-label text-dark">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="B" onchange="renderSlowLearnersTable()"> B
+                </label>
+                <label class="checkbox-pill-label text-dark">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="C" onchange="renderSlowLearnersTable()"> C
+                </label>
+                <label class="checkbox-pill-label text-dark">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="D" onchange="renderSlowLearnersTable()"> D
+                </label>
+                <label class="checkbox-pill-label text-danger fw-bold">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="E" checked onchange="renderSlowLearnersTable()"> E
+                </label>
+                <label class="checkbox-pill-label text-danger fw-bold">
+                    <input type="checkbox" class="form-check-input grade-filter-checkbox" value="F" checked onchange="renderSlowLearnersTable()"> F
+                </label>
+                <small class="text-muted ms-auto fst-italic">* លំនាំដើម៖ បង្ហាញតែសិស្សដែលទទួលបាននិទ្ទេស E ឬ F ប៉ុណ្ណោះ</small>
+            </div>
+
+            <!-- Line 2: មុខវិជ្ជា Checkboxes with 'ជ្រើសរើសទាំងអស់' -->
+            <div class="d-flex flex-wrap align-items-center">
+                <span class="fw-bold text-dark small me-3">
+                    <i class="fa-solid fa-book-open text-primary me-1"></i> មុខវិជ្ជា៖
+                </span>
+                <label class="checkbox-pill-label text-primary fw-bold">
+                    <input type="checkbox" id="selectAllSubjects" class="form-check-input" checked onchange="toggleSelectAllSubjects(this.checked)"> ជ្រើសរើសទាំងអស់
+                </label>
+                <div class="d-flex flex-wrap align-items-center" id="subjectCheckboxesList">
+                    {% for s in subjects_list %}
+                    <label class="checkbox-pill-label text-dark">
+                        <input type="checkbox" class="form-check-input subject-column-checkbox" value="{{ s.id }}" checked onchange="handleSubjectCheckboxChange()"> {{ s.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Candidates Table -->
+        <div class="table-responsive-custom">
+            <table class="table table-bordered table-analytics align-middle text-center mb-0" id="slowLearnersTable">
+                <thead>
+                    <tr class="th-slate">
+                        <th style="width: 55px;" onclick="sortSlowLearners('index')" role="button" title="ចុចដើម្បីតម្រៀប">
+                            ល.រ <i class="fa-solid fa-sort ms-1 small text-muted"></i>
+                        </th>
+                        <th style="width: 95px;" onclick="sortSlowLearners('student_code')" role="button" title="ចុចដើម្បីតម្រៀប">
+                            អត្តលេខ <i class="fa-solid fa-sort ms-1 small text-muted"></i>
+                        </th>
+                        <th class="text-start ps-3" style="width: 170px;" onclick="sortSlowLearners('candidate_name_kh')" role="button" title="ចុចដើម្បីតម្រៀប">
+                            ឈ្មោះសិស្ស <i class="fa-solid fa-sort ms-1 small text-muted"></i>
+                        </th>
+                        <th style="width: 55px;" onclick="sortSlowLearners('gender_short')" role="button">
+                            ភេទ <i class="fa-solid fa-sort ms-1 small text-muted"></i>
+                        </th>
+                        <th style="width: 80px;" onclick="sortSlowLearners('overall_mention')" role="button">
+                            ថ្នាក់/និទ្ទេស <i class="fa-solid fa-sort ms-1 small text-muted"></i>
+                        </th>
+                        <!-- Dynamic Subject Headers will be populated by JS -->
+                        {% for s in subjects_list %}
+                        <th class="subject-th subject-col-{{ s.id }}" style="min-width: 90px;" onclick="sortSlowLearners('subj_{{ s.id }}')" role="button">
+                            {{ s.name }} <i class="fa-solid fa-sort ms-0.5 small text-muted"></i>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody id="slowLearnersTableBody">
+                    <!-- Loaded dynamically by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer Info -->
+        <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top text-muted small">
+            <div>
+                កំពុងបង្ហាញសិស្សចំនួន <strong id="visibleStudentsCount" class="text-primary">0</strong> នាក់
+            </div>
+            <div class="fst-italic">
+                ទិន្នន័យត្រូវបានធ្វើបច្ចុប្បន្នភាពតាមតម្រងដែលបានជ្រើសរើស
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal for Mock Scores Generator -->
+<div class="modal fade" id="mockScoresModal" tabindex="-1" aria-labelledby="mockScoresModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header py-3 px-4" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-bottom: 1px solid #fcd34d;">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="mockScoresModalLabel">
+                    <i class="fa-solid fa-wand-magic-sparkles text-warning fs-5"></i> បង្កើតពិន្ទុតេស្តសាកល្បង (A-F)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="mockScoresForm" method="POST" action="{% url 'exam_generate_mock_scores' %}">
+                {% csrf_token %}
+                <input type="hidden" name="session_key" value="{{ current_session_key|default:'' }}">
+                <input type="hidden" name="exam_id" value="{% if target_exam %}{{ target_exam.id }}{% endif %}">
+                <input type="hidden" name="grade_level" value="{{ selected_grade|default:'' }}">
+                <input type="hidden" name="action" id="mockScoresAction" value="generate">
+
+                <div class="modal-body p-4">
+                    <div class="d-flex align-items-start gap-3 mb-3 p-3 bg-light rounded-3 border">
+                        <div class="fs-2 text-warning">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark mb-1">បង្កើតពិន្ទុតេស្តសាកល្បងដោយស្វ័យប្រវត្តិ</div>
+                            <div class="text-muted small">
+                                ប្រព័ន្ធនឹងបំពេញពិន្ទុជាក់ស្តែងតាមបទដ្ឋានក្រសួង ដោយមានការបែងចែកនិទ្ទេស A, B, C, D, E, F និងកម្រិតគុណភាព ល្អ, ល្អបង្គួរ, មធ្យម, ខ្សោយ ព្រមទាំងគណនារកចំណាត់ថ្នាក់ និងមធ្យមភាគសិស្សដោយស្វ័យប្រវត្តិ។
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small mb-2">
+                            <i class="fa-solid fa-layer-group me-1 text-primary"></i> ជ្រើសរើសវិសាលភាពអនុវត្ត៖
+                        </label>
+                        
+                        <div class="card border p-3 rounded-3 mb-2 bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_scope" id="scopeCurrent" value="current" checked>
+                                <label class="form-check-label fw-bold text-dark" for="scopeCurrent">
+                                    {% if target_exam %}
+                                        អនុវត្តលើកម្រិតថ្នាក់បច្ចុប្បន្ន៖ <span class="text-primary">{{ target_exam.name }}</span> (ថ្នាក់ទី {{ target_exam.grade_level }})
+                                    {% elif selected_grade %}
+                                        អនុវត្តលើកម្រិតថ្នាក់បច្ចុប្បន្ន៖ <span class="text-primary">កម្រិតថ្នាក់ទី {{ selected_grade }}</span>
+                                    {% else %}
+                                        អនុវត្តលើកម្រិតថ្នាក់បច្ចុប្បន្ន
+                                    {% endif %}
+                                </label>
+                                <div class="text-muted small ps-1 mt-1">បង្កើតពិន្ទុជូនបេក្ខជនក្នុងកម្រិតថ្នាក់ដែលកំពុងមើលនេះប៉ុណ្ណោះ</div>
+                            </div>
+                        </div>
+
+                        {% if session_exams and session_exams|length > 1 %}
+                        <div class="card border p-3 rounded-3 bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_scope" id="scopeSession" value="session">
+                                <label class="form-check-label fw-bold text-dark" for="scopeSession">
+                                    អនុវត្តលើគ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ (<span class="text-primary">{{ session_exams|length }} កម្រិតថ្នាក់</span>)
+                                </label>
+                                <div class="text-muted small ps-1 mt-1">បំពេញពិន្ទុព្រមគ្នាគ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-info fs-5 flex-shrink-0"></i>
+                        <div>
+                            អ្នកអាចចុច <strong>«សម្អាតពិន្ទុ (Reset)»</strong> បានគ្រប់ពេល ប្រសិនបើចង់លុបពិន្ទុដែលបានបង្កើតទាំងអស់ឱ្យត្រឡប់មកជាទទេវិញ។
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger btn-sm px-3 rounded-pill" onclick="submitMockScores('clear')">
+                        <i class="fa-solid fa-trash-can me-1"></i> សម្អាតពិន្ទុ (Reset)
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light btn-sm px-3 rounded-pill" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="button" class="btn btn-warning text-dark fw-bold btn-sm px-4 rounded-pill shadow-xs" onclick="submitMockScores('generate')">
+                            <i class="fa-solid fa-bolt me-1"></i> បង្កើតពិន្ទុឥឡូវនេះ
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- JSON Data Payloads for Interactive Frontend -->
+<script>
+    const SLOW_LEARNERS_DATA = {{ slow_learners_json|safe }};
+    const SUBJECTS_LIST = {{ subjects_json|safe }};
+</script>
+
+<script>
+    // State management for Slow Learners Table
+    let currentDisplayMode = 'mention'; // 'score' or 'mention'
+    let currentSortField = 'index';
+    let currentSortAsc = true;
+
+    // Toggle Subject Mentions (Image 3 vs Image 4)
+    function toggleSubjectMentionsView(mode) {
+        const singleView = document.getElementById('subjectMentionsSingleView');
+        const detailedView = document.getElementById('subjectMentionsDetailedView');
+        if (mode === 'detailed') {
+            singleView.classList.add('d-none');
+            detailedView.classList.remove('d-none');
+        } else {
+            detailedView.classList.add('d-none');
+            singleView.classList.remove('d-none');
+        }
+    }
+
+    // Toggle Display Mode: Scores vs Mentions
+    function setDisplayMode(mode) {
+        currentDisplayMode = mode;
+        const btnScore = document.getElementById('btnShowScore');
+        const btnMention = document.getElementById('btnShowMention');
+        if (mode === 'score') {
+            btnScore.classList.add('active');
+            btnMention.classList.remove('active');
+        } else {
+            btnMention.classList.add('active');
+            btnScore.classList.remove('active');
+        }
+        renderSlowLearnersTable();
+    }
+
+    // Toggle Select All Subjects Checkboxes
+    function toggleSelectAllSubjects(checked) {
+        const checkboxes = document.querySelectorAll('.subject-column-checkbox');
+        checkboxes.forEach(cb => cb.checked = checked);
+        handleSubjectCheckboxChange();
+    }
+
+    // Handle Individual Subject Checkbox Change
+    function handleSubjectCheckboxChange() {
+        const checkboxes = Array.from(document.querySelectorAll('.subject-column-checkbox'));
+        const selectAllCb = document.getElementById('selectAllSubjects');
+        const allChecked = checkboxes.every(cb => cb.checked);
+        selectAllCb.checked = allChecked;
+
+        // Toggle Column Visibility in Header
+        checkboxes.forEach(cb => {
+            const subjId = cb.value;
+            const thElements = document.querySelectorAll('.subject-col-' + subjId);
+            thElements.forEach(th => {
+                th.style.display = cb.checked ? '' : 'none';
+            });
+        });
+
+        renderSlowLearnersTable();
+    }
+
+    // Sorting functionality for Slow Learners Table
+    function sortSlowLearners(field) {
+        if (currentSortField === field) {
+            currentSortAsc = !currentSortAsc;
+        } else {
+            currentSortField = field;
+            currentSortAsc = true;
+        }
+        renderSlowLearnersTable();
+    }
+
+    // Main Render Function for Slow Learners Table
+    function renderSlowLearnersTable() {
+        const tbody = document.getElementById('slowLearnersTableBody');
+        const countSpan = document.getElementById('visibleStudentsCount');
+        if (!tbody) return;
+
+        // 1. Get Checked Grade Mentions (A..F)
+        const checkedGrades = Array.from(document.querySelectorAll('.grade-filter-checkbox:checked')).map(cb => cb.value);
+
+        // 2. Get Checked Subject IDs
+        const checkedSubjIds = Array.from(document.querySelectorAll('.subject-column-checkbox:checked')).map(cb => parseInt(cb.value));
+
+        // 3. Filter Candidates: Must have at least one checked grade in any of the checked subjects
+        const filtered = SLOW_LEARNERS_DATA.filter(cand => {
+            if (checkedGrades.length === 0) return false;
+            // Check if any checked subject matches checked grade
+            for (let sid of checkedSubjIds) {
+                const mention = cand.subject_mentions[sid];
+                if (mention && checkedGrades.includes(mention)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        // 4. Sort Candidates
+        filtered.sort((a, b) => {
+            let valA, valB;
+            if (currentSortField.startsWith('subj_')) {
+                const sId = currentSortField.replace('subj_', '');
+                if (currentDisplayMode === 'score') {
+                    valA = a.subject_scores[sId] ?? -1;
+                    valB = b.subject_scores[sId] ?? -1;
+                } else {
+                    valA = a.subject_mentions[sId] ?? '';
+                    valB = b.subject_mentions[sId] ?? '';
+                }
+            } else {
+                valA = a[currentSortField] ?? '';
+                valB = b[currentSortField] ?? '';
+            }
+
+            if (typeof valA === 'string') {
+                const cmp = valA.localeCompare(valB, 'km');
+                return currentSortAsc ? cmp : -cmp;
+            } else {
+                return currentSortAsc ? (valA - valB) : (valB - valA);
+            }
+        });
+
+        // 5. Render Rows
+        countSpan.textContent = filtered.length;
+        if (filtered.length === 0) {
+            const colSpan = 5 + SUBJECTS_LIST.length;
+            tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-muted py-4"><i class="fa-solid fa-circle-check text-success me-1"></i> មិនមានសិស្សស្ថិតក្នុងលក្ខខណ្ឌដែលបានស្វែងរកឡើយ</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        filtered.forEach((cand, idx) => {
+            const genderBadge = cand.gender_short === 'ស' 
+                ? '<span class="val-female fw-bold">ស</span>' 
+                : '<span class="val-male fw-bold">ប</span>';
+
+            const overallBadge = cand.overall_mention === 'A' ? '<span class="badge bg-primary">A</span>' :
+                                 cand.overall_mention === 'B' ? '<span class="badge bg-warning text-dark">B</span>' :
+                                 cand.overall_mention === 'C' ? '<span class="badge bg-success">C</span>' :
+                                 cand.overall_mention === 'D' ? '<span class="badge bg-info text-dark">D</span>' :
+                                 cand.overall_mention === 'E' ? '<span class="badge bg-secondary">E</span>' :
+                                 cand.overall_mention === 'F' ? '<span class="badge bg-danger">F</span>' :
+                                 `<span class="badge bg-light text-dark border">${cand.overall_mention}</span>`;
+
+            html += `<tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-light'}">
+                <td class="text-muted">${cand.index}</td>
+                <td class="fw-bold text-dark">${cand.student_code}</td>
+                <td class="text-start ps-3 fw-bold text-dark text-truncate" style="max-width: 170px;" title="${cand.candidate_name_kh}">${cand.candidate_name_kh}</td>
+                <td>${genderBadge}</td>
+                <td>${overallBadge}</td>`;
+
+            SUBJECTS_LIST.forEach(s => {
+                const sId = s.id;
+                const isSubjVisible = checkedSubjIds.includes(sId);
+                const styleDisplay = isSubjVisible ? '' : 'display: none;';
+
+                const score = cand.subject_scores[sId];
+                const mention = cand.subject_mentions[sId] || '-';
+                const isWeak = cand.subject_weak_flags[sId];
+
+                let cellContent = '';
+                if (currentDisplayMode === 'score') {
+                    if (score !== null && score !== undefined) {
+                        cellContent = Number.isInteger(score) ? score : score.toFixed(1);
+                    } else {
+                        cellContent = '-';
+                    }
+                } else {
+                    cellContent = mention;
+                }
+
+                const weakClass = isWeak ? 'val-danger' : 'text-dark';
+
+                html += `<td class="subject-col-${sId} ${weakClass} fw-bold" style="${styleDisplay}">${cellContent}</td>`;
+            });
+
+            html += '</tr>';
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    // Submit Mock Scores Generation / Clear Form
+    function submitMockScores(action) {
+        const form = document.getElementById('mockScoresForm');
+        const actionInput = document.getElementById('mockScoresAction');
+        if (!form || !actionInput) return;
+
+        actionInput.value = action;
+        if (action === 'clear') {
+            if (!confirm('តើអ្នកពិតជាចង់សម្អាតពិន្ទុទាំងអស់នេះឱ្យត្រឡប់មកជាទទេវិញមែនទេ?')) {
+                return;
+            }
+        }
+
+        const modalEl = document.getElementById('mockScoresModal');
+        const buttons = modalEl ? modalEl.querySelectorAll('button') : [];
+        buttons.forEach(btn => {
+            btn.disabled = true;
+        });
+
+        const activeBtn = event ? (event.target.closest('button') || event.target) : null;
+        if (activeBtn) {
+            activeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> កំពុងដំណើរការ...';
+        }
+
+        form.submit();
+    }
+
+    // Mention Dynamic Summation System (Tick A..F to sum together)
+    function onMentionSumTickChange(changedInput) {
+        if (!changedInput) return;
+        const grade = changedInput.getAttribute('data-grade');
+        const isChecked = changedInput.checked;
+
+        // 1. Synchronize all checkboxes for this grade across all tables
+        document.querySelectorAll(`.mention-sum-tick[data-grade="${grade}"]`).forEach(cb => {
+            cb.checked = isChecked;
+        });
+
+        // 2. Update print ticks visibility
+        document.querySelectorAll('.mention-sum-tick').forEach(cb => {
+            const pTick = cb.parentElement ? cb.parentElement.querySelector('.print-tick') : null;
+            if (pTick) {
+                pTick.style.display = cb.checked ? 'inline' : 'none';
+            }
+        });
+
+        // 3. Recalculate dynamic sums in Table 1 & Table 2
+        recalculateMentionSums();
+    }
+
+    function recalculateMentionSums() {
+        const ALL_GRADES = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const activeGrades = [];
+        ALL_GRADES.forEach(g => {
+            const sample = document.querySelector(`.mention-sum-tick[data-grade="${g}"]`);
+            if (sample && sample.checked) {
+                activeGrades.push(g);
+            }
+        });
+
+        // Update header label across Table 1 and Table 2 (e.g. 'A+B', 'A+B+C', 'A+B+C+D')
+        const sumLabel = activeGrades.length > 0 ? activeGrades.join('+') : '-';
+        document.querySelectorAll('.mention-sum-header').forEach(th => {
+            th.textContent = sumLabel;
+        });
+
+        // Update print ticks for initial state
+        document.querySelectorAll('.mention-sum-tick').forEach(cb => {
+            const pTick = cb.parentElement ? cb.parentElement.querySelector('.print-tick') : null;
+            if (pTick) {
+                pTick.style.display = cb.checked ? 'inline' : 'none';
+            }
+        });
+
+        // 1. Recalculate Table 1: Overall Mentions (សរុប, ស្រី, ប្រុស)
+        document.querySelectorAll('.row-overall-mentions').forEach(tr => {
+            let sum = 0;
+            activeGrades.forEach(g => {
+                const td = tr.querySelector(`td[data-grade="${g}"]`);
+                if (td) {
+                    sum += (parseInt(td.textContent.trim(), 10) || 0);
+                }
+            });
+            const sumCell = tr.querySelector('.cell-sum-overall');
+            if (sumCell) {
+                sumCell.textContent = sum;
+            }
+        });
+
+        // 2. Recalculate Table 2: Single Mode
+        document.querySelectorAll('.row-subject-single').forEach(tr => {
+            let sum = 0;
+            activeGrades.forEach(g => {
+                const td = tr.querySelector(`td[data-grade="${g}"]`);
+                if (td) {
+                    sum += (parseInt(td.textContent.trim(), 10) || 0);
+                }
+            });
+            const sumCell = tr.querySelector('.cell-sum-single');
+            if (sumCell) {
+                sumCell.textContent = sum;
+            }
+        });
+
+        // 3. Recalculate Table 2: Detailed Mode
+        document.querySelectorAll('.row-subject-detailed').forEach(tr => {
+            let sumTot = 0;
+            let sumFem = 0;
+            let sumMal = 0;
+            activeGrades.forEach(g => {
+                const tdTot = tr.querySelector(`td[data-grade="${g}"][data-sub="tot"]`);
+                const tdFem = tr.querySelector(`td[data-grade="${g}"][data-sub="fem"]`);
+                const tdMal = tr.querySelector(`td[data-grade="${g}"][data-sub="mal"]`);
+                if (tdTot) sumTot += (parseInt(tdTot.textContent.trim(), 10) || 0);
+                if (tdFem) sumFem += (parseInt(tdFem.textContent.trim(), 10) || 0);
+                if (tdMal) sumMal += (parseInt(tdMal.textContent.trim(), 10) || 0);
+            });
+            const cellTot = tr.querySelector('.cell-sum-detailed-tot');
+            const cellFem = tr.querySelector('.cell-sum-detailed-fem');
+            const cellMal = tr.querySelector('.cell-sum-detailed-mal');
+            if (cellTot) cellTot.textContent = sumTot;
+            if (cellFem) cellFem.textContent = sumFem;
+            if (cellMal) cellMal.textContent = sumMal;
+        });
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        handleSubjectCheckboxChange();
+        recalculateMentionSums();
+    });
+</script>
+{% endblock %}

@@ -1081,7 +1081,7 @@ def _parse_gender(val):
     if not val:
         return Student.Gender.MALE
     val_str = str(val).strip().lower()
-    if val_str in ['ស្រី', 'f', 'female', 'girl', 'woman', '2']:
+    if val_str in ['ស', 'ស.', 'ស្រី', 'ស្រី្ត', 'ស្ត្រី', 'កញ្ញា', 'f', 'female', 'girl', 'woman', '2']:
         return Student.Gender.FEMALE
     return Student.Gender.MALE
 

@@ -160,6 +160,11 @@
                 <i class="fa-solid fa-ranking-star me-1"></i> តារាងបិទផ្សាយបណ្តោះអាសន្ន
             </a>
 
+            <!-- Comprehensive Analytics Reports -->
+            <a href="{% url 'exam_analytics_view' exam.id %}" class="btn btn-sm fw-bold shadow-sm text-white" style="background-color: #0f766e; border-color: #0f766e;" title="របាយការណ៍វិភាគលទ្ធផលប្រឡង តាមថ្នាក់/កម្រិតថ្នាក់/កម្រិតសាលា">
+                <i class="fa-solid fa-chart-line me-1"></i> របាយការណ៍វិភាគ
+            </a>
+
             <!-- Official Results Print & Mentions Sheets -->
             <div class="dropdown d-inline">
                 <button class="btn btn-outline-danger btn-sm fw-bold dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -185,6 +190,12 @@
                     <li>
                         <a class="dropdown-item py-2" href="{% url 'exam_results_graph_view' exam.id %}" target="_blank">
                             <i class="fa-solid fa-chart-column me-2 text-warning"></i> <strong>៤. ក្រាបលទ្ធផលផ្លូវការ (Graph PDF)</strong>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'exam_analytics_view' exam.id %}">
+                            <i class="fa-solid fa-chart-line me-2" style="color: #0f766e;"></i> <strong>៥. របាយការណ៍វិភាគលទ្ធផល (Analytics)</strong>
                         </a>
                     </li>
                 </ul>

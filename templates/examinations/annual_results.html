@@ -263,7 +263,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                    <!-- Student Selector when opened from header button -->
+                    <div class="mb-3" id="transferStudentSelectContainer">
+                        <label class="form-label fw-bold small text-dark">
+                            <i class="fa-solid fa-user-check me-1 text-primary"></i> ជ្រើសរើសសិស្សក្នុងថ្នាក់ {{ selected_class.name }} (Select Student) *
+                        </label>
+                        <select id="modalStudentSelect" class="form-select rounded-3 border-success" onchange="onTransferStudentSelectChangedAnnual(this.value)">
+                            <option value="">-- សូមជ្រើសរើសសិស្ស --</option>
+                            {% for r in annual_data.students_data %}
+                            <option value="{{ r.student.id }}" data-name="{{ r.student.khmer_name }}" data-code="{{ r.student.student_id }}">
+                                {{ r.student.student_id }} - {{ r.student.khmer_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between border" id="modalTransferStudentFixedBox">
                         <div>
                             <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
                             <div class="fw-bold fs-6 text-dark" id="modalTransferStudentName">សិស្ស គំរូ</div>
@@ -324,6 +339,54 @@
 <script>
     let currentStudentId = null;
 
+    function openTransferModalAnnual(semester = 1) {
+        currentStudentId = null;
+        document.getElementById('transferStudentId').value = '';
+        document.getElementById('transferSemesterSelect').value = semester;
+
+        // Show student dropdown selector
+        const selectContainer = document.getElementById('transferStudentSelectContainer');
+        if (selectContainer) selectContainer.style.display = 'block';
+
+        const studentSelect = document.getElementById('modalStudentSelect');
+        if (studentSelect) studentSelect.value = '';
+
+        document.getElementById('modalTransferStudentName').innerText = '-- សូមជ្រើសរើសសិស្សខាងលើ --';
+        document.getElementById('modalTransferStudentID').innerText = '--';
+
+        // Reset
+        document.getElementById('modalPriorSchool').value = '';
+        document.getElementById('modalMonthlyAvg').value = '';
+        document.getElementById('modalExamScore').value = '';
+        document.getElementById('modalSemFinal').value = '';
+        document.getElementById('modalTransferRemarks').value = '';
+
+        const modalEl = document.getElementById('transferGradeModal');
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+
+    function onTransferStudentSelectChangedAnnual(studentId) {
+        if (!studentId) {
+            currentStudentId = null;
+            document.getElementById('transferStudentId').value = '';
+            document.getElementById('modalTransferStudentName').innerText = '-- សូមជ្រើសរើសសិស្សខាងលើ --';
+            document.getElementById('modalTransferStudentID').innerText = '--';
+            return;
+        }
+        const selectEl = document.getElementById('modalStudentSelect');
+        const opt = selectEl.options[selectEl.selectedIndex];
+        const name = opt.getAttribute('data-name') || '';
+        const code = opt.getAttribute('data-code') || '';
+
+        currentStudentId = studentId;
+        document.getElementById('transferStudentId').value = studentId;
+        document.getElementById('modalTransferStudentName').innerText = name;
+        document.getElementById('modalTransferStudentID').innerText = code;
+
+        refreshTransferData();
+    }
+
     function openTransferModalDirect(studentId, studentName, studentCode, semester) {
         currentStudentId = studentId;
         document.getElementById('transferStudentId').value = studentId;
@@ -331,8 +394,16 @@
         document.getElementById('modalTransferStudentName').innerText = studentName;
         document.getElementById('modalTransferStudentID').innerText = studentCode;
 
+        // Hide or sync dropdown
+        const selectContainer = document.getElementById('transferStudentSelectContainer');
+        const studentSelect = document.getElementById('modalStudentSelect');
+        if (studentSelect) studentSelect.value = studentId;
+        if (selectContainer) selectContainer.style.display = 'none';
+
         refreshTransferData();
-        new bootstrap.Modal(document.getElementById('transferGradeModal')).show();
+        const modalEl = document.getElementById('transferGradeModal');
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
     }
 
     function refreshTransferData() {
@@ -371,6 +442,20 @@
             document.getElementById('modalSemFinal').value = e.toFixed(2);
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('transferGradeForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const sId = document.getElementById('transferStudentId').value;
+                if (!sId) {
+                    e.preventDefault();
+                    alert('សូមជ្រើសរើសសិស្សដែលត្រូវបញ្ចូលពិន្ទុជាមុនសិន!');
+                    return false;
+                }
+            });
+        }
+    });
 </script>
 {% endif %}
 {% endblock %}

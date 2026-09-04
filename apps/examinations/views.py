@@ -771,11 +771,123 @@ def standardized_exam_list(request):
 
 
 
+def pull_candidates_for_exam(exam):
+    """
+    1-Click / Auto-Pull all active students from classrooms matching this exam's Grade Level and Track.
+    Creates ExamCandidate records and initializes CandidateSubjectScore rows for each subject.
+    Returns the count of newly added candidates.
+    """
+    classrooms = Classroom.objects.filter(
+        academic_year=exam.academic_year,
+        grade_level=exam.grade_level
+    )
+    if exam.track != 'ALL':
+        classrooms = classrooms.filter(track=exam.track)
+
+    # Fallback 1: If no classrooms found for exam.academic_year, try system active academic year
+    if not classrooms.exists():
+        from apps.academics.utils import get_active_academic_year
+        act_y = get_active_academic_year()
+        if act_y and act_y != exam.academic_year:
+            fallback_cr = Classroom.objects.filter(academic_year=act_y, grade_level=exam.grade_level)
+            if exam.track != 'ALL':
+                fallback_cr = fallback_cr.filter(track=exam.track)
+            if fallback_cr.exists():
+                classrooms = fallback_cr
+
+    # Fallback 2: Try any academic year with active students for this grade level
+    if not classrooms.exists():
+        fallback_cr = Classroom.objects.filter(
+            grade_level=exam.grade_level,
+            students__status='ACTIVE'
+        ).distinct()
+        if exam.track != 'ALL':
+            fallback_cr = fallback_cr.filter(track=exam.track)
+        if fallback_cr.exists():
+            classrooms = fallback_cr
+
+    # Fallback 3: Try any classroom for this grade level
+    if not classrooms.exists():
+        fallback_cr = Classroom.objects.filter(grade_level=exam.grade_level)
+        if exam.track != 'ALL':
+            fallback_cr = fallback_cr.filter(track=exam.track)
+        if fallback_cr.exists():
+            classrooms = fallback_cr
+
+    # Auto-align exam academic year if it was misassigned to a year with 0 classrooms
+    if classrooms.exists():
+        cr_year = classrooms.first().academic_year
+        if cr_year and exam.academic_year != cr_year:
+            if not Classroom.objects.filter(academic_year=exam.academic_year, grade_level=exam.grade_level).exists():
+                exam.academic_year = cr_year
+                exam.save(update_fields=['academic_year'])
+
+    students = Student.objects.filter(
+        classroom__in=classrooms,
+        status='ACTIVE',
+        is_exam_suspended=False
+    ).select_related('classroom').order_by('classroom__code', 'khmer_name')
+
+    # Exclude students with active exclusions for this exam or month/year
+    excluded_years = [exam.academic_year]
+    if classrooms.exists():
+        first_cr_ay = classrooms.first().academic_year
+        if first_cr_ay and first_cr_ay not in excluded_years:
+            excluded_years.append(first_cr_ay)
+
+    excluded_student_ids = set(
+        ExamStudentExclusion.objects.filter(
+            academic_year__in=excluded_years,
+            is_active=True
+        ).filter(
+            Q(standardized_exam=exam) |
+            (Q(month=exam.exam_date.month) if exam.exam_date else Q())
+        ).values_list('student_id', flat=True)
+    )
+    if excluded_student_ids:
+        students = students.exclude(id__in=excluded_student_ids)
+
+    existing_student_ids = set(exam.candidates.values_list('student_id', flat=True))
+    existing_roll_count = exam.candidates.count()
+
+    new_candidates = []
+    exam_subjects = list(exam.exam_subjects.all())
+
+    with transaction.atomic():
+        for stu in students:
+            if stu.id in existing_student_ids:
+                continue
+
+            roll_str = f"{existing_roll_count + len(new_candidates) + 1:03d}"
+            cand = ExamCandidate.objects.create(
+                exam=exam,
+                student=stu,
+                roll_number=roll_str,
+                desk_number=1,
+                candidate_name_kh=stu.khmer_name,
+                candidate_name_en=stu.latin_name or '',
+                gender=stu.gender or 'M',
+                dob=stu.date_of_birth,
+                origin_class=stu.classroom.name if stu.classroom else '',
+                student_code=stu.student_id or '',
+            )
+            # Create empty score rows for each subject
+            for es in exam_subjects:
+                CandidateSubjectScore.objects.create(
+                    candidate=cand,
+                    exam_subject=es
+                )
+            new_candidates.append(cand)
+
+    return len(new_candidates)
+
+
 @login_required
 @role_required(['ADMIN'])
 def standardized_exam_create(request):
     """
     Creates a new Standardized Exam (Single or Multi-Grade Batch) and auto-populates Exam Subjects from MoEYS Grade Level Rules.
+    Automatically pulls active students into exam candidates by grade level unless explicitly disabled.
     """
     from apps.academics.utils import get_active_academic_year
     active_year = get_active_academic_year(request)
@@ -810,7 +922,15 @@ def standardized_exam_create(request):
         base_desc = request.POST.get('description', '').strip()
         is_pub = request.POST.get('is_published') == 'on'
 
+        # Auto-pull active candidates into each grade level (default is True)
+        if 'auto_pull_candidates' in request.POST:
+            auto_pull_val = request.POST.get('auto_pull_candidates')
+            auto_pull = (auto_pull_val in ['on', 'true', '1', 'yes'])
+        else:
+            auto_pull = True
+
         created_exams = []
+        total_pulled_candidates = 0
 
         with transaction.atomic():
             for g_str in selected_grades:
@@ -897,12 +1017,23 @@ def standardized_exam_create(request):
                         )
                         order_idx += 1
 
+                # Automatically pull active candidates into this exam
+                if auto_pull:
+                    pulled_count = pull_candidates_for_exam(exam)
+                    total_pulled_candidates += pulled_count
+
         if len(created_exams) == 1:
-            messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដា «{created_exams[0].name}» ដោយជោគជ័យ!")
+            if auto_pull and total_pulled_candidates > 0:
+                messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដា «{created_exams[0].name}» និងបានទាញបញ្ចូលបេក្ខជនចំនួន {total_pulled_candidates} នាក់ដោយស្វ័យប្រវត្តិ!")
+            else:
+                messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដា «{created_exams[0].name}» ដោយជោគជ័យ!")
             return redirect('standardized_exam_manage', exam_id=created_exams[0].id)
         elif len(created_exams) > 1:
             grades_list_str = ", ".join([f"ថ្នាក់ទី {e.grade_level}" for e in created_exams])
-            messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដាចំនួន {len(created_exams)} កម្រិតថ្នាក់ ({grades_list_str}) ដោយជោគជ័យ!")
+            if auto_pull and total_pulled_candidates > 0:
+                messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដាចំនួន {len(created_exams)} កម្រិតថ្នាក់ ({grades_list_str}) ព្រមទាំងបានទាញបញ្ចូលបេក្ខជនសរុបចំនួន {total_pulled_candidates} នាក់ដោយស្វ័យប្រវត្តិ!")
+            else:
+                messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដាចំនួន {len(created_exams)} កម្រិតថ្នាក់ ({grades_list_str}) ដោយជោគជ័យ!")
             return redirect('standardized_exam_list')
         else:
             messages.error(request, "⚠️ សូមជ្រើសរើសយ៉ាងហោចណាស់មួយកម្រិតថ្នាក់!")
@@ -1350,6 +1481,44 @@ def standardized_exam_session_delete(request):
     return redirect('standardized_exam_list')
 
 
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_session_pull_candidates(request):
+    """
+    Batch Auto-Pulls all active students into candidates for all grade levels under an entire exam session in one click.
+    """
+    if request.method == 'POST':
+        exam_ids_str = request.POST.get('exam_ids', '').strip()
+        session_key = request.POST.get('session_key', '').strip()
+        session_title = request.POST.get('session_title', '').strip()
+
+        exam_ids = [int(eid.strip()) for eid in exam_ids_str.split(',') if eid.strip().isdigit()]
+        exams_qs = StandardizedExam.objects.none()
+
+        if exam_ids:
+            exams_qs = StandardizedExam.objects.filter(id__in=exam_ids)
+        elif session_key:
+            parts = session_key.split('_', 2)
+            if len(parts) >= 3 and parts[0].isdigit():
+                y_id = int(parts[0])
+                d_str = parts[1]
+                t_str = parts[2]
+                exams_qs = StandardizedExam.objects.filter(academic_year_id=y_id, exam_date=d_str, name__icontains=t_str)
+
+        total_pulled = 0
+        exams_list = list(exams_qs.order_by('grade_level'))
+        for ex in exams_list:
+            total_pulled += pull_candidates_for_exam(ex)
+
+        title_display = session_title or "សម័យប្រឡង"
+        if len(exams_list) > 0:
+            messages.success(request, f"🎉 បានទាញបញ្ចូលបេក្ខជនសរុបចំនួន {total_pulled} នាក់ សម្រាប់សម័យប្រឡង «{title_display}» ({len(exams_list)} កម្រិតថ្នាក់) ដោយជោគជ័យ!")
+        else:
+            messages.warning(request, "ពុំមានសម័យប្រឡងណាមួយត្រូវបានរកឃើញសម្រាប់ទាញឈ្មោះសិស្សឡើយ។")
+
+    return redirect('standardized_exam_list')
+
+
 
 @login_required
 def standardized_exam_manage(request, exam_id):
@@ -1432,66 +1601,8 @@ def exam_pull_candidates(request, exam_id):
     1-Click Auto-Pull all active students from classrooms matching this exam's Grade Level and Track.
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
-
-    classrooms = Classroom.objects.filter(
-        academic_year=exam.academic_year,
-        grade_level=exam.grade_level
-    )
-    if exam.track != 'ALL':
-        classrooms = classrooms.filter(track=exam.track)
-
-    students = Student.objects.filter(
-        classroom__in=classrooms,
-        status='ACTIVE',
-        is_exam_suspended=False
-    ).select_related('classroom').order_by('classroom__code', 'khmer_name')
-
-    # Exclude students with active exclusions for this exam or month/year
-    excluded_student_ids = set(
-        ExamStudentExclusion.objects.filter(
-            academic_year=exam.academic_year,
-            is_active=True
-        ).filter(
-            Q(standardized_exam=exam) |
-            (Q(month=exam.exam_date.month) if exam.exam_date else Q())
-        ).values_list('student_id', flat=True)
-    )
-    if excluded_student_ids:
-        students = students.exclude(id__in=excluded_student_ids)
-
-    existing_student_ids = set(exam.candidates.values_list('student_id', flat=True))
-    existing_roll_count = exam.candidates.count()
-
-    new_candidates = []
-    exam_subjects = list(exam.exam_subjects.all())
-
-    with transaction.atomic():
-        for idx, stu in enumerate(students):
-            if stu.id in existing_student_ids:
-                continue
-
-            roll_str = f"{existing_roll_count + len(new_candidates) + 1:03d}"
-            cand = ExamCandidate.objects.create(
-                exam=exam,
-                student=stu,
-                roll_number=roll_str,
-                desk_number=1,
-                candidate_name_kh=stu.khmer_name,
-                candidate_name_en=stu.latin_name or '',
-                gender=stu.gender or 'M',
-                dob=stu.date_of_birth,
-                origin_class=stu.classroom.name if stu.classroom else '',
-                student_code=stu.student_id or '',
-            )
-            # Create empty score rows for each subject
-            for es in exam_subjects:
-                CandidateSubjectScore.objects.create(
-                    candidate=cand,
-                    exam_subject=es
-                )
-            new_candidates.append(cand)
-
-    messages.success(request, f"🎉 បានទាញបញ្ចូលបេក្ខជនសរុបចំនួន {len(new_candidates)} នាក់ ពីកម្រិតថ្នាក់ទី {exam.grade_level} ដោយជោគជ័យ!")
+    count = pull_candidates_for_exam(exam)
+    messages.success(request, f"🎉 បានទាញបញ្ចូលបេក្ខជនសរុបចំនួន {count} នាក់ ពីកម្រិតថ្នាក់ទី {exam.grade_level} ដោយជោគជ័យ!")
     return redirect('standardized_exam_manage', exam_id=exam.id)
 
 
@@ -1505,7 +1616,16 @@ def partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=25,
     """
     candidates = list(exam.candidates.all())
     if not candidates:
-        return 0, 0, start_room_number, start_roll_number
+        # Create at least Room 01 so the exam has a room ready
+        exam.rooms.all().delete()
+        room_obj = ExamRoom.objects.create(
+            exam=exam,
+            room_number=start_room_number,
+            room_name=f"បន្ទប់លេខ {start_room_number:02d}",
+            building=building or "អគារ A"
+        )
+        exam.generate_all_secret_codes(force_regenerate=True)
+        return 0, 1, start_room_number + 1, start_roll_number
 
     # Order candidates according to chosen policy
     if candidate_order == 'ALPHABETICAL':
@@ -1568,6 +1688,10 @@ def exam_generate_rooms(request, exam_id):
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
 
+    # If exam has 0 candidates, auto-pull candidates first
+    if exam.candidates.count() == 0:
+        pull_candidates_for_exam(exam)
+
     numbering_mode = request.POST.get('numbering_mode', 'RESET_PER_GRADE')
     custom_cpr = request.POST.get('candidates_per_room')
     cap = int(custom_cpr) if custom_cpr and custom_cpr.isdigit() else (exam.candidates_per_room or 25)
@@ -1624,10 +1748,6 @@ def exam_generate_rooms(request, exam_id):
             candidate_order=candidate_order
         )
 
-    if total_cands == 0:
-        messages.warning(request, "មិនទាន់មានបេក្ខជនក្នុងសម័យប្រឡងនេះនៅឡើយទេ! សូមទាញ ឬបញ្ចូលបញ្ជីបេក្ខជនជាមុនសិន។")
-        return redirect('standardized_exam_manage', exam_id=exam.id)
-
     mode_labels = {
         'RESET_PER_GRADE': 'រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នេះ',
         'CONTINUOUS_IN_SHIFT': f'រាប់បន្តគ្នាក្នុង {exam.get_session_display()}',
@@ -1635,7 +1755,10 @@ def exam_generate_rooms(request, exam_id):
         'CUSTOM': f'កំណត់ដោយខ្លួនឯង (បន្ទប់ទី {start_room_number:02d}, អត្តលេខ {start_roll_number:03d})'
     }
     mode_text = mode_labels.get(numbering_mode, 'ស្តង់ដារ')
-    messages.success(request, f"🎉 បានរៀបចំ និងបែងចែកបេក្ខជនចំនួន {total_cands} នាក់ ទៅកាន់បន្ទប់ប្រឡង {needed_rooms} បន្ទប់ ({cap} នាក់/បន្ទប់) តាមទម្រង់ «{mode_text}» (បន្ទប់លេខ {start_room_number:02d} ដល់ {start_room_number+needed_rooms-1:02d}, អត្តលេខ {start_roll_number:03d} ដល់ {start_roll_number+total_cands-1:03d}) ដោយជោគជ័យ!")
+    if total_cands > 0:
+        messages.success(request, f"🎉 បានរៀបចំ និងបែងចែកបេក្ខជនចំនួន {total_cands} នាក់ ទៅកាន់បន្ទប់ប្រឡង {needed_rooms} បន្ទប់ ({cap} នាក់/បន្ទប់) តាមទម្រង់ «{mode_text}» (បន្ទប់លេខ {start_room_number:02d} ដល់ {start_room_number+needed_rooms-1:02d}, អត្តលេខ {start_roll_number:03d} ដល់ {start_roll_number+total_cands-1:03d}) ដោយជោគជ័យ!")
+    else:
+        messages.info(request, f"🎉 បានបង្កើតបន្ទប់ប្រឡងលេខ {start_room_number:02d} រួចរាល់។ (ពុំទាន់មានបេក្ខជនក្នុងកម្រិតថ្នាក់នេះនៅឡើយទេ)")
     return redirect('standardized_exam_manage', exam_id=exam.id)
 
 
@@ -1658,6 +1781,7 @@ def exam_batch_generate_rooms(request):
     academic_year_id = request.POST.get('academic_year')
     ay = AcademicYear.objects.filter(id=academic_year_id).first() if academic_year_id else active_year
     
+    raw_exam_ids = request.POST.get('exam_ids', '').strip()
     session_key = request.POST.get('session_key', '').strip()
     session_title = request.POST.get('session_title', '').strip()
     exam_date_str = request.POST.get('exam_date', '').strip()
@@ -1669,36 +1793,63 @@ def exam_batch_generate_rooms(request):
     candidate_order = request.POST.get('candidate_order', 'ALPHABETICAL')
     building = request.POST.get('building', 'អគារ A')
 
-    exams_qs = StandardizedExam.objects.all()
-    if ay:
-        exams_qs = exams_qs.filter(academic_year=ay)
-
-    # Filter to specific Exam Session if specified
     target_session_name = ""
-    if session_key and session_key != 'ALL':
-        # Group key format: {year_id}_{exam_date}_{clean_title}
+    exams_qs = StandardizedExam.objects.none()
+
+    # 1. Primary Priority: Exact exam IDs passed from the session card modal
+    if raw_exam_ids:
+        eids = [int(x) for x in raw_exam_ids.split(',') if x.strip().isdigit()]
+        if eids:
+            exams_qs = StandardizedExam.objects.filter(id__in=eids)
+            first_exam = exams_qs.first()
+            if first_exam:
+                target_session_name = get_clean_exam_session_title(first_exam.name)
+
+    # 2. Secondary Priority: Filter by session_key
+    if not exams_qs.exists() and session_key and session_key != 'ALL':
+        all_exams = StandardizedExam.objects.all()
+        if ay:
+            ay_exams = all_exams.filter(academic_year=ay)
+            if ay_exams.exists():
+                all_exams = ay_exams
+
         matching_exams = []
-        for ex in exams_qs:
+        for ex in all_exams:
             ex_clean_title = get_clean_exam_session_title(ex.name)
             ex_date_key = str(ex.exam_date)
             ex_year_key = str(ex.academic_year_id)
             ex_group_key = f"{ex_year_key}_{ex_date_key}_{ex_clean_title}"
             
-            if ex_group_key == session_key or ex_clean_title == session_key:
+            if ex_group_key == session_key or ex_clean_title == session_key or session_key in ex_group_key:
                 matching_exams.append(ex)
                 if not target_session_name:
                     target_session_name = ex_clean_title
         
-        exams_qs = exams_qs.filter(id__in=[e.id for e in matching_exams])
-    elif session_title:
+        exams_qs = StandardizedExam.objects.filter(id__in=[e.id for e in matching_exams])
+
+    # 3. Tertiary Priority: Filter by session_title
+    if not exams_qs.exists() and session_title:
+        all_exams = StandardizedExam.objects.all()
+        if ay:
+            ay_exams = all_exams.filter(academic_year=ay)
+            if ay_exams.exists():
+                all_exams = ay_exams
+
         matching_exams = []
-        for ex in exams_qs:
+        for ex in all_exams:
             ex_clean_title = get_clean_exam_session_title(ex.name)
-            if ex_clean_title == session_title:
+            if ex_clean_title == session_title or session_title in ex.name:
                 if not exam_date_str or str(ex.exam_date) == exam_date_str:
                     matching_exams.append(ex)
-                    target_session_name = ex_clean_title
-        exams_qs = exams_qs.filter(id__in=[e.id for e in matching_exams])
+                    if not target_session_name:
+                        target_session_name = ex_clean_title
+        exams_qs = StandardizedExam.objects.filter(id__in=[e.id for e in matching_exams])
+
+    # 4. Fallback: All exams in the academic year
+    if not exams_qs.exists() and (not session_key or session_key == 'ALL') and not raw_exam_ids and not session_title:
+        exams_qs = StandardizedExam.objects.all()
+        if ay:
+            exams_qs = exams_qs.filter(academic_year=ay)
 
     if scope == 'MORNING_SHIFT':
         exams_qs = exams_qs.filter(session='MORNING')
@@ -1709,6 +1860,11 @@ def exam_batch_generate_rooms(request):
     if not exams:
         messages.warning(request, "មិនមានសម័យប្រឡងណាត្រូវនឹងលក្ខខណ្ឌជ្រើសរើសឡើយ!")
         return redirect('standardized_exam_list')
+
+    # Automatically pull candidates for any exam in this batch that has 0 candidates
+    for exam in exams:
+        if exam.candidates.count() == 0:
+            pull_candidates_for_exam(exam)
 
     total_exams_processed = 0
     total_candidates_partitioned = 0
@@ -1725,7 +1881,7 @@ def exam_batch_generate_rooms(request):
                     building=building,
                     candidate_order=candidate_order
                 )
-                if c_count > 0:
+                if c_count > 0 or r_count > 0:
                     total_exams_processed += 1
                     total_candidates_partitioned += c_count
                     total_rooms_created += r_count
@@ -1749,7 +1905,7 @@ def exam_batch_generate_rooms(request):
                     building=building,
                     candidate_order=candidate_order
                 )
-                if c_count > 0:
+                if c_count > 0 or r_count > 0:
                     shift_counters[sess]['room'] = next_room
                     shift_counters[sess]['roll'] = next_roll
                     total_exams_processed += 1
@@ -1768,7 +1924,7 @@ def exam_batch_generate_rooms(request):
                     building=building,
                     candidate_order=candidate_order
                 )
-                if c_count > 0:
+                if c_count > 0 or r_count > 0:
                     curr_room = next_room
                     curr_roll = next_roll
                     total_exams_processed += 1
@@ -1953,8 +2109,11 @@ def exam_room_postings_view(request, exam_id):
         room_num_int = r.room_number if isinstance(r.room_number, int) else 1
         base_desk = (room_num_int - 1) * 25
 
+        pad_25 = request.GET.get('pad_25') == '1'
+        row_limit = 25 if pad_25 else total_cands
+
         rows = []
-        for i in range(1, 26):
+        for i in range(1, row_limit + 1):
             default_desk = base_desk + i
             if i <= total_cands:
                 c = cand_list[i - 1]
@@ -2187,8 +2346,11 @@ def exam_subject_attendance_view(request, exam_id):
         room_num_int = r.room_number if isinstance(r.room_number, int) else 1
         base_desk = (room_num_int - 1) * 25
 
+        pad_25 = request.GET.get('pad_25') == '1'
+        row_limit = 25 if pad_25 else total_cands
+
         rows = []
-        for i in range(1, 26):
+        for i in range(1, row_limit + 1):
             default_desk = base_desk + i
             if i <= total_cands:
                 c = cand_list[i - 1]
@@ -3128,7 +3290,7 @@ def exam_import_candidates_excel(request, exam_id):
 
                     name_en = str(r[5] if len(r) > 5 else '').strip()
                     gender_raw = str(r[6] if len(r) > 6 else 'M').strip()
-                    gender = 'F' if gender_raw in ['F', 'ស្រី', 'Female', 'female', 'ស្រី្ត'] else 'M'
+                    gender = 'F' if gender_raw in ['F', 'f', 'ស្រី', 'ស្រី្ត', 'ស្ត្រី', 'កញ្ញា', 'ស', 'ស.', 'Female', 'female', 'girl', 'woman', '2'] else 'M'
                     origin_class = str(r[8] if len(r) > 8 else '').strip()
 
                     roll_str = f"{existing_count + imported_count + 1:03d}"
@@ -6079,6 +6241,229 @@ def term_results_graph_view(request, term_id):
         'view_mode': 'graph',
     }
     return render(request, 'examinations/standardized/results_graph_print.html', context)
+
+
+@login_required
+def exam_analytics_view(request, exam_id=None):
+    """
+    Comprehensive Examination Analytics Suite matching the 5 user-provided templates.
+    Supports 3 Breakdown Scopes:
+    1. 'school': School-level (aggregate across all grades in this exam session)
+    2. 'grade': Grade-level (e.g. 7, 8, 9, 10, 11, 12)
+    3. 'class': Classroom-level (e.g. 7A, 7B, 10A, 12A1)
+    """
+    from apps.accounts.models import SchoolProfile
+    from .analytics_service import ExamAnalyticsService
+    import json
+
+    school_profile = SchoolProfile.get_settings()
+    session_key = request.GET.get('session_key', '').strip()
+    exam_ids_param = request.GET.get('exam_ids', '').strip()
+
+    # 1. Resolve Active Exam & Sibling Exams for this Session
+    target_exam = None
+    if exam_id:
+        target_exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
+
+    # All standardized exams ordered by date desc
+    all_exams_qs = StandardizedExam.objects.select_related('academic_year').prefetch_related('exam_subjects', 'candidates').order_by('-exam_date', 'grade_level')
+    
+    # Build session mapping across all exams
+    all_sessions_map = {}
+    for ex in all_exams_qs:
+        clean_title = get_clean_exam_session_title(ex.name)
+        date_key = str(ex.exam_date)
+        year_key = str(ex.academic_year_id)
+        g_key = f"{year_key}_{date_key}_{clean_title}"
+        if g_key not in all_sessions_map:
+            all_sessions_map[g_key] = {
+                'group_key': g_key,
+                'title': clean_title,
+                'academic_year': ex.academic_year,
+                'exam_date': ex.exam_date,
+                'exams': [],
+            }
+        all_sessions_map[g_key]['exams'].append(ex)
+
+    # Determine which session group is selected
+    selected_session = None
+    if session_key and session_key in all_sessions_map:
+        selected_session = all_sessions_map[session_key]
+    elif exam_ids_param:
+        eids = [int(x.strip()) for x in exam_ids_param.split(',') if x.strip().isdigit()]
+        for s in all_sessions_map.values():
+            if any(e.id in eids for e in s['exams']):
+                selected_session = s
+                break
+    elif target_exam:
+        for s in all_sessions_map.values():
+            if any(e.id == target_exam.id for e in s['exams']):
+                selected_session = s
+                break
+
+    # Fallback to latest session if none matched
+    if not selected_session and all_sessions_map:
+        selected_session = list(all_sessions_map.values())[0]
+
+    session_exams = selected_session['exams'] if selected_session else ([target_exam] if target_exam else [])
+    current_session_key = selected_session['group_key'] if selected_session else ''
+    session_title = selected_session['title'] if selected_session else (target_exam.name if target_exam else 'សម័យប្រឡង')
+    session_date = selected_session['exam_date'] if selected_session else (target_exam.exam_date if target_exam else None)
+    session_academic_year = selected_session['academic_year'] if selected_session else (target_exam.academic_year if target_exam else None)
+
+    # 2. Scope & Parameters
+    scope = request.GET.get('scope', '').strip().lower()
+    grade_level = request.GET.get('grade_level', '').strip()
+    classroom_name = request.GET.get('class_name', '').strip()
+
+    if not scope:
+        if exam_id and target_exam:
+            scope = 'grade'
+            grade_level = str(target_exam.grade_level)
+        else:
+            scope = 'school'
+
+    if scope not in ['school', 'grade', 'class']:
+        scope = 'school'
+
+    if scope == 'grade' and not grade_level:
+        if target_exam:
+            grade_level = str(target_exam.grade_level)
+        elif session_exams:
+            grade_level = str(session_exams[0].grade_level)
+
+    # 3. Compute Analytics Payload
+    analytics = ExamAnalyticsService.get_analytics_payload(
+        exams=session_exams,
+        scope=scope,
+        grade_level=grade_level,
+        classroom_name=classroom_name
+    )
+
+    slow_learners_json = json.dumps(analytics['slow_learners_data'])
+    subjects_json = json.dumps(analytics['subjects_list'])
+
+    sessions_nav_list = [
+        {
+            'group_key': s['group_key'],
+            'title': s['title'],
+            'date': s['exam_date'],
+            'year': s['academic_year'].name if s['academic_year'] else '',
+            'exam_count': len(s['exams']),
+        }
+        for s in all_sessions_map.values()
+    ]
+
+    context = {
+        'school_profile': school_profile,
+        'target_exam': target_exam,
+        'session_exams': session_exams,
+        'session_title': session_title,
+        'session_date': session_date,
+        'session_academic_year': session_academic_year,
+        'current_session_key': current_session_key,
+        'sessions_nav_list': sessions_nav_list,
+        'scope': scope,
+        'selected_grade': grade_level,
+        'selected_class': classroom_name,
+        'available_grades': analytics['available_grades'],
+        'all_classrooms': analytics['all_classrooms'],
+        'subjects_list': analytics['subjects_list'],
+        'total_candidates': analytics['total_candidates'],
+        'female_candidates': analytics['female_candidates'],
+        'male_candidates': analytics['male_candidates'],
+        'overall_mentions': analytics['overall_mentions'],
+        'quality_evaluation': analytics['quality_evaluation'],
+        'subject_mentions_single': analytics['subject_mentions_single'],
+        'subject_mentions_detailed': analytics['subject_mentions_detailed'],
+        'subject_percentage_rows': analytics['subject_percentage_rows'],
+        'percentage_thresholds': analytics['percentage_thresholds'],
+        'slow_learners_data': analytics['slow_learners_data'],
+        'slow_learners_json': slow_learners_json,
+        'subjects_json': subjects_json,
+    }
+    return render(request, 'examinations/standardized/analytics_report.html', context)
+
+
+@login_required
+def exam_session_analytics_view(request):
+    """
+    Session-level entry point for multi-grade exam session analytics.
+    Delegates to exam_analytics_view.
+    """
+    return exam_analytics_view(request, exam_id=None)
+
+
+@login_required
+def exam_generate_mock_scores_view(request):
+    """
+    POST/GET endpoint to generate realistic mock scores (A-F) or clear scores
+    for a specific exam or across an entire examination session.
+    """
+    from .analytics_service import ExamAnalyticsService
+
+    exam_id = request.POST.get('exam_id') or request.GET.get('exam_id')
+    grade_level = request.POST.get('grade_level') or request.GET.get('grade_level')
+    session_key = request.POST.get('session_key') or request.GET.get('session_key')
+    target_scope = request.POST.get('target_scope') or request.GET.get('target_scope') or 'current'
+    action = request.POST.get('action') or request.GET.get('action') or 'generate'
+
+    target_exams = []
+
+    if target_scope == 'session' and session_key:
+        all_exams_qs = StandardizedExam.objects.select_related('academic_year').prefetch_related('exam_subjects', 'candidates')
+        for ex in all_exams_qs:
+            clean_title = get_clean_exam_session_title(ex.name)
+            date_key = str(ex.exam_date)
+            year_key = str(ex.academic_year_id)
+            g_key = f"{year_key}_{date_key}_{clean_title}"
+            if g_key == session_key:
+                target_exams.append(ex)
+    elif exam_id and str(exam_id).isdigit():
+        target_exams = [get_object_or_404(StandardizedExam, id=int(exam_id))]
+    elif grade_level and str(grade_level).isdigit():
+        qs = StandardizedExam.objects.filter(grade_level=int(grade_level))
+        if session_key:
+            filtered = []
+            for ex in qs.select_related('academic_year'):
+                clean_title = get_clean_exam_session_title(ex.name)
+                g_key = f"{ex.academic_year_id}_{ex.exam_date}_{clean_title}"
+                if g_key == session_key:
+                    filtered.append(ex)
+            target_exams = filtered or list(qs)
+        else:
+            target_exams = list(qs)
+
+    # Fallback to exam_id if none resolved
+    if not target_exams and exam_id and str(exam_id).isdigit():
+        target_exams = [get_object_or_404(StandardizedExam, id=int(exam_id))]
+
+    # Fallback to session exams if session_key provided
+    if not target_exams and session_key:
+        for ex in StandardizedExam.objects.select_related('academic_year').all():
+            clean_title = get_clean_exam_session_title(ex.name)
+            g_key = f"{ex.academic_year_id}_{ex.exam_date}_{clean_title}"
+            if g_key == session_key:
+                target_exams.append(ex)
+
+    if not target_exams:
+        messages.error(request, "មិនអាចស្វែងរកកម្រិតថ្នាក់ប្រឡងដែលត្រូវអនុវត្តបានឡើយ។")
+        return redirect(request.META.get('HTTP_REFERER') or 'standardized_exam_list')
+
+    if action == 'clear':
+        res = ExamAnalyticsService.clear_mock_scores(target_exams)
+        messages.success(request, f"🗑️ បានសម្អាតពិន្ទុសម្រាប់បេក្ខជន {res['candidates_count']} នាក់ ({len(target_exams)} កម្រិតថ្នាក់) មកជាទទេវិញដោយជោគជ័យ!")
+    else:
+        res = ExamAnalyticsService.generate_mock_scores(target_exams)
+        messages.success(request, f"🎉 បានបង្កើតពិន្ទុតេស្តសាកល្បង A-F សម្រាប់បេក្ខជន {res['candidates_count']} នាក់ ({res['scores_count']} ក្រឡា) ដោយជោគជ័យ!")
+
+    redirect_url = request.META.get('HTTP_REFERER')
+    if redirect_url:
+        return redirect(redirect_url)
+    if len(target_exams) == 1:
+        return redirect('exam_analytics_view', exam_id=target_exams[0].id)
+    return redirect('standardized_exam_list')
+
 
 
 

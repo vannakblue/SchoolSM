@@ -126,7 +126,7 @@ class Command(BaseCommand):
 
                 # Gender: 'ស' -> 'F' (Female), 'ប' -> 'M' (Male)
                 g_clean = str(gender_raw).strip() if gender_raw is not None else ''
-                gender = 'F' if g_clean in ['ស', 'F', 'f', 'ស្រី'] else 'M'
+                gender = 'F' if g_clean.lower() in ['ស', 'ស.', 'f', 'ស្រី', 'ស្រី្ត', 'ស្ត្រី', 'កញ្ញា', 'female', 'girl', 'woman', '2'] else 'M'
 
                 # Date of birth
                 dob = None

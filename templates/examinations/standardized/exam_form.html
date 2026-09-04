@@ -336,6 +336,18 @@
                     {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors }}</div>{% endif %}
                 </div>
 
+                {% if not is_edit %}
+                <div class="form-check form-switch mb-3 p-3 bg-light rounded-3 border">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" name="auto_pull_candidates" id="auto_pull_candidates" checked>
+                    <label class="form-check-label fw-bold text-primary" for="auto_pull_candidates">
+                        <i class="fa-solid fa-users me-1"></i> ទាញយកបញ្ជីឈ្មោះសិស្សតាមកម្រិតថ្នាក់ចូលជាបេក្ខជនដោយស្វ័យប្រវត្តិ (Auto-Pull Active Candidates)
+                    </label>
+                    <div class="form-text text-muted small mt-1">
+                        ប្រព័ន្ធនឹងទាញយកឈ្មោះសិស្សសកម្មទាំងអស់តាមកម្រិតថ្នាក់ដែលបានជ្រើសរើសចូលជាបេក្ខជនប្រឡងភ្លាមៗនៅពេលបង្កើតរួចរាល់។
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="form-check form-switch mb-4">
                     {{ form.is_published }}
                     <label class="form-check-label fw-bold text-dark" for="{{ form.is_published.id_for_label }}">

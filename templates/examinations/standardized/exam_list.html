@@ -182,7 +182,22 @@
 
                 <!-- Toggle Icon & Quick Batch Rooms Button -->
                 <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
-                    <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" onclick="openSessionBatchModal('{{ sess.group_key|escapejs }}', '{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'Y-m-d' }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.id }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}')">
+                    {% if is_admin %}
+                    <!-- 1-Click Pull Candidates for Whole Session -->
+                    <form method="POST" action="{% url 'standardized_exam_session_pull_candidates' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ទាញបញ្ជីឈ្មោះសិស្សសកម្មទាំងអស់ចូលជាបេក្ខជនសម្រាប់សម័យប្រឡង «{{ sess.title|escapejs }}» (គ្រប់កម្រិតថ្នាក់) មែនទេ?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="exam_ids" value="{% for item in sess.exams_data %}{{ item.exam.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                        <input type="hidden" name="session_key" value="{{ sess.group_key }}">
+                        <input type="hidden" name="session_title" value="{{ sess.title }}">
+                        <button type="submit" class="btn btn-sm {% if sess.total_candidates == 0 %}btn-primary shadow-sm fw-bold{% else %}btn-outline-primary shadow-xs fw-bold{% endif %}" title="ទាញឈ្មោះសិស្សសកម្មទាំងអស់ចូលជាបេក្ខជន (គ្រប់កម្រិតថ្នាក់នៃសម័យប្រឡងនេះ)">
+                            <i class="fa-solid fa-cloud-arrow-down me-1"></i> ទាញឈ្មោះសិស្ស {% if sess.total_candidates == 0 %}<span class="badge bg-warning text-dark ms-1">០ នាក់</span>{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{% url 'exam_session_analytics_view' %}?session_key={{ sess.group_key|urlencode }}" class="btn btn-sm btn-outline-info text-dark fw-bold shadow-xs" title="ពិនិត្យរបាយការណ៍វិភាគលទ្ធផលប្រឡង (តាមថ្នាក់/កម្រិតថ្នាក់/កម្រិតសាលា)">
+                        <i class="fa-solid fa-chart-line text-info me-1"></i> វិភាគលទ្ធផល
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-xs" onclick="openSessionBatchModal('{{ sess.group_key|escapejs }}', '{{ sess.title|escapejs }}', '{{ sess.exam_date|date:'Y-m-d' }}', '{{ sess.exam_date|date:'d/m/Y' }}', '{{ sess.academic_year.id }}', '{{ sess.academic_year.name|escapejs }}', '{{ sess.exams_data|length }}', '{% for item in sess.exams_data %}{{ item.exam.id }}{% if not forloop.last %},{% endif %}{% endfor %}')">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចែកបន្ទប់
                     </button>
                     <!-- Invigilator Shifts Button for Session -->
@@ -352,6 +367,11 @@
                                             <li>
                                                 <a class="dropdown-item" href="{% url 'exam_secret_codes_directory' ex.id %}">
                                                     <i class="fa-solid fa-user-secret me-2 text-dark"></i> កូដសម្ងាត់សិស្ស (Secret Codes)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'exam_analytics_view' ex.id %}">
+                                                    <i class="fa-solid fa-chart-line me-2 text-primary"></i> របាយការណ៍វិភាគលទ្ធផល
                                                 </a>
                                             </li>
                                         </ul>
@@ -685,12 +705,13 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{% url 'exam_batch_generate_rooms' %}">
+            <form method="POST" action="{% url 'exam_batch_generate_rooms' %}" id="batchGenerateRoomsForm">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <!-- Hidden Target Session Identifiers (Automatically set from clicked Exam Session) -->
                     <input type="hidden" name="academic_year" id="batch_academic_year_input">
                     <input type="hidden" name="session_key" id="batch_session_key_input">
+                    <input type="hidden" name="exam_ids" id="batch_exam_ids_input">
                     <input type="hidden" name="building" id="batch_building_input" value="អគារ A">
 
                     <!-- Session Active Notice Banner -->
@@ -760,7 +781,7 @@
                 </div>
                 <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
-                    <button type="submit" class="btn btn-success fw-bold px-4">
+                    <button type="submit" class="btn btn-success fw-bold px-4" id="btnBatchGenerateSubmit">
                         <i class="fa-solid fa-bolt me-1"></i> ចែកបន្ទប់ និងកំណត់លេខតុឥឡូវនេះ
                     </button>
                 </div>
@@ -782,9 +803,10 @@ function toggleAllSessions(expand) {
     });
 }
 
-function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, yearName, gradesCount) {
+function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, yearName, gradesCount, examIds) {
     const yearInput = document.getElementById('batch_academic_year_input');
     const sessionInput = document.getElementById('batch_session_key_input');
+    const examIdsInput = document.getElementById('batch_exam_ids_input');
     const banner = document.getElementById('modalSelectedSessionBanner');
     const bannerTitle = document.getElementById('bannerSessionTitle');
     const bannerDate = document.getElementById('bannerSessionDate');
@@ -796,7 +818,11 @@ function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, 
     }
 
     if (sessionInput) {
-        sessionInput.value = sessionKey;
+        sessionInput.value = sessionKey || '';
+    }
+
+    if (examIdsInput) {
+        examIdsInput.value = examIds || '';
     }
 
     if (banner) {
@@ -813,6 +839,21 @@ function openSessionBatchModal(sessionKey, title, dateRaw, dateDisplay, yearId, 
         modalInstance.show();
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const batchForm = document.getElementById('batchGenerateRoomsForm');
+    if (batchForm) {
+        batchForm.addEventListener('submit', function() {
+            const btn = document.getElementById('btnBatchGenerateSubmit');
+            if (btn) {
+                setTimeout(function() {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> កំពុងរៀបចំបន្ទប់...';
+                }, 50);
+            }
+        });
+    }
+});
 
 function openSessionSecretCodesModal(htmlId) {
     const modalEl = document.getElementById('secretCodesModal_' + htmlId);

@@ -342,8 +342,6 @@ class StandardizedExam(models.Model):
             else:
                 cand.grade_letter = 'F'
 
-            cand.save(update_fields=['total_score', 'average_score', 'grade_letter'])
-
         # Calculate Overall Rank (sorted by total_score desc, average_score desc, candidate_name_kh asc)
         ranked_overall = sorted(candidates, key=lambda c: (c.total_score or 0, c.average_score or 0), reverse=True)
         for idx, cand in enumerate(ranked_overall):
@@ -355,7 +353,6 @@ class StandardizedExam(models.Model):
                     cand.rank_overall = idx + 1
             else:
                 cand.rank_overall = 1
-            cand.save(update_fields=['rank_overall'])
 
         # Calculate Room Rank for each room
         for room in self.rooms.all():
@@ -373,7 +370,14 @@ class StandardizedExam(models.Model):
                         cand.rank_in_room = idx + 1
                 else:
                     cand.rank_in_room = 1
-                cand.save(update_fields=['rank_in_room'])
+
+        # Single bulk update for blazing performance
+        if candidates:
+            self.candidates.model.objects.bulk_update(
+                candidates,
+                ['total_score', 'average_score', 'grade_letter', 'rank_overall', 'rank_in_room'],
+                batch_size=1000
+            )
 
     def generate_all_secret_codes(self, force_regenerate=False, include_month=False, month_code=None, use_two_random_letters=False, custom_grade_letter=None):
         """

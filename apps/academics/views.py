@@ -431,6 +431,8 @@ def classroom_list(request):
     for r in GradeLevelRule.objects.all():
         rules_dict[(r.grade_level, r.track, r.subject_id)] = r.max_score
 
+    all_subjects = list(Subject.objects.all().order_by('order', 'id'))
+
     classroom_items = []
     total_students_school = 0
     total_female_school = 0
