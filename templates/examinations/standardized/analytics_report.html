@@ -208,7 +208,7 @@
         margin: 0;
     }
     .print-tick {
-        display: none;
+        display: none !important;
     }
 
     /* Scrollable Container for Wide Tables */
@@ -234,6 +234,9 @@
             display: none !important;
         }
         .print-tick {
+            display: none !important;
+        }
+        .mention-check-label.is-checked .print-tick {
             display: inline !important;
         }
         .analytics-card {
@@ -324,6 +327,53 @@
                 <i class="fa-solid fa-wand-magic-sparkles text-danger me-1"></i> បង្កើតពិន្ទុតេស្តសាកល្បង (A-F)
             </button>
 
+            <!-- Excel Export Dropdown (គ្រប់ Sheet) -->
+            <div class="dropdown">
+                <button class="btn btn-sm btn-success fw-bold shadow-xs px-3 rounded-pill dropdown-toggle text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="ទាញយករបាយការណ៍ជាឯកសារ Excel (.xlsx)">
+                    <i class="fa-solid fa-file-excel me-1"></i> ទាញយកជា Excel
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 border-0 rounded-4" style="min-width: 290px;">
+                    <li class="px-3 py-1">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold w-100 text-center py-1.5 fs-7">
+                            <i class="fa-solid fa-file-excel me-1"></i> ជម្រើសទាញយក Excel (.xlsx)
+                        </span>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2 fw-bold text-success d-flex align-items-center justify-content-between" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=all">
+                            <span><i class="fa-solid fa-layer-group me-2"></i> <strong>ទាញយកគ្រប់ Sheet ទាំងអស់</strong></span>
+                            <span class="badge bg-success text-white rounded-pill">All-in-One</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li class="dropdown-header small text-muted fw-bold">ទាញយកតាម Sheet នីមួយៗដាច់ដោយឡែក៖</li>
+                    <li>
+                        <a class="dropdown-item py-1.5 text-dark" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=overall">
+                            <i class="fa-regular fa-file-excel text-primary me-2"></i> Sheet ១៖ សរុបនិទ្ទេសរួម
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-1.5 text-dark" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=quality">
+                            <i class="fa-regular fa-file-excel text-teal me-2"></i> Sheet ២៖ របាយការណ៍វាយតម្លៃគុណភាព
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-1.5 text-dark" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=subject_summary">
+                            <i class="fa-regular fa-file-excel text-success me-2"></i> Sheet ៣៖ សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-1.5 text-dark" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=percentages">
+                            <i class="fa-regular fa-file-excel text-info me-2"></i> Sheet ៤៖ វិភាគភាគរយមុខវិជ្ជា
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-1.5 text-dark" href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=slow_learners">
+                            <i class="fa-regular fa-file-excel text-danger me-2"></i> Sheet ៥៖ របាយការណ៍សិស្សរៀនយឺត
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
             <!-- Print Button -->
             <button type="button" class="btn btn-sm btn-outline-primary fw-bold shadow-xs px-3 rounded-pill" onclick="window.print()">
                 <i class="fa-solid fa-print me-1"></i> បោះពុម្ពរបាយការណ៍ (Print A4)
@@ -405,51 +455,56 @@
         <div class="col-12 col-xl-6">
             <div class="analytics-card p-3.5 h-100 d-flex flex-column justify-content-between">
                 <div>
-                    <h5 class="section-title mb-3" style="color: #6366f1;">
-                        <i class="fa-solid fa-chart-pie me-1.5"></i> សរុបនិទ្ទេសរួម
-                    </h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="section-title mb-0" style="color: #6366f1;">
+                            <i class="fa-solid fa-chart-pie me-1.5"></i> សរុបនិទ្ទេសរួម
+                        </h5>
+                        <a href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=overall" class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 no-print shadow-xs fw-semibold" title="ទាញយក Sheet នេះជា Excel (.xlsx)">
+                            <i class="fa-solid fa-file-excel me-1"></i> Excel
+                        </a>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-analytics align-middle text-center mb-0">
                             <thead>
                                 <tr style="background-color: #f8fafc;">
                                     <th style="width: 14%;" class="text-muted">ភេទ</th>
                                     <th style="width: 10%; color: #2563eb;">
-                                        <label class="mention-check-label text-primary" title="ធីកដើម្បីបូកនិទ្ទេស A">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                                        <label class="mention-check-label text-primary is-checked" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="A" checked onchange="onOverallMentionTickChange(this)">
                                             <span class="print-tick">✓</span>A
                                         </label>
                                     </th>
                                     <th style="width: 10%; color: #f97316;">
-                                        <label class="mention-check-label text-warning" title="ធីកដើម្បីបូកនិទ្ទេស B">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                                        <label class="mention-check-label text-warning is-checked" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="B" checked onchange="onOverallMentionTickChange(this)">
                                             <span class="print-tick">✓</span>B
                                         </label>
                                     </th>
                                     <th style="width: 10%; color: #16a34a;">
-                                        <label class="mention-check-label text-success" title="ធីកដើម្បីបូកនិទ្ទេស C">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                                        <label class="mention-check-label text-success is-checked" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="C" checked onchange="onOverallMentionTickChange(this)">
                                             <span class="print-tick">✓</span>C
                                         </label>
                                     </th>
                                     <th style="width: 10%; color: #0284c7;">
                                         <label class="mention-check-label text-info" title="ធីកដើម្បីបូកនិទ្ទេស D">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
-                                            <span class="print-tick" style="display: none;">✓</span>D
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="D" onchange="onOverallMentionTickChange(this)">
+                                            <span class="print-tick">✓</span>D
                                         </label>
                                     </th>
                                     <th style="width: 10%; color: #9333ea;">
                                         <label class="mention-check-label" style="color: #9333ea;" title="ធីកដើម្បីបូកនិទ្ទេស E">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
-                                            <span class="print-tick" style="display: none;">✓</span>E
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="E" onchange="onOverallMentionTickChange(this)">
+                                            <span class="print-tick">✓</span>E
                                         </label>
                                     </th>
                                     <th style="width: 10%; color: #dc2626;">
                                         <label class="mention-check-label text-danger" title="ធីកដើម្បីបូកនិទ្ទេស F">
-                                            <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
-                                            <span class="print-tick" style="display: none;">✓</span>F
+                                            <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-overall mt-0" data-table="overall" data-grade="F" onchange="onOverallMentionTickChange(this)">
+                                            <span class="print-tick">✓</span>F
                                         </label>
                                     </th>
-                                    <th style="width: 13%; background-color: #d1fae5; color: #065f46;" class="fw-bold mention-sum-header">A+B+C</th>
+                                    <th style="width: 13%; background-color: #d1fae5; color: #065f46;" class="fw-bold mention-sum-header-overall">A+B+C</th>
                                     <th style="width: 13%; background-color: #d1fae5; color: #065f46;" class="fw-bold">សរុបរួម</th>
                                 </tr>
                             </thead>
@@ -501,9 +556,14 @@
         <div class="col-12 col-xl-6">
             <div class="analytics-card p-3.5 h-100 d-flex flex-column justify-content-between">
                 <div>
-                    <h5 class="section-title mb-3" style="color: #0f766e;">
-                        <i class="fa-solid fa-award me-1.5"></i> របាយការណ៍វាយតម្លៃគុណភាព
-                    </h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="section-title mb-0" style="color: #0f766e;">
+                            <i class="fa-solid fa-award me-1.5"></i> របាយការណ៍វាយតម្លៃគុណភាព
+                        </h5>
+                        <a href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=quality" class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 no-print shadow-xs fw-semibold" title="ទាញយក Sheet នេះជា Excel (.xlsx)">
+                            <i class="fa-solid fa-file-excel me-1"></i> Excel
+                        </a>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-analytics align-middle text-center mb-0">
                             <thead>
@@ -561,12 +621,15 @@
                 <i class="fa-solid fa-table-list me-1.5"></i> សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា
             </h5>
 
-            <!-- View Toggle Dropdown: 'បង្ហាញតែមួយ (សរុប)' vs 'បង្ហាញលម្អិត (សរុប, ស្រី, ប្រុស)' -->
+            <!-- View Toggle Dropdown & Excel Button -->
             <div class="d-flex align-items-center gap-2 no-print">
-                <select id="subjectMentionsViewToggle" class="form-select form-select-sm fw-bold border-success shadow-xs text-teal" style="min-width: 250px; background-color: #f0fdf4;" onchange="toggleSubjectMentionsView(this.value)">
+                <select id="subjectMentionsViewToggle" class="form-select form-select-sm fw-bold border-success shadow-xs text-teal" style="min-width: 230px; background-color: #f0fdf4;" onchange="toggleSubjectMentionsView(this.value)">
                     <option value="single" selected>បង្ហាញតែមួយ (សរុប)</option>
                     <option value="detailed">បង្ហាញលម្អិត (សរុប, ស្រី, ប្រុស)</option>
                 </select>
+                <a href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=subject_summary" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1 shadow-xs fw-semibold" title="ទាញយក Sheet នេះជា Excel (.xlsx)">
+                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </a>
             </div>
         </div>
 
@@ -577,42 +640,42 @@
                     <tr>
                         <th class="th-teal text-start ps-3" style="width: 24%;">មុខវិជ្ជា (ពិន្ទុពេញ)</th>
                         <th class="th-teal" style="width: 9%;">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស A">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="A" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>A
                             </label>
                         </th>
                         <th class="th-teal" style="width: 9%;">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស B">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="B" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>B
                             </label>
                         </th>
                         <th class="th-teal" style="width: 9%;">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស C">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="C" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>C
                             </label>
                         </th>
                         <th class="th-teal" style="width: 9%;">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស D">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>D
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="D" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>D
                             </label>
                         </th>
                         <th class="th-teal" style="width: 9%;">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស E">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>E
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="E" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>E
                             </label>
                         </th>
                         <th class="th-teal" style="width: 9%;">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស F">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>F
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="F" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>F
                             </label>
                         </th>
-                        <th class="th-yellow-highlight mention-sum-header" style="width: 11%;">A+B+C</th>
+                        <th class="th-yellow-highlight mention-sum-header-subject" style="width: 11%;">A+B+C</th>
                         <th class="th-teal" style="width: 11%;">សរុបរួម</th>
                     </tr>
                 </thead>
@@ -646,42 +709,42 @@
                     <tr>
                         <th rowspan="2" class="th-teal text-start ps-3" style="width: 18%; vertical-align: middle;">មុខវិជ្ជា (ពិន្ទុពេញ)</th>
                         <th colspan="3" class="th-teal">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស A">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="A" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស A">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="A" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>A
                             </label>
                         </th>
                         <th colspan="3" class="th-teal">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស B">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="B" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស B">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="B" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>B
                             </label>
                         </th>
                         <th colspan="3" class="th-teal">
-                            <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស C">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="C" checked onchange="onMentionSumTickChange(this)">
+                            <label class="mention-check-label text-white is-checked" title="ធីកដើម្បីបូកនិទ្ទេស C">
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="C" checked onchange="onSubjectMentionTickChange(this)">
                                 <span class="print-tick">✓</span>C
                             </label>
                         </th>
                         <th colspan="3" class="th-teal">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស D">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="D" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>D
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="D" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>D
                             </label>
                         </th>
                         <th colspan="3" class="th-teal">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស E">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="E" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>E
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="E" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>E
                             </label>
                         </th>
                         <th colspan="3" class="th-teal">
                             <label class="mention-check-label text-white" title="ធីកដើម្បីបូកនិទ្ទេស F">
-                                <input type="checkbox" class="form-check-input mention-sum-tick mt-0" data-grade="F" onchange="onMentionSumTickChange(this)">
-                                <span class="print-tick" style="display: none;">✓</span>F
+                                <input type="checkbox" class="form-check-input mention-sum-tick mention-tick-subject mt-0" data-table="subject" data-grade="F" onchange="onSubjectMentionTickChange(this)">
+                                <span class="print-tick">✓</span>F
                             </label>
                         </th>
-                        <th colspan="3" class="th-yellow-highlight mention-sum-header">A+B+C</th>
+                        <th colspan="3" class="th-yellow-highlight mention-sum-header-subject">A+B+C</th>
                         <th colspan="3" class="th-teal">សរុបរួម</th>
                     </tr>
                     <!-- Sub Row: ស, ស្រ, ប -->
@@ -743,9 +806,14 @@
     <!-- COMPONENT 3: វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា) (IMAGE 5)           -->
     <!-- ========================================================================= -->
     <div class="analytics-card p-3.5 mb-4">
-        <h5 class="section-title mb-3" style="color: #0f766e;">
-            <i class="fa-solid fa-percent me-1.5"></i> វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា)
-        </h5>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="section-title mb-0" style="color: #0f766e;">
+                <i class="fa-solid fa-percent me-1.5"></i> វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា)
+            </h5>
+            <a href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=percentages" class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 no-print shadow-xs fw-semibold" title="ទាញយក Sheet នេះជា Excel (.xlsx)">
+                <i class="fa-solid fa-file-excel me-1"></i> Excel
+            </a>
+        </div>
         <div class="table-responsive-custom">
             <table class="table table-bordered table-analytics align-middle text-center mb-0">
                 <thead>
@@ -808,14 +876,19 @@
                 <i class="fa-solid fa-triangle-exclamation me-1.5"></i> របាយការណ៍សិស្សរៀនយឺត (តាមមុខវិជ្ជា)
             </h5>
 
-            <!-- Top-Right Toggles: 'បង្ហាញពិន្ទុ' vs 'បង្ហាញនិទ្ទេស' -->
-            <div class="d-flex align-items-center bg-light p-1 rounded-pill border no-print">
-                <button type="button" id="btnShowScore" class="btn-toggle-custom" onclick="setDisplayMode('score')">
-                    បង្ហាញពិន្ទុ
-                </button>
-                <button type="button" id="btnShowMention" class="btn-toggle-custom active" onclick="setDisplayMode('mention')">
-                    បង្ហាញនិទ្ទេស
-                </button>
+            <!-- Action & Toggle Buttons -->
+            <div class="d-flex align-items-center gap-2 no-print">
+                <a href="{% url 'exam_analytics_export_excel' %}?session_key={{ current_session_key|urlencode }}&scope={{ scope }}{% if selected_grade %}&grade_level={{ selected_grade }}{% endif %}{% if selected_class %}&class_name={{ selected_class|urlencode }}{% endif %}&sheet=slow_learners" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 shadow-xs fw-bold" title="ទាញយក Sheet សិស្សរៀនយឺតជា Excel">
+                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </a>
+                <div class="d-flex align-items-center bg-light p-1 rounded-pill border">
+                    <button type="button" id="btnShowScore" class="btn-toggle-custom" onclick="setDisplayMode('score')">
+                        បង្ហាញពិន្ទុ
+                    </button>
+                    <button type="button" id="btnShowMention" class="btn-toggle-custom active" onclick="setDisplayMode('mention')">
+                        បង្ហាញនិទ្ទេស
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1214,54 +1287,39 @@
         form.submit();
     }
 
-    // Mention Dynamic Summation System (Tick A..F to sum together)
-    function onMentionSumTickChange(changedInput) {
+    // =========================================================================
+    // 1. Table 1: សរុបនិទ្ទេសរួម (Overall Mentions)
+    // =========================================================================
+    function onOverallMentionTickChange(changedInput) {
         if (!changedInput) return;
-        const grade = changedInput.getAttribute('data-grade');
-        const isChecked = changedInput.checked;
-
-        // 1. Synchronize all checkboxes for this grade across all tables
-        document.querySelectorAll(`.mention-sum-tick[data-grade="${grade}"]`).forEach(cb => {
-            cb.checked = isChecked;
-        });
-
-        // 2. Update print ticks visibility
-        document.querySelectorAll('.mention-sum-tick').forEach(cb => {
-            const pTick = cb.parentElement ? cb.parentElement.querySelector('.print-tick') : null;
-            if (pTick) {
-                pTick.style.display = cb.checked ? 'inline' : 'none';
-            }
-        });
-
-        // 3. Recalculate dynamic sums in Table 1 & Table 2
-        recalculateMentionSums();
+        if (changedInput.parentElement) {
+            changedInput.parentElement.classList.toggle('is-checked', changedInput.checked);
+        }
+        recalculateOverallMentionSums();
     }
 
-    function recalculateMentionSums() {
+    function recalculateOverallMentionSums() {
         const ALL_GRADES = ['A', 'B', 'C', 'D', 'E', 'F'];
         const activeGrades = [];
         ALL_GRADES.forEach(g => {
-            const sample = document.querySelector(`.mention-sum-tick[data-grade="${g}"]`);
-            if (sample && sample.checked) {
-                activeGrades.push(g);
+            const cb = document.querySelector(`.mention-tick-overall[data-grade="${g}"]`);
+            if (cb) {
+                if (cb.parentElement) {
+                    cb.parentElement.classList.toggle('is-checked', cb.checked);
+                }
+                if (cb.checked) {
+                    activeGrades.push(g);
+                }
             }
         });
 
-        // Update header label across Table 1 and Table 2 (e.g. 'A+B', 'A+B+C', 'A+B+C+D')
+        // Update header label in Table 1
         const sumLabel = activeGrades.length > 0 ? activeGrades.join('+') : '-';
-        document.querySelectorAll('.mention-sum-header').forEach(th => {
+        document.querySelectorAll('.mention-sum-header-overall').forEach(th => {
             th.textContent = sumLabel;
         });
 
-        // Update print ticks for initial state
-        document.querySelectorAll('.mention-sum-tick').forEach(cb => {
-            const pTick = cb.parentElement ? cb.parentElement.querySelector('.print-tick') : null;
-            if (pTick) {
-                pTick.style.display = cb.checked ? 'inline' : 'none';
-            }
-        });
-
-        // 1. Recalculate Table 1: Overall Mentions (សរុប, ស្រី, ប្រុស)
+        // Recalculate Table 1: Overall Mentions (សរុប, ស្រី, ប្រុស)
         document.querySelectorAll('.row-overall-mentions').forEach(tr => {
             let sum = 0;
             activeGrades.forEach(g => {
@@ -1275,8 +1333,51 @@
                 sumCell.textContent = sum;
             }
         });
+    }
 
-        // 2. Recalculate Table 2: Single Mode
+    // =========================================================================
+    // 2. Table 2: សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា (Subject Mentions)
+    // =========================================================================
+    function onSubjectMentionTickChange(changedInput) {
+        if (!changedInput) return;
+        const grade = changedInput.getAttribute('data-grade');
+        const isChecked = changedInput.checked;
+
+        // Synchronize Single Mode and Detailed Mode within Table 2
+        document.querySelectorAll(`.mention-tick-subject[data-grade="${grade}"]`).forEach(cb => {
+            cb.checked = isChecked;
+            if (cb.parentElement) {
+                cb.parentElement.classList.toggle('is-checked', isChecked);
+            }
+        });
+
+        recalculateSubjectMentionSums();
+    }
+
+    function recalculateSubjectMentionSums() {
+        const ALL_GRADES = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const activeGrades = [];
+        ALL_GRADES.forEach(g => {
+            const sample = document.querySelector(`.mention-tick-subject[data-grade="${g}"]`);
+            if (sample) {
+                document.querySelectorAll(`.mention-tick-subject[data-grade="${g}"]`).forEach(cb => {
+                    if (cb.parentElement) {
+                        cb.parentElement.classList.toggle('is-checked', sample.checked);
+                    }
+                });
+                if (sample.checked) {
+                    activeGrades.push(g);
+                }
+            }
+        });
+
+        // Update header label in Table 2
+        const sumLabel = activeGrades.length > 0 ? activeGrades.join('+') : '-';
+        document.querySelectorAll('.mention-sum-header-subject').forEach(th => {
+            th.textContent = sumLabel;
+        });
+
+        // 2.1 Single Mode
         document.querySelectorAll('.row-subject-single').forEach(tr => {
             let sum = 0;
             activeGrades.forEach(g => {
@@ -1291,7 +1392,7 @@
             }
         });
 
-        // 3. Recalculate Table 2: Detailed Mode
+        // 2.2 Detailed Mode
         document.querySelectorAll('.row-subject-detailed').forEach(tr => {
             let sumTot = 0;
             let sumFem = 0;
@@ -1316,7 +1417,8 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
         handleSubjectCheckboxChange();
-        recalculateMentionSums();
+        recalculateOverallMentionSums();
+        recalculateSubjectMentionSums();
     });
 </script>
 {% endblock %}

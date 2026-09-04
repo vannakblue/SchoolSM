@@ -15,8 +15,10 @@ urlpatterns = [
 
     path('summary/', views.grade_summary_view, name='grade_summary'),
     path('results/semester/', views.semester_results_view, name='semester_results'),
+    path('results/semester/subject-ranks/print/', views.semester_subject_ranks_print_view, name='semester_subject_ranks_print_view'),
     path('results/semester/export-excel/', views.export_semester_results_excel, name='export_semester_results_excel'),
     path('results/annual/', views.annual_results_view, name='annual_results'),
+    path('results/annual/print/', views.annual_results_print_view, name='annual_results_print_view'),
     path('results/annual/export-excel/', views.export_annual_results_excel, name='export_annual_results_excel'),
     path('api/transfer-grade/save/', views.api_save_transfer_grade, name='api_save_transfer_grade'),
     path('api/transfer-grade/<int:student_id>/', views.api_get_transfer_grade, name='api_get_transfer_grade'),
@@ -65,6 +67,8 @@ urlpatterns = [
     path('standardized/<int:exam_id>/analytics/', views.exam_analytics_view, name='exam_analytics_view'),
     path('standardized/session/analytics/', views.exam_session_analytics_view, name='exam_session_analytics_view'),
     path('standardized/analytics/mock-scores/', views.exam_generate_mock_scores_view, name='exam_generate_mock_scores'),
+    path('standardized/analytics/export-excel/', views.exam_analytics_export_excel, name='exam_analytics_export_excel'),
+    path('standardized/<int:exam_id>/analytics/export-excel/', views.exam_analytics_export_excel, name='exam_analytics_export_excel_by_id'),
 
     # Blind / Secret-Coded Exam Scoring System (៤ ជំហាន៖ កម្រិតថ្នាក់ -> មុខវិជ្ជា -> លេខកូដសម្ងាត់ -> ពិន្ទុ ០១ ដល់ ២៥)
     path('standardized/blind-scoring/', views.exam_blind_scoring_portal, name='exam_blind_scoring_portal'),

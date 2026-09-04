@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>តារាងចំណាត់ថ្នាក់ប្រឡងឆមាសទី{{ semester_kh }} - {{ class_title }} | SchoolSM</title>
+
+    <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS for screen controls -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        /* Exact A4 Landscape Print Settings (297mm x 210mm) */
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background-color: #cbd5e1;
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+            color: #000000;
+            margin: 0;
+            padding: 15px 0;
+        }
+
+        .moul-font {
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
+        }
+
+        .kantumruy-font {
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+        }
+
+        /* Toolbar on Screen */
+        .no-print-toolbar {
+            max-width: 297mm;
+            margin: 0 auto 12px auto;
+            padding: 0 8px;
+        }
+
+        /* Printable A4 Landscape Sheet (297mm x 210mm) */
+        .print-sheet {
+            background: #ffffff;
+            width: 297mm;
+            min-height: 210mm;
+            max-height: 210mm;
+            margin: 0 auto 20px auto;
+            padding: 6mm 10mm 6mm 10mm;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+            color: #000000;
+            position: relative;
+            page-break-after: always;
+            break-after: page;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .print-sheet:last-child {
+            margin-bottom: 20px;
+        }
+
+        /* Page 1 Header */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+
+        .school-block {
+            text-align: left;
+            width: 45%;
+            font-size: 8.5pt;
+            font-weight: 700;
+            line-height: 1.3;
+            color: #0000cd;
+        }
+
+        .kingdom-block {
+            text-align: center;
+            width: 45%;
+            line-height: 1.35;
+        }
+
+        .kingdom-title {
+            font-size: 10pt;
+            letter-spacing: 0.3px;
+        }
+
+        .motto-title {
+            font-size: 9.5pt;
+            letter-spacing: 0.3px;
+        }
+
+        /* Title Box */
+        .doc-title-box {
+            text-align: center;
+            margin-top: 1px;
+            margin-bottom: 5px;
+        }
+
+        .main-title {
+            font-size: 10.5pt;
+            letter-spacing: 0.2px;
+            margin-bottom: 1px;
+            color: #0000cd;
+            font-weight: 700;
+        }
+
+        .sub-title {
+            font-size: 10pt;
+            letter-spacing: 0.2px;
+            color: #0000cd;
+            font-weight: 700;
+        }
+
+        /* Main Rankings Table */
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 0;
+        }
+
+        .rank-table th, .rank-table td {
+            border: 1px solid #000000;
+            padding: 1px 1px;
+            font-size: 7.8pt;
+            line-height: 1.15;
+            height: 18.2px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .rank-table thead th {
+            background-color: #ffffff;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
+        /* Column Rotated Vertical Text */
+        .th-vertical {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            height: 98px;
+            padding: 2px 0 !important;
+            font-size: 7.5pt;
+            line-height: 1;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .th-sub-name {
+            color: #0000cd !important;
+            font-weight: 700;
+        }
+
+        .th-sub-rank {
+            color: #ff0000 !important;
+            font-weight: 700;
+        }
+
+        /* Red text for ranks matching rank_sub.pdf */
+        .val-rank-red {
+            color: #dc2626 !important;
+            font-weight: 600;
+        }
+
+        .cell-name {
+            text-align: left !important;
+            padding-left: 4px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Continuation Header for Page 2..N */
+        .continuation-thead {
+            display: none;
+        }
+        body.repeat-headers .continuation-thead {
+            display: table-header-group;
+        }
+
+        /* Filter Checkbox Pills */
+        .sub-pill {
+            cursor: pointer;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            font-size: 0.78rem;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            transition: all 0.15s ease;
+        }
+        .sub-pill:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .sub-pill.active {
+            border-color: #2563eb;
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .no-print-toolbar {
+                display: none !important;
+            }
+
+            .print-sheet {
+                width: 297mm !important;
+                height: 210mm !important;
+                min-height: 210mm !important;
+                max-height: 210mm !important;
+                margin: 0 !important;
+                padding: 6mm 10mm 6mm 10mm !important;
+                box-shadow: none !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========================================================================= -->
+    <!-- TOP TOOLBAR & CONTROLS (SCREEN ONLY)                                      -->
+    <!-- ========================================================================= -->
+    <div class="no-print-toolbar">
+        <div class="card shadow-sm border-0 rounded-4 p-3 mb-2 bg-white">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-2 border-bottom mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'semester_results' %}{% if selected_classroom %}?classroom={{ selected_classroom.id }}{% endif %}&semester={{ semester }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                    </a>
+                    <span class="fw-bold fs-6 text-primary">
+                        <i class="fa-solid fa-ranking-star me-1"></i> តារាងចំណាត់ថ្នាក់តាមមុខវិជ្ជា (MoEYS Form / rank_sub.pdf)
+                    </span>
+                    <span class="badge bg-info text-dark rounded-pill px-2.5 py-1">សរុប {{ total_students }} នាក់ ({{ total_pages }} ទំព័រ)</span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Repeat Header Toggle -->
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="toggleRepeatHeaders()" id="btnRepeatHeader">
+                        <i class="fa-solid fa-table-list me-1"></i> បង្ហាញក្បាលតារាងគ្រប់ទំព័រ
+                    </button>
+
+                    <!-- Print Button -->
+                    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold shadow-xs" onclick="window.print()">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print / PDF)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Controls Form -->
+            <form method="GET" class="row g-2 align-items-center mb-2" id="filterForm">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-0 fw-semibold">ឆ្នាំសិក្សា</label>
+                    <select name="year" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        {% for ay in academic_years %}
+                        <option value="{{ ay.id }}" {% if target_year and target_year.id == ay.id %}selected{% endif %}>
+                            📅 {{ ay.name }}{% if ay.is_current %} (បច្ចុប្បន្ន){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-0 fw-semibold">ឆមាស</label>
+                    <select name="semester" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <option value="1" {% if semester == 1 %}selected{% endif %}>ឆមាសទី១ (Semester 1)</option>
+                        <option value="2" {% if semester == 2 %}selected{% endif %}>ឆមាសទី២ (Semester 2)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-0 fw-semibold">ថ្នាក់រៀន</label>
+                    <select name="classroom" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        {% for c in classrooms %}
+                        <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id %}selected{% endif %}>
+                            {{ c.name }} ({{ c.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-0 fw-semibold">ប្រភពទិន្នន័យ</label>
+                    <select name="source" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <option value="official" {% if data_source == 'official' %}selected{% endif %}>⭐ គំរូផ្លូវការ rank_sub.pdf (៧ C)</option>
+                        <option value="live" {% if data_source == 'live' %}selected{% endif %}>🔄 គណនាផ្ទាល់ពីប្រព័ន្ធ (Live System)</option>
+                    </select>
+                </div>
+            </form>
+
+            <!-- Interactive Subject Selection (មុខវិជ្ជាជ្រើសរើស) -->
+            <div class="pt-2 border-top">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1.5">
+                    <span class="small fw-bold text-dark">
+                        <i class="fa-solid fa-check-double me-1 text-primary"></i> មុខវិជ្ជាជ្រើសរើសសម្រាប់បង្ហាញ (Selected Subjects)៖
+                    </span>
+                    <div class="d-flex gap-1.5">
+                        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0.5" style="font-size: 0.75rem;" onclick="selectAllSubjects(true)">
+                            <i class="fa-solid fa-check-square me-1"></i> ជ្រើសទាំងអស់
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" style="font-size: 0.75rem;" onclick="selectAllSubjects(false)">
+                            <i class="fa-regular fa-square me-1"></i> ដោះទាំងអស់
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Subject Checkbox Badges -->
+                <div class="d-flex flex-wrap gap-1.5" id="subjectPillsContainer">
+                    {% for s in subjects %}
+                    <label class="sub-pill active" data-sub-idx="{{ forloop.counter0 }}">
+                        <input type="checkbox" class="form-check-input mt-0 me-1 sub-toggle-checkbox" data-sub-idx="{{ forloop.counter0 }}" checked onchange="toggleSubjectColumn({{ forloop.counter0 }}, this.checked)">
+                        {{ s.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- PAGINATED A4 PRINT SHEETS (MATCHING rank_sub.pdf)                         -->
+    <!-- ========================================================================= -->
+    <div id="printSheetsContainer">
+        {% for sheet in sheets %}
+        <div class="print-sheet">
+
+            <!-- Page 1 Only: Top Headers & Title -->
+            {% if sheet.is_first_page %}
+            <div class="header-top">
+                <div class="school-block">
+                    {{ school_name }}
+                </div>
+                <div class="kingdom-block">
+                    <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="moul-font motto-title">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                </div>
+            </div>
+
+            <div class="doc-title-box">
+                <div class="moul-font main-title">តារាងចំណាត់ថ្នាក់ប្រឡងឆមាសទី{{ semester_kh }} ឆ្នាំសិក្សា {{ academic_year_kh }}</div>
+                <div class="fw-bold sub-title">{{ class_title }}</div>
+            </div>
+            {% endif %}
+
+            <!-- Table -->
+            <table class="rank-table">
+                <!-- Header: Displayed on Page 1, optionally toggled on Page 2..N -->
+                <thead class="{% if not sheet.is_first_page %}continuation-thead{% endif %}">
+                    <tr>
+                        <th style="width: 25px;">ល.រ</th>
+                        <th style="width: 55px;">អត្តលេខ</th>
+                        <th style="width: 140px;">គោត្តនាម-នាម</th>
+                        <th style="width: 26px;">ភេទ</th>
+                        <th style="width: 65px; font-size: 7pt; line-height: 1.1;">ថ្ងៃ ខែ ឆ្នាំ<br>កំណើត</th>
+
+                        <!-- Subjects (Score + Rank columns) -->
+                        {% for sub in subjects %}
+                        <th class="th-vertical th-sub-name col-sub-{{ forloop.counter0 }}" style="width: 24px;">{{ sub.name }}</th>
+                        <th class="th-vertical th-sub-rank col-sub-{{ forloop.counter0 }}" style="width: 24px;">ចំណាត់ថ្នាក់</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sheet.rows %}
+                    <tr>
+                        <td>{{ row.no }}</td>
+                        <td>{{ row.student_id }}</td>
+                        <td class="cell-name">{{ row.name }}</td>
+                        <td>{{ row.gender }}</td>
+                        <td>{{ row.dob }}</td>
+
+                        <!-- Scores & Ranks per subject -->
+                        {% for sc in row.subjects %}
+                        <td class="col-sub-{{ forloop.counter0 }}">{{ sc.score }}</td>
+                        <td class="val-rank-red col-sub-{{ forloop.counter0 }}">{% if sc.rank %}{{ sc.rank }}{% else %}-{% endif %}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- JavaScript for Interactive Controls & Subject Filtering -->
+    <script>
+        function toggleRepeatHeaders() {
+            document.body.classList.toggle('repeat-headers');
+            const btn = document.getElementById('btnRepeatHeader');
+            if (document.body.classList.contains('repeat-headers')) {
+                btn.classList.replace('btn-outline-info', 'btn-info');
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ក្បាលតារាងត្រូវបានបង្ហាញគ្រប់ទំព័រ';
+            } else {
+                btn.classList.replace('btn-info', 'btn-outline-info');
+                btn.innerHTML = '<i class="fa-solid fa-table-list me-1"></i> បង្ហាញក្បាលតារាងគ្រប់ទំព័រ';
+            }
+        }
+
+        function toggleSubjectColumn(idx, isVisible) {
+            const label = document.querySelector(`.sub-pill[data-sub-idx="${idx}"]`);
+            if (label) {
+                label.classList.toggle('active', isVisible);
+            }
+            // Hide or show all columns with class col-sub-{idx}
+            document.querySelectorAll(`.col-sub-${idx}`).forEach(el => {
+                el.style.display = isVisible ? '' : 'none';
+            });
+        }
+
+        function selectAllSubjects(select) {
+            document.querySelectorAll('.sub-toggle-checkbox').forEach(cb => {
+                cb.checked = select;
+                const idx = parseInt(cb.getAttribute('data-sub-idx'), 10);
+                toggleSubjectColumn(idx, select);
+            });
+        }
+    </script>
+</body>
+</html>

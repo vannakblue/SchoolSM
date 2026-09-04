@@ -644,3 +644,401 @@ class ExamAnalyticsService:
             'percentage_thresholds': [95, 90, 85, 80, 75, 70, 65, 60, 55, 50],
             'slow_learners_data': [],
         }
+
+    @classmethod
+    def build_analytics_workbook(cls, analytics, session_title="សម័យប្រឡង", session_date_str="", academic_year_name="", scope_title="", target_sheet='all', mention_sum_label="A+B+C"):
+        """
+        Builds a professionally formatted multi-sheet or single-sheet Excel (.xlsx) workbook
+        representing all reports on the Exam Session Analytics page.
+        Supported target_sheet:
+          - 'all': Multi-sheet workbook containing all 6 reports
+          - 'overall': Sheet 1 (សរុបនិទ្ទេសរួម)
+          - 'quality': Sheet 2 (វាយតម្លៃគុណភាព)
+          - 'subject_summary': Sheet 3 & 4 (សង្ខេបនិទ្ទេស សរុប និង លម្អិត)
+          - 'subject_single': Sheet 3 (សង្ខេបនិទ្ទេស សរុប)
+          - 'subject_detailed': Sheet 4 (សង្ខេបនិទ្ទេស លម្អិត)
+          - 'percentages': Sheet 5 (វិភាគភាគរយមុខវិជ្ជា)
+          - 'slow_learners': Sheet 6 (របាយការណ៍សិស្សរៀនយឺត)
+        """
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        wb = openpyxl.Workbook()
+        default_sheet = wb.active
+
+        font_family = 'Khmer OS Siemreap'
+
+        title_font = Font(name=font_family, size=13, bold=True, color='0F172A')
+        subtitle_font = Font(name=font_family, size=9.5, bold=False, color='475569')
+        header_font_white = Font(name=font_family, size=9.5, bold=True, color='FFFFFF')
+        header_font_dark = Font(name=font_family, size=9.5, bold=True, color='1E293B')
+        bold_font = Font(name=font_family, size=9.5, bold=True, color='0F172A')
+        regular_font = Font(name=font_family, size=9.5, bold=False, color='1E293B')
+        danger_font = Font(name=font_family, size=9.5, bold=True, color='DC2626')
+        female_font = Font(name=font_family, size=9.5, bold=True, color='DB2777')
+        male_font = Font(name=font_family, size=9.5, bold=True, color='2563EB')
+
+        fill_teal = PatternFill(start_color='0F766E', end_color='0F766E', fill_type='solid')
+        fill_emerald = PatternFill(start_color='10B981', end_color='10B981', fill_type='solid')
+        fill_cyan = PatternFill(start_color='0284C7', end_color='0284C7', fill_type='solid')
+        fill_coral = PatternFill(start_color='EF4444', end_color='EF4444', fill_type='solid')
+        fill_light_slate = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+        fill_yellow_highlight = PatternFill(start_color='FEF08A', end_color='FEF08A', fill_type='solid')
+        fill_green_highlight = PatternFill(start_color='D1FAE5', end_color='D1FAE5', fill_type='solid')
+
+        border_thin = Border(
+            left=Side(style='thin', color='CBD5E1'),
+            right=Side(style='thin', color='CBD5E1'),
+            top=Side(style='thin', color='CBD5E1'),
+            bottom=Side(style='thin', color='CBD5E1')
+        )
+
+        def write_header_block(ws, title_text, col_span=9):
+            col_letter = get_column_letter(max(col_span, 6))
+            ws.merge_cells(f'A1:{col_letter}1')
+            ws['A1'] = f"របាយការណ៍វិភាគលទ្ធផលប្រឡង៖ {session_title}"
+            ws['A1'].font = title_font
+            ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+            ws.merge_cells(f'A2:{col_letter}2')
+            ws['A2'] = f"{title_text} | វិសាលភាព៖ {scope_title} | ឆ្នាំសិក្សា៖ {academic_year_name} | កាលបរិច្ឆេទ៖ {session_date_str}"
+            ws['A2'].font = subtitle_font
+            ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+            ws.merge_cells(f'A3:{col_letter}3')
+            ws['A3'] = f"បេក្ខជនសរុប៖ {analytics.get('total_candidates', 0)} នាក់ (ស្រី៖ {analytics.get('female_candidates', 0)} នាក់, ប្រុស៖ {analytics.get('male_candidates', 0)} នាក់)"
+            ws['A3'].font = subtitle_font
+            ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
+
+            ws.row_dimensions[1].height = 25
+            ws.row_dimensions[2].height = 18
+            ws.row_dimensions[3].height = 18
+            ws.append([])
+
+        sum_label = mention_sum_label or "A+B+C"
+
+        # -------------------------------------------------------------
+        # SHEET 1: សរុបនិទ្ទេសរួម
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'overall']:
+            ws1 = wb.create_sheet(title="សរុបនិទ្ទេសរួម")
+            write_header_block(ws1, "១. តារាងសរុបនិទ្ទេសរួម", col_span=9)
+            headers = ['ភេទ', 'A', 'B', 'C', 'D', 'E', 'F', sum_label, 'សរុបរួម']
+            ws1.append(headers)
+            ws1.row_dimensions[5].height = 24
+            for c_idx in range(1, 10):
+                cell = ws1.cell(row=5, column=c_idx)
+                cell.font = header_font_white
+                cell.fill = fill_teal
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_thin
+
+            om = analytics.get('overall_mentions', {})
+            t_row = om.get('total_row', {'label': 'សរុប', 'counts': [0]*6, 'sum_abc': 0, 'grand_total': 0})
+            f_row = om.get('female_row', {'label': 'ស្រី', 'counts': [0]*6, 'sum_abc': 0, 'grand_total': 0})
+            m_row = om.get('male_row', {'label': 'ប្រុស', 'counts': [0]*6, 'sum_abc': 0, 'grand_total': 0})
+
+            rows_data = [
+                (t_row['label'], t_row['counts'], t_row['sum_abc'], t_row['grand_total'], bold_font, fill_light_slate),
+                (f_row['label'], f_row['counts'], f_row['sum_abc'], f_row['grand_total'], female_font, None),
+                (m_row['label'], m_row['counts'], m_row['sum_abc'], m_row['grand_total'], male_font, None),
+            ]
+            for r_idx, (lbl, counts, sum_abc, grand_tot, f_style, row_fill) in enumerate(rows_data, 6):
+                ws1.row_dimensions[r_idx].height = 22
+                row_vals = [lbl] + list(counts) + [sum_abc, grand_tot]
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws1.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = f_style
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if row_fill:
+                        cell.fill = row_fill
+                    if c_idx == 8:
+                        cell.fill = fill_yellow_highlight
+                        cell.font = bold_font
+                    elif c_idx == 9:
+                        cell.fill = fill_green_highlight
+                        cell.font = bold_font
+
+        # -------------------------------------------------------------
+        # SHEET 2: វាយតម្លៃគុណភាព
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'quality']:
+            ws2 = wb.create_sheet(title="វាយតម្លៃគុណភាព")
+            write_header_block(ws2, "២. តារាងរបាយការណ៍វាយតម្លៃគុណភាព", col_span=6)
+            headers2 = ['ភេទ', 'ល្អ (>=40)', 'ល្អបង្គួរ (>=32.5)', 'មធ្យម (>=25)', 'ខ្សោយ (<25)', 'សរុប']
+            ws2.append(headers2)
+            ws2.row_dimensions[5].height = 24
+            for c_idx in range(1, 7):
+                cell = ws2.cell(row=5, column=c_idx)
+                cell.font = header_font_white
+                cell.fill = fill_teal
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_thin
+
+            qe = analytics.get('quality_evaluation', {})
+            t_qe = qe.get('total_row', {'label': 'សរុប', 'good': 0, 'fairly_good': 0, 'average': 0, 'weak': 0, 'grand_total': 0})
+            f_qe = qe.get('female_row', {'label': 'ស្រី', 'good': 0, 'fairly_good': 0, 'average': 0, 'weak': 0, 'grand_total': 0})
+            m_qe = qe.get('male_row', {'label': 'ប្រុស', 'good': 0, 'fairly_good': 0, 'average': 0, 'weak': 0, 'grand_total': 0})
+
+            rows_data2 = [
+                (t_qe['label'], t_qe['good'], t_qe['fairly_good'], t_qe['average'], t_qe['weak'], t_qe['grand_total'], bold_font, fill_light_slate),
+                (f_qe['label'], f_qe['good'], f_qe['fairly_good'], f_qe['average'], f_qe['weak'], f_qe['grand_total'], female_font, None),
+                (m_qe['label'], m_qe['good'], m_qe['fairly_good'], m_qe['average'], m_qe['weak'], m_qe['grand_total'], male_font, None),
+            ]
+            for r_idx, (lbl, gd, fg, av, wk, gt, f_style, row_fill) in enumerate(rows_data2, 6):
+                ws2.row_dimensions[r_idx].height = 22
+                row_vals = [lbl, gd, fg, av, wk, gt]
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws2.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = f_style
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if row_fill:
+                        cell.fill = row_fill
+                    if c_idx == 5:
+                        cell.font = danger_font
+                    elif c_idx == 6:
+                        cell.fill = fill_green_highlight
+                        cell.font = bold_font
+
+        # -------------------------------------------------------------
+        # SHEET 3: សង្ខេបនិទ្ទេស (សរុប)
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'subject_summary', 'subject_single']:
+            ws3 = wb.create_sheet(title="សង្ខេបនិទ្ទេស (សរុប)")
+            write_header_block(ws3, "៣. សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា (បង្ហាញតែមួយ - សរុប)", col_span=9)
+            headers3 = ['មុខវិជ្ជា (ពិន្ទុពេញ)', 'A', 'B', 'C', 'D', 'E', 'F', sum_label, 'សរុបរួម']
+            ws3.append(headers3)
+            ws3.row_dimensions[5].height = 24
+            for c_idx in range(1, 10):
+                cell = ws3.cell(row=5, column=c_idx)
+                cell.font = header_font_white
+                cell.fill = fill_emerald
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_thin
+            ws3.cell(row=5, column=1).alignment = Alignment(horizontal='left', vertical='center')
+
+            for r_idx, s_row in enumerate(analytics.get('subject_mentions_single', []), 6):
+                ws3.row_dimensions[r_idx].height = 20
+                row_vals = [s_row['title'], s_row['a'], s_row['b'], s_row['c'], s_row['d'], s_row['e'], s_row['f'], s_row['sum_abc'], s_row['total']]
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws3.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = regular_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if c_idx == 1:
+                        cell.font = bold_font
+                        cell.alignment = Alignment(horizontal='left', vertical='center')
+                    elif c_idx == 7:
+                        cell.font = danger_font
+                    elif c_idx == 8:
+                        cell.fill = fill_yellow_highlight
+                        cell.font = bold_font
+                    elif c_idx == 9:
+                        cell.fill = fill_green_highlight
+                        cell.font = bold_font
+
+        # -------------------------------------------------------------
+        # SHEET 4: សង្ខេបនិទ្ទេស (លម្អិត)
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'subject_summary', 'subject_detailed']:
+            ws4 = wb.create_sheet(title="សង្ខេបនិទ្ទេស (លម្អិត)")
+            write_header_block(ws4, "៤. សង្ខេបនិទ្ទេសតាមមុខវិជ្ជា (បង្ហាញលម្អិត - សរុប, ស្រី, ប្រុស)", col_span=25)
+
+            ws4.merge_cells('A5:A6')
+            ws4['A5'] = 'មុខវិជ្ជា (ពិន្ទុពេញ)'
+            top_groups = [
+                ('B5:D5', 'A'), ('E5:G5', 'B'), ('H5:J5', 'C'),
+                ('K5:M5', 'D'), ('N5:P5', 'E'), ('Q5:S5', 'F'),
+                ('T5:V5', sum_label), ('W5:Y5', 'សរុបរួម')
+            ]
+            for rng, txt in top_groups:
+                ws4.merge_cells(rng)
+                start_cell = rng.split(':')[0]
+                ws4[start_cell] = txt
+
+            ws4.row_dimensions[5].height = 22
+            ws4.row_dimensions[6].height = 20
+
+            sub_headers = [''] + ['ស', 'ស្រ', 'ប'] * 8
+            ws4.append(sub_headers)
+
+            for col_idx in range(1, 26):
+                cell5 = ws4.cell(row=5, column=col_idx)
+                cell5.font = header_font_white
+                cell5.fill = fill_emerald if col_idx < 20 else (fill_yellow_highlight if col_idx < 23 else fill_teal)
+                if col_idx in [20, 21, 22]:
+                    cell5.font = header_font_dark
+                cell5.alignment = Alignment(horizontal='center', vertical='center')
+                cell5.border = border_thin
+
+                cell6 = ws4.cell(row=6, column=col_idx)
+                cell6.font = header_font_white
+                cell6.fill = fill_teal if col_idx < 20 else (fill_yellow_highlight if col_idx < 23 else fill_teal)
+                if col_idx in [20, 21, 22]:
+                    cell6.font = header_font_dark
+                cell6.alignment = Alignment(horizontal='center', vertical='center')
+                cell6.border = border_thin
+
+            for r_idx, d_row in enumerate(analytics.get('subject_mentions_detailed', []), 7):
+                ws4.row_dimensions[r_idx].height = 20
+                row_vals = [d_row['title']]
+                for g in ['A', 'B', 'C', 'D', 'E', 'F']:
+                    g_data = d_row.get('grades', {}).get(g, {'tot': 0, 'fem': 0, 'mal': 0})
+                    row_vals.extend([g_data['tot'], g_data['fem'], g_data['mal']])
+                s_abc = d_row.get('sum_abc', {'tot': 0, 'fem': 0, 'mal': 0})
+                row_vals.extend([s_abc['tot'], s_abc['fem'], s_abc['mal']])
+                s_tot = d_row.get('total', {'tot': 0, 'fem': 0, 'mal': 0})
+                row_vals.extend([s_tot['tot'], s_tot['fem'], s_tot['mal']])
+
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws4.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = regular_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if c_idx == 1:
+                        cell.font = bold_font
+                        cell.alignment = Alignment(horizontal='left', vertical='center')
+                    elif c_idx in [17, 18, 19]:
+                        cell.font = danger_font
+                    elif c_idx in [20, 21, 22]:
+                        cell.fill = fill_yellow_highlight
+                        cell.font = bold_font
+                    elif c_idx in [23, 24, 25]:
+                        cell.fill = fill_green_highlight
+                        cell.font = bold_font
+
+        # -------------------------------------------------------------
+        # SHEET 5: វិភាគភាគរយមុខវិជ្ជា
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'percentages']:
+            ws5 = wb.create_sheet(title="វិភាគភាគរយមុខវិជ្ជា")
+            write_header_block(ws5, "៥. វិភាគភាគរយមុខវិជ្ជា (ផ្អែកលើពិន្ទុអតិបរមា)", col_span=15)
+
+            ws5.merge_cells('A5:A6')
+            ws5['A5'] = 'មុខវិជ្ជា (ពិន្ទុពេញ)'
+            ws5.merge_cells('B5:K5')
+            ws5['B5'] = 'កម្រិតភាគរយ (>=)'
+            ws5.merge_cells('L5:M5')
+            ws5['L5'] = 'ចន្លោះភាគរយ'
+            ws5.merge_cells('N5:O5')
+            ws5['N5'] = 'កម្រិតខ្សោយ (<)'
+
+            ws5.row_dimensions[5].height = 22
+            ws5.row_dimensions[6].height = 20
+
+            pct_subs = [''] + ['95%', '90%', '85%', '80%', '75%', '70%', '65%', '60%', '55%', '50%', '60-80%', '50-<80%', '60%', '50%']
+            ws5.append(pct_subs)
+
+            for col_idx in range(1, 16):
+                cell5 = ws5.cell(row=5, column=col_idx)
+                cell5.font = header_font_white
+                cell5.fill = fill_teal if col_idx <= 11 else (fill_cyan if col_idx <= 13 else fill_coral)
+                cell5.alignment = Alignment(horizontal='center', vertical='center')
+                cell5.border = border_thin
+
+                cell6 = ws5.cell(row=6, column=col_idx)
+                cell6.font = header_font_white
+                cell6.fill = fill_teal if col_idx <= 11 else (fill_cyan if col_idx <= 13 else fill_coral)
+                cell6.alignment = Alignment(horizontal='center', vertical='center')
+                cell6.border = border_thin
+
+            for r_idx, p_row in enumerate(analytics.get('subject_percentage_rows', []), 7):
+                ws5.row_dimensions[r_idx].height = 20
+                row_vals = [p_row['title']] + p_row['gte_counts'] + [p_row['between_60_80'], p_row['between_50_80'], p_row['lt_60'], p_row['lt_50']]
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws5.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = regular_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if c_idx == 1:
+                        cell.font = bold_font
+                        cell.alignment = Alignment(horizontal='left', vertical='center')
+                    elif c_idx in [12, 13]:
+                        cell.font = male_font
+                    elif c_idx in [14, 15]:
+                        cell.font = danger_font
+
+        # -------------------------------------------------------------
+        # SHEET 6: របាយការណ៍សិស្សរៀនយឺត
+        # -------------------------------------------------------------
+        if target_sheet in ['all', 'slow_learners']:
+            ws6 = wb.create_sheet(title="សិស្សរៀនយឺត")
+            subjects_list = analytics.get('subjects_list', [])
+            total_cols = 6 + (len(subjects_list) * 2)
+            write_header_block(ws6, "៦. របាយការណ៍សិស្សរៀនយឺត (តាមមុខវិជ្ជា)", col_span=total_cols)
+
+            headers6 = ['ល.រ', 'អត្តលេខ', 'ឈ្មោះសិស្ស', 'ភេទ', 'ថ្នាក់រៀន', 'និទ្ទេសរួម']
+            for s in subjects_list:
+                headers6.extend([f"{s['name']} (ពិន្ទុ)", f"{s['name']} (និទ្ទេស)"])
+
+            ws6.append(headers6)
+            ws6.row_dimensions[5].height = 24
+            for col_idx in range(1, len(headers6) + 1):
+                cell = ws6.cell(row=5, column=col_idx)
+                cell.font = header_font_white
+                cell.fill = fill_teal if col_idx <= 6 else fill_emerald
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_thin
+            ws6.cell(row=5, column=3).alignment = Alignment(horizontal='left', vertical='center')
+
+            candidates = analytics.get('slow_learners_data', [])
+            slow_candidates = [c for c in candidates if c.get('overall_mention') in ['E', 'F'] or c.get('has_weak_grade')]
+            if not slow_candidates:
+                slow_candidates = candidates
+
+            for r_idx, cand in enumerate(slow_candidates, 6):
+                ws6.row_dimensions[r_idx].height = 20
+                row_vals = [
+                    r_idx - 5,
+                    cand.get('student_code', ''),
+                    cand.get('candidate_name_kh', ''),
+                    cand.get('gender_short', ''),
+                    cand.get('origin_class', ''),
+                    cand.get('overall_mention', ''),
+                ]
+                for s in subjects_list:
+                    s_id = s['id']
+                    sc = cand.get('subject_scores', {}).get(s_id)
+                    sc_str = f"{sc:.1f}" if sc is not None else "-"
+                    m_str = cand.get('subject_mentions', {}).get(s_id, '-')
+                    row_vals.extend([sc_str, m_str])
+
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws6.cell(row=r_idx, column=c_idx, value=val)
+                    cell.font = regular_font
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.border = border_thin
+                    if c_idx == 3:
+                        cell.alignment = Alignment(horizontal='left', vertical='center')
+                    elif c_idx == 6 and val in ['E', 'F']:
+                        cell.font = danger_font
+                    elif c_idx > 6 and (c_idx % 2 == 0) and val in ['E', 'F']:
+                        cell.font = danger_font
+
+        # Auto-fit Column Widths for all created sheets
+        for sheet in wb.worksheets:
+            for col in sheet.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    if cell.row >= 5 and cell.value is not None:
+                        val_str = str(cell.value)
+                        val_len = len(val_str)
+                        if val_len > max_len:
+                            max_len = val_len
+                adjusted_width = max(max_len + 4, 10)
+                if col_letter == 'A':
+                    adjusted_width = max(adjusted_width, 22)
+                elif col_letter in ['B', 'C']:
+                    adjusted_width = max(adjusted_width, 16)
+                sheet.column_dimensions[col_letter].width = min(adjusted_width, 42)
+
+        # Remove the default empty sheet if custom sheets were created
+        if len(wb.worksheets) > 1 and default_sheet in wb.worksheets:
+            wb.remove(default_sheet)
+
+        return wb
+
