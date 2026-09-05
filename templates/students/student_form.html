@@ -54,9 +54,16 @@
                                     <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ
                                 </span>
                             </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2.5 fw-semibold" id="btnAutoGenerateStudentId" onclick="fetchNextAvailableStudentId()">
-                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)
-                            </button>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2.5 fw-semibold" id="btnAutoGenerateStudentId" onclick="fetchNextAvailableStudentId()">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)
+                                </button>
+                                {% if request.user.role == 'ADMIN' %}
+                                <a href="{% url 'school_profile_settings' %}#tab-student-id" target="_blank" class="btn btn-light border btn-sm py-1 px-2 text-muted" title="កំណត់ទម្រង់អត្តលេខសិស្ស (Student ID Format)">
+                                    <i class="fa-solid fa-gear"></i>
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="input-group">
                             <span class="input-group-text bg-white text-muted border-end-0"><i class="fa-solid fa-hashtag"></i></span>
@@ -1034,7 +1041,9 @@ async function checkStudentIdAvailability(val) {
     }
 
     try {
-        const url = `/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${CURRENT_STUDENT_PK}&year_id=${yearId}`;
+        const classroomSelect = document.getElementById('id_classroom');
+        const classroomId = classroomSelect ? classroomSelect.value : '';
+        const url = `/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${CURRENT_STUDENT_PK}&year_id=${yearId}&classroom_id=${classroomId}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
@@ -1073,6 +1082,8 @@ async function checkStudentIdAvailability(val) {
 async function fetchNextAvailableStudentId() {
     const yearSelect = document.getElementById('id_academic_year');
     const yearId = yearSelect ? yearSelect.value : '';
+    const classroomSelect = document.getElementById('id_classroom');
+    const classroomId = classroomSelect ? classroomSelect.value : '';
     const input = document.getElementById('id_student_id');
     const btn = document.getElementById('btnAutoGenerateStudentId');
 
@@ -1082,7 +1093,7 @@ async function fetchNextAvailableStudentId() {
     }
 
     try {
-        const resp = await fetch(`/students/api/generate-student-id/?year_id=${yearId}`);
+        const resp = await fetch(`/students/api/generate-student-id/?year_id=${yearId}&classroom_id=${classroomId}`);
         const data = await resp.json();
         if (data.status === 'success' && data.student_id) {
             applySuggestedStudentId(data.student_id);

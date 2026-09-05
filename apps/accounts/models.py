@@ -274,6 +274,47 @@ class SchoolProfile(models.Model):
         verbose_name="ទម្រង់ម៉ោង / Time Format"
     )
 
+    # Student ID Configuration & Generation Pattern
+    class StudentIdPattern(models.TextChoices):
+        YEAR_END_4D = 'YEAR_END_4D', 'ឆ្នាំបញ្ចប់ + លេខ ៤ ខ្ទង់ (ឧ. 270001) - ស្តង់ដារជាតិ MoEYS'
+        YEAR_END_5D = 'YEAR_END_5D', 'ឆ្នាំបញ្ចប់ + លេខ ៥ ខ្ទង់ (ឧ. 2700001)'
+        PREFIX_YEAR_4D = 'PREFIX_YEAR_4D', 'Prefix + ឆ្នាំបញ្ចប់ + លេខ ៤ ខ្ទង់ (ឧ. STU-27-0001)'
+        PREFIX_YEAR_5D = 'PREFIX_YEAR_5D', 'Prefix + ឆ្នាំបញ្ចប់ + លេខ ៥ ខ្ទង់ (ឧ. STU-27-00001)'
+        GRADE_YEAR_4D = 'GRADE_YEAR_4D', 'កម្រិតថ្នាក់ + ឆ្នាំបញ្ចប់ + លេខ ៤ ខ្ទង់ (ឧ. 7-27-0001)'
+        CUSTOM_PATTERN = 'CUSTOM_PATTERN', 'ទម្រង់ផ្ទាល់ខ្លួន (Custom Template) ឧ. {PREFIX}-{YEAR2}-{SEQ}'
+
+    student_id_pattern = models.CharField(
+        max_length=50,
+        choices=StudentIdPattern.choices,
+        default=StudentIdPattern.YEAR_END_4D,
+        verbose_name="ទម្រង់អត្តលេខសិស្ស / Student ID Pattern"
+    )
+    student_id_prefix = models.CharField(
+        max_length=20,
+        default="STU",
+        blank=True,
+        verbose_name="អក្សរកាត់អត្តលេខ (Prefix)"
+    )
+    student_id_custom_template = models.CharField(
+        max_length=100,
+        default="{PREFIX}-{YEAR2}-{SEQ}",
+        blank=True,
+        verbose_name="រូបមន្តអត្តលេខផ្ទាល់ខ្លួន (Custom Template)"
+    )
+    student_id_digits = models.PositiveSmallIntegerField(
+        default=4,
+        choices=[
+            (4, '៤ ខ្ទង់ (ឧ. 0001)'),
+            (5, '៥ ខ្ទង់ (ឧ. 00001)'),
+            (6, '៦ ខ្ទង់ (ឧ. 000001)'),
+        ],
+        verbose_name="ចំនួនខ្ទង់លេខរៀងរត់ / Sequence Digits"
+    )
+    student_id_include_grade = models.BooleanField(
+        default=False,
+        verbose_name="បញ្ចូលលេខកម្រិតថ្នាក់ក្នុងអត្តលេខ / Include Grade Level in ID"
+    )
+
     # MoEYS Administrative & Hierarchy
     ministry_name = models.CharField(
         max_length=200,

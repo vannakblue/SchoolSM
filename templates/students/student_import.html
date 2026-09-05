@@ -106,9 +106,13 @@
                         <td>{{ s.gender }}</td>
                         <td><span class="badge bg-light text-dark border">{{ s.classroom }}</span></td>
                         <td class="text-end">
+                            {% if s.id %}
                             <a href="{% url 'student_detail' s.id %}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.8rem;">
                                 <i class="fa-solid fa-eye me-1"></i> បើកមើល
                             </a>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">ជោគជ័យ</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

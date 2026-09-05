@@ -398,46 +398,175 @@ class Student(models.Model):
         return self.effective_exam_exclusion_reason
 
     @classmethod
-    def generate_unique_student_id(cls, academic_year=None, exclude_pk=None, custom_prefix=None):
+    def generate_unique_student_id(cls, academic_year=None, exclude_pk=None, custom_prefix=None, grade_level=None, classroom=None):
         """
         Generates a guaranteed collision-free, strictly unique student ID.
-        Format: {2-digit year prefix}{4-digit sequence number}, e.g. '260001', '260002'...
+        By default, extracts the ending academic year (e.g., '2026-2027' -> '27').
+        Applies school-configured pattern from SchoolProfile:
+        - YEAR_END_4D: {year2}{seq:04d} e.g. 270001
+        - YEAR_END_5D: {year2}{seq:05d} e.g. 2700001
+        - PREFIX_YEAR_4D: {prefix}-{year2}-{seq:04d} e.g. STU-27-0001
+        - PREFIX_YEAR_5D: {prefix}-{year2}-{seq:05d} e.g. STU-27-00001
+        - GRADE_YEAR_4D: {grade}-{year2}-{seq:04d} e.g. 7-27-0001
+        - CUSTOM_PATTERN: Custom template e.g. {PREFIX}-{YEAR2}-{SEQ}
         """
         import re
-        if custom_prefix:
-            year_prefix = str(custom_prefix).strip()
-        else:
-            year_prefix = f"{datetime.now().year % 100:02d}"
-            if academic_year:
-                if getattr(academic_year, 'start_date', None):
-                    year_prefix = f"{academic_year.start_date.year % 100:02d}"
-                elif getattr(academic_year, 'name', None):
-                    m = re.search(r'(\d{4})', academic_year.name)
-                    if m:
-                        year_prefix = f"{int(m.group(1)) % 100:02d}"
+        from datetime import datetime
 
-        # Find existing IDs matching prefix + digits
-        candidates = cls.objects.filter(student_id__regex=rf'^{year_prefix}\d{{4,}}$').values_list('student_id', flat=True)
+        # 1. Resolve academic year if not passed
+        if not academic_year and classroom and hasattr(classroom, 'academic_year'):
+            academic_year = classroom.academic_year
+        if not academic_year:
+            from apps.academics.models import AcademicYear
+            academic_year = AcademicYear.objects.filter(is_current=True).first()
+
+        # 2. Extract ending year (and start year)
+        # Academic year name format examples: '2026-2027', '២០២៦-២០២៧', '2026 - 2027', '2026'
+        khmer_to_latin = str.maketrans('០១២៣៤៥៦៧៨៩', '0123456789')
+        end_year_val = None
+        start_year_val = None
+
+        if academic_year:
+            name_str = getattr(academic_year, 'name', '') or ''
+            converted_name = name_str.translate(khmer_to_latin)
+            year_matches = re.findall(r'\b(20\d\d|19\d\d|\d{4})\b', converted_name)
+            if len(year_matches) >= 2:
+                start_year_val = int(year_matches[0])
+                end_year_val = int(year_matches[-1])
+            elif len(year_matches) == 1:
+                end_year_val = int(year_matches[0])
+                start_year_val = end_year_val
+
+            # If end_date provides more information
+            if not end_year_val and getattr(academic_year, 'end_date', None):
+                end_year_val = academic_year.end_date.year
+            if not start_year_val and getattr(academic_year, 'start_date', None):
+                start_year_val = academic_year.start_date.year
+
+        if not end_year_val:
+            end_year_val = datetime.now().year
+        if not start_year_val:
+            start_year_val = end_year_val
+
+        year2 = f"{end_year_val % 100:02d}"
+        start_year2 = f"{start_year_val % 100:02d}"
+        year4 = f"{end_year_val:04d}"
+        start_year4 = f"{start_year_val:04d}"
+
+        # 3. Resolve grade level
+        grade_str = ""
+        if grade_level is not None:
+            grade_str = str(grade_level).strip()
+        elif classroom and getattr(classroom, 'grade_level', None):
+            grade_str = str(classroom.grade_level).strip()
+
+        # 4. Fetch School Profile Settings
+        from apps.accounts.models import SchoolProfile
+        try:
+            profile = SchoolProfile.get_settings()
+        except Exception:
+            profile = None
+
+        pattern_choice = getattr(profile, 'student_id_pattern', 'YEAR_END_4D') if profile else 'YEAR_END_4D'
+        cfg_prefix = (getattr(profile, 'student_id_prefix', '') or 'STU').strip() if profile else 'STU'
+        cfg_digits = getattr(profile, 'student_id_digits', 4) or 4
+        cfg_template = (getattr(profile, 'student_id_custom_template', '') or '{PREFIX}-{YEAR2}-{SEQ}').strip() if profile else '{PREFIX}-{YEAR2}-{SEQ}'
+        include_grade = getattr(profile, 'student_id_include_grade', False) if profile else False
+
+        # If custom_prefix is explicitly provided by caller, prioritize it
+        if custom_prefix is not None and str(custom_prefix).strip() != '':
+            id_prefix = str(custom_prefix).strip()
+            id_suffix = ""
+            digits = 4
+        else:
+            # Build prefix and suffix around the sequence number
+            if pattern_choice == 'YEAR_END_5D':
+                digits = 5
+                if include_grade and grade_str:
+                    id_prefix = f"{grade_str}-{year2}-"
+                else:
+                    id_prefix = f"{year2}"
+                id_suffix = ""
+            elif pattern_choice == 'PREFIX_YEAR_4D':
+                digits = 4
+                if include_grade and grade_str:
+                    id_prefix = f"{cfg_prefix}-{grade_str}-{year2}-"
+                else:
+                    id_prefix = f"{cfg_prefix}-{year2}-"
+                id_suffix = ""
+            elif pattern_choice == 'PREFIX_YEAR_5D':
+                digits = 5
+                if include_grade and grade_str:
+                    id_prefix = f"{cfg_prefix}-{grade_str}-{year2}-"
+                else:
+                    id_prefix = f"{cfg_prefix}-{year2}-"
+                id_suffix = ""
+            elif pattern_choice == 'GRADE_YEAR_4D':
+                digits = cfg_digits or 4
+                id_prefix = f"{grade_str}-{year2}-" if grade_str else f"{year2}-"
+                id_suffix = ""
+            elif pattern_choice == 'CUSTOM_PATTERN':
+                digits = cfg_digits or 4
+                raw_template = cfg_template
+                if '{SEQ}' in raw_template:
+                    parts = raw_template.split('{SEQ}', 1)
+                    raw_prefix = parts[0]
+                    raw_suffix = parts[1]
+                else:
+                    raw_prefix = raw_template + "-"
+                    raw_suffix = ""
+
+                # Token replacements
+                token_map = {
+                    '{PREFIX}': cfg_prefix,
+                    '{YEAR2}': year2,
+                    '{START_YEAR2}': start_year2,
+                    '{YEAR4}': year4,
+                    '{START_YEAR4}': start_year4,
+                    '{GRADE}': grade_str or '',
+                }
+                for tok, val in token_map.items():
+                    raw_prefix = raw_prefix.replace(tok, val)
+                    raw_suffix = raw_suffix.replace(tok, val)
+
+                id_prefix = raw_prefix
+                id_suffix = raw_suffix
+            else:  # Default YEAR_END_4D
+                digits = cfg_digits or 4
+                if include_grade and grade_str:
+                    id_prefix = f"{grade_str}-{year2}-"
+                else:
+                    id_prefix = f"{year2}"
+                id_suffix = ""
+
+        # 5. Scan database for existing IDs with id_prefix to find max sequence
+        escaped_prefix = re.escape(id_prefix)
+        escaped_suffix = re.escape(id_suffix)
+        seq_pattern = re.compile(rf'^{escaped_prefix}(\d+){escaped_suffix}$')
+
+        candidates = cls.objects.filter(student_id__startswith=id_prefix).values_list('student_id', flat=True)
         max_num = 0
         for sid in candidates:
-            try:
-                num = int(sid[len(year_prefix):])
-                if num > max_num:
-                    max_num = num
-            except (ValueError, TypeError):
-                continue
+            m = seq_pattern.match(sid)
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+                except (ValueError, TypeError):
+                    continue
 
         new_num = max_num + 1
-        candidate_id = f"{year_prefix}{new_num:04d}"
+        candidate_id = f"{id_prefix}{new_num:0{digits}d}{id_suffix}"
 
-        # Collision detection loop to guarantee 100% uniqueness
+        # 6. Collision detection loop to guarantee 100% uniqueness
         qs = cls.objects.filter(student_id__iexact=candidate_id)
         if exclude_pk:
             qs = qs.exclude(pk=exclude_pk)
 
         while qs.exists():
             new_num += 1
-            candidate_id = f"{year_prefix}{new_num:04d}"
+            candidate_id = f"{id_prefix}{new_num:0{digits}d}{id_suffix}"
             qs = cls.objects.filter(student_id__iexact=candidate_id)
             if exclude_pk:
                 qs = qs.exclude(pk=exclude_pk)
@@ -470,7 +599,14 @@ class Student(models.Model):
     def save(self, *args, **kwargs):
         # Auto-generate or format student ID
         if not self.student_id or str(self.student_id).strip() == '':
-            self.student_id = Student.generate_unique_student_id(self.academic_year, exclude_pk=self.pk)
+            target_year = self.academic_year or (self.classroom.academic_year if self.classroom else None)
+            grade_lvl = self.classroom.grade_level if self.classroom else None
+            self.student_id = Student.generate_unique_student_id(
+                academic_year=target_year,
+                exclude_pk=self.pk,
+                grade_level=grade_lvl,
+                classroom=self.classroom
+            )
         else:
             self.student_id = str(self.student_id).strip()
             # Double check collision on save

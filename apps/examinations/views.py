@@ -786,27 +786,36 @@ def pull_candidates_for_exam(exam):
     if exam.track != 'ALL':
         classrooms = classrooms.filter(track=exam.track)
 
-    # Fallback 1: If no classrooms found for exam.academic_year, try system active academic year
-    if not classrooms.exists():
+    has_active_students = classrooms.exists() and Student.objects.filter(
+        classroom__in=classrooms,
+        status='ACTIVE',
+        is_exam_suspended=False
+    ).exists()
+
+    # Fallback 1: If no classrooms or classrooms have 0 active students, try system active academic year
+    if not has_active_students:
         from apps.academics.utils import get_active_academic_year
         act_y = get_active_academic_year()
         if act_y and act_y != exam.academic_year:
             fallback_cr = Classroom.objects.filter(academic_year=act_y, grade_level=exam.grade_level)
             if exam.track != 'ALL':
                 fallback_cr = fallback_cr.filter(track=exam.track)
-            if fallback_cr.exists():
+            if fallback_cr.filter(students__status='ACTIVE').exists():
                 classrooms = fallback_cr
+                has_active_students = True
 
     # Fallback 2: Try any academic year with active students for this grade level
-    if not classrooms.exists():
+    if not has_active_students:
         fallback_cr = Classroom.objects.filter(
             grade_level=exam.grade_level,
-            students__status='ACTIVE'
+            students__status='ACTIVE',
+            students__is_exam_suspended=False
         ).distinct()
         if exam.track != 'ALL':
             fallback_cr = fallback_cr.filter(track=exam.track)
         if fallback_cr.exists():
             classrooms = fallback_cr
+            has_active_students = True
 
     # Fallback 3: Try any classroom for this grade level
     if not classrooms.exists():
@@ -816,11 +825,11 @@ def pull_candidates_for_exam(exam):
         if fallback_cr.exists():
             classrooms = fallback_cr
 
-    # Auto-align exam academic year if it was misassigned to a year with 0 classrooms
+    # Auto-align exam academic year if it was misassigned to a year with 0 classrooms or 0 active students
     if classrooms.exists():
         cr_year = classrooms.first().academic_year
         if cr_year and exam.academic_year != cr_year:
-            if not Classroom.objects.filter(academic_year=exam.academic_year, grade_level=exam.grade_level).exists():
+            if not Student.objects.filter(classroom__academic_year=exam.academic_year, classroom__grade_level=exam.grade_level, status='ACTIVE').exists():
                 exam.academic_year = cr_year
                 exam.save(update_fields=['academic_year'])
 

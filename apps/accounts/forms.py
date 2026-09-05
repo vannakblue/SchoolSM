@@ -61,6 +61,7 @@ class SchoolProfileForm(forms.ModelForm):
         model = SchoolProfile
         fields = [
             'name_kh', 'name_en', 'short_name', 'school_code', 'school_type', 'institution_type', 'education_levels', 'date_format', 'time_format', 'motto',
+            'student_id_pattern', 'student_id_prefix', 'student_id_custom_template', 'student_id_digits', 'student_id_include_grade',
             'logo', 'seal', 'principal_signature',
             'ministry_name', 'poe_name', 'doe_name',
             'province', 'district', 'commune', 'village', 'street_address',
@@ -78,6 +79,11 @@ class SchoolProfileForm(forms.ModelForm):
             'date_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'time_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'motto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌'}),
+            'student_id_pattern': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_student_id_pattern'}),
+            'student_id_prefix': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_student_id_prefix', 'placeholder': 'ឧ. STU'}),
+            'student_id_custom_template': forms.TextInput(attrs={'class': 'form-control font-monospace', 'id': 'id_student_id_custom_template', 'placeholder': '{PREFIX}-{YEAR2}-{SEQ}'}),
+            'student_id_digits': forms.Select(attrs={'class': 'form-select', 'id': 'id_student_id_digits'}),
+            'student_id_include_grade': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_student_id_include_grade'}),
             
             'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'seal': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),

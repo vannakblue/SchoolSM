@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load i18n_extras %}
 
 {% block title %}ការកំណត់ព័ត៌មានសាលារៀន | SchoolSM{% endblock %}
 
@@ -205,6 +206,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="contact-tab" data-bs-toggle="pill" data-bs-target="#tab-contact" type="button" role="tab">
                             <i class="fa-solid fa-address-book me-1"></i> ៤. ទំនាក់ទំនង & នាយក
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="student-id-tab" data-bs-toggle="pill" data-bs-target="#tab-student-id" type="button" role="tab">
+                            <i class="fa-solid fa-id-card me-1"></i> ៥. ទម្រង់អត្តលេខសិស្ស
                         </button>
                     </li>
                 </ul>
@@ -476,6 +482,136 @@
                         </div>
                     </div>
 
+                    <!-- TAB 5: Student ID Format Configuration -->
+                    <div class="tab-pane fade" id="tab-student-id" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-primary mb-0">
+                                <i class="fa-solid fa-id-card me-1"></i>កំណត់ទម្រង់បង្កើតអត្តលេខសិស្សស្វ័យប្រវត្តិ (Student ID Format Settings)
+                            </h6>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill small">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្វ័យប្រវត្តិតាមឆ្នាំបញ្ចប់
+                            </span>
+                        </div>
+
+                        <div class="alert alert-primary bg-primary-subtle border-primary-subtle rounded-4 p-3 mb-4">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="fs-3 text-primary mt-1"><i class="fa-solid fa-circle-info"></i></div>
+                                <div>
+                                    <div class="fw-bold text-primary mb-1">ស្តង់ដារកំណត់អត្តលេខសិស្សថ្នាក់ជាតិ និងតាមឆ្នាំសិក្សា</div>
+                                    <div class="small text-muted">
+                                        តាមលំនាំដើម ប្រព័ន្ធកំណត់យក <strong>ឆ្នាំសិក្សាខាងចុង ២ ខ្ទង់</strong> ឧទាហរណ៍៖ ឆ្នាំសិក្សា <strong>2026-2027</strong> (ឬ ២០២៦-២០២៧) ប្រព័ន្ធនឹងចាប់យកលេខ <strong>27</strong> (មិនមែន 26 ទេ)។ ខាងក្រោមនេះ លោកអ្នកអាចជ្រើសរើសទម្រង់ពេញនិយម ឬកំណត់ទម្រង់ផ្ទាល់ខ្លួនតាមតម្រូវការជាក់ស្តែងរបស់សាលា។
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Interactive Preview Card -->
+                        <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: white;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-white text-primary fw-bold px-2.5 py-1 rounded-pill shadow-xs">
+                                        <i class="fa-solid fa-eye me-1"></i> ផ្ទាំងមើលគំរូជាក់ស្តែង (Live Preview)
+                                    </span>
+                                    <small class="opacity-75">
+                                        <i class="fa-solid fa-rotate fa-spin me-1" id="previewSpinIcon" style="display:none;"></i> គំរូអត្តលេខសិស្សតាមការកំណត់ខាងក្រោម
+                                    </small>
+                                </div>
+
+                                <div class="row align-items-center g-3 my-2">
+                                    <div class="col-md-5">
+                                        <div class="text-white-50 small mb-1">អត្តលេខសិស្សបន្ទាប់ (Next Available ID)៖</div>
+                                        <div class="fs-2 fw-bolder font-monospace tracking-wide text-warning" id="livePreviewMainId">
+                                            270001
+                                        </div>
+                                    </div>
+                                    <div class="col-md-7 border-start border-white border-opacity-25 ps-md-4">
+                                        <div class="text-white-50 small mb-1">ឧទាហរណ៍សិស្សបន្តបន្ទាប់ (Sequence Samples)៖</div>
+                                        <div class="d-flex flex-wrap gap-2" id="livePreviewSamples">
+                                            <span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">270001</span>
+                                            <span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">270002</span>
+                                            <span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">270045</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="small opacity-75 mt-2 border-top border-white border-opacity-25 pt-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <span><i class="fa-solid fa-shield-halved me-1"></i> ប្រព័ន្ធធានា ១០០% គ្មានការស្ទួនលេខកូដ (Zero Collisions Guarantee)</span>
+                                    <span id="livePreviewRuleDesc" class="fw-semibold">ឆ្នាំបញ្ចប់ (27) + លេខ ៤ ខ្ទង់</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Form Fields -->
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small text-dark">
+                                    <i class="fa-solid fa-list-check text-primary me-1"></i> ជ្រើសរើសទម្រង់អត្តលេខ (ID Pattern Presets) <span class="text-danger">*</span>
+                                </label>
+                                {{ form.student_id_pattern }}
+                                <div class="form-text small text-muted">
+                                    ជ្រើសរើសទម្រង់ដែលលោកអ្នកចង់ឱ្យប្រព័ន្ធបង្កើតដោយស្វ័យប្រវត្តិ។
+                                </div>
+                            </div>
+
+                            <div class="col-md-6" id="fieldPrefixContainer">
+                                <label class="form-label fw-bold small text-dark">
+                                    <i class="fa-solid fa-font text-primary me-1"></i> អក្សរកាត់អត្តលេខ (Custom Prefix)
+                                </label>
+                                {{ form.student_id_prefix }}
+                                <div class="form-text small text-muted">
+                                    ឧ. <code>STU</code>, <code>KPS</code>, <code>SIS</code> (ប្រើសម្រាប់ទម្រង់ដែលមាន Prefix ឬ Custom Template)
+                                </div>
+                            </div>
+
+                            <div class="col-md-6" id="fieldDigitsContainer">
+                                <label class="form-label fw-bold small text-dark">
+                                    <i class="fa-solid fa-arrow-down-1-9 text-primary me-1"></i> ចំនួនខ្ទង់លេខរៀងរត់ (Sequence Digits)
+                                </label>
+                                {{ form.student_id_digits }}
+                                <div class="form-text small text-muted">
+                                    ឧ. ៤ ខ្ទង់ (0001), ៥ ខ្ទង់ (00001), ៦ ខ្ទង់ (000001)
+                                </div>
+                            </div>
+
+                            <div class="col-md-12">
+                                <div class="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="fw-bold small text-dark">
+                                            <i class="fa-solid fa-graduation-cap text-primary me-1"></i> បញ្ចូលលេខកម្រិតថ្នាក់ក្នុងអត្តលេខ (Include Grade Level)
+                                        </div>
+                                        <div class="small text-muted">
+                                            បើកជម្រើសនេះដើម្បីឱ្យអត្តលេខមានភ្ជាប់កម្រិតថ្នាក់សិស្ស (ឧ. ថ្នាក់ទី ៧ បង្កើតបាន <code>7-27-0001</code>)
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch fs-4 mb-0">
+                                        {{ form.student_id_include_grade }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Pattern Template Section -->
+                            <div class="col-md-12" id="fieldCustomTemplateContainer">
+                                <div class="border border-primary border-opacity-25 rounded-4 p-3 bg-primary-subtle bg-opacity-25">
+                                    <label class="form-label fw-bold small text-primary">
+                                        <i class="fa-solid fa-code text-primary me-1"></i> រូបមន្តទម្រង់ផ្ទាល់ខ្លួន (Custom Pattern Template)
+                                    </label>
+                                    {{ form.student_id_custom_template }}
+                                    <div class="form-text small text-muted mb-2">
+                                        លោកអ្នកអាចរៀបចំទម្រង់តាមចិត្តដោយចុចលើ Token ខាងក្រោមដើម្បីបន្ថែមចូលទៅក្នុងប្រអប់៖
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill token-btn" data-token="{PREFIX}">+ {PREFIX}</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill token-btn" data-token="{YEAR2}">+ {YEAR2} (ឆ្នាំបញ្ចប់ ២ ខ្ទង់ ឧ. 27)</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{START_YEAR2}">+ {START_YEAR2} (ឆ្នាំដើម ២ ខ្ទង់ ឧ. 26)</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{YEAR4}">+ {YEAR4} (ឆ្នាំ ៤ ខ្ទង់ ឧ. 2027)</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill token-btn" data-token="{GRADE}">+ {GRADE} (កម្រិតថ្នាក់ ឧ. 7)</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill token-btn" data-token="{SEQ}">+ {SEQ} (លេខរៀងរត់)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Submit Button Bar -->
@@ -717,6 +853,127 @@
 
         if (latInput) latInput.addEventListener('change', onManualLatLngChange);
         if (lngInput) lngInput.addEventListener('change', onManualLatLngChange);
+
+        // ==========================================================
+        // 🌟 STUDENT ID PATTERN SETTINGS & LIVE PREVIEW CONTROLLER
+        // ==========================================================
+        const patternSelect = document.getElementById('id_student_id_pattern');
+        const prefixInput = document.getElementById('id_student_id_prefix');
+        const digitsSelect = document.getElementById('id_student_id_digits');
+        const customTemplateInput = document.getElementById('id_student_id_custom_template');
+        const includeGradeSwitch = document.getElementById('id_student_id_include_grade');
+        const fieldPrefixContainer = document.getElementById('fieldPrefixContainer');
+        const fieldDigitsContainer = document.getElementById('fieldDigitsContainer');
+        const fieldCustomTemplateContainer = document.getElementById('fieldCustomTemplateContainer');
+        const previewMain = document.getElementById('livePreviewMainId');
+        const previewSamples = document.getElementById('livePreviewSamples');
+        const previewRuleDesc = document.getElementById('livePreviewRuleDesc');
+        const spinIcon = document.getElementById('previewSpinIcon');
+
+        function updateStudentIdFormVisibility() {
+            if (!patternSelect) return;
+            const val = patternSelect.value;
+            if (val === 'CUSTOM_PATTERN') {
+                if (fieldCustomTemplateContainer) fieldCustomTemplateContainer.style.display = 'block';
+                if (fieldPrefixContainer) fieldPrefixContainer.style.display = 'block';
+                if (fieldDigitsContainer) fieldDigitsContainer.style.display = 'block';
+            } else if (val === 'PREFIX_YEAR_4D' || val === 'PREFIX_YEAR_5D') {
+                if (fieldCustomTemplateContainer) fieldCustomTemplateContainer.style.display = 'none';
+                if (fieldPrefixContainer) fieldPrefixContainer.style.display = 'block';
+                if (fieldDigitsContainer) fieldDigitsContainer.style.display = 'block';
+            } else {
+                if (fieldCustomTemplateContainer) fieldCustomTemplateContainer.style.display = 'none';
+                if (fieldPrefixContainer) fieldPrefixContainer.style.display = 'none';
+                if (fieldDigitsContainer) fieldDigitsContainer.style.display = 'block';
+            }
+        }
+
+        let previewDebounceTimer = null;
+        async function fetchStudentIdPreview() {
+            if (!patternSelect) return;
+            if (spinIcon) spinIcon.style.display = 'inline-block';
+            
+            const params = new URLSearchParams({
+                pattern: patternSelect.value,
+                prefix: prefixInput ? prefixInput.value : 'STU',
+                digits: digitsSelect ? digitsSelect.value : '4',
+                custom_template: customTemplateInput ? customTemplateInput.value : '{PREFIX}-{YEAR2}-{SEQ}',
+                include_grade: includeGradeSwitch && includeGradeSwitch.checked ? 'true' : 'false',
+                grade_level: '7'
+            });
+
+            try {
+                const resp = await fetch(`/students/api/preview-student-id/?${params.toString()}`);
+                const data = await resp.json();
+                if (data.status === 'success' && data.samples && data.samples.length > 0) {
+                    if (previewMain) previewMain.textContent = data.samples[0];
+                    if (previewSamples) {
+                        previewSamples.innerHTML = data.samples.map(s => 
+                            `<span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">${s}</span>`
+                        ).join(' ');
+                    }
+                    if (previewRuleDesc) {
+                        const yearEnding = data.year_ending_code || '27';
+                        const pVal = patternSelect.value;
+                        if (pVal === 'YEAR_END_4D') previewRuleDesc.textContent = `ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
+                        else if (pVal === 'YEAR_END_5D') previewRuleDesc.textContent = `ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៥ ខ្ទង់`;
+                        else if (pVal === 'PREFIX_YEAR_4D') previewRuleDesc.textContent = `Prefix + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
+                        else if (pVal === 'PREFIX_YEAR_5D') previewRuleDesc.textContent = `Prefix + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៥ ខ្ទង់`;
+                        else if (pVal === 'GRADE_YEAR_4D') previewRuleDesc.textContent = `កម្រិតថ្នាក់ + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
+                        else if (pVal === 'CUSTOM_PATTERN') previewRuleDesc.textContent = `ទម្រង់ផ្ទាល់ខ្លួន (Custom Pattern Template)`;
+                    }
+                }
+            } catch (err) {
+                console.error('Preview error:', err);
+            } finally {
+                if (spinIcon) spinIcon.style.display = 'none';
+            }
+        }
+
+        function triggerPreviewDebounced() {
+            clearTimeout(previewDebounceTimer);
+            previewDebounceTimer = setTimeout(fetchStudentIdPreview, 150);
+        }
+
+        if (patternSelect) {
+            patternSelect.addEventListener('change', function() {
+                updateStudentIdFormVisibility();
+                triggerPreviewDebounced();
+            });
+        }
+        if (prefixInput) prefixInput.addEventListener('input', triggerPreviewDebounced);
+        if (digitsSelect) digitsSelect.addEventListener('change', triggerPreviewDebounced);
+        if (customTemplateInput) customTemplateInput.addEventListener('input', triggerPreviewDebounced);
+        if (includeGradeSwitch) includeGradeSwitch.addEventListener('change', triggerPreviewDebounced);
+
+        // Token button click handler
+        document.querySelectorAll('.token-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const token = this.getAttribute('data-token');
+                if (customTemplateInput && token) {
+                    const startPos = customTemplateInput.selectionStart || customTemplateInput.value.length;
+                    const endPos = customTemplateInput.selectionEnd || customTemplateInput.value.length;
+                    const val = customTemplateInput.value;
+                    customTemplateInput.value = val.substring(0, startPos) + token + val.substring(endPos);
+                    customTemplateInput.focus();
+                    customTemplateInput.setSelectionRange(startPos + token.length, startPos + token.length);
+                    triggerPreviewDebounced();
+                }
+            });
+        });
+
+        // Initialize state
+        updateStudentIdFormVisibility();
+        triggerPreviewDebounced();
+
+        // Check if navigated with hash #tab-student-id
+        if (window.location.hash === '#tab-student-id') {
+            const tabBtn = document.getElementById('student-id-tab');
+            if (tabBtn) {
+                const bsTab = new bootstrap.Tab(tabBtn);
+                bsTab.show();
+            }
+        }
     });
 </script>
 {% endblock %}

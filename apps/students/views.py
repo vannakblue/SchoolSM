@@ -395,14 +395,29 @@ def api_check_student_id(request):
     sid = request.GET.get('student_id', '').strip()
     exclude_id = request.GET.get('exclude_id')
     year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+    classroom_id = request.GET.get('classroom_id')
+    grade_level = request.GET.get('grade_level')
+
+    target_classroom = None
+    if classroom_id:
+        target_classroom = Classroom.objects.filter(id=classroom_id).first()
+        if target_classroom and not grade_level:
+            grade_level = target_classroom.grade_level
 
     target_year = None
     if year_id:
         target_year = AcademicYear.objects.filter(id=year_id).first()
+    if not target_year and target_classroom:
+        target_year = target_classroom.academic_year
     if not target_year:
         target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
 
-    suggested_id = Student.generate_unique_student_id(target_year, exclude_pk=exclude_id)
+    suggested_id = Student.generate_unique_student_id(
+        academic_year=target_year,
+        exclude_pk=exclude_id,
+        grade_level=grade_level,
+        classroom=target_classroom
+    )
 
     if not sid:
         return JsonResponse({
@@ -553,9 +568,50 @@ def api_check_duplicate_student(request):
 def api_generate_student_id(request):
     """
     AJAX API: Returns next guaranteed collision-free Student ID.
+    Supports year_id, classroom_id, and grade_level parameters.
     """
     from django.http import JsonResponse
     from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import Classroom, AcademicYear
+
+    year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
+    classroom_id = request.GET.get('classroom_id')
+    grade_level = request.GET.get('grade_level')
+
+    target_classroom = None
+    if classroom_id:
+        target_classroom = Classroom.objects.filter(id=classroom_id).first()
+        if target_classroom and not grade_level:
+            grade_level = target_classroom.grade_level
+
+    target_year = None
+    if year_id:
+        target_year = AcademicYear.objects.filter(id=year_id).first()
+    if not target_year and target_classroom:
+        target_year = target_classroom.academic_year
+    if not target_year:
+        target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+
+    student_id = Student.generate_unique_student_id(
+        academic_year=target_year,
+        grade_level=grade_level,
+        classroom=target_classroom
+    )
+    return JsonResponse({
+        'status': 'success',
+        'student_id': student_id
+    })
+
+
+def api_preview_student_id_pattern(request):
+    """
+    AJAX API: Real-time preview of Student ID generation pattern.
+    Accepts proposed parameters without saving, to show live feedback in settings UI.
+    """
+    import re
+    from django.http import JsonResponse
+    from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import AcademicYear
 
     year_id = request.GET.get('academic_year_id') or request.GET.get('year_id')
     target_year = None
@@ -564,10 +620,89 @@ def api_generate_student_id(request):
     if not target_year:
         target_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
 
-    student_id = Student.generate_unique_student_id(target_year)
+    # Extract year numbers
+    khmer_to_latin = str.maketrans('០១២៣៤៥៦៧៨៩', '0123456789')
+    name_str = getattr(target_year, 'name', '') if target_year else ''
+    converted_name = name_str.translate(khmer_to_latin)
+    year_matches = re.findall(r'\b(20\d\d|19\d\d|\d{4})\b', converted_name)
+    
+    if len(year_matches) >= 2:
+        start_year_val = int(year_matches[0])
+        end_year_val = int(year_matches[-1])
+    elif len(year_matches) == 1:
+        end_year_val = int(year_matches[0])
+        start_year_val = end_year_val
+    elif target_year and getattr(target_year, 'end_date', None):
+        end_year_val = target_year.end_date.year
+        start_year_val = target_year.start_date.year if target_year.start_date else end_year_val
+    else:
+        from datetime import datetime
+        end_year_val = datetime.now().year
+        start_year_val = end_year_val
+
+    year2 = f"{end_year_val % 100:02d}"
+    start_year2 = f"{start_year_val % 100:02d}"
+    year4 = f"{end_year_val:04d}"
+    start_year4 = f"{start_year_val:04d}"
+
+    pattern = request.GET.get('pattern', 'YEAR_END_4D')
+    prefix = (request.GET.get('prefix', '') or 'STU').strip()
+    digits = int(request.GET.get('digits', 4) or 4)
+    custom_tmpl = (request.GET.get('custom_template', '') or '{PREFIX}-{YEAR2}-{SEQ}').strip()
+    include_grade = request.GET.get('include_grade', 'false').lower() in ['true', '1', 'yes']
+    sample_grade = request.GET.get('grade_level', '7').strip()
+
+    samples = []
+    for seq in [1, 2, 45]:
+        if pattern == 'YEAR_END_5D':
+            p_digits = 5
+            p_prefix = f"{sample_grade}-{year2}-" if (include_grade and sample_grade) else f"{year2}"
+            samples.append(f"{p_prefix}{seq:0{p_digits}d}")
+        elif pattern == 'PREFIX_YEAR_4D':
+            p_digits = 4
+            p_prefix = f"{prefix}-{sample_grade}-{year2}-" if (include_grade and sample_grade) else f"{prefix}-{year2}-"
+            samples.append(f"{p_prefix}{seq:0{p_digits}d}")
+        elif pattern == 'PREFIX_YEAR_5D':
+            p_digits = 5
+            p_prefix = f"{prefix}-{sample_grade}-{year2}-" if (include_grade and sample_grade) else f"{prefix}-{year2}-"
+            samples.append(f"{p_prefix}{seq:0{p_digits}d}")
+        elif pattern == 'GRADE_YEAR_4D':
+            p_digits = digits or 4
+            p_prefix = f"{sample_grade}-{year2}-" if sample_grade else f"{year2}-"
+            samples.append(f"{p_prefix}{seq:0{p_digits}d}")
+        elif pattern == 'CUSTOM_PATTERN':
+            p_digits = digits or 4
+            raw_tmpl = custom_tmpl
+            if '{SEQ}' in raw_tmpl:
+                parts = raw_tmpl.split('{SEQ}', 1)
+                before_s = parts[0]
+                after_s = parts[1]
+            else:
+                before_s = raw_tmpl + "-"
+                after_s = ""
+
+            tokens = {
+                '{PREFIX}': prefix,
+                '{YEAR2}': year2,
+                '{START_YEAR2}': start_year2,
+                '{YEAR4}': year4,
+                '{START_YEAR4}': start_year4,
+                '{GRADE}': sample_grade,
+            }
+            for k, v in tokens.items():
+                before_s = before_s.replace(k, v)
+                after_s = after_s.replace(k, v)
+            samples.append(f"{before_s}{seq:0{p_digits}d}{after_s}")
+        else:  # YEAR_END_4D
+            p_digits = digits or 4
+            p_prefix = f"{sample_grade}-{year2}-" if (include_grade and sample_grade) else f"{year2}"
+            samples.append(f"{p_prefix}{seq:0{p_digits}d}")
+
     return JsonResponse({
         'status': 'success',
-        'student_id': student_id
+        'samples': samples,
+        'year_ending_code': year2,
+        'academic_year_name': target_year.name if target_year else str(end_year_val)
     })
 
 
@@ -1227,6 +1362,7 @@ def student_import(request):
         to_create_users = []
         error_list = []
         imported_students = []
+        seen_batch_ids = set()
 
         for idx, row in enumerate(raw_rows, start=2):
             khmer_name = row.get('khmer_name', '').strip()
@@ -1285,10 +1421,29 @@ def student_import(request):
             telegram_chat_id = row.get('telegram_chat_id', '')
             student_id_custom = str(row.get('student_id', '')).strip()
 
+            # Check if student_id is duplicated within the same import file
+            if student_id_custom:
+                if student_id_custom.lower() in seen_batch_ids:
+                    error_list.append({
+                        'row': idx,
+                        'name': khmer_name,
+                        'error': f"អត្តលេខ '{student_id_custom}' ស្ទួននៅក្នុងឯកសារ Excel ជាមួយជួរមុន!"
+                    })
+                    continue
+                seen_batch_ids.add(student_id_custom.lower())
+
             # Check if student exists
             student = None
             if student_id_custom:
                 student = existing_by_id.get(student_id_custom.lower())
+                if student and (student.khmer_name.strip() != khmer_name.strip() or student.date_of_birth != dob):
+                    error_list.append({
+                        'row': idx,
+                        'name': khmer_name,
+                        'error': f"អត្តលេខ '{student_id_custom}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {student.khmer_name}!"
+                    })
+                    continue
+
             if not student:
                 student = existing_by_name_dob.get((khmer_name, dob))
 

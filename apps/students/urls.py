@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/check-student-id/', views.api_check_student_id, name='api_check_student_id'),
     path('api/check-duplicate/', views.api_check_duplicate_student, name='api_check_duplicate_student'),
     path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),
+    path('api/preview-student-id/', views.api_preview_student_id_pattern, name='api_preview_student_id_pattern'),
 
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),

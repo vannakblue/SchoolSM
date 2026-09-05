@@ -9,7 +9,7 @@ class StudentEnrollmentForm(forms.ModelForm):
         label="អត្តលេខសិស្ស / Student ID",
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ (ឧ. 260001)',
+            'placeholder': 'ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ (ឧ. 270001)',
             'id': 'id_student_id',
             'autocomplete': 'off'
         }),

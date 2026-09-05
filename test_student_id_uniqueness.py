@@ -65,12 +65,12 @@ def run_tests():
     sids = [s.student_id for s in created_students]
     print(f"   Generated Student IDs: {sids}")
     assert len(sids) == len(set(sids)), "All generated Student IDs must be strictly unique!"
-    assert all(s.startswith('26') for s in sids), "All IDs for 2026 academic year must start with '26'!"
+    assert all(s.startswith('27') for s in sids), "All IDs for 2026-2027 academic year must start with ending year '27'!"
     print("2. [PASS] Auto-generated 5 sequential student IDs with 100% uniqueness.")
 
     # 3. Test Collision-free Generation when Gaps or Custom IDs Exist
     custom_gap_st = Student.objects.create(
-        student_id='269990',
+        student_id='279990',
         khmer_name='សិស្សតេស្ត_SID_CustomGap',
         latin_name='Student Custom Gap',
         gender='F',
@@ -80,8 +80,8 @@ def run_tests():
     )
 
     next_auto_id = Student.generate_unique_student_id(year)
-    assert next_auto_id != '269990', "Generated ID must not collide with existing 269990"
-    assert next_auto_id.startswith('26'), "Generated ID must have correct year prefix"
+    assert next_auto_id != '279990', "Generated ID must not collide with existing 279990"
+    assert next_auto_id.startswith('27'), "Generated ID must have correct ending year prefix"
     print(f"   Next Auto-Generated ID after gap: {next_auto_id}")
     print("3. [PASS] Collision-detection loop successfully skipped existing custom gap IDs.")
 
