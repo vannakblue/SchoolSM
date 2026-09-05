@@ -177,6 +177,51 @@
         // Listen for track changes to offer auto subject selection
         const trackSelect = document.querySelector('[name="track"]');
         const gradeInput = document.querySelector('[name="grade_level"]');
+        const nameInput = document.querySelector('[name="name"]');
+        const codeInput = document.querySelector('[name="code"]');
+
+        function cleanClassCode(val) {
+            if (!val) return '';
+            let s = val.trim();
+            const prefixes = ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ '];
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (const p of prefixes) {
+                    if (s.startsWith(p)) {
+                        s = s.substring(p.length).trim();
+                        changed = true;
+                    }
+                }
+            }
+            return s;
+        }
+
+        if (codeInput) {
+            // Clean initial value immediately (e.g. if loaded with legacy "ថ្នាក់ទី11A")
+            if (codeInput.value) {
+                codeInput.value = cleanClassCode(codeInput.value);
+            }
+            codeInput.addEventListener('blur', () => {
+                codeInput.value = cleanClassCode(codeInput.value);
+            });
+        }
+
+        if (nameInput && codeInput) {
+            // Auto suggest clean code when typing class name if code is empty or auto-filled
+            nameInput.addEventListener('input', () => {
+                if (!codeInput.value || codeInput.dataset.autoFilled === 'true') {
+                    const cleaned = cleanClassCode(nameInput.value);
+                    if (cleaned) {
+                        codeInput.value = cleaned;
+                        codeInput.dataset.autoFilled = 'true';
+                    }
+                }
+            });
+            codeInput.addEventListener('input', () => {
+                codeInput.dataset.autoFilled = 'false';
+            });
+        }
 
         if (trackSelect) {
             trackSelect.addEventListener('change', () => {

@@ -120,7 +120,7 @@
                             <h4 class="fw-bold mb-1 text-primary cursor-pointer d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ចុចដើម្បីមើលព័ត៌មានលម្អិតអំពីថ្នាក់ {{ c.name }}">
                                 <span>{{ c.name }}</span> <i class="fa-solid fa-circle-info fs-6 text-info opacity-75"></i>
                             </h4>
-                            <span class="text-muted small"><i class="fa-solid fa-door-open me-1"></i>{{ c.room_number|default:"គ្មានបន្ទប់" }} (កូដ: {{ c.code }})</span>
+                            <span class="text-muted small"><i class="fa-solid fa-door-open me-1"></i>{{ c.room_number|default:"គ្មានបន្ទប់" }} (កូដ: {{ c.clean_code|cut:'ថ្នាក់ទី'|cut:'ថ្នាក់'|default:c.code }})</span>
                         </div>
                         <div class="text-end">
                             <div class="display-6 fw-bold text-primary">{{ c.total_students }}</div>
@@ -235,7 +235,7 @@
                                 <a href="javascript:void(0)" class="fw-bold text-primary text-decoration-none fs-6" data-bs-toggle="modal" data-bs-target="#modalClassDetails{{ c.id }}" title="ចុចមើលព័ត៌មានលម្អិត">
                                     {{ c.name }}
                                 </a>
-                                <span class="badge bg-light text-secondary border small fw-normal">{{ c.code }}</span>
+                                <span class="badge bg-light text-secondary border small fw-normal">{{ c.clean_code|cut:'ថ្នាក់ទី'|cut:'ថ្នាក់'|default:c.code }}</span>
                             </div>
                         </td>
                         <td class="text-center">
@@ -655,7 +655,7 @@
                                         <div class="d-flex flex-wrap gap-1">
                                             {% for c in g.classes_list %}
                                             <button type="button" class="badge bg-light text-dark border px-2 py-1 cursor-pointer" data-bs-dismiss="modal" onclick="const m = document.querySelector('#modalClassDetails{{ c.id }}'); if (m) { new bootstrap.Modal(m).show(); }" title="ចុចមើលលម្អិតថ្នាក់ {{ c.name }}">
-                                                {{ c.code|default:c.name }}
+                                                {{ c.clean_code|cut:'ថ្នាក់ទី'|cut:'ថ្នាក់'|default:c.code|default:c.name }}
                                             </button>
                                             {% endfor %}
                                         </div>
@@ -703,7 +703,7 @@
                         <h5 class="modal-title fw-bold mb-0" id="modalClassDetailsLabel{{ c.id }}">
                             ព័ត៌មានលម្អិតថ្នាក់រៀន៖ {{ c.name }}
                         </h5>
-                        <small class="text-white-50">កូដថ្នាក់៖ <strong>{{ c.code }}</strong> | កម្រិតថ្នាក់ទី {{ c.grade_level }} ({{ c.get_track_display }})</small>
+                        <small class="text-white-50">កូដថ្នាក់៖ <strong>{{ c.clean_code|cut:'ថ្នាក់ទី'|cut:'ថ្នាក់'|default:c.code }}</strong> | កម្រិតថ្នាក់ទី {{ c.grade_level }} ({{ c.get_track_display }})</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>

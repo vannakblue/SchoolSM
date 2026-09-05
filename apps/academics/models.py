@@ -121,6 +121,34 @@ class Classroom(models.Model):
         verbose_name_plural = "ថ្នាក់រៀនទាំងអស់ / Classrooms"
 
     @property
+    def clean_code(self):
+        """Returns classroom code with 'ថ្នាក់ទី' or 'ថ្នាក់' removed, e.g. 'ថ្នាក់ទី10A' -> '10A'"""
+        if not self.code:
+            return ''
+        c_str = str(self.code).strip()
+        changed = True
+        while changed:
+            changed = False
+            for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+                if c_str.startswith(pfx):
+                    c_str = c_str[len(pfx):].strip()
+                    changed = True
+        return c_str
+
+    def save(self, *args, **kwargs):
+        if self.code:
+            c_str = str(self.code).strip()
+            changed = True
+            while changed:
+                changed = False
+                for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+                    if c_str.startswith(pfx):
+                        c_str = c_str[len(pfx):].strip()
+                        changed = True
+            self.code = c_str
+        super().save(*args, **kwargs)
+
+    @property
     def total_students(self):
         if hasattr(self, 'annotated_total_students'):
             return self.annotated_total_students

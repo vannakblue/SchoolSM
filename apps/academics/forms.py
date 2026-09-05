@@ -82,6 +82,8 @@ class ClassroomForm(forms.ModelForm):
         if self.instance.pk:
             self.fields['class_monitor'].queryset = Student.objects.filter(classroom=self.instance, status='ACTIVE').order_by('khmer_name')
             self.fields['vice_monitor'].queryset = Student.objects.filter(classroom=self.instance, status='ACTIVE').order_by('khmer_name')
+            if self.instance.code:
+                self.initial['code'] = self.instance.clean_code
         else:
             self.fields['class_monitor'].queryset = Student.objects.none()
             self.fields['vice_monitor'].queryset = Student.objects.none()
@@ -93,6 +95,19 @@ class ClassroomForm(forms.ModelForm):
                 curr = AcademicYear.objects.filter(is_current=True).first()
                 if curr:
                     self.initial['academic_year'] = curr
+
+    def clean_code(self):
+        code = self.cleaned_data.get('code')
+        if code:
+            code = code.strip()
+            changed = True
+            while changed:
+                changed = False
+                for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+                    if code.startswith(pfx):
+                        code = code[len(pfx):].strip()
+                        changed = True
+        return code
 
 
 class SubjectForm(forms.ModelForm):

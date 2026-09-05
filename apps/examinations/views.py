@@ -4826,39 +4826,67 @@ def semester_subject_ranks_print_view(request):
             available_subjects = filtered_subjects
             students_list = filtered_students
 
-    # Pagination:
-    # Page 1: 20 rows
-    # Page 2..N: 27 rows per page
+    # Balanced Pagination for A4 Landscape:
+    # Page 1 capacity: up to 29 rows
+    # Continuation pages: up to 31 rows
     sheets = []
-    if len(students_list) <= 20:
+    total_st = len(students_list)
+    if total_st <= 26:
         sheets.append({
             'page_number': 1,
             'is_first_page': True,
             'is_last_page': True,
             'rows': students_list,
         })
-    else:
-        p1 = students_list[:20]
+    elif total_st <= 60:
+        # Balanced 2-page distribution so both pages have equal bottom spacing
+        p1_len = (total_st + 1) // 2
+        if p1_len > 29:
+            p1_len = 29
         sheets.append({
             'page_number': 1,
             'is_first_page': True,
             'is_last_page': False,
-            'rows': p1,
+            'rows': students_list[:p1_len],
         })
-        rem = students_list[20:]
+        sheets.append({
+            'page_number': 2,
+            'is_first_page': False,
+            'is_last_page': True,
+            'rows': students_list[p1_len:],
+        })
+    else:
+        import math
+        p1_max = 28
+        p_other_max = 31
+        rem_count = total_st - p1_max
+        other_pages_needed = max(1, math.ceil(rem_count / p_other_max))
+        per_page = math.ceil(rem_count / other_pages_needed)
+
+        sheets.append({
+            'page_number': 1,
+            'is_first_page': True,
+            'is_last_page': False,
+            'rows': students_list[:p1_max],
+        })
+        rem_st = students_list[p1_max:]
         cur_p = 2
-        while rem:
-            chunk = rem[:27]
-            rem = rem[27:]
+        while rem_st:
+            chunk = rem_st[:per_page]
+            rem_st = rem_st[per_page:]
             sheets.append({
                 'page_number': cur_p,
                 'is_first_page': False,
-                'is_last_page': (len(rem) == 0),
+                'is_last_page': (len(rem_st) == 0),
                 'rows': chunk,
             })
             cur_p += 1
 
     total_pages = len(sheets)
+    for s in sheets:
+        s['total_pages'] = total_pages
+        s['page_number_kh'] = to_khmer_digits(s['page_number'])
+        s['total_pages_kh'] = to_khmer_digits(total_pages)
 
     context = {
         'sheets': sheets,
@@ -4879,6 +4907,302 @@ def semester_subject_ranks_print_view(request):
         'is_admin': request.user.is_superuser or getattr(request.user, 'role', '') in ['ADMIN', 'TEACHER'],
     }
     return render(request, 'examinations/semester_subject_ranks_print.html', context)
+
+
+@login_required
+def export_semester_subject_ranks_excel(request):
+    """
+    Exports Subject Ranks per Semester table to Microsoft Excel (.xlsx).
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.utils import get_active_academic_year
+
+    year_param = request.GET.get('year') or request.GET.get('academic_year')
+    classroom_param = request.GET.get('classroom', '').strip()
+    semester = int(request.GET.get('semester', 1))
+    data_source = request.GET.get('source', 'auto').strip()
+
+    active_year = get_active_academic_year(request)
+    target_year = active_year
+    if year_param and str(year_param).isdigit():
+        y_obj = AcademicYear.objects.filter(id=int(year_param)).first()
+        if y_obj:
+            target_year = y_obj
+
+    selected_classroom = None
+    if classroom_param and classroom_param.isdigit():
+        selected_classroom = Classroom.objects.filter(id=int(classroom_param)).first()
+        if selected_classroom and not year_param and selected_classroom.academic_year:
+            target_year = selected_classroom.academic_year
+
+    school_profile = SchoolProfile.objects.first()
+    school_name = (school_profile.name_kh if (school_profile and getattr(school_profile, 'name_kh', None)) else None) or 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត'
+    academic_year_name = target_year.name if target_year else '២០២៥ - ២០២៦'
+    academic_year_kh = to_khmer_digits(academic_year_name)
+    semester_kh = to_khmer_digits(semester)
+    class_title = f"{selected_classroom.name}" if selected_classroom else "ថ្នាក់ទី ៧ C"
+
+    OFFICIAL_SUBJECTS = [
+        {'id': 'writing', 'name': 'តែងសេចក្តី'},
+        {'id': 'dictation', 'name': 'សរសេរតាមអាន'},
+        {'id': 'khmer', 'name': 'ភាសាខ្មែរ'},
+        {'id': 'morality', 'name': 'សីលធម៌'},
+        {'id': 'geography', 'name': 'ភូមិវិទ្យា'},
+        {'id': 'history', 'name': 'ប្រវត្តិវិទ្យា'},
+        {'id': 'math', 'name': 'គណិតវិទ្យា'},
+        {'id': 'earth', 'name': 'ផែនដីវិទ្យា'},
+        {'id': 'physics', 'name': 'រូបវិទ្យា'},
+        {'id': 'chemistry', 'name': 'គីមីវិទ្យា'},
+        {'id': 'biology', 'name': 'ជីវវិទ្យា'},
+        {'id': 'home_econ', 'name': 'គេហវិទ្យា'},
+        {'id': 'english', 'name': 'អង់គ្លេស'},
+    ]
+
+    load_official = (data_source == 'official') or (data_source == 'auto' and selected_classroom and ('7C' in selected_classroom.code or '7C' in selected_classroom.name) and semester == 2)
+    available_subjects = OFFICIAL_SUBJECTS
+    students_list = []
+
+    if load_official:
+        json_path = os.path.join(settings.BASE_DIR, 'apps', 'examinations', 'data', 'rank_sub_pdf_data.json')
+        if os.path.exists(json_path):
+            with open(json_path, encoding='utf-8') as f:
+                students_list = json.load(f)
+        else:
+            load_official = False
+
+    if not load_official:
+        c_students = Student.objects.filter(classroom=selected_classroom).order_by('student_id')
+        term_type = 'SEMESTER_1' if semester == 1 else 'SEMESTER_2'
+        exam_term = ExamTerm.objects.filter(academic_year=target_year, term_type=term_type).first()
+        if not exam_term:
+            exam_term = ExamTerm.objects.filter(term_type=term_type).first()
+
+        if selected_classroom:
+            db_subjects = list(selected_classroom.get_assigned_subjects())
+        else:
+            db_subjects = []
+        if not db_subjects:
+            available_subjects = OFFICIAL_SUBJECTS
+        else:
+            available_subjects = [{'id': str(s.id), 'name': s.name_kh or s.name_en or s.code} for s in db_subjects]
+
+        student_data_map = {}
+        for st in c_students:
+            dob_str = ''
+            if st.date_of_birth:
+                dob_str = f"{st.date_of_birth.day:02d}/{st.date_of_birth.month:02d}/{st.date_of_birth.year % 100:02d}"
+            student_data_map[st.student_id] = {
+                'student_id': st.student_id,
+                'name': st.khmer_name,
+                'gender': 'ស' if st.gender in ['F', 'FEMALE', 'ស'] else 'ប',
+                'dob': dob_str,
+                'scores': {},
+                'ranks': {},
+            }
+
+        grades_qs = Grade.objects.filter(student__classroom=selected_classroom)
+        if exam_term:
+            grades_qs = grades_qs.filter(exam_term=exam_term)
+
+        for g in grades_qs:
+            sid = g.student.student_id
+            sub_id = str(g.subject.id) if g.subject else None
+            sub_name = (g.subject.name_kh or getattr(g.subject, 'name_en', '') or getattr(g.subject, 'code', '')) if g.subject else ''
+            matched_id = None
+            for s in available_subjects:
+                if s['id'] == sub_id or s['name'] == sub_name:
+                    matched_id = s['id']
+                    break
+            if matched_id and sid in student_data_map:
+                student_data_map[sid]['scores'][matched_id] = g.score
+
+        for s in available_subjects:
+            sid_scores = []
+            for st_id, sdata in student_data_map.items():
+                sc = sdata['scores'].get(s['id'])
+                sid_scores.append((st_id, sc if sc is not None else Decimal('-1')))
+            sid_scores.sort(key=lambda x: x[1], reverse=True)
+            for rank_idx, (st_id, sc) in enumerate(sid_scores, 1):
+                if sc >= Decimal('0'):
+                    student_data_map[st_id]['ranks'][s['id']] = rank_idx
+                else:
+                    student_data_map[st_id]['ranks'][s['id']] = '-'
+
+        students_list = []
+        for idx, (st_id, sdata) in enumerate(student_data_map.items(), 1):
+            sub_list = []
+            for s in available_subjects:
+                sc = sdata['scores'].get(s['id'])
+                rk = sdata['ranks'].get(s['id'], '-')
+                sub_list.append({
+                    'score': f"{sc:.0f}" if sc is not None and sc == int(sc) else (f"{sc:.2f}" if sc is not None else "-"),
+                    'rank': str(rk) if rk != '-' else "-",
+                })
+            students_list.append({
+                'no': str(idx),
+                'student_id': sdata['student_id'],
+                'name': sdata['name'],
+                'gender': sdata['gender'],
+                'dob': sdata['dob'],
+                'subjects': sub_list,
+            })
+
+    # Optional subject filter
+    sub_filter = request.GET.get('subjects', '').strip()
+    if sub_filter:
+        tokens = [t.strip() for t in sub_filter.split(',') if t.strip()]
+        valid_indexes = []
+        for t in tokens:
+            if t.isdigit():
+                idx = int(t)
+                if 0 <= idx < len(available_subjects) and idx not in valid_indexes:
+                    valid_indexes.append(idx)
+            else:
+                for idx, s in enumerate(available_subjects):
+                    if (s['name'] == t or s['id'] == t) and idx not in valid_indexes:
+                        valid_indexes.append(idx)
+                        break
+        if valid_indexes:
+            available_subjects = [available_subjects[i] for i in valid_indexes]
+            for st in students_list:
+                st['subjects'] = [st['subjects'][i] for i in valid_indexes if i < len(st['subjects'])]
+
+    # Build Excel Workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    clean_title = re.sub(r'[^\w\-]', '_', class_title)[:25]
+    ws.title = f"ចំណាត់ថ្នាក់_{clean_title}"
+
+    font_title = Font(name='Khmer OS Siemreap', size=13, bold=True, color='0000CD')
+    font_subtitle = Font(name='Khmer OS Siemreap', size=11, bold=True, color='000000')
+    font_header = Font(name='Khmer OS Siemreap', size=9.5, bold=True, color='FFFFFF')
+    font_sub_name = Font(name='Khmer OS Siemreap', size=9, bold=True, color='0000CD')
+    font_sub_rank = Font(name='Khmer OS Siemreap', size=9, bold=True, color='DC2626')
+    font_data = Font(name='Khmer OS Siemreap', size=9)
+    font_rank_red = Font(name='Khmer OS Siemreap', size=9, bold=True, color='DC2626')
+
+    fill_header_base = PatternFill(start_color='1E3A8A', end_color='1E3A8A', fill_type='solid')
+    fill_header_sub = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+    fill_stripe = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
+
+    thin_side = Side(style='thin', color='CBD5E1')
+    border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+
+    total_cols = 5 + len(available_subjects) * 2
+    last_col_letter = get_column_letter(total_cols)
+
+    ws.merge_cells(f'A1:{last_col_letter}1')
+    ws['A1'] = school_name
+    ws['A1'].font = font_subtitle
+    ws['A1'].alignment = align_center
+
+    ws.merge_cells(f'A2:{last_col_letter}2')
+    ws['A2'] = f"តារាងចំណាត់ថ្នាក់ប្រឡងឆមាសទី{semester_kh} ឆ្នាំសិក្សា {academic_year_kh} - {class_title}"
+    ws['A2'].font = font_title
+    ws['A2'].alignment = align_center
+
+    base_headers = [
+        ('A', 'ល.រ'),
+        ('B', 'អត្តលេខ'),
+        ('C', 'គោត្តនាម-នាម'),
+        ('D', 'ភេទ'),
+        ('E', 'ថ្ងៃខែឆ្នាំកំណើត'),
+    ]
+    for col_let, title in base_headers:
+        ws.merge_cells(f'{col_let}4:{col_let}5')
+        cell = ws[f'{col_let}4']
+        cell.value = title
+        cell.font = font_header
+        cell.fill = fill_header_base
+        cell.alignment = align_center
+        cell.border = border_all
+        ws[f'{col_let}5'].border = border_all
+
+    col_idx = 6
+    for sub in available_subjects:
+        c1_let = get_column_letter(col_idx)
+        c2_let = get_column_letter(col_idx + 1)
+
+        ws.merge_cells(f'{c1_let}4:{c2_let}4')
+        cell_sub = ws[f'{c1_let}4']
+        cell_sub.value = sub['name']
+        cell_sub.font = font_sub_name
+        cell_sub.fill = fill_header_sub
+        cell_sub.alignment = align_center
+        cell_sub.border = border_all
+        ws[f'{c2_let}4'].border = border_all
+
+        c1_cell = ws[f'{c1_let}5']
+        c1_cell.value = "ពិន្ទុ"
+        c1_cell.font = font_sub_name
+        c1_cell.fill = fill_header_sub
+        c1_cell.alignment = align_center
+        c1_cell.border = border_all
+
+        c2_cell = ws[f'{c2_let}5']
+        c2_cell.value = "ចំណាត់ថ្នាក់"
+        c2_cell.font = font_sub_rank
+        c2_cell.fill = fill_header_sub
+        c2_cell.alignment = align_center
+        c2_cell.border = border_all
+
+        col_idx += 2
+
+    current_row = 6
+    for st in students_list:
+        ws.cell(row=current_row, column=1, value=st.get('no', '')).alignment = align_center
+        ws.cell(row=current_row, column=2, value=st.get('student_id', '')).alignment = align_center
+        ws.cell(row=current_row, column=3, value=st.get('name', '')).alignment = align_left
+        ws.cell(row=current_row, column=4, value=st.get('gender', '')).alignment = align_center
+        ws.cell(row=current_row, column=5, value=st.get('dob', '')).alignment = align_center
+
+        c_idx = 6
+        for sc in st.get('subjects', []):
+            cell_score = ws.cell(row=current_row, column=c_idx, value=sc.get('score', ''))
+            cell_score.alignment = align_center
+            cell_score.font = font_data
+            cell_score.border = border_all
+
+            cell_rank = ws.cell(row=current_row, column=c_idx + 1, value=sc.get('rank', ''))
+            cell_rank.alignment = align_center
+            cell_rank.font = font_rank_red
+            cell_rank.border = border_all
+
+            c_idx += 2
+
+        for b_col in range(1, 6):
+            c = ws.cell(row=current_row, column=b_col)
+            c.font = font_data
+            c.border = border_all
+
+        if current_row % 2 == 1:
+            for c_num in range(1, total_cols + 1):
+                ws.cell(row=current_row, column=c_num).fill = fill_stripe
+
+        current_row += 1
+
+    ws.column_dimensions['A'].width = 6
+    ws.column_dimensions['B'].width = 11
+    ws.column_dimensions['C'].width = 22
+    ws.column_dimensions['D'].width = 6
+    ws.column_dimensions['E'].width = 13
+    for c_num in range(6, total_cols + 1):
+        c_let = get_column_letter(c_num)
+        ws.column_dimensions[c_let].width = 9
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    clean_fn = re.sub(r'[^\w\-]', '_', class_title)
+    response['Content-Disposition'] = f'attachment; filename="subject_ranks_{clean_fn}_sem{semester}.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required

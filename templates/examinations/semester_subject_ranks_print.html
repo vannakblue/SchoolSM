@@ -58,7 +58,7 @@
             min-height: 210mm;
             max-height: 210mm;
             margin: 0 auto 20px auto;
-            padding: 6mm 10mm 6mm 10mm;
+            padding: 8mm 10mm 8mm 10mm;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
             color: #000000;
             position: relative;
@@ -148,23 +148,39 @@
             vertical-align: middle;
         }
 
+        .rank-table thead tr.header-row {
+            height: 88px;
+            max-height: 88px;
+        }
+
         .rank-table thead th {
             background-color: #ffffff;
             font-weight: 600;
             vertical-align: middle;
+            padding: 0;
+            overflow: hidden;
         }
 
-        /* Column Rotated Vertical Text */
-        .th-vertical {
+        /* Column Rotated Vertical Text Container (contained within cell boundaries) */
+        .th-vertical-box {
+            height: 84px;
+            max-height: 84px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+        }
+
+        .th-vertical-box span {
             writing-mode: vertical-rl;
             transform: rotate(180deg);
             white-space: nowrap;
-            height: 98px;
-            padding: 2px 0 !important;
-            font-size: 7.5pt;
+            font-size: 7.2pt;
             line-height: 1;
-            text-align: center;
-            vertical-align: middle;
+            display: inline-block;
         }
 
         .th-sub-name {
@@ -173,7 +189,7 @@
         }
 
         .th-sub-rank {
-            color: #ff0000 !important;
+            color: #dc2626 !important;
             font-weight: 700;
         }
 
@@ -192,11 +208,27 @@
         }
 
         /* Continuation Header for Page 2..N */
+        .continuation-header {
+            margin-bottom: 3px;
+            font-size: 8pt;
+            color: #1e3a8a;
+        }
+
         .continuation-thead {
             display: none;
         }
         body.repeat-headers .continuation-thead {
             display: table-header-group;
+        }
+
+        /* Sheet Footer Page Number for Print & Screen */
+        .sheet-page-footer {
+            position: absolute;
+            bottom: 3.5mm;
+            right: 10mm;
+            font-size: 7.5pt;
+            color: #374151;
+            font-family: 'Kantumruy Pro', 'Siemreap', sans-serif;
         }
 
         /* Filter Checkbox Pills */
@@ -208,21 +240,22 @@
             gap: 4px;
             padding: 2px 8px;
             font-size: 0.78rem;
-            border-radius: 999px;
-            border: 1px solid #cbd5e1;
-            background: #ffffff;
-            color: #334155;
-            transition: all 0.15s ease;
-        }
-        .sub-pill:hover {
-            border-color: #3b82f6;
-            background: #eff6ff;
-        }
-        .sub-pill.active {
-            border-color: #2563eb;
-            background: #dbeafe;
-            color: #1e40af;
             font-weight: 600;
+            border-radius: 9999px;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
+            color: #64748b;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .sub-pill:hover {
+            border-color: #4f46e5;
+        }
+
+        .sub-pill.active {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            border-color: #6366f1;
         }
 
         /* Print Media Styles */
@@ -243,7 +276,7 @@
                 min-height: 210mm !important;
                 max-height: 210mm !important;
                 margin: 0 !important;
-                padding: 6mm 10mm 6mm 10mm !important;
+                padding: 8mm 10mm 8mm 10mm !important;
                 box-shadow: none !important;
                 page-break-after: always !important;
                 break-after: page !important;
@@ -270,6 +303,11 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
+                    <!-- Excel Export Button -->
+                    <a href="{% url 'export_semester_subject_ranks_excel' %}?classroom={{ selected_classroom.id|default:'' }}&year={{ target_year.id|default:'' }}&semester={{ semester }}&source={{ data_source }}" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-xs" id="btnExportExcel">
+                        <i class="fa-solid fa-file-excel me-1"></i> នាំចេញជា Excel
+                    </a>
+
                     <!-- Repeat Header Toggle -->
                     <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="toggleRepeatHeaders()" id="btnRepeatHeader">
                         <i class="fa-solid fa-table-list me-1"></i> បង្ហាញក្បាលតារាងគ្រប់ទំព័រ
@@ -375,23 +413,37 @@
                 <div class="moul-font main-title">តារាងចំណាត់ថ្នាក់ប្រឡងឆមាសទី{{ semester_kh }} ឆ្នាំសិក្សា {{ academic_year_kh }}</div>
                 <div class="fw-bold sub-title">{{ class_title }}</div>
             </div>
+            {% else %}
+            <!-- Continuation Pages: Compact Header Banner -->
+            <div class="continuation-header d-flex justify-content-between align-items-center mb-1 pb-0.5 border-bottom">
+                <span class="fw-bold">{{ class_title }} - តារាងចំណាត់ថ្នាក់ប្រឡងឆមាសទី{{ semester_kh }} ឆ្នាំសិក្សា {{ academic_year_kh }} (ត)</span>
+                <span class="text-muted" style="font-size: 7.5pt;">ទំព័រទី {{ sheet.page_number_kh }} / {{ sheet.total_pages_kh }}</span>
+            </div>
             {% endif %}
 
             <!-- Table -->
             <table class="rank-table">
                 <!-- Header: Displayed on Page 1, optionally toggled on Page 2..N -->
                 <thead class="{% if not sheet.is_first_page %}continuation-thead{% endif %}">
-                    <tr>
-                        <th style="width: 25px;">ល.រ</th>
+                    <tr class="header-row">
+                        <th style="width: 28px;">ល.រ</th>
                         <th style="width: 55px;">អត្តលេខ</th>
-                        <th style="width: 140px;">គោត្តនាម-នាម</th>
-                        <th style="width: 26px;">ភេទ</th>
+                        <th style="width: 135px;">គោត្តនាម-នាម</th>
+                        <th style="width: 25px;">ភេទ</th>
                         <th style="width: 65px; font-size: 7pt; line-height: 1.1;">ថ្ងៃ ខែ ឆ្នាំ<br>កំណើត</th>
 
-                        <!-- Subjects (Score + Rank columns) -->
+                        <!-- Subjects (Score + Rank columns) contained in th-vertical-box -->
                         {% for sub in subjects %}
-                        <th class="th-vertical th-sub-name col-sub-{{ forloop.counter0 }}" style="width: 24px;">{{ sub.name }}</th>
-                        <th class="th-vertical th-sub-rank col-sub-{{ forloop.counter0 }}" style="width: 24px;">ចំណាត់ថ្នាក់</th>
+                        <th class="col-sub-{{ forloop.counter0 }}" style="width: 24px;">
+                            <div class="th-vertical-box">
+                                <span class="th-sub-name">{{ sub.name }}</span>
+                            </div>
+                        </th>
+                        <th class="col-sub-{{ forloop.counter0 }}" style="width: 24px;">
+                            <div class="th-vertical-box">
+                                <span class="th-sub-rank">ចំណាត់ថ្នាក់</span>
+                            </div>
+                        </th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -414,6 +466,11 @@
                 </tbody>
             </table>
 
+            <!-- Sheet Footer: Page Number on Print & Screen -->
+            <div class="sheet-page-footer">
+                <span>ទំព័រទី {{ sheet.page_number_kh }} / {{ sheet.total_pages_kh }}</span>
+            </div>
+
         </div>
         {% endfor %}
     </div>
@@ -432,6 +489,22 @@
             }
         }
 
+        function updateExcelExportLink() {
+            const btn = document.getElementById('btnExportExcel');
+            if (!btn) return;
+            const checkedIdxs = [];
+            document.querySelectorAll('.sub-toggle-checkbox:checked').forEach(cb => {
+                checkedIdxs.push(cb.getAttribute('data-sub-idx'));
+            });
+            try {
+                const url = new URL(btn.href, window.location.origin);
+                url.searchParams.set('subjects', checkedIdxs.join(','));
+                btn.href = url.pathname + url.search;
+            } catch (e) {
+                console.error("Could not update excel link", e);
+            }
+        }
+
         function toggleSubjectColumn(idx, isVisible) {
             const label = document.querySelector(`.sub-pill[data-sub-idx="${idx}"]`);
             if (label) {
@@ -441,14 +514,22 @@
             document.querySelectorAll(`.col-sub-${idx}`).forEach(el => {
                 el.style.display = isVisible ? '' : 'none';
             });
+            updateExcelExportLink();
         }
 
         function selectAllSubjects(select) {
             document.querySelectorAll('.sub-toggle-checkbox').forEach(cb => {
                 cb.checked = select;
                 const idx = parseInt(cb.getAttribute('data-sub-idx'), 10);
-                toggleSubjectColumn(idx, select);
+                const label = document.querySelector(`.sub-pill[data-sub-idx="${idx}"]`);
+                if (label) {
+                    label.classList.toggle('active', select);
+                }
+                document.querySelectorAll(`.col-sub-${idx}`).forEach(el => {
+                    el.style.display = select ? '' : 'none';
+                });
             });
+            updateExcelExportLink();
         }
     </script>
 </body>

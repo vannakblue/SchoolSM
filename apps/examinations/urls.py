@@ -16,6 +16,7 @@ urlpatterns = [
     path('summary/', views.grade_summary_view, name='grade_summary'),
     path('results/semester/', views.semester_results_view, name='semester_results'),
     path('results/semester/subject-ranks/print/', views.semester_subject_ranks_print_view, name='semester_subject_ranks_print_view'),
+    path('results/semester/subject-ranks/export-excel/', views.export_semester_subject_ranks_excel, name='export_semester_subject_ranks_excel'),
     path('results/semester/export-excel/', views.export_semester_results_excel, name='export_semester_results_excel'),
     path('results/annual/', views.annual_results_view, name='annual_results'),
     path('results/annual/print/', views.annual_results_print_view, name='annual_results_print_view'),
