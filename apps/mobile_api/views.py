@@ -125,7 +125,8 @@ class MobileLoginView(APIView):
             if teacher:
                 role_profile = TeacherProfileSerializer(teacher, context={'request': request}).data
         elif user.role == User.Role.STUDENT:
-            student = getattr(user, 'student_profile', None)
+            from apps.examinations.services import resolve_student_and_children_for_user
+            student, _ = resolve_student_and_children_for_user(user)
             if student:
                 role_profile = StudentProfileSerializer(student, context={'request': request}).data
 
@@ -186,7 +187,8 @@ class UserProfileView(APIView):
             if teacher:
                 role_profile = TeacherProfileSerializer(teacher, context={'request': request}).data
         elif user.role == User.Role.STUDENT:
-            student = getattr(user, 'student_profile', None)
+            from apps.examinations.services import resolve_student_and_children_for_user
+            student, _ = resolve_student_and_children_for_user(user)
             if student:
                 role_profile = StudentProfileSerializer(student, context={'request': request}).data
 
@@ -454,16 +456,51 @@ class MobileDashboardSummaryView(APIView):
             }
 
         elif user.role == User.Role.STUDENT:
-            student = getattr(user, 'student_profile', None)
+            from apps.examinations.services import resolve_student_and_children_for_user, get_student_exam_seating_data
+            target_student_id = request.query_params.get('student_id')
+            student, children_list = resolve_student_and_children_for_user(user, target_student_id)
             today_att = StudentAttendance.objects.filter(student=student, date=today).first() if student else None
             classroom_name = student.classroom.name if student and student.classroom else '-'
             recent_scores = Grade.objects.filter(student=student).order_by('-id')[:5]
+
+            # Exam seating information
+            exam_seating = get_student_exam_seating_data(student) if student else []
+            serialized_seating = []
+            latest_seating = None
+            for item in exam_seating:
+                s_dict = {
+                    'exam_id': item['exam_id'],
+                    'exam_name': item['name'],
+                    'exam_date': item['exam_date'].strftime('%d-%m-%Y') if item['exam_date'] else '',
+                    'grade_level': item['grade_level'],
+                    'session': item['session_name'],
+                    'track': item['track_name'],
+                    'has_room': item['has_room'],
+                    'room_name': item['room_name'],
+                    'room_number': item['room_number'],
+                    'building': item['building'],
+                    'desk_number': item['desk_number'],
+                    'desk_number_display': item['desk_number_display'],
+                    'roll_number': item['roll_number'],
+                    'candidate_id': item['candidate_id'],
+                    'is_excluded': item['is_excluded'],
+                    'exclusion_reason': item['exclusion_reason'],
+                    'admission_slip_url': item['admission_slip_url'],
+                    'total_subjects': item['total_subjects'],
+                }
+                serialized_seating.append(s_dict)
+                if not latest_seating and item['has_room'] and not item['is_excluded']:
+                    latest_seating = s_dict
 
             data['stats'] = {
                 'classroom': classroom_name,
                 'today_attendance': today_att.get_status_display() if today_att else 'មិនទាន់កត់ត្រា',
                 'attendance_status_code': today_att.status if today_att else 'NONE',
                 'total_exams_recorded': Grade.objects.filter(student=student).count() if student else 0,
+                'exam_seating': serialized_seating,
+                'latest_exam_seating': latest_seating,
+                'has_exam_seating': len(serialized_seating) > 0,
+                'total_children': len(children_list),
             }
 
         else:
@@ -475,6 +512,84 @@ class MobileDashboardSummaryView(APIView):
             }
 
         return Response({'status': 'success', 'dashboard': data})
+
+
+class MobileStudentExamSeatingAPIView(APIView):
+    """
+    Mobile REST API: Returns examination seating details (Room, Desk No, Roll No, Schedule, Subjects)
+    for student or parent accounts. Supports ?student_id= query parameter for parents with multiple children.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        from apps.examinations.services import resolve_student_and_children_for_user, get_student_exam_seating_data
+
+        target_student_id = request.query_params.get('student_id')
+        student, children = resolve_student_and_children_for_user(user, target_student_id)
+
+        if not student:
+            return Response({
+                'status': 'error',
+                'message': 'ពុំមានទិន្នន័យសិស្សសម្រាប់គណនីនេះឡើយ',
+                'exam_seating': [],
+                'has_seating': False,
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        seating_data = get_student_exam_seating_data(student)
+
+        # Serialize
+        serialized_seating = []
+        for item in seating_data:
+            serialized_seating.append({
+                'exam_id': item['exam_id'],
+                'exam_name': item['name'],
+                'exam_date': item['exam_date'].strftime('%d-%m-%Y') if item['exam_date'] else '',
+                'grade_level': item['grade_level'],
+                'session': item['session_name'],
+                'track': item['track_name'],
+                'candidate_id': item['candidate_id'],
+                'has_room': item['has_room'],
+                'room_name': item['room_name'],
+                'room_number': item['room_number'],
+                'building': item['building'],
+                'desk_number': item['desk_number'],
+                'desk_number_display': item['desk_number_display'],
+                'roll_number': item['roll_number'],
+                'is_excluded': item['is_excluded'],
+                'exclusion_reason': item['exclusion_reason'],
+                'exclusion_notes': item['exclusion_notes'],
+                'admission_slip_url': item['admission_slip_url'],
+                'total_subjects': item['total_subjects'],
+                'subjects': item['subjects'],
+            })
+
+        children_data = [
+            {
+                'id': c.id,
+                'student_id': c.student_id,
+                'khmer_name': c.khmer_name,
+                'latin_name': c.latin_name,
+                'classroom': c.classroom.name if c.classroom else '-',
+                'is_active_selected': c.id == student.id,
+            }
+            for c in children
+        ]
+
+        return Response({
+            'status': 'success',
+            'student': {
+                'id': student.id,
+                'student_id': student.student_id,
+                'khmer_name': student.khmer_name,
+                'latin_name': student.latin_name,
+                'classroom': student.classroom.name if student.classroom else '-',
+            },
+            'has_seating': any(s['has_room'] for s in serialized_seating),
+            'total_exams': len(serialized_seating),
+            'exam_seating': serialized_seating,
+            'children': children_data,
+        }, status=status.HTTP_200_OK)
 
 
 class AssemblyAttendanceAPIView(APIView):
@@ -1934,6 +2049,10 @@ class MobileExamInvigilatorStatusAPIView(APIView):
                 'current_count': registered_count,
                 'remaining_to_choose': max(0, required_shifts - registered_count),
                 'is_fulfilled': (registered_count >= required_shifts),
+                'is_exact_matched': (registered_count == required_shifts),
+                'is_finalized': quota_obj.is_finalized if quota_obj else False,
+                'finalized_at': quota_obj.finalized_at.strftime('%d/%m/%Y %H:%M') if (quota_obj and quota_obj.finalized_at) else None,
+                'can_finalize': (registered_count == required_shifts and not (quota_obj and quota_obj.is_finalized)),
                 'progress_percentage': min(100, round(registered_count / required_shifts * 100)) if required_shifts > 0 else 100,
             }
         })
@@ -1990,12 +2109,12 @@ class MobileExamInvigilatorSlotsAPIView(APIView):
 
 class MobileExamInvigilatorToggleAPIView(APIView):
     """
-    Mobile API: Toggles teacher slot registration on/off.
+    Mobile API: Toggles teacher slot registration on/off with strict quota guard.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        from apps.examinations.models import ExamShiftSlot, TeacherDutyQuota, TeacherShiftRegistration
+        from apps.examinations.models import ExamShiftSlot, TeacherDutyQuota, TeacherShiftRegistration, ExamCommitteeRole
         from apps.teachers.models import Teacher
 
         slot_id = request.data.get('slot_id')
@@ -2018,25 +2137,42 @@ class MobileExamInvigilatorToggleAPIView(APIView):
         if not teacher:
             return Response({'status': 'error', 'message': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ'}, status=403)
 
+        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+        required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+        current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+
         reg = TeacherShiftRegistration.objects.filter(slot=slot, teacher=teacher).first()
         if reg:
             reg.delete()
             is_registered = False
+            if quota_obj and quota_obj.is_finalized:
+                quota_obj.is_finalized = False
+                quota_obj.save(update_fields=['is_finalized'])
             msg = f"បានដកចេញពីវេន «{slot.session_name}» រួចរាល់!"
         else:
-            if slot.is_full:
-                return Response({'status': 'error', 'message': f'វេន «{slot.session_name}» បានពេញចំនួនអនុរក្សរួចហើយ!'}, status=400)
+            if quota_obj and quota_obj.is_finalized:
+                return Response({'status': 'error', 'message': 'លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ការស្នើសុំរួចរាល់ហើយ! សូមដោះសោ/កែប្រែឡើងវិញជាមុនសិន។'}, status=400)
+
+            # STRICT UPPER BOUND (មិនអាចលើស)
+            if current_count >= required_shifts:
+                return Response({
+                    'status': 'error',
+                    'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសគ្រប់ចំនួនកូតាកំណត់ ({required_shifts} វេន) រួចរាល់ហើយ មិនអាចជ្រើសរើសលើសពីនេះបានទេ! សូមដកវេនចាស់ចេញជាមុនសិន។'
+                }, status=400)
+
+            assigned_role = quota_obj.assigned_role if quota_obj else ExamCommitteeRole.INVIGILATOR
+            if slot.is_role_full(assigned_role):
+                return Response({'status': 'error', 'message': f'វេន «{slot.session_name}» បានពេញកូតាសម្រាប់មុខងារនេះរួចហើយ!'}, status=400)
 
             TeacherShiftRegistration.objects.create(
                 slot=slot,
                 teacher=teacher,
+                role=assigned_role,
                 status='CONFIRMED'
             )
             is_registered = True
             msg = f"បានចុះឈ្មោះក្នុងវេន «{slot.session_name}» ដោយជោគជ័យ!"
 
-        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
-        required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
         current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
 
         return Response({
@@ -2048,8 +2184,66 @@ class MobileExamInvigilatorToggleAPIView(APIView):
             'current_count': current_count,
             'required_shifts': required_shifts,
             'remaining_to_choose': max(0, required_shifts - current_count),
+            'is_finalized': quota_obj.is_finalized if quota_obj else False,
+            'can_finalize': (current_count == required_shifts),
             'message': msg
         })
+
+
+class MobileExamInvigilatorFinalizeAPIView(APIView):
+    """
+    Mobile API: Finalizes shift request ensuring exact quota compliance (current_count == required_shifts).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from django.utils import timezone
+        from apps.examinations.models import ExamInvigilatorPlan, TeacherDutyQuota, TeacherShiftRegistration
+        from apps.teachers.models import Teacher
+
+        plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+        if not plan or not plan.allow_teacher_registration:
+            return Response({'status': 'error', 'message': 'ការស្នើសុំវេនត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher and request.user.role == 'ADMIN':
+            tid = request.data.get('teacher_id')
+            teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and str(tid).isdigit()) else Teacher.objects.first()
+
+        if not teacher:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ'}, status=403)
+
+        quota_obj, _ = TeacherDutyQuota.objects.get_or_create(plan=plan, teacher=teacher)
+        required_shifts = quota_obj.effective_required_shifts
+        current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+
+        if current_count < required_shifts:
+            missing = required_shifts - current_count
+            return Response({
+                'status': 'error',
+                'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ នៅខ្វះ {missing} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំ។'
+            }, status=400)
+
+        if current_count > required_shifts:
+            over = current_count - required_shifts
+            return Response({
+                'status': 'error',
+                'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចេញចំនួន {over} វេនវិញ។'
+            }, status=400)
+
+        quota_obj.is_finalized = True
+        quota_obj.finalized_at = timezone.now()
+        quota_obj.save(update_fields=['is_finalized', 'finalized_at', 'updated_at'])
+
+        return Response({
+            'status': 'success',
+            'is_finalized': True,
+            'finalized_at': quota_obj.finalized_at.strftime('%d/%m/%Y %H:%M'),
+            'current_count': current_count,
+            'required_shifts': required_shifts,
+            'message': f'🎉 លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ និងបញ្ជាក់ការស្នើសុំវេនអនុរក្សគ្រប់ចំនួនកូតា ({required_shifts} វេន) ដោយជោគជ័យរួចរាល់ហើយ!'
+        })
+
 
 
 

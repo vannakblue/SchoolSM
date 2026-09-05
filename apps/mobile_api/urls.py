@@ -21,7 +21,8 @@ urlpatterns = [
     # 4. Timetable & Schedule
     path('timetable/', views.TimetableView.as_view(), name='mobile_api_timetable'),
 
-    # 5. Examination Grades & Mobile Grade Entry
+    # 5. Examination Grades, Seating & Mobile Grade Entry
+    path('exams/seating/', views.MobileStudentExamSeatingAPIView.as_view(), name='mobile_api_student_exam_seating'),
     path('grades/', views.ExamGradesView.as_view(), name='mobile_api_grades'),
     path('grades/teacher-entry/meta/', views.TeacherGradeEntryMetaAPIView.as_view(), name='mobile_api_teacher_entry_meta'),
     path('grades/teacher-entry/sheet/', views.TeacherGradeEntrySheetAPIView.as_view(), name='mobile_api_teacher_entry_sheet'),
@@ -53,4 +54,6 @@ urlpatterns = [
     path('exam-invigilator/status/', views.MobileExamInvigilatorStatusAPIView.as_view(), name='mobile_api_invigilator_status'),
     path('exam-invigilator/slots/', views.MobileExamInvigilatorSlotsAPIView.as_view(), name='mobile_api_invigilator_slots'),
     path('exam-invigilator/toggle/', views.MobileExamInvigilatorToggleAPIView.as_view(), name='mobile_api_invigilator_toggle'),
+    path('exam-invigilator/finalize/', views.MobileExamInvigilatorFinalizeAPIView.as_view(), name='mobile_api_invigilator_finalize'),
 ]
+

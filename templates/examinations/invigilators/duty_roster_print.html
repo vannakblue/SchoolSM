@@ -2,34 +2,169 @@
 <html lang="km">
 <head>
     <meta charset="UTF-8">
-    <title>តារាងចាត់តាំងអនុរក្សប្រឡង៖ {{ plan.title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បែងចែកភារកិច្ចប្រឡង៖ {{ plan.title }} | SchoolSM</title>
+    <!-- Google Fonts for MoEYS standard printing -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Moul&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
+        /* Page Setup - MoEYS Official A4 Portrait Standard */
         @page {
             size: A4 portrait;
-            margin: 1.2cm 1.5cm;
+            margin: 7mm 10mm 6mm 10mm;
         }
 
-        body {
-            font-family: 'Battambang', 'Khmer OS Battambang', 'Khmer OS', Arial, sans-serif;
-            font-size: 11pt;
-            color: #000;
-            background: #fff;
-            margin: 0;
-            padding: 0;
+        * {
+            box-sizing: border-box;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', sans-serif;
+        body {
+            font-family: 'Battambang', 'Khmer OS Battambang', Arial, sans-serif;
+            font-size: 9.5pt;
+            line-height: 1.2;
+            color: #000;
+            background: #e2e8f0;
+            margin: 0;
+            padding: 0;
         }
 
-        .header-section {
+        .moul-font {
+            font-family: 'Moul', 'Khmer OS Muol Light', sans-serif;
+            font-weight: normal;
+        }
+
+        /* Interactive On-Screen Floating Control Bar */
+        .no-print-bar {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 12px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .bar-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .bar-select, .bar-input {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #475569;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .bar-select:focus, .bar-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+
+        .btn-print {
+            background: #059669;
+            color: #ffffff;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-print:hover {
+            background: #10b981;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary-tool {
+            background: #334155;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-secondary-tool:hover {
+            background: #475569;
+            color: #fff;
+        }
+
+        /* Printable Pages Container */
+        .pages-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px 0 40px 0;
+        }
+
+        .print-page {
+            background: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            height: 297mm;
+            padding: 7mm 11mm 6mm 11mm;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            page-break-after: always;
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .print-page:last-child {
+            page-break-after: auto;
+        }
+
+        /* 1. Header Grid */
+        .header-grid {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
+            margin-bottom: 6px;
+        }
+
+        .school-header {
+            font-size: 11pt;
+            letter-spacing: 0.3px;
+            line-height: 1.4;
+            text-align: left;
+            padding-top: 2px;
         }
 
         .kingdom-header {
@@ -37,203 +172,314 @@
         }
 
         .kingdom-title {
-            font-size: 13pt;
-            margin-bottom: 3px;
+            font-size: 11.5pt;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
 
         .kingdom-motto {
-            font-size: 11pt;
+            font-size: 10pt;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
         }
 
-        .ministry-header {
-            font-size: 11pt;
-            line-height: 1.4;
+        .divider-flourish {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1px;
+        }
+
+        /* 2. Center Exam Title Block */
+        .center-title-block {
+            text-align: center;
+            margin: 4px 0 2px 0;
         }
 
         .main-title {
-            text-align: center;
-            font-size: 14pt;
-            margin: 15px 0 5px 0;
+            font-size: 13.5pt;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
 
-        .sub-title {
-            text-align: center;
-            font-size: 11pt;
-            margin-bottom: 15px;
-        }
-
-        .meta-box {
-            border: 1px solid #000;
-            padding: 8px 12px;
-            margin-bottom: 15px;
-            font-size: 10.5pt;
-            display: flex;
-            justify-content: space-between;
-            background: #f9f9f9;
-        }
-
-        .shift-section {
-            margin-bottom: 25px;
-            page-break-inside: avoid;
-        }
-
-        .shift-header {
+        .exam-date-khmer {
             font-size: 11pt;
             font-weight: 700;
-            margin-bottom: 6px;
-            background: #eee;
-            padding: 4px 8px;
-            border-left: 4px solid #000;
+            color: #000;
         }
 
-        table.duty-table {
+        /* 3. Shift Indicator (ព្រឹក / រសៀល) */
+        .shift-indicator-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 3px;
+            padding-right: 2px;
+        }
+
+        .shift-badge {
+            font-size: 11.5pt;
+            letter-spacing: 0.5px;
+        }
+
+        /* 4. Dual-Column Roster Table (8 Columns, Exactly 27 Rows) */
+        table.roster-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
-            font-size: 10pt;
-        }
-
-        table.duty-table th, table.duty-table td {
+            table-layout: fixed;
             border: 1px solid #000;
-            padding: 5px 8px;
+            margin-bottom: 4px;
         }
 
-        table.duty-table th {
-            background-color: #f2f2f2;
-            text-align: center;
+        table.roster-table th, 
+        table.roster-table td {
+            border: 1px solid #000;
+            padding: 0 4px;
+            height: 25px;
+            max-height: 25px;
+            vertical-align: middle;
+        }
+
+        table.roster-table th {
+            font-size: 9.5pt;
             font-weight: 700;
-        }
-
-        .text-center { text-align: center; }
-        .text-end { text-align: right; }
-        .fw-bold { font-weight: 700; }
-
-        .signature-section {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-            page-break-inside: avoid;
-        }
-
-        .sig-block {
             text-align: center;
-            width: 250px;
+            background: #fff;
+            height: 26px;
         }
 
-        .no-print-bar {
-            background: #1e293b;
-            color: #fff;
-            padding: 10px 20px;
+        /* Column Width Distribution */
+        .col-num {
+            width: 4.8%;
+            text-align: center;
+            font-size: 9.5pt;
+            font-family: inherit;
+        }
+
+        .col-name {
+            width: 23.2%;
+            text-align: left;
+            padding-left: 6px !important;
+            font-size: 9.5pt;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .col-duty {
+            width: 12%;
+            text-align: center;
+            font-size: 9.5pt;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .col-sig {
+            width: 10%;
+            text-align: center;
+        }
+
+        /* 5. Footer Section (Lunar Date, Solar Date, Principal Signature) */
+        .footer-section {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 999;
+            justify-content: flex-end;
+            align-items: flex-start;
+            margin-top: 4px;
+            padding-right: 15px;
         }
 
+        .footer-right {
+            text-align: center;
+            width: 320px;
+            line-height: 1.45;
+        }
+
+        .lunar-date {
+            font-size: 9.5pt;
+            margin-bottom: 2px;
+        }
+
+        .solar-date {
+            font-size: 9.5pt;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .principal-title {
+            font-size: 11pt;
+            letter-spacing: 0.3px;
+            margin-bottom: 55px; /* Vertical blank area for stamp & signature */
+        }
+
+        .signature-space {
+            height: 10px;
+        }
+
+        /* Print Media Styles */
         @media print {
-            .no-print-bar { display: none !important; }
-            body { margin: 0; }
+            .no-print-bar {
+                display: none !important;
+            }
+
+            body {
+                background: #ffffff !important;
+            }
+
+            .pages-container {
+                padding: 0 !important;
+                gap: 0 !important;
+            }
+
+            .print-page {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                min-height: auto !important;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- On-Screen Control & Filtering Bar -->
     <div class="no-print-bar">
-        <div>
-            <strong>🖨️ ទម្រង់បោះពុម្ពតារាងចាត់តាំងអនុរក្សប្រឡង (Print Duty Roster)</strong>
+        <div class="bar-title">
+            <i class="fa-solid fa-file-signature text-warning"></i>
+            <span>តារាងបែងចែកភារកិច្ចប្រឡង &amp; ចុះហត្ថលេខា (គំរូផ្លូវការ ១១.pdf)</span>
         </div>
-        <div>
-            <button onclick="window.print()" style="background: #10b981; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                បោះពុម្ពឥឡូវនេះ (Print)
+
+        <form method="GET" class="bar-actions" id="filterForm">
+            <!-- Shift Selector -->
+            <div>
+                <select name="slot_id" class="bar-select" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">-- បង្ហាញគ្រប់វេនទាំងអស់ ({{ all_slots|length }} វេន) --</option>
+                    {% for sl in all_slots %}
+                    <option value="{{ sl.id }}" {% if selected_slot_id == sl.id %}selected{% endif %}>
+                        {{ sl.session_name }} ({{ sl.date|date:"d/m/Y" }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- School Name Override -->
+            <div>
+                <input type="text" name="school_name" class="bar-input" value="{{ school_name }}" placeholder="ឈ្មោះសាលារៀន..." title="កែប្រែឈ្មោះសាលា">
+            </div>
+
+            <!-- Title Override -->
+            <div>
+                <input type="text" name="title" class="bar-input" value="{{ main_title }}" placeholder="ចំណងជើង..." title="កែប្រែចំណងជើង">
+            </div>
+
+            <!-- Location Override -->
+            <div>
+                <input type="text" name="location" class="bar-input" value="{{ location_name }}" placeholder="ទីតាំង..." style="width: 110px;" title="ទីតាំងសាលា (ឧ. កំពង់កន្ទួត)">
+            </div>
+
+            <button type="submit" class="btn-secondary-tool" title="អនុវត្តការផ្លាស់ប្តូរ">
+                <i class="fa-solid fa-rotate me-1"></i> អនុវត្ត
             </button>
-            <button onclick="window.close()" style="background: #64748b; color: white; border: none; padding: 6px 12px; border-radius: 6px; margin-left: 8px; cursor: pointer;">
-                បិទ
+
+            <button type="button" class="btn-print" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> បោះពុម្ពឥឡូវនេះ (Print)
             </button>
-        </div>
+
+            <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn-secondary-tool">
+                <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ក្រោយ
+            </a>
+        </form>
     </div>
 
-    <div style="padding: 15px 25px;">
-        <!-- MoEYS Cambodian Header -->
-        <div class="header-section">
-            <div class="ministry-header">
-                <div class="fw-bold">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
-                <div>មន្ទីរអប់រំ យុវជន និងកីឡា</div>
-                <div class="fw-bold text-decoration-underline">{{ plan.academic_year.name }}</div>
+    <!-- Printable Shift Pages -->
+    <div class="pages-container">
+        {% for shift in shift_pages %}
+            {% for pg in shift.pages %}
+            <div class="print-page">
+                <!-- Page Top Container -->
+                <div>
+                    <!-- 1. Header Grid (School Name & Kingdom Motto) -->
+                    <div class="header-grid">
+                        <div class="school-header moul-font">
+                            {{ school_name }}
+                        </div>
+                        <div class="kingdom-header">
+                            <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                            <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                            <div class="divider-flourish">
+                                <svg width="105" height="12" viewBox="0 0 105 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M52.5 2C34 2 25 10 8 10C0 10 0 6 0 6M52.5 2C71 2 80 10 97 10C105 10 105 6 105 6" stroke="#000" stroke-width="1.1" stroke-linecap="round"/>
+                                    <circle cx="52.5" cy="2" r="2" fill="#000"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Center Exam Title Block -->
+                    <div class="center-title-block">
+                        <div class="main-title moul-font">{{ main_title }}</div>
+                        <div class="exam-date-khmer">{{ shift.exam_date_kh }}</div>
+                    </div>
+
+                    <!-- 3. Shift Indicator (ព្រឹក / រសៀល) -->
+                    <div class="shift-indicator-row">
+                        <div class="shift-badge moul-font">{{ shift.shift_session_kh }}</div>
+                    </div>
+
+                    <!-- 4. Official MoEYS Dual-Column Table (Exact 8 Columns & 27 Rows = 54 Spots) -->
+                    <table class="roster-table">
+                        <thead>
+                            <tr>
+                                <th class="col-num">ល.រ</th>
+                                <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
+                                <th class="col-duty">តួនាទី</th>
+                                <th class="col-sig">ហត្ថលេខា</th>
+
+                                <th class="col-num">ល.រ</th>
+                                <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
+                                <th class="col-duty">តួនាទី</th>
+                                <th class="col-sig">ហត្ថលេខា</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pg.pairs %}
+                            <tr>
+                                <td class="col-num">{{ p.left.order_num }}</td>
+                                <td class="col-name">{{ p.left.name }}</td>
+                                <td class="col-duty">{{ p.left.duty }}</td>
+                                <td class="col-sig"></td>
+
+                                <td class="col-num">{{ p.right.order_num }}</td>
+                                <td class="col-name">{{ p.right.name }}</td>
+                                <td class="col-duty">{{ p.right.duty }}</td>
+                                <td class="col-sig"></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 5. Footer Section (Khmer Lunar Date, Solar Date & Principal Signature) -->
+                <div class="footer-section">
+                    <div class="footer-right">
+                        <div class="lunar-date">{{ shift.lunar_line }}</div>
+                        <div class="solar-date">{{ location_name }} {{ shift.solar_date_kh }}</div>
+                        <div class="principal-title moul-font">{{ signer_title }}</div>
+                        <div class="signature-space"></div>
+                    </div>
+                </div>
             </div>
-            <div class="kingdom-header">
-                <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                <div style="letter-spacing: 3px;">***</div>
+            {% endfor %}
+        {% empty %}
+        <div class="print-page" style="justify-content: center; align-items: center;">
+            <div style="text-align: center; color: #64748b;">
+                <i class="fa-solid fa-circle-exclamation fa-3x mb-3 text-warning"></i>
+                <h5 class="fw-bold">មិនទាន់មានវេនប្រឡងនៅក្នុងគម្រោងនេះនៅឡើយទេ</h5>
+                <p>សូមបង្កើតវេនប្រឡង (Shift Slots) ជាមុនសិន ដើម្បីបោះពុម្ពតារាងចាត់តាំងភារកិច្ច។</p>
             </div>
-        </div>
-
-        <div class="main-title moul-font">បញ្ជីចាត់តាំងគណៈកម្មការអនុរក្សប្រឡង</div>
-        <div class="sub-title fw-bold">
-            {{ plan.title }} • ឆ្នាំសិក្សា {{ plan.academic_year.name }}
-        </div>
-
-        <div class="meta-box">
-            <div>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ plan.start_date|date:"d/m/Y" }} ដល់ {{ plan.end_date|date:"d/m/Y" }}</strong></div>
-            <div>សរុប៖ <strong>{{ slots|length }} វេនប្រឡង</strong></div>
-        </div>
-
-        <!-- Shift Slots Tables -->
-        {% for s in slots %}
-        <div class="shift-section">
-            <div class="shift-header">
-                📅 {{ s.date|date:"l, d F Y (d/m/Y)" }} • {{ s.session_name }} (ម៉ោង៖ {{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }}) • ចំនួនអនុរក្ស៖ {{ s.registered_count }} នាក់
-            </div>
-
-            <table class="duty-table">
-                <thead>
-                    <tr>
-                        <th style="width: 35px;">ល.រ</th>
-                        <th>គោត្តនាម-នាម</th>
-                        <th style="width: 45px;">ភេទ</th>
-                        <th style="width: 80px;">អត្តលេខ</th>
-                        <th style="width: 150px;">មុខងារគណៈកម្មការ</th>
-                        <th style="width: 130px;">បន្ទប់ឈរប្រឡង</th>
-                        <th style="width: 100px;">ហត្ថលេខា</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in s.registrations.all %}
-                    <tr>
-                        <td class="text-center">{{ forloop.counter }}</td>
-                        <td class="fw-bold">{{ r.teacher.khmer_name }}</td>
-                        <td class="text-center">{{ r.teacher.get_gender_display }}</td>
-                        <td class="text-center font-monospace">{{ r.teacher.teacher_id }}</td>
-                        <td class="fw-bold">{{ r.get_role_display }}</td>
-                        <td class="text-center fw-bold">{{ r.room_assignment|default:"-" }}</td>
-                        <td></td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center py-2" style="color: #777;">មិនទាន់មានគណៈកម្មការចាត់តាំងក្នុងវេននេះនៅឡើយទេ។</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
         {% endfor %}
-
-        <!-- Signatures Box -->
-        <div class="signature-section">
-            <div class="sig-block">
-                <div>បានឃើញ និងពិនិត្យត្រឹមត្រូវ</div>
-                <div class="fw-bold" style="margin-top: 5px;">ប្រធានមណ្ឌលប្រឡង</div>
-                <div style="height: 70px;"></div>
-                <div class="fw-bold">...................................................</div>
-            </div>
-            <div class="sig-block">
-                <div>ធ្វើនៅ....................., ថ្ងៃទី........ខែ.......ឆ្នាំ២០២...</div>
-                <div class="fw-bold" style="margin-top: 5px;">ប្រធានគណៈកម្មការរៀបចំការប្រឡង</div>
-                <div style="height: 70px;"></div>
-                <div class="fw-bold">...................................................</div>
-            </div>
-        </div>
     </div>
 
 </body>

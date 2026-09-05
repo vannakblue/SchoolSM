@@ -37,6 +37,7 @@ urlpatterns = [
     path('standardized/session/pull-candidates/', views.standardized_exam_session_pull_candidates, name='standardized_exam_session_pull_candidates'),
     path('standardized/<int:exam_id>/subjects/manage/', views.api_manage_standardized_exam_subjects, name='api_manage_standardized_exam_subjects'),
     path('standardized/<int:exam_id>/subjects/apply-preset/', views.api_apply_standardized_exam_preset, name='api_apply_standardized_exam_preset'),
+    path('standardized/<int:exam_id>/subjects/<int:es_id>/delete/', views.api_delete_standardized_exam_subject, name='api_delete_standardized_exam_subject'),
 
     # Standardized Exam Types Management (ប្រភេទសម័យប្រឡង)
     path('standardized/types/', views.standardized_exam_type_list, name='standardized_exam_type_list'),
@@ -106,6 +107,8 @@ urlpatterns = [
     # Teacher Self-Service Portal & AJAX API
     path('invigilator-request/', views.exam_invigilator_teacher_portal, name='exam_invigilator_teacher_portal'),
     path('api/invigilator-slot/toggle/', views.api_toggle_invigilator_slot, name='api_toggle_invigilator_slot'),
+    path('api/invigilator-request/finalize/', views.api_finalize_invigilator_request, name='api_finalize_invigilator_request'),
+    path('api/invigilator-request/unlock/', views.api_unlock_invigilator_request, name='api_unlock_invigilator_request'),
     
     # Student & Parent Exam Admission Slip & Telegram Seating Dispatch
     path('student/admission-slip/<int:candidate_id>/', views.student_exam_admission_slip, name='student_exam_admission_slip'),

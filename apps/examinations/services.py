@@ -475,3 +475,240 @@ class AcademicResultService:
             'passed_count': sum(1 for r in annual_results if r['passed']),
             'failed_count': sum(1 for r in annual_results if not r['passed']),
         }
+
+
+def resolve_student_and_children_for_user(user, selected_student_id=None):
+    """
+    Resolves the primary student and all associated children (for parents) based on:
+    1. Direct 1-to-1 link via user.student_profile
+    2. Explicit ?student_id= query param (if user is parent/admin)
+    3. Matching by student_id == username or phone
+    4. Matching by student.phone == username or phone
+    5. Matching by father_phone / mother_phone / emergency_phone == username or phone
+    6. Matching by khmer_name / latin_name
+    7. Fallback for Admin / Superuser
+    Returns: (primary_student, children_list)
+    """
+    if not user or not user.is_authenticated:
+        return None, []
+
+    # Clean user phone and username
+    u_phone = (getattr(user, 'phone', None) or '').replace(' ', '').replace('-', '').strip()
+    u_name = (getattr(user, 'username', None) or '').replace(' ', '').replace('-', '').strip()
+    u_khmer = (getattr(user, 'khmer_name', None) or '').strip()
+    u_latin = (getattr(user, 'latin_name', None) or '').strip()
+
+    q_filter = Q()
+    if hasattr(user, 'student_profile') and user.student_profile:
+        q_filter |= Q(id=user.student_profile.id)
+
+    q_filter |= Q(user=user)
+
+    if u_name:
+        q_filter |= (
+            Q(student_id__iexact=u_name) |
+            Q(phone__iexact=u_name) |
+            Q(father_phone__iexact=u_name) |
+            Q(mother_phone__iexact=u_name) |
+            Q(emergency_phone__iexact=u_name)
+        )
+    if u_phone:
+        q_filter |= (
+            Q(student_id__iexact=u_phone) |
+            Q(phone__iexact=u_phone) |
+            Q(father_phone__iexact=u_phone) |
+            Q(mother_phone__iexact=u_phone) |
+            Q(emergency_phone__iexact=u_phone)
+        )
+    if u_khmer:
+        q_filter |= Q(khmer_name__iexact=u_khmer)
+    if u_latin:
+        q_filter |= Q(latin_name__iexact=u_latin)
+
+    matching_students = list(
+        Student.objects.filter(q_filter)
+        .select_related('classroom', 'academic_year', 'user')
+        .distinct()
+        .order_by('id')
+    )
+
+    # If user is admin/superuser and no student found, fallback to active student
+    if not matching_students and (getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN'):
+        first_act = Student.objects.filter(status='ACTIVE').select_related('classroom', 'academic_year', 'user').first() or Student.objects.first()
+        if first_act:
+            matching_students = [first_act]
+
+    # Select primary student
+    primary_student = None
+    if selected_student_id and str(selected_student_id).isdigit():
+        target_id = int(selected_student_id)
+        for s in matching_students:
+            if s.id == target_id:
+                primary_student = s
+                break
+        if not primary_student and (getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN'):
+            primary_student = Student.objects.filter(id=target_id).select_related('classroom', 'academic_year', 'user').first()
+
+    if not primary_student and matching_students:
+        # Prefer student directly linked to user
+        for s in matching_students:
+            if s.user_id == user.id:
+                primary_student = s
+                break
+        if not primary_student:
+            primary_student = matching_students[0]
+
+    # If student exists but user not linked, link user if user role is STUDENT
+    if primary_student and not primary_student.user and getattr(user, 'role', '') == 'STUDENT':
+        try:
+            primary_student.user = user
+            primary_student.save(update_fields=['user'])
+        except Exception:
+            pass
+
+    return primary_student, matching_students
+
+
+def get_student_exam_seating_data(student):
+    """
+    Computes examination seating, desk number, room number, schedule, and exclusion status
+    for the specified student.
+    Returns: list of dicts ordered by exam_date desc.
+    """
+    if not student:
+        return []
+
+    import re
+    from datetime import date
+    from apps.academics.models import AcademicYear
+    from apps.examinations.models import StandardizedExam, ExamCandidate, ExamStudentExclusion
+
+    grade_num = student.classroom.grade_level if (student.classroom and hasattr(student.classroom, 'grade_level')) else None
+    if not grade_num and student.classroom:
+        m = re.search(r'\d+', student.classroom.name)
+        if m:
+            grade_num = int(m.group())
+
+    ay = student.classroom.academic_year if (student.classroom and student.classroom.academic_year) else None
+    if not ay:
+        ay = getattr(student, 'academic_year', None) or AcademicYear.objects.filter(is_active=True).first()
+
+    exam_qs = (
+        StandardizedExam.objects.all()
+        .select_related('academic_year', 'exam_term')
+        .prefetch_related('exam_subjects__subject', 'rooms')
+    )
+    if ay:
+        exam_qs = exam_qs.filter(academic_year=ay)
+    if grade_num:
+        exam_qs = exam_qs.filter(grade_level=grade_num)
+
+    exams = list(exam_qs.order_by('-exam_date')[:10])
+
+    # Candidacies for this student
+    cands = list(
+        ExamCandidate.objects.filter(
+            Q(student=student) |
+            (Q(student_code__iexact=student.student_id) if student.student_id else Q())
+        ).select_related('exam', 'room', 'exam__academic_year')
+    )
+
+    candidacies_map = {}
+    for c in cands:
+        # Link foreign key if missing
+        if not c.student_id and student:
+            try:
+                c.student = student
+                c.save(update_fields=['student'])
+            except Exception:
+                pass
+        candidacies_map[c.exam_id] = c
+        if c.exam and c.exam not in exams:
+            exams.append(c.exam)
+
+    # Exclusions
+    exclusions_qs = ExamStudentExclusion.objects.filter(student=student, is_active=True).select_related('standardized_exam', 'exam_term')
+    exclusions_by_exam = {}
+    global_exclusion = None
+    for ex_item in exclusions_qs:
+        if ex_item.standardized_exam_id:
+            exclusions_by_exam[ex_item.standardized_exam_id] = ex_item
+        else:
+            global_exclusion = ex_item
+
+    exams.sort(key=lambda x: x.exam_date or date.min, reverse=True)
+
+    exam_seating_info = []
+    for ex in exams:
+        cand = candidacies_map.get(ex.id)
+        exclusion = exclusions_by_exam.get(ex.id) or global_exclusion
+        is_excluded = False
+        exclusion_reason = ""
+        exclusion_reason_code = ""
+        exclusion_notes = ""
+
+        if exclusion:
+            is_excluded = True
+            exclusion_reason_code = exclusion.reason
+            exclusion_reason = exclusion.get_reason_display()
+            exclusion_notes = exclusion.notes or ""
+        elif cand and cand.is_disciplinary_blocked:
+            is_excluded = True
+            exclusion_reason_code = "DISCIPLINARY"
+            exclusion_reason = "បញ្ហាវិន័យ / ជាប់កិច្ចសន្យា (Disciplinary Hold)"
+            exclusion_notes = cand.disciplinary_reason or ""
+
+        if not is_excluded and getattr(student, 'is_exam_suspended', False):
+            is_excluded = True
+            exclusion_reason_code = getattr(student, 'exam_suspension_reason', '') or 'DISCIPLINARY'
+            exclusion_reason = student.get_exam_suspension_reason_display() if hasattr(student, 'get_exam_suspension_reason_display') else "ដកសិទ្ធិប្រឡង"
+            exclusion_notes = getattr(student, 'exam_suspension_notes', '') or ""
+
+        has_room = bool(cand and cand.room and cand.desk_number)
+
+        exam_subjects_list = [
+            {
+                'name': es.subject.name_kh,
+                'max_score': float(es.max_score) if es.max_score is not None else 0,
+                'exam_date': es.exam_date.strftime('%d-%m-%Y') if es.exam_date else (ex.exam_date.strftime('%d-%m-%Y') if ex.exam_date else ''),
+                'start_time': es.start_time.strftime('%H:%M') if es.start_time else '',
+                'end_time': es.end_time.strftime('%H:%M') if es.end_time else '',
+                'session': es.get_session_display(),
+            }
+            for es in ex.exam_subjects.all().select_related('subject').order_by('order')
+        ]
+
+        desk_num = cand.desk_number if (cand and cand.desk_number) else None
+        desk_display = f"តុលេខ {desk_num:02d}" if desk_num else "មិនទាន់មានលេខតុ"
+        room_name = cand.room.room_name if (cand and cand.room) else "មិនទាន់កំណត់"
+        building = cand.room.building if (cand and cand.room and cand.room.building) else "អគារ A"
+        roll_num = cand.roll_number if (cand and cand.roll_number) else (student.student_id or "-")
+
+        exam_seating_info.append({
+            'exam': ex,
+            'exam_id': ex.id,
+            'name': ex.name,
+            'exam_date': ex.exam_date,
+            'grade_level': ex.grade_level,
+            'session_name': ex.get_session_display(),
+            'track_name': ex.get_track_display() if hasattr(ex, 'get_track_display') else '',
+            'candidate': cand,
+            'candidate_id': cand.id if cand else None,
+            'has_room': has_room,
+            'room_name': room_name,
+            'room_number': cand.room.room_number if (cand and cand.room) else None,
+            'building': building,
+            'desk_number': desk_num,
+            'desk_number_display': desk_display,
+            'roll_number': roll_num,
+            'is_excluded': is_excluded,
+            'exclusion_reason_code': exclusion_reason_code,
+            'exclusion_reason': exclusion_reason,
+            'exclusion_notes': exclusion_notes,
+            'admission_slip_url': f"/examinations/student/admission-slip/{cand.id}/" if cand else None,
+            'subjects': exam_subjects_list,
+            'total_subjects': len(exam_subjects_list),
+        })
+
+    return exam_seating_info
+

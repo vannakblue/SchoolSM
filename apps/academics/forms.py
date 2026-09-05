@@ -25,8 +25,8 @@ class AcademicYearForm(forms.ModelForm):
         fields = ['name', 'start_date', 'end_date', 'is_current']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 2026-2027 ឬ ២០២៦-២០២៧'}),
-            'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'start_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
+            'end_date': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
             'is_current': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 

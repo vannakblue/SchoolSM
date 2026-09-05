@@ -56,6 +56,7 @@ def run_tests():
         'exam_date': date.today().strftime('%Y-%m-%d'),
         'session': 'AFTERNOON',
         'candidates_per_room': 25,
+        'grading_method': 'BOTH',
         'description': 'ការកែប្រែដោយ Admin',
         'is_published': 'on'
     }, follow=True)

@@ -38,12 +38,30 @@
     cursor: not-allowed;
 }
 
+.shift-card.quota-reached:not(.selected) {
+    opacity: 0.65;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.pulse-green {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
 .sticky-quota-bar {
     position: sticky;
     top: 70px;
     z-index: 1020;
     backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 1rem;
 }
 
@@ -117,10 +135,10 @@
         {% endif %}
     </div>
 
-    <!-- Sticky Live Quota Progress Bar -->
     <div class="sticky-quota-bar p-3 mb-4 shadow-sm border">
         <div class="row align-items-center g-3">
-            <div class="col-12 col-md-6">
+            <!-- Col 1: Teacher Profile & Role -->
+            <div class="col-12 col-lg-5">
                 <div class="d-flex align-items-center gap-3">
                     <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle" style="width: 46px; height: 46px; flex-shrink: 0;">
                         {% if assigned_role == 'PRESIDENT' %}👑{% elif assigned_role == 'VICE_PRESIDENT' %}🎖️{% elif assigned_role == 'SECRETARIAT' %}🏢{% elif assigned_role == 'BUILDING_INSPECTOR' %}🔍{% elif assigned_role == 'TABULATOR' %}📊{% else %}👤{% endif %}
@@ -134,30 +152,84 @@
                         </h6>
                         <small class="text-muted font-monospace">
                             {{ teacher.teacher_id }} • ក្រុម៖ {{ duty_group_name }} • កូតាតម្រូវ៖ 
-                            <strong>{% if is_auto_assigned_all %}គ្រប់វេន (ចាត់តាំងដោយ Admin){% else %}{{ required_shifts }} វេន{% endif %}</strong>
+                            <strong class="text-dark">{% if is_auto_assigned_all %}គ្រប់វេន (ចាត់តាំងដោយ Admin){% else %}{{ required_shifts }} វេន (មិនអាចលើស ឬខ្វះ){% endif %}</strong>
                         </small>
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-md-6">
+            <!-- Col 2: Live Quota Progress Bar -->
+            <div class="col-12 col-md-7 col-lg-4">
                 <div class="d-flex justify-content-between align-items-center small fw-bold mb-1">
                     <span class="text-muted">វឌ្ឍនភាពនៃការជ្រើសរើស៖</span>
-                    <span id="quotaText" class="{% if current_count >= required_shifts %}text-success{% else %}text-primary{% endif %} fs-6">
-                        បានចុះឈ្មោះ <strong><span id="currentCountSpan">{{ current_count }}</span> / {{ required_shifts }} វេន</strong>
+                    <span id="quotaText" class="{% if is_over_quota %}text-danger{% elif current_count >= required_shifts %}text-success{% else %}text-primary{% endif %} fs-6">
+                        បានចុះឈ្មោះ <strong><span id="currentCountSpan">{{ current_count }}</span> / <span id="requiredCountSpan">{{ required_shifts }}</span> វេន</strong>
                     </span>
                 </div>
                 <div class="progress" style="height: 10px; border-radius: 5px;">
-                    <div id="quotaProgressBar" class="progress-bar {% if current_count >= required_shifts %}bg-success{% else %}bg-primary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ progress_percentage }}%;"></div>
+                    <div id="quotaProgressBar" class="progress-bar {% if is_over_quota %}bg-danger{% elif current_count >= required_shifts %}bg-success{% else %}bg-primary{% endif %} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {% if is_over_quota %}100{% else %}{{ progress_percentage }}{% endif %}%;"></div>
                 </div>
-                <div id="quotaRemainingNote" class="small mt-1 text-end {% if current_count >= required_shifts %}text-success fw-bold{% else %}text-muted{% endif %}">
-                    {% if current_count >= required_shifts %}
-                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់កូតារួចរាល់ហើយ!
+                <div id="quotaRemainingNote" class="small mt-1 text-end {% if is_over_quota %}text-danger fw-bold{% elif current_count >= required_shifts %}text-success fw-bold{% else %}text-muted{% endif %}">
+                    {% if is_over_quota %}
+                    <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> លើសកូតា <strong id="remainingDiffSpan">{{ over_count }}</strong> វេន! សូមដកវេនលើសចេញវិញ។
+                    {% elif current_count >= required_shifts %}
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់ {{ required_shifts }} វេនរួចរាល់ហើយ!
                     {% else %}
                     <i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">{{ remaining_to_choose }}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Col 3: Finalize / Submit Action Button -->
+            <div class="col-12 col-md-5 col-lg-3 text-end" id="finalizeActionContainer">
+                {% if is_role_requestable %}
+                    {% if is_over_quota %}
+                    <button type="button" class="btn btn-sm btn-danger fw-bold w-100 py-2 shadow-xs disabled" id="btnFinalizeAction" title="លើសកូតា មិនអាចបញ្ចប់ការស្នើសុំបានទេ">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> លើសកូតា (ដកចេញ {{ over_count }} វេន)
+                    </button>
+                    {% elif is_finalized %}
+                    <div class="d-flex flex-column gap-1">
+                        <span class="badge bg-success py-1.5 px-2 text-wrap shadow-xs">
+                            <i class="fa-solid fa-circle-check me-1"></i> បានបញ្ចប់ការស្នើសុំរួចរាល់
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="unlockRequest()">
+                            <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
+                        </button>
+                    </div>
+                    {% elif can_finalize %}
+                    <button type="button" class="btn btn-sm btn-success fw-bold w-100 py-2 shadow pulse-green" onclick="showFinalizeModal()" id="btnFinalizeAction">
+                        <i class="fa-solid fa-circle-check me-1"></i> បញ្ចប់ការស្នើសុំ (គ្រប់ {{ required_shifts }}/{{ required_shifts }} វេន)
+                    </button>
+                    {% else %}
+                    <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 py-2 shadow-xs" onclick="alertUnderQuota()" id="btnFinalizeAction">
+                        <i class="fa-solid fa-lock me-1"></i> បញ្ចប់ការស្នើសុំ (ខ្វះ {{ remaining_to_choose }} វេន)
+                    </button>
+                    {% endif %}
+                {% else %}
+                <span class="badge bg-warning-subtle text-dark border border-warning px-3 py-2 w-100">
+                    <i class="fa-solid fa-shield-halved me-1"></i> ចាត់តាំងដោយ Admin
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dynamic Sticky Banner for Over-Quota -->
+        <div id="overQuotaStickyAlert" class="alert alert-danger py-2 px-3 mt-2 mb-0 small rounded-3 d-flex align-items-center justify-content-between {% if not is_over_quota %}d-none{% endif %}">
+            <div>
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                <strong>ជ្រើសរើសលើសកូតា៖</strong> លោកគ្រូ-អ្នកគ្រូបច្ចុប្បន្នបានជ្រើសរើសលើសចំនួនកូតាកំណត់ (<span id="overQuotaLiveText">{{ current_count }} / {{ required_shifts }}</span> វេន)! សូមចុចដកវេនដែលលើសចេញចំនួន <strong id="overQuotaDiffLive">{{ over_count }}</strong> វេនវិញ ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំបាន។
+            </div>
+        </div>
+
+        <!-- Dynamic Sticky Banner for Finalized Confirmation -->
+        <div id="finalizedStickyAlert" class="alert alert-success py-2 px-3 mt-2 mb-0 small rounded-3 d-flex align-items-center justify-content-between {% if not is_finalized %}d-none{% endif %}">
+            <div>
+                <i class="fa-solid fa-circle-check me-1"></i>
+                <strong>ការស្នើសុំត្រូវបានបញ្ចប់ជាផ្លូវការ៖</strong> លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ការស្នើសុំវេនអនុរក្សគ្រប់ចំនួនកូតា ({{ required_shifts }} វេន) រួចរាល់ហើយ <span id="finalizedAtText">{% if finalized_at %}កាលពីថ្ងៃទី {{ finalized_at|date:"d/m/Y H:i" }}{% endif %}</span>! ប្រសិនបើចង់ផ្លាស់ប្តូរវេន សូមចុចប៊ូតុង «កែប្រែវេនឡើងវិញ»។
+            </div>
+            <button type="button" class="btn btn-xs btn-outline-success fw-bold ms-2" onclick="unlockRequest()">
+                <i class="fa-solid fa-unlock me-1"></i> កែប្រែ
+            </button>
         </div>
     </div>
 
@@ -211,8 +283,14 @@
                 {% for s in day.slots %}
                 <div class="col-12 col-md-6 col-lg-4">
                     <div id="slot_card_{{ s.id }}" 
-                         class="shift-card p-3.5 {% if s.is_teacher_registered %}selected{% elif s.assigned_role_is_full %}full{% endif %}"
-                         {% if is_role_requestable %}onclick="toggleSlotSelection({{ s.id }})"{% endif %}>
+                         data-slot-id="{{ s.id }}"
+                         data-registered="{% if s.is_teacher_registered %}1{% else %}0{% endif %}"
+                         data-role-full="{% if s.assigned_role_is_full %}1{% else %}0{% endif %}"
+                         data-slot-title="{{ s.session_name }}"
+                         data-slot-date="{{ s.date|date:'d/m/Y' }}"
+                         data-slot-time="{{ s.start_time|time:'H:i' }} - {{ s.end_time|time:'H:i' }}"
+                         class="shift-card p-3.5 {% if s.is_teacher_registered %}selected{% elif s.assigned_role_is_full %}full{% elif current_count >= required_shifts %}quota-reached{% endif %}"
+                         {% if is_role_requestable %}onclick="handleSlotCardClick({{ s.id }})"{% endif %}>
                         
                         <!-- Top Header -->
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -242,6 +320,10 @@
                                 <span class="badge bg-light text-muted border px-2 py-1">
                                     ចាត់តាំងដោយ Admin
                                 </span>
+                                {% elif current_count >= required_shifts %}
+                                <span class="badge bg-secondary text-white px-2 py-1">
+                                    <i class="fa-solid fa-lock me-1"></i> គ្រប់កូតា {{ required_shifts }} វេន
+                                </span>
                                 {% else %}
                                 <span class="badge bg-light text-muted border px-2 py-1">
                                     <i class="fa-solid fa-plus me-1"></i> ទំនេរ
@@ -265,18 +347,20 @@
                         <div class="pt-2 border-top d-flex justify-content-between align-items-center">
                             <small class="text-muted" style="font-size: 0.75rem;">
                                 {% if is_role_requestable %}
-                                <i class="fa-solid fa-fingerprint me-1"></i> ចុចដើម្បីជ្រើសរើស/ដកចេញ (អាទិភាពអ្នកសុំមុន)
+                                <i class="fa-solid fa-fingerprint me-1"></i> ចុចដើម្បីជ្រើសរើស/ដកចេញ
                                 {% else %}
                                 <i class="fa-solid fa-shield-halved me-1"></i> កំណត់ដោយគណៈគ្រប់គ្រង
                                 {% endif %}
                             </small>
-                            <button type="button" class="btn btn-sm {% if s.is_teacher_registered %}btn-success{% elif s.assigned_role_is_full or not is_role_requestable %}btn-secondary disabled{% else %}btn-outline-primary{% endif %} fw-bold px-3 py-1" id="slot_btn_{{ s.id }}">
+                            <button type="button" class="btn btn-sm {% if s.is_teacher_registered %}btn-success{% elif s.assigned_role_is_full or not is_role_requestable %}btn-secondary disabled{% elif current_count >= required_shifts %}btn-secondary disabled{% else %}btn-outline-primary{% endif %} fw-bold px-3 py-1" id="slot_btn_{{ s.id }}">
                                 {% if s.is_teacher_registered %}
                                 <i class="fa-solid fa-check me-1"></i> ចុះឈ្មោះហើយ
                                 {% elif s.assigned_role_is_full %}
                                 ពេញ
                                 {% elif not is_role_requestable %}
                                 Admin
+                                {% elif current_count >= required_shifts %}
+                                គ្រប់កូតាហើយ
                                 {% else %}
                                 ជ្រើសរើស
                                 {% endif %}
@@ -295,8 +379,97 @@
         {% endfor %}
     </div>
 
+    <!-- Bottom Summary & Finalize Action Card -->
+    {% if is_role_requestable %}
+    <div class="card border shadow-sm rounded-4 mt-5 mb-4 p-4 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-1">
+                    <i class="fa-solid fa-clipboard-check text-success me-2"></i>ស្ថានភាពនៃការស្នើសុំវេនអនុរក្ស
+                </h5>
+                <p class="text-muted small mb-0">
+                    កូតាកំណត់៖ <strong>{{ required_shifts }} វេន</strong> • ស្ថានភាព៖ 
+                    <span id="bottomStatusBadge">
+                        {% if is_over_quota %}
+                        <span class="badge bg-danger">លើសកូតាកំណត់ ({{ current_count }}/{{ required_shifts }} វេន)</span>
+                        {% elif is_finalized %}
+                        <span class="badge bg-success">បានបញ្ចប់ការស្នើសុំជាផ្លូវការរួចរាល់</span>
+                        {% elif can_finalize %}
+                        <span class="badge bg-success">បានជ្រើសរើសគ្រប់ {{ required_shifts }}/{{ required_shifts }} វេន (រួចរាល់ក្នុងការបញ្ចប់)</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">នៅខ្វះ {{ remaining_to_choose }} វេនទៀត</span>
+                        {% endif %}
+                    </span>
+                </p>
+            </div>
+            <div id="bottomFinalizeActionContainer">
+                {% if is_over_quota %}
+                <button type="button" class="btn btn-danger fw-bold px-4 py-2.5 shadow-xs disabled">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> លើសកូតា (សូមដកចេញ {{ over_count }} វេន)
+                </button>
+                {% elif is_finalized %}
+                <button type="button" class="btn btn-outline-secondary fw-bold px-4 py-2.5" onclick="unlockRequest()">
+                    <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
+                </button>
+                {% elif can_finalize %}
+                <button type="button" class="btn btn-success fw-bold px-4 py-2.5 shadow pulse-green" onclick="showFinalizeModal()">
+                    <i class="fa-solid fa-circle-check me-1"></i> បញ្ចប់ និងបញ្ជាក់ការស្នើសុំ (គ្រប់ {{ required_shifts }}/{{ required_shifts }} វេន)
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-outline-warning text-dark fw-bold px-4 py-2.5" onclick="alertUnderQuota()">
+                    <i class="fa-solid fa-lock me-1"></i> បញ្ចប់ការស្នើសុំ (ខ្វះ {{ remaining_to_choose }} វេន)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
     {% endif %}
 
+    {% endif %}
+
+</div>
+
+<!-- Finalize Confirmation Modal -->
+<div class="modal fade" id="finalizeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-success text-white border-0 py-3" style="border-radius: 1.25rem 1.25rem 0 0;">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-circle-check me-2"></i>បញ្ជាក់ការបញ្ចប់ការស្នើសុំវេនអនុរក្ស
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-3">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle mb-2" style="width: 60px; height: 60px;">
+                        <i class="fa-solid fa-shield-halved fs-3"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">សូមត្រួតពិនិត្យបញ្ជីវេនដែលលោកគ្រូ-អ្នកគ្រូបានជ្រើសរើស</h6>
+                    <p class="text-muted small mb-0">លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសគ្រប់ចំនួនកូតា <strong><span id="modalQuotaText">{{ required_shifts }} / {{ required_shifts }}</span> វេន</strong> ត្រឹមត្រូវ ១០០%។</p>
+                </div>
+
+                <div class="card border bg-light mb-3">
+                    <div class="card-header bg-transparent py-2 border-bottom">
+                        <small class="fw-bold text-dark"><i class="fa-regular fa-calendar-check text-primary me-1"></i> បញ្ជីវេនដែលបានជ្រើសរើស៖</small>
+                    </div>
+                    <div class="card-body p-2" id="modalSelectedShiftsList">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 px-3 small border-0 rounded-3 mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    <strong>បញ្ជាក់៖</strong> នៅពេលចុច «បញ្ចប់ការស្នើសុំ» ប្រព័ន្ធនឹងរក្សាទុកជាផ្លូវការជូនគណៈគ្រប់គ្រងសាលា។ លោកគ្រូ-អ្នកគ្រូនៅតែអាចចុច «កែប្រែឡើងវិញ» បានគ្រប់ពេលវេលា ប្រសិនបើគណៈគ្រប់គ្រងមិនទាន់បិទការចុះឈ្មោះ។
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2.5" style="border-radius: 0 0 1.25rem 1.25rem;">
+                <button type="button" class="btn btn-light fw-bold px-3" data-bs-dismiss="modal">ត្រឡប់ក្រោយ</button>
+                <button type="button" class="btn btn-success fw-bold px-4" id="btnSubmitFinalize" onclick="executeFinalize()">
+                    <i class="fa-solid fa-check me-1"></i> បញ្ជាក់ និងបញ្ចប់ការស្នើសុំ
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Floating Toast for Feedback -->
@@ -313,6 +486,10 @@
 
 <script>
 let isToggling = false;
+let currentCount = parseInt("{{ current_count|default:'0' }}", 10);
+let requiredShifts = parseInt("{{ required_shifts|default:'0' }}", 10);
+let isFinalized = {% if is_finalized %}true{% else %}false{% endif %};
+const teacherId = "{{ teacher.id }}";
 
 function showToast(message, isSuccess = true) {
     const toastEl = document.getElementById('actionToast');
@@ -321,15 +498,41 @@ function showToast(message, isSuccess = true) {
 
     msgEl.innerText = message;
     toastEl.className = `toast align-items-center text-white border-0 ${isSuccess ? 'bg-success' : 'bg-danger'}`;
-    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
+}
+
+function alertUnderQuota() {
+    const shortage = Math.max(0, requiredShifts - currentCount);
+    showToast(`លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ ${currentCount} វេនប៉ុណ្ណោះ នៅខ្វះ ${shortage} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ ${requiredShifts} វេន ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំបាន។`, false);
+}
+
+function handleSlotCardClick(slotId) {
+    if (isToggling) return;
+
+    if (isFinalized) {
+        showToast('លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ការស្នើសុំរួចរាល់ហើយ! ប្រសិនបើចង់ផ្លាស់ប្តូរវេន សូមចុចប៊ូតុង «កែប្រែឡើងវិញ» ជាមុនសិន។', false);
+        return;
+    }
+
+    const card = document.getElementById(`slot_card_${slotId}`);
+    if (!card) return;
+
+    const isReg = card.getAttribute('data-registered') === '1';
+
+    // STRICT UPPER BOUND CHECK (មិនអាចលើស)
+    if (!isReg && currentCount >= requiredShifts) {
+        showToast(`លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសគ្រប់ចំនួនកូតាកំណត់ (${requiredShifts} វេន) រួចរាល់ហើយ មិនអាចជ្រើសរើសលើសពីនេះបានទេ! ប្រសិនបើចង់ប្តូរវេន សូមដកវេនចាស់ចេញជាមុនសិន។`, false);
+        return;
+    }
+
+    toggleSlotSelection(slotId);
 }
 
 function toggleSlotSelection(slotId) {
     if (isToggling) return;
     isToggling = true;
 
-    const teacherId = "{{ teacher.id }}";
     const formData = new FormData();
     formData.append('slot_id', slotId);
     if (teacherId) formData.append('teacher_id', teacherId);
@@ -349,75 +552,24 @@ function toggleSlotSelection(slotId) {
             return;
         }
 
-        // Update Card UI
-        const card = document.getElementById(`slot_card_${slotId}`);
-        const badge = document.getElementById(`slot_badge_${slotId}`);
-        const btn = document.getElementById(`slot_btn_${slotId}`);
-        const remainingSpan = document.getElementById(`slot_remaining_${slotId}`);
+        currentCount = data.current_count;
+        requiredShifts = data.required_shifts;
+        isFinalized = data.is_finalized || false;
 
+        // Update target card data attributes & remaining spots
+        const card = document.getElementById(`slot_card_${slotId}`);
+        const remainingSpan = document.getElementById(`slot_remaining_${slotId}`);
         if (remainingSpan && data.role_remaining !== undefined) {
             remainingSpan.innerText = data.role_remaining;
         }
 
-        if (data.is_registered) {
-            if (card) {
-                card.classList.add('selected');
-                card.classList.remove('full');
-            }
-            if (badge) badge.innerHTML = '<span class="badge bg-success text-white px-2.5 py-1 fw-bold"><i class="fa-solid fa-check me-1"></i> បានចុះឈ្មោះ</span>';
-            if (btn) {
-                btn.className = 'btn btn-sm btn-success fw-bold px-3 py-1';
-                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ចុះឈ្មោះហើយ';
-            }
-        } else {
-            if (card) card.classList.remove('selected');
-            if (data.role_is_full) {
-                if (card) card.classList.add('full');
-                if (badge) badge.innerHTML = '<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> ពេញសម្រាប់មុខងារនេះ</span>';
-                if (btn) {
-                    btn.className = 'btn btn-sm btn-secondary disabled fw-bold px-3 py-1';
-                    btn.innerText = 'ពេញ';
-                }
-            } else {
-                if (card) card.classList.remove('full');
-                if (badge) badge.innerHTML = '<span class="badge bg-light text-muted border px-2 py-1"><i class="fa-solid fa-plus me-1"></i> ទំនេរ</span>';
-                if (btn) {
-                    btn.className = 'btn btn-sm btn-outline-primary fw-bold px-3 py-1';
-                    btn.innerText = 'ជ្រើសរើស';
-                }
-            }
+        if (card) {
+            card.setAttribute('data-registered', data.is_registered ? '1' : '0');
+            card.setAttribute('data-role-full', data.role_is_full ? '1' : '0');
         }
 
-        // Update Global Quota Progress
-        const countSpan = document.getElementById('currentCountSpan');
-        const progressBar = document.getElementById('quotaProgressBar');
-        const remainingNote = document.getElementById('quotaRemainingNote');
-        const quotaText = document.getElementById('quotaText');
-
-        if (countSpan) countSpan.innerText = data.current_count;
-        if (progressBar) {
-            progressBar.style.width = `${data.progress_percentage}%`;
-            if (data.current_count >= data.required_shifts) {
-                progressBar.className = 'progress-bar bg-success progress-bar-striped progress-bar-animated';
-            } else {
-                progressBar.className = 'progress-bar bg-primary progress-bar-striped progress-bar-animated';
-            }
-        }
-
-        if (quotaText) {
-            quotaText.className = (data.current_count >= data.required_shifts) ? 'text-success fs-6' : 'text-primary fs-6';
-        }
-
-        if (remainingNote) {
-            if (data.current_count >= data.required_shifts) {
-                remainingNote.className = 'small mt-1 text-end text-success fw-bold';
-                remainingNote.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់កូតារួចរាល់ហើយ!';
-            } else {
-                remainingNote.className = 'small mt-1 text-end text-muted';
-                remainingNote.innerHTML = `<i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">${data.remaining_to_choose}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។`;
-            }
-        }
-
+        // Global Sync
+        syncAllSlotsAndQuotaUI(data);
         showToast(data.message || 'បានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ!', true);
     })
     .catch(err => {
@@ -425,5 +577,320 @@ function toggleSlotSelection(slotId) {
         showToast('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ!', false);
     });
 }
+
+function syncAllSlotsAndQuotaUI(data) {
+    const isOverQuota = currentCount > requiredShifts;
+    const canFinalize = (currentCount === requiredShifts) && !isFinalized;
+    const remainingToChoose = Math.max(0, requiredShifts - currentCount);
+    const overCount = Math.max(0, currentCount - requiredShifts);
+    const progressPct = data && data.progress_percentage !== undefined ? data.progress_percentage : Math.min(100, Math.round(currentCount / requiredShifts * 100));
+
+    // 1. Update All Cards on Page
+    document.querySelectorAll('.shift-card').forEach(c => {
+        const sid = c.getAttribute('data-slot-id');
+        const isReg = c.getAttribute('data-registered') === '1';
+        const isFull = c.getAttribute('data-role-full') === '1';
+        const badge = document.getElementById(`slot_badge_${sid}`);
+        const btn = document.getElementById(`slot_btn_${sid}`);
+
+        if (isReg) {
+            c.className = 'shift-card p-3.5 selected';
+            if (badge) badge.innerHTML = '<span class="badge bg-success text-white px-2.5 py-1 fw-bold"><i class="fa-solid fa-check me-1"></i> បានចុះឈ្មោះ</span>';
+            if (btn) {
+                btn.className = 'btn btn-sm btn-success fw-bold px-3 py-1';
+                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ចុះឈ្មោះហើយ';
+            }
+        } else if (isFull) {
+            c.className = 'shift-card p-3.5 full';
+            if (badge) badge.innerHTML = '<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> ពេញសម្រាប់មុខងារនេះ</span>';
+            if (btn) {
+                btn.className = 'btn btn-sm btn-secondary disabled fw-bold px-3 py-1';
+                btn.innerText = 'ពេញ';
+            }
+        } else if (currentCount >= requiredShifts) {
+            // STRICT UPPER BOUND LOCK: Cards become disabled visually
+            c.className = 'shift-card p-3.5 quota-reached';
+            if (badge) badge.innerHTML = `<span class="badge bg-secondary text-white px-2 py-1"><i class="fa-solid fa-lock me-1"></i> គ្រប់កូតា ${requiredShifts} វេន</span>`;
+            if (btn) {
+                btn.className = 'btn btn-sm btn-secondary disabled fw-bold px-3 py-1';
+                btn.innerText = 'គ្រប់កូតាហើយ';
+            }
+        } else {
+            // Available
+            c.className = 'shift-card p-3.5';
+            if (badge) badge.innerHTML = '<span class="badge bg-light text-muted border px-2 py-1"><i class="fa-solid fa-plus me-1"></i> ទំនេរ</span>';
+            if (btn) {
+                btn.className = 'btn btn-sm btn-outline-primary fw-bold px-3 py-1';
+                btn.innerText = 'ជ្រើសរើស';
+            }
+        }
+    });
+
+    // 2. Update Progress Counter & Bar
+    const countSpan = document.getElementById('currentCountSpan');
+    const reqSpan = document.getElementById('requiredCountSpan');
+    const progressBar = document.getElementById('quotaProgressBar');
+    const quotaText = document.getElementById('quotaText');
+    const remainingNote = document.getElementById('quotaRemainingNote');
+
+    if (countSpan) countSpan.innerText = currentCount;
+    if (reqSpan) reqSpan.innerText = requiredShifts;
+
+    if (progressBar) {
+        progressBar.style.width = isOverQuota ? '100%' : `${progressPct}%`;
+        if (isOverQuota) {
+            progressBar.className = 'progress-bar bg-danger progress-bar-striped progress-bar-animated';
+        } else if (currentCount >= requiredShifts) {
+            progressBar.className = 'progress-bar bg-success progress-bar-striped progress-bar-animated';
+        } else {
+            progressBar.className = 'progress-bar bg-primary progress-bar-striped progress-bar-animated';
+        }
+    }
+
+    if (quotaText) {
+        if (isOverQuota) {
+            quotaText.className = 'text-danger fs-6';
+        } else if (currentCount >= requiredShifts) {
+            quotaText.className = 'text-success fs-6';
+        } else {
+            quotaText.className = 'text-primary fs-6';
+        }
+    }
+
+    if (remainingNote) {
+        if (isOverQuota) {
+            remainingNote.className = 'small mt-1 text-end text-danger fw-bold';
+            remainingNote.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> លើសកូតា <strong id="remainingDiffSpan">${overCount}</strong> វេន! សូមដកវេនលើសចេញវិញ។`;
+        } else if (currentCount >= requiredShifts) {
+            remainingNote.className = 'small mt-1 text-end text-success fw-bold';
+            remainingNote.innerHTML = `<i class="fa-solid fa-circle-check text-success me-1"></i> លោកគ្រូ-អ្នកគ្រូ បានចុះឈ្មោះគ្រប់ ${requiredShifts} វេនរួចរាល់ហើយ!`;
+        } else {
+            remainingNote.className = 'small mt-1 text-end text-muted';
+            remainingNote.innerHTML = `<i class="fa-solid fa-clock text-warning me-1"></i> នៅខ្វះ <strong id="remainingCountSpan">${remainingToChoose}</strong> វេនទៀត ដើម្បីគ្រប់កូតា។`;
+        }
+    }
+
+    // 3. Update Sticky Banners
+    const overStickyAlert = document.getElementById('overQuotaStickyAlert');
+    const finalizedStickyAlert = document.getElementById('finalizedStickyAlert');
+    const overQuotaLiveText = document.getElementById('overQuotaLiveText');
+    const overQuotaDiffLive = document.getElementById('overQuotaDiffLive');
+
+    if (overStickyAlert) {
+        if (isOverQuota) {
+            overStickyAlert.classList.remove('d-none');
+            if (overQuotaLiveText) overQuotaLiveText.innerText = `${currentCount} / ${requiredShifts}`;
+            if (overQuotaDiffLive) overQuotaDiffLive.innerText = overCount;
+        } else {
+            overStickyAlert.classList.add('d-none');
+        }
+    }
+
+    if (finalizedStickyAlert) {
+        if (isFinalized) {
+            finalizedStickyAlert.classList.remove('d-none');
+        } else {
+            finalizedStickyAlert.classList.add('d-none');
+        }
+    }
+
+    // 4. Update Finalize Buttons (Sticky & Bottom)
+    updateActionButtons(isOverQuota, isFinalized, canFinalize, remainingToChoose, overCount);
+}
+
+function updateActionButtons(isOverQuota, isFinalized, canFinalize, remainingToChoose, overCount) {
+    const stickyContainer = document.getElementById('finalizeActionContainer');
+    const bottomContainer = document.getElementById('bottomFinalizeActionContainer');
+    const bottomBadge = document.getElementById('bottomStatusBadge');
+
+    let buttonHtml = '';
+    let badgeHtml = '';
+
+    if (isOverQuota) {
+        buttonHtml = `
+            <button type="button" class="btn btn-sm btn-danger fw-bold w-100 py-2 shadow-xs disabled">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> លើសកូតា (ដកចេញ ${overCount} វេន)
+            </button>`;
+        badgeHtml = `<span class="badge bg-danger">លើសកូតាកំណត់ (${currentCount}/${requiredShifts} វេន)</span>`;
+    } else if (isFinalized) {
+        buttonHtml = `
+            <div class="d-flex flex-column gap-1">
+                <span class="badge bg-success py-1.5 px-2 text-wrap shadow-xs">
+                    <i class="fa-solid fa-circle-check me-1"></i> បានបញ្ចប់ការស្នើសុំរួចរាល់
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="unlockRequest()">
+                    <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
+                </button>
+            </div>`;
+        badgeHtml = `<span class="badge bg-success">បានបញ្ចប់ការស្នើសុំជាផ្លូវការរួចរាល់</span>`;
+    } else if (canFinalize) {
+        buttonHtml = `
+            <button type="button" class="btn btn-sm btn-success fw-bold w-100 py-2 shadow pulse-green" onclick="showFinalizeModal()" id="btnFinalizeAction">
+                <i class="fa-solid fa-circle-check me-1"></i> បញ្ចប់ការស្នើសុំ (គ្រប់ ${requiredShifts}/${requiredShifts} វេន)
+            </button>`;
+        badgeHtml = `<span class="badge bg-success">បានជ្រើសរើសគ្រប់ ${requiredShifts}/${requiredShifts} វេន (រួចរាល់ក្នុងការបញ្ចប់)</span>`;
+    } else {
+        buttonHtml = `
+            <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold w-100 py-2 shadow-xs" onclick="alertUnderQuota()" id="btnFinalizeAction">
+                <i class="fa-solid fa-lock me-1"></i> បញ្ចប់ការស្នើសុំ (ខ្វះ ${remainingToChoose} វេន)
+            </button>`;
+        badgeHtml = `<span class="badge bg-warning text-dark">នៅខ្វះ ${remainingToChoose} វេនទៀត</span>`;
+    }
+
+    if (stickyContainer) stickyContainer.innerHTML = buttonHtml;
+    if (bottomContainer) {
+        if (canFinalize) {
+            bottomContainer.innerHTML = `
+                <button type="button" class="btn btn-success fw-bold px-4 py-2.5 shadow pulse-green" onclick="showFinalizeModal()">
+                    <i class="fa-solid fa-circle-check me-1"></i> បញ្ចប់ និងបញ្ជាក់ការស្នើសុំ (គ្រប់ ${requiredShifts}/${requiredShifts} វេន)
+                </button>`;
+        } else if (isFinalized) {
+            bottomContainer.innerHTML = `
+                <button type="button" class="btn btn-outline-secondary fw-bold px-4 py-2.5" onclick="unlockRequest()">
+                    <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
+                </button>`;
+        } else if (isOverQuota) {
+            bottomContainer.innerHTML = `
+                <button type="button" class="btn btn-danger fw-bold px-4 py-2.5 shadow-xs disabled">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> លើសកូតា (សូមដកចេញ ${overCount} វេន)
+                </button>`;
+        } else {
+            bottomContainer.innerHTML = `
+                <button type="button" class="btn btn-outline-warning text-dark fw-bold px-4 py-2.5" onclick="alertUnderQuota()">
+                    <i class="fa-solid fa-lock me-1"></i> បញ្ចប់ការស្នើសុំ (ខ្វះ ${remainingToChoose} វេន)
+                </button>`;
+        }
+    }
+    if (bottomBadge) bottomBadge.innerHTML = badgeHtml;
+}
+
+function showFinalizeModal() {
+    if (currentCount < requiredShifts) {
+        alertUnderQuota();
+        return;
+    }
+    if (currentCount > requiredShifts) {
+        showToast(`លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសកូតាកំណត់ (${currentCount}/${requiredShifts} វេន)! សូមដកវេនលើសចេញជាមុនសិន។`, false);
+        return;
+    }
+
+    // Build shift list in modal
+    const listContainer = document.getElementById('modalSelectedShiftsList');
+    const modalQuota = document.getElementById('modalQuotaText');
+    if (modalQuota) modalQuota.innerText = `${currentCount} / ${requiredShifts}`;
+
+    if (listContainer) {
+        let itemsHtml = '<ul class="list-group list-group-flush">';
+        let idx = 1;
+        document.querySelectorAll('.shift-card[data-registered="1"]').forEach(c => {
+            const title = c.getAttribute('data-slot-title') || 'វេនប្រឡង';
+            const date = c.getAttribute('data-slot-date') || '';
+            const time = c.getAttribute('data-slot-time') || '';
+            itemsHtml += `
+                <li class="list-group-item bg-transparent px-2 py-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-primary rounded-pill me-2">${idx}</span>
+                        <strong class="text-dark">${title}</strong>
+                        <div class="small text-muted ms-4">${date} (${time})</div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success">
+                        <i class="fa-solid fa-check me-1"></i> ជ្រើសរើស
+                    </span>
+                </li>`;
+            idx++;
+        });
+        itemsHtml += '</ul>';
+        listContainer.innerHTML = itemsHtml;
+    }
+
+    const modalEl = document.getElementById('finalizeConfirmModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function executeFinalize() {
+    const submitBtn = document.getElementById('btnSubmitFinalize');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...';
+    }
+
+    const formData = new FormData();
+    if (teacherId) formData.append('teacher_id', teacherId);
+
+    fetch("{% url 'api_finalize_invigilator_request' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បញ្ជាក់ និងបញ្ចប់ការស្នើសុំ';
+        }
+
+        const modalEl = document.getElementById('finalizeConfirmModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        if (!data.success) {
+            showToast(data.error || 'មិនអាចបញ្ចប់ការស្នើសុំបានទេ!', false);
+            return;
+        }
+
+        isFinalized = true;
+        const finalizedAtText = document.getElementById('finalizedAtText');
+        if (finalizedAtText && data.finalized_at) {
+            finalizedAtText.innerText = `កាលពីថ្ងៃទី ${data.finalized_at}`;
+        }
+
+        syncAllSlotsAndQuotaUI();
+        showToast(data.message || 'បានបញ្ចប់ការស្នើសុំដោយជោគជ័យ!', true);
+    })
+    .catch(err => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> បញ្ជាក់ និងបញ្ចប់ការស្នើសុំ';
+        }
+        showToast('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ!', false);
+    });
+}
+
+function unlockRequest() {
+    if (!confirm('តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់កែប្រែវេនដែលបានជ្រើសរើសឡើងវិញមែនទេ?')) return;
+
+    const formData = new FormData();
+    if (teacherId) formData.append('teacher_id', teacherId);
+
+    fetch("{% url 'api_unlock_invigilator_request' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            showToast(data.error || 'មិនអាចដោះសោការស្នើសុំបានទេ!', false);
+            return;
+        }
+
+        isFinalized = false;
+        syncAllSlotsAndQuotaUI();
+        showToast(data.message || 'បានអនុញ្ញាតឱ្យកែប្រែវេនឡើងវិញ!', true);
+    })
+    .catch(err => {
+        showToast('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ!', false);
+    });
+}
 </script>
 {% endblock %}
+

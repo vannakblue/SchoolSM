@@ -19,13 +19,28 @@
                     {% endif %}
                 </h2>
             </div>
-            {% if is_edit %}
-            <div class="d-flex gap-2">
+            {% if is_edit and plan %}
+            <div class="d-flex flex-wrap gap-2">
                 <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn btn-primary fw-bold btn-sm">
                     <i class="fa-solid fa-table-cells me-1"></i> តារាងម៉ាទ្រីសអនុរក្ស
                 </a>
                 <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-outline-primary fw-bold btn-sm">
-                    <i class="fa-solid fa-users-gear me-1"></i> កូតាគ្រូ
+                    <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                </a>
+                <a href="{% url 'exam_invigilator_roster_print' plan.id %}" target="_blank" class="btn btn-outline-dark fw-bold btn-sm">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពតារាងចាត់តាំង &amp; ចុះហត្ថលេខា
+                </a>
+            </div>
+            {% elif existing_plan %}
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'exam_invigilator_roster_view' existing_plan.id %}" class="btn btn-primary fw-bold btn-sm">
+                    <i class="fa-solid fa-table-cells me-1"></i> តារាងម៉ាទ្រីសអនុរក្ស
+                </a>
+                <a href="{% url 'exam_invigilator_quotas_manage' existing_plan.id %}" class="btn btn-outline-primary fw-bold btn-sm">
+                    <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                </a>
+                <a href="{% url 'exam_invigilator_roster_print' existing_plan.id %}" target="_blank" class="btn btn-outline-dark fw-bold btn-sm">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពតារាងចាត់តាំង &amp; ចុះហត្ថលេខា
                 </a>
             </div>
             {% endif %}
@@ -130,55 +145,166 @@
                     </div>
                 </div>
 
-                <!-- Teacher Shift Quotas Configuration (Group 1 vs Group 2) -->
+                <!-- Teacher Shift Quotas Configuration (Dynamic Teacher Quota Groups) -->
                 <div class="p-3.5 bg-light rounded-4 border mb-3 shadow-xs">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
                         <div>
                             <h6 class="fw-bold text-dark mb-0">
                                 <i class="fa-solid fa-users-gear text-primary me-2"></i>កំណត់កូតាចំនួនវេនសម្រាប់គ្រូជ្រើសរើស (Teacher Quota Groups)
                             </h6>
-                            <small class="text-muted">Admin មានសិទ្ធិកំណត់ចំនួនវេនសម្រាប់គ្រូជ្រើសរើសតាមប្រភេទនីមួយៗ (Admin ជាអ្នកចាត់តាំងឈ្មោះគ្រូចូលក្រុមជាមុនសិន)</small>
+                            <small class="text-muted">Admin មានសិទ្ធិកំណត់ បន្ថែម លុប ឬកែប្រែប្រភេទក្រុមគ្រូនីមួយៗ និងចំនួនវេនកូតា (Admin ជាអ្នកចាត់តាំងឈ្មោះគ្រូចូលក្រុមជាមុនសិន)</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if is_edit and plan %}
+                            <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill shadow-xs px-3 text-nowrap">
+                                <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                            </a>
+                            {% elif existing_plan %}
+                            <a href="{% url 'exam_invigilator_quotas_manage' existing_plan.id %}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill shadow-xs px-3 text-nowrap">
+                                <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-primary fw-bold rounded-pill shadow-xs px-3" onclick="addNewQuotaGroup()">
+                                <i class="fa-solid fa-plus me-1"></i> បន្ថែមប្រភេទក្រុមថ្មី (+ Add Group)
+                            </button>
                         </div>
                     </div>
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="p-3 bg-white rounded-3 border h-100">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="form-label small fw-bold text-dark mb-0">
-                                        👨‍🏫 ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)
-                                    </label>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary">ប្រភេទទី១</span>
-                                </div>
-                                <div class="input-group my-2">
-                                    <input type="number" min="1" max="20" name="default_regular_quota" class="form-control fw-bold text-center fs-6" value="{{ plan.default_regular_quota|default:4 }}" required>
-                                    <span class="input-group-text fw-bold">វេន / ពេល</span>
-                                </div>
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">កូតាវេនសម្រាប់គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់ (លំនាំដើម ៤ វេន)</small>
-                            </div>
-                        </div>
+                    <!-- Hidden inputs to preserve backwards compatibility -->
+                    <input type="hidden" name="default_regular_quota" id="hidden_default_regular_quota" value="{{ plan.default_regular_quota|default:4 }}">
+                    <input type="hidden" name="default_office_quota" id="hidden_default_office_quota" value="{{ plan.default_office_quota|default:5 }}">
 
-                        <div class="col-md-6">
-                            <div class="p-3 bg-white rounded-3 border h-100">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="form-label small fw-bold text-dark mb-0">
-                                        💼 ក្រុមគ្រូប្រភេទទី២ (គ្រូការិយាល័យ / រដ្ឋបាល)
-                                    </label>
-                                    <span class="badge bg-info-subtle text-info border border-info">ប្រភេទទី២</span>
+                    <div class="row g-3" id="quota_groups_container">
+                        {% if duty_groups %}
+                            {% for g in duty_groups %}
+                            <div class="col-md-6 quota-group-item" data-group-index="{{ forloop.counter }}">
+                                <div class="p-3 bg-white rounded-3 border h-100 position-relative shadow-2xs">
+                                    <input type="hidden" name="quota_group_id[]" value="{{ g.id }}">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex align-items-center gap-1.5 flex-grow-1 me-2">
+                                            <span class="group-icon fs-5">{% if forloop.counter == 1 %}👨‍🏫{% elif forloop.counter == 2 %}💼{% elif forloop.counter == 3 %}🏢{% else %}👥{% endif %}</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary group-badge">ប្រភេទទី{{ forloop.counter }}</span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 btn-delete-group" onclick="removeQuotaGroup(this)" title="លុបប្រភេទនេះ">
+                                            <i class="fa-solid fa-trash-can me-1"></i>លុប
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទក្រុមគ្រូ *</label>
+                                        <input type="text" name="quota_group_name[]" class="form-control form-control-sm fw-bold quota-name-input" value="{{ g.name }}" required placeholder="ឧ. ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)">
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">កូតាចំនួនវេន *</label>
+                                        <div class="input-group">
+                                            <input type="number" min="1" max="30" name="quota_group_shifts[]" class="form-control fw-bold text-center quota-shifts-input" value="{{ g.required_shifts }}" required oninput="syncLegacyQuotas()">
+                                            <span class="input-group-text fw-bold">វេន / ពេល</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label small text-muted mb-1">ការពិពណ៌នា / កំណត់សម្គាល់</label>
+                                        <input type="text" name="quota_group_description[]" class="form-control form-control-sm text-muted" value="{{ g.description|default:'' }}" placeholder="ឧ. កូតាវេនសម្រាប់គ្រូបង្រៀនទូទៅ...">
+                                    </div>
                                 </div>
-                                <div class="input-group my-2">
-                                    <input type="number" min="1" max="20" name="default_office_quota" class="form-control fw-bold text-center fs-6" value="{{ plan.default_office_quota|default:5 }}" required>
-                                    <span class="input-group-text fw-bold">វេន / ពេល</span>
-                                </div>
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">កូតាវេនសម្រាប់គ្រូបម្រើការងារនៅការិយាល័យ រដ្ឋបាល បណ្ណារក្ស (លំនាំដើម ៥ វេន)</small>
                             </div>
-                        </div>
+                            {% endfor %}
+                        {% else %}
+                            <!-- Default Group 1 -->
+                            <div class="col-md-6 quota-group-item" data-group-index="1">
+                                <div class="p-3 bg-white rounded-3 border h-100 position-relative shadow-2xs">
+                                    <input type="hidden" name="quota_group_id[]" value="">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex align-items-center gap-1.5 flex-grow-1 me-2">
+                                            <span class="group-icon fs-5">👨‍🏫</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary group-badge">ប្រភេទទី១</span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 btn-delete-group" onclick="removeQuotaGroup(this)" title="លុបប្រភេទនេះ">
+                                            <i class="fa-solid fa-trash-can me-1"></i>លុប
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទក្រុមគ្រូ *</label>
+                                        <input type="text" name="quota_group_name[]" class="form-control form-control-sm fw-bold quota-name-input" value="ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)" required>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">កូតាចំនួនវេន *</label>
+                                        <div class="input-group">
+                                            <input type="number" min="1" max="30" name="quota_group_shifts[]" class="form-control fw-bold text-center quota-shifts-input" value="{{ plan.default_regular_quota|default:4 }}" required oninput="syncLegacyQuotas()">
+                                            <span class="input-group-text fw-bold">វេន / ពេល</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label small text-muted mb-1">ការពិពណ៌នា / កំណត់សម្គាល់</label>
+                                        <input type="text" name="quota_group_description[]" class="form-control form-control-sm text-muted" value="កូតាវេនសម្រាប់គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់ (លំនាំដើម ៤ វេន)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Default Group 2 -->
+                            <div class="col-md-6 quota-group-item" data-group-index="2">
+                                <div class="p-3 bg-white rounded-3 border h-100 position-relative shadow-2xs">
+                                    <input type="hidden" name="quota_group_id[]" value="">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex align-items-center gap-1.5 flex-grow-1 me-2">
+                                            <span class="group-icon fs-5">💼</span>
+                                            <span class="badge bg-info-subtle text-info border border-info group-badge">ប្រភេទទី២</span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 btn-delete-group" onclick="removeQuotaGroup(this)" title="លុបប្រភេទនេះ">
+                                            <i class="fa-solid fa-trash-can me-1"></i>លុប
+                                        </button>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទក្រុមគ្រូ *</label>
+                                        <input type="text" name="quota_group_name[]" class="form-control form-control-sm fw-bold quota-name-input" value="ក្រុមគ្រូប្រភេទទី២ (គ្រូការិយាល័យ / រដ្ឋបាល)" required>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold text-dark mb-1">កូតាចំនួនវេន *</label>
+                                        <div class="input-group">
+                                            <input type="number" min="1" max="30" name="quota_group_shifts[]" class="form-control fw-bold text-center quota-shifts-input" value="{{ plan.default_office_quota|default:5 }}" required oninput="syncLegacyQuotas()">
+                                            <span class="input-group-text fw-bold">វេន / ពេល</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label small text-muted mb-1">ការពិពណ៌នា / កំណត់សម្គាល់</label>
+                                        <input type="text" name="quota_group_description[]" class="form-control form-control-sm text-muted" value="កូតាវេនសម្រាប់គ្រូបម្រើការងារនៅការិយាល័យ រដ្ឋបាល បណ្ណារក្ស (លំនាំដើម ៥ វេន)">
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 rounded-3 small border-0 mt-3 mb-0 d-flex align-items-center">
-                        <i class="fa-solid fa-circle-info text-info me-2 fs-5"></i>
-                        <div>
-                            <strong>ចំណាំ៖</strong> ក្រោយពេលបង្កើតគម្រោង Admin អាចចូលទៅផ្ទាំង <strong>«កូតាគ្រូ»</strong> ដើម្បីចាត់តាំងឈ្មោះគ្រូចូលទៅ <strong>ក្រុមគ្រូប្រភេទទី១</strong> ឬ <strong>ក្រុមគ្រូប្រភេទទី២</strong> (ជាបុគ្គល ឬជាដុំ batch assign) មុនពេលបើកឱ្យគ្រូសុំវេន។
+                    <div class="alert alert-info py-2.5 px-3 rounded-3 small border-0 mt-3 mb-0 d-flex flex-wrap align-items-center justify-content-between gap-3 shadow-xs">
+                        <div class="d-flex align-items-center gap-2.5 flex-grow-1">
+                            <i class="fa-solid fa-circle-info text-info fs-5 flex-shrink-0"></i>
+                            <div>
+                                <strong>ចំណាំ៖</strong> Admin អាចបន្ថែម លុប ឬកែប្រែប្រភេទក្រុមគ្រូខាងលើបានតាមចិត្ត។ ក្រោយពេលបង្កើត/រក្សាទុកគម្រោងរួច Admin អាចចុចប៊ូតុងខាងស្តាំនេះ ដើម្បីចូលទៅកាន់ផ្ទាំង <strong>«កូតាគ្រូ»</strong> ក្នុងការចាត់តាំងឈ្មោះគ្រូចូលទៅកាន់ក្រុមនីមួយៗ (ជាបុគ្គល ឬជាដុំ batch assign) មុនពេលបើកឱ្យគ្រូសុំវេន។
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            {% if is_edit and plan %}
+                            <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3 py-1.5 rounded-pill text-nowrap d-inline-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-users-gear"></i> ចូលទៅផ្ទាំង «កូតាគ្រូ» <i class="fa-solid fa-arrow-right small"></i>
+                            </a>
+                            {% elif existing_plan %}
+                            <a href="{% url 'exam_invigilator_quotas_manage' existing_plan.id %}" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3 py-1.5 rounded-pill text-nowrap d-inline-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-users-gear"></i> ចូលទៅផ្ទាំង «កូតាគ្រូ» <i class="fa-solid fa-arrow-right small"></i>
+                            </a>
+                            {% else %}
+                            <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3 py-1.5 rounded-pill text-nowrap d-inline-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-users-gear"></i> ផ្ទាំង «កូតាគ្រូ» <i class="fa-solid fa-arrow-right small"></i>
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -245,7 +371,7 @@
                                         👤 គណៈកម្មការអនុរក្ស
                                     </label>
                                     <div class="input-group input-group-sm mb-1">
-                                        <input type="number" min="1" max="5000" name="capacity_invigilator" id="capacity_invigilator" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit %}{{ role_invigilator.capacity_per_shift|default:plan.shift_slots.first.max_invigilators|default:20 }}{% else %}{{ default_slots_capacity|default:20 }}{% endif %}" oninput="recalcShiftSummary()">
+                                        <input type="number" min="1" max="5000" name="capacity_invigilator" id="capacity_invigilator" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit %}{% if role_invigilator %}{{ role_invigilator.capacity_per_shift }}{% elif plan.shift_slots.first %}{{ plan.shift_slots.first.max_invigilators }}{% else %}20{% endif %}{% else %}{{ default_slots_capacity|default:20 }}{% endif %}" oninput="recalcShiftSummary()">
                                         <span class="input-group-text fw-bold">នាក់/វេន</span>
                                     </div>
                                     <small class="text-muted d-block" style="font-size: 0.72rem;">ឈរយាមផ្ទាល់ក្នុងបន្ទប់ប្រឡង (កែសម្រួលដោយដៃបាន)</small>
@@ -373,10 +499,21 @@
                     <textarea name="description" class="form-control" rows="3" placeholder="សូមលោកគ្រូ-អ្នកគ្រូ ជ្រើសរើសវេនឱ្យបានគ្រប់តាមកូតាដែលបានកំណត់...">{{ plan.description|default:'' }}</textarea>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                    <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-secondary fw-bold px-4">
-                        <i class="fa-solid fa-xmark me-1"></i> បោះបង់
-                    </a>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 border-top">
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-secondary fw-bold px-4">
+                            <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                        </a>
+                        {% if is_edit and plan %}
+                        <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-outline-primary fw-bold px-3">
+                            <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                        </a>
+                        {% elif existing_plan %}
+                        <a href="{% url 'exam_invigilator_quotas_manage' existing_plan.id %}" class="btn btn-outline-primary fw-bold px-3">
+                            <i class="fa-solid fa-users-gear me-1"></i> ផ្ទាំង «កូតាគ្រូ»
+                        </a>
+                        {% endif %}
+                    </div>
                     <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm">
                         <i class="fa-solid fa-floppy-disk me-1"></i> {% if is_edit %}រក្សាទុកការកែប្រែ{% else %}បង្កើតគម្រោងឥឡូវនេះ{% endif %}
                     </button>
@@ -746,7 +883,114 @@ function recalcShiftSummary() {
     });
 }
 
+const KHMER_NUMERALS = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩', '១០', '១១', '១២'];
+const GROUP_ICONS = ['👨‍🏫', '💼', '🏢', '👥', '🧑‍🔬', '📚', '🎯', '⚙️'];
+
+function toKhmerNum(num) {
+    if (num <= 12) return KHMER_NUMERALS[num];
+    return num.toString();
+}
+
+function reindexQuotaGroups() {
+    const container = document.getElementById('quota_groups_container');
+    if (!container) return;
+    const items = container.querySelectorAll('.quota-group-item');
+    items.forEach((item, idx) => {
+        const num = idx + 1;
+        item.setAttribute('data-group-index', num);
+        const iconSpan = item.querySelector('.group-icon');
+        if (iconSpan) {
+            iconSpan.textContent = GROUP_ICONS[(num - 1) % GROUP_ICONS.length];
+        }
+        const badge = item.querySelector('.group-badge');
+        if (badge) {
+            badge.textContent = `ប្រភេទទី${toKhmerNum(num)}`;
+        }
+        const delBtn = item.querySelector('.btn-delete-group');
+        if (delBtn) {
+            delBtn.style.display = items.length <= 1 ? 'none' : 'inline-block';
+        }
+    });
+    syncLegacyQuotas();
+}
+
+function addNewQuotaGroup() {
+    const container = document.getElementById('quota_groups_container');
+    if (!container) return;
+    const currentCount = container.querySelectorAll('.quota-group-item').length;
+    const newNum = currentCount + 1;
+    const khmerNum = toKhmerNum(newNum);
+    const icon = GROUP_ICONS[(newNum - 1) % GROUP_ICONS.length];
+
+    const col = document.createElement('div');
+    col.className = 'col-md-6 quota-group-item';
+    col.setAttribute('data-group-index', newNum);
+    col.innerHTML = `
+        <div class="p-3 bg-white rounded-3 border h-100 position-relative shadow-2xs">
+            <input type="hidden" name="quota_group_id[]" value="">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-1.5 flex-grow-1 me-2">
+                    <span class="group-icon fs-5">${icon}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary group-badge">ប្រភេទទី${khmerNum}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2 rounded-2 btn-delete-group" onclick="removeQuotaGroup(this)" title="លុបប្រភេទនេះ">
+                    <i class="fa-solid fa-trash-can me-1"></i>លុប
+                </button>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small fw-bold text-dark mb-1">ឈ្មោះប្រភេទក្រុមគ្រូ *</label>
+                <input type="text" name="quota_group_name[]" class="form-control form-control-sm fw-bold quota-name-input" value="ក្រុមគ្រូប្រភេទទី${khmerNum}" required placeholder="ឧ. ក្រុមគ្រូប្រភេទទី${khmerNum}">
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small fw-bold text-dark mb-1">កូតាចំនួនវេន *</label>
+                <div class="input-group">
+                    <input type="number" min="1" max="30" name="quota_group_shifts[]" class="form-control fw-bold text-center quota-shifts-input" value="4" required oninput="syncLegacyQuotas()">
+                    <span class="input-group-text fw-bold">វេន / ពេល</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label small text-muted mb-1">ការពិពណ៌នា / កំណត់សម្គាល់</label>
+                <input type="text" name="quota_group_description[]" class="form-control form-control-sm text-muted" value="កូតាវេនសម្រាប់ក្រុមគ្រូប្រភេទទី${khmerNum}" placeholder="កំណត់សម្គាល់អំពីក្រុមនេះ...">
+            </div>
+        </div>
+    `;
+    container.appendChild(col);
+    reindexQuotaGroups();
+}
+
+function removeQuotaGroup(btn) {
+    const container = document.getElementById('quota_groups_container');
+    if (!container) return;
+    const items = container.querySelectorAll('.quota-group-item');
+    if (items.length <= 1) {
+        alert('ត្រូវមានយ៉ាងហោចណាស់ប្រភេទក្រុមគ្រូចំនួន ១ ក្នុងគម្រោង!');
+        return;
+    }
+    if (confirm('តើអ្នកពិតជាចង់លុបប្រភេទក្រុមគ្រូនេះមែនទេ?')) {
+        const item = btn.closest('.quota-group-item');
+        item.remove();
+        reindexQuotaGroups();
+    }
+}
+
+function syncLegacyQuotas() {
+    const shiftInputs = document.querySelectorAll('.quota-shifts-input');
+    if (shiftInputs.length > 0) {
+        const regInput = document.getElementById('hidden_default_regular_quota');
+        if (regInput) regInput.value = shiftInputs[0].value || '4';
+    }
+    if (shiftInputs.length > 1) {
+        const offInput = document.getElementById('hidden_default_office_quota');
+        if (offInput) offInput.value = shiftInputs[1].value || '5';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    reindexQuotaGroups();
     recalcShiftSummary();
     recalcExamSchedule('init');
 });

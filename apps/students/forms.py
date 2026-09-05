@@ -166,7 +166,7 @@ class StudentEnrollmentForm(forms.ModelForm):
             'khmer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. សុខ ចិន្តា'}),
             'latin_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. SOK CHINDA'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),
-            'date_of_birth': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_of_birth': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
             'place_of_birth': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'រាជធានីភ្នំពេញ'}),
             'current_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ផ្ទះលេខ..., ផ្លូវ..., សង្កាត់...'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '012 345 678'}),

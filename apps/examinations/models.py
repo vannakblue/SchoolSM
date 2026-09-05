@@ -853,6 +853,8 @@ class TeacherDutyQuota(models.Model):
     custom_required_shifts = models.PositiveIntegerField(null=True, blank=True, verbose_name="កូតាជាក់លាក់ (Override) / Custom Shifts")
     is_exempt = models.BooleanField(default=False, verbose_name="លើកលែងមិនបាច់ធ្វើអនុរក្ស / Exempt")
     exemption_reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="មូលហេតុលើកលែង / Exemption Reason")
+    is_finalized = models.BooleanField(default=False, verbose_name="បានបញ្ចប់ការស្នើសុំ / Finalized")
+    finalized_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទបញ្ចប់ / Finalized At")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -873,6 +875,13 @@ class TeacherDutyQuota(models.Model):
         if self.duty_group:
             return self.duty_group.required_shifts
         return self.plan.default_regular_quota
+
+    def get_registered_shifts_count(self):
+        return self.teacher.exam_shift_registrations.filter(slot__plan=self.plan).exclude(status='CANCELLED').count()
+
+    @property
+    def is_exact_quota_fulfilled(self):
+        return self.get_registered_shifts_count() == self.effective_required_shifts
 
     def __str__(self):
         return f"{self.teacher.khmer_name} ({self.get_assigned_role_display()}) - កូតា: {self.effective_required_shifts} វេន"

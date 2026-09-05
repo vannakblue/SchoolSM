@@ -291,26 +291,10 @@ def teacher_dashboard(request):
 @login_required
 @role_required(['ADMIN', 'STUDENT'])
 def student_dashboard(request):
+    from apps.examinations.services import resolve_student_and_children_for_user, get_student_exam_seating_data
     user = request.user
-    student = getattr(user, 'student_profile', None)
-    
-    if not student:
-        # 1. Match by user, username, phone, student_id, or full name
-        student = Student.objects.filter(
-            Q(user=user) |
-            Q(student_id__iexact=user.username) | 
-            Q(phone__iexact=user.username) | 
-            Q(student_id__iexact=user.phone) |
-            Q(khmer_name__iexact=user.khmer_name) |
-            Q(latin_name__iexact=user.latin_name)
-        ).first()
-        if student and not student.user:
-            student.user = user
-            student.save(update_fields=['user'])
-
-    if not student and (user.is_superuser or user.role == 'ADMIN'):
-        # If admin/superuser, fallback to first active student
-        student = Student.objects.filter(status='ACTIVE').first() or Student.objects.first()
+    selected_student_id = request.GET.get('student_id')
+    student, children_list = resolve_student_and_children_for_user(user, selected_student_id)
 
     today_weekday = datetime.now().weekday() + 1
     today_schedule = []
@@ -351,115 +335,12 @@ def student_dashboard(request):
         if total_att > 0:
             att_rate = round(((total_att - unexcused_att) / total_att) * 100, 1)
 
-    # Standardized Exam Seating & Eligibility Information
-    exam_seating_info = []
-    if student:
-        import re
-        grade_num = student.classroom.grade_level if (student.classroom and hasattr(student.classroom, 'grade_level')) else None
-        if not grade_num and student.classroom:
-            m = re.search(r'\d+', student.classroom.name)
-            if m:
-                grade_num = int(m.group())
-
-        from apps.academics.utils import get_active_academic_year
-        ay = student.classroom.academic_year if (student.classroom and student.classroom.academic_year) else None
-        if not ay:
-            ay = get_active_academic_year(request) or AcademicYear.objects.filter(is_active=True).first()
-
-        exam_qs = StandardizedExam.objects.all().select_related('academic_year', 'exam_term').prefetch_related('exam_subjects__subject', 'rooms')
-        if ay:
-            exam_qs = exam_qs.filter(academic_year=ay)
-        if grade_num:
-            exam_qs = exam_qs.filter(grade_level=grade_num)
-
-        exams = list(exam_qs.order_by('-exam_date')[:5])
-
-        # Candidacies
-        candidacies_map = {
-            c.exam_id: c for c in ExamCandidate.objects.filter(
-                Q(student=student) | Q(student_code=student.student_id) | Q(candidate_name_kh=student.khmer_name)
-            ).select_related('exam', 'room')
-        }
-
-        # Exclusions
-        exclusions_qs = ExamStudentExclusion.objects.filter(student=student, is_active=True).select_related('standardized_exam', 'exam_term')
-        exclusions_by_exam = {}
-        global_exclusion = None
-        for ex_item in exclusions_qs:
-            if ex_item.standardized_exam_id:
-                exclusions_by_exam[ex_item.standardized_exam_id] = ex_item
-            else:
-                global_exclusion = ex_item
-
-        for cand_exam_id, cand in candidacies_map.items():
-            if cand.exam and cand.exam not in exams:
-                exams.append(cand.exam)
-
-        exams.sort(key=lambda x: x.exam_date or date.min, reverse=True)
-
-        for ex in exams:
-            cand = candidacies_map.get(ex.id)
-            exclusion = exclusions_by_exam.get(ex.id) or global_exclusion
-            is_excluded = False
-            exclusion_reason = ""
-            exclusion_reason_code = ""
-            exclusion_notes = ""
-
-            if exclusion:
-                is_excluded = True
-                exclusion_reason_code = exclusion.reason
-                exclusion_reason = exclusion.get_reason_display()
-                exclusion_notes = exclusion.notes or ""
-            elif cand and cand.is_disciplinary_blocked:
-                is_excluded = True
-                exclusion_reason_code = "DISCIPLINARY"
-                exclusion_reason = "បញ្ហាវិន័យ / ជាប់កិច្ចសន្យា (Disciplinary Hold)"
-                exclusion_notes = cand.disciplinary_reason or ""
-
-            if not is_excluded and hasattr(student, 'exam_exclusion_reason') and student.exam_exclusion_reason:
-                is_excluded = True
-                exclusion_reason_code = student.exam_exclusion_reason
-                exclusion_reason = student.get_exam_exclusion_reason_display()
-
-            has_room = bool(cand and cand.room)
-
-            exam_subjects_list = [
-                {
-                    'name': es.subject.name_kh,
-                    'max_score': es.max_score,
-                    'exam_date': es.exam_date or ex.exam_date,
-                    'start_time': es.start_time,
-                    'end_time': es.end_time,
-                    'session': es.get_session_display(),
-                }
-                for es in ex.exam_subjects.all().order_by('order')
-            ]
-
-            exam_seating_info.append({
-                'exam': ex,
-                'exam_id': ex.id,
-                'name': ex.name,
-                'exam_date': ex.exam_date,
-                'grade_level': ex.grade_level,
-                'session_name': ex.get_session_display(),
-                'track_name': ex.get_track_display(),
-                'candidate': cand,
-                'candidate_id': cand.id if cand else None,
-                'has_room': has_room,
-                'room_name': cand.room.room_name if (cand and cand.room) else "មិនទាន់កំណត់",
-                'building': cand.room.building if (cand and cand.room and cand.room.building) else "អគារ A",
-                'desk_number': cand.desk_number if cand else None,
-                'roll_number': cand.roll_number if cand else (student.student_id or "-"),
-                'is_excluded': is_excluded,
-                'exclusion_reason_code': exclusion_reason_code,
-                'exclusion_reason': exclusion_reason,
-                'exclusion_notes': exclusion_notes,
-                'subjects': exam_subjects_list,
-                'total_subjects': len(exam_subjects_list),
-            })
+    # Standardized Exam Seating & Eligibility Information (Auto partitioned room & desk number)
+    exam_seating_info = get_student_exam_seating_data(student) if student else []
 
     return render(request, 'dashboard/student_dashboard.html', {
         'student': student,
+        'children_list': children_list,
         'classroom': student.classroom if student else None,
         'today_schedule': today_schedule,
         'recent_grades': recent_grades,

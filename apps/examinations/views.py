@@ -6585,6 +6585,11 @@ def exam_invigilator_teacher_portal(request):
 
     current_count = len(registered_slot_ids)
     progress_percentage = min(100, round(current_count / required_shifts * 100)) if required_shifts > 0 else 100
+    is_finalized = quota_obj.is_finalized if quota_obj else False
+    finalized_at = quota_obj.finalized_at if quota_obj else None
+    is_over_quota = (current_count > required_shifts)
+    over_count = max(0, current_count - required_shifts)
+    can_finalize = (current_count == required_shifts)
 
     return render(request, 'examinations/invigilators/teacher_portal.html', {
         'is_active': True,
@@ -6598,6 +6603,11 @@ def exam_invigilator_teacher_portal(request):
         'current_count': current_count,
         'remaining_to_choose': max(0, required_shifts - current_count),
         'progress_percentage': progress_percentage,
+        'is_finalized': is_finalized,
+        'finalized_at': finalized_at,
+        'is_over_quota': is_over_quota,
+        'over_count': over_count,
+        'can_finalize': can_finalize,
         'duty_group_name': duty_group_name,
         'slots_by_date': list(slots_by_date.values()),
         'all_teachers': Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name') if request.user.role == 'ADMIN' else None,
@@ -6608,7 +6618,8 @@ def exam_invigilator_teacher_portal(request):
 def api_toggle_invigilator_slot(request):
     """
     AJAX API for teachers to toggle selection of an exam shift slot.
-    Enforces Role-Based Capacity and First-Come, First-Served logic.
+    Enforces Role-Based Capacity, First-Come, First-Served logic,
+    and Strict Upper-Bound Quota (Cannot exceed required shifts).
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
@@ -6655,8 +6666,28 @@ def api_toggle_invigilator_slot(request):
             # Toggle OFF -> Remove registration
             reg.delete()
             is_registered = False
+            # If was finalized, reset finalized status because shift count changed
+            if quota_obj and quota_obj.is_finalized:
+                quota_obj.is_finalized = False
+                quota_obj.save(update_fields=['is_finalized'])
             message = f"បានដកចេញពីវេន «{slot.session_name}» រួចរាល់!"
         else:
+            # Check if teacher has already finalized their request
+            if quota_obj and quota_obj.is_finalized:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ការស្នើសុំរួចរាល់ហើយ! ប្រសិនបើចង់ផ្លាស់ប្តូរវេន សូមចុចប៊ូតុង «កែប្រែឡើងវិញ» ជាមុនសិន។'
+                }, status=400)
+
+            # STRICT UPPER BOUND: Cannot exceed required shifts (មិនអាចលើស)
+            required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
+            current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+            if current_count >= required_shifts:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសគ្រប់ចំនួនកូតាកំណត់ ({required_shifts} វេន) រួចរាល់ហើយ មិនអាចជ្រើសរើសលើសពីនេះបានទេ! សូមដកវេនចាស់ចេញជាមុនសិន ប្រសិនបើចង់ប្តូរវេន។'
+                }, status=400)
+
             # Toggle ON -> Check if designated capacity for this role is full (First-Come, First-Served)
             if slot.is_role_full(assigned_role):
                 cap = slot.get_role_capacity(assigned_role)
@@ -6698,8 +6729,107 @@ def api_toggle_invigilator_slot(request):
             'required_shifts': required_shifts,
             'remaining_to_choose': max(0, required_shifts - current_count),
             'progress_percentage': progress_percentage,
+            'is_finalized': quota_obj.is_finalized if quota_obj else False,
+            'can_finalize': (current_count == required_shifts),
+            'is_over_quota': (current_count > required_shifts),
+            'over_count': max(0, current_count - required_shifts),
             'message': message,
         })
+
+
+@login_required
+def api_finalize_invigilator_request(request):
+    """
+    AJAX API for teachers to finalize and officially submit their shift request.
+    Strictly verifies that current_count == required_shifts.
+    Rejects if current_count < required_shifts (cannot fall short: មិនអាចខ្វះ)
+    Rejects if current_count > required_shifts (cannot exceed: មិនអាចលើស).
+    """
+    from django.utils import timezone
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+    if not plan or not plan.allow_teacher_registration:
+        return JsonResponse({'success': False, 'error': 'ការស្នើសុំវេនអនុរក្សត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+    teacher = None
+    if hasattr(request.user, 'teacher_profile') and request.user.teacher_profile:
+        teacher = request.user.teacher_profile
+    elif request.user.is_superuser or request.user.role == 'ADMIN':
+        tid = request.POST.get('teacher_id')
+        if tid and tid.isdigit():
+            teacher = Teacher.objects.filter(id=int(tid)).first()
+
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ!'}, status=403)
+
+    quota_obj, _ = TeacherDutyQuota.objects.get_or_create(plan=plan, teacher=teacher)
+    required_shifts = quota_obj.effective_required_shifts
+    current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+
+    if current_count < required_shifts:
+        missing = required_shifts - current_count
+        return JsonResponse({
+            'success': False,
+            'error': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ នៅខ្វះ {missing} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំ។'
+        }, status=400)
+
+    if current_count > required_shifts:
+        over = current_count - required_shifts
+        return JsonResponse({
+            'success': False,
+            'error': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចំនួន {over} វេនចេញវិញ ទើបអាចបញ្ចប់ការស្នើសុំបាន។'
+        }, status=400)
+
+    quota_obj.is_finalized = True
+    quota_obj.finalized_at = timezone.now()
+    quota_obj.save(update_fields=['is_finalized', 'finalized_at', 'updated_at'])
+
+    return JsonResponse({
+        'success': True,
+        'is_finalized': True,
+        'finalized_at': quota_obj.finalized_at.strftime('%d/%m/%Y %H:%M'),
+        'current_count': current_count,
+        'required_shifts': required_shifts,
+        'message': f'🎉 លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ និងបញ្ជាក់ការស្នើសុំវេនអនុរក្សគ្រប់ចំនួនកូតា ({required_shifts} វេន) ដោយជោគជ័យរួចរាល់ហើយ!'
+    })
+
+
+@login_required
+def api_unlock_invigilator_request(request):
+    """
+    AJAX API for teachers to unlock their finalized shift request to adjust slots before deadline.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+    if not plan or not plan.allow_teacher_registration:
+        return JsonResponse({'success': False, 'error': 'ការស្នើសុំវេនអនុរក្សត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+    teacher = None
+    if hasattr(request.user, 'teacher_profile') and request.user.teacher_profile:
+        teacher = request.user.teacher_profile
+    elif request.user.is_superuser or request.user.role == 'ADMIN':
+        tid = request.POST.get('teacher_id')
+        if tid and tid.isdigit():
+            teacher = Teacher.objects.filter(id=int(tid)).first()
+
+    if not teacher:
+        return JsonResponse({'success': False, 'error': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ!'}, status=403)
+
+    quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+    if quota_obj:
+        quota_obj.is_finalized = False
+        quota_obj.save(update_fields=['is_finalized', 'updated_at'])
+
+    return JsonResponse({
+        'success': True,
+        'is_finalized': False,
+        'message': 'លោកគ្រូ-អ្នកគ្រូអាចធ្វើការផ្លាស់ប្តូរវេនបានឥឡូវនេះ។ នៅពេលកែប្រែរួចរាល់ សូមកុំភ្លេចចុច «បញ្ចប់ការស្នើសុំ» ម្តងទៀត។'
+    })
+
 
 
 # ==============================================================================
@@ -7253,6 +7383,26 @@ def api_apply_standardized_exam_preset(request, exam_id):
         'status': 'success',
         'message': f"🎉 បានកំណត់ Preset «{preset_label}» ចំនួន {count} មុខវិជ្ជា សម្រាប់សម័យប្រឡងនេះដោយជោគជ័យ!",
         'total_subjects': count
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_delete_standardized_exam_subject(request, exam_id, es_id):
+    """
+    AJAX / POST endpoint to delete a specific ExamSubject from a StandardizedExam.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    es = get_object_or_404(ExamSubject, id=es_id, exam=exam)
+    sub_name = es.subject.name_kh
+    es.delete()
+    exam.recalculate_all_ranks()
+    return JsonResponse({
+        'status': 'success',
+        'message': f"បានលុបមុខវិជ្ជា «{sub_name}» ចេញពីសម័យប្រឡងដោយជោគជ័យ!"
     })
 
 
