@@ -1588,6 +1588,40 @@ def standardized_exam_manage(request, exam_id):
     total_max_score = sum(s.max_score for s in subjects)
     total_coefficients = sum(s.coefficient for s in subjects)
 
+    # All catalog subjects and MoEYS grade rules for interactive modal
+    all_catalog_subjects = Subject.objects.all().order_by('order', 'id')
+    grade_rules = GradeLevelRule.objects.filter(grade_level=exam.grade_level).select_related('subject')
+
+    # Prepare modal subjects list (current exam subjects first, then remaining MoEYS curriculum subjects)
+    modal_subjects = []
+    seen_sub_ids = set()
+
+    for es in subjects:
+        modal_subjects.append({
+            'subject': es.subject,
+            'is_selected': True,
+            'max_score': es.max_score,
+            'coefficient': es.coefficient,
+            'session': es.session,
+            'order': es.order,
+        })
+        seen_sub_ids.add(es.subject_id)
+
+    for r in grade_rules:
+        if r.subject_id not in seen_sub_ids:
+            modal_subjects.append({
+                'subject': r.subject,
+                'is_selected': False,
+                'max_score': r.max_score,
+                'coefficient': round(r.max_score / Decimal('50.00'), 2),
+                'session': exam.session if exam.session != 'FULL_DAY' else 'MORNING',
+                'order': 99,
+            })
+            seen_sub_ids.add(r.subject_id)
+
+    # Unused catalog subjects available for adding via "+ បន្ថែមមុខវិជ្ជា"
+    unused_catalog_subjects = [s for s in all_catalog_subjects if s.id not in seen_sub_ids]
+
     # Find matching Invigilator Plan for this exam or exam session
     clean_title = get_clean_exam_session_title(exam.name)
     session_key = f"{exam.academic_year_id}_{exam.exam_date}_{clean_title}"
@@ -1619,6 +1653,9 @@ def standardized_exam_manage(request, exam_id):
         'candidates': candidates_qs,
         'rooms': rooms,
         'subjects': subjects,
+        'modal_subjects': modal_subjects,
+        'unused_catalog_subjects': unused_catalog_subjects,
+        'all_catalog_subjects': all_catalog_subjects,
         'total_candidates': total_candidates,
         'female_candidates': female_candidates,
         'total_rooms': total_rooms,
@@ -7004,6 +7041,9 @@ def api_apply_exam_term_preset(request):
 def api_manage_standardized_exam_subjects(request, exam_id):
     """
     AJAX / POST endpoint to manage (add, remove, edit) subjects for a StandardizedExam.
+    Accepts:
+    - subjects_data: list of dicts [{'subject_id': int, 'max_score': Decimal, 'coefficient': Decimal, 'session': str}, ...]
+    - OR subject_ids: list of ints [id1, id2, ...]
     Automatically recalculates overall and room ranks after modifications.
     """
     exam = get_object_or_404(StandardizedExam, id=exam_id)
@@ -7012,43 +7052,116 @@ def api_manage_standardized_exam_subjects(request, exam_id):
 
     import json
     data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
-    subject_ids = data.get('subject_ids', [])
-    if isinstance(subject_ids, str):
-        subject_ids = [int(s.strip()) for s in subject_ids.split(',') if s.strip().isdigit()]
-    elif isinstance(subject_ids, list):
-        subject_ids = [int(s) for s in subject_ids if str(s).isdigit()]
 
-    if not subject_ids:
+    subjects_data = data.get('subjects_data', [])
+    subject_ids = data.get('subject_ids', [])
+
+    parsed_items = []
+    if subjects_data:
+        if isinstance(subjects_data, str):
+            try:
+                subjects_data = json.loads(subjects_data)
+            except Exception:
+                subjects_data = []
+        for item in subjects_data:
+            sid = item.get('subject_id') or item.get('id')
+            if sid and str(sid).isdigit():
+                max_sc = item.get('max_score')
+                coef = item.get('coefficient')
+                sess = item.get('session', exam.session if exam.session != 'FULL_DAY' else 'MORNING')
+
+                parsed_max = None
+                if max_sc is not None and str(max_sc).strip():
+                    try:
+                        parsed_max = Decimal(str(max_sc))
+                    except Exception:
+                        pass
+
+                parsed_coef = None
+                if coef is not None and str(coef).strip():
+                    try:
+                        parsed_coef = Decimal(str(coef))
+                    except Exception:
+                        pass
+
+                parsed_items.append({
+                    'subject_id': int(sid),
+                    'max_score': parsed_max,
+                    'coefficient': parsed_coef,
+                    'session': sess or ('MORNING' if exam.session == 'FULL_DAY' else exam.session),
+                })
+    elif subject_ids:
+        if isinstance(subject_ids, str):
+            ids = [int(s.strip()) for s in subject_ids.split(',') if s.strip().isdigit()]
+        elif isinstance(subject_ids, list):
+            ids = [int(s) for s in subject_ids if str(s).isdigit()]
+        else:
+            ids = []
+        for sid in ids:
+            parsed_items.append({
+                'subject_id': sid,
+                'max_score': None,
+                'coefficient': None,
+                'session': exam.session if exam.session != 'FULL_DAY' else 'MORNING'
+            })
+
+    if not parsed_items:
         return JsonResponse({'status': 'error', 'message': '⚠️ សូមជ្រើសរើសយ៉ាងហោចណាស់មួយមុខវិជ្ជា!'}, status=400)
 
-    with transaction.atomic():
-        # Remove exam subjects not in subject_ids
-        exam.exam_subjects.exclude(subject_id__in=subject_ids).delete()
+    selected_ids = [item['subject_id'] for item in parsed_items]
 
-        # Add or update
-        for order_idx, sid in enumerate(subject_ids, 1):
+    with transaction.atomic():
+        # Remove exam subjects not in selected_ids
+        exam.exam_subjects.exclude(subject_id__in=selected_ids).delete()
+
+        # Grade level rules cache for default scores if needed
+        grade_rules_map = {r.subject_id: r for r in GradeLevelRule.objects.filter(grade_level=exam.grade_level)}
+
+        for order_idx, item in enumerate(parsed_items, 1):
+            sid = item['subject_id']
             sub = Subject.objects.filter(id=sid).first()
             if sub:
                 es = exam.exam_subjects.filter(subject=sub).first()
-                if not es:
-                    max_sc = Decimal('50.00')
-                    coef = Decimal('1.00')
+                # Determine default max_score & coefficient if not provided
+                def_max = Decimal('50.00')
+                def_coef = Decimal('1.00')
+                if sid in grade_rules_map:
+                    def_max = grade_rules_map[sid].max_score
+                    def_coef = round(def_max / Decimal('50.00'), 2)
+
+                final_max = item['max_score'] if item['max_score'] is not None else (es.max_score if es else def_max)
+                final_coef = item['coefficient'] if item['coefficient'] is not None else (es.coefficient if es else (round(final_max / Decimal('50.00'), 2) if final_max else def_coef))
+                final_sess = item['session'] or (es.session if es else (exam.session if exam.session != 'FULL_DAY' else 'MORNING'))
+
+                if es:
+                    es.max_score = final_max
+                    es.coefficient = final_coef
+                    es.session = final_sess
+                    es.order = order_idx
+                    es.save()
+                else:
                     ExamSubject.objects.create(
                         exam=exam,
                         subject=sub,
-                        max_score=max_sc,
-                        coefficient=coef,
-                        session=exam.session if exam.session != 'FULL_DAY' else 'MORNING',
+                        max_score=final_max,
+                        coefficient=final_coef,
+                        session=final_sess,
                         order=order_idx
                     )
 
         # Recalculate ranks across all candidates in exam
         exam.recalculate_all_ranks()
 
+    count = exam.exam_subjects.count()
+    total_max = sum(es.max_score for es in exam.exam_subjects.all())
+    total_coef = sum(es.coefficient for es in exam.exam_subjects.all())
+
     return JsonResponse({
         'status': 'success',
-        'message': f"🎉 បានធ្វើបច្ចុប្បន្នភាពមុខវិជ្ជាប្រឡងចំនួន {len(subject_ids)} មុខវិជ្ជា ដោយជោគជ័យ!",
-        'total_subjects': exam.exam_subjects.count()
+        'message': f"🎉 បានធ្វើបច្ចុប្បន្នភាពមុខវិជ្ជាប្រឡងចំនួន {count} មុខវិជ្ជា ដោយជោគជ័យ!",
+        'total_subjects': count,
+        'total_max_score': float(total_max),
+        'total_coefficients': float(total_coef),
     })
 
 

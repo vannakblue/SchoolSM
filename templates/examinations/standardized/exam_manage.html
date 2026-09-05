@@ -278,8 +278,8 @@
                 </h6>
                 <div class="d-flex gap-1">
                     {% if is_admin %}
-                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#manageExamSubjectsModal">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> កំណត់ ៧ មុខវិជ្ជា (Presets)
+                    <button type="button" class="btn btn-primary btn-sm fw-bold shadow-xs text-white" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#manageExamSubjectsModal">
+                        <i class="fa-solid fa-list-check me-1"></i> ជ្រើសរើសមុខវិជ្ជា & Presets
                     </button>
                     {% endif %}
                     <a href="{% url 'standardized_exam_edit' exam.id %}" class="btn btn-outline-secondary btn-sm fw-bold" style="font-size: 0.75rem;">
@@ -872,113 +872,768 @@ function saveExamManageGradingWindow() {
 </script>
 <!-- Manage Exam Subjects & 7-Subject Presets Modal -->
 <div class="modal fade" id="manageExamSubjectsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold">
-                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>កំណត់មុខវិជ្ជាប្រឡងរហ័ស (1-Click Presets)
-                </h5>
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fa-solid fa-book-bookmark fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">គ្រប់គ្រងមុខវិជ្ជាប្រឡង (Manage Exam Subjects)</h5>
+                        <small class="text-white-50">ធីកជ្រើសរើស ដោះចេញ បន្ថែម ឬកែប្រែមេគុណ និងពិន្ទុពេញតាមតម្រូវការ</small>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="alert alert-info py-2 px-3 rounded-3 d-flex align-items-center justify-content-between mb-4">
+
+            <div class="modal-body p-3 p-md-4">
+                <!-- Session Context Alert -->
+                <div class="alert alert-info py-2 px-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div class="small">
                         សម័យប្រឡង៖ <strong>{{ exam.name }}</strong> | 
                         កម្រិតថ្នាក់៖ <strong>ថ្នាក់ទី {{ exam.grade_level }}</strong> | 
                         ជំនាញបច្ចុប្បន្ន៖ <span class="badge bg-primary">{{ exam.get_track_display }}</span>
                     </div>
-                    <div class="small text-muted">
-                        មុខវិជ្ជាបច្ចុប្បន្ន៖ <strong class="text-primary">{{ subjects.count }} មុខ</strong>
+                    <div class="small d-flex align-items-center gap-2">
+                        <span>មុខវិជ្ជាជ្រើសរើស៖</span>
+                        <span id="modalSelectedCountBadge" class="badge bg-primary fs-6 px-2.5 py-1">{{ subjects.count }} មុខ</span>
                     </div>
                 </div>
 
-                <h6 class="fw-bold text-dark mb-3">សូមជ្រើសរើស Preset មុខវិជ្ជាដែលត្រូវកំណត់៖</h6>
+                <!-- Navigation Tabs: Custom Checklist vs Quick Presets -->
+                <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-3 border" id="examSubjectModalTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold py-2" id="tab-custom-subjects-btn" data-bs-toggle="pill" data-bs-target="#tab-custom-subjects" type="button" role="tab">
+                            <i class="fa-solid fa-list-check me-1.5"></i> ១. ធីកជ្រើសរើស & កែសម្រួលមុខវិជ្ជា (Custom Checklist)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold py-2" id="tab-quick-presets-btn" data-bs-toggle="pill" data-bs-target="#tab-quick-presets" type="button" role="tab">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1.5"></i> ២. កំណត់រហ័ស (1-Click Presets)
+                        </button>
+                    </li>
+                </ul>
 
-                <div class="row g-3">
-                    <!-- Preset Science 7 -->
-                    <div class="col-md-6">
-                        <div class="card h-100 border-primary border-2 shadow-xs rounded-3 p-3">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                                    <i class="fa-solid fa-atom fs-5"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-primary">៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Science)</h6>
-                                    <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
-                                </div>
-                            </div>
-                            <div class="small text-muted mb-3">
-                                <ul class="list-unstyled mb-0 lh-base">
-                                    <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
-                                    <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>រូបវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>គីមីវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>ជីវវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
-                                    <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
-                                </ul>
-                            </div>
-                            <button type="button" class="btn btn-primary fw-bold mt-auto w-100" onclick="applyStandardizedPreset('SCIENCE_7')">
-                                <i class="fa-solid fa-check me-1"></i> អនុវត្ត ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Preset Social 7 -->
-                    <div class="col-md-6">
-                        <div class="card h-100 border-warning border-2 shadow-xs rounded-3 p-3">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                                    <i class="fa-solid fa-earth-asia fs-5"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-warning-emphasis">៧ មុខវិជ្ជាសង្គម (Social)</h6>
-                                    <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
-                                </div>
-                            </div>
-                            <div class="small text-muted mb-3">
-                                <ul class="list-unstyled mb-0 lh-base">
-                                    <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
-                                    <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>ភូមិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>សីលធម៌-ពលរដ្ឋ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
-                                    <li>• <strong>ផែនដីវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
-                                    <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
-                                </ul>
-                            </div>
-                            <button type="button" class="btn btn-warning fw-bold mt-auto w-100 text-dark" onclick="applyStandardizedPreset('SOCIAL_7')">
-                                <i class="fa-solid fa-check me-1"></i> អនុវត្ត ៧ មុខវិជ្ជាសង្គម
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Preset All MoEYS -->
-                    <div class="col-12 mt-3">
-                        <div class="card border-success border-1 shadow-xs rounded-3 p-3 bg-light">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-success">
-                                        <i class="fa-solid fa-check-double me-1"></i> ប្រឡងគ្រប់មុខវិជ្ជា MoEYS (All MoEYS Subjects)
-                                    </h6>
-                                    <small class="text-muted">ទាញមុខវិជ្ជាទាំងអស់ដែលបានកំណត់តាមកម្មវិធីសិក្សាសម្រាប់កម្រិតថ្នាក់ទី {{ exam.grade_level }}</small>
-                                </div>
-                                <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="applyStandardizedPreset('ALL_MOEYS')">
-                                    <i class="fa-solid fa-check me-1"></i> អនុវត្តគ្រប់មុខវិជ្ជា
+                <div class="tab-content" id="examSubjectModalTabsContent">
+                    <!-- Tab 1: Custom Checklist & Add/Remove Subjects -->
+                    <div class="tab-pane fade show active" id="tab-custom-subjects" role="tabpanel">
+                        <!-- Quick Selection Toolbar -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 bg-light rounded-3 border mb-3">
+                            <div class="d-flex flex-wrap align-items-center gap-1.5">
+                                <span class="small fw-bold text-muted me-1"><i class="fa-solid fa-sliders me-1"></i>ជ្រើសរើសរហ័ស:</span>
+                                <button type="button" class="btn btn-xs btn-outline-primary fw-bold py-1 px-2" onclick="toggleAllModalCheckboxes(true)">
+                                    <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់
                                 </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary fw-bold py-1 px-2" onclick="toggleAllModalCheckboxes(false)">
+                                    <i class="fa-solid fa-xmark me-1"></i> ដោះទាំងអស់
+                                </button>
+                                {% if exam.grade_level < 11 and exam.track != 'SCIENCE' and exam.track != 'SOCIAL' %}
+                                <button type="button" class="btn btn-xs btn-success fw-bold py-1 px-2.5 shadow-xs" onclick="quickCheckPreset('ALL_MOEYS')">
+                                    <i class="fa-solid fa-star text-warning me-1"></i> MoEYS ថ្នាក់ទី {{ exam.grade_level }} (ណែនាំ)
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-primary fw-bold py-1 px-2" onclick="quickCheckPreset('SCIENCE_7')" title="សម្រាប់ថ្នាក់វិទ្យាល័យ ១១-១២">
+                                    <i class="fa-solid fa-atom me-1"></i> ៧ វិទ្យាសាស្ត្រ (១១-១២)
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-warning text-dark fw-bold py-1 px-2" onclick="quickCheckPreset('SOCIAL_7')" title="សម្រាប់ថ្នាក់វិទ្យាល័យ ១១-១២">
+                                    <i class="fa-solid fa-earth-asia me-1"></i> ៧ សង្គម (១១-១២)
+                                </button>
+                                {% else %}
+                                <button type="button" class="btn btn-xs {% if exam.track == 'SCIENCE' %}btn-primary text-white shadow-xs{% else %}btn-outline-primary{% endif %} fw-bold py-1 px-2" onclick="quickCheckPreset('SCIENCE_7')">
+                                    <i class="fa-solid fa-atom me-1"></i> ៧ វិទ្យាសាស្ត្រ {% if exam.track == 'SCIENCE' %}★{% endif %}
+                                </button>
+                                <button type="button" class="btn btn-xs {% if exam.track == 'SOCIAL' %}btn-warning text-dark shadow-xs{% else %}btn-outline-warning text-dark{% endif %} fw-bold py-1 px-2" onclick="quickCheckPreset('SOCIAL_7')">
+                                    <i class="fa-solid fa-earth-asia me-1"></i> ៧ សង្គម {% if exam.track == 'SOCIAL' %}★{% endif %}
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-success fw-bold py-1 px-2" onclick="quickCheckPreset('ALL_MOEYS')">
+                                    <i class="fa-solid fa-graduation-cap me-1"></i> MoEYS ថ្នាក់ទី {{ exam.grade_level }}
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex align-items-center gap-3 small">
+                                <div>ពិន្ទុពេញសរុប៖ <strong id="modalTotalScoreText" class="text-primary fs-6">{{ total_max_score|floatformat:0 }}</strong> ពិន្ទុ</div>
+                                <div>មេគុណសរុប៖ <strong id="modalTotalCoefText" class="text-success fs-6">{{ total_coefficients|floatformat:1 }}</strong></div>
                             </div>
                         </div>
+
+                        <!-- Add Subject Inline Card (+ បន្ថែមមុខវិជ្ជាដោយសេរី) -->
+                        <div class="card border-dashed border-2 border-primary-subtle bg-white shadow-xs rounded-3 p-2.5 mb-3">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-5">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light text-primary fw-bold">
+                                            <i class="fa-solid fa-plus me-1"></i> បន្ថែមមុខវិជ្ជា
+                                        </span>
+                                        <select id="newSubjectCatalogSelect" class="form-select form-select-sm fw-bold">
+                                            <option value="">-- ជ្រើសរើសមុខវិជ្ជាពីកាតាឡុកសាលា --</option>
+                                            {% for cs in all_catalog_subjects %}
+                                            <option value="{{ cs.id }}" data-name="{{ cs.name_kh }}" data-code="{{ cs.code }}" data-category="{{ cs.category }}">
+                                                {{ cs.name_kh }} ({{ cs.code }}) - {{ cs.get_category_display }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light small">ពិន្ទុ</span>
+                                        <input type="number" id="newSubjectMaxScore" class="form-control form-control-sm text-center fw-bold" value="50" step="0.5" min="1" max="500" placeholder="50" oninput="autoCalcNewSubjectCoef()">
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light small">មេគុណ</span>
+                                        <input type="number" id="newSubjectCoefficient" class="form-control form-control-sm text-center fw-bold text-primary" value="1.0" step="0.1" min="0.1" max="20" placeholder="1.0">
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <select id="newSubjectSession" class="form-select form-select-sm">
+                                        <option value="MORNING" {% if exam.session == 'MORNING' or exam.session == 'FULL_DAY' %}selected{% endif %}>ព្រឹក</option>
+                                        <option value="AFTERNOON" {% if exam.session == 'AFTERNOON' %}selected{% endif %}>រសៀល</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-1 text-end">
+                                    <button type="button" class="btn btn-sm btn-success fw-bold w-100" onclick="addNewSubjectRowFromCatalog()">
+                                        <i class="fa-solid fa-plus"></i> បន្ថែម
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subjects Checklist Table -->
+                        <div class="table-responsive border rounded-3 bg-white" style="max-height: 380px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0 small" id="modalSubjectsTable">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 45px;" class="text-center">
+                                            <input type="checkbox" id="modalHeaderCheckbox" class="form-check-input" onchange="toggleAllModalCheckboxes(this.checked)" title="ជ្រើសរើស/ដោះទាំងអស់">
+                                        </th>
+                                        <th style="width: 40px;" class="text-center text-muted">#</th>
+                                        <th>មុខវិជ្ជា</th>
+                                        <th style="width: 125px;" class="text-center">ពិន្ទុពេញ (Max)</th>
+                                        <th style="width: 115px;" class="text-center">មេគុណ (Coef)</th>
+                                        <th style="width: 120px;" class="text-center">ពេលប្រឡង</th>
+                                        <th style="width: 75px;" class="text-center">លុបចេញ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modalSubjectsTableBody">
+                                    {% for s in modal_subjects %}
+                                    <tr id="modal-subj-row-{{ s.subject.id }}" class="modal-subj-row {% if not s.is_selected %}table-light opacity-75{% endif %}">
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   class="form-check-input modal-subj-check" 
+                                                   value="{{ s.subject.id }}" 
+                                                   data-id="{{ s.subject.id }}"
+                                                   data-name="{{ s.subject.name_kh }}"
+                                                   {% if s.is_selected %}checked{% endif %} 
+                                                   onchange="onModalRowChange('{{ s.subject.id }}')">
+                                        </td>
+                                        <td class="text-center text-muted fw-bold modal-row-number">{{ forloop.counter }}</td>
+                                        <td>
+                                            <div class="fw-bold text-dark d-flex align-items-center gap-1.5">
+                                                <span>{{ s.subject.name_kh }}</span>
+                                                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.7rem;">{{ s.subject.code }}</span>
+                                            </div>
+                                            <span class="small text-muted" style="font-size: 0.72rem;">{{ s.subject.name_en|default:'' }}</span>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.5" 
+                                                   min="1" 
+                                                   max="500" 
+                                                   class="form-control form-control-sm text-center fw-bold modal-max-score" 
+                                                   id="m_score_{{ s.subject.id }}" 
+                                                   value="{{ s.max_score|floatformat:0 }}" 
+                                                   oninput="autoCalcModalCoef('{{ s.subject.id }}')">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.1" 
+                                                   min="0.1" 
+                                                   max="20" 
+                                                   class="form-control form-control-sm text-center fw-bold text-primary modal-coef" 
+                                                   id="m_coef_{{ s.subject.id }}" 
+                                                   value="{{ s.coefficient|floatformat:1 }}" 
+                                                   oninput="onModalRowChange('{{ s.subject.id }}')">
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm modal-session" id="m_sess_{{ s.subject.id }}">
+                                                <option value="MORNING" {% if s.session == 'MORNING' %}selected{% endif %}>ព្រឹក</option>
+                                                <option value="AFTERNOON" {% if s.session == 'AFTERNOON' %}selected{% endif %}>រសៀល</option>
+                                            </select>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="removeSubjectRow('{{ s.subject.id }}')" title="លុបមុខវិជ្ជានេះចេញពីសម័យប្រឡង">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text text-muted small mt-2">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                            <strong>ចំណាំ៖</strong> មុខវិជ្ជាដែលមានសញ្ញាធីក (<i class="fa-solid fa-check text-success"></i>) នឹងត្រូវដាក់បញ្ចូលក្នុងសម័យប្រឡងនេះ។ លោកអ្នកអាចកែប្រែពិន្ទុពេញ និងមេគុណដោយផ្ទាល់ក្នុងប្រអប់នីមួយៗ។
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Quick Presets (1-Click Presets) -->
+                    <div class="tab-pane fade" id="tab-quick-presets" role="tabpanel">
+                        {% if exam.grade_level < 11 and exam.track != 'SCIENCE' and exam.track != 'SOCIAL' %}
+                        <!-- For Lower Secondary / General (Grades 7-10): All MoEYS is Primary & Featured -->
+                        <div class="row g-3">
+                            <!-- Featured MoEYS Card -->
+                            <div class="col-12">
+                                <div class="card border-success border-2 shadow-xs rounded-3 p-3.5 bg-success-subtle bg-opacity-25">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                                <i class="fa-solid fa-graduation-cap fs-4"></i>
+                                            </div>
+                                            <div>
+                                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                    <h5 class="fw-bold mb-0 text-success">
+                                                        ប្រឡងគ្រប់មុខវិជ្ជា MoEYS (All MoEYS Subjects)
+                                                    </h5>
+                                                    <span class="badge bg-success fw-bold px-2 py-1">
+                                                        <i class="fa-solid fa-star me-1 text-warning"></i> ស្តង់ដារណែនាំសម្រាប់ថ្នាក់ទី {{ exam.grade_level }}
+                                                    </span>
+                                                </div>
+                                                <div class="text-muted small">
+                                                    ទាញយកគ្រប់មុខវិជ្ជាទាំងអស់ដែលបានកំណត់តាមកម្មវិធីសិក្សាផ្លូវការសម្រាប់កម្រិតថ្នាក់ទី {{ exam.grade_level }} (ថ្នាក់ចំណេះទូទៅ គ្មានការបំបែកជាផ្នែកវិទ្យាសាស្ត្រ ឬសង្គមឡើយ)។
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-success fw-bold px-3" onclick="selectPresetInChecklist('ALL_MOEYS')">
+                                                <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                            </button>
+                                            <button type="button" class="btn btn-success fw-bold text-white px-3 shadow-xs" onclick="applyStandardizedPreset('ALL_MOEYS')">
+                                                <i class="fa-solid fa-check-double me-1"></i> អនុវត្តគ្រប់មុខវិជ្ជា (1-Click)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Note about High School Science/Social 7 Presets -->
+                            <div class="col-12 mt-3">
+                                <div class="p-2.5 bg-warning-subtle border border-warning-subtle rounded-3 d-flex align-items-center gap-2">
+                                    <i class="fa-solid fa-circle-info text-warning fs-5"></i>
+                                    <div class="small">
+                                        <strong>ព័ត៌មានបន្ថែម៖</strong> កម្រិតថ្នាក់ទី {{ exam.grade_level }} គឺជាថ្នាក់ចំណេះទូទៅ។ Preset <strong>៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ</strong> និង <strong>៧ មុខវិជ្ជាសង្គម</strong> ខាងក្រោមនេះត្រូវបានរៀបចំឡើងសម្រាប់តែកម្រិតវិទ្យាល័យ (ថ្នាក់ទី ១១-១២ ត្រៀមបាក់ឌុប) ប៉ុណ្ណោះ។
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preset Science 7 (Secondary for Grade 7-10) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border-primary border-1 shadow-xs rounded-3 p-3 opacity-90">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                <i class="fa-solid fa-atom fs-6"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-primary">៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Science)</h6>
+                                                <small class="text-muted">ស្តង់ដារបាក់ឌុប ថ្នាក់ទី ១១-១២</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-secondary-subtle text-dark border">ថ្នាក់ ១១-១២</span>
+                                    </div>
+                                    <div class="small text-muted mb-3">
+                                        <ul class="list-unstyled mb-0 lh-base" style="font-size: 0.8rem;">
+                                            <li>• គណិត (125, មេគុណ 2.5) | ខ្មែរ (75, 1.5)</li>
+                                            <li>• រូប (75, 1.5) | គីមី (75, 1.5) | ជីវ (75, 1.5)</li>
+                                            <li>• ប្រវត្តិ (50, 1.0) | ភាសាបរទេស (50, 1.0)</li>
+                                        </ul>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-auto">
+                                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold w-50" onclick="selectPresetInChecklist('SCIENCE_7')">
+                                            <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-sm fw-bold w-50" onclick="applyStandardizedPreset('SCIENCE_7')">
+                                            <i class="fa-solid fa-bolt me-1"></i> អនុវត្ត 1-Click
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preset Social 7 (Secondary for Grade 7-10) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border-warning border-1 shadow-xs rounded-3 p-3 opacity-90">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                <i class="fa-solid fa-earth-asia fs-6"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-warning-emphasis">៧ មុខវិជ្ជាសង្គម (Social)</h6>
+                                                <small class="text-muted">ស្តង់ដារបាក់ឌុប ថ្នាក់ទី ១១-១២</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-secondary-subtle text-dark border">ថ្នាក់ ១១-១២</span>
+                                    </div>
+                                    <div class="small text-muted mb-3">
+                                        <ul class="list-unstyled mb-0 lh-base" style="font-size: 0.8rem;">
+                                            <li>• ខ្មែរ (125, មេគុណ 2.5) | គណិត (75, 1.5)</li>
+                                            <li>• ភូមិ (75, 1.5) | ប្រវត្តិ (75, 1.5) | សីលធម៌ (75, 1.5)</li>
+                                            <li>• ផែនដី (50, 1.0) | ភាសាបរទេស (50, 1.0)</li>
+                                        </ul>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-auto">
+                                        <button type="button" class="btn btn-outline-warning btn-sm fw-bold text-dark w-50" onclick="selectPresetInChecklist('SOCIAL_7')">
+                                            <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                        </button>
+                                        <button type="button" class="btn btn-warning btn-sm fw-bold text-dark w-50" onclick="applyStandardizedPreset('SOCIAL_7')">
+                                            <i class="fa-solid fa-bolt me-1"></i> អនុវត្ត 1-Click
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% else %}
+                        <!-- For High School / Track Specific (Grades 11 & 12, or Track Science/Social): Science 7 & Social 7 are Primary -->
+                        <div class="row g-3">
+                            <!-- Preset Science 7 -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border-primary {% if exam.track == 'SCIENCE' %}border-3 shadow-sm bg-primary-subtle bg-opacity-10{% else %}border-2 shadow-xs{% endif %} rounded-3 p-3">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                                <i class="fa-solid fa-atom fs-5"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-primary">៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Science)</h6>
+                                                <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
+                                            </div>
+                                        </div>
+                                        {% if exam.track == 'SCIENCE' %}
+                                        <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-star me-1"></i> ជំនាញបច្ចុប្បន្ន</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted mb-3">
+                                        <ul class="list-unstyled mb-0 lh-base">
+                                            <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
+                                            <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>រូបវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>គីមីវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>ជីវវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                            <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                        </ul>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-auto">
+                                        <button type="button" class="btn btn-outline-primary fw-bold w-50" onclick="selectPresetInChecklist('SCIENCE_7')">
+                                            <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                        </button>
+                                        <button type="button" class="btn btn-primary fw-bold w-50" onclick="applyStandardizedPreset('SCIENCE_7')">
+                                            <i class="fa-solid fa-bolt me-1"></i> អនុវត្ត 1-Click
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preset Social 7 -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border-warning {% if exam.track == 'SOCIAL' %}border-3 shadow-sm bg-warning-subtle bg-opacity-10{% else %}border-2 shadow-xs{% endif %} rounded-3 p-3">
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                                <i class="fa-solid fa-earth-asia fs-5"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-0 text-warning-emphasis">៧ មុខវិជ្ជាសង្គម (Social)</h6>
+                                                <small class="text-muted">ស្តង់ដារប្រឡងបាក់ឌុប & តេស្តសាកល្បង</small>
+                                            </div>
+                                        </div>
+                                        {% if exam.track == 'SOCIAL' %}
+                                        <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-star me-1"></i> ជំនាញបច្ចុប្បន្ន</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted mb-3">
+                                        <ul class="list-unstyled mb-0 lh-base">
+                                            <li>• <strong>ភាសាខ្មែរ</strong> (ពិន្ទុពេញ 125, មេគុណ 2.5)</li>
+                                            <li>• <strong>គណិតវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>ភូមិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>ប្រវត្តិវិទ្យា</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>សីលធម៌-ពលរដ្ឋ</strong> (ពិន្ទុពេញ 75, មេគុណ 1.5)</li>
+                                            <li>• <strong>ផែនដីវិទ្យា</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                            <li>• <strong>ភាសាបរទេស / អង់គ្លេស</strong> (ពិន្ទុពេញ 50, មេគុណ 1.0)</li>
+                                        </ul>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-auto">
+                                        <button type="button" class="btn btn-outline-warning fw-bold text-dark w-50" onclick="selectPresetInChecklist('SOCIAL_7')">
+                                            <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                        </button>
+                                        <button type="button" class="btn btn-warning fw-bold text-dark w-50" onclick="applyStandardizedPreset('SOCIAL_7')">
+                                            <i class="fa-solid fa-bolt me-1"></i> អនុវត្ត 1-Click
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preset All MoEYS (Alternative for High School) -->
+                            <div class="col-12 mt-3">
+                                <div class="card border-success border-1 shadow-xs rounded-3 p-3 bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div>
+                                            <h6 class="fw-bold mb-0 text-success">
+                                                <i class="fa-solid fa-check-double me-1"></i> ប្រឡងគ្រប់មុខវិជ្ជា MoEYS (All MoEYS Subjects)
+                                            </h6>
+                                            <small class="text-muted">ទាញមុខវិជ្ជាទាំងអស់ដែលបានកំណត់តាមកម្មវិធីសិក្សាសម្រាប់កម្រិតថ្នាក់ទី {{ exam.grade_level }}</small>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="selectPresetInChecklist('ALL_MOEYS')">
+                                                <i class="fa-solid fa-list-check me-1"></i> ធីកលើតារាង
+                                            </button>
+                                            <button type="button" class="btn btn-success btn-sm fw-bold text-white" onclick="applyStandardizedPreset('ALL_MOEYS')">
+                                                <i class="fa-solid fa-check me-1"></i> អនុវត្តគ្រប់មុខវិជ្ជា
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បិទ</button>
+
+            <div class="modal-footer bg-light py-2.5 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark me-1"></i> បិទ
+                </button>
+                <button type="button" id="btnSaveModalSubjects" class="btn btn-primary fw-bold px-4 shadow-sm" onclick="saveModalExamSubjects()">
+                    <i class="fa-solid fa-floppy-disk me-1.5"></i> រក្សាទុកមុខវិជ្ជាដែលបានជ្រើសរើស
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Science & Social MoEYS Preset Definitions for Interactive Checklist
+const PRESET_SCIENCE_MAP = {
+    'គណិតវិទ្យា': { max: 125, coef: 2.5 },
+    'ភាសាខ្មែរ': { max: 75, coef: 1.5 },
+    'រូបវិទ្យា': { max: 75, coef: 1.5 },
+    'គីមីវិទ្យា': { max: 75, coef: 1.5 },
+    'ជីវវិទ្យា': { max: 75, coef: 1.5 },
+    'ប្រវត្តិវិទ្យា': { max: 50, coef: 1.0 },
+    'ភាសាបរទេស': { max: 50, coef: 1.0 },
+    'អង់គ្លេស': { max: 50, coef: 1.0 }
+};
+
+const PRESET_SOCIAL_MAP = {
+    'ភាសាខ្មែរ': { max: 125, coef: 2.5 },
+    'គណិតវិទ្យា': { max: 75, coef: 1.5 },
+    'ភូមិវិទ្យា': { max: 75, coef: 1.5 },
+    'ប្រវត្តិវិទ្យា': { max: 75, coef: 1.5 },
+    'សីលធម៌': { max: 75, coef: 1.5 },
+    'សីលធម៌-ពលរដ្ឋ': { max: 75, coef: 1.5 },
+    'ពលរដ្ឋ': { max: 75, coef: 1.5 },
+    'ផែនដីវិទ្យា': { max: 50, coef: 1.0 },
+    'ភាសាបរទេស': { max: 50, coef: 1.0 },
+    'អង់គ្លេស': { max: 50, coef: 1.0 }
+};
+
+function autoCalcNewSubjectCoef() {
+    const maxSc = parseFloat(document.getElementById('newSubjectMaxScore').value) || 50;
+    document.getElementById('newSubjectCoefficient').value = (maxSc / 50.0).toFixed(1);
+}
+
+function autoCalcModalCoef(subId) {
+    const scInput = document.getElementById(`m_score_${subId}`);
+    const coefInput = document.getElementById(`m_coef_${subId}`);
+    if (scInput && coefInput) {
+        const val = parseFloat(scInput.value) || 0;
+        coefInput.value = (val / 50.0).toFixed(1);
+    }
+    updateModalStats();
+}
+
+function onModalRowChange(subId) {
+    const row = document.getElementById(`modal-subj-row-${subId}`);
+    const chk = document.querySelector(`.modal-subj-check[data-id="${subId}"]`);
+    if (row && chk) {
+        if (chk.checked) {
+            row.classList.remove('table-light', 'opacity-75');
+        } else {
+            row.classList.add('table-light', 'opacity-75');
+        }
+    }
+    updateModalStats();
+}
+
+function toggleAllModalCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('.modal-subj-check');
+    checkboxes.forEach(chk => {
+        chk.checked = checked;
+        const row = document.getElementById(`modal-subj-row-${chk.value}`);
+        if (row) {
+            if (checked) {
+                row.classList.remove('table-light', 'opacity-75');
+            } else {
+                row.classList.add('table-light', 'opacity-75');
+            }
+        }
+    });
+    const headerChk = document.getElementById('modalHeaderCheckbox');
+    if (headerChk) headerChk.checked = checked;
+    updateModalStats();
+}
+
+function removeSubjectRow(subId) {
+    const chk = document.querySelector(`.modal-subj-check[data-id="${subId}"]`);
+    if (chk) {
+        chk.checked = false;
+        onModalRowChange(subId);
+    }
+    const row = document.getElementById(`modal-subj-row-${subId}`);
+    if (row) {
+        row.style.transition = 'all 0.3s ease';
+        row.classList.add('table-danger');
+        setTimeout(() => {
+            row.style.display = 'none';
+            updateModalStats();
+        }, 200);
+    }
+}
+
+function updateModalStats() {
+    let count = 0;
+    let totalScore = 0;
+    let totalCoef = 0;
+
+    const checkboxes = document.querySelectorAll('.modal-subj-check');
+    checkboxes.forEach(chk => {
+        const row = document.getElementById(`modal-subj-row-${chk.value}`);
+        if (chk.checked && (!row || row.style.display !== 'none')) {
+            count++;
+            const scInput = document.getElementById(`m_score_${chk.value}`);
+            const coefInput = document.getElementById(`m_coef_${chk.value}`);
+            const sc = scInput ? parseFloat(scInput.value) || 0 : 0;
+            const coef = coefInput ? parseFloat(coefInput.value) || 0 : 0;
+            totalScore += sc;
+            totalCoef += coef;
+        }
+    });
+
+    const badge = document.getElementById('modalSelectedCountBadge');
+    if (badge) badge.textContent = `${count} មុខ`;
+
+    const scText = document.getElementById('modalTotalScoreText');
+    if (scText) scText.textContent = totalScore.toFixed(0);
+
+    const coefText = document.getElementById('modalTotalCoefText');
+    if (coefText) coefText.textContent = totalCoef.toFixed(1);
+}
+
+function matchPresetName(subName, presetMap) {
+    for (let key in presetMap) {
+        if (subName.includes(key) || (key === 'ភាសាបរទេស' && (subName.includes('អង់គ្លេស') || subName.toLowerCase().includes('english')))) {
+            return presetMap[key];
+        }
+    }
+    return null;
+}
+
+function quickCheckPreset(presetType) {
+    const checkboxes = document.querySelectorAll('.modal-subj-check');
+
+    checkboxes.forEach(chk => {
+        const subName = chk.getAttribute('data-name') || '';
+        const row = document.getElementById(`modal-subj-row-${chk.value}`);
+        const scInput = document.getElementById(`m_score_${chk.value}`);
+        const coefInput = document.getElementById(`m_coef_${chk.value}`);
+
+        // Re-display row if hidden
+        if (row) row.style.display = '';
+
+        if (presetType === 'ALL_MOEYS') {
+            chk.checked = true;
+            if (row) row.classList.remove('table-light', 'opacity-75');
+        } else if (presetType === 'SCIENCE_7') {
+            const rule = matchPresetName(subName, PRESET_SCIENCE_MAP);
+            if (rule) {
+                chk.checked = true;
+                if (scInput) scInput.value = rule.max;
+                if (coefInput) coefInput.value = rule.coef.toFixed(1);
+                if (row) row.classList.remove('table-light', 'opacity-75');
+            } else {
+                chk.checked = false;
+                if (row) row.classList.add('table-light', 'opacity-75');
+            }
+        } else if (presetType === 'SOCIAL_7') {
+            const rule = matchPresetName(subName, PRESET_SOCIAL_MAP);
+            if (rule) {
+                chk.checked = true;
+                if (scInput) scInput.value = rule.max;
+                if (coefInput) coefInput.value = rule.coef.toFixed(1);
+                if (row) row.classList.remove('table-light', 'opacity-75');
+            } else {
+                chk.checked = false;
+                if (row) row.classList.add('table-light', 'opacity-75');
+            }
+        }
+    });
+
+    updateModalStats();
+}
+
+function selectPresetInChecklist(presetType) {
+    quickCheckPreset(presetType);
+    // Switch to Tab 1
+    const tabBtn = document.getElementById('tab-custom-subjects-btn');
+    if (tabBtn) {
+        const bsTab = bootstrap.Tab.getOrCreateInstance(tabBtn);
+        bsTab.show();
+    }
+}
+
+function addNewSubjectRowFromCatalog() {
+    const select = document.getElementById('newSubjectCatalogSelect');
+    const selectedOpt = select.options[select.selectedIndex];
+    if (!selectedOpt || !selectedOpt.value) {
+        alert('សូមជ្រើសរើសមុខវិជ្ជាពីកាតាឡុកសិន!');
+        return;
+    }
+
+    const subId = selectedOpt.value;
+    const subName = selectedOpt.getAttribute('data-name');
+    const subCode = selectedOpt.getAttribute('data-code');
+    const maxScore = parseFloat(document.getElementById('newSubjectMaxScore').value) || 50;
+    const coef = parseFloat(document.getElementById('newSubjectCoefficient').value) || 1.0;
+    const session = document.getElementById('newSubjectSession').value;
+
+    // Check if row already exists
+    const existingRow = document.getElementById(`modal-subj-row-${subId}`);
+    if (existingRow) {
+        existingRow.style.display = '';
+        existingRow.classList.remove('table-light', 'opacity-75');
+        const chk = existingRow.querySelector('.modal-subj-check');
+        if (chk) chk.checked = true;
+        const scInput = document.getElementById(`m_score_${subId}`);
+        if (scInput) scInput.value = maxScore;
+        const coefInput = document.getElementById(`m_coef_${subId}`);
+        if (coefInput) coefInput.value = coef.toFixed(1);
+        const sessSelect = document.getElementById(`m_sess_${subId}`);
+        if (sessSelect) sessSelect.value = session;
+        existingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        existingRow.classList.add('table-warning');
+        setTimeout(() => existingRow.classList.remove('table-warning'), 1500);
+        updateModalStats();
+        return;
+    }
+
+    // Append newly created row
+    const tbody = document.getElementById('modalSubjectsTableBody');
+    const rowCount = tbody.querySelectorAll('tr').length + 1;
+
+    const tr = document.createElement('tr');
+    tr.id = `modal-subj-row-${subId}`;
+    tr.className = 'modal-subj-row table-warning';
+    tr.innerHTML = `
+        <td class="text-center">
+            <input type="checkbox" class="form-check-input modal-subj-check" value="${subId}" data-id="${subId}" data-name="${subName}" checked onchange="onModalRowChange('${subId}')">
+        </td>
+        <td class="text-center text-muted fw-bold modal-row-number">${rowCount}</td>
+        <td>
+            <div class="fw-bold text-dark d-flex align-items-center gap-1.5">
+                <span>${subName}</span>
+                <span class="badge bg-light text-muted border font-monospace" style="font-size: 0.7rem;">${subCode}</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">ទើបបន្ថែម</span>
+            </div>
+        </td>
+        <td>
+            <input type="number" step="0.5" min="1" max="500" class="form-control form-control-sm text-center fw-bold modal-max-score" id="m_score_${subId}" value="${maxScore}" oninput="autoCalcModalCoef('${subId}')">
+        </td>
+        <td>
+            <input type="number" step="0.1" min="0.1" max="20" class="form-control form-control-sm text-center fw-bold text-primary modal-coef" id="m_coef_${subId}" value="${coef.toFixed(1)}" oninput="onModalRowChange('${subId}')">
+        </td>
+        <td>
+            <select class="form-select form-select-sm modal-session" id="m_sess_${subId}">
+                <option value="MORNING" ${session === 'MORNING' ? 'selected' : ''}>ព្រឹក</option>
+                <option value="AFTERNOON" ${session === 'AFTERNOON' ? 'selected' : ''}>រសៀល</option>
+            </select>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="removeSubjectRow('${subId}')" title="លុបមុខវិជ្ជានេះចេញ">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+
+    setTimeout(() => tr.classList.remove('table-warning'), 1500);
+    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    updateModalStats();
+}
+
+function saveModalExamSubjects() {
+    const selectedData = [];
+    const checkboxes = document.querySelectorAll('.modal-subj-check');
+
+    checkboxes.forEach(chk => {
+        const row = document.getElementById(`modal-subj-row-${chk.value}`);
+        if (chk.checked && (!row || row.style.display !== 'none')) {
+            const sid = parseInt(chk.value);
+            const scInput = document.getElementById(`m_score_${chk.value}`);
+            const coefInput = document.getElementById(`m_coef_${chk.value}`);
+            const sessSelect = document.getElementById(`m_sess_${chk.value}`);
+
+            selectedData.push({
+                subject_id: sid,
+                max_score: scInput ? parseFloat(scInput.value) || 50.0 : 50.0,
+                coefficient: coefInput ? parseFloat(coefInput.value) || 1.0 : 1.0,
+                session: sessSelect ? sessSelect.value : 'MORNING'
+            });
+        }
+    });
+
+    if (selectedData.length === 0) {
+        alert('⚠️ សូមធីកជ្រើសរើសយ៉ាងហោចណាស់ ១ មុខវិជ្ជា សម្រាប់សម័យប្រឡងនេះ!');
+        return;
+    }
+
+    if (!confirm(`តើលោកអ្នកពិតជាចង់រក្សាទុកមុខវិជ្ជាប្រឡងទាំង ${selectedData.length} មុខវិជ្ជានេះមែនទេ? (ប្រព័ន្ធនឹងគណនាចំណាត់ថ្នាក់ឡើងវិញដោយស្វ័យប្រវត្តិ)`)) {
+        return;
+    }
+
+    const saveBtn = document.getElementById('btnSaveModalSubjects');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> កំពុងរក្សាទុក...';
+
+    fetch('{% url "api_manage_standardized_exam_subjects" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ subjects_data: selectedData })
+    })
+    .then(res => res.json())
+    .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចរក្សាទុកបានទេ!'));
+        }
+    })
+    .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        alert('បរាជ័យក្នុងការតភ្ជាប់ទៅកាន់ Server៖ ' + err);
+    });
+}
+
 function applyStandardizedPreset(presetName) {
     let presetTitle = 'កំណត់ជាប្រឡងគ្រប់មុខ';
     if (presetName === 'SCIENCE_7') presetTitle = 'កំណត់ ៧ មុខវិជ្ជាវិទ្យាសាស្ត្រ (Khmer 75, Math 125, Phys 75, Chem 75, Bio 75, Hist 50, Eng 50)';
@@ -1009,6 +1664,16 @@ function applyStandardizedPreset(presetName) {
         alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
     });
 }
+
+// Initialize counts when modal is opened
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEl = document.getElementById('manageExamSubjectsModal');
+    if (modalEl) {
+        modalEl.addEventListener('show.bs.modal', function () {
+            updateModalStats();
+        });
+    }
+});
 </script>
 {% endif %}
 {% endblock %}
