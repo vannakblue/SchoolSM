@@ -94,20 +94,31 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"40 classrooms configured and synced with subjects."))
 
         self.stdout.write(self.style.NOTICE("=== STEP 3: Clean Wipe of Old Student Data ==="))
-        with transaction.atomic():
-            ExamCandidate.objects.all().delete()
-            ExamStudentExclusion.objects.all().delete()
-            StudentAttendance.objects.all().delete()
-            StudentMonthlyPayment.objects.all().delete()
-            Invoice.objects.all().delete()
-            PaymentSlipSubmission.objects.all().delete()
-            StudentPromotionRecord.objects.all().delete()
-            deleted_count, _ = Student.objects.all().delete()
+        Classroom.objects.all().update(class_monitor=None, vice_monitor=None)
+        from apps.examinations.models import CandidateSubjectScore, Grade, StudentTransferGrade
+        from apps.finance.models import StudentMonthlyCategory, FirestorePaymentAuditLog
+        from apps.extras.models import BookBorrowing, InventoryTransaction
+
+        CandidateSubjectScore.objects.all().delete()
+        ExamCandidate.objects.all().delete()
+        ExamStudentExclusion.objects.all().delete()
+        Grade.objects.all().delete()
+        StudentTransferGrade.objects.all().delete()
+        StudentAttendance.objects.all().delete()
+        StudentMonthlyPayment.objects.all().delete()
+        StudentMonthlyCategory.objects.all().delete()
+        Invoice.objects.all().delete()
+        PaymentSlipSubmission.objects.all().delete()
+        FirestorePaymentAuditLog.objects.all().update(student=None)
+        BookBorrowing.objects.all().update(student=None)
+        InventoryTransaction.objects.all().update(student=None)
+        StudentPromotionRecord.objects.all().delete()
+        deleted_count, _ = Student.objects.all().delete()
 
         self.stdout.write(self.style.SUCCESS(f"Deleted old student data cleanly."))
 
         self.stdout.write(self.style.NOTICE(f"=== STEP 4: Reading and Importing from {xlsm_path} ==="))
-        wb = openpyxl.load_workbook(xlsm_path, data_only=True)
+        wb = openpyxl.load_workbook(xlsm_path, read_only=True, data_only=True)
 
         def parse_gender(val):
             v = str(val).strip().upper() if val else ''
@@ -135,13 +146,13 @@ class Command(BaseCommand):
             if sname not in wb.sheetnames:
                 continue
             ws = wb[sname]
-            rows = list(ws.iter_rows(values_only=True))
-            if not rows:
-                continue
-
             sheet_count = 0
-            for r in rows[1:]:
+            is_first = True
+            for r in ws.iter_rows(values_only=True):
                 if not r or not any(r):
+                    continue
+                if is_first:
+                    is_first = False
                     continue
                 st_id = str(r[1]).strip() if r[1] is not None else ''
                 st_name = str(r[2]).strip() if r[2] is not None else ''

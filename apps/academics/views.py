@@ -984,21 +984,25 @@ def sync_40_classrooms_and_roster(request):
     - Sets 2026-2027 as Active Academic Year.
     - Ensures exactly 40 standard classrooms (7A-7E, 8A-8D, 9A-9D, 10A-10I, 11A-11I, 12A-12I).
     - Cleans up / deletes extra/duplicate classrooms in 2026-2027.
-    - Clean-wipes old student records to establish a clean master baseline.
-    - Imports all 1,998 students from 2026-2027.xlsm.
+    - Clean-wipes old student records safely with all foreign keys cleared first.
+    - Streams and imports all 1,998 students from 2026-2027.xlsm using read_only mode.
     """
     import os, logging, openpyxl
     from datetime import datetime, date
     from django.conf import settings
+    from django.db import transaction
+    from apps.academics.models import AcademicYear, Classroom, GradeLevelRule, ClassSubject
     from apps.students.models import Student, StudentPromotionRecord
-    from apps.examinations.models import ExamCandidate, ExamStudentExclusion
+    from apps.examinations.models import ExamCandidate, ExamStudentExclusion, CandidateSubjectScore, Grade, StudentTransferGrade
     from apps.attendance.models import StudentAttendance
-    from apps.finance.models import Invoice, StudentMonthlyPayment, PaymentSlipSubmission
+    from apps.finance.models import Invoice, StudentMonthlyPayment, StudentMonthlyCategory, PaymentSlipSubmission, FirestorePaymentAuditLog
+    from apps.extras.models import BookBorrowing, InventoryTransaction
     from apps.students.khmer_romanizer import romanize_khmer_name
 
     logger = logging.getLogger(__name__)
 
     try:
+        # 1. Setup Active Academic Year
         ay, _ = AcademicYear.objects.get_or_create(
             name='2026-2027',
             defaults={
@@ -1011,6 +1015,7 @@ def sync_40_classrooms_and_roster(request):
         ay.is_current = True
         ay.save()
 
+        # 2. Setup 40 standard classrooms
         official_40 = [
             ('7A', 7, 'GENERAL'), ('7B', 7, 'GENERAL'), ('7C', 7, 'GENERAL'), ('7D', 7, 'GENERAL'), ('7E', 7, 'GENERAL'),
             ('8A', 8, 'GENERAL'), ('8B', 8, 'GENERAL'), ('8C', 8, 'GENERAL'), ('8D', 8, 'GENERAL'),
@@ -1025,57 +1030,50 @@ def sync_40_classrooms_and_roster(request):
         valid_codes = {item[0].upper() for item in official_40}
 
         classroom_map = {}
-        with transaction.atomic():
-            for code, g_num, track in official_40:
-                c_obj, _ = Classroom.objects.update_or_create(
-                    academic_year=ay,
-                    code=code,
-                    defaults={
-                        'name': f"ថ្នាក់ទី {code}",
-                        'grade_level': g_num,
-                        'track': track,
-                        'capacity': 50
-                    }
-                )
+        for code, g_num, track in official_40:
+            c_obj, _ = Classroom.objects.update_or_create(
+                academic_year=ay,
+                code=code,
+                defaults={
+                    'name': f"ថ្នាក់ទី {code}",
+                    'grade_level': g_num,
+                    'track': track,
+                    'capacity': 50
+                }
+            )
+            if c_obj.name != f"ថ្នាក់ទី {code}" or c_obj.track != track:
                 c_obj.name = f"ថ្នាក់ទី {code}"
-                c_obj.grade_level = g_num
                 c_obj.track = track
                 c_obj.save()
 
-                # Sync default subjects
-                default_sub_ids = list(GradeLevelRule.objects.filter(
-                    grade_level=g_num,
-                    track=track
-                ).values_list('subject_id', flat=True))
-                if default_sub_ids:
-                    c_obj.sync_assigned_subjects(default_sub_ids)
+            classroom_map[code.upper()] = c_obj
 
-                classroom_map[code.upper()] = c_obj
+        # Delete any stray/redundant classrooms in 2026-2027 safely
+        Classroom.objects.filter(academic_year=ay).exclude(code__in=valid_codes).delete()
 
-            # Delete any stray/redundant classrooms in 2026-2027 safely
-            redundant = Classroom.objects.filter(academic_year=ay).exclude(code__in=valid_codes)
-            for rc in redundant:
-                try:
-                    rc.students.all().delete()
-                    rc.delete()
-                except Exception as del_err:
-                    logger.warning(f"Could not delete redundant classroom {rc.code}: {del_err}")
+        # 3. Clean wipe all existing student data and all foreign keys
+        Classroom.objects.all().update(class_monitor=None, vice_monitor=None)
+        CandidateSubjectScore.objects.all().delete()
+        ExamCandidate.objects.all().delete()
+        ExamStudentExclusion.objects.all().delete()
+        Grade.objects.all().delete()
+        StudentTransferGrade.objects.all().delete()
+        StudentAttendance.objects.all().delete()
+        StudentMonthlyPayment.objects.all().delete()
+        StudentMonthlyCategory.objects.all().delete()
+        Invoice.objects.all().delete()
+        PaymentSlipSubmission.objects.all().delete()
+        FirestorePaymentAuditLog.objects.all().update(student=None)
+        BookBorrowing.objects.all().update(student=None)
+        InventoryTransaction.objects.all().update(student=None)
+        StudentPromotionRecord.objects.all().delete()
+        Student.objects.all().delete()
 
-        # Wipe old students cleanly to maintain master baseline
-        with transaction.atomic():
-            ExamCandidate.objects.all().delete()
-            ExamStudentExclusion.objects.all().delete()
-            StudentAttendance.objects.all().delete()
-            StudentMonthlyPayment.objects.all().delete()
-            Invoice.objects.all().delete()
-            PaymentSlipSubmission.objects.all().delete()
-            StudentPromotionRecord.objects.all().delete()
-            Student.objects.all().delete()
-
+        # 4. Stream and import students from 2026-2027.xlsm
         xlsm_path = os.path.join(settings.BASE_DIR, '2026-2027.xlsm')
         total_created = 0
         if os.path.exists(xlsm_path):
-            wb = openpyxl.load_workbook(xlsm_path, data_only=True)
+            wb = openpyxl.load_workbook(xlsm_path, read_only=True, data_only=True)
 
             def parse_gender(val):
                 v = str(val).strip().upper() if val else ''
@@ -1103,12 +1101,12 @@ def sync_40_classrooms_and_roster(request):
                 if sname not in wb.sheetnames:
                     continue
                 ws = wb[sname]
-                rows = list(ws.iter_rows(values_only=True))
-                if not rows:
-                    continue
-
-                for r in rows[1:]:
+                is_first = True
+                for r in ws.iter_rows(values_only=True):
                     if not r or not any(r):
+                        continue
+                    if is_first:
+                        is_first = False
                         continue
                     st_id = str(r[1]).strip() if r[1] is not None else ''
                     st_name = str(r[2]).strip() if r[2] is not None else ''
@@ -1148,7 +1146,7 @@ def sync_40_classrooms_and_roster(request):
 
             wb.close()
 
-            with transaction.atomic():
+            if to_create:
                 Student.objects.bulk_create(to_create, batch_size=500)
             total_created = len(to_create)
 
