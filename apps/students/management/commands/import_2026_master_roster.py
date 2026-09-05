@@ -22,6 +22,11 @@ class Command(BaseCommand):
             default=os.path.join(settings.BASE_DIR, '2026-2027.xlsm'),
             help='Path to the 2026-2027.xlsm file'
         )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Force clean-wipe and re-import even if students already exist'
+        )
 
     def handle(self, *args, **options):
         xlsm_path = options['file']
@@ -42,6 +47,17 @@ class Command(BaseCommand):
         ay.is_current = True
         ay.save()
         self.stdout.write(self.style.SUCCESS(f"Academic Year: {ay.name} is now ACTIVE."))
+
+        # SAFETY GUARD: If students already exist in this academic year, DO NOT WIPE or re-import
+        # unless --force is explicitly specified by the administrator!
+        existing_student_count = Student.objects.filter(classroom__academic_year=ay).count()
+        if existing_student_count > 0 and not options.get('force'):
+            self.stdout.write(self.style.SUCCESS(
+                f"🛡️ [SAFETY GUARD ACTIVE] 2026-2027 roster is already active ({existing_student_count} students present). "
+                f"SKIPPING clean-wipe & import to permanently protect all live student data, exams, candidates, grades, and attendance! "
+                f"(To force re-import, pass --force)."
+            ))
+            return
 
         self.stdout.write(self.style.NOTICE("=== STEP 2: Ensuring 40 Standard Classrooms ==="))
         official_40 = [
