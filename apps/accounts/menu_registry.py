@@ -292,11 +292,12 @@ MENU_SECTIONS_CATALOG = [
             },
             {
                 'key': 'standardized_exam_list',
-                'name_kh': 'តេស្តស្តង់ដា',
-                'name_en': 'Standardized Exams',
+                'name_kh': 'សម័យប្រឡង',
+                'name_en': 'Exam Sessions',
                 'icon': 'fa-solid fa-certificate text-danger',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN'],
                 'url_name': 'standardized_exam_list',
+                'is_admin_only': True,
             },
             {
                 'key': 'exam_blind_scoring_portal',

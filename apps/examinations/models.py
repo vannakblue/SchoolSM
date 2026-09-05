@@ -746,6 +746,16 @@ class ExamInvigilatorPlan(models.Model):
     default_regular_quota = models.PositiveIntegerField(default=4, verbose_name="កូតាលំនាំដើមគ្រូធម្មតា / Regular Teacher Default Quota (4 វេន)")
     default_office_quota = models.PositiveIntegerField(default=5, verbose_name="កូតាលំនាំដើមគ្រូការិយាល័យ / Office Teacher Default Quota (5 វេន)")
     
+    invigilators_per_room = models.PositiveSmallIntegerField(
+        default=2,
+        choices=[(1, '១ នាក់/បន្ទប់'), (2, '២ នាក់/បន្ទប់')],
+        verbose_name="ចំនួនអនុរក្សក្នុង១បន្ទប់ / Invigilators per Room"
+    )
+    rooms_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="ចំនួនបន្ទប់សរុប / Total Rooms"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -769,20 +779,36 @@ class ExamInvigilatorPlan(models.Model):
     def total_filled_spots(self):
         return sum(s.registered_count for s in self.shift_slots.all())
 
-    def ensure_default_role_settings(self):
+    @property
+    def display_session_name(self):
+        import re
+        if self.title:
+            t = self.title.replace('វេនអនុរក្ស៖', '').replace('វេនអនុរក្ស:', '').strip()
+            cleaned = re.sub(r'[\(\[\{]?\s*(?:ថ្នាក់ទី|កម្រិតទី|Grade)\s*\d+\s*[\)\]\}]?', '', t, flags=re.IGNORECASE).strip(" -–—:()")
+            if cleaned:
+                return cleaned
+        if self.standardized_exam:
+            cleaned = re.sub(r'[\(\[\{]?\s*(?:ថ្នាក់ទី|កម្រិតទី|Grade)\s*\d+\s*[\)\]\}]?', '', self.standardized_exam.name, flags=re.IGNORECASE).strip(" -–—:()")
+            if cleaned:
+                return cleaned
+        return self.title
+
+    def ensure_default_role_settings(self, invigilators_cap=None, secretariat_cap=2, inspector_cap=2):
         """
-        Ensures settings for all 6 Exam Committee Roles exist for this plan.
+        Ensures settings for all 6 Exam Committee Roles exist for this plan,
+        with customized initial capacities for Invigilator, Secretariat, and Building Inspector.
         """
+        invig_cap = invigilators_cap or max(20, self.total_required_spots or 20)
         defaults = {
             ExamCommitteeRole.PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 1, 'auto_assign_all_shifts': True},
             ExamCommitteeRole.VICE_PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
-            ExamCommitteeRole.SECRETARIAT: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
-            ExamCommitteeRole.BUILDING_INSPECTOR: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
-            ExamCommitteeRole.INVIGILATOR: {'is_requestable': True, 'capacity_per_shift': max(20, self.total_required_spots or 20), 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.SECRETARIAT: {'is_requestable': False, 'capacity_per_shift': secretariat_cap, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.BUILDING_INSPECTOR: {'is_requestable': False, 'capacity_per_shift': inspector_cap, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.INVIGILATOR: {'is_requestable': True, 'capacity_per_shift': invig_cap, 'auto_assign_all_shifts': False},
             ExamCommitteeRole.TABULATOR: {'is_requestable': True, 'capacity_per_shift': 4, 'auto_assign_all_shifts': False},
         }
         for role_val, conf in defaults.items():
-            ExamPlanRoleSetting.objects.get_or_create(
+            setting, created = ExamPlanRoleSetting.objects.get_or_create(
                 plan=self,
                 role=role_val,
                 defaults={
@@ -791,6 +817,9 @@ class ExamInvigilatorPlan(models.Model):
                     'auto_assign_all_shifts': conf['auto_assign_all_shifts'],
                 }
             )
+            if not created and invigilators_cap and role_val == ExamCommitteeRole.INVIGILATOR:
+                setting.capacity_per_shift = invig_cap
+                setting.save(update_fields=['capacity_per_shift'])
 
 
 class TeacherDutyGroup(models.Model):
@@ -889,6 +918,8 @@ class ExamShiftSlot(models.Model):
         """
         Returns designated capacity for a specific committee role in this slot.
         """
+        if role == ExamCommitteeRole.INVIGILATOR:
+            return self.max_invigilators
         setting = self.plan.role_settings.filter(role=role).first()
         if setting:
             return setting.capacity_per_shift

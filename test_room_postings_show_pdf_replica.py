@@ -196,9 +196,12 @@ def run_tests():
 
     resp_disc = exam_room_postings_view(req_r1, exam.id)
     html_disc = resp_disc.content.decode('utf-8')
-    assert "⚠️ [ ផ្អាកបណ្តោះអាសន្ន - សូមទាក់ទងការិយាល័យវិន័យ/រដ្ឋបាល ដើម្បីធ្វើកិច្ចសន្យាមុនចូលប្រឡង ]" in html_disc
-    assert "ជាប់កិច្ចសន្យា" in html_disc
-    print("✅ Disciplinary hold masking verified!")
+    assert f'<td class="col-name">{cand_to_block.candidate_name_kh}</td>' not in html_disc, "Blocked candidate name must NOT appear in postings cell"
+    assert cand_to_block.student_code not in html_disc or f'<td class="col-id">{cand_to_block.student_code}</td>' not in html_disc, "Blocked student ID must NOT appear in cell"
+    assert "ជាប់កិច្ចសន្យា" in html_disc, "Remarks must show ជាប់កិច្ចសន្យា"
+    assert f'<td class="col-desk">{cand_to_block.desk_number}</td>' in html_disc, "Desk number must be preserved"
+    assert 'style="color: #b91c1c; font-size: 9.8pt; font-weight: 500;">ជាប់កិច្ចសន្យា</td>' in html_disc
+    print("✅ Disciplinary hold blank columns (ID to Class) & standard-size 'ជាប់កិច្ចសន្យា' verified!")
 
     print("\n🎉 ALL 11 TESTS PASSED SUCCESSFULLY! The output 100% replicates show.pdf!")
 

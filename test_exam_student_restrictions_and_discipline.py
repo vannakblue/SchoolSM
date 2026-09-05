@@ -258,9 +258,11 @@ posting_req = setup_request(factory.get(f'/examinations/standardized/{std_exam.i
 posting_resp = exam_room_postings_view(posting_req, std_exam.id)
 posting_html = posting_resp.content.decode('utf-8')
 
-assert "⚠️ [ ផ្អាកបណ្តោះអាសន្ន - សូមទាក់ទងការិយាល័យវិន័យ/រដ្ឋបាល ដើម្បីធ្វើកិច្ចសន្យាមុនចូលប្រឡង ]" in posting_html, "❌ Error: Disciplinary notice must be masked on posting list!"
+assert f'<td class="col-name">{cand_disc.candidate_name_kh}</td>' not in posting_html, "❌ Error: Blocked candidate name must NOT appear on posting list!"
+assert "ជាប់កិច្ចសន្យា" in posting_html, "❌ Error: Remarks must show ជាប់កិច្ចសន្យា!"
+assert f'<td class="col-desk">{cand_disc.desk_number}</td>' in posting_html, "❌ Error: Desk number must be preserved!"
 assert "សុខ ចាន់ថន" in posting_html, "❌ Error: Normal candidate s1_active must be visible on posting list!"
-print("✅ Room Notice Posting List: Disciplinary student info is correctly masked/hidden!")
+print("✅ Room Notice Posting List: Disciplinary student columns are blank and marked ជាប់កិច្ចសន្យា with desk preserved!")
 
 # 5c. Verify Attendance & Signature Sheet masks candidate and blocks signature
 att_req = setup_request(factory.get(f'/examinations/standardized/{std_exam.id}/attendance-sheets/'), admin_user)

@@ -46,7 +46,7 @@
                 <i class="fa-regular fa-calendar me-1"></i>កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong> • 
                 <i class="fa-solid fa-door-open me-1"></i>ស្តង់ដារបន្ទប់៖ <strong>{{ exam.candidates_per_room }} នាក់/បន្ទប់</strong>
                 {% if invigilator_plan %}
-                • <i class="fa-solid fa-user-shield text-warning ms-1 me-1"></i>វេនអនុរក្ស៖ <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="fw-bold text-decoration-none {% if invigilator_plan.calc_total_registered >= invigilator_plan.calc_total_capacity %}text-success{% else %}text-dark{% endif %}">{{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }} នាក់</a>
+                • <i class="fa-solid fa-user-shield text-warning ms-1 me-1"></i>វេនអនុរក្សទូទាំងសម័យប្រឡង៖ <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="fw-bold text-decoration-none {% if invigilator_plan.calc_total_registered >= invigilator_plan.calc_total_capacity %}text-success{% else %}text-dark{% endif %}" title="វេនអនុរក្សរួមសម្រាប់គ្រប់កម្រិតថ្នាក់នៃសម័យប្រឡង">{{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }} នាក់</a>
                 {% endif %}
                 • <i class="fa-solid fa-lock text-primary ms-1 me-1"></i>របៀបបញ្ចូលពិន្ទុ៖ <span class="badge {% if exam.grading_method == 'BLIND_SECRET_CODE' %}bg-danger text-white{% elif exam.grading_method == 'TEACHER_DIRECT' %}bg-info-subtle text-dark border border-info{% else %}bg-primary-subtle text-primary border border-primary-subtle{% endif %}">{{ exam.get_grading_method_display }}</span>
                 {% if exam.grading_end_datetime %}
@@ -93,14 +93,14 @@
                 <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ២. ចែកបន្ទប់ & កំណត់លេខតុ (Auto-Rooms)
             </button>
 
-            <!-- 3. Invigilators Management -->
+            <!-- 3. Invigilators Management for Entire Session -->
             {% if invigilator_plan %}
-            <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="btn btn-warning btn-sm fw-bold shadow-sm text-dark" title="គ្រប់គ្រង និងតាមដានវេនអនុរក្សនៃសម័យប្រឡងនេះ">
-                <i class="fa-solid fa-user-shield me-1"></i> ៣. វេនអនុរក្ស ({{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }})
+            <a href="{% url 'exam_invigilator_roster_view' invigilator_plan.id %}" class="btn btn-warning btn-sm fw-bold shadow-sm text-dark" title="គ្រប់គ្រង និងតាមដានវេនអនុរក្សនៃសម័យប្រឡងទាំងមូល (គ្រប់កម្រិតថ្នាក់)">
+                <i class="fa-solid fa-user-shield me-1"></i> ៣. វេនអនុរក្សទូទាំងសម័យប្រឡង ({{ invigilator_plan.calc_total_registered }}/{{ invigilator_plan.calc_total_capacity }})
             </a>
             {% else %}
-            <a href="{% url 'exam_invigilator_plan_create' %}?exam_id={{ exam.id }}&session_key={{ session_key }}&title={{ clean_title|urlencode }}&date={{ exam.exam_date|date:'Y-m-d' }}&rooms={{ total_rooms }}&year={{ exam.academic_year_id }}" class="btn btn-outline-warning btn-sm fw-bold text-dark shadow-sm" title="រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះ">
-                <i class="fa-solid fa-user-shield me-1"></i> ៣. រៀបចំវេនអនុរក្ស
+            <a href="{% url 'exam_invigilator_plan_create' %}?session_key={{ session_key }}&title={{ clean_title|urlencode }}&date={{ exam.exam_date|date:'Y-m-d' }}&rooms={{ session_total_rooms|default:total_rooms }}&year={{ exam.academic_year_id }}" class="btn btn-outline-warning btn-sm fw-bold text-dark shadow-sm" title="រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងទាំងមូល (គ្រប់កម្រិតថ្នាក់)">
+                <i class="fa-solid fa-user-shield me-1"></i> ៣. រៀបចំវេនអនុរក្ស (សម័យប្រឡងរួម)
             </a>
             {% endif %}
 
@@ -376,7 +376,7 @@
                     <th class="text-center" style="width: 55px;">ភេទ</th>
                     <th style="width: 95px;">ថ្ងៃខែឆ្នាំកំណើត</th>
                     <th style="width: 85px;">ថ្នាក់ដើម</th>
-                    <th class="text-center" style="width: 140px;">ស្ថានភាពវិន័យ/កិច្ចសន្យា</th>
+                    <th class="text-center" style="width: 155px;">ផ្អាកបណ្តោះអាសន្ន/កិច្ចសន្យា</th>
                     <th class="text-center" style="width: 80px;">ពិន្ទុសរុប</th>
                     <th class="text-center" style="width: 75px;">មធ្យមភាគ</th>
                     <th class="text-center" style="width: 65px;">និទ្ទេស</th>
@@ -401,11 +401,9 @@
                     <td class="fw-bold text-primary">{{ c.roll_number }}</td>
                     <td class="fw-bold text-dark">
                         {{ c.candidate_name_kh }}
-                        {% if c.is_disciplinary_blocked %}
-                        <div class="small text-danger fw-normal" style="font-size: 0.72rem;">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i>លាក់ក្នុងបញ្ជីបិទផ្សាយ & ចុះហត្ថលេខា
+                        <div id="disc-tag-{{ c.id }}" class="small text-danger fw-normal" style="font-size: 0.72rem; {% if not c.is_disciplinary_blocked %}display: none;{% endif %}">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>ផ្អាកបណ្តោះអាសន្ន (ទុកចន្លោះទទេលើបញ្ជីបិទផ្សាយ)
                         </div>
-                        {% endif %}
                     </td>
                     <td class="text-muted">{{ c.candidate_name_en|default:"-" }}</td>
                     <td class="text-center">
@@ -426,11 +424,11 @@
                                     class="btn btn-sm {% if c.is_disciplinary_blocked %}btn-danger{% else %}btn-outline-success{% endif %} py-0.5 px-2 fw-bold"
                                     style="font-size: 0.75rem;"
                                     onclick="toggleDiscipline({{ c.id }})"
-                                    title="ចុចដើម្បី Tick ឬ ដោះ Tick វិន័យ">
+                                    title="ចុចដើម្បីផ្អាក ឬដោះការផ្អាក (រក្សាទុកលេខបន្ទប់ និងលេខតុដដែល)">
                                 {% if c.is_disciplinary_blocked %}
-                                <i class="fa-solid fa-lock me-1"></i> ជាប់វិន័យ (Tick)
+                                <i class="fa-solid fa-user-lock me-1"></i> ផ្អាកបណ្តោះអាសន្ន
                                 {% else %}
-                                <i class="fa-solid fa-check me-1"></i> ធម្មតា
+                                <i class="fa-solid fa-user-check me-1"></i> ធម្មតា
                                 {% endif %}
                             </button>
                         </div>
@@ -507,14 +505,17 @@ function toggleDiscipline(candidateId) {
         btn.disabled = false;
         if (data.status === 'success') {
             const row = document.getElementById('cand-row-' + candidateId);
+            const tag = document.getElementById('disc-tag-' + candidateId);
             if (data.is_disciplinary_blocked) {
                 btn.className = 'btn btn-sm btn-danger py-0.5 px-2 fw-bold';
-                btn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> ជាប់វិន័យ (Tick)';
+                btn.innerHTML = '<i class="fa-solid fa-user-lock me-1"></i> ផ្អាកបណ្តោះអាសន្ន';
                 if (row) row.classList.add('table-danger');
+                if (tag) tag.style.display = 'block';
             } else {
                 btn.className = 'btn btn-sm btn-outline-success py-0.5 px-2 fw-bold';
-                btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ធម្មតា';
+                btn.innerHTML = '<i class="fa-solid fa-user-check me-1"></i> ធម្មតា';
                 if (row) row.classList.remove('table-danger');
+                if (tag) tag.style.display = 'none';
             }
         } else {
             alert(data.message || 'មានបញ្ហាក្នុងការប្តូរស្ថានភាពវិន័យ!');

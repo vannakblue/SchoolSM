@@ -41,18 +41,14 @@
                 <input type="hidden" name="session_key" value="{{ session_key|default:'' }}">
                 <div class="alert alert-primary py-2.5 px-3 rounded-3 small border-0 mb-4 d-flex align-items-center justify-content-between">
                     <div>
-                        <i class="fa-solid fa-link text-primary me-1"></i>
-                        <strong>ភ្ជាប់ទៅកាន់សម័យប្រឡង៖</strong> 
-                        {% if linked_exam %}
-                        «<strong>{{ linked_exam.name }}</strong>» (ថ្នាក់ទី {{ linked_exam.grade_level }} • {{ linked_exam.academic_year.name }})
-                        {% else %}
-                        «<strong>{{ default_title }}</strong>»
-                        {% endif %}
+                        <i class="fa-solid fa-user-shield text-primary me-1"></i>
+                        <strong>ភ្ជាប់ទៅកាន់សម័យប្រឡងទាំងមូល៖</strong> 
+                        «<strong>{{ clean_session_name|default:default_title }}</strong>» (សម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡង • {{ default_ay.name|default:active_year.name }})
                         {% if room_count %}
-                        — មាន <strong>{{ room_count }} បន្ទប់</strong> (គណនាតម្រូវការអនុរក្សស្តង់ដារ ២ នាក់/បន្ទប់ = <strong class="text-primary">{{ default_slots_capacity }} នាក់/វេន</strong>)
+                        — មានសរុប <strong>{{ room_count }} បន្ទប់</strong> (គណនាតម្រូវការអនុរក្សទូទាំងសម័យប្រឡង ២ នាក់/បន្ទប់ = <strong class="text-primary">{{ default_slots_capacity }} នាក់/វេន</strong>)
                         {% endif %}
                     </div>
-                    <span class="badge bg-primary px-2.5 py-1">ភ្ជាប់សម័យប្រឡង</span>
+                    <span class="badge bg-primary px-2.5 py-1"><i class="fa-solid fa-layer-group me-1"></i>សម័យប្រឡងរួម (All Grades)</span>
                 </div>
                 {% endif %}
 
@@ -73,69 +69,279 @@
                     </div>
                 </div>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small text-dark">ថ្ងៃចាប់ផ្តើមប្រឡង (Start Date) *</label>
-                        <input type="date" name="start_date" class="form-control" required value="{% if plan.start_date %}{{ plan.start_date|date:'Y-m-d' }}{% elif default_start_date %}{{ default_start_date|date:'Y-m-d' }}{% endif %}">
+                <!-- Exam Schedule & Shift Duration Controller -->
+                <div class="p-3.5 bg-light rounded-4 border mb-3 shadow-xs">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-calendar-days text-primary me-2"></i>កាលបរិច្ឆេទ និងការគណនាវេនប្រឡង (Exam Dates & Shifts Calculation)
+                            </h6>
+                            <small class="text-muted">កំណត់ចំនួនថ្ងៃប្រឡង និងកាលបរិច្ឆេទ — ប្រព័ន្ធនឹងគណនាចំនួនវេនប្រឡង (ព្រឹក/រសៀល) ស្វ័យប្រវត្តិតាមការកំណត់</small>
+                        </div>
+                        <span class="badge bg-primary fs-6 px-3 py-1.5 shadow-xs" id="badge_total_shifts_count">
+                            <i class="fa-solid fa-clock me-1"></i><span id="txt_total_shifts">8</span> វេនប្រឡង
+                        </span>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small text-dark">ថ្ងៃបញ្ចប់ការប្រឡង (End Date) *</label>
-                        <input type="date" name="end_date" class="form-control" required value="{% if plan.end_date %}{{ plan.end_date|date:'Y-m-d' }}{% elif default_end_date %}{{ default_end_date|date:'Y-m-d' }}{% endif %}">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-dark mb-1">
+                                <i class="fa-solid fa-calendar-check text-success me-1"></i>ចំនួនថ្ងៃប្រឡង (Days) *
+                            </label>
+                            <div class="input-group">
+                                <input type="number" id="plan_days_count" min="1" max="30" class="form-control fw-bold text-center fs-6 text-primary" value="4" oninput="recalcExamSchedule('days')">
+                                <span class="input-group-text fw-bold">ថ្ងៃ</span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.72rem;">ឧ. ៤ ថ្ងៃប្រឡង = ៨ វេន</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-dark mb-1">
+                                <i class="fa-solid fa-play text-primary me-1"></i>ថ្ងៃចាប់ផ្តើម (Start Date) *
+                            </label>
+                            <input type="date" name="start_date" id="plan_start_date" class="form-control fw-bold" required value="{% if plan.start_date %}{{ plan.start_date|date:'Y-m-d' }}{% elif default_start_date %}{{ default_start_date|date:'Y-m-d' }}{% endif %}" onchange="recalcExamSchedule('start_date')">
+                            <small class="text-muted" style="font-size: 0.72rem;" id="hint_start_khmer">កាលបរិច្ឆេទចាប់ផ្តើម</small>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-dark mb-1">
+                                <i class="fa-solid fa-flag-checkered text-danger me-1"></i>ថ្ងៃបញ្ចប់ការប្រឡង (End Date) *
+                            </label>
+                            <input type="date" name="end_date" id="plan_end_date" class="form-control fw-bold" required value="{% if plan.end_date %}{{ plan.end_date|date:'Y-m-d' }}{% elif default_end_date %}{{ default_end_date|date:'Y-m-d' }}{% endif %}" onchange="recalcExamSchedule('end_date')">
+                            <small class="text-muted" style="font-size: 0.72rem;" id="hint_end_khmer">កាលបរិច្ឆេទបញ្ចប់</small>
+                        </div>
+                    </div>
+
+                    <!-- Live Dynamic Date Range & Generated Shifts Breakdown Banner -->
+                    <div class="p-3 bg-white rounded-3 border">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <div class="small fw-bold text-dark" id="txt_date_range_summary">
+                                <i class="fa-solid fa-info-circle text-primary me-1"></i>
+                                រយៈពេលប្រឡង៖ <span class="text-primary fw-bold" id="lbl_duration_days">៤ ថ្ងៃ</span>
+                                (<span id="lbl_date_range_full" class="text-secondary">ពីថ្ងៃចន្ទ ទី០៧ ខែកញ្ញា ឆ្នាំ២០២៦ ដល់ថ្ងៃព្រហស្បតិ៍ ទី១០ ខែកញ្ញា ឆ្នាំ២០២៦</span>)
+                            </div>
+                            <span class="badge bg-info-subtle text-info border border-info px-2.5 py-1" id="lbl_shifts_formula">
+                                ៤ ថ្ងៃ × ២ វេន = ៨ វេន (៤ ព្រឹក + ៤ រសៀល)
+                            </span>
+                        </div>
+
+                        <!-- Shifts Slots Pills Preview Container -->
+                        <div class="d-flex flex-wrap gap-1.5 pt-1" id="slots_preview_container">
+                            <!-- Populated dynamically by JS -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Teacher Shift Quotas Configuration -->
-                <div class="p-3 bg-light rounded-4 border mb-3">
-                    <label class="form-label fw-bold small text-dark mb-2">
-                        <i class="fa-solid fa-users-gear text-primary me-1"></i> កំណត់កូតាចំនួនវេនតម្រូវលំនាំដើម (Default Shift Quotas) *៖
-                    </label>
+                <!-- Teacher Shift Quotas Configuration (Group 1 vs Group 2) -->
+                <div class="p-3.5 bg-light rounded-4 border mb-3 shadow-xs">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-users-gear text-primary me-2"></i>កំណត់កូតាចំនួនវេនសម្រាប់គ្រូជ្រើសរើស (Teacher Quota Groups)
+                            </h6>
+                            <small class="text-muted">Admin មានសិទ្ធិកំណត់ចំនួនវេនសម្រាប់គ្រូជ្រើសរើសតាមប្រភេទនីមួយៗ (Admin ជាអ្នកចាត់តាំងឈ្មោះគ្រូចូលក្រុមជាមុនសិន)</small>
+                        </div>
+                    </div>
+
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted mb-1">
-                                👨‍🏫 គ្រូបង្រៀនធម្មតា (Regular Teachers)
-                            </label>
-                            <div class="input-group">
-                                <input type="number" min="1" max="20" name="default_regular_quota" class="form-control fw-bold text-center" value="{{ plan.default_regular_quota|default:4 }}" required>
-                                <span class="input-group-text fw-bold">វេន / នាក់</span>
+                            <div class="p-3 bg-white rounded-3 border h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small fw-bold text-dark mb-0">
+                                        👨‍🏫 ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)
+                                    </label>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary">ប្រភេទទី១</span>
+                                </div>
+                                <div class="input-group my-2">
+                                    <input type="number" min="1" max="20" name="default_regular_quota" class="form-control fw-bold text-center fs-6" value="{{ plan.default_regular_quota|default:4 }}" required>
+                                    <span class="input-group-text fw-bold">វេន / ពេល</span>
+                                </div>
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">កូតាវេនសម្រាប់គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់ (លំនាំដើម ៤ វេន)</small>
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem;">កូតាសម្រាប់គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់</small>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted mb-1">
-                                💼 គ្រូការិយាល័យ / រដ្ឋបាល (Office Staff Teachers)
-                            </label>
-                            <div class="input-group">
-                                <input type="number" min="1" max="20" name="default_office_quota" class="form-control fw-bold text-center" value="{{ plan.default_office_quota|default:5 }}" required>
-                                <span class="input-group-text fw-bold">វេន / នាក់</span>
+                            <div class="p-3 bg-white rounded-3 border h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small fw-bold text-dark mb-0">
+                                        💼 ក្រុមគ្រូប្រភេទទី២ (គ្រូការិយាល័យ / រដ្ឋបាល)
+                                    </label>
+                                    <span class="badge bg-info-subtle text-info border border-info">ប្រភេទទី២</span>
+                                </div>
+                                <div class="input-group my-2">
+                                    <input type="number" min="1" max="20" name="default_office_quota" class="form-control fw-bold text-center fs-6" value="{{ plan.default_office_quota|default:5 }}" required>
+                                    <span class="input-group-text fw-bold">វេន / ពេល</span>
+                                </div>
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">កូតាវេនសម្រាប់គ្រូបម្រើការងារនៅការិយាល័យ រដ្ឋបាល បណ្ណារក្ស (លំនាំដើម ៥ វេន)</small>
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem;">កូតាសម្រាប់គ្រូការិយាល័យ បណ្ណារក្ស និងរដ្ឋបាល</small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 rounded-3 small border-0 mt-3 mb-0 d-flex align-items-center">
+                        <i class="fa-solid fa-circle-info text-info me-2 fs-5"></i>
+                        <div>
+                            <strong>ចំណាំ៖</strong> ក្រោយពេលបង្កើតគម្រោង Admin អាចចូលទៅផ្ទាំង <strong>«កូតាគ្រូ»</strong> ដើម្បីចាត់តាំងឈ្មោះគ្រូចូលទៅ <strong>ក្រុមគ្រូប្រភេទទី១</strong> ឬ <strong>ក្រុមគ្រូប្រភេទទី២</strong> (ជាបុគ្គល ឬជាដុំ batch assign) មុនពេលបើកឱ្យគ្រូសុំវេន។
                         </div>
                     </div>
                 </div>
 
-                {% if not is_edit %}
-                <!-- Auto-Create Shift Slots Options -->
-                <div class="p-3 bg-light rounded-4 border mb-3">
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="auto_create_slots" name="auto_create_slots" checked>
-                        <label class="form-check-label fw-bold small text-dark" for="auto_create_slots">
-                            ⚡ បង្កើតវេនប្រឡង (ព្រឹក 07:00-11:00 & រសៀល 13:00-17:00) ស្វ័យប្រវត្តិតាមថ្ងៃទាំងអស់
+                <!-- Staff Allocation per Shift (អនុរក្ស, កណ្តាល, ត្រួតអគារ) -->
+                <div class="p-3.5 bg-light rounded-4 border mb-4 shadow-xs">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fa-solid fa-users-between-lines text-primary me-2"></i>ការកំណត់អនុរក្សក្នុង១បន្ទប់ និងបែងចែកកម្លាំងតាមវេន (Staff Allocation per Shift)
+                            </h6>
+                            <small class="text-muted">ប្រព័ន្ធបែងចែកស្វ័យប្រវត្តិតាមវេនព្រឹក-រសៀល និងអនុញ្ញាតឱ្យ Admin កែសម្រួលដោយដៃតាមតម្រូវការជាក់ស្តែង</small>
+                        </div>
+                        {% if room_count %}
+                        <span class="badge bg-primary fs-6 px-2.5 py-1">
+                            <i class="fa-solid fa-door-open me-1"></i>{{ room_count }} បន្ទប់ប្រឡង
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <input type="hidden" name="rooms_count" id="hidden_rooms_count" value="{% if is_edit and plan %}{{ plan.rooms_count|default:room_count|default:0 }}{% else %}{{ room_count|default:0 }}{% endif %}">
+
+                    <!-- 1. Ratio of Invigilators per room -->
+                    <div class="p-3 bg-white rounded-3 border mb-3">
+                        <label class="form-label fw-bold small text-dark mb-2">
+                            <i class="fa-solid fa-user-gear text-warning me-1"></i>១. កំណត់ចំនួនអនុរក្សក្នុង ១ បន្ទប់ប្រឡង (Invigilators per Room) *៖
                         </label>
-                    </div>
-                    <div class="row g-2 align-items-center pt-2 border-top">
-                        <div class="col-md-6">
-                            <label class="form-label small text-muted mb-0">ចំនួនអនុរក្សអតិបរមាក្នុងមួយវេន (Capacity per Shift)៖</label>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="input-group input-group-sm">
-                                <input type="number" min="1" max="100" name="slots_capacity" class="form-control text-center fw-bold" value="{{ default_slots_capacity|default:20 }}">
-                                <span class="input-group-text">នាក់/វេន</span>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check border rounded-3 p-2.5 px-3 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_1" onclick="updatePlanPerRoom(1)">
+                                    <input class="form-check-input me-2" type="radio" name="invigilators_per_room" id="plan_radio_invig_1" value="1" {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_1">
+                                        👤 ១ នាក់ / បន្ទប់
+                                        <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                            {% if room_count %}ស្មើនឹង {{ room_count }} នាក់ក្នុងមួយវេន{% else %}សមស្របសម្រាប់សម័យប្រឡងខ្នាតតូច ឬវិញ្ញាសាទូទៅ{% endif %}
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check border rounded-3 p-2.5 px-3 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_2" onclick="updatePlanPerRoom(2)">
+                                    <input class="form-check-input me-2" type="radio" name="invigilators_per_room" id="plan_radio_invig_2" value="2" {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_2">
+                                        👥 ២ នាក់ / បន្ទប់ <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">ស្តង់ដារលំនាំដើម</span>
+                                        <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                            {% if room_count %}ស្មើនឹង {{ room_count|add:room_count }} នាក់ក្នុងមួយវេន (អនុរក្សទី១ + អនុរក្សទី២){% else %}ស្តង់ដារក្រសួងអប់រំ (អនុរក្សទី១ និងទី២){% endif %}
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- 2. Manual Distribution of 3 Key Roles per Shift -->
+                    <div class="p-3 bg-white rounded-3 border mb-3">
+                        <label class="form-label fw-bold small text-dark mb-2">
+                            <i class="fa-solid fa-sliders text-success me-1"></i>២. បែងចែកចំនួនកម្លាំងតាមមុខងារក្នុង ១ វេន (Manual Staff Quota per Shift) *៖
+                        </label>
+                        <div class="row g-3">
+                            <!-- Invigilators -->
+                            <div class="col-md-4">
+                                <div class="p-2.5 rounded-3 border bg-light h-100">
+                                    <label class="form-label small fw-bold text-dark mb-1">
+                                        👤 គណៈកម្មការអនុរក្ស
+                                    </label>
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="number" min="1" max="5000" name="capacity_invigilator" id="capacity_invigilator" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit %}{{ role_invigilator.capacity_per_shift|default:plan.shift_slots.first.max_invigilators|default:20 }}{% else %}{{ default_slots_capacity|default:20 }}{% endif %}" oninput="recalcShiftSummary()">
+                                        <span class="input-group-text fw-bold">នាក់/វេន</span>
+                                    </div>
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">ឈរយាមផ្ទាល់ក្នុងបន្ទប់ប្រឡង (កែសម្រួលដោយដៃបាន)</small>
+                                </div>
+                            </div>
+
+                            <!-- Secretariat (គណៈកម្មការកណ្តាល) -->
+                            <div class="col-md-4">
+                                <div class="p-2.5 rounded-3 border bg-light h-100">
+                                    <label class="form-label small fw-bold text-dark mb-1">
+                                        🏢 គណៈកម្មការកណ្តាល
+                                    </label>
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="number" min="0" max="1000" name="capacity_secretariat" id="capacity_secretariat" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit %}{{ role_secretariat.capacity_per_shift|default:2 }}{% else %}{{ default_secretariat_cap|default:2 }}{% endif %}" oninput="recalcShiftSummary()">
+                                        <span class="input-group-text fw-bold">នាក់/វេន</span>
+                                    </div>
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">គ្រប់គ្រងវិញ្ញាសា កូដសម្ងាត់ និងការងាររដ្ឋបាលមណ្ឌល</small>
+                                </div>
+                            </div>
+
+                            <!-- Building Inspector (ត្រួតអគារ) -->
+                            <div class="col-md-4">
+                                <div class="p-2.5 rounded-3 border bg-light h-100">
+                                    <label class="form-label small fw-bold text-dark mb-1">
+                                        🔍 គណៈកម្មការត្រួតអគារ
+                                    </label>
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="number" min="0" max="1000" name="capacity_building_inspector" id="capacity_building_inspector" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit %}{{ role_inspector.capacity_per_shift|default:2 }}{% else %}{{ default_inspector_cap|default:2 }}{% endif %}" oninput="recalcShiftSummary()">
+                                        <span class="input-group-text fw-bold">នាក់/វេន</span>
+                                    </div>
+                                    <small class="text-muted d-block" style="font-size: 0.72rem;">ដើរត្រួតពិនិត្យតាមជាន់ និងអគារប្រឡងនីមួយៗ</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Shift Allocation Breakdown Widget (Morning & Afternoon Preview) -->
+                    <div class="p-3 bg-white rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <span class="small fw-bold text-dark">
+                                <i class="fa-solid fa-clock-rotate-left text-info me-1"></i>៣. ការបែងចែកជាក់ស្តែងតាមវេន (Morning & Afternoon Shift Breakdown)៖
+                            </span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1">
+                                សរុបកម្លាំង <strong id="sum_total_staff" class="fs-6">0</strong> នាក់ / វេន
+                            </span>
+                        </div>
+
+                        <div class="row g-2 text-center">
+                            <!-- Morning Shift -->
+                            <div class="col-md-6">
+                                <div class="p-2.5 rounded-3 border bg-warning-subtle text-start">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark"><i class="fa-solid fa-sun text-warning me-1"></i> 🌅 វេនព្រឹក (07:00 - 11:00)</strong>
+                                        <span class="badge bg-warning text-dark fw-bold" id="badge_morning_total">0 នាក់</span>
+                                    </div>
+                                    <div class="small text-muted d-flex justify-content-between pt-1">
+                                        <span>• អនុរក្ស៖ <strong class="text-dark" id="txt_m_invig">0</strong> នាក់</span>
+                                        <span>• កណ្តាល៖ <strong class="text-dark" id="txt_m_sec">0</strong> នាក់</span>
+                                        <span>• ត្រួតអគារ៖ <strong class="text-dark" id="txt_m_insp">0</strong> នាក់</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Afternoon Shift -->
+                            <div class="col-md-6">
+                                <div class="p-2.5 rounded-3 border bg-info-subtle text-start">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark"><i class="fa-solid fa-cloud-sun text-info me-1"></i> ⛅ វេនរសៀល (13:00 - 17:00)</strong>
+                                        <span class="badge bg-info text-white fw-bold" id="badge_afternoon_total">0 នាក់</span>
+                                    </div>
+                                    <div class="small text-muted d-flex justify-content-between pt-1">
+                                        <span>• អនុរក្ស៖ <strong class="text-dark" id="txt_a_invig">0</strong> នាក់</span>
+                                        <span>• កណ្តាល៖ <strong class="text-dark" id="txt_a_sec">0</strong> នាក់</span>
+                                        <span>• ត្រួតអគារ៖ <strong class="text-dark" id="txt_a_insp">0</strong> នាក់</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if is_edit %}
+                        <div class="form-check form-switch mt-3 pt-2 border-top">
+                            <input class="form-check-input" type="checkbox" id="sync_all_slots" name="sync_all_slots" checked>
+                            <label class="form-check-label small fw-bold text-primary cursor-pointer" for="sync_all_slots">
+                                🔄 ធ្វើបច្ចុប្បន្នភាពចំណុះអនុរក្សគ្រប់វេនប្រឡងទាំងអស់ក្នុងគម្រោងនេះ (Sync All Slots Capacity)
+                            </label>
+                        </div>
+                        {% else %}
+                        <div class="form-check form-switch mt-3 pt-2 border-top">
+                            <input class="form-check-input" type="checkbox" id="auto_create_slots" name="auto_create_slots" checked>
+                            <label class="form-check-label fw-bold small text-dark cursor-pointer" for="auto_create_slots">
+                                ⚡ បង្កើតវេនប្រឡង (ព្រឹក 07:00-11:00 & រសៀល 13:00-17:00) ស្វ័យប្រវត្តិតាមថ្ងៃទាំងអស់
+                            </label>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endif %}
 
                 <!-- Activation Controls -->
                 <div class="p-3 bg-light rounded-4 border mb-3">
@@ -204,7 +410,7 @@
                             <th>ម៉ោង</th>
                             <th class="text-center">ចំណុះអនុរក្ស</th>
                             <th class="text-center">បានចុះឈ្មោះ</th>
-                            <th class="text-center" style="width: 80px;">សកម្មភាព</th>
+                            <th class="text-center" style="width: 100px;">សកម្មភាព</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -230,6 +436,9 @@
                                 </span>
                             </td>
                             <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 me-1" data-bs-toggle="modal" data-bs-target="#editSlotModal_{{ s.id }}" title="កែប្រែវេននេះ">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
                                 <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបវេនប្រឡង «{{ s.session_name }}» នេះមែនទេ?')">
                                     {% csrf_token %}
                                     <input type="hidden" name="form_action" value="delete_slot">
@@ -250,6 +459,70 @@
             </div>
         </div>
 
+        {% for s in slots %}
+        <!-- Modal Edit Slot -->
+        <div class="modal fade" id="editSlotModal_{{ s.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+                    <div class="modal-header bg-primary text-white py-3">
+                        <h5 class="modal-title fw-bold">
+                            <i class="fa-solid fa-pen-to-square me-2"></i>កែប្រែវេនប្រឡង
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_action" value="edit_slot">
+                        <input type="hidden" name="slot_id" value="{{ s.id }}">
+                        <div class="modal-body p-4 text-start">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទប្រឡង *</label>
+                                <input type="date" name="slot_date" class="form-control" required value="{{ s.date|date:'Y-m-d' }}">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">វេនប្រឡង</label>
+                                    <select name="slot_session" class="form-select form-select-sm">
+                                        <option value="MORNING" {% if s.session == 'MORNING' %}selected{% endif %}>🌅 ពេលព្រឹក</option>
+                                        <option value="AFTERNOON" {% if s.session == 'AFTERNOON' %}selected{% endif %}>⛅ ពេលរសៀល</option>
+                                        <option value="CUSTOM" {% if s.session == 'CUSTOM' %}selected{% endif %}>🕒 ម៉ោងផ្សេងៗ</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ចំណុះអនុរក្ស</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" min="1" max="5000" name="slot_capacity" class="form-control text-center fw-bold" value="{{ s.max_invigilators }}">
+                                        <span class="input-group-text">នាក់</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ម៉ោងចាប់ផ្តើម</label>
+                                    <input type="time" name="slot_start" class="form-control form-control-sm font-monospace" value="{{ s.start_time|time:'H:i' }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold small text-muted">ម៉ោងបញ្ចប់</label>
+                                    <input type="time" name="slot_end" class="form-control form-control-sm font-monospace" value="{{ s.end_time|time:'H:i' }}">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small text-muted">ឈ្មោះសម្គាល់វេន (Slot Name)</label>
+                                <input type="text" name="slot_name" class="form-control form-control-sm" value="{{ s.session_name }}">
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
         <!-- Modal Add Slot -->
         <div class="modal fade" id="addSlotModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -263,7 +536,7 @@
                     <form method="POST">
                         {% csrf_token %}
                         <input type="hidden" name="form_action" value="add_slot">
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4 text-start">
                             <div class="mb-3">
                                 <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទប្រឡង *</label>
                                 <input type="date" name="slot_date" class="form-control" required value="{{ plan.start_date|date:'Y-m-d' }}">
@@ -280,7 +553,7 @@
                                 <div class="col-6">
                                     <label class="form-label fw-bold small text-muted">ចំនួនអនុរក្សអតិបរមា</label>
                                     <div class="input-group input-group-sm">
-                                        <input type="number" min="1" max="100" name="slot_capacity" class="form-control text-center fw-bold" value="20">
+                                        <input type="number" min="1" max="5000" name="slot_capacity" class="form-control text-center fw-bold" value="20">
                                         <span class="input-group-text">នាក់</span>
                                     </div>
                                 </div>
@@ -314,4 +587,168 @@
 
     </div>
 </div>
+
+<script>
+const KH_DAYS = ['អាទិត្យ', 'ចន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'];
+const KH_MONTHS = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+
+function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function formatDateIso(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function formatKhmerFull(d) {
+    if (!d) return '';
+    const dayName = KH_DAYS[d.getDay()];
+    const dateNum = String(d.getDate()).padStart(2, '0');
+    const monthName = KH_MONTHS[d.getMonth()];
+    const year = d.getFullYear();
+    return `ថ្ងៃ${dayName} ទី ${dateNum} ខែ${monthName} ឆ្នាំ ${year}`;
+}
+
+function formatKhmerShort(d) {
+    if (!d) return '';
+    const dayName = KH_DAYS[d.getDay()];
+    const dateNum = String(d.getDate()).padStart(2, '0');
+    const monthNum = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dayName} ${dateNum}/${monthNum}`;
+}
+
+function recalcExamSchedule(source) {
+    const startInput = document.getElementById('plan_start_date');
+    const endInput = document.getElementById('plan_end_date');
+    const daysInput = document.getElementById('plan_days_count');
+
+    let startDate = parseLocalDate(startInput?.value);
+    let endDate = parseLocalDate(endInput?.value);
+    let days = parseInt(daysInput?.value || 0, 10);
+
+    if (!startDate && endDate && days > 0) {
+        startDate = new Date(endDate);
+        startDate.setDate(endDate.getDate() - (days - 1));
+        if (startInput) startInput.value = formatDateIso(startDate);
+    } else if (startDate && days > 0 && (source === 'days' || source === 'start_date' || !endDate)) {
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + (days - 1));
+        if (endInput) endInput.value = formatDateIso(endDate);
+    } else if (startDate && endDate && (source === 'end_date' || !days)) {
+        const diffTime = endDate.getTime() - startDate.getTime();
+        days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+        if (daysInput) daysInput.value = days;
+    }
+
+    if (days < 1) days = 1;
+    const totalShifts = days * 2;
+
+    // Update Badges & Labels
+    const txtTotalShifts = document.getElementById('txt_total_shifts');
+    if (txtTotalShifts) txtTotalShifts.textContent = totalShifts;
+
+    const lblDuration = document.getElementById('lbl_duration_days');
+    if (lblDuration) lblDuration.textContent = `${days} ថ្ងៃ`;
+
+    const hintStart = document.getElementById('hint_start_khmer');
+    if (hintStart && startDate) hintStart.textContent = formatKhmerFull(startDate);
+
+    const hintEnd = document.getElementById('hint_end_khmer');
+    if (hintEnd && endDate) hintEnd.textContent = formatKhmerFull(endDate);
+
+    const lblRange = document.getElementById('lbl_date_range_full');
+    if (lblRange && startDate && endDate) {
+        lblRange.textContent = `ពី${formatKhmerFull(startDate)} ដល់${formatKhmerFull(endDate)}`;
+    }
+
+    const lblFormula = document.getElementById('lbl_shifts_formula');
+    if (lblFormula) {
+        lblFormula.textContent = `${days} ថ្ងៃ × ២ វេន = ${totalShifts} វេន (${days} ព្រឹក + ${days} រសៀល)`;
+    }
+
+    // Render Slots Pills Preview
+    const container = document.getElementById('slots_preview_container');
+    if (container && startDate && days > 0) {
+        let html = '';
+        const curr = new Date(startDate);
+        for (let i = 1; i <= Math.min(days, 31); i++) {
+            const shortStr = formatKhmerShort(curr);
+            html += `
+                <div class="border rounded-2 p-1.5 px-2 bg-light text-nowrap small mb-1 me-1 shadow-2xs">
+                    <span class="badge bg-secondary me-1">ថ្ងៃទី${i}</span>
+                    <strong class="text-dark me-1">${shortStr}៖</strong>
+                    <span class="badge bg-warning-subtle text-dark border border-warning">🌅 ព្រឹក</span>
+                    <span class="badge bg-info-subtle text-info border border-info">⛅ រសៀល</span>
+                </div>
+            `;
+            curr.setDate(curr.getDate() + 1);
+        }
+        container.innerHTML = html;
+    }
+}
+
+function updatePlanPerRoom(perRoom) {
+    const r1 = document.getElementById('plan_radio_invig_1');
+    const r2 = document.getElementById('plan_radio_invig_2');
+    if (r1) r1.checked = (perRoom === 1);
+    if (r2) r2.checked = (perRoom === 2);
+
+    const w1 = document.getElementById('plan_opt_wrap_1');
+    const w2 = document.getElementById('plan_opt_wrap_2');
+    if (w1 && w2) {
+        if (perRoom === 1) {
+            w1.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2.5 px-3 cursor-pointer';
+            w2.className = 'form-check border bg-light rounded-3 p-2.5 px-3 cursor-pointer';
+        } else {
+            w2.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2.5 px-3 cursor-pointer';
+            w1.className = 'form-check border bg-light rounded-3 p-2.5 px-3 cursor-pointer';
+        }
+    }
+
+    const rooms = parseInt(document.getElementById('hidden_rooms_count')?.value || 0, 10);
+    if (rooms > 0) {
+        const invigInput = document.getElementById('capacity_invigilator');
+        if (invigInput) {
+            invigInput.value = rooms * perRoom;
+        }
+    }
+    recalcShiftSummary();
+}
+
+function recalcShiftSummary() {
+    const invig = parseInt(document.getElementById('capacity_invigilator')?.value || 0, 10);
+    const sec = parseInt(document.getElementById('capacity_secretariat')?.value || 0, 10);
+    const insp = parseInt(document.getElementById('capacity_building_inspector')?.value || 0, 10);
+    const total = invig + sec + insp;
+
+    const sumEl = document.getElementById('sum_total_staff');
+    if (sumEl) sumEl.textContent = total;
+
+    const bm = document.getElementById('badge_morning_total');
+    const ba = document.getElementById('badge_afternoon_total');
+    if (bm) bm.textContent = total + ' នាក់';
+    if (ba) ba.textContent = total + ' នាក់';
+
+    const ids = [
+        ['txt_m_invig', invig], ['txt_a_invig', invig],
+        ['txt_m_sec', sec], ['txt_a_sec', sec],
+        ['txt_m_insp', insp], ['txt_a_insp', insp]
+    ];
+    ids.forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    recalcShiftSummary();
+    recalcExamSchedule('init');
+});
+</script>
 {% endblock %}

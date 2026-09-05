@@ -67,6 +67,7 @@ def test_invigilator_exam_session_integration():
         default_regular_quota=4,
         default_office_quota=5
     )
+    ExamInvigilatorPlan.objects.exclude(id=plan.id).update(is_active=False)
 
     slot_morning = ExamShiftSlot.objects.create(
         plan=plan,
@@ -116,8 +117,9 @@ def test_invigilator_exam_session_integration():
     assert res_portal.status_code == 200
     content_portal = res_portal.content.decode('utf-8')
     assert 'សម័យប្រឡង៖' in content_portal
-    assert exam.name in content_portal
-    print("5. [PASS] Teacher portal prominently displays linked exam session name.")
+    assert plan.display_session_name in content_portal
+    assert 'សម័យប្រឡងទាំងមូល (គ្រប់កម្រិតថ្នាក់)' in content_portal
+    print("5. [PASS] Teacher portal prominently displays linked exam session name and whole-session badge.")
 
     # 8. Test slot toggle registration
     reg_res = client_teacher.post('/examinations/api/invigilator-slot/toggle/', {

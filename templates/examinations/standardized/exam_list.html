@@ -596,9 +596,54 @@
                             </p>
 
                             {% if sess.total_rooms > 0 %}
-                            <div class="alert alert-info py-2 px-3 small border-0 d-inline-block mb-3">
-                                <i class="fa-solid fa-calculator text-primary me-1"></i>
-                                សម័យប្រឡងនេះមាន <strong>{{ sess.total_rooms }} បន្ទប់</strong> (តម្រូវការអនុរក្សស្តង់ដារ ២ នាក់/បន្ទប់ = <strong class="text-primary">{{ sess.total_rooms|add:sess.total_rooms }} នាក់/វេន</strong>)
+                            <div class="card border-0 bg-white shadow-xs rounded-4 p-3 mb-3 text-start mx-auto" style="max-width: 520px;">
+                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                    <span class="small text-muted fw-bold">
+                                        <i class="fa-solid fa-door-open text-primary me-1"></i>ចំនួនបន្ទប់ប្រឡងសរុប៖
+                                    </span>
+                                    <span class="badge bg-primary fs-6 px-2.5 py-1">{{ sess.total_rooms }} បន្ទប់</span>
+                                </div>
+
+                                <!-- Invigilators per room choice -->
+                                <label class="small fw-bold text-dark mb-1.5 d-block">
+                                    <i class="fa-solid fa-user-gear text-warning me-1"></i>កំណត់ចំនួនអនុរក្សក្នុង ១ បន្ទប់៖
+                                </label>
+                                <div class="d-flex gap-2 mb-3">
+                                    <div class="form-check form-check-inline border rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-light" id="opt_wrap_1_{{ sess.group_key|slugify }}" onclick="selectInvigPerRoom('{{ sess.group_key|slugify }}', 1, {{ sess.total_rooms }})">
+                                        <input class="form-check-input me-2" type="radio" name="invig_per_room_{{ sess.group_key|slugify }}" id="radio_invig_1_{{ sess.group_key|slugify }}" value="1">
+                                        <label class="form-check-label fw-bold small cursor-pointer" for="radio_invig_1_{{ sess.group_key|slugify }}">
+                                            👤 ១ នាក់ / បន្ទប់
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline border border-primary border-2 rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-primary-subtle" id="opt_wrap_2_{{ sess.group_key|slugify }}" onclick="selectInvigPerRoom('{{ sess.group_key|slugify }}', 2, {{ sess.total_rooms }})">
+                                        <input class="form-check-input me-2" type="radio" name="invig_per_room_{{ sess.group_key|slugify }}" id="radio_invig_2_{{ sess.group_key|slugify }}" value="2" checked>
+                                        <label class="form-check-label fw-bold small cursor-pointer text-primary" for="radio_invig_2_{{ sess.group_key|slugify }}">
+                                            👥 ២ នាក់ / បន្ទប់ <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">ស្តង់ដារ</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Live calculation & Shift Allocation Preview -->
+                                <div class="p-2.5 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center small mb-2 pb-2 border-bottom">
+                                        <span class="text-muted">តម្រូវការអនុរក្សក្នុង ១ វេន៖</span>
+                                        <span class="fw-bold text-primary fs-6" id="calc_text_{{ sess.group_key|slugify }}">{{ sess.total_rooms|add:sess.total_rooms }} នាក់/វេន</span>
+                                    </div>
+                                    <div class="row g-2 text-center small">
+                                        <div class="col-6">
+                                            <div class="p-2 bg-white rounded border">
+                                                <span class="d-block text-muted" style="font-size: 0.75rem;">🌅 វេនព្រឹក</span>
+                                                <strong class="text-warning-emphasis fs-6" id="slot_morning_{{ sess.group_key|slugify }}">{{ sess.total_rooms|add:sess.total_rooms }} នាក់</strong>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="p-2 bg-white rounded border">
+                                                <span class="d-block text-muted" style="font-size: 0.75rem;">⛅ វេនរសៀល</span>
+                                                <strong class="text-info-emphasis fs-6" id="slot_afternoon_{{ sess.group_key|slugify }}">{{ sess.total_rooms|add:sess.total_rooms }} នាក់</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             {% else %}
                             <div class="alert alert-warning py-2 px-3 small border-0 d-inline-block mb-3">
@@ -608,7 +653,7 @@
                             {% endif %}
 
                             <div>
-                                <a href="{% url 'exam_invigilator_plan_create' %}?session_key={{ sess.group_key|urlencode }}&year={{ sess.academic_year.id }}&date={{ sess.exam_date|date:'Y-m-d' }}&title={{ sess.title|urlencode }}&rooms={{ sess.total_rooms }}" class="btn btn-warning text-dark fw-bold px-4 py-2 shadow-xs">
+                                <a id="btn_plan_create_{{ sess.group_key|slugify }}" href="{% url 'exam_invigilator_plan_create' %}?session_key={{ sess.group_key|urlencode }}&year={{ sess.academic_year.id }}&date={{ sess.exam_date|date:'Y-m-d' }}&title={{ sess.title|urlencode }}&rooms={{ sess.total_rooms }}&invigilators_per_room=2" class="btn btn-warning text-dark fw-bold px-4 py-2.5 shadow-xs fs-6">
                                     <i class="fa-solid fa-plus-circle me-1"></i> រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះឥឡូវនេះ
                                 </a>
                             </div>
@@ -900,6 +945,48 @@ function openDeleteSessionModal(title, dateDisplay, yearName, gradesCount, examI
     if (modalEl) {
         const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalInstance.show();
+    }
+}
+
+function selectInvigPerRoom(key, perRoom, totalRooms) {
+    const total = totalRooms * perRoom;
+    const r1 = document.getElementById('radio_invig_1_' + key);
+    const r2 = document.getElementById('radio_invig_2_' + key);
+    if (r1) r1.checked = (perRoom === 1);
+    if (r2) r2.checked = (perRoom === 2);
+    
+    const wrap1 = document.getElementById('opt_wrap_1_' + key);
+    const wrap2 = document.getElementById('opt_wrap_2_' + key);
+    if (wrap1 && wrap2) {
+        if (perRoom === 1) {
+            wrap1.className = 'form-check form-check-inline border border-primary border-2 rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-primary-subtle';
+            wrap2.className = 'form-check form-check-inline border rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-light';
+            const l1 = wrap1.querySelector('label');
+            const l2 = wrap2.querySelector('label');
+            if (l1) l1.className = 'form-check-label fw-bold small cursor-pointer text-primary';
+            if (l2) l2.className = 'form-check-label fw-bold small cursor-pointer text-dark';
+        } else {
+            wrap2.className = 'form-check form-check-inline border border-primary border-2 rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-primary-subtle';
+            wrap1.className = 'form-check form-check-inline border rounded-3 p-2 px-3 flex-grow-1 cursor-pointer bg-light';
+            const l1 = wrap1.querySelector('label');
+            const l2 = wrap2.querySelector('label');
+            if (l2) l2.className = 'form-check-label fw-bold small cursor-pointer text-primary';
+            if (l1) l1.className = 'form-check-label fw-bold small cursor-pointer text-dark';
+        }
+    }
+
+    const calcEl = document.getElementById('calc_text_' + key);
+    const mEl = document.getElementById('slot_morning_' + key);
+    const aEl = document.getElementById('slot_afternoon_' + key);
+    if (calcEl) calcEl.innerText = total + ' នាក់/វេន';
+    if (mEl) mEl.innerText = total + ' នាក់';
+    if (aEl) aEl.innerText = total + ' នាក់';
+
+    const btn = document.getElementById('btn_plan_create_' + key);
+    if (btn) {
+        let url = new URL(btn.href, window.location.origin);
+        url.searchParams.set('invigilators_per_room', perRoom);
+        btn.href = url.pathname + url.search;
     }
 }
 

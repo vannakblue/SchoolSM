@@ -447,13 +447,15 @@
                 <tr>
                     <td class="col-index">{{ row.row_num }}</td>
                     <td class="col-desk">{{ row.desk_number }}</td>
-                    <td class="col-id">{{ row.student_id }}</td>
                     {% if row.is_disciplinary_blocked %}
-                    <td colspan="4" style="text-align: center; font-weight: 700; color: #b91c1c; font-size: 8.5pt;">
-                        ⚠️ [ ផ្អាកបណ្តោះអាសន្ន - សូមទាក់ទងការិយាល័យវិន័យ/រដ្ឋបាល ដើម្បីធ្វើកិច្ចសន្យាមុនចូលប្រឡង ]
-                    </td>
-                    <td class="col-remarks" style="font-weight: 700; color: #b91c1c;">ជាប់កិច្ចសន្យា</td>
+                    <td class="col-id"></td>
+                    <td class="col-name"></td>
+                    <td class="col-gender"></td>
+                    <td class="col-dob"></td>
+                    <td class="col-class"></td>
+                    <td class="col-remarks" style="color: #b91c1c; font-size: 9.8pt; font-weight: 500;">ជាប់កិច្ចសន្យា</td>
                     {% else %}
+                    <td class="col-id">{{ row.student_id }}</td>
                     <td class="col-name">{{ row.candidate_name_kh }}</td>
                     <td class="col-gender">{{ row.gender_kh }}</td>
                     <td class="col-dob">{{ row.dob_kh }}</td>

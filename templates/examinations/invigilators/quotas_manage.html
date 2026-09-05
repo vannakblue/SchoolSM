@@ -74,7 +74,7 @@
                         </td>
                         <td class="text-center">
                             <div class="input-group input-group-sm mx-auto" style="max-width: 140px;">
-                                <input type="number" min="1" max="100" name="capacity_{{ r.role }}" class="form-control text-center fw-bold font-monospace" value="{{ r.capacity_per_shift }}">
+                                <input type="number" min="1" max="5000" name="capacity_{{ r.role }}" class="form-control text-center fw-bold font-monospace" value="{{ r.capacity_per_shift }}">
                                 <span class="input-group-text">នាក់/វេន</span>
                             </div>
                         </td>
@@ -143,32 +143,37 @@
     <div class="row g-3">
         {% for g in duty_groups %}
         <div class="col-12 col-md-4">
-            <div class="p-3 bg-light rounded-3 border h-100 position-relative">
+            <div class="p-3 bg-light rounded-3 border h-100 position-relative {% if 'ប្រភេទទី១' in g.name %}border-primary-subtle border-2{% elif 'ប្រភេទទី២' in g.name %}border-info-subtle border-2{% endif %}">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="badge bg-primary fs-6 px-2.5 py-1">
+                    <span class="badge {% if 'ប្រភេទទី១' in g.name %}bg-primary{% elif 'ប្រភេទទី២' in g.name %}bg-info text-white{% else %}bg-secondary{% endif %} fs-6 px-2.5 py-1">
                         {{ g.required_shifts }} វេន / នាក់
                     </span>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-light py-0 px-1 border" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-ellipsis-vertical"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-sm small">
-                            <li>
-                                <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#editGroupModal_{{ g.id }}">
-                                    <i class="fa-solid fa-pen-to-square me-1 text-primary"></i> កែប្រែក្រុម
-                                </button>
-                            </li>
-                            <li>
-                                <form method="POST" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបក្រុម «{{ g.name }}» នេះមែនទេ?')">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="delete_group">
-                                    <input type="hidden" name="group_id" value="{{ g.id }}">
-                                    <button type="submit" class="dropdown-item text-danger">
-                                        <i class="fa-solid fa-trash-can me-1"></i> លុបក្រុម
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="badge bg-white text-dark border px-2 py-1 small" title="ចំនួនគ្រូបច្ចុប្បន្នដែលស្ថិតក្នុងក្រុមនេះ">
+                            <i class="fa-solid fa-users me-1 text-primary"></i><strong>{{ g.assigned_quotas.count }}</strong> នាក់
+                        </span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light py-0 px-1 border" type="button" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm small">
+                                <li>
+                                    <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#editGroupModal_{{ g.id }}">
+                                        <i class="fa-solid fa-pen-to-square me-1 text-primary"></i> កែប្រែក្រុម
                                     </button>
-                                </form>
-                            </li>
-                        </ul>
+                                </li>
+                                <li>
+                                    <form method="POST" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបក្រុម «{{ g.name }}» នេះមែនទេ?')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_group">
+                                        <input type="hidden" name="group_id" value="{{ g.id }}">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="fa-solid fa-trash-can me-1"></i> លុបក្រុម
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">{{ g.name }}</h6>
@@ -262,43 +267,116 @@
 
 <!-- Individual Teacher Quota Table Form -->
 <div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
-    <form method="POST">
+    <form method="POST" id="teacherQuotasForm">
         {% csrf_token %}
-        <input type="hidden" name="action" value="save_teacher_quotas">
+        <input type="hidden" name="action" id="teacher_form_action" value="save_teacher_quotas">
 
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
             <div>
                 <h5 class="fw-bold text-dark mb-0">
                     <i class="fa-solid fa-chalkboard-user text-primary me-2"></i>តារាងកំណត់កូតាជាក់លាក់របស់គ្រូបង្រៀន (Teacher Quotas)
                 </h5>
-                <small class="text-muted">សរុប {{ teacher_quotas|length }} នាក់</small>
+                <small class="text-muted">សរុប {{ teacher_quotas|length }} នាក់ — Admin អាចចាត់តាំងឈ្មោះគ្រូចូលក្រុមប្រភេទទី១ ឬប្រភេទទី២ ដោយដៃ ឬជាដុំ (Batch Assign)</small>
             </div>
-            <button type="submit" class="btn btn-primary fw-bold shadow-sm">
-                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់កូតាទាំងអស់
-            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-success fw-bold btn-sm shadow-xs" onclick="document.getElementById('teacher_form_action').value='auto_classify_teachers'; document.getElementById('teacherQuotasForm').submit();">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់ថ្នាក់ស្វ័យប្រវត្តិតាមមុខតំណែង
+                </button>
+                <button type="submit" class="btn btn-primary fw-bold shadow-sm btn-sm px-3" onclick="document.getElementById('teacher_form_action').value='save_teacher_quotas';">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់កូតាទាំងអស់
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="row g-2 mb-3 align-items-center">
+            <div class="col-12 col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" id="teacherSearchInput" class="form-control" placeholder="ស្វែងរកឈ្មោះគ្រូ, អត្តលេខ, មុខវិជ្ជា..." oninput="filterTeachers()">
+                </div>
+            </div>
+            <div class="col-12 col-md-7">
+                <div class="d-flex flex-wrap gap-1 justify-content-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary active py-1 px-2.5 filter-btn" onclick="filterByGroup('all', this)">
+                        ទាំងអស់ ({{ teacher_quotas|length }})
+                    </button>
+                    {% for g in duty_groups %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5 filter-btn" onclick="filterByGroup('{{ g.id }}', this)">
+                        {% if 'ប្រភេទទី១' in g.name %}👨‍🏫 {% elif 'ប្រភេទទី២' in g.name %}💼 {% endif %}{{ g.name }} (<span class="group-count-{{ g.id }}">{{ g.assigned_quotas.count }}</span>)
+                    </button>
+                    {% endfor %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5 filter-btn" onclick="filterByGroup('exempt', this)">
+                        លើកលែង
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Assignment Toolbar -->
+        <div class="p-3 bg-light rounded-3 border mb-3 shadow-2xs">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-auto d-flex align-items-center gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="master_check_all" onchange="toggleMasterCheck(this)">
+                        <label class="form-check-label small fw-bold text-dark cursor-pointer" for="master_check_all">
+                            ជ្រើសរើសទាំងអស់
+                        </label>
+                    </div>
+                    <span class="badge bg-primary px-2.5 py-1" id="batchCountBadge">
+                        បាន Check 0 នាក់
+                    </span>
+                </div>
+                <div class="col-12 col-md d-flex flex-wrap align-items-center gap-2 justify-content-md-end">
+                    <span class="small fw-bold text-muted">កំណត់ចូលក្រុម៖</span>
+                    <div style="min-width: 260px;">
+                        <select name="target_group_id" id="batch_target_group_id" class="form-select form-select-sm fw-bold border-info">
+                            <option value="">-- ជ្រើសរើសក្រុមគោលដៅ --</option>
+                            {% for g in duty_groups %}
+                            <option value="{{ g.id }}">👉 {{ g.name }} ({{ g.required_shifts }} វេន)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3" onclick="executeBatchAssign()">
+                        <i class="fa-solid fa-users-gear me-1"></i> ចាត់តាំងភ្លាមៗ (Quick Assign)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="applyBatchClientSide()" title="ប្តូរក្នុងតារាងភ្លាមៗដោយមិនបាច់ Reload ទំព័រ">
+                        <i class="fa-solid fa-bolt me-1"></i> ប្តូរក្នុងតារាង
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="table-responsive rounded-3 border">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="teacherTable">
                 <thead class="table-light small">
                     <tr>
+                        <th class="text-center" style="width: 35px;">
+                            <i class="fa-solid fa-check-double text-muted"></i>
+                        </th>
                         <th class="text-center" style="width: 40px;">ល.រ</th>
                         <th>ឈ្មោះគ្រូបង្រៀន</th>
                         <th>ភេទ</th>
                         <th>ភារកិច្ចបច្ចុប្បន្ន</th>
-                        <th style="width: 220px;">មុខងារគណៈកម្មការ (Role)</th>
-                        <th class="text-center" style="width: 100px;">មកគ្រប់វេន</th>
-                        <th>ក្រុម (Group)</th>
-                        <th class="text-center" style="width: 110px;">កូតា Override</th>
+                        <th style="width: 200px;">មុខងារគណៈកម្មការ (Role)</th>
+                        <th class="text-center" style="width: 80px;">មកគ្រប់វេន</th>
+                        <th style="width: 220px;">ក្រុម (Group) *</th>
+                        <th class="text-center" style="width: 100px;">Override</th>
                         <th class="text-center" style="width: 70px;">លើកលែង</th>
-                        <th class="text-center" style="width: 100px;">កូតាតម្រូវ</th>
+                        <th class="text-center" style="width: 90px;">កូតាតម្រូវ</th>
                         <th class="text-center" style="width: 120px;">ស្ថានភាពចុះឈ្មោះ</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for q in teacher_quotas %}
-                    <tr>
-                        <td class="text-center text-muted fw-bold">{{ forloop.counter }}</td>
+                    <tr class="teacher-row" 
+                        data-group-id="{{ q.duty_group_id|default:'' }}" 
+                        data-exempt="{% if q.is_exempt %}1{% else %}0{% endif %}"
+                        data-search="{{ q.teacher.khmer_name|lower }} {{ q.teacher.latin_name|lower }} {{ q.teacher.teacher_id|lower }} {{ q.teacher.current_duty|default:''|lower }}">
+                        <td class="text-center">
+                            <input type="checkbox" name="selected_quota_ids" value="{{ q.id }}" class="teacher-check-item" onchange="onTeacherCheckChanged()">
+                        </td>
+                        <td class="text-center text-muted fw-bold row-index">{{ forloop.counter }}</td>
                         <td>
                             <div class="fw-bold text-primary">{{ q.teacher.khmer_name }}</div>
                             <small class="text-muted font-monospace">{{ q.teacher.teacher_id }} • {{ q.teacher.latin_name }}</small>
@@ -320,9 +398,9 @@
                             </div>
                         </td>
                         <td>
-                            <select name="group_{{ q.id }}" class="form-select form-select-sm py-1">
+                            <select name="group_{{ q.id }}" class="form-select form-select-sm py-1 fw-bold group-select-input {% if 'ប្រភេទទី១' in q.duty_group.name %}border-primary bg-primary-subtle text-primary{% elif 'ប្រភេទទី២' in q.duty_group.name %}border-info bg-info-subtle text-info{% endif %}" onchange="onRowGroupChanged(this, '{{ q.id }}')">
                                 {% for g in duty_groups %}
-                                <option value="{{ g.id }}" {% if q.duty_group_id == g.id %}selected{% endif %}>
+                                <option value="{{ g.id }}" data-shifts="{{ g.required_shifts }}" data-name="{{ g.name }}" {% if q.duty_group_id == g.id %}selected{% endif %}>
                                     {{ g.name }} ({{ g.required_shifts }} វេន)
                                 </option>
                                 {% endfor %}
@@ -336,7 +414,7 @@
                                 <input class="form-check-input" type="checkbox" name="exempt_{{ q.id }}" {% if q.is_exempt %}checked{% endif %}>
                             </div>
                         </td>
-                        <td class="text-center fw-bold fs-6 text-primary">
+                        <td class="text-center fw-bold fs-6 text-primary req-shifts-display" id="shifts_lbl_{{ q.id }}">
                             {% if q.is_exempt %}
                             <span class="badge bg-secondary-subtle text-muted border">លើកលែង</span>
                             {% elif q.auto_assign_all_shifts or q.assigned_role == 'PRESIDENT' %}
@@ -361,18 +439,160 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀនឡើយ។</td>
+                        <td colspan="12" class="text-center py-4 text-muted">មិនមានទិន្នន័យគ្រូបង្រៀនឡើយ។</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <div class="d-flex justify-content-end pt-3">
-            <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4">
+        <div class="d-flex justify-content-between align-items-center pt-3">
+            <span class="small text-muted" id="tableFilterStatus">
+                កំពុងបង្ហាញគ្រូចំនួន {{ teacher_quotas|length }} នាក់
+            </span>
+            <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4" onclick="document.getElementById('teacher_form_action').value='save_teacher_quotas';">
                 <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់កូតាទាំងអស់
             </button>
         </div>
     </form>
 </div>
+
+<script>
+let currentGroupFilter = 'all';
+
+function toggleMasterCheck(master) {
+    const checks = document.querySelectorAll('.teacher-check-item');
+    checks.forEach(c => {
+        const tr = c.closest('tr');
+        if (tr && tr.style.display !== 'none') {
+            c.checked = master.checked;
+        }
+    });
+    onTeacherCheckChanged();
+}
+
+function onTeacherCheckChanged() {
+    const checkedCount = document.querySelectorAll('.teacher-check-item:checked').length;
+    const badge = document.getElementById('batchCountBadge');
+    if (badge) {
+        badge.textContent = `បាន Check ${checkedCount} នាក់`;
+        badge.className = checkedCount > 0 ? 'badge bg-success px-2.5 py-1' : 'badge bg-primary px-2.5 py-1';
+    }
+}
+
+function executeBatchAssign() {
+    const checked = document.querySelectorAll('.teacher-check-item:checked');
+    if (checked.length === 0) {
+        alert('សូមជ្រើសរើស (Check) គ្រូយ៉ាងហោចណាស់ម្នាក់ក្នុងតារាងជាមុនសិន!');
+        return;
+    }
+    const targetGroup = document.getElementById('batch_target_group_id')?.value;
+    if (!targetGroup) {
+        alert('សូមជ្រើសរើសក្រុមគោលដៅ (ឧ. ក្រុមគ្រូប្រភេទទី១ ឬ ក្រុមគ្រូប្រភេទទី២) ក្នុងប្រអប់បញ្ជី!');
+        return;
+    }
+    
+    if (confirm(`តើលោកអ្នកពិតជាចង់ចាត់តាំងគ្រូចំនួន ${checked.length} នាក់ ចូលទៅកាន់ក្រុមដែលបានជ្រើសរើសមែនទេ?`)) {
+        document.getElementById('teacher_form_action').value = 'batch_assign_group';
+        document.getElementById('teacherQuotasForm').submit();
+    }
+}
+
+function applyBatchClientSide() {
+    const checked = document.querySelectorAll('.teacher-check-item:checked');
+    if (checked.length === 0) {
+        alert('សូមជ្រើសរើស (Check) គ្រូយ៉ាងហោចណាស់ម្នាក់ជាមុនសិន!');
+        return;
+    }
+    const targetGroupId = document.getElementById('batch_target_group_id')?.value;
+    if (!targetGroupId) {
+        alert('សូមជ្រើសរើសក្រុមគោលដៅជាមុនសិន!');
+        return;
+    }
+
+    checked.forEach(c => {
+        const row = c.closest('tr');
+        if (!row) return;
+        const select = row.querySelector('.group-select-input');
+        if (select) {
+            select.value = targetGroupId;
+            const opt = select.selectedOptions[0];
+            const shifts = opt ? opt.getAttribute('data-shifts') : '4';
+            const name = opt ? opt.getAttribute('data-name') : '';
+
+            row.setAttribute('data-group-id', targetGroupId);
+            const shiftsLbl = row.querySelector('.req-shifts-display');
+            if (shiftsLbl) {
+                shiftsLbl.innerHTML = `${shifts} វេន`;
+            }
+
+            // Update styling
+            select.className = 'form-select form-select-sm py-1 fw-bold group-select-input ' + 
+                (name.includes('ប្រភេទទី១') ? 'border-primary bg-primary-subtle text-primary' : 
+                 name.includes('ប្រភេទទី២') ? 'border-info bg-info-subtle text-info' : '');
+
+            // Row highlight flash
+            row.classList.add('table-success');
+            setTimeout(() => row.classList.remove('table-success'), 1500);
+        }
+    });
+
+    alert(`⚡ បានកំណត់ក្នុងតារាងជូនគ្រូចំនួន ${checked.length} នាក់រួចរាល់! សូមចុច «រក្សាទុកការកំណត់កូតាទាំងអស់» ដើម្បីរក្សាទុកជាផ្លូវការ។`);
+}
+
+function onRowGroupChanged(selectEl, quotaId) {
+    const opt = selectEl.selectedOptions[0];
+    const shifts = opt ? opt.getAttribute('data-shifts') : '';
+    const name = opt ? opt.getAttribute('data-name') : '';
+    const row = selectEl.closest('tr');
+    if (row && opt) {
+        row.setAttribute('data-group-id', opt.value);
+    }
+    const shiftsLbl = document.getElementById('shifts_lbl_' + quotaId);
+    if (shiftsLbl && shifts) {
+        shiftsLbl.innerHTML = `${shifts} វេន`;
+    }
+    selectEl.className = 'form-select form-select-sm py-1 fw-bold group-select-input ' + 
+        (name.includes('ប្រភេទទី១') ? 'border-primary bg-primary-subtle text-primary' : 
+         name.includes('ប្រភេទទី២') ? 'border-info bg-info-subtle text-info' : '');
+}
+
+function filterByGroup(groupId, btnEl) {
+    currentGroupFilter = groupId;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'btn-primary'));
+    if (btnEl) btnEl.classList.add('active', 'btn-primary');
+    filterTeachers();
+}
+
+function filterTeachers() {
+    const q = (document.getElementById('teacherSearchInput')?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.teacher-row');
+    let visibleCount = 0;
+
+    rows.forEach(r => {
+        const rGroup = r.getAttribute('data-group-id') || '';
+        const rExempt = r.getAttribute('data-exempt') || '0';
+        const rSearch = r.getAttribute('data-search') || '';
+
+        let matchGroup = false;
+        if (currentGroupFilter === 'all') matchGroup = true;
+        else if (currentGroupFilter === 'exempt') matchGroup = (rExempt === '1');
+        else matchGroup = (rGroup === currentGroupFilter);
+
+        let matchSearch = (!q || rSearch.includes(q));
+
+        if (matchGroup && matchSearch) {
+            r.style.display = '';
+            visibleCount++;
+        } else {
+            r.style.display = 'none';
+        }
+    });
+
+    const statusEl = document.getElementById('tableFilterStatus');
+    if (statusEl) {
+        statusEl.textContent = `កំពុងបង្ហាញគ្រូចំនួន ${visibleCount} នាក់`;
+    }
+}
+</script>
 {% endblock %}
