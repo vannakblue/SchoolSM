@@ -4726,11 +4726,14 @@ def semester_subject_ranks_print_view(request):
         if not exam_term:
             exam_term = ExamTerm.objects.filter(term_type=term_type).first()
 
-        db_subjects = list(Subject.objects.filter(classroom=selected_classroom).order_by('id')) if selected_classroom else []
+        if selected_classroom:
+            db_subjects = list(selected_classroom.get_assigned_subjects())
+        else:
+            db_subjects = []
         if not db_subjects:
             available_subjects = OFFICIAL_SUBJECTS
         else:
-            available_subjects = [{'id': str(s.id), 'name': s.name_kh or s.name} for s in db_subjects]
+            available_subjects = [{'id': str(s.id), 'name': s.name_kh or s.name_en or s.code} for s in db_subjects]
 
         student_data_map = {}
         for st in c_students:
@@ -4748,12 +4751,12 @@ def semester_subject_ranks_print_view(request):
 
         grades_qs = Grade.objects.filter(student__classroom=selected_classroom)
         if exam_term:
-            grades_qs = grades_qs.filter(term=exam_term)
+            grades_qs = grades_qs.filter(exam_term=exam_term)
 
         for g in grades_qs:
             sid = g.student.student_id
             sub_id = str(g.subject.id) if g.subject else None
-            sub_name = g.subject.name_kh or g.subject.name if g.subject else ''
+            sub_name = (g.subject.name_kh or getattr(g.subject, 'name_en', '') or getattr(g.subject, 'code', '')) if g.subject else ''
             matched_id = None
             for s in available_subjects:
                 if s['id'] == sub_id or s['name'] == sub_name:
@@ -4986,11 +4989,13 @@ def annual_results_print_view(request):
     classroom_param = request.GET.get('classroom', '').strip()
     data_source = request.GET.get('source', 'auto').strip()  # 'auto', 'official', 'live'
 
-    classrooms_qs = Classroom.objects.filter(academic_year=target_year).order_by('grade_level', 'code') if target_year else Classroom.objects.all().order_by('grade_level', 'code')
-
     selected_classroom = None
     if classroom_param and classroom_param.isdigit():
-        selected_classroom = classrooms_qs.filter(id=int(classroom_param)).first()
+        selected_classroom = Classroom.objects.filter(id=int(classroom_param)).first()
+        if selected_classroom and not year_param and selected_classroom.academic_year:
+            target_year = selected_classroom.academic_year
+
+    classrooms_qs = Classroom.objects.filter(academic_year=target_year).order_by('grade_level', 'code') if target_year else Classroom.objects.all().order_by('grade_level', 'code')
 
     # Determine grade level
     selected_grade_level = None
@@ -5042,7 +5047,7 @@ def annual_results_print_view(request):
     if selected_classroom:
         grade_title = f"{selected_classroom.name}"
     else:
-        grade_title = f"ថ្នាក់ទី {to_khmer_digits(selected_grade_level)}"
+        grade_title = f"កម្រិតថ្នាក់ទី {to_khmer_digits(selected_grade_level)}"
 
     # Determine whether to load official year.pdf benchmark or calculate live
     load_official = (data_source == 'official') or (data_source == 'auto' and selected_grade_level == 7 and not selected_classroom)
@@ -5054,6 +5059,19 @@ def annual_results_print_view(request):
             with open(json_path, encoding='utf-8') as f:
                 raw_data = json.load(f)
             students_list = raw_data
+
+            # If a specific classroom is selected, filter by that section's letter (e.g. 7A -> 'A')
+            if selected_classroom:
+                import re
+                match = re.search(r'[A-Za-z]+$', (selected_classroom.code or '').strip())
+                if not match and selected_classroom.name:
+                    match = re.search(r'[A-Za-z]+$', selected_classroom.name.strip())
+                target_letter = match.group().upper() if match else ''
+                if target_letter:
+                    students_list = [s for s in students_list if s.get('class_letter', '').upper() == target_letter]
+
+            for idx, s in enumerate(students_list, 1):
+                s['no_kh'] = to_khmer_digits(idx)
         else:
             load_official = False
 
