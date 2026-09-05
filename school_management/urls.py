@@ -78,6 +78,14 @@ urlpatterns = [
     path('api/v1/', include('apps.mobile_api.urls')),
 ]
 
+from django.views.static import serve
+from django.urls import re_path
+
+# Serve uploaded media files (avatars, school logos, receipts) in both Dev and Production (Render)
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]
+
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
