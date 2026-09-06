@@ -64,12 +64,10 @@
                 <div class="position-relative d-inline-block">
                     <div class="card card-custom border-0 shadow-lg p-3 bg-white text-dark text-start" style="border-radius: 24px; max-width: 420px; margin: 0 auto;">
                         <div class="d-flex align-items-center gap-3 p-2 border-bottom">
-                            {% if school_profile and school_profile.logo %}
-                            <img src="{{ school_profile.logo.url }}" class="rounded-circle shadow-xs" style="width: 55px; height: 55px; object-fit: cover;" alt="Logo">
+                            {% if school_profile and school_profile.logo_url %}
+                            <img src="{{ school_profile.logo_url }}" class="rounded-circle shadow-xs" style="width: 55px; height: 55px; object-fit: cover;" alt="Logo" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
                             {% else %}
-                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-                                <i class="fa-solid fa-school fs-3"></i>
-                            </div>
+                            <img src="{% static 'img/school_logo.png' %}" class="rounded-circle shadow-xs" style="width: 55px; height: 55px; object-fit: cover;" alt="Logo">
                             {% endif %}
                             <div>
                                 <h6 class="mb-0 fw-bold">{{ school_profile.short_name|default:"សាលារៀន SM" }}</h6>

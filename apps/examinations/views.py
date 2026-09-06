@@ -6884,14 +6884,14 @@ def api_finalize_invigilator_request(request):
         missing = required_shifts - current_count
         return JsonResponse({
             'success': False,
-            'error': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ នៅខ្វះ {missing} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំ។'
+            'error': f'មិនអាច Submit បានទេ! លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ នៅខ្វះ {missing} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន គត់ (មិនអាចខ្វះ និងមិនអាចលើស) ទើបប្រព័ន្ធអនុញ្ញាតឱ្យ Submit (បញ្ចប់ការស្នើសុំ)។'
         }, status=400)
 
     if current_count > required_shifts:
         over = current_count - required_shifts
         return JsonResponse({
             'success': False,
-            'error': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចំនួន {over} វេនចេញវិញ ទើបអាចបញ្ចប់ការស្នើសុំបាន។'
+            'error': f'មិនអាច Submit បានទេ! លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចំនួន {over} វេនចេញវិញ (មិនអាចលើស និងមិនអាចខ្វះ) ទើបអាច Submit បាន។'
         }, status=400)
 
     quota_obj.is_finalized = True

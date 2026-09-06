@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}បញ្ជីចុះហត្ថលេខាវត្តមានគ្រូបង្រៀនប្រចាំថ្ងៃ & របាយការណ៍ | SchoolSM{% endblock %}
 
@@ -696,11 +697,13 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <!-- Left Side: Circular Logo + Ministry + School Name (Centered relative to each other) -->
                     <div class="text-center" style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center;">
-                        {% if school_info and school_info.logo %}
                         <div class="mb-1 d-flex justify-content-center">
-                            <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 52px; width: 52px; object-fit: contain; border-radius: 50%;">
+                            {% if school_info and school_info.logo_url %}
+                            <img src="{{ school_info.logo_url }}" alt="Logo" style="height: 52px; width: 52px; object-fit: contain; border-radius: 50%;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                            {% else %}
+                            <img src="{% static 'img/school_logo.png' %}" alt="Logo" style="height: 52px; width: 52px; object-fit: contain; border-radius: 50%;">
+                            {% endif %}
                         </div>
-                        {% endif %}
                         <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
                             {{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
                         </div>

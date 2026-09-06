@@ -619,8 +619,12 @@
                             <button type="button" id="btnWatermarkMoeys" class="btn btn-warning text-dark fw-bold" title="ប្រើ Logo ក្រសួង MoEYS">
                                 MoEYS
                             </button>
-                            {% if school_info.logo %}
-                            <button type="button" id="btnWatermarkSchool" class="btn btn-outline-light" data-url="{{ school_info.logo.url }}" title="ប្រើ Logo សាលារៀន">
+                            {% if school_info and school_info.logo_url %}
+                            <button type="button" id="btnWatermarkSchool" class="btn btn-outline-light" data-url="{{ school_info.logo_url }}" title="ប្រើ Logo សាលារៀន">
+                                Logo សាលា
+                            </button>
+                            {% else %}
+                            <button type="button" id="btnWatermarkSchool" class="btn btn-outline-light" data-url="{% static 'img/school_logo.png' %}" title="ប្រើ Logo សាលារៀន">
                                 Logo សាលា
                             </button>
                             {% endif %}

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -315,8 +316,10 @@
         <!-- School Info & Reference -->
         <div class="school-info-row">
             <div class="school-logo-text">
-                {% if school.logo %}
-                <img src="{{ school.logo.url }}" alt="School Logo">
+                {% if school and school.logo_url %}
+                <img src="{{ school.logo_url }}" alt="School Logo" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                {% else %}
+                <img src="{% static 'img/school_logo.png' %}" alt="School Logo">
                 {% endif %}
                 <div class="school-names">
                     <h4>{{ school.school_name_kh|default:"សាលារៀន" }}</h4>

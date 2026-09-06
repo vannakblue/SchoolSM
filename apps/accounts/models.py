@@ -550,16 +550,30 @@ class SchoolProfile(models.Model):
         profile = cls.objects.first()
         if not profile:
             profile = cls.objects.create()
+        # If logo is unset, auto-link to default committed school photo if available
+        if not profile.logo:
+            from pathlib import Path
+            from django.conf import settings
+            default_media = Path(settings.MEDIA_ROOT) / 'school' / 'photo_2021-02-28_21-07-22_-_Copy.jpg'
+            if default_media.exists():
+                profile.logo = 'school/photo_2021-02-28_21-07-22_-_Copy.jpg'
+                profile.save(update_fields=['logo'])
         return profile
 
     @property
     def logo_url(self):
-        if self.logo:
+        if self.logo and hasattr(self.logo, 'name') and self.logo.name:
             try:
-                return self.logo.url
+                if hasattr(self.logo, 'storage') and self.logo.storage.exists(self.logo.name):
+                    return self.logo.url
             except Exception:
-                return None
-        return None
+                try:
+                    return self.logo.url
+                except Exception:
+                    pass
+        # Permanent fallback to static logo tracked in Git (guaranteed never to be wiped on deploy)
+        from django.templatetags.static import static
+        return static('img/school_logo.png')
 
     @property
     def google_maps_direct_url(self):
@@ -584,11 +598,6 @@ class SchoolProfile(models.Model):
             parts.append(f"{self.province}")
         return ", ".join(parts) if parts else (self.province or "កម្ពុជា")
 
-    @property
-    def logo_url(self):
-        if self.logo and hasattr(self.logo, 'url'):
-            return self.logo.url
-        return None
 
     @property
     def seal_url(self):

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}របាយការណ៍ស្ថិតិអប់រំ MoEYS | SchoolSM{% endblock %}
 
@@ -25,8 +26,10 @@
     <h5 class="fw-bold mb-1">ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ</h5>
     <h6 class="text-muted mb-2">{{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }} | {{ school_info.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" }}</h6>
     <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
-        {% if school_info and school_info.logo %}
-            <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 32px; width: 32px; object-fit: contain;">
+        {% if school_info and school_info.logo_url %}
+            <img src="{{ school_info.logo_url }}" alt="Logo" style="height: 32px; width: 32px; object-fit: contain;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+        {% else %}
+            <img src="{% static 'img/school_logo.png' %}" alt="Logo" style="height: 32px; width: 32px; object-fit: contain;">
         {% endif %}
         <span class="fs-5 fw-bold text-dark">{{ school_info.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }} (កូដសាលា: {{ school_info.school_code }})</span>
     </div>

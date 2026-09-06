@@ -126,10 +126,10 @@
         <aside class="app-sidebar no-print">
             <div class="sidebar-brand">
                 <div class="brand-icon">
-                    {% if school_info and school_info.logo %}
-                        <img src="{{ school_info.logo.url }}" alt="Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: white; padding: 2px;">
+                    {% if school_info and school_info.logo_url %}
+                        <img src="{{ school_info.logo_url }}" alt="Logo" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: white; padding: 2px;">
                     {% else %}
-                        <i class="fa-solid fa-graduation-cap"></i>
+                        <img src="{% static 'img/school_logo.png' %}" alt="Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; background: white; padding: 2px;">
                     {% endif %}
                 </div>
                 <div class="overflow-hidden">

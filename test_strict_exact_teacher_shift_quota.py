@@ -250,7 +250,26 @@ def run_tests():
     assert t_data['required_shifts'] == 4
     assert t_data['is_exact_matched'] is True
     assert t_data['is_finalized'] is True
-    print(f"  ✓ Mobile Status verified: count={t_data['current_count']}/{t_data['required_shifts']}, is_finalized={t_data['is_finalized']}")
+    assert t_data['assigned_role'] == ExamCommitteeRole.INVIGILATOR
+    assert "អនុរក្ស" in t_data['assigned_role_display']
+    assert t_data['is_role_requestable'] is True
+    assert "4 វេន គត់" in t_data['strict_quota_rule']
+    print(f"  ✓ Mobile Status verified: role={t_data['assigned_role_display']}, count={t_data['current_count']}/{t_data['required_shifts']}, is_finalized={t_data['is_finalized']}")
+
+    # Check Mobile Slots API
+    resp_mob_slots = client.get('/api/v1/exam-invigilator/slots/')
+    assert resp_mob_slots.status_code == 200
+    assert len(resp_mob_slots.data['slots']) == 6
+    assert 'role_capacity' in resp_mob_slots.data['slots'][0]
+    print("  ✓ Mobile Slots verified: includes role_capacity and registration flags.")
+
+    # Test Mobile Unlock API
+    resp_mob_unlock = client.post('/api/v1/exam-invigilator/unlock/', {}, format='json')
+    assert resp_mob_unlock.status_code == 200
+    assert resp_mob_unlock.data['is_finalized'] is False
+    quota_obj.refresh_from_db()
+    assert quota_obj.is_finalized is False
+    print(f"  ✓ Mobile Unlock verified: {resp_mob_unlock.data['message']}")
 
 
     # -------------------------------------------------------------

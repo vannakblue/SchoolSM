@@ -55,5 +55,6 @@ urlpatterns = [
     path('exam-invigilator/slots/', views.MobileExamInvigilatorSlotsAPIView.as_view(), name='mobile_api_invigilator_slots'),
     path('exam-invigilator/toggle/', views.MobileExamInvigilatorToggleAPIView.as_view(), name='mobile_api_invigilator_toggle'),
     path('exam-invigilator/finalize/', views.MobileExamInvigilatorFinalizeAPIView.as_view(), name='mobile_api_invigilator_finalize'),
+    path('exam-invigilator/unlock/', views.MobileExamInvigilatorUnlockAPIView.as_view(), name='mobile_api_invigilator_unlock'),
 ]
 

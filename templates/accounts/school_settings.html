@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load i18n_extras %}
+{% load static %}
 
 {% block title %}ការកំណត់ព័ត៌មានសាលារៀន | SchoolSM{% endblock %}
 
@@ -76,12 +77,10 @@
         <!-- Live Identity Card -->
         <div class="custom-card p-4 mb-4 text-center border-top border-4 border-primary position-relative shadow-sm rounded-4 bg-white">
             <div class="mb-3 d-flex justify-content-center">
-                {% if school_profile.logo %}
-                    <img src="{{ school_profile.logo.url }}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;">
+                {% if school_profile.logo_url %}
+                    <img src="{{ school_profile.logo_url }}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
                 {% else %}
-                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center border border-primary border-2 shadow-sm" style="width: 100px; height: 100px; font-size: 2.75rem;">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
+                    <img src="{% static 'img/school_logo.png' %}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;">
                 {% endif %}
             </div>
 
@@ -383,13 +382,10 @@
                                 <div class="border rounded-4 p-3 bg-light">
                                     <div class="row align-items-center">
                                         <div class="col-md-3 text-center mb-3 mb-md-0">
-                                            {% if school_profile.logo %}
-                                                <img src="{{ school_profile.logo.url }}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
+                                            {% if school_profile.logo_url %}
+                                                <img src="{{ school_profile.logo_url }}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
                                             {% else %}
-                                                <div class="border rounded bg-white p-3 text-muted">
-                                                    <i class="fa-solid fa-image fs-1 text-secondary"></i>
-                                                    <div class="small">គ្មាន Logo</div>
-                                                </div>
+                                                <img src="{% static 'img/school_logo.png' %}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
                                             {% endif %}
                                         </div>
                                         <div class="col-md-9">

@@ -802,8 +802,8 @@ class ExamInvigilatorPlan(models.Model):
         defaults = {
             ExamCommitteeRole.PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 1, 'auto_assign_all_shifts': True},
             ExamCommitteeRole.VICE_PRESIDENT: {'is_requestable': False, 'capacity_per_shift': 2, 'auto_assign_all_shifts': False},
-            ExamCommitteeRole.SECRETARIAT: {'is_requestable': False, 'capacity_per_shift': secretariat_cap, 'auto_assign_all_shifts': False},
-            ExamCommitteeRole.BUILDING_INSPECTOR: {'is_requestable': False, 'capacity_per_shift': inspector_cap, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.SECRETARIAT: {'is_requestable': True, 'capacity_per_shift': secretariat_cap, 'auto_assign_all_shifts': False},
+            ExamCommitteeRole.BUILDING_INSPECTOR: {'is_requestable': True, 'capacity_per_shift': inspector_cap, 'auto_assign_all_shifts': False},
             ExamCommitteeRole.INVIGILATOR: {'is_requestable': True, 'capacity_per_shift': invig_cap, 'auto_assign_all_shifts': False},
             ExamCommitteeRole.TABULATOR: {'is_requestable': True, 'capacity_per_shift': 4, 'auto_assign_all_shifts': False},
         }

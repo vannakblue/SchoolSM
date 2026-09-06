@@ -2027,7 +2027,28 @@ class MobileExamInvigilatorStatusAPIView(APIView):
         required_shifts = quota_obj.effective_required_shifts if quota_obj else plan.default_regular_quota
         group_name = quota_obj.duty_group.name if (quota_obj and quota_obj.duty_group) else "គ្រូបង្រៀនធម្មតា"
 
+        from apps.examinations.models import ExamCommitteeRole
+        assigned_role = quota_obj.assigned_role if quota_obj else ExamCommitteeRole.INVIGILATOR
+        assigned_role_display = quota_obj.get_assigned_role_display() if quota_obj else "គណៈកម្មការអនុរក្ស (អនុរក្ស)"
+        role_setting = plan.role_settings.filter(role=assigned_role).first()
+        is_role_requestable = role_setting.is_requestable if role_setting else True
+
+        role_desc = ""
+        if assigned_role == ExamCommitteeRole.INVIGILATOR:
+            role_desc = "ការពារ និងត្រួតពិនិត្យដំណើរការប្រឡងតាមបន្ទប់នីមួយៗ"
+        elif assigned_role == ExamCommitteeRole.SECRETARIAT:
+            role_desc = "រៀបចំ សម្របសម្រួលឯកសារវិញ្ញាសា និងកិច្ចការប្រឡងទូទៅ"
+        elif assigned_role == ExamCommitteeRole.BUILDING_INSPECTOR:
+            role_desc = "ត្រួតពិនិត្យសន្តិសុខ របៀបរៀបរយ និងបរិវេណអគារប្រឡង"
+        elif assigned_role == ExamCommitteeRole.TABULATOR:
+            role_desc = "ស្រង់ និងបូកសរុបពិន្ទុបេក្ខជន"
+
         registered_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
+        is_over_quota = (registered_count > required_shifts)
+        over_count = max(0, registered_count - required_shifts)
+        can_finalize = (registered_count == required_shifts and not (quota_obj and quota_obj.is_finalized))
+
+        submit_status = "READY" if can_finalize else ("FINALIZED" if (quota_obj and quota_obj.is_finalized) else ("OVER_QUOTA" if is_over_quota else "UNDER_QUOTA"))
 
         return Response({
             'is_active': True,
@@ -2045,27 +2066,35 @@ class MobileExamInvigilatorStatusAPIView(APIView):
                 'teacher_id': teacher.teacher_id,
                 'khmer_name': teacher.khmer_name,
                 'duty_group': group_name,
+                'assigned_role': assigned_role,
+                'assigned_role_display': assigned_role_display,
+                'role_description': role_desc,
+                'is_role_requestable': is_role_requestable,
                 'required_shifts': required_shifts,
                 'current_count': registered_count,
                 'remaining_to_choose': max(0, required_shifts - registered_count),
                 'is_fulfilled': (registered_count >= required_shifts),
                 'is_exact_matched': (registered_count == required_shifts),
+                'is_over_quota': is_over_quota,
+                'over_count': over_count,
                 'is_finalized': quota_obj.is_finalized if quota_obj else False,
                 'finalized_at': quota_obj.finalized_at.strftime('%d/%m/%Y %H:%M') if (quota_obj and quota_obj.finalized_at) else None,
-                'can_finalize': (registered_count == required_shifts and not (quota_obj and quota_obj.is_finalized)),
+                'can_finalize': can_finalize,
+                'submit_status': submit_status,
                 'progress_percentage': min(100, round(registered_count / required_shifts * 100)) if required_shifts > 0 else 100,
+                'strict_quota_rule': f'លោកគ្រូ-អ្នកគ្រូត្រូវតែជ្រើសរើសយកចំនួន {required_shifts} វេន គត់ (មិនអាចលើស និងមិនអាចខ្វះ)។',
             }
         })
 
 
 class MobileExamInvigilatorSlotsAPIView(APIView):
     """
-    Mobile API: Lists all shift slots grouped by date with registration flags.
+    Mobile API: Lists all shift slots grouped by date with registration and role-capacity flags.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        from apps.examinations.models import ExamInvigilatorPlan, TeacherShiftRegistration
+        from apps.examinations.models import ExamInvigilatorPlan, TeacherShiftRegistration, TeacherDutyQuota, ExamCommitteeRole
         from apps.teachers.models import Teacher
 
         plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
@@ -2078,15 +2107,22 @@ class MobileExamInvigilatorSlotsAPIView(APIView):
             teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and tid.isdigit()) else Teacher.objects.first()
 
         registered_slot_ids = set()
+        quota_obj = None
         if teacher:
             registered_slot_ids = set(
                 TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher)
                 .exclude(status='CANCELLED')
                 .values_list('slot_id', flat=True)
             )
+            quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+
+        assigned_role = quota_obj.assigned_role if quota_obj else ExamCommitteeRole.INVIGILATOR
 
         slots_data = []
         for s in plan.shift_slots.prefetch_related('registrations').order_by('date', 'start_time'):
+            role_cap = s.get_role_capacity(assigned_role)
+            role_rem = s.get_role_remaining_spots(assigned_role)
+            role_full = s.is_role_full(assigned_role)
             slots_data.append({
                 'id': s.id,
                 'date': str(s.date),
@@ -2098,11 +2134,15 @@ class MobileExamInvigilatorSlotsAPIView(APIView):
                 'registered_count': s.registered_count,
                 'remaining_spots': s.remaining_spots,
                 'is_full': s.is_full,
+                'role_capacity': role_cap,
+                'role_remaining': role_rem,
+                'role_is_full': role_full,
                 'is_registered': (s.id in registered_slot_ids)
             })
 
         return Response({
             'is_active': True,
+            'assigned_role': assigned_role,
             'slots': slots_data
         })
 
@@ -2142,6 +2182,8 @@ class MobileExamInvigilatorToggleAPIView(APIView):
         current_count = TeacherShiftRegistration.objects.filter(slot__plan=plan, teacher=teacher).exclude(status='CANCELLED').count()
 
         reg = TeacherShiftRegistration.objects.filter(slot=slot, teacher=teacher).first()
+        assigned_role = quota_obj.assigned_role if quota_obj else ExamCommitteeRole.INVIGILATOR
+
         if reg:
             reg.delete()
             is_registered = False
@@ -2160,9 +2202,10 @@ class MobileExamInvigilatorToggleAPIView(APIView):
                     'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសគ្រប់ចំនួនកូតាកំណត់ ({required_shifts} វេន) រួចរាល់ហើយ មិនអាចជ្រើសរើសលើសពីនេះបានទេ! សូមដកវេនចាស់ចេញជាមុនសិន។'
                 }, status=400)
 
-            assigned_role = quota_obj.assigned_role if quota_obj else ExamCommitteeRole.INVIGILATOR
             if slot.is_role_full(assigned_role):
-                return Response({'status': 'error', 'message': f'វេន «{slot.session_name}» បានពេញកូតាសម្រាប់មុខងារនេះរួចហើយ!'}, status=400)
+                role_label = quota_obj.get_assigned_role_display() if quota_obj else assigned_role
+                cap = slot.get_role_capacity(assigned_role)
+                return Response({'status': 'error', 'message': f'វេន «{slot.session_name}» បានពេញកូតាសម្រាប់មុខងារ «{role_label}» ({cap} នាក់) រួចហើយ!'}, status=400)
 
             TeacherShiftRegistration.objects.create(
                 slot=slot,
@@ -2181,11 +2224,14 @@ class MobileExamInvigilatorToggleAPIView(APIView):
             'slot_id': slot.id,
             'slot_remaining': slot.remaining_spots,
             'slot_is_full': slot.is_full,
+            'role_remaining': slot.get_role_remaining_spots(assigned_role),
+            'role_is_full': slot.is_role_full(assigned_role),
             'current_count': current_count,
             'required_shifts': required_shifts,
             'remaining_to_choose': max(0, required_shifts - current_count),
             'is_finalized': quota_obj.is_finalized if quota_obj else False,
             'can_finalize': (current_count == required_shifts),
+            'is_exact_matched': (current_count == required_shifts),
             'message': msg
         })
 
@@ -2221,14 +2267,14 @@ class MobileExamInvigilatorFinalizeAPIView(APIView):
             missing = required_shifts - current_count
             return Response({
                 'status': 'error',
-                'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ នៅខ្វះ {missing} វេនទៀត! ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន ទើបប្រព័ន្ធអនុញ្ញាតឱ្យបញ្ចប់ការស្នើសុំ។'
+                'message': f'មិនអាច Submit បានទេ! លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសបានត្រឹមតែ {current_count} វេនប៉ុណ្ណោះ (នៅខ្វះ {missing} វេនទៀត)។ វិធានតឹងរ៉ឹង៖ ត្រូវតែជ្រើសរើសឱ្យគ្រប់ {required_shifts} វេន គត់ (មិនអាចខ្វះ និងមិនអាចលើស) ទើបប្រព័ន្ធអនុញ្ញាតឱ្យ Submit។'
             }, status=400)
 
         if current_count > required_shifts:
             over = current_count - required_shifts
             return Response({
                 'status': 'error',
-                'message': f'លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចេញចំនួន {over} វេនវិញ។'
+                'message': f'មិនអាច Submit បានទេ! លោកគ្រូ-អ្នកគ្រូបានជ្រើសរើសលើសចំនួនកូតាកំណត់ ({current_count}/{required_shifts} វេន)! សូមដកវេនដែលលើសចេញចំនួន {over} វេនវិញ (មិនអាចលើស និងមិនអាចខ្វះ) ទើបអាច Submit បាន។'
             }, status=400)
 
         quota_obj.is_finalized = True
@@ -2241,7 +2287,41 @@ class MobileExamInvigilatorFinalizeAPIView(APIView):
             'finalized_at': quota_obj.finalized_at.strftime('%d/%m/%Y %H:%M'),
             'current_count': current_count,
             'required_shifts': required_shifts,
-            'message': f'🎉 លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ និងបញ្ជាក់ការស្នើសុំវេនអនុរក្សគ្រប់ចំនួនកូតា ({required_shifts} វេន) ដោយជោគជ័យរួចរាល់ហើយ!'
+            'message': f'🎉 លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់ និង Submit ការស្នើសុំវេនគ្រប់ចំនួនកូតា ({required_shifts} វេន) ដោយជោគជ័យរួចរាល់ហើយ!'
+        })
+
+
+class MobileExamInvigilatorUnlockAPIView(APIView):
+    """
+    Mobile API: Unlocks finalized shift request so the teacher can re-adjust their shifts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from apps.examinations.models import ExamInvigilatorPlan, TeacherDutyQuota
+        from apps.teachers.models import Teacher
+
+        plan = ExamInvigilatorPlan.objects.filter(is_active=True).first()
+        if not plan or not plan.allow_teacher_registration:
+            return Response({'status': 'error', 'message': 'ការស្នើសុំវេនត្រូវបានបិទដោយគណៈគ្រប់គ្រង!'}, status=403)
+
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if not teacher and request.user.role == 'ADMIN':
+            tid = request.data.get('teacher_id')
+            teacher = Teacher.objects.filter(id=int(tid)).first() if (tid and str(tid).isdigit()) else Teacher.objects.first()
+
+        if not teacher:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញគណនីគ្រូបង្រៀនឡើយ'}, status=403)
+
+        quota_obj = TeacherDutyQuota.objects.filter(plan=plan, teacher=teacher).first()
+        if quota_obj and quota_obj.is_finalized:
+            quota_obj.is_finalized = False
+            quota_obj.save(update_fields=['is_finalized', 'updated_at'])
+
+        return Response({
+            'status': 'success',
+            'is_finalized': False,
+            'message': 'បានដោះសោររួចរាល់! លោកគ្រូ-អ្នកគ្រូអាចធ្វើការផ្លាស់ប្តូរវេនឡើងវិញបាន។'
         })
 
 
