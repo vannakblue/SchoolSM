@@ -16,14 +16,18 @@
     box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.12), 0 8px 10px -6px rgba(59, 130, 246, 0.08);
 }
 
-.session-header-btn {
+.session-title-trigger {
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
-.session-header-btn:hover {
-    background-color: #f8fafc;
+.session-title-trigger:hover {
+    opacity: 0.85;
+}
+
+.session-title-trigger:hover .session-title-text {
+    text-decoration: underline;
 }
 
 .grade-subcard {
@@ -43,7 +47,8 @@
     transition: transform 0.3s ease;
 }
 
-.collapsed .toggle-icon {
+.collapsed .toggle-icon,
+.toggle-btn.collapsed .toggle-icon {
     transform: rotate(-90deg);
 }
 </style>
@@ -158,9 +163,10 @@
     <div class="session-card bg-white shadow-sm border-top border-4 border-primary" id="card_{{ sess.html_id }}">
         
         <!-- Session Main Header (Level 1) -->
-        <div class="p-4 session-header-btn" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}" aria-expanded="true" aria-controls="collapse_{{ sess.html_id }}">
+        <div class="p-4 session-header">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
-                <div>
+                <!-- Clickable Title & Badges Area (Triggers Expand/Collapse cleanly) -->
+                <div class="session-title-trigger flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}" aria-expanded="true" aria-controls="collapse_{{ sess.html_id }}" title="ចុចដើម្បីបង្ហាញ ឬបង្រួមកម្រិតថ្នាក់">
                     <!-- Badges Row -->
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <span class="badge bg-primary px-3 py-1.5 fw-bold fs-6">
@@ -175,13 +181,13 @@
                     </div>
 
                     <!-- Main Exam Period Title -->
-                    <h3 class="fw-bold text-primary mb-1">
+                    <h3 class="fw-bold text-primary mb-1 session-title-text">
                         {{ sess.title }}
                     </h3>
                 </div>
 
-                <!-- Toggle Icon & Quick Batch Rooms Button -->
-                <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation();">
+                <!-- Action Buttons Toolbar (Completely isolated from collapse toggle) -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
                     {% if is_admin %}
                     <!-- 1-Click Pull Candidates for Whole Session -->
                     <form method="POST" action="{% url 'standardized_exam_session_pull_candidates' %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ទាញបញ្ជីឈ្មោះសិស្សសកម្មទាំងអស់ចូលជាបេក្ខជនសម្រាប់សម័យប្រឡង «{{ sess.title|escapejs }}» (គ្រប់កម្រិតថ្នាក់) មែនទេ?')">
@@ -208,7 +214,7 @@
                     <button type="button" class="btn btn-sm btn-outline-dark fw-bold shadow-xs" onclick="openSessionSecretCodesModal('{{ sess.html_id }}')" title="បង្កើត និងពិនិត្យលេខកូដសម្ងាត់កញ្ចប់វិញ្ញាសា">
                         <i class="fa-solid fa-key me-1 text-warning"></i> កូដសម្ងាត់
                     </button>
-                    <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" onclick="window.location.href=this.href; event.stopPropagation();" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
+                    <a href="{% url 'exam_exclusions_manage' %}?academic_year={{ sess.academic_year.id }}" class="btn btn-sm btn-outline-danger fw-bold shadow-xs" title="គ្រប់គ្រងសិស្សលើកលែងមិនឱ្យប្រឡងក្នុងសម័យប្រឡងនេះ">
                         <i class="fa-solid fa-user-slash me-1"></i> សិស្សលើកលែង
                     </a>
                     {% if is_admin %}
@@ -216,7 +222,7 @@
                         <i class="fa-solid fa-trash-can me-1"></i> លុបសម័យប្រឡង
                     </button>
                     {% endif %}
-                    <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}">
+                    <button class="btn btn-sm btn-light border p-2 toggle-btn" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ sess.html_id }}" aria-expanded="true" aria-controls="collapse_{{ sess.html_id }}" title="បង្ហាញ/បង្រួមកម្រិតថ្នាក់">
                         <i class="fa-solid fa-chevron-down toggle-icon text-primary"></i>
                     </button>
                 </div>

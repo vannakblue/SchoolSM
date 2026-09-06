@@ -1,16 +1,20 @@
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
 from apps.accounts.decorators import role_required
-from apps.accounts.models import SchoolProfile
+from apps.accounts.models import SchoolProfile, GoogleSheetsConfig
 from apps.extras.models import Announcement
 from apps.students.models import Student
 from apps.teachers.models import Teacher
 from apps.academics.models import Classroom, AcademicYear
 from .models import NewsArticle, GalleryAlbum, GalleryPhoto, WebsiteBanner, ContactMessage
 from .forms import NewsArticleForm, GalleryAlbumForm, GalleryPhotosUploadForm, WebsiteBannerForm, ContactMessageForm
+from .website_google_sheets_sync import WebsiteGoogleSheetsSync
+
+logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
@@ -206,11 +210,15 @@ def website_contact(request):
 def website_contact_submit(request):
     """
     Handle contact form submission from homepage or contact modal.
+    Auto-appends to Google Sheets in real-time if connected.
     """
     if request.method == 'POST':
         form = ContactMessageForm(request.POST)
         if form.is_valid():
             msg = form.save()
+            # Real-time Auto-Append to Google Sheets
+            WebsiteGoogleSheetsSync.append_contact_message_safely(msg)
+
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'status': 'ok', 'message': 'សារត្រូវបានផ្ញើជោគជ័យ!'})
             messages.success(request, f"អរគុណលោក/លោកស្រី {msg.name}! សាររបស់លោកអ្នកត្រូវបានផ្ញើជោគជ័យ។")
@@ -451,3 +459,82 @@ def cms_message_delete(request, pk):
         msg.delete()
         messages.success(request, f"បានលុបសាររបស់ {name} ជោគជ័យ!")
     return redirect('website_messages_inbox')
+
+
+# ==============================================================================
+# 📊 TWO-WAY GOOGLE SHEETS SYNC (WEBSITE PORTAL)
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def cms_google_sheets_dashboard(request):
+    """
+    Two-Way Google Sheets Sync Dashboard for Website Portal.
+    """
+    config = GoogleSheetsConfig.get_config()
+    syncer = WebsiteGoogleSheetsSync(config=config)
+    spreadsheet_info = syncer.get_spreadsheet_info()
+
+    # Current database record counts
+    announcements_count = Announcement.objects.count()
+    news_count = NewsArticle.objects.count()
+    contact_count = ContactMessage.objects.count()
+    school_profile = SchoolProfile.get_settings()
+
+    return render(request, 'website/cms/website_google_sheets.html', {
+        'config': config,
+        'spreadsheet_info': spreadsheet_info,
+        'announcements_count': announcements_count,
+        'news_count': news_count,
+        'contact_count': contact_count,
+        'school_profile': school_profile,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def cms_google_sheets_push(request):
+    """
+    Push all website data from database to Google Sheets.
+    """
+    if request.method == 'POST':
+        try:
+            config = GoogleSheetsConfig.get_config()
+            syncer = WebsiteGoogleSheetsSync(config=config)
+            res = syncer.push_to_sheets()
+            messages.success(
+                request,
+                f"🎉 បានរុញទិន្នន័យទៅកាន់ Google Sheets ជោគជ័យ! "
+                f"(សេចក្តីជូនដំណឹង {res['announcements_count']}, "
+                f"ព័ត៌មាន {res['news_count']}, "
+                f"សារទំនាក់ទំនង {res['contact_messages_count']})"
+            )
+        except Exception as e:
+            logger.error(f"Error pushing website data to Google Sheets: {e}")
+            messages.error(request, f"⚠️ បរាជ័យក្នុងការរុញទិន្នន័យទៅ Google Sheets: {str(e)}")
+    return redirect('website_google_sheets_dashboard')
+
+
+@login_required
+@role_required(['ADMIN'])
+def cms_google_sheets_pull(request):
+    """
+    Pull changes from Google Sheets into database.
+    """
+    if request.method == 'POST':
+        try:
+            config = GoogleSheetsConfig.get_config()
+            syncer = WebsiteGoogleSheetsSync(config=config)
+            res = syncer.pull_from_sheets()
+            created_total = res['announcements_created'] + res['news_created']
+            updated_total = res['announcements_updated'] + res['news_updated'] + res['contact_updated']
+            messages.success(
+                request,
+                f"🎉 បានទាញទិន្នន័យពី Google Sheets មកកាន់ប្រព័ន្ធដោយជោគជ័យ! "
+                f"(បានបង្កើតថ្មី៖ {created_total}, បានកែសម្រួល៖ {updated_total})"
+            )
+        except Exception as e:
+            logger.error(f"Error pulling website data from Google Sheets: {e}")
+            messages.error(request, f"⚠️ បរាជ័យក្នុងការទាញទិន្នន័យពី Google Sheets: {str(e)}")
+    return redirect('website_google_sheets_dashboard')
+

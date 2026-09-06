@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}សមកាលកម្ម Google Sheets សម្រាប់គេហទំព័រ (Two-Way Sync) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'website_news_manager' %}" class="text-decoration-none">Website CMS</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Google Sheets Sync</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-table-cells text-success me-2"></i>សមកាលកម្ម Google Sheets (Two-Way Website Sync)
+        </h2>
+        <p class="text-muted small mb-0">គ្រប់គ្រង និងធ្វើសមកាលកម្មទិន្នន័យទៅវិញទៅមករវាង Google Sheets និងគេហទំព័រសាលា (Web Admin ➔ Google Sheets ➔ Website)</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        {% if spreadsheet_info and spreadsheet_info.spreadsheet_url %}
+        <a href="{{ spreadsheet_info.spreadsheet_url }}" target="_blank" class="btn btn-success fw-bold shadow-xs">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកមើលក្នុង Google Sheets
+        </a>
+        {% endif %}
+        <a href="{% url 'website_home' %}" target="_blank" class="btn btn-outline-primary shadow-xs">
+            <i class="fa-solid fa-globe me-1"></i> មើលលើគេហទំព័រ
+        </a>
+    </div>
+</div>
+
+<!-- Configuration Alert Banner -->
+{% if not config.is_configured %}
+<div class="alert alert-warning border-0 shadow-sm rounded-3 p-4 mb-4 d-flex align-items-start gap-3">
+    <i class="fa-solid fa-triangle-exclamation text-warning fs-3 mt-1"></i>
+    <div class="flex-grow-1">
+        <h5 class="fw-bold text-dark mb-1">មិនទាន់បានកំណត់ Google Service Account Credentials នៅឡើយទេ</h5>
+        <p class="text-muted small mb-2">
+            ដើម្បីអាចធ្វើសមកាលកម្មទៅកាន់ Google Sheets និង Google Drive ដោយស្វ័យប្រវត្តិបាន សូមលោកអ្នកដាក់ឯកសារ <code>google_service_account.json</code> ឬបិទភ្ជាប់ខ្លឹមសារ JSON ក្នុងទំព័រការកំណត់។
+        </p>
+        <a href="{% url 'tool_google_sheets' %}" class="btn btn-sm btn-warning text-dark fw-bold">
+            <i class="fa-solid fa-gear me-1"></i> ចូលទៅកំណត់ Google API Credentials ឥឡូវនេះ
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success border-0 shadow-sm rounded-3 p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+            <i class="fa-solid fa-circle-check fs-5"></i>
+        </div>
+        <div>
+            <div class="fw-bold text-dark">Google Service Account ត្រូវបានភ្ជាប់ត្រឹមត្រូវ (Active)</div>
+            <div class="small text-muted">
+                <i class="fa-brands fa-google-drive text-info me-1"></i> Drive Folder: <strong>{{ config.drive_folder_name }}</strong>
+                {% if config.admin_email %}
+                • <i class="fa-regular fa-envelope text-primary me-1"></i> Shared ទៅកាន់៖ <strong>{{ config.admin_email }}</strong>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% if spreadsheet_info and spreadsheet_info.last_sync_at %}
+    <div class="text-end small">
+        <span class="text-muted">Sync ចុងក្រោយ៖</span>
+        <strong class="text-primary">{{ spreadsheet_info.last_sync_at }}</strong>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Real-time Status Counters -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-warning">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-bold">សេចក្តីជូនដំណឹង (Notices)</div>
+                    <h3 class="fw-bold text-warning mb-0">{{ announcements_count }}</h3>
+                </div>
+                <div class="bg-warning bg-opacity-10 text-warning p-2.5 rounded-3">
+                    <i class="fa-solid fa-bullhorn fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-info">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-bold">អត្ថបទ & ព័ត៌មាន (News)</div>
+                    <h3 class="fw-bold text-info mb-0">{{ news_count }}</h3>
+                </div>
+                <div class="bg-info bg-opacity-10 text-info p-2.5 rounded-3">
+                    <i class="fa-solid fa-newspaper fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-primary">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-bold">ព័ត៌មានសាលា (Profile)</div>
+                    <h5 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 140px;">{{ school_profile.name_kh|default:"បានកំណត់" }}</h5>
+                </div>
+                <div class="bg-primary bg-opacity-10 text-primary p-2.5 rounded-3">
+                    <i class="fa-solid fa-landmark fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-danger">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-bold">សារទំនាក់ទំនង (Inquiries)</div>
+                    <h3 class="fw-bold text-danger mb-0">{{ contact_count }}</h3>
+                </div>
+                <div class="bg-danger bg-opacity-10 text-danger p-2.5 rounded-3">
+                    <i class="fa-solid fa-envelope-open-text fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Two-Way Action Cards -->
+<div class="row g-4 mb-4">
+    <!-- Push Card -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-white">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="rounded-3 bg-primary bg-opacity-10 text-primary p-3">
+                    <i class="fa-solid fa-cloud-arrow-up fs-3"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">១. រុញទិន្នន័យទៅ Google Sheets (Push)</h5>
+                    <small class="text-muted">Web Admin / Database ➔ Google Sheets</small>
+                </div>
+            </div>
+            <p class="text-muted small mb-4">
+                រុញទិន្នន័យទាំងអស់នៃសេចក្តីជូនដំណឹង, ព័ត៌មានថ្មីៗ, ព័ត៌មានអំពីសាលា, និងសារទំនាក់ទំនង ពីប្រព័ន្ធ SchoolSM ទៅកត់ត្រាក្នុង Google Sheets ឱ្យដូចគ្នាទាំងស្រុង។ 
+            </p>
+            <div class="mt-auto">
+                <form method="POST" action="{% url 'website_google_sheets_push' %}" onsubmit="return confirm('តើលោកអ្នកចង់រុញទិន្នន័យទាំងអស់ទៅកាន់ Google Sheets មែនទេ?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2.5 shadow-sm w-100" {% if not config.is_configured %}disabled{% endif %}>
+                        <i class="fa-solid fa-arrow-up-from-bracket me-2"></i> រុញទិន្នន័យទៅ Google Sheets ឥឡូវនេះ (Push to Sheets)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pull Card -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-white">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="rounded-3 bg-success bg-opacity-10 text-success p-3">
+                    <i class="fa-solid fa-cloud-arrow-down fs-3"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">២. ទាញទិន្នន័យពី Google Sheets (Pull)</h5>
+                    <small class="text-muted">Google Sheets ➔ Web Admin / Database</small>
+                </div>
+            </div>
+            <p class="text-muted small mb-4">
+                អានរាល់ការកែប្រែ និងជួរថ្មីៗដែលលោកអ្នក ឬបុគ្គលិកបានសរសេរក្នុង Google Sheets រួចធ្វើបច្ចុប្បន្នភាពលើគេហទំព័រភ្លាមៗ។ ប្រសិនបើមានជួរថ្មី ប្រព័ន្ធនឹងបង្កើត Record ថ្មី និងបំពេញលេខ ID ត្រឡប់ទៅ Sheet វិញដោយស្វ័យប្រវត្តិ។
+            </p>
+            <div class="mt-auto">
+                <form method="POST" action="{% url 'website_google_sheets_pull' %}" onsubmit="return confirm('តើលោកអ្នកចង់ទាញទិន្នន័យពី Google Sheets មកកាន់ Database មែនទេ?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success fw-bold px-4 py-2.5 shadow-sm w-100" {% if not config.is_configured %}disabled{% endif %}>
+                        <i class="fa-solid fa-arrows-rotate me-2"></i> ទាញទិន្នន័យពី Google Sheets ឥឡូវនេះ (Pull from Sheets)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Worksheets Mapping Table -->
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4">
+    <div class="card-header bg-light border-0 py-3 px-4 d-flex align-items-center justify-content-between">
+        <h6 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-table text-primary me-2"></i>រចនាសម្ព័ន្ធសន្លឹកកិច្ចការក្នុង Google Spreadsheet (Worksheets Structure)
+        </h6>
+        {% if spreadsheet_info and spreadsheet_info.spreadsheet_url %}
+        <a href="{{ spreadsheet_info.spreadsheet_url }}" target="_blank" class="small fw-bold text-success text-decoration-none">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>បើក Google Spreadsheet
+        </a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ឈ្មោះ Worksheet (Tab)</th>
+                    <th>ទិន្នន័យដែល Sync</th>
+                    <th>ជួរឈរ (Columns)</th>
+                    <th>យន្តការដោះស្រាយជម្លោះ (Conflict Policy)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <span class="badge bg-warning-subtle text-dark border border-warning px-2.5 py-1.5 fw-bold">
+                            <i class="fa-solid fa-bullhorn text-warning me-1"></i> Announcements
+                        </span>
+                    </td>
+                    <td class="fw-semibold">សេចក្តីជូនដំណឹងសាលា</td>
+                    <td class="small text-muted">ID, កាលបរិច្ឆេទ, ចំណងជើង, ប្រភេទ, ក្រុមគោលដៅ, អាទិភាព, ខ្លឹមសារ, ផ្សាយ</td>
+                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម ID • បើគ្មាន ID បង្កើតថ្មី & ផ្ញើ ID ត្រឡប់</td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="badge bg-info-subtle text-dark border border-info px-2.5 py-1.5 fw-bold">
+                            <i class="fa-solid fa-newspaper text-info me-1"></i> News
+                        </span>
+                    </td>
+                    <td class="fw-semibold">អត្ថបទ និងព័ត៌មានថ្មីៗ</td>
+                    <td class="small text-muted">ID, កាលបរិច្ឆេទ, ចំណងជើង, ប្រភេទ, ខ្លឹមសារសង្ខេប, ខ្លឹមសារពេញលេញ, រូប Cover, Featured, ផ្សាយ</td>
+                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម ID • បើគ្មាន ID បង្កើតថ្មី & ផ្ញើ ID ត្រឡប់</td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="badge bg-primary-subtle text-dark border border-primary px-2.5 py-1.5 fw-bold">
+                            <i class="fa-solid fa-landmark text-primary me-1"></i> School_Profile
+                        </span>
+                    </td>
+                    <td class="fw-semibold">អំពីសាលា & ទំនាក់ទំនង</td>
+                    <td class="small text-muted">Field Key, Field Label, Value, Description (ឈ្មោះ, បាវចនា, សារនាយក, ប្រវត្តិ, ទូរស័ព្ទ, អាសយដ្ឋាន)</td>
+                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម Field Key ចូលក្នុង SchoolProfile</td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="badge bg-danger-subtle text-dark border border-danger px-2.5 py-1.5 fw-bold">
+                            <i class="fa-solid fa-envelope text-danger me-1"></i> Contact_Messages
+                        </span>
+                    </td>
+                    <td class="fw-semibold">សារទំនាក់ទំនងពីភ្ញៀវ</td>
+                    <td class="small text-muted">ID, ថ្ងៃផ្ញើ, ឈ្មោះ, ទូរស័ព្ទ, អ៊ីមែល, ប្រធានបទ, សារ, បានអាន</td>
+                    <td class="small text-success"><i class="fa-solid fa-bolt me-1"></i><strong>Real-time Auto-Append</strong> ពេលមានភ្ញៀវផ្ញើសារតាម Web</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

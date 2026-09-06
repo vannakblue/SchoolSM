@@ -32,4 +32,9 @@ urlpatterns = [
     path('portal/cms/messages/', views.cms_messages_inbox, name='website_messages_inbox'),
     path('portal/cms/messages/toggle/<int:pk>/', views.cms_message_toggle_read, name='website_message_toggle_read'),
     path('portal/cms/messages/delete/<int:pk>/', views.cms_message_delete, name='website_message_delete'),
+
+    # Two-Way Google Sheets Sync for Website Portal
+    path('portal/cms/google-sheets/', views.cms_google_sheets_dashboard, name='website_google_sheets_dashboard'),
+    path('portal/cms/google-sheets/push/', views.cms_google_sheets_push, name='website_google_sheets_push'),
+    path('portal/cms/google-sheets/pull/', views.cms_google_sheets_pull, name='website_google_sheets_pull'),
 ]
