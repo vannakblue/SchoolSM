@@ -456,10 +456,11 @@ class GoogleSheetsService:
         ws_att = self._prepare_worksheet(sh, "📅 វត្តមាន (Attendance)", attendance_headers, rows_count=5000)
 
         # Attendance within the academic year dates
-        att_qs = StudentAttendance.objects.filter(
+        att_base_qs = StudentAttendance.objects.filter(
             date__gte=ay.start_date,
             date__lte=ay.end_date
-        ).select_related('student', 'classroom', 'recorded_by').order_by('-date', 'classroom__name', 'student__khmer_name')[:4000]
+        )
+        att_qs = att_base_qs.select_related('student', 'classroom', 'recorded_by').order_by('-date', 'classroom__name', 'student__khmer_name')[:4000]
 
         att_rows = []
         for att in att_qs:
@@ -572,8 +573,8 @@ class GoogleSheetsService:
         total_incomes = sum(float(inv.paid_amount) for inv in invoices)
         total_expenses = sum(float(exp.amount) for exp in expenses)
         net_balance = total_incomes - total_expenses
-        total_attendance = att_qs.count()
-        present_count = att_qs.filter(status=StudentAttendance.Status.PRESENT).count()
+        total_attendance = att_base_qs.count()
+        present_count = att_base_qs.filter(status=StudentAttendance.Status.PRESENT).count()
         att_rate = round((present_count / total_attendance * 100), 1) if total_attendance > 0 else 100.0
 
         summary_rows = [
