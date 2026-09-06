@@ -1,0 +1,63 @@
+{% extends 'website/base_website.html' %}
+
+{% block title %}វិចិត្រសាលរូបភាព | {{ school_profile.name_kh }}{% endblock %}
+
+{% block content %}
+<section class="py-5 bg-success text-white text-center position-relative" style="background: linear-gradient(135deg, #047857 0%, #10b981 100%);">
+    <div class="container py-3">
+        <h1 class="fw-bold mb-2"><i class="fa-solid fa-images me-2"></i>វិចិត្រសាលរូបភាពសាលារៀន</h1>
+        <p class="text-light opacity-90 mb-0">ទិដ្ឋភាពសកម្មភាព ទិវាបុណ្យផ្សេងៗ ការប្រកួត និងអនុស្សាវរីយ៍សិស្សានុសិស្ស</p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4">
+            {% if albums %}
+                {% for album in albums %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-custom h-100">
+                        <div class="position-relative">
+                            {% if album.cover_image %}
+                            <img src="{{ album.cover_image.url }}" class="card-img-top" style="height: 240px; object-fit: cover;" alt="{{ album.title }}">
+                            {% else %}
+                            <div class="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-muted" style="height: 240px;">
+                                <i class="fa-solid fa-camera fs-1 opacity-25"></i>
+                            </div>
+                            {% endif %}
+                            <span class="position-absolute top-0 end-0 m-3 badge bg-dark bg-opacity-75 rounded-pill px-3 py-2 shadow-sm">
+                                <i class="fa-solid fa-camera me-1 text-warning"></i>{{ album.photo_count }} សន្លឹក
+                            </span>
+                        </div>
+                        <div class="card-body p-4 d-flex flex-column">
+                            <small class="text-muted mb-1"><i class="fa-regular fa-calendar me-1"></i>{{ album.event_date|default:album.created_at|date:"d M Y" }}</small>
+                            <h5 class="fw-bold mb-2">
+                                <a href="{% url 'website_album_detail' album.id %}" class="text-dark text-decoration-none hover-primary">
+                                    {{ album.title }}
+                                </a>
+                            </h5>
+                            {% if album.description %}
+                            <p class="text-secondary small mb-3 flex-grow-1">
+                                {{ album.description|truncatechars:100 }}
+                            </p>
+                            {% endif %}
+                            <a href="{% url 'website_album_detail' album.id %}" class="btn btn-outline-success btn-sm rounded-pill mt-auto w-100 py-2">
+                                មើលរូបភាពទាំងអស់ <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-light border text-center py-5 rounded-4">
+                        <i class="fa-solid fa-images fs-1 text-muted mb-3 d-block"></i>
+                        <h5 class="fw-bold">មិនទាន់មានអាល់ប៊ុមរូបភាពនៅឡើយទេ</h5>
+                        <p class="text-muted small mb-0">Admin អាចបង្ហោះអាល់ប៊ុមរូបភាពសកម្មភាពថ្មីៗក្នុង Admin CMS។</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

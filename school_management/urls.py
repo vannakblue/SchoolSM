@@ -60,7 +60,7 @@ urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('ping/', health_check, name='ping_check'),
     path('admin-panel/', admin.site.urls),
-    path('', lambda request: redirect('dashboard_redirect'), name='root_redirect'),
+    path('', include('apps.website.urls')),
     path('maintenance-preview/', lambda request: render(request, 'maintenance.html'), name='maintenance_preview'),
     path('init-admin/', init_admin_view, name='root_init_admin'),
     path('api/telegram/webhook/', telegram_webhook, name='telegram_webhook'),

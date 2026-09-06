@@ -274,6 +274,55 @@ class SchoolProfile(models.Model):
         verbose_name="ទម្រង់ម៉ោង / Time Format"
     )
 
+    # Theme, Colors & Typography Customization
+    class DisplayFont(models.TextChoices):
+        KANTUMRUY = 'Kantumruy Pro', 'Kantumruy Pro (លំនាំដើម - ទំនើប ទាន់សម័យ)'
+        SIEMREAP = 'Khmer OS Siemreap', 'Khmer OS Siemreap (ស្តង់ដាររដ្ឋបាល MoEYS)'
+        BATTAMBANG = 'Khmer OS Battambang', 'Khmer OS Battambang (ងាយអាន អក្សរមូលច្បាស់)'
+        HANUMAN = 'Hanuman', 'Hanuman (ក្បូរក្បាច់ ស្រទន់ បុរាណ)'
+        KOH_SANTEPHEAP = 'Koh Santepheap', 'Koh Santepheap (ទាន់សម័យ ជ្រុងស្អាត)'
+        NOTO_SANS = 'Noto Sans Khmer', 'Noto Sans Khmer (Google Standard)'
+        NOKORA = 'Nokora', 'Nokora (ស្រាល ស្រស់ស្អាត)'
+
+    class ReportHeaderFont(models.TextChoices):
+        MOUL = 'Moul', 'Moul / Khmer OS Muol Light (ក្បាលលិខិត & របាយការណ៍ MoEYS)'
+        KANTUMRUY_BOLD = 'Kantumruy Pro', 'Kantumruy Pro Bold (ទំនើប)'
+        BATTAMBANG_BOLD = 'Khmer OS Battambang', 'Khmer OS Battambang Bold'
+        SIEMREAP_BOLD = 'Khmer OS Siemreap', 'Khmer OS Siemreap Bold'
+
+    display_font = models.CharField(
+        max_length=100,
+        choices=DisplayFont.choices,
+        default=DisplayFont.KANTUMRUY,
+        verbose_name="ពុម្ពអក្សរទូទៅក្នុងប្រព័ន្ធ (Display Font)"
+    )
+    report_header_font = models.CharField(
+        max_length=100,
+        choices=ReportHeaderFont.choices,
+        default=ReportHeaderFont.MOUL,
+        verbose_name="ពុម្ពអក្សរចំណងជើង & របាយការណ៍ (Report Header Font)"
+    )
+    theme_primary_color = models.CharField(
+        max_length=20,
+        default="#1e40af",
+        verbose_name="ពណ៌ចម្បង (Primary Brand Color)"
+    )
+    header_bg_color = models.CharField(
+        max_length=20,
+        default="#0f172a",
+        verbose_name="ពណ៌ក្បាលទំព័រ Header (Header Background)"
+    )
+    footer_bg_color = models.CharField(
+        max_length=20,
+        default="#0b1329",
+        verbose_name="ពណ៌បាតទំព័រ Footer (Footer Background)"
+    )
+    body_bg_color = models.CharField(
+        max_length=20,
+        default="#f8fafc",
+        verbose_name="ពណ៌ផ្ទៃទំព័រ (Page Background)"
+    )
+
     # Student ID Configuration & Generation Pattern
     class StudentIdPattern(models.TextChoices):
         YEAR_END_4D = 'YEAR_END_4D', 'ឆ្នាំបញ្ចប់ + លេខ ៤ ខ្ទង់ (ឧ. 270001) - ស្តង់ដារជាតិ MoEYS'
@@ -476,10 +525,32 @@ class SchoolProfile(models.Model):
         return None
 
     @property
-    def signature_url(self):
-        if self.principal_signature and hasattr(self.principal_signature, 'url'):
-            return self.principal_signature.url
-        return None
+    def display_font_css(self):
+        font = self.display_font or 'Kantumruy Pro'
+        if font == 'Khmer OS Siemreap':
+            return "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif"
+        elif font == 'Khmer OS Battambang':
+            return "'Khmer OS Battambang', 'Battambang', 'Kantumruy Pro', sans-serif"
+        elif font == 'Hanuman':
+            return "'Hanuman', 'Kantumruy Pro', sans-serif"
+        elif font == 'Koh Santepheap':
+            return "'Koh Santepheap', 'Kantumruy Pro', sans-serif"
+        elif font == 'Noto Sans Khmer':
+            return "'Noto Sans Khmer', 'Kantumruy Pro', sans-serif"
+        elif font == 'Nokora':
+            return "'Nokora', 'Kantumruy Pro', sans-serif"
+        return "'Kantumruy Pro', 'Battambang', sans-serif"
+
+    @property
+    def report_font_css(self):
+        font = self.report_header_font or 'Moul'
+        if font == 'Moul':
+            return "'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', 'Kantumruy Pro', sans-serif"
+        elif font == 'Khmer OS Siemreap':
+            return "'Khmer OS Siemreap', 'Siemreap', sans-serif"
+        elif font == 'Khmer OS Battambang':
+            return "'Khmer OS Battambang', 'Battambang', sans-serif"
+        return "'Kantumruy Pro', 'Battambang', sans-serif"
 
     def __str__(self):
         return f"{self.name_kh} ({self.school_code})"

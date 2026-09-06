@@ -1,0 +1,81 @@
+{% extends 'website/base_website.html' %}
+
+{% block title %}{{ announcement.title }} | សេចក្តីជូនដំណឹង{% endblock %}
+
+{% block content %}
+<div class="bg-light py-3 border-bottom">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'website_announcement_list' %}" class="text-decoration-none">សេចក្តីជូនដំណឹង</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{{ announcement.title }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="card card-custom p-4 p-md-5 border shadow-sm">
+                    <!-- Header -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge {% if announcement.priority == 'URGENT' %}bg-danger{% elif announcement.priority == 'IMPORTANT' %}bg-warning text-dark{% else %}bg-primary{% endif %} px-3 py-2 rounded-pill">
+                                {{ announcement.get_priority_display }}
+                            </span>
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                                {{ announcement.get_category_display }}
+                            </span>
+                        </div>
+                        <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>កាលបរិច្ឆេទផ្សាយ៖ {{ announcement.created_at|date:"d-m-Y H:i" }}</small>
+                    </div>
+
+                    <!-- Title -->
+                    <h2 class="fw-bold mb-4 text-dark" style="line-height: 1.4;">
+                        {{ announcement.title }}
+                    </h2>
+
+                    <!-- Audience Info -->
+                    <div class="alert alert-light border p-3 rounded-3 mb-4 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-users text-primary fs-5"></i>
+                        <span class="small fw-semibold">ក្រុមគោលដៅ៖ {{ announcement.get_target_audience_display }}</span>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="article-content text-secondary mb-4" style="font-size: 1.05rem; line-height: 1.8; white-space: pre-line;">
+                        {{ announcement.content }}
+                    </div>
+
+                    <!-- Attachment if any -->
+                    {% if announcement.attachment %}
+                    <div class="p-3 bg-light rounded-3 border mb-4 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-file-pdf text-danger fs-3"></i>
+                            <div>
+                                <h6 class="mb-0 fw-semibold">ឯកសារភ្ជាប់ផ្លូវការ</h6>
+                                <small class="text-muted">ទាញយកឯកសារលម្អិត</small>
+                            </div>
+                        </div>
+                        <a href="{{ announcement.attachment.url }}" download class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                            <i class="fa-solid fa-download me-1"></i>ទាញយកឯកសារ
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <!-- Footer Back Button -->
+                    <div class="text-end">
+                        <a href="{% url 'website_announcement_list' %}" class="btn btn-secondary rounded-pill px-4">
+                            <i class="fa-solid fa-arrow-left me-2"></i>ត្រឡប់ក្រោយ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

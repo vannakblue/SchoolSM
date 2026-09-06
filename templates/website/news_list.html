@@ -1,0 +1,91 @@
+{% extends 'website/base_website.html' %}
+
+{% block title %}ព័ត៌មាន & ព្រឹត្តិការណ៍សាលា | {{ school_profile.name_kh }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="py-5 bg-primary text-white text-center position-relative" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+    <div class="container py-3">
+        <h1 class="fw-bold mb-2">ព័ត៌មាន & ព្រឹត្តិការណ៍សាលារៀន</h1>
+        <p class="text-light opacity-75 mb-0">តាមដានសកម្មភាពថ្មីៗ សមិទ្ធផល និងព័ត៌មានអប់រំរបស់ {{ school_profile.name_kh }}</p>
+    </div>
+</section>
+
+<!-- Content & Filter Section -->
+<section class="py-5">
+    <div class="container">
+        <!-- Search & Category Filters -->
+        <div class="card card-custom p-3 mb-5 border">
+            <form method="get" action="{% url 'website_news_list' %}" class="row g-3 align-items-center">
+                <div class="col-lg-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="ស្វែងរកចំណងជើង ឬខ្លឹមសារព័ត៌មាន...">
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <select name="category" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- ប្រភេទព័ត៌មានទាំងអស់ --</option>
+                        {% for cat_val, cat_label in categories %}
+                        <option value="{{ cat_val }}" {% if selected_category == cat_val %}selected{% endif %}>{{ cat_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill">ស្វែងរក</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Articles Grid -->
+        <div class="row g-4">
+            {% if articles %}
+                {% for item in articles %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-custom h-100">
+                        {% if item.cover_image %}
+                        <img src="{{ item.cover_image.url }}" class="card-img-top" style="height: 220px; object-fit: cover;" alt="{{ item.title }}">
+                        {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center text-secondary border-bottom" style="height: 220px;">
+                            <i class="fa-solid fa-image fs-1 opacity-25"></i>
+                        </div>
+                        {% endif %}
+                        <div class="card-body d-flex flex-column p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">
+                                    {{ item.get_category_display }}
+                                </span>
+                                <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>{{ item.created_at|date:"d-m-Y" }}</small>
+                            </div>
+                            <h5 class="card-title fw-bold mb-2">
+                                <a href="{% url 'website_news_detail' item.id %}" class="text-dark text-decoration-none hover-primary">
+                                    {{ item.title }}
+                                </a>
+                            </h5>
+                            <p class="card-text text-secondary small mb-3 flex-grow-1">
+                                {{ item.excerpt|default:item.content|striptags|truncatechars:120 }}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                                <small class="text-muted"><i class="fa-regular fa-eye me-1"></i>{{ item.views_count }} មើល</small>
+                                <a href="{% url 'website_news_detail' item.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    អានបន្ត <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-light border text-center py-5 rounded-4">
+                        <i class="fa-regular fa-newspaper fs-1 text-muted mb-3 d-block"></i>
+                        <h5 class="fw-bold">មិនមានអត្ថបទព័ត៌មានត្រូវនឹងលក្ខខណ្ឌស្វែងរកនេះទេ</h5>
+                        <p class="text-muted small mb-0">សូមសាកល្បងស្វែងរកដោយប្រើពាក្យគន្លឹះផ្សេង ឬជ្រើសរើសប្រភេទទាំងអស់។</p>
+                        <a href="{% url 'website_news_list' %}" class="btn btn-outline-primary btn-sm mt-3 rounded-pill">មើលព័ត៌មានទាំងអស់ឡើងវិញ</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

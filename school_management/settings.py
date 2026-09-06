@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.extras',
     'apps.dashboard',
     'apps.tools',
+    'apps.website',
     'apps.mobile_api',
 
     # API & Mobile Packages

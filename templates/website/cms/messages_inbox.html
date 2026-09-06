@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}សារទំនាក់ទំនងពីភ្ញៀវ (Website Inquiries) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-envelope-open-text text-info me-2"></i>សារទំនាក់ទំនងពីភ្ញៀវ & មាតាបិតា (Website Inquiries)
+        </h2>
+        <p class="text-muted small mb-0">សារ និងសំណួរដែលសាធារណជន ឬអាណាព្យាបាលបានផ្ញើតាមរយៈទម្រង់ទំនាក់ទំនងលើ Website</p>
+    </div>
+    <div>
+        {% if unread_count > 0 %}
+        <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill shadow-xs">
+            <i class="fa-solid fa-bell me-1"></i>មិនទាន់អាន៖ {{ unread_count }} សារ
+        </span>
+        {% else %}
+        <span class="badge bg-success fs-6 px-3 py-2 rounded-pill shadow-xs">
+            <i class="fa-solid fa-check-double me-1"></i>បានអានអស់ហើយ
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">ស្ថានភាព</th>
+                    <th>ឈ្មោះអ្នកផ្ញើ</th>
+                    <th>លេខទូរស័ព្ទ</th>
+                    <th>អ៊ីមែល</th>
+                    <th>ប្រធានបទសាកសួរ</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th class="text-center" style="width: 140px;">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if inbox_messages %}
+                    {% for msg in inbox_messages %}
+                    <tr class="{% if not msg.is_read %}table-primary table-opacity-10 fw-semibold{% endif %}">
+                        <td class="text-center">
+                            {% if msg.is_read %}
+                            <i class="fa-regular fa-envelope-open text-muted fs-5" title="បានអានរួច"></i>
+                            {% else %}
+                            <i class="fa-solid fa-envelope text-danger fs-5" title="សារថ្មី មិនទាន់អាន"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-dark">{{ msg.name }}</div>
+                        </td>
+                        <td>
+                            <a href="tel:{{ msg.phone }}" class="text-decoration-none">
+                                <i class="fa-solid fa-phone small text-success me-1"></i>{{ msg.phone }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if msg.email %}
+                            <a href="mailto:{{ msg.email }}" class="text-muted text-decoration-none small">
+                                <i class="fa-solid fa-envelope small text-info me-1"></i>{{ msg.email }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-dark">{{ msg.subject }}</div>
+                            <small class="text-muted text-truncate d-inline-block" style="max-width: 300px;">
+                                {{ msg.message|truncatechars:70 }}
+                            </small>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ msg.created_at|date:"d-m-Y H:i" }}</small>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-light border text-primary" onclick="viewMessage('{{ msg.name|escapejs }}', '{{ msg.phone|escapejs }}', '{{ msg.email|default:""|escapejs }}', '{{ msg.subject|escapejs }}', '{{ msg.message|escapejs }}', '{{ msg.created_at|date:"d-m-Y H:i" }}')" title="អានសារលម្អិត">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                                <a href="{% url 'website_message_toggle_read' msg.id %}" class="btn btn-light border {% if msg.is_read %}text-warning{% else %}text-success{% endif %}" title="{% if msg.is_read %}កំណត់ថា មិនទាន់អាន{% else %}កំណត់ថា បានអាន{% endif %}">
+                                    <i class="fa-solid {% if msg.is_read %}fa-envelope{% else %}fa-envelope-open{% endif %}"></i>
+                                </a>
+                                <button type="button" class="btn btn-light border text-danger" onclick="confirmDeleteMessage('{{ msg.id }}', '{{ msg.name|escapejs }}')" title="លុបសារ">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-regular fa-envelope-open fs-1 mb-2 d-block opacity-50"></i>
+                            <h6 class="fw-bold">មិនទាន់មានសារទំនាក់ទំនងពីភ្ញៀវនៅឡើយទេ</h6>
+                            <small>សារដែលភ្ញៀវ ឬមាតាបិតាផ្ញើតាមរយៈទំព័រទំនាក់ទំនង Website នឹងបង្ហាញនៅទីនេះ។</small>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Message Detail Modal -->
+<div class="modal fade" id="viewMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-envelope text-primary me-2"></i>ខ្លឹមសារសារទំនាក់ទំនង</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="mb-1"><strong class="text-dark">អ្នកផ្ញើ៖</strong> <span id="modalSender"></span></div>
+                    <div class="mb-1"><strong class="text-dark">ទូរស័ព្ទ៖</strong> <span id="modalPhone"></span></div>
+                    <div class="mb-1"><strong class="text-dark">អ៊ីមែល៖</strong> <span id="modalEmail"></span></div>
+                    <div><strong class="text-dark">កាលបរិច្ឆេទ៖</strong> <span id="modalDate" class="text-muted small"></span></div>
+                </div>
+                <h6 class="fw-bold mb-2 text-primary" id="modalSubject"></h6>
+                <div class="p-3 border rounded-3 bg-white text-secondary" style="white-space: pre-line; line-height: 1.6;" id="modalMessage"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Form -->
+<form id="deleteMessageForm" method="post" action="" style="display: none;">
+    {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function viewMessage(name, phone, email, subject, message, date) {
+        document.getElementById('modalSender').textContent = name;
+        document.getElementById('modalPhone').textContent = phone;
+        document.getElementById('modalEmail').textContent = email || 'គ្មាន';
+        document.getElementById('modalSubject').textContent = subject;
+        document.getElementById('modalMessage').textContent = message;
+        document.getElementById('modalDate').textContent = date;
+        const modal = new bootstrap.Modal(document.getElementById('viewMessageModal'));
+        modal.show();
+    }
+
+    function confirmDeleteMessage(id, name) {
+        Swal.fire({
+            title: 'តើលោកអ្នកច្បាស់ទេ?',
+            text: `តើលោកអ្នកពិតជាចង់លុបសាររបស់ "${name}" មែនទេ?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'បាទ/ចាស, លុប!',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.getElementById('deleteMessageForm');
+                form.action = `/portal/cms/messages/delete/${id}/`;
+                form.submit();
+            }
+        });
+    }
+</script>
+{% endblock %}

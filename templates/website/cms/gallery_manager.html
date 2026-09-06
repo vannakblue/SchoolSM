@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងវិចិត្រសាលរូបភាព (Photo Gallery CMS) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-images text-purple me-2"></i>គ្រប់គ្រងវិចិត្រសាលរូបភាព (Gallery CMS)
+        </h2>
+        <p class="text-muted small mb-0">បង្កើតអាល់ប៊ុម និងបង្ហោះរូបភាពសកម្មភាពផ្សេងៗលើគេហទំព័រសាលា</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'website_gallery_list' %}" target="_blank" class="btn btn-outline-success shadow-xs">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> មើលលើ Website
+        </a>
+        <button type="button" class="btn btn-primary fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#createAlbumModal">
+            <i class="fa-solid fa-folder-plus me-1"></i> បង្កើតអាល់ប៊ុមថ្មី
+        </button>
+    </div>
+</div>
+
+<!-- Albums Grid -->
+<div class="row g-4">
+    {% if albums %}
+        {% for album in albums %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 bg-white h-100 overflow-hidden">
+                <div class="row g-0">
+                    <div class="col-sm-4 position-relative bg-light">
+                        {% if album.cover_image %}
+                        <img src="{{ album.cover_image.url }}" class="img-fluid h-100 w-100" style="object-fit: cover; min-height: 180px;" alt="{{ album.title }}">
+                        {% else %}
+                        <div class="h-100 d-flex align-items-center justify-content-center text-muted py-5">
+                            <i class="fa-solid fa-camera fs-1 opacity-25"></i>
+                        </div>
+                        {% endif %}
+                        <span class="position-absolute bottom-0 start-0 m-2 badge bg-dark bg-opacity-75">
+                            {{ album.photo_count }} សន្លឹក
+                        </span>
+                    </div>
+                    <div class="col-sm-8 d-flex flex-column p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h5 class="fw-bold mb-1 text-dark">{{ album.title }}</h5>
+                            <span class="badge {% if album.is_published %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                {% if album.is_published %}ផ្សាយ{% else %}ព្រាង{% endif %}
+                            </span>
+                        </div>
+                        <small class="text-muted mb-2">
+                            <i class="fa-regular fa-calendar me-1"></i>{{ album.event_date|default:album.created_at|date:"d-m-Y" }}
+                        </small>
+                        <p class="text-secondary small mb-3 flex-grow-1">
+                            {{ album.description|default:"គ្មានការពិពណ៌នា"|truncatechars:80 }}
+                        </p>
+
+                        <!-- Actions -->
+                        <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-auto">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-primary" onclick="openUploadModal('{{ album.id }}', '{{ album.title|escapejs }}')">
+                                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> បញ្ចូលរូប
+                                </button>
+                                <a href="{% url 'website_album_detail' album.id %}" target="_blank" class="btn btn-outline-secondary" title="មើលរូបភាព">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeleteAlbum('{{ album.id }}', '{{ album.title|escapejs }}')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photos Mini Previews / Management -->
+                {% if album.photos.all %}
+                <div class="p-3 bg-light border-top">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="small fw-semibold text-secondary">រូបភាពក្នុងអាល់ប៊ុមនេះ៖</span>
+                    </div>
+                    <div class="d-flex gap-2 overflow-auto py-1">
+                        {% for ph in album.photos.all|slice:":8" %}
+                        <div class="position-relative d-inline-block flex-shrink-0" style="width: 65px; height: 65px;">
+                            <img src="{{ ph.image.url }}" class="rounded border shadow-xs w-100 h-100" style="object-fit: cover;" alt="thumb">
+                            <form method="post" action="{% url 'website_gallery_photo_delete' ph.id %}" class="position-absolute top-0 end-0 m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger p-0 rounded-circle border-0 d-flex align-items-center justify-content-center" style="width: 18px; height: 18px; font-size: 10px;" title="លុបរូបភាពនេះ" onclick="return confirm('លុបរូបភាពនេះ?')">
+                                    &times;
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                        {% if album.photos.count > 8 %}
+                        <div class="rounded border bg-white d-flex align-items-center justify-content-center text-muted small flex-shrink-0 fw-bold" style="width: 65px; height: 65px;">
+                            +{{ album.photos.count|add:"-8" }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white text-muted">
+                <i class="fa-solid fa-images fs-1 mb-3 opacity-50"></i>
+                <h5 class="fw-bold">មិនទាន់មានអាល់ប៊ុមរូបភាពនៅឡើយទេ</h5>
+                <p class="small mb-3">ចុចប៊ូតុងខាងក្រោមដើម្បីបង្កើតអាល់ប៊ុមដំបូងសម្រាប់គេហទំព័រសាលារៀន</p>
+                <button type="button" class="btn btn-primary mx-auto" data-bs-toggle="modal" data-bs-target="#createAlbumModal">
+                    <i class="fa-solid fa-folder-plus me-1"></i> បង្កើតអាល់ប៊ុមថ្មី
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal 1: Create New Album -->
+<div class="modal fade" id="createAlbumModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-folder-plus text-primary me-2"></i>បង្កើតអាល់ប៊ុមថ្មី</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'website_gallery_create' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ឈ្មោះអាល់ប៊ុម *</label>
+                        {{ album_form.title }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">កាលបរិច្ឆេទកម្មវិធី</label>
+                        {{ album_form.event_date }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">រូបភាពតំណាង (Cover Photo)</label>
+                        {{ album_form.cover_image }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ការពិពណ៌នាសង្ខេប</label>
+                        {{ album_form.description }}
+                    </div>
+                    <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                        {{ album_form.is_published }}
+                        <label class="form-check-label fw-semibold ms-2" for="{{ album_form.is_published.id_for_label }}">
+                            ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រ
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold">បង្កើតអាល់ប៊ុម</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Upload Photos to Album -->
+<div class="modal fade" id="uploadPhotosModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-cloud-arrow-up text-success me-2"></i>បង្ហោះរូបភាពចូលអាល់ប៊ុម</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="uploadPhotosForm" method="post" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>អាល់ប៊ុម៖ <strong id="uploadAlbumTitle"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ជ្រើសរើសរូបភាព (អាចជ្រើសបានច្រើនសន្លឹក) *</label>
+                        <input type="file" name="photos" class="form-control" multiple accept="image/*" required>
+                        <small class="text-muted">គាំទ្រទម្រង់ JPG, PNG, WebP</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ចំណងជើងរូបភាពរួម (ស្រេចចិត្ត)</label>
+                        <input type="text" name="caption" class="form-control" placeholder="ឧ. រូបថតអនុស្សាវរីយ៍...">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="fa-solid fa-upload me-1"></i> ចាប់ផ្តើមបង្ហោះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Album Form -->
+<form id="deleteAlbumForm" method="post" action="" style="display: none;">
+    {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openUploadModal(albumId, albumTitle) {
+        document.getElementById('uploadAlbumTitle').textContent = albumTitle;
+        document.getElementById('uploadPhotosForm').action = `/portal/cms/gallery/${albumId}/upload/`;
+        const modal = new bootstrap.Modal(document.getElementById('uploadPhotosModal'));
+        modal.show();
+    }
+
+    function confirmDeleteAlbum(albumId, albumTitle) {
+        Swal.fire({
+            title: 'តើលោកអ្នកច្បាស់ទេ?',
+            text: `តើលោកអ្នកពិតជាចង់លុបអាល់ប៊ុម "${albumTitle}" និងរូបភាពទាំងអស់ក្នុងនោះមែនទេ?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'បាទ/ចាស, លុប!',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.getElementById('deleteAlbumForm');
+                form.action = `/portal/cms/gallery/album/delete/${albumId}/`;
+                form.submit();
+            }
+        });
+    }
+</script>
+{% endblock %}

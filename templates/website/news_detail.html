@@ -1,0 +1,138 @@
+{% extends 'website/base_website.html' %}
+
+{% block title %}{{ article.title }} | {{ school_profile.name_kh }}{% endblock %}
+
+{% block content %}
+<!-- Breadcrumbs -->
+<div class="bg-light py-3 border-bottom">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'website_news_list' %}" class="text-decoration-none">ព័ត៌មាន</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{{ article.title }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Article Detail Body -->
+<section class="py-5">
+    <div class="container">
+        <div class="row g-5 justify-content-center">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <article class="bg-white p-4 p-md-5 rounded-4 border shadow-sm">
+                    <!-- Category & Meta -->
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <span class="badge bg-primary px-3 py-2 rounded-pill">
+                            {{ article.get_category_display }}
+                        </span>
+                        <span class="text-muted small">
+                            <i class="fa-regular fa-calendar-days me-1 text-primary"></i>
+                            {{ article.created_at|date:"d M Y, H:i" }}
+                        </span>
+                        <span class="text-muted small">
+                            <i class="fa-regular fa-eye me-1 text-primary"></i>
+                            {{ article.views_count }}  lượtមើល
+                        </span>
+                        {% if article.author %}
+                        <span class="text-muted small">
+                            <i class="fa-regular fa-user me-1 text-primary"></i>
+                            {{ article.author.username }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Article Title -->
+                    <h1 class="fw-bold mb-4" style="line-height: 1.35; color: #0f172a;">
+                        {{ article.title }}
+                    </h1>
+
+                    <!-- Excerpt Lead -->
+                    {% if article.excerpt %}
+                    <div class="p-3 bg-light rounded-3 border-start border-4 border-primary mb-4 text-secondary fst-italic lead fs-6">
+                        {{ article.excerpt }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Cover Image -->
+                    {% if article.cover_image %}
+                    <div class="mb-4 text-center">
+                        <img src="{{ article.cover_image.url }}" class="img-fluid rounded-4 shadow-sm w-100" style="max-height: 480px; object-fit: cover;" alt="{{ article.title }}">
+                    </div>
+                    {% endif %}
+
+                    <!-- Main Text Body -->
+                    <div class="article-content text-secondary" style="font-size: 1.05rem; line-height: 1.8; white-space: pre-line;">
+                        {{ article.content }}
+                    </div>
+
+                    <hr class="my-5">
+
+                    <!-- Share & Back Actions -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <a href="{% url 'website_news_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                            <i class="fa-solid fa-arrow-left me-2"></i>ត្រឡប់ទៅបញ្ជីព័ត៌មាន
+                        </a>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted fw-semibold me-2">ចែករំលែក៖</span>
+                            <a href="https://t.me/share/url?url={{ request.build_absolute_uri }}&text={{ article.title }}" target="_blank" class="btn btn-sm btn-info text-white rounded-circle" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="fa-brands fa-telegram"></i>
+                            </a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" class="btn btn-sm btn-primary rounded-circle" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;">
+                                <i class="fa-brands fa-facebook-f"></i>
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Sidebar / Related Articles -->
+            <div class="col-lg-4">
+                <div class="p-4 bg-white rounded-4 border shadow-sm sticky-top" style="top: 100px;">
+                    <h5 class="fw-bold mb-3 pb-2 border-bottom text-primary">
+                        <i class="fa-solid fa-newspaper me-2"></i>ព័ត៌មានទាក់ទង
+                    </h5>
+
+                    {% if related_articles %}
+                        <div class="d-flex flex-column gap-3">
+                            {% for rel in related_articles %}
+                            <div class="d-flex gap-3 align-items-start">
+                                {% if rel.cover_image %}
+                                <img src="{{ rel.cover_image.url }}" class="rounded-3 shadow-xs" style="width: 80px; height: 60px; object-fit: cover;" alt="{{ rel.title }}">
+                                {% else %}
+                                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center text-muted border" style="width: 80px; height: 60px;">
+                                    <i class="fa-solid fa-image"></i>
+                                </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-semibold small lh-base">
+                                        <a href="{% url 'website_news_detail' rel.id %}" class="text-dark text-decoration-none hover-primary">
+                                            {{ rel.title|truncatechars:50 }}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted" style="font-size: 0.75rem;"><i class="fa-regular fa-clock me-1"></i>{{ rel.created_at|date:"d-m-Y" }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted small mb-0">មិនមានព័ត៌មានទាក់ទងផ្សេងទៀតទេ។</p>
+                    {% endif %}
+
+                    <!-- School Portal CTA in Sidebar -->
+                    <div class="p-3 mt-4 rounded-3 bg-light border text-center">
+                        <div class="text-primary fs-3 mb-2"><i class="fa-solid fa-graduation-cap"></i></div>
+                        <h6 class="fw-bold mb-1">{{ school_profile.short_name }}</h6>
+                        <p class="small text-muted mb-3">ច្រកចូលប្រព័ន្ធគ្រប់គ្រងសាលាសម្រាប់គ្រូ និងសិស្ស</p>
+                        <a href="{% url 'login' %}" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold">
+                            ចូលប្រព័ន្ធ (Portal Login)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'website/base_website.html' %}
+
+{% block title %}{{ album.title }} | វិចិត្រសាលរូបភាព{% endblock %}
+
+{% block content %}
+<div class="bg-light py-3 border-bottom">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'website_gallery_list' %}" class="text-decoration-none">វិចិត្រសាល</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{{ album.title }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<section class="py-5">
+    <div class="container">
+        <!-- Album Info Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+            <div>
+                <h2 class="fw-bold mb-1 text-dark">{{ album.title }}</h2>
+                <div class="d-flex align-items-center gap-3 text-muted small">
+                    <span><i class="fa-regular fa-calendar me-1"></i>{{ album.event_date|default:album.created_at|date:"d F Y" }}</span>
+                    <span><i class="fa-solid fa-camera me-1 text-success"></i>រូបថតសរុប៖ {{ photos.count }} សន្លឹក</span>
+                </div>
+                {% if album.description %}
+                <p class="text-secondary mt-2 mb-0">{{ album.description }}</p>
+                {% endif %}
+            </div>
+            <a href="{% url 'website_gallery_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="fa-solid fa-arrow-left me-2"></i>ត្រឡប់ទៅអាល់ប៊ុមទាំងអស់
+            </a>
+        </div>
+
+        <!-- Photos Grid -->
+        <div class="row g-3">
+            {% if photos %}
+                {% for photo in photos %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card card-custom h-100 border overflow-hidden position-relative group-hover cursor-pointer" onclick="openLightbox('{{ photo.image.url }}', '{{ photo.caption|default:album.title|escapejs }}')">
+                        <img src="{{ photo.image.url }}" class="img-fluid w-100" style="height: 200px; object-fit: cover; transition: transform 0.3s;" alt="{{ photo.caption|default:album.title }}">
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-40 opacity-0 hover-opacity-100 transition-all text-white">
+                            <i class="fa-solid fa-magnifying-glass-plus fs-2"></i>
+                        </div>
+                        {% if photo.caption %}
+                        <div class="p-2 bg-white text-truncate small text-center text-muted">
+                            {{ photo.caption }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-light border text-center py-5 rounded-4">
+                        <p class="text-muted mb-0">មិនទាន់មានរូបភាពក្នុងអាល់ប៊ុមនេះនៅឡើយទេ។</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="lightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-body p-0 text-center position-relative">
+                <button type="button" class="btn btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                <img id="lightboxImage" src="" class="img-fluid rounded-3 shadow-lg" style="max-height: 85vh; object-fit: contain;">
+                <div id="lightboxCaption" class="text-white text-center mt-2 py-1 px-3 bg-dark bg-opacity-75 rounded-pill d-inline-block small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openLightbox(url, caption) {
+        document.getElementById('lightboxImage').src = url;
+        document.getElementById('lightboxCaption').textContent = caption || '';
+        const modal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+        modal.show();
+    }
+</script>
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .transition-all { transition: all 0.25s ease; }
+    .card-custom:hover img { transform: scale(1.05); }
+    .card-custom:hover .opacity-0 { opacity: 1 !important; }
+</style>
+{% endblock %}

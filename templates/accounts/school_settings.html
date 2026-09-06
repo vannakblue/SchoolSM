@@ -213,6 +213,11 @@
                             <i class="fa-solid fa-id-card me-1"></i> ៥. ទម្រង់អត្តលេខសិស្ស
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="theme-tab" data-bs-toggle="pill" data-bs-target="#tab-theme" type="button" role="tab">
+                            <i class="fa-solid fa-palette me-1 text-warning"></i> ៦. ពុម្ពអក្សរ & រចនាប័ទ្មពណ៌
+                        </button>
+                    </li>
                 </ul>
 
                 <!-- Tab Content -->
@@ -612,6 +617,124 @@
                         </div>
                     </div>
 
+                    <!-- TAB 6: Theme, Colors & Typography Customization -->
+                    <div class="tab-pane fade" id="tab-theme" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="fw-bold text-primary mb-0">
+                                <i class="fa-solid fa-palette me-1"></i> កំណត់ពុម្ពអក្សរ & ពណ៌រចនាប័ទ្ម (Theme & Typography)
+                            </h6>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
+                                ដំណើរការលើ Website & Web App
+                            </span>
+                        </div>
+
+                        <!-- Live Typography & Color Interactive Preview Card -->
+                        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white position-relative overflow-hidden" id="themeLivePreviewCard" style="background: linear-gradient(135deg, {{ school_profile.theme_primary_color|default:'#1e40af' }} 0%, {{ school_profile.header_bg_color|default:'#0f172a' }} 100%); transition: all 0.3s ease;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">
+                                    <i class="fa-solid fa-eye me-1"></i>ផ្ទាំងបង្ហាញផ្ទាល់ (Live Preview)
+                                </span>
+                                <small class="text-white-50">ការផ្លាស់ប្តូរនឹងបង្ហាញភ្លាមៗ</small>
+                            </div>
+
+                            <h3 class="fw-bold my-2" id="previewTitle" style="font-family: {{ school_profile.report_font_css|safe }};">
+                                {{ school_profile.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }}
+                            </h3>
+                            <p class="mb-3 opacity-90" id="previewBody" style="font-family: {{ school_profile.display_font_css|safe }}; font-size: 1.05rem;">
+                                "ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — នេះជាគំរូអក្សរដែលបានជ្រើសរើសសម្រាប់បង្ហាញលើប្រព័ន្ធគ្រប់គ្រង និងគេហទំព័រសាលា។"
+                            </p>
+
+                            <div class="d-flex flex-wrap gap-2 pt-2 border-top border-white border-opacity-25">
+                                <span class="badge bg-white text-dark py-1.5 px-3 rounded-pill fw-semibold" id="previewBadgePrimary">ប៊ូតុងពណ៌ចម្បង</span>
+                                <span class="badge bg-warning text-dark py-1.5 px-3 rounded-pill fw-semibold">របាយការណ៍ MoEYS</span>
+                                <span class="badge bg-success py-1.5 px-3 rounded-pill fw-semibold">ប្រព័ន្ធ Active</span>
+                            </div>
+                        </div>
+
+                        <!-- Typography Fields -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-dark small">
+                                    <i class="fa-solid fa-font text-primary me-1"></i> ពុម្ពអក្សរទូទៅក្នុងប្រព័ន្ធ & Website (Display Font) <span class="text-danger">*</span>
+                                </label>
+                                {{ form.display_font }}
+                                <div class="form-text small text-muted">
+                                    ប្រើប្រាស់សម្រាប់អត្ថបទទូទៅ មឺនុយ តារាងបញ្ជី និងទំព័រ Website (ឧ. Kantumruy Pro, Khmer OS Siemreap, Battambang, Hanuman...)
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-dark small">
+                                    <i class="fa-solid fa-heading text-primary me-1"></i> ពុម្ពអក្សរចំណងជើង & របាយការណ៍ផ្លូវការ (Report & Header Font) <span class="text-danger">*</span>
+                                </label>
+                                {{ form.report_header_font }}
+                                <div class="form-text small text-muted">
+                                    ប្រើប្រាស់សម្រាប់ចំណងជើងធំ ក្បាលលិខិត ប័ណ្ណសរសើរ និងរបាយការណ៍ MoEYS (ឧ. Moul / Khmer OS Muol Light)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Theme Colors Customization -->
+                        <h6 class="fw-bold text-dark mb-3 border-top pt-3">
+                            <i class="fa-solid fa-droplet text-primary me-1"></i> កំណត់ពណ៌តាមផ្នែក (Color Palette)
+                        </h6>
+
+                        <!-- Quick Theme Presets -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold small text-muted d-block">ឈុតពណ៌គំរូរហ័ស (Quick Color Themes)៖</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="applyPresetTheme('#1e40af', '#0f172a', '#0b1329', '#f8fafc')">
+                                    🔵 Royal Blue (លំនាំដើម)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="applyPresetTheme('#059669', '#064e3b', '#022c22', '#f0fdf4')">
+                                    🟢 Emerald Green (បៃតងធម្មជាតិ)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="applyPresetTheme('#991b1b', '#450a0a', '#1f0404', '#fff5f5')">
+                                    🔴 Crimson Maroon (ក្រហមឈាមជ្រូក)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="applyPresetTheme('#0f172a', '#1e293b', '#020617', '#f8fafc')">
+                                    ⚫ Midnight Navy (ខៀវចាស់/ខ្មៅ)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="applyPresetTheme('#7c3aed', '#3b0764', '#1e0538', '#faf5ff')">
+                                    🟣 Royal Purple (ស្វាយប្រណីត)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="applyPresetTheme('#b45309', '#451a03', '#1c0a02', '#fffbeb')">
+                                    🟡 Warm Amber (ទឹកមាស)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-sm-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
+                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ចម្បង (Primary)</label>
+                                    {{ form.theme_primary_color }}
+                                    <small class="text-muted d-block mt-1">ប៊ូតុង & Header Highlight</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
+                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Header</label>
+                                    {{ form.header_bg_color }}
+                                    <small class="text-muted d-block mt-1">ក្បាលទំព័រ & Topbar</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
+                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Footer</label>
+                                    {{ form.footer_bg_color }}
+                                    <small class="text-muted d-block mt-1">បាតទំព័រគេហទំព័រ</small>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
+                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Background</label>
+                                    {{ form.body_bg_color }}
+                                    <small class="text-muted d-block mt-1">ផ្ទៃទំព័រកម្មវិធី & Web</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Submit Button Bar -->
@@ -966,11 +1089,54 @@
         updateStudentIdFormVisibility();
         triggerPreviewDebounced();
 
-        // Check if navigated with hash #tab-student-id
-        if (window.location.hash === '#tab-student-id') {
-            const tabBtn = document.getElementById('student-id-tab');
-            if (tabBtn) {
-                const bsTab = new bootstrap.Tab(tabBtn);
+        // ==========================================================
+        // 🎨 THEME & TYPOGRAPHY LIVE PREVIEW CONTROLLER
+        // ==========================================================
+        window.applyPresetTheme = function(primary, header, footer, body) {
+            const pInput = document.getElementById('id_theme_primary_color');
+            const hInput = document.getElementById('id_header_bg_color');
+            const fInput = document.getElementById('id_footer_bg_color');
+            const bInput = document.getElementById('id_body_bg_color');
+            if (pInput) pInput.value = primary;
+            if (hInput) hInput.value = header;
+            if (fInput) fInput.value = footer;
+            if (bInput) bInput.value = body;
+            updateThemePreview();
+        };
+
+        function updateThemePreview() {
+            const primary = document.getElementById('id_theme_primary_color')?.value || '#1e40af';
+            const header = document.getElementById('id_header_bg_color')?.value || '#0f172a';
+            const fontDisplay = document.getElementById('id_display_font')?.value || 'Kantumruy Pro';
+            const fontHeader = document.getElementById('id_report_header_font')?.value || 'Moul';
+
+            const card = document.getElementById('themeLivePreviewCard');
+            if (card) {
+                card.style.background = `linear-gradient(135deg, ${primary} 0%, ${header} 100%)`;
+            }
+            const previewTitle = document.getElementById('previewTitle');
+            if (previewTitle) {
+                previewTitle.style.fontFamily = `'${fontHeader}', 'Moul', 'Kantumruy Pro', sans-serif`;
+            }
+            const previewBody = document.getElementById('previewBody');
+            if (previewBody) {
+                previewBody.style.fontFamily = `'${fontDisplay}', 'Kantumruy Pro', sans-serif`;
+            }
+        }
+
+        ['id_display_font', 'id_report_header_font', 'id_theme_primary_color', 'id_header_bg_color', 'id_footer_bg_color', 'id_body_bg_color'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', updateThemePreview);
+                el.addEventListener('change', updateThemePreview);
+            }
+        });
+
+        // Check if navigated with hash #tab-theme
+        if (window.location.hash === '#tab-theme') {
+            const themeBtn = document.getElementById('theme-tab');
+            if (themeBtn) {
+                const bsTab = new bootstrap.Tab(themeBtn);
                 bsTab.show();
             }
         }

@@ -67,6 +67,7 @@ class SchoolProfileForm(forms.ModelForm):
             'province', 'district', 'commune', 'village', 'street_address',
             'latitude', 'longitude', 'google_maps_url', 'gps_radius_meters',
             'principal_name', 'phone', 'email', 'website', 'facebook_page', 'telegram_channel',
+            'display_font', 'report_header_font', 'theme_primary_color', 'header_bg_color', 'footer_bg_color', 'body_bg_color',
         ]
         widgets = {
             'name_kh': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. វិទ្យាល័យអន្តរជាតិ សាលារៀន SM'}),
@@ -78,6 +79,12 @@ class SchoolProfileForm(forms.ModelForm):
             'education_levels': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ'}),
             'date_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'time_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
+            'display_font': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_display_font'}),
+            'report_header_font': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_report_header_font'}),
+            'theme_primary_color': forms.TextInput(attrs={'class': 'form-control form-control-color w-100', 'type': 'color', 'id': 'id_theme_primary_color'}),
+            'header_bg_color': forms.TextInput(attrs={'class': 'form-control form-control-color w-100', 'type': 'color', 'id': 'id_header_bg_color'}),
+            'footer_bg_color': forms.TextInput(attrs={'class': 'form-control form-control-color w-100', 'type': 'color', 'id': 'id_footer_bg_color'}),
+            'body_bg_color': forms.TextInput(attrs={'class': 'form-control form-control-color w-100', 'type': 'color', 'id': 'id_body_bg_color'}),
             'motto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌'}),
             'student_id_pattern': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_student_id_pattern'}),
             'student_id_prefix': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_student_id_prefix', 'placeholder': 'ឧ. STU'}),

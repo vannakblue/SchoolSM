@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{% block title %}{{ school_profile.name_kh|default:"សាលារៀន SM" }} | គេហទំព័រផ្លូវការ{% endblock %}</title>
+    
+    <!-- Favicon -->
+    {% if school_profile and school_profile.logo %}
+    <link rel="icon" type="image/png" href="{{ school_profile.logo.url }}">
+    <link rel="apple-touch-icon" href="{{ school_profile.logo.url }}">
+    {% else %}
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%231e40af'/><path fill='%23ffffff' d='M256 128l160 80-160 80-160-80 160-80zm128 128v64c0 35.3-57.3 64-128 64s-128-28.7-128-64v-64l128 64 128-64z'/></svg>">
+    {% endif %}
+
+    <!-- Google Fonts: Khmer Family & Modern Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Hanuman:wght@400;700&family=Kantumruy+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Koh+Santepheap:wght@400;700&family=Moul&family=Nokora:wght@400;700&family=Noto+Sans+Khmer:wght@400;600;700&family=Siemreap&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6.5.1 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Animate.css for smooth entrance effects -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        :root {
+            --primary-color: {{ school_profile.theme_primary_color|default:"#1e40af" }};
+            --primary-dark: {{ school_profile.theme_primary_color|default:"#1e3a8a" }};
+            --primary-light: #3b82f6;
+            --secondary-color: #0d9488;
+            --accent-gold: #f59e0b;
+            --dark-surface: {{ school_profile.header_bg_color|default:"#0f172a" }};
+            --footer-bg: {{ school_profile.footer_bg_color|default:"#0b1329" }};
+            --light-bg: {{ school_profile.body_bg_color|default:"#f8fafc" }};
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            --card-hover-shadow: 0 20px 30px -10px rgba(30, 64, 175, 0.15);
+        }
+
+        body {
+            font-family: {{ school_profile.display_font_css|safe }}, 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--light-bg);
+            color: #334155;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .section-title, .hero-section h1 {
+            font-family: {{ school_profile.report_font_css|safe }};
+        }
+
+        /* Top Bar */
+        .topbar-utility {
+            background-color: var(--dark-surface);
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .topbar-utility a {
+            color: #e2e8f0;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .topbar-utility a:hover {
+            color: var(--accent-gold);
+        }
+
+        /* Glassmorphic Navbar */
+        .web-navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .web-navbar.sticky-top {
+            top: 0;
+            z-index: 1020;
+        }
+        .nav-link {
+            font-weight: 500;
+            color: #1e293b !important;
+            padding: 0.6rem 1rem !important;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+            background-color: rgba(37, 99, 235, 0.08);
+        }
+
+        /* Glowing Portal CTA Button */
+        .btn-portal-login {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: #ffffff !important;
+            font-weight: 600;
+            padding: 0.55rem 1.35rem;
+            border-radius: 30px;
+            border: none;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-portal-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+            color: #ffffff !important;
+        }
+
+        .btn-portal-dashboard {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: #ffffff !important;
+            font-weight: 600;
+            padding: 0.55rem 1.35rem;
+            border-radius: 30px;
+            border: none;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-portal-dashboard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+            color: #ffffff !important;
+        }
+
+        /* Hero Banner */
+        .hero-section {
+            position: relative;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+            color: white;
+            padding: 5rem 0 6rem;
+            overflow: hidden;
+        }
+        .hero-pattern {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            opacity: 0.08;
+            background-image: radial-gradient(#ffffff 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+
+        /* Urgent Announcement Ticker */
+        .announcement-ticker-bar {
+            background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%);
+            color: white;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 10px rgba(220, 38, 38, 0.25);
+        }
+
+        /* Cards */
+        .card-custom {
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        .card-custom:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--card-hover-shadow);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        /* Section Headings */
+        .section-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+            margin-bottom: 0.75rem;
+        }
+        .section-title {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.35;
+        }
+        .section-subtitle {
+            color: #64748b;
+            font-size: 1.05rem;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        /* Statistics Counter Box */
+        .stat-box {
+            background: white;
+            border-radius: 16px;
+            padding: 1.75rem 1.25rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .stat-box:hover {
+            transform: translateY(-4px);
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            line-height: 1.1;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Footer */
+        .web-footer {
+            background-color: #0b1329;
+            color: #94a3b8;
+            padding-top: 4.5rem;
+            padding-bottom: 2rem;
+            border-top: 3px solid var(--primary-color);
+        }
+        .web-footer h5 {
+            color: #ffffff;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+        }
+        .web-footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .web-footer a:hover {
+            color: #38bdf8;
+        }
+
+        /* Floating back-to-top */
+        .back-to-top {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 45px;
+            height: 45px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            cursor: pointer;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        .back-to-top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .back-to-top:hover {
+            background: var(--primary-dark);
+            color: white;
+            transform: translateY(-3px);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- 1. Top Utility Bar -->
+    <div class="topbar-utility py-2 d-none d-md-block">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-4">
+                <span>
+                    <i class="fa-solid fa-phone text-warning me-1"></i>
+                    {{ school_profile.phone|default:"023 888 999" }}
+                </span>
+                <span>
+                    <i class="fa-solid fa-envelope text-info me-1"></i>
+                    {{ school_profile.email|default:"info@schoolsm.edu.kh" }}
+                </span>
+                <span>
+                    <i class="fa-solid fa-location-dot text-danger me-1"></i>
+                    {{ school_profile.district|default:"រាជធានីភ្នំពេញ" }}, {{ school_profile.province|default:"កម្ពុជា" }}
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light-50 small">
+                    <i class="fa-solid fa-building-columns text-primary me-1"></i>
+                    {{ school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
+                </span>
+                {% if user.is_authenticated %}
+                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
+                    <i class="fa-solid fa-circle-check me-1"></i>{{ user.username }} ({{ user.role }})
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Main Navigation Bar -->
+    <nav class="navbar navbar-expand-lg web-navbar sticky-top py-2">
+        <div class="container">
+            <!-- Brand Logo & School Title -->
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'website_home' %}">
+                {% if school_profile and school_profile.logo %}
+                <img src="{{ school_profile.logo.url }}" alt="Logo" class="rounded-circle shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle shadow-sm" style="width: 48px; height: 48px;">
+                    <i class="fa-solid fa-graduation-cap fs-4"></i>
+                </div>
+                {% endif %}
+                <div class="d-flex flex-column">
+                    <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_kh|default:"សាលារៀន SM" }}</span>
+                    <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_en|default:"SchoolSM International" }}</span>
+                </div>
+            </a>
+
+            <!-- Mobile Hamburger Toggle -->
+            <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars fs-3 text-primary"></i>
+            </button>
+
+            <!-- Navigation Links -->
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_nav == 'home' %}active{% endif %}" href="{% url 'website_home' %}">
+                            <i class="fa-solid fa-house me-1 text-primary"></i>ទំព័រដើម
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'website_home' %}#about">
+                            <i class="fa-solid fa-landmark me-1 text-primary"></i>អំពីសាលា
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'website_home' %}#academics">
+                            <i class="fa-solid fa-book-open-reader me-1 text-primary"></i>កម្មវិធីសិក្សា
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_nav == 'announcements' %}active{% endif %}" href="{% url 'website_announcement_list' %}">
+                            <i class="fa-solid fa-bullhorn me-1 text-warning"></i>សេចក្តីជូនដំណឹង
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_nav == 'news' %}active{% endif %}" href="{% url 'website_news_list' %}">
+                            <i class="fa-solid fa-newspaper me-1 text-info"></i>ព័ត៌មានថ្មីៗ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_nav == 'gallery' %}active{% endif %}" href="{% url 'website_gallery_list' %}">
+                            <i class="fa-solid fa-images me-1 text-success"></i>វិចិត្រសាល
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_nav == 'contact' %}active{% endif %}" href="{% url 'website_contact' %}">
+                            <i class="fa-solid fa-address-book me-1 text-danger"></i>ទំនាក់ទំនង
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Portal Action Buttons -->
+                <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'dashboard_redirect' %}" class="btn-portal-dashboard">
+                            <i class="fa-solid fa-gauge-high"></i>
+                            <span>ផ្ទាំងគ្រប់គ្រង (Dashboard)</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn-portal-login">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>ចូលប្រព័ន្ធ (Portal Login)</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 3. System Flash Notifications -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm rounded-3" role="alert">
+            <i class="fa-solid fa-circle-info me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 4. Main Page Content Block -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 5. Website Footer -->
+    <footer class="web-footer mt-5">
+        <div class="container">
+            <div class="row g-4 mb-4">
+                <!-- Column 1: School Identity -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        {% if school_profile and school_profile.logo %}
+                        <img src="{{ school_profile.logo.url }}" alt="Logo" class="rounded-circle bg-white p-1" style="width: 50px; height: 50px; object-fit: cover;">
+                        {% else %}
+                        <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 50px; height: 50px;">
+                            <i class="fa-solid fa-graduation-cap fs-4"></i>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h5 class="mb-0 text-white">{{ school_profile.name_kh|default:"សាលារៀន SM" }}</h5>
+                            <small class="text-light-50">{{ school_profile.name_en|default:"SchoolSM International" }}</small>
+                        </div>
+                    </div>
+                    <p class="small text-secondary mb-3">
+                        {{ school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — បណ្តុះបណ្តាលទំពាំងស្នងឫស្សីឱ្យក្លាយជាធនធានមនុស្សដ៏មានតម្លៃសម្រាប់សង្គមជាតិ។" }}
+                    </p>
+                    <div class="small text-secondary">
+                        <p class="mb-1"><i class="fa-solid fa-school text-primary me-2"></i>កម្រិត៖ {{ school_profile.education_levels|default:"មត្តេយ្យ, បឋម, អនុវិទ្យាល័យ, វិទ្យាល័យ" }}</p>
+                        <p class="mb-1"><i class="fa-solid fa-shield-halved text-info me-2"></i>កូដសាលា MoEYS៖ <code>{{ school_profile.school_code|default:"080101" }}</code></p>
+                    </div>
+                </div>
+
+                <!-- Column 2: Quick Links -->
+                <div class="col-lg-2 col-md-6">
+                    <h5>តំណភ្ជាប់រហ័ស</h5>
+                    <ul class="list-unstyled small d-flex flex-column gap-2">
+                        <li><a href="{% url 'website_home' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>ទំព័រដើម</a></li>
+                        <li><a href="{% url 'website_home' %}#about"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>អំពីសាលារៀន</a></li>
+                        <li><a href="{% url 'website_home' %}#academics"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>កម្មវិធីសិក្សា</a></li>
+                        <li><a href="{% url 'website_announcement_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>សេចក្តីជូនដំណឹង</a></li>
+                        <li><a href="{% url 'website_news_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>ព័ត៌មាន & ព្រឹត្តិការណ៍</a></li>
+                        <li><a href="{% url 'website_gallery_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>វិចិត្រសាលរូបភាព</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: MoEYS & Administration -->
+                <div class="col-lg-3 col-md-6">
+                    <h5>អង្គភាពគ្រប់គ្រង</h5>
+                    <ul class="list-unstyled small d-flex flex-column gap-2">
+                        <li><i class="fa-solid fa-building-columns text-warning me-2"></i>{{ school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</li>
+                        <li><i class="fa-solid fa-landmark text-info me-2"></i>{{ school_profile.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា" }}</li>
+                        {% if school_profile.doe_name %}
+                        <li><i class="fa-solid fa-city text-secondary me-2"></i>{{ school_profile.doe_name }}</li>
+                        {% endif %}
+                        <li><i class="fa-solid fa-user-tie text-success me-2"></i>នាយកសាលា៖ {{ school_profile.principal_name|default:"លោកនាយកសាលា" }}</li>
+                        <li class="mt-2">
+                            <a href="{% url 'login' %}" class="badge bg-primary text-decoration-none py-2 px-3 rounded-pill">
+                                <i class="fa-solid fa-lock me-1"></i>ច្រកចូលគ្រប់គ្រង (Admin Login)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Column 4: Contact Info -->
+                <div class="col-lg-3 col-md-6">
+                    <h5>ទំនាក់ទំនងយើងខ្ញុំ</h5>
+                    <ul class="list-unstyled small d-flex flex-column gap-2">
+                        <li><i class="fa-solid fa-location-dot text-danger me-2"></i>{{ school_profile.street_address|default:"មហាវិថីព្រះនរោត្តម" }}, {{ school_profile.commune|default:"វត្តភ្នំ" }}, {{ school_profile.district|default:"ដូនពេញ" }}, {{ school_profile.province|default:"ភ្នំពេញ" }}</li>
+                        <li><i class="fa-solid fa-phone text-warning me-2"></i>{{ school_profile.phone|default:"023 888 999" }}</li>
+                        <li><i class="fa-solid fa-envelope text-info me-2"></i>{{ school_profile.email|default:"info@schoolsm.edu.kh" }}</li>
+                        <li><i class="fa-solid fa-clock text-secondary me-2"></i>ច័ន្ទ - សៅរ៍: 7:00 AM - 5:00 PM</li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="border-secondary opacity-25 my-4">
+
+            <div class="row align-items-center small">
+                <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
+                    &copy; 2026 <strong>{{ school_profile.name_kh|default:"សាលារៀន SM" }}</strong>. រក្សាសិទ្ធិគ្រប់យ៉ាង។ ដំណើរការដោយប្រព័ន្ធ SchoolSM Digital Hub។
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <a href="{% url 'website_home' %}" class="me-3">ទំព័រដើម</a>
+                    <a href="{% url 'website_contact' %}" class="me-3">ទំនាក់ទំនង</a>
+                    <a href="{% url 'login' %}">ចូលប្រព័ន្ធគ្រប់គ្រង</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to top button -->
+    <a href="#" class="back-to-top" id="backToTop" title="ត្រឡប់ទៅលើវិញ">
+        <i class="fa-solid fa-chevron-up"></i>
+    </a>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Back to top button visibility
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        });
+        backToTop.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងព័ត៌មាន & អត្ថបទសាលា (News CMS) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-newspaper text-primary me-2"></i>គ្រប់គ្រងអត្ថបទ & ព័ត៌មានសាលា (Website CMS)
+        </h2>
+        <p class="text-muted small mb-0">បង្កើត កែប្រែ និងផ្សព្វផ្សាយព័ត៌មាន សកម្មភាព និងព្រឹត្តិការណ៍ផ្សេងៗលើគេហទំព័រសាលា</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'website_news_list' %}" target="_blank" class="btn btn-outline-primary shadow-xs">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> មើលលើ Website
+        </a>
+        <a href="{% url 'website_news_create' %}" class="btn btn-primary fw-bold shadow-xs">
+            <i class="fa-solid fa-plus-circle me-1"></i> សរសេរព័ត៌មានថ្មី
+        </a>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card border-0 shadow-sm rounded-3 p-3 mb-4 bg-white">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="ស្វែងរកចំណងជើង ឬខ្លឹមសារ...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">-- ប្រភេទព័ត៌មានទាំងអស់ --</option>
+                {% for c_val, c_name in categories %}
+                <option value="{{ c_val }}" {% if selected_category == c_val %}selected{% endif %}>{{ c_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 text-end">
+            <a href="{% url 'website_news_manager' %}" class="btn btn-light w-100 border">កំណត់ឡើងវិញ</a>
+        </div>
+    </form>
+</div>
+
+<!-- News Table -->
+<div class="card border-0 shadow-sm rounded-3 bg-white overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 70px;">រូបភាព</th>
+                    <th>ចំណងជើងព័ត៌មាន</th>
+                    <th>ប្រភេទ</th>
+                    <th>អ្នកនិពន្ធ</th>
+                    <th>ចំនួនមើល</th>
+                    <th>ស្ថានភាព</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th class="text-center" style="width: 160px;">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if articles %}
+                    {% for item in articles %}
+                    <tr>
+                        <td>
+                            {% if item.cover_image %}
+                            <img src="{{ item.cover_image.url }}" class="rounded shadow-xs" style="width: 50px; height: 40px; object-fit: cover;" alt="cover">
+                            {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center text-muted" style="width: 50px; height: 40px;">
+                                <i class="fa-solid fa-image"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.title }}</div>
+                            <small class="text-muted">{{ item.excerpt|default:item.content|striptags|truncatechars:50 }}</small>
+                            {% if item.is_featured %}
+                            <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-star me-1"></i>Featured</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                {{ item.get_category_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-secondary"><i class="fa-solid fa-user-pen me-1"></i>{{ item.author.username|default:"Admin" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                <i class="fa-regular fa-eye me-1"></i>{{ item.views_count }}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'website_news_toggle_publish' item.id %}" class="d-inline">
+                                {% csrf_token %}
+                                {% if item.is_published %}
+                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-2 py-0 border-0" title="ចុចដើម្បីផ្អាកការផ្សាយ">
+                                    <i class="fa-solid fa-check-circle me-1"></i>បានផ្សាយ
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-secondary rounded-pill px-2 py-0 border-0" title="ចុចដើម្បីផ្សព្វផ្សាយ">
+                                    <i class="fa-solid fa-pause-circle me-1"></i>ព្រាង (Draft)
+                                </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ item.created_at|date:"d-m-Y" }}</small>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'website_news_detail' item.id %}" target="_blank" class="btn btn-light border text-info" title="មើលជាក់ស្តែង">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                <a href="{% url 'website_news_edit' item.id %}" class="btn btn-light border text-primary" title="កែសម្រួល">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-light border text-danger" onclick="confirmDelete('{{ item.id }}', '{{ item.title|escapejs }}')" title="លុបព័ត៌មាន">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-regular fa-newspaper fs-1 mb-2 d-block opacity-50"></i>
+                            <h6 class="fw-bold">មិនទាន់មានអត្ថបទព័ត៌មាននៅឡើយទេ</h6>
+                            <a href="{% url 'website_news_create' %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="fa-solid fa-plus me-1"></i> សរសេរព័ត៌មានដំបូង
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal Form -->
+<form id="deleteNewsForm" method="post" action="" style="display: none;">
+    {% csrf_token %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(id, title) {
+        Swal.fire({
+            title: 'តើលោកអ្នកច្បាស់ទេ?',
+            text: `តើលោកអ្នកពិតជាចង់លុបអត្ថបទ "${title}" នេះចេញពីប្រព័ន្ធមែនទេ?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'បាទ/ចាស, លុប!',
+            cancelButtonText: 'បោះបង់'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.getElementById('deleteNewsForm');
+                form.action = `/portal/cms/news/delete/${id}/`;
+                form.submit();
+            }
+        });
+    }
+</script>
+{% endblock %}

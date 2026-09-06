@@ -13,12 +13,39 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%232563eb'/><path fill='%23ffffff' d='M256 128l160 80-160 80-160-80 160-80zm128 128v64c0 35.3-57.3 64-128 64s-128-28.7-128-64v-64l128 64 128-64z'/></svg>">
     {% endif %}
     
+    <!-- Khmer & Modern Fonts: Kantumruy Pro, Battambang, Siemreap, Hanuman, Koh Santepheap, Moul, Nokora, Noto Sans Khmer -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Hanuman:wght@400;700&family=Kantumruy+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Koh+Santepheap:wght@400;700&family=Moul&family=Nokora:wght@400;700&family=Noto+Sans+Khmer:wght@400;600;700&family=Siemreap&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome 6 Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom Design CSS -->
     <link rel="stylesheet" href="/static/css/custom.css?v=2.5">
+
+    <!-- Dynamic Admin-Configured Fonts and Theme Palette -->
+    <style>
+        :root {
+            {% if school_info %}
+            --font-khmer: {{ school_info.display_font_css|safe }} !important;
+            --font-title: {{ school_info.report_font_css|safe }} !important;
+            --primary: {{ school_info.theme_primary_color|default:"#1e40af" }};
+            --primary-color: {{ school_info.theme_primary_color|default:"#1e40af" }};
+            --bg-app: {{ school_info.body_bg_color|default:"#f8fafc" }};
+            --header-bg-custom: {{ school_info.header_bg_color|default:"#0f172a" }};
+            --footer-bg-custom: {{ school_info.footer_bg_color|default:"#0b1329" }};
+            {% endif %}
+        }
+        body {
+            font-family: var(--font-khmer) !important;
+            background-color: var(--bg-app) !important;
+        }
+        .report-title, .page-header-title {
+            font-family: var(--font-title);
+        }
+    </style>
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -246,6 +273,12 @@
                 </div>
 
                 <div class="header-right d-flex align-items-center gap-2">
+                    <!-- View Live Website Button -->
+                    <a href="{% url 'website_home' %}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill d-none d-sm-flex align-items-center gap-1.5 shadow-xs" title="{% if is_khmer %}មើលគេហទំព័រសាលាផ្ទាល់ (Live Website){% else %}View Live Website{% endif %}">
+                        <i class="fa-solid fa-globe"></i>
+                        <span class="small fw-semibold">{% if is_khmer %}គេហទំព័រ{% else %}Website{% endif %}</span>
+                    </a>
+
                     <!-- Global Omnisearch (Ctrl+K) Trigger Button -->
                     <button type="button" class="btn btn-light border rounded-pill d-flex align-items-center gap-2 text-muted px-3 py-1 shadow-xs" onclick="openOmnisearchModal()" title="{% if is_khmer %}ស្វែងរក... (Ctrl+K){% else %}Search... (Ctrl+K){% endif %}">
                         <i class="fa-solid fa-magnifying-glass text-primary"></i>

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-pen-nib text-primary me-2"></i>{{ title }}
+        </h2>
+        <p class="text-muted small mb-0">សរសេរ និងផ្សព្វផ្សាយព័ត៌មានលើគេហទំព័រសាលារៀន</p>
+    </div>
+    <a href="{% url 'website_news_manager' %}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-md-5">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-4">
+            <!-- Title -->
+            <div class="col-md-8">
+                <label class="form-label fw-bold">ចំណងជើងអត្ថបទព័ត៌មាន *</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Category -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold">ប្រភេទព័ត៌មាន *</label>
+                {{ form.category }}
+                {% if form.category.errors %}<div class="text-danger small">{{ form.category.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Cover Image -->
+            <div class="col-md-12">
+                <label class="form-label fw-bold">រូបភាព Cover (Featured Image)</label>
+                {{ form.cover_image }}
+                {% if article and article.cover_image %}
+                <div class="mt-2">
+                    <small class="text-muted d-block mb-1">រូបភាពបច្ចុប្បន្ន៖</small>
+                    <img src="{{ article.cover_image.url }}" class="rounded shadow-xs border" style="max-height: 120px;" alt="current cover">
+                </div>
+                {% endif %}
+                {% if form.cover_image.errors %}<div class="text-danger small">{{ form.cover_image.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Excerpt -->
+            <div class="col-md-12">
+                <label class="form-label fw-bold">ខ្លឹមសារសង្ខេប (Excerpt) — បង្ហាញលើកាតព័ត៌មាន</label>
+                {{ form.excerpt }}
+                <small class="text-muted">សរសេរខ្លីៗប្រហែល ២-៣ ឃ្លា ដើម្បីទាក់ទាញអ្នកអាន</small>
+            </div>
+
+            <!-- Full Content -->
+            <div class="col-md-12">
+                <label class="form-label fw-bold">ខ្លឹមសារលម្អិតនៃអត្ថបទព័ត៌មាន *</label>
+                {{ form.content }}
+                {% if form.content.errors %}<div class="text-danger small">{{ form.content.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Options -->
+            <div class="col-md-6">
+                <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                    {{ form.is_featured }}
+                    <label class="form-check-label fw-semibold ms-2" for="{{ form.is_featured.id_for_label }}">
+                        <i class="fa-solid fa-star text-warning me-1"></i>កំណត់ជាព័ត៌មានលេចធ្លោ (Featured / Hero)
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                    {{ form.is_published }}
+                    <label class="form-check-label fw-semibold ms-2" for="{{ form.is_published.id_for_label }}">
+                        <i class="fa-solid fa-globe text-primary me-1"></i>ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រភ្លាមៗ
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                <a href="{% url 'website_news_manager' %}" class="btn btn-light border px-4">បោះបង់</a>
+                <button type="submit" class="btn btn-primary px-5 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មាន
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

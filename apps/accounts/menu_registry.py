@@ -638,6 +638,56 @@ MENU_SECTIONS_CATALOG = [
         ]
     },
     {
+        'key': 'sec_website_cms',
+        'name_kh': 'គ្រប់គ្រងគេហទំព័រ (Website)',
+        'name_en': 'Website & CMS Portal',
+        'icon': 'fa-solid fa-globe',
+        'color': 'primary',
+        'default_roles': ['ADMIN'],
+        'items': [
+            {
+                'key': 'website_home_view',
+                'name_kh': 'មើលគេហទំព័រដើម (Live Website)',
+                'name_en': 'View Live Website',
+                'icon': 'fa-solid fa-arrow-up-right-from-square text-success',
+                'default_roles': ['ADMIN'],
+                'url_name': 'website_home',
+            },
+            {
+                'key': 'website_news_manager',
+                'name_kh': 'អត្ថបទ & ព័ត៌មានសាលា',
+                'name_en': 'News & Articles Manager',
+                'icon': 'fa-solid fa-newspaper text-primary',
+                'default_roles': ['ADMIN'],
+                'url_name': 'website_news_manager',
+            },
+            {
+                'key': 'website_gallery_manager',
+                'name_kh': 'វិចិត្រសាលរូបភាព (Gallery)',
+                'name_en': 'Photo Gallery & Albums',
+                'icon': 'fa-solid fa-images text-success',
+                'default_roles': ['ADMIN'],
+                'url_name': 'website_gallery_manager',
+            },
+            {
+                'key': 'website_announcements_manager',
+                'name_kh': 'សេចក្តីជូនដំណឹង & ការប្រកាស',
+                'name_en': 'Public Announcements',
+                'icon': 'fa-solid fa-bullhorn text-warning',
+                'default_roles': ['ADMIN'],
+                'url_name': 'announcement_list',
+            },
+            {
+                'key': 'website_messages_inbox',
+                'name_kh': 'សារទំនាក់ទំនងពីភ្ញៀវ',
+                'name_en': 'Visitor Messages Inbox',
+                'icon': 'fa-solid fa-envelope-open-text text-info',
+                'default_roles': ['ADMIN'],
+                'url_name': 'website_messages_inbox',
+            },
+        ]
+    },
+    {
         'key': 'sec_settings',
         'name_kh': 'ការកំណត់ប្រព័ន្ធ',
         'name_en': 'System Settings',
