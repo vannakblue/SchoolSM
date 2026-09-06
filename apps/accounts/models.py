@@ -167,6 +167,12 @@ class GoogleSheetsConfig(models.Model):
     def is_configured(self):
         return bool(self.get_credentials_dict())
 
+    @property
+    def client_email(self):
+        """Extracts client_email from the configured service account credentials."""
+        d = self.get_credentials_dict()
+        return d.get('client_email') if d else None
+
     def __str__(self):
         status = "Configured" if self.is_configured() else "Not Configured"
         return f"Google Sheets Config [{status}] - Admin: {self.admin_email or 'None'}"

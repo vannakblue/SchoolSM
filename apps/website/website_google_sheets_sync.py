@@ -89,7 +89,23 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                 logger.info(f"Website portal spreadsheet not accessible ({e}), creating a fresh one.")
 
         # Create new spreadsheet
-        sh = self.client.create(self.SPREADSHEET_TITLE, folder_id=master_folder_id)
+        try:
+            if master_folder_id:
+                sh = self.client.create(self.SPREADSHEET_TITLE, folder_id=master_folder_id)
+            else:
+                sh = self.client.create(self.SPREADSHEET_TITLE)
+        except Exception as e:
+            err_str = str(e)
+            if "quota" in err_str.lower() or "403" in err_str:
+                client_email = self.config.client_email or "Google Service Account Email"
+                raise RuntimeError(
+                    f"Google Cloud Service Account គ្មានទំហំផ្ទុក Drive (0 MB Quota Exceeded) ដើម្បីបង្កើត File ដោយស្វ័យប្រវត្តិបានទេ។\n"
+                    f"👉 ដំណោះស្រាយងាយៗ៖\n"
+                    f"១. បង្កើត Google Sheet មួយក្នុង Google Drive ({self.config.admin_email or 'Gmail'})\n"
+                    f"២. ចុច Share ➔ បន្ថែម Email: {client_email} (សិទ្ធិ Editor) ឬកំណត់ 'Anyone with the link can edit'\n"
+                    f"៣. Copy Link នៃ Sheet នោះ រួចមកចុចប៊ូតុង '🔗 ភ្ជាប់ Google Sheet' លើផ្ទាំង Website Sync នេះជាការស្រេច!"
+                )
+            raise e
 
         # Admin Only sharing
         if self.config.admin_email:
@@ -106,6 +122,44 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
         self.config.save(update_fields=['spreadsheets_registry'])
 
         return sh
+
+    def link_spreadsheet(self, sheet_url_or_id):
+        """Links a pre-existing Google Spreadsheet to Website Portal."""
+        self.authenticate()
+        sheet_id = self.extract_spreadsheet_id(sheet_url_or_id)
+        if not sheet_id:
+            raise ValueError("តំណភ្ជាប់ Google Sheet ឬ Spreadsheet ID មិនត្រឹមត្រូវឡើយ។")
+
+        try:
+            sh = self.client.open_by_key(sheet_id)
+        except Exception as e:
+            client_email = self.config.client_email or "Google Service Account Email"
+            raise RuntimeError(
+                f"មិនអាចបើក Google Sheet នេះបានឡើយ ({str(e)})! "
+                f"សូមប្រាកដថាបានចុច Share ទៅកាន់ Email: {client_email} (សិទ្ធិ Editor) ឬបានកំណត់ General access ជា 'Anyone with the link can edit' រួចចុច Done។"
+            )
+
+        registry = self.config.spreadsheets_registry or {}
+        registry[self.REGISTRY_KEY] = {
+            'spreadsheet_id': sh.id,
+            'spreadsheet_url': sh.url,
+            'title': sh.title,
+            'linked_manually': True,
+            'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        self.config.spreadsheets_registry = registry
+        self.config.save(update_fields=['spreadsheets_registry'])
+        return sh
+
+    def unlink_spreadsheet(self):
+        """Unlinks the spreadsheet from Website Portal."""
+        registry = self.config.spreadsheets_registry or {}
+        if self.REGISTRY_KEY in registry:
+            del registry[self.REGISTRY_KEY]
+            self.config.spreadsheets_registry = registry
+            self.config.save(update_fields=['spreadsheets_registry'])
+            return True
+        return False
 
     def get_spreadsheet_info(self):
         """Returns dict containing spreadsheet id, url, last_sync_at, or None."""

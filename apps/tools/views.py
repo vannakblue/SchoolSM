@@ -790,11 +790,25 @@ def google_sheets_dashboard_view(request):
     current_year = AcademicYear.objects.filter(is_current=True).first() or academic_years.first()
     spreadsheets_registry = config.spreadsheets_registry or {}
 
+    years_data = []
+    for ay in academic_years:
+        reg = spreadsheets_registry.get(ay.name)
+        years_data.append({
+            'ay': ay,
+            'reg': reg,
+            'is_linked': bool(reg and reg.get('spreadsheet_id')),
+            'spreadsheet_url': reg.get('spreadsheet_url') if reg else None,
+            'spreadsheet_id': reg.get('spreadsheet_id') if reg else None,
+            'updated_at': reg.get('updated_at') or reg.get('created_at') if reg else None,
+        })
+
     return render(request, 'tools/google_sheets_dashboard.html', {
         'page_title': 'សមកាលកម្ម Google Sheets & Drive (Academic Sync & Backup)',
         'config': config,
+        'client_email': config.client_email,
         'is_configured': config.is_configured(),
         'academic_years': academic_years,
+        'years_data': years_data,
         'current_year': current_year,
         'spreadsheets_registry': spreadsheets_registry,
     })
@@ -923,5 +937,64 @@ def api_restore_google_sheets(request):
     except Exception as e:
         messages.error(request, f"បរាជ័យក្នុងការ Restore ពី Google Sheets: {str(e)}")
 
+    return redirect('tool_google_sheets')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_link_google_sheet(request):
+    """
+    Links a pre-created Google Spreadsheet (URL or ID) to a specific Academic Year.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.google_sheets_service import GoogleSheetsService
+
+    config = GoogleSheetsConfig.get_config()
+    if not config.is_configured():
+        messages.error(request, "សូមកំណត់ Google Service Account Credentials ជាមុនសិន។")
+        return redirect('tool_google_sheets')
+
+    year_id = request.POST.get('academic_year_id')
+    sheet_url = request.POST.get('sheet_url', '').strip()
+
+    ay = AcademicYear.objects.filter(id=year_id).first() or AcademicYear.objects.filter(name=year_id).first()
+    if not ay:
+        messages.error(request, "រកមិនឃើញឆ្នាំសិក្សាដែលបានជ្រើសរើសឡើយ។")
+        return redirect('tool_google_sheets')
+
+    if not sheet_url:
+        messages.error(request, "សូមបញ្ចូលតំណភ្ជាប់ (URL) ឬ ID របស់ Google Sheet។")
+        return redirect('tool_google_sheets')
+
+    try:
+        service = GoogleSheetsService(config=config)
+        sh = service.link_academic_spreadsheet(ay, sheet_url)
+        messages.success(request, f"🎉 បានភ្ជាប់ Google Sheet «{sh.title}» ជាមួយឆ្នាំសិក្សា {ay.name} ដោយជោគជ័យ! លោកអ្នកអាចចុច Sync បានឥឡូវនេះ។")
+    except Exception as e:
+        messages.error(request, f"បរាជ័យក្នុងការភ្ជាប់ Google Sheet: {str(e)}")
+
+    return redirect('tool_google_sheets')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_unlink_google_sheet(request):
+    """
+    Unlinks a Google Spreadsheet from an Academic Year.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.google_sheets_service import GoogleSheetsService
+
+    year_id = request.POST.get('academic_year_id')
+    ay = AcademicYear.objects.filter(id=year_id).first() or AcademicYear.objects.filter(name=year_id).first()
+    if ay:
+        config = GoogleSheetsConfig.get_config()
+        service = GoogleSheetsService(config=config)
+        service.unlink_academic_spreadsheet(ay)
+        messages.success(request, f"បានផ្តាច់ Google Sheet ចេញពីឆ្នាំសិក្សា {ay.name} រួចរាល់។")
     return redirect('tool_google_sheets')
 

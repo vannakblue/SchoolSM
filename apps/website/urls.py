@@ -35,6 +35,8 @@ urlpatterns = [
 
     # Two-Way Google Sheets Sync for Website Portal
     path('portal/cms/google-sheets/', views.cms_google_sheets_dashboard, name='website_google_sheets_dashboard'),
+    path('portal/cms/google-sheets/link/', views.cms_google_sheets_link, name='website_google_sheets_link'),
+    path('portal/cms/google-sheets/unlink/', views.cms_google_sheets_unlink, name='website_google_sheets_unlink'),
     path('portal/cms/google-sheets/push/', views.cms_google_sheets_push, name='website_google_sheets_push'),
     path('portal/cms/google-sheets/pull/', views.cms_google_sheets_pull, name='website_google_sheets_pull'),
 ]

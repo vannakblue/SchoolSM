@@ -538,3 +538,45 @@ def cms_google_sheets_pull(request):
             messages.error(request, f"⚠️ បរាជ័យក្នុងការទាញទិន្នន័យពី Google Sheets: {str(e)}")
     return redirect('website_google_sheets_dashboard')
 
+
+@login_required
+@role_required(['ADMIN'])
+def cms_google_sheets_link(request):
+    """
+    Links a pre-existing Google Spreadsheet (URL or ID) to Website Portal.
+    """
+    if request.method == 'POST':
+        sheet_url = request.POST.get('sheet_url', '').strip()
+        if not sheet_url:
+            messages.error(request, "សូមបញ្ចូលតំណភ្ជាប់ (URL) ឬ ID របស់ Google Sheet។")
+            return redirect('website_google_sheets_dashboard')
+
+        try:
+            config = GoogleSheetsConfig.get_config()
+            syncer = WebsiteGoogleSheetsSync(config=config)
+            sh = syncer.link_spreadsheet(sheet_url)
+            messages.success(request, f"🎉 បានភ្ជាប់ Google Sheet «{sh.title}» ជាមួយគេហទំព័រដោយជោគជ័យ!")
+        except Exception as e:
+            logger.error(f"Error linking website Google Sheet: {e}")
+            messages.error(request, f"⚠️ បរាជ័យក្នុងការភ្ជាប់ Google Sheet: {str(e)}")
+
+    return redirect('website_google_sheets_dashboard')
+
+
+@login_required
+@role_required(['ADMIN'])
+def cms_google_sheets_unlink(request):
+    """
+    Unlinks the Google Spreadsheet from Website Portal.
+    """
+    if request.method == 'POST':
+        try:
+            config = GoogleSheetsConfig.get_config()
+            syncer = WebsiteGoogleSheetsSync(config=config)
+            syncer.unlink_spreadsheet()
+            messages.success(request, "បានផ្តាច់ Google Sheet ចេញពីគេហទំព័ររួចរាល់។")
+        except Exception as e:
+            messages.error(request, f"បរាជ័យក្នុងការផ្តាច់ Google Sheet: {str(e)}")
+
+    return redirect('website_google_sheets_dashboard')
+

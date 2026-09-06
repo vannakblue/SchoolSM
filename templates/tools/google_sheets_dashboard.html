@@ -121,8 +121,65 @@
                         {% endif %}
                     </div>
                     <div class="small mb-1"><i class="fa-solid fa-user-shield me-2 text-warning"></i> Admin Gmail: <strong>{{ config.admin_email|default:"មិនទាន់កំណត់" }}</strong></div>
+                    {% if client_email %}
+                    <div class="small mb-2 text-white-50">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span><i class="fa-solid fa-robot me-1 text-info"></i> Bot Email សម្រាប់ Share:</span>
+                            <button type="button" class="btn btn-warning btn-sm py-0 px-2 rounded-pill fw-bold" style="font-size: 0.72rem;" onclick="copyServiceEmail('heroClientEmail')">
+                                <i class="fa-regular fa-copy"></i> ចម្លង
+                            </button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm bg-black bg-opacity-50 text-light border-0 py-0 small font-monospace" id="heroClientEmail" value="{{ client_email }}" readonly>
+                    </div>
+                    {% endif %}
                     <div class="small mb-1"><i class="fa-brands fa-google-drive me-2 text-info"></i> Drive Folder: <strong>{{ config.drive_folder_name }}</strong></div>
                     <div class="small"><i class="fa-solid fa-camera me-2 text-success"></i> រូបថតសិស្ស: <strong>{% if config.sync_students_with_photos %}បើក Upload & Embed (=IMAGE){% else %}បិទ{% endif %}</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3-Step Google Drive Quota-Free Guide Alert -->
+    <div class="alert alert-light border shadow-sm rounded-4 p-3 mb-4 d-flex align-items-start gap-3">
+        <div class="rounded-circle bg-success bg-opacity-10 text-success p-2.5 fs-4 flex-shrink-0">
+            <i class="fa-brands fa-google-drive"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <h6 class="fw-bold mb-0 text-dark">
+                    💡 វិធីភ្ជាប់ Google Sheet ដោយផ្ទាល់ (ជោគជ័យ ១០០% មិនជាប់បញ្ហា Quota Exceeded)
+                </h6>
+                {% if client_email %}
+                <div class="d-inline-flex align-items-center gap-1 bg-white border px-2.5 py-1 rounded-pill small shadow-xs">
+                    <span class="text-muted">Bot Email:</span>
+                    <code class="text-primary fw-bold">{{ client_email }}</code>
+                    <button class="btn btn-sm btn-link p-0 text-primary ms-1 text-decoration-none" type="button" onclick="copyServiceEmail('heroClientEmail')" title="ចម្លង Email">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            <p class="small text-muted mb-2">
+                Google Service Account មានទំហំផ្ទុក 0 MB (Zero Quota)។ ដើម្បី Sync បានជោគជ័យ សូមប្រើប្រាស់ Google Sheet ដែលបង្កើតពី Gmail ផ្ទាល់ខ្លួនរបស់លោកអ្នក៖
+            </p>
+            <div class="row g-2 small">
+                <div class="col-md-4">
+                    <div class="bg-white border rounded-3 p-2.5 h-100">
+                        <div class="fw-bold text-dark mb-1"><span class="badge bg-primary rounded-pill me-1">១</span> បង្កើត Sheet ក្នុង Google Drive</div>
+                        <div class="text-muted">ចូល <a href="https://sheets.new" target="_blank" class="fw-bold text-decoration-none text-primary">sheets.new <i class="fa-solid fa-arrow-up-right-from-square"></i></a> ក្នុង Gmail បង្កើត Sheet មួយ (ឧ. SchoolSM 2026-2027)។</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-white border rounded-3 p-2.5 h-100">
+                        <div class="fw-bold text-dark mb-1"><span class="badge bg-primary rounded-pill me-1">២</span> Share ទៅកាន់ Bot Email</div>
+                        <div class="text-muted">ចុច <strong>Share</strong> ➔ Paste អ៊ីមែល Bot (ជា <strong>Editor</strong>) ឬកំណត់ General access: <strong>Anyone with the link can edit</strong>។</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="bg-white border rounded-3 p-2.5 h-100">
+                        <div class="fw-bold text-dark mb-1"><span class="badge bg-primary rounded-pill me-1">៣</span> ចម្លង Link មកភ្ជាប់ក្នុង SchoolSM</div>
+                        <div class="text-muted">Copy Link នៃ Sheet នោះ រួចចុចប៊ូតុង <strong>«🔗 ភ្ជាប់ Sheet»</strong> ក្នុងតារាងខាងក្រោមនេះជាការស្រេច!</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -171,8 +228,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for ay in academic_years %}
-                        {% with reg_item=spreadsheets_registry|default_if_none:None %}
+                        {% for item in years_data %}
                         <tr>
                             <td class="ps-4">
                                 <div class="d-flex align-items-center gap-2">
@@ -180,28 +236,30 @@
                                         <i class="fa-solid fa-graduation-cap fs-5"></i>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 fw-bold">{{ ay.name }}</h6>
-                                        {% if ay.is_current %}
+                                        <h6 class="mb-0 fw-bold">{{ item.ay.name }}</h6>
+                                        {% if item.ay.is_current %}
                                         <span class="badge badge-soft-emerald rounded-pill" style="font-size: 0.75rem;">ឆ្នាំសិក្សាបច្ចុប្បន្ន</span>
                                         {% endif %}
-                                        <small class="text-muted d-block">{{ ay.start_date|date:"d-m-Y" }} ដល់ {{ ay.end_date|date:"d-m-Y" }}</small>
+                                        <small class="text-muted d-block">{{ item.ay.start_date|date:"d-m-Y" }} ដល់ {{ item.ay.end_date|date:"d-m-Y" }}</small>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <!-- Check if registered in spreadsheets_registry -->
-                                <div id="reg_status_{{ ay.id }}">
-                                    {% if ay.name in spreadsheets_registry %}
+                                <div>
+                                    {% if item.is_linked %}
                                         <span class="badge badge-soft-emerald px-3 py-1 rounded-pill mb-1">
-                                            <i class="fa-solid fa-circle-check me-1"></i> បានបង្កើតរួចរាល់
+                                            <i class="fa-solid fa-circle-check me-1"></i> បានភ្ជាប់រួចរាល់
                                         </span>
-                                        <a href="{{ spreadsheets_registry|safe }}" target="_blank" class="d-block small text-decoration-none text-primary fw-semibold" id="link_sh_{{ ay.id }}">
+                                        <a href="{{ item.spreadsheet_url }}" target="_blank" class="d-block small text-decoration-none text-primary fw-semibold">
                                             <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកមើលក្នុង Google Sheets
                                         </a>
                                     {% else %}
-                                        <span class="badge badge-soft-warning px-3 py-1 rounded-pill">
-                                            <i class="fa-solid fa-hourglass-start me-1"></i> មិនទាន់ Sync លើកដំបូង
+                                        <span class="badge badge-soft-warning px-3 py-1 rounded-pill mb-1">
+                                            <i class="fa-solid fa-link-slash me-1"></i> មិនទាន់ភ្ជាប់ Sheet
                                         </span>
+                                        <button type="button" class="btn btn-sm btn-link p-0 d-block small text-decoration-none text-success fw-bold btn-open-link-modal" data-year-id="{{ item.ay.id }}" data-year-name="{{ item.ay.name }}" data-current-url="">
+                                            <i class="fa-solid fa-link me-1"></i> ភ្ជាប់ Link Sheet ឥឡូវនេះ
+                                        </button>
                                     {% endif %}
                                 </div>
                             </td>
@@ -216,8 +274,8 @@
                             </td>
                             <td>
                                 <span class="small text-muted">
-                                    {% if ay.name in spreadsheets_registry %}
-                                        <i class="fa-regular fa-clock me-1"></i> ធ្វើបច្ចុប្បន្នភាពរួច
+                                    {% if item.updated_at %}
+                                        <i class="fa-regular fa-clock me-1"></i> {{ item.updated_at }}
                                     {% else %}
                                         -
                                     {% endif %}
@@ -230,16 +288,20 @@
                             </td>
                             <td class="text-end pe-4">
                                 <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 me-1 btn-quick-sync" data-year-id="{{ ay.id }}" data-year-name="{{ ay.name }}">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5 me-1 btn-open-link-modal" data-year-id="{{ item.ay.id }}" data-year-name="{{ item.ay.name }}" data-current-url="{{ item.spreadsheet_url|default:'' }}" title="{% if item.is_linked %}កែប្រែតំណភ្ជាប់ Google Sheet{% else %}ភ្ជាប់ Google Sheet{% endif %}">
+                                        <i class="fa-solid fa-link me-1"></i> {% if item.is_linked %}ប្តូរ Sheet{% else %}ភ្ជាប់ Sheet{% endif %}
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 me-1 btn-quick-sync" data-year-id="{{ item.ay.id }}" data-year-name="{{ item.ay.name }}">
                                         <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
                                     </button>
-                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-quick-restore" data-year-id="{{ ay.id }}" data-year-name="{{ ay.name }}">
-                                        <i class="fa-solid fa-download me-1"></i> Restore
+                                    {% if item.is_linked %}
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 btn-quick-restore" data-year-id="{{ item.ay.id }}" data-year-name="{{ item.ay.name }}" title="ទាញយកទិន្នន័យមកវិញ">
+                                        <i class="fa-solid fa-download"></i>
                                     </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
-                        {% endwith %}
                         {% empty %}
                         <tr>
                             <td colspan="6" class="text-center py-4 text-muted">មិនទាន់មានទិន្នន័យឆ្នាំសិក្សាឡើយ។</td>
@@ -476,11 +538,96 @@
     </div>
 </div>
 
+<!-- 4. LINK GOOGLE SHEET MODAL -->
+<div class="modal fade" id="linkSheetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{% url 'tool_google_sheets_link' %}">
+                {% csrf_token %}
+                <input type="hidden" name="academic_year_id" id="linkModalYearId">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-link me-2"></i> ភ្ជាប់ Google Sheet តាមឆ្នាំសិក្សា
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ឆ្នាំសិក្សា (Academic Year):</label>
+                        <input type="text" class="form-control rounded-3 bg-light fw-bold" id="linkModalYearName" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">តំណភ្ជាប់ Google Sheet (URL ឬ ID):</label>
+                        <input type="text" name="sheet_url" id="linkModalSheetUrl" class="form-control rounded-3" placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5.../edit" required>
+                        <div class="form-text small text-muted">
+                            បិទភ្ជាប់ Link នៃ Google Sheet ដែលលោកអ្នកបានបង្កើតក្នុង Google Drive ផ្ទាល់ខ្លួន។
+                        </div>
+                    </div>
+
+                    {% if client_email %}
+                    <div class="alert alert-info py-2.5 px-3 rounded-3 small mb-0">
+                        <div class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-1"></i> កុំភ្លេច Share ទៅកាន់ Service Account Email:</div>
+                        <div class="input-group input-group-sm mb-1">
+                            <input type="text" class="form-control form-control-sm font-monospace" id="modalServiceEmail" value="{{ client_email }}" readonly>
+                            <button class="btn btn-primary btn-sm px-3 fw-bold" type="button" onclick="copyServiceEmail('modalServiceEmail')">
+                                <i class="fa-regular fa-copy"></i> ចម្លង
+                            </button>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.78rem;">
+                            (ឬក្នុង Google Sheet ចុច <strong>Share</strong> ➔ កំណត់ General Access: <strong>Anyone with the link can edit</strong>)
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុក & ភ្ជាប់ Sheet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    function copyServiceEmail(elementId) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    alert("បានចម្លង Email:\n" + el.value + "\n\nលោកអ្នកអាចយកទៅ Paste ក្នុងប្រអប់ Share របស់ Google Sheet បានហើយ!");
+                }).catch(() => {
+                    document.execCommand('copy');
+                    alert("បានចម្លង Email រួចរាល់!");
+                });
+            } else {
+                document.execCommand('copy');
+                alert("បានចម្លង Email រួចរាល់!");
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Link Sheet modal trigger
+        document.querySelectorAll('.btn-open-link-modal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const yearId = this.getAttribute('data-year-id');
+                const yearName = this.getAttribute('data-year-name');
+                const currentUrl = this.getAttribute('data-current-url') || '';
+                document.getElementById('linkModalYearId').value = yearId;
+                document.getElementById('linkModalYearName').value = yearName;
+                document.getElementById('linkModalSheetUrl').value = currentUrl;
+                const modal = new bootstrap.Modal(document.getElementById('linkSheetModal'));
+                modal.show();
+            });
+        });
+
         // Quick Sync buttons
         document.querySelectorAll('.btn-quick-sync').forEach(btn => {
             btn.addEventListener('click', function() {

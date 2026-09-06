@@ -61,42 +61,60 @@ class GoogleSheetsService:
             logger.error(f"Google Sheets Authentication failed: {e}")
             raise RuntimeError(f"ការតភ្ជាប់ទៅកាន់ Google Cloud បរាជ័យ: {str(e)}")
 
+    @staticmethod
+    def extract_spreadsheet_id(sheet_url_or_id):
+        """Extracts Google Spreadsheet ID from full URL or returns raw ID."""
+        import re
+        if not sheet_url_or_id:
+            return None
+        s = str(sheet_url_or_id).strip()
+        m = re.search(r'/d/([a-zA-Z0-9-_]+)', s)
+        if m:
+            return m.group(1)
+        if re.match(r'^[a-zA-Z0-9-_]{20,80}$', s):
+            return s
+        return None
+
     def get_or_create_drive_folder(self, folder_name, parent_id=None):
-        """Finds or creates a folder on Google Drive."""
+        """Finds or creates a folder on Google Drive. Gracefully returns None if quota exceeded."""
         self.authenticate()
-        query = f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and trashed=false"
-        if parent_id:
-            query += f" and '{parent_id}' in parents"
+        try:
+            query = f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and trashed=false"
+            if parent_id:
+                query += f" and '{parent_id}' in parents"
 
-        results = self.drive_service.files().list(
-            q=query,
-            spaces='drive',
-            fields='files(id, name)'
-        ).execute()
-        files = results.get('files', [])
+            results = self.drive_service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)'
+            ).execute()
+            files = results.get('files', [])
 
-        if files:
-            return files[0]['id']
+            if files:
+                return files[0]['id']
 
-        # Create folder
-        folder_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder'
-        }
-        if parent_id:
-            folder_metadata['parents'] = [parent_id]
+            # Create folder
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+            if parent_id:
+                folder_metadata['parents'] = [parent_id]
 
-        folder = self.drive_service.files().create(
-            body=folder_metadata,
-            fields='id'
-        ).execute()
-        folder_id = folder.get('id')
+            folder = self.drive_service.files().create(
+                body=folder_metadata,
+                fields='id'
+            ).execute()
+            folder_id = folder.get('id')
 
-        # Share root folder with admin email if provided
-        if not parent_id and self.config.admin_email:
-            self.share_with_admin(folder_id)
+            # Share root folder with admin email if provided
+            if not parent_id and self.config.admin_email:
+                self.share_with_admin(folder_id)
 
-        return folder_id
+            return folder_id
+        except Exception as e:
+            logger.warning(f"Could not get or create drive folder '{folder_name}' (possibly quota exceeded): {e}")
+            return None
 
     def share_with_admin(self, file_or_folder_id):
         """Grants Editor access strictly to Admin Google Email (Admin Only)."""
@@ -134,7 +152,7 @@ class GoogleSheetsService:
                 formula = f'=HYPERLINK("{view_url}", IMAGE("{thumbnail_url}", 1))'
                 return file_id, formula
 
-        if not student.photo:
+        if not photo_folder_id or not student.photo:
             return None, ""
 
         photo_path = student.photo.path if hasattr(student.photo, 'path') else None
@@ -214,12 +232,30 @@ class GoogleSheetsService:
             except Exception:
                 logger.info(f"Spreadsheet {year_entry['spreadsheet_id']} not found or accessible. Creating new.")
 
-        # Create photo folder for this academic year
-        photo_folder_name = f"Photos_{year_name.replace(' ', '_').replace('/', '_')}"
-        photo_folder_id = self.get_or_create_drive_folder(photo_folder_name, parent_id=master_folder_id)
+        # Create photo folder for this academic year if master folder exists
+        photo_folder_id = None
+        if master_folder_id:
+            photo_folder_name = f"Photos_{year_name.replace(' ', '_').replace('/', '_')}"
+            photo_folder_id = self.get_or_create_drive_folder(photo_folder_name, parent_id=master_folder_id)
 
         # Create new spreadsheet
-        sh = self.client.create(sheet_title, folder_id=master_folder_id)
+        try:
+            if master_folder_id:
+                sh = self.client.create(sheet_title, folder_id=master_folder_id)
+            else:
+                sh = self.client.create(sheet_title)
+        except Exception as e:
+            err_str = str(e)
+            if "quota" in err_str.lower() or "403" in err_str:
+                client_email = self.config.client_email or "Google Service Account Email"
+                raise RuntimeError(
+                    f"Google Cloud Service Account គ្មានទំហំផ្ទុក Drive (0 MB Quota Exceeded) ដើម្បីបង្កើត File ដោយស្វ័យប្រវត្តិបានទេ។\n"
+                    f"👉 វិធីដោះស្រាយងាយៗ៖\n"
+                    f"១. បង្កើត Google Sheet មួយក្នុង Google Drive ({self.config.admin_email or 'Gmail'})\n"
+                    f"២. ចុច Share ➔ បន្ថែម Email: {client_email} (សិទ្ធិ Editor) ឬកំណត់ 'Anyone with the link can edit'\n"
+                    f"៣. Copy Link នៃ Sheet នោះ រួចមកចុចប៊ូតុង '🔗 ភ្ជាប់ Google Sheet' លើផ្ទាំង SchoolSM នេះជាការស្រេច!"
+                )
+            raise e
 
         # Admin Only permission
         if self.config.admin_email:
@@ -237,6 +273,55 @@ class GoogleSheetsService:
         self.config.save(update_fields=['spreadsheets_registry'])
 
         return sh, photo_folder_id
+
+    def link_academic_spreadsheet(self, academic_year, sheet_url_or_id):
+        """
+        Manually links a pre-created Google Spreadsheet (owned by Admin's personal Google Drive)
+        to an Academic Year. Validates access with gspread, records ID and URL in registry.
+        """
+        self.authenticate()
+        sheet_id = self.extract_spreadsheet_id(sheet_url_or_id)
+        if not sheet_id:
+            raise ValueError("តំណភ្ជាប់ Google Sheet ឬ Spreadsheet ID មិនត្រឹមត្រូវឡើយ។")
+
+        year_name = academic_year.name if isinstance(academic_year, AcademicYear) else str(academic_year)
+
+        try:
+            sh = self.client.open_by_key(sheet_id)
+        except Exception as e:
+            client_email = self.config.client_email or "Google Service Account Email"
+            raise RuntimeError(
+                f"មិនអាចបើក Google Sheet នេះបានឡើយ ({str(e)})! "
+                f"សូមប្រាកដថាបានចុច Share ទៅកាន់ Email: {client_email} (សិទ្ធិ Editor) ឬបានកំណត់ General access ជា 'Anyone with the link can edit' រួចចុច Done។"
+            )
+
+        registry = self.config.spreadsheets_registry or {}
+        existing_entry = registry.get(year_name, {})
+        existing_photo_folder = existing_entry.get('photo_folder_id')
+
+        registry[year_name] = {
+            'spreadsheet_id': sh.id,
+            'spreadsheet_url': sh.url,
+            'title': sh.title,
+            'photo_folder_id': existing_photo_folder,
+            'linked_manually': True,
+            'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'academic_year': year_name
+        }
+        self.config.spreadsheets_registry = registry
+        self.config.save(update_fields=['spreadsheets_registry'])
+        return sh
+
+    def unlink_academic_spreadsheet(self, academic_year):
+        """Unlinks the spreadsheet associated with an academic year."""
+        year_name = academic_year.name if isinstance(academic_year, AcademicYear) else str(academic_year)
+        registry = self.config.spreadsheets_registry or {}
+        if year_name in registry:
+            del registry[year_name]
+            self.config.spreadsheets_registry = registry
+            self.config.save(update_fields=['spreadsheets_registry'])
+            return True
+        return False
 
     def _prepare_worksheet(self, spreadsheet, title, headers, rows_count=1000):
         """Helper to get or create worksheet, write headers and style them."""

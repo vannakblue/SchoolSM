@@ -43,6 +43,8 @@ urlpatterns = [
     # Google Sheets & Google Drive Suite
     path('google-sheets/', views.google_sheets_dashboard_view, name='tool_google_sheets'),
     path('google-sheets/save-config/', views.api_save_google_sheets_config, name='tool_google_sheets_save_config'),
+    path('google-sheets/link/', views.api_link_google_sheet, name='tool_google_sheets_link'),
+    path('google-sheets/unlink/', views.api_unlink_google_sheet, name='tool_google_sheets_unlink'),
     path('google-sheets/sync/', views.api_sync_google_sheets, name='tool_google_sheets_sync'),
     path('google-sheets/restore/', views.api_restore_google_sheets, name='tool_google_sheets_restore'),
 

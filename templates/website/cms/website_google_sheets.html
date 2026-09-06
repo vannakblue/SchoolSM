@@ -43,27 +43,64 @@
     </div>
 </div>
 {% else %}
-<div class="alert alert-success border-0 shadow-sm rounded-3 p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
-    <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-            <i class="fa-solid fa-circle-check fs-5"></i>
+<div class="alert alert-success border-0 shadow-sm rounded-4 p-3 mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-circle-check fs-5"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-dark">Google Service Account ត្រូវបានភ្ជាប់ត្រឹមត្រូវ (Active)</div>
+                <div class="small text-muted">
+                    <i class="fa-brands fa-google-drive text-info me-1"></i> Drive Folder: <strong>{{ config.drive_folder_name }}</strong>
+                    {% if config.admin_email %}
+                    • <i class="fa-regular fa-envelope text-primary me-1"></i> Shared ទៅកាន់៖ <strong>{{ config.admin_email }}</strong>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div>
-            <div class="fw-bold text-dark">Google Service Account ត្រូវបានភ្ជាប់ត្រឹមត្រូវ (Active)</div>
-            <div class="small text-muted">
-                <i class="fa-brands fa-google-drive text-info me-1"></i> Drive Folder: <strong>{{ config.drive_folder_name }}</strong>
-                {% if config.admin_email %}
-                • <i class="fa-regular fa-envelope text-primary me-1"></i> Shared ទៅកាន់៖ <strong>{{ config.admin_email }}</strong>
+        {% if spreadsheet_info and spreadsheet_info.last_sync_at %}
+        <div class="text-end small">
+            <span class="text-muted">Sync ចុងក្រោយ៖</span>
+            <strong class="text-primary">{{ spreadsheet_info.last_sync_at }}</strong>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Service Account Bot Email and Sheet Link Row -->
+    <div class="bg-white rounded-3 p-3 border mt-2">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-6">
+                <label class="small fw-bold text-muted mb-1"><i class="fa-solid fa-robot text-warning me-1"></i> Service Account Email (សម្រាប់ Share Sheet):</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace small bg-light" id="websiteBotEmail" value="{{ config.client_email|default:'' }}" readonly>
+                    <button class="btn btn-warning fw-bold px-3" type="button" onclick="navigator.clipboard.writeText('{{ config.client_email|default:'' }}'); alert('បានចម្លង Email រួចរាល់!');">
+                        <i class="fa-regular fa-copy me-1"></i> ចម្លង Email
+                    </button>
+                </div>
+                <div class="text-muted small mt-1" style="font-size: 0.76rem;">
+                    បង្កើត Google Sheet ក្នុង Gmail ផ្ទាល់ខ្លួន ចុច <strong>Share</strong> ➔ Add Email ខាងលើជា <strong>Editor</strong> ឬកំណត់ Anyone with link can edit។
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <label class="small fw-bold text-muted mb-1"><i class="fa-solid fa-link text-primary me-1"></i> ភ្ជាប់ Google Sheet សម្រាប់ Website:</label>
+                <form method="POST" action="{% url 'website_google_sheets_link' %}" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="sheet_url" class="form-control form-control-sm" placeholder="Paste Link Google Sheet នៅទីនេះ..." value="{{ spreadsheet_info.spreadsheet_url|default:'' }}" required>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold text-nowrap px-3">
+                        <i class="fa-solid fa-check me-1"></i> {% if spreadsheet_info.spreadsheet_id %}ប្តូរ Sheet{% else %}ភ្ជាប់ Sheet{% endif %}
+                    </button>
+                </form>
+                {% if spreadsheet_info.spreadsheet_url %}
+                <div class="mt-1 d-flex align-items-center justify-content-between">
+                    <a href="{{ spreadsheet_info.spreadsheet_url }}" target="_blank" class="small text-success fw-bold text-decoration-none">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> កំពុងភ្ជាប់៖ {{ spreadsheet_info.title|default:"Google Spreadsheet" }}
+                    </a>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
-    {% if spreadsheet_info and spreadsheet_info.last_sync_at %}
-    <div class="text-end small">
-        <span class="text-muted">Sync ចុងក្រោយ៖</span>
-        <strong class="text-primary">{{ spreadsheet_info.last_sync_at }}</strong>
-    </div>
-    {% endif %}
 </div>
 {% endif %}
 
