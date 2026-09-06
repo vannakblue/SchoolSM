@@ -53,13 +53,35 @@
             {% endif %}
         </form>
 
-        <!-- 1-Click Auto Assign Button -->
-        <form method="POST" action="{% url 'api_invigilator_auto_assign' plan.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូដែលខ្វះកូតាចូលក្នុងវេនដែលនៅសល់កន្លែងស្វ័យប្រវត្តិតាមមុខងារមែនទេ?')">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success fw-bold shadow-xs btn-sm">
-                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ⚡ បំពេញវេនខ្វះស្វ័យប្រវត្តិ
+        <!-- 1-Click Auto Assign Dropdown -->
+        <div class="dropdown d-inline">
+            <button class="btn btn-success dropdown-toggle fw-bold shadow-xs btn-sm" type="button" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ⚡ បំពេញវេនស្វ័យប្រវត្តិ
             </button>
-        </form>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm small p-2" style="min-width: 280px; border-radius: 0.75rem;">
+                <li>
+                    <form method="POST" action="{% url 'api_invigilator_auto_assign' plan.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="mode" value="unrequested_only">
+                        <button type="submit" class="dropdown-item py-2 rounded-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំពោះតែគ្រូដែល «មិនទាន់បានស្នើសុំទាល់តែសោះ (០ វេន)» មែនទេ?')">
+                            <div class="fw-bold text-warning text-dark"><i class="fa-solid fa-user-slash me-1.5 text-warning"></i> បំពេញតែអ្នកមិនទាន់ស្នើសុំ (០ វេន)</div>
+                            <small class="text-muted d-block ps-3.5" style="font-size: 0.72rem;">ចាត់តាំងតែគ្រូដែលមិនទាន់បានចូលរើសវេនទាល់តែសោះ</small>
+                        </button>
+                    </form>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <form method="POST" action="{% url 'api_invigilator_auto_assign' plan.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="mode" value="all">
+                        <button type="submit" class="dropdown-item py-2 rounded-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំពោះគ្រូដែលខ្វះកូតាទាំងអស់មែនទេ?')">
+                            <div class="fw-bold text-success"><i class="fa-solid fa-users me-1.5 text-success"></i> បំពេញគ្រូខ្វះកូតាទាំងអស់</div>
+                            <small class="text-muted d-block ps-3.5" style="font-size: 0.72rem;">ចាត់តាំងទាំងអ្នកមិនទាន់ស្នើសុំ និងអ្នកស្នើសុំមិនទាន់គ្រប់</small>
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
 
         <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-outline-primary fw-bold btn-sm">
             <i class="fa-solid fa-users-gear me-1"></i> មុខងារ & កូតាគ្រូ
@@ -196,11 +218,24 @@
                                 <label class="form-label fw-bold small text-muted">ជ្រើសរើសគ្រូបង្រៀន *</label>
                                 <select name="teacher_id" class="form-select" required>
                                     <option value="">-- ជ្រើសរើសគ្រូបង្រៀន --</option>
-                                    {% for t in active_teachers %}
-                                    <option value="{{ t.id }}">
-                                        {{ t.khmer_name }} ({{ t.teacher_id }} - {{ t.current_duty|default:'គ្រូបង្រៀន' }})
-                                    </option>
-                                    {% endfor %}
+                                    {% if unfulfilled_teachers %}
+                                    <optgroup label="⚠️ គ្រូមិនទាន់ស្នើសុំ / ខ្វះកូតា (ណែនាំ)">
+                                        {% for u in unfulfilled_teachers %}
+                                        <option value="{{ u.teacher.id }}">
+                                            {{ u.teacher.khmer_name }} ({{ u.teacher.teacher_id }}) — {% if u.registered == 0 %}មិនទាន់ស្នើសុំ (ខ្វះ {{ u.shortage }} វេន){% else %}ខ្វះ {{ u.shortage }} វេន{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endif %}
+                                    <optgroup label="✅ គ្រូផ្សេងទៀត (គ្រប់កូតាហើយ)">
+                                        {% for t in active_teachers %}
+                                            {% if t.id not in teacher_shortage_map %}
+                                            <option value="{{ t.id }}">
+                                                {{ t.khmer_name }} ({{ t.teacher_id }} - {{ t.current_duty|default:'គ្រូបង្រៀន' }})
+                                            </option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -236,10 +271,10 @@
         {% endfor %}
     </div>
 
-    <!-- Right Column: Unfulfilled Teachers (4 Cols) -->
+    <!-- Right Column: Unfulfilled & Unrequested Teachers (4 Cols) -->
     <div class="col-12 col-xl-4">
         <div class="custom-card p-4 sticky-top shadow-sm border-top border-4 border-danger" style="top: 80px; z-index: 10;">
-            <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="fw-bold text-dark mb-0">
                     <i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>គ្រូមិនទាន់គ្រប់កូតា
                 </h5>
@@ -248,22 +283,43 @@
                 </span>
             </div>
             <p class="text-muted small mb-3">
-                បញ្ជីគ្រូដែលមិនទាន់បានចុះឈ្មោះគ្រប់ចំនួនវេនកំណត់។ Admin អាចចុច «ចាត់តាំងគ្រូ» ក្នុងវេនដែលនៅទំនេរ។
+                បញ្ជីគ្រូដែលមិនទាន់ស្នើសុំ ឬមិនទាន់គ្រប់កូតា។ Admin អាចចុច «ចាត់តាំង» ដើម្បីជ្រើសវេនជូនគាត់ភ្លាមៗ។
             </p>
 
-            <div class="list-group list-group-flush border rounded-3 overflow-auto" style="max-height: 520px;">
+            <!-- Filter Tabs -->
+            <div class="btn-group btn-group-sm w-100 mb-3 shadow-2xs" role="group">
+                <button type="button" class="btn btn-danger text-white fw-bold unfulfilled-filter-btn" onclick="filterUnfulfilled('unrequested', this)">
+                    មិនទាន់ស្នើសុំ ({{ unrequested_teachers|length }})
+                </button>
+                <button type="button" class="btn btn-light text-dark fw-bold unfulfilled-filter-btn" onclick="filterUnfulfilled('under_quota', this)">
+                    ខ្វះវេន ({{ under_quota_teachers|length }})
+                </button>
+                <button type="button" class="btn btn-light text-dark fw-bold unfulfilled-filter-btn" onclick="filterUnfulfilled('all', this)">
+                    ទាំងអស់ ({{ unfulfilled_teachers|length }})
+                </button>
+            </div>
+
+            <div class="list-group list-group-flush border rounded-3 overflow-auto" id="unfulfilledListGroup" style="max-height: 520px;">
                 {% for item in unfulfilled_teachers %}
-                <div class="list-group-item p-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="fw-bold text-dark">{{ item.teacher.khmer_name }}</div>
+                <div class="list-group-item p-3 d-flex align-items-start justify-content-between gap-2 unfulfilled-item" data-is-unrequested="{% if item.registered == 0 %}true{% else %}false{% endif %}">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold text-dark fs-6">{{ item.teacher.khmer_name }}</div>
                         <div class="small text-muted font-monospace">{{ item.teacher.teacher_id }} • {{ item.role }}</div>
-                        <small class="badge bg-light text-muted border mt-1">{{ item.group }}</small>
+                        <div class="d-flex align-items-center gap-1.5 mt-1">
+                            <span class="badge bg-light text-muted border" style="font-size: 0.7rem;">{{ item.group }}</span>
+                            {% if item.registered == 0 %}
+                            <span class="badge bg-danger text-white" style="font-size: 0.7rem;">មិនទាន់ស្នើសុំទាល់តែសោះ</span>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="text-end">
-                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-6 px-2 py-1">
+                    <div class="text-end flex-shrink-0">
+                        <span class="badge {% if item.registered == 0 %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-warning-subtle text-dark border border-warning{% endif %} fw-bold px-2 py-1 d-block mb-1">
                             ខ្វះ {{ item.shortage }} វេន
                         </span>
-                        <div class="small text-muted mt-1">{{ item.registered }} / {{ item.required }} វេន</div>
+                        <small class="text-muted d-block mb-1.5" style="font-size: 0.75rem;">{{ item.registered }} / {{ item.required }} វេន</small>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0.5 px-2 rounded-2 fw-bold text-nowrap d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAssignModal_{{ item.teacher.id }}" title="ចាត់តាំងវេនសម្រាប់គ្រូនេះ">
+                            <i class="fa-solid fa-user-plus small"></i> ចាត់តាំង
+                        </button>
                     </div>
                 </div>
                 {% empty %}
@@ -277,4 +333,153 @@
         </div>
     </div>
 </div>
+
+<!-- Quick Assign Modals for Unfulfilled Teachers -->
+{% for item in unfulfilled_teachers %}
+<div class="modal fade" id="quickAssignModal_{{ item.teacher.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-user-check me-2"></i>ចាត់តាំងវេនសម្រាប់៖ {{ item.teacher.khmer_name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="admin_batch_assign_teacher_slots">
+                <input type="hidden" name="teacher_id" value="{{ item.teacher.id }}">
+                <div class="modal-body p-4">
+                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between p-3 bg-light rounded-3 border mb-3">
+                        <div>
+                            <div class="fw-bold fs-6 text-dark">{{ item.teacher.khmer_name }} ({{ item.teacher.teacher_id }})</div>
+                            <small class="text-muted">{{ item.group }} • {{ item.teacher.phone|default:"-" }}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-dark border px-2.5 py-1.5">
+                                កូតាតម្រូវ៖ <strong>{{ item.required }}</strong> វេន
+                            </span>
+                            <span class="badge {% if item.registered == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %} px-2.5 py-1.5">
+                                នៅខ្វះ៖ <strong>{{ item.shortage }}</strong> វេន
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">មុខងារគណៈកម្មការ (Role) *</label>
+                            <select name="role" class="form-select fw-bold">
+                                {% for r_code, r_label in committee_roles %}
+                                <option value="{{ r_code }}" {% if r_code == item.role_code %}selected{% endif %}>
+                                    {{ r_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">បន្ទប់ឈរប្រឡង (Room Assignment)</label>
+                            <input type="text" name="room_assignment" class="form-control" placeholder="ឧ. បន្ទប់ ០១ (អាចទុកទំនេរបាន)">
+                        </div>
+                    </div>
+
+                    <label class="form-label fw-bold small text-dark mb-2">
+                        <i class="fa-solid fa-list-check text-primary me-1"></i>ជ្រើសរើសវេនប្រឡងដែលត្រូវចាត់តាំង (Checkboxes) *៖
+                    </label>
+                    <div class="table-responsive border rounded-3 overflow-auto" style="max-height: 320px;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">ជ្រើស</th>
+                                    <th>កាលបរិច្ឆេទ & វេនប្រឡង</th>
+                                    <th class="text-center" style="width: 140px;">កន្លែងសរុប</th>
+                                    <th class="text-center" style="width: 120px;">ស្ថានភាព</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in slots %}
+                                {% with is_reg=s.id in item.registered_slot_ids %}
+                                <tr class="{% if is_reg %}table-light text-muted{% endif %}">
+                                    <td class="text-center">
+                                        {% if is_reg %}
+                                        <i class="fa-solid fa-circle-check text-success" title="បានចុះឈ្មោះរួចហើយ"></i>
+                                        {% elif s.is_full %}
+                                        <i class="fa-solid fa-ban text-muted" title="វេននេះពេញហើយ"></i>
+                                        {% else %}
+                                        <input class="form-check-input" type="checkbox" name="selected_slot_ids" value="{{ s.id }}">
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ s.session_name }}</strong>
+                                        <div class="text-muted small">{{ s.date|date:"d/m/Y" }} ({{ s.start_time|time:"H:i" }} - {{ s.end_time|time:"H:i" }})</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if s.is_full %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">
+                                            {{ s.registered_count }} / {{ s.max_invigilators }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center small">
+                                        {% if is_reg %}
+                                        <span class="badge bg-success-subtle text-success border border-success">បានចុះរួច</span>
+                                        {% elif s.is_full %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger">ពេញ</span>
+                                        {% else %}
+                                        <span class="badge bg-primary-subtle text-primary">នៅទំនេរ</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុកការចាត់តាំង
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+function filterUnfulfilled(type, btn) {
+    document.querySelectorAll('.unfulfilled-filter-btn').forEach(b => {
+        b.className = 'btn btn-light text-dark fw-bold unfulfilled-filter-btn';
+    });
+    if (type === 'unrequested') {
+        btn.className = 'btn btn-danger text-white fw-bold unfulfilled-filter-btn';
+    } else if (type === 'under_quota') {
+        btn.className = 'btn btn-warning text-dark fw-bold unfulfilled-filter-btn';
+    } else {
+        btn.className = 'btn btn-primary text-white fw-bold unfulfilled-filter-btn';
+    }
+
+    document.querySelectorAll('.unfulfilled-item').forEach(el => {
+        if (type === 'all') {
+            el.classList.remove('d-none');
+            el.classList.add('d-flex');
+        } else if (type === 'unrequested') {
+            if (el.getAttribute('data-is-unrequested') === 'true') {
+                el.classList.remove('d-none');
+                el.classList.add('d-flex');
+            } else {
+                el.classList.remove('d-flex');
+                el.classList.add('d-none');
+            }
+        } else if (type === 'under_quota') {
+            if (el.getAttribute('data-is-unrequested') === 'false') {
+                el.classList.remove('d-none');
+                el.classList.add('d-flex');
+            } else {
+                el.classList.remove('d-flex');
+                el.classList.add('d-none');
+            }
+        }
+    });
+}
+</script>
 {% endblock %}

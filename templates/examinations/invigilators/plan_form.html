@@ -316,43 +316,64 @@
                             <h6 class="fw-bold text-dark mb-0">
                                 <i class="fa-solid fa-users-between-lines text-primary me-2"></i>ការកំណត់អនុរក្សក្នុង១បន្ទប់ និងបែងចែកកម្លាំងតាមវេន (Staff Allocation per Shift)
                             </h6>
-                            <small class="text-muted">ប្រព័ន្ធបែងចែកស្វ័យប្រវត្តិតាមវេនព្រឹក-រសៀល និងអនុញ្ញាតឱ្យ Admin កែសម្រួលដោយដៃតាមតម្រូវការជាក់ស្តែង</small>
+                            <small class="text-muted">ប្រព័ន្ធគណនាចំនួនអនុរក្សស្វ័យប្រវត្តិតាមចំនួនបន្ទប់ប្រឡងក្នុង១វេន និងអនុញ្ញាតឱ្យ Admin កែសម្រួលដោយដៃបានតាមចិត្ត</small>
                         </div>
-                        {% if room_count %}
-                        <span class="badge bg-primary fs-6 px-2.5 py-1">
-                            <i class="fa-solid fa-door-open me-1"></i>{{ room_count }} បន្ទប់ប្រឡង
-                        </span>
-                        {% endif %}
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary fs-6 px-2.5 py-1" id="badge_rooms_display">
+                                <i class="fa-solid fa-door-open me-1"></i><span id="badge_rooms_num">{% if is_edit and plan %}{{ plan.rooms_count|default:room_count|default:5 }}{% else %}{{ room_count|default:5 }}{% endif %}</span> បន្ទប់ប្រឡង
+                            </span>
+                        </div>
                     </div>
 
-                    <input type="hidden" name="rooms_count" id="hidden_rooms_count" value="{% if is_edit and plan %}{{ plan.rooms_count|default:room_count|default:0 }}{% else %}{{ room_count|default:0 }}{% endif %}">
-
-                    <!-- 1. Ratio of Invigilators per room -->
-                    <div class="p-3 bg-white rounded-3 border mb-3">
-                        <label class="form-label fw-bold small text-dark mb-2">
-                            <i class="fa-solid fa-user-gear text-warning me-1"></i>១. កំណត់ចំនួនអនុរក្សក្នុង ១ បន្ទប់ប្រឡង (Invigilators per Room) *៖
-                        </label>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <div class="form-check border rounded-3 p-2.5 px-3 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_1" onclick="updatePlanPerRoom(1)">
-                                    <input class="form-check-input me-2" type="radio" name="invigilators_per_room" id="plan_radio_invig_1" value="1" {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_1">
-                                        👤 ១ នាក់ / បន្ទប់
-                                        <div class="text-muted fw-normal" style="font-size: 0.75rem;">
-                                            {% if room_count %}ស្មើនឹង {{ room_count }} នាក់ក្នុងមួយវេន{% else %}សមស្របសម្រាប់សម័យប្រឡងខ្នាតតូច ឬវិញ្ញាសាទូទៅ{% endif %}
-                                        </div>
-                                    </label>
+                    <!-- 1. Total Exam Rooms in 1 Shift & Invigilators per Room Ratio -->
+                    <div class="row g-3 mb-3">
+                        <!-- Exam Rooms Input -->
+                        <div class="col-md-5">
+                            <div class="p-3 bg-white rounded-3 border h-100 shadow-2xs">
+                                <label class="form-label fw-bold small text-dark mb-1 d-flex align-items-center justify-content-between" for="input_rooms_count">
+                                    <span><i class="fa-solid fa-door-open text-primary me-1"></i>ចំនួនបន្ទប់ប្រឡងក្នុង ១ វេន (Rooms) *៖</span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.7rem;">គណនាកម្លាំងស្វ័យប្រវត្តិ</span>
+                                </label>
+                                <div class="input-group input-group-sm mb-1.5">
+                                    <span class="input-group-text bg-light fw-bold text-muted"><i class="fa-solid fa-school"></i></span>
+                                    <input type="number" min="1" max="500" name="rooms_count" id="input_rooms_count" class="form-control text-center fw-bold fs-6 font-monospace" value="{% if is_edit and plan %}{{ plan.rooms_count|default:room_count|default:5 }}{% else %}{{ room_count|default:5 }}{% endif %}" placeholder="ឧ. 5" oninput="updatePlanFromRooms()" required>
+                                    <span class="input-group-text fw-bold">បន្ទប់ / វេន</span>
                                 </div>
+                                <small class="text-muted d-block" style="font-size: 0.73rem;">
+                                    បញ្ចូលចំនួនបន្ទប់ប្រឡងក្នុង១វេន (ឧ. ៥, ១០...) ប្រព័ន្ធនឹងគុណស្វ័យប្រវត្តិចូលក្នុងប្រអប់អនុរក្សខាងក្រោម
+                                </small>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-check border rounded-3 p-2.5 px-3 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_2" onclick="updatePlanPerRoom(2)">
-                                    <input class="form-check-input me-2" type="radio" name="invigilators_per_room" id="plan_radio_invig_2" value="2" {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_2">
-                                        👥 ២ នាក់ / បន្ទប់ <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">ស្តង់ដារលំនាំដើម</span>
-                                        <div class="text-muted fw-normal" style="font-size: 0.75rem;">
-                                            {% if room_count %}ស្មើនឹង {{ room_count|add:room_count }} នាក់ក្នុងមួយវេន (អនុរក្សទី១ + អនុរក្សទី២){% else %}ស្តង់ដារក្រសួងអប់រំ (អនុរក្សទី១ និងទី២){% endif %}
+                        </div>
+
+                        <!-- Invigilators per Room Ratio -->
+                        <div class="col-md-7">
+                            <div class="p-3 bg-white rounded-3 border h-100 shadow-2xs">
+                                <label class="form-label fw-bold small text-dark mb-1">
+                                    <i class="fa-solid fa-user-gear text-warning me-1"></i>កំណត់ចំនួនអនុរក្សក្នុង ១ បន្ទប់ប្រឡង (Ratio) *៖
+                                </label>
+                                <div class="row g-2 mt-0.5">
+                                    <div class="col-6">
+                                        <div class="form-check border rounded-3 p-2 px-2.5 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_1" onclick="updatePlanPerRoom(1)">
+                                            <input class="form-check-input me-1.5" type="radio" name="invigilators_per_room" id="plan_radio_invig_1" value="1" {% if is_edit and plan and plan.invigilators_per_room == 1 or not is_edit and invigilators_per_room == 1 %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_1">
+                                                👤 ១ នាក់ / បន្ទប់
+                                                <div class="text-muted fw-normal" id="hint_per_room_1" style="font-size: 0.72rem;">
+                                                    ស្មើនឹង <strong class="text-dark font-monospace" id="calc_room_1">5</strong> នាក់ក្នុងមួយវេន (1/បន្ទប់)
+                                                </div>
+                                            </label>
                                         </div>
-                                    </label>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-check border rounded-3 p-2 px-2.5 cursor-pointer {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}border-primary border-2 bg-primary-subtle{% else %}bg-light{% endif %}" id="plan_opt_wrap_2" onclick="updatePlanPerRoom(2)">
+                                            <input class="form-check-input me-1.5" type="radio" name="invigilators_per_room" id="plan_radio_invig_2" value="2" {% if is_edit and plan and plan.invigilators_per_room != 1 or not is_edit and invigilators_per_room != 1 %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold small cursor-pointer" for="plan_radio_invig_2">
+                                                👥 ២ នាក់ / បន្ទប់ <span class="badge bg-primary ms-0.5" style="font-size: 0.6rem;">ស្តង់ដារ</span>
+                                                <div class="text-muted fw-normal" id="hint_per_room_2" style="font-size: 0.72rem;">
+                                                    ស្មើនឹង <strong class="text-dark font-monospace" id="calc_room_2">10</strong> នាក់ក្នុងមួយវេន (អនុរក្ស ១+២)
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -830,6 +851,35 @@ function recalcExamSchedule(source) {
     }
 }
 
+function getSelectedPerRoom() {
+    const r1 = document.getElementById('plan_radio_invig_1');
+    return (r1 && r1.checked) ? 1 : 2;
+}
+
+function updatePlanFromRooms(shouldUpdateCapacity = true) {
+    const roomsInput = document.getElementById('input_rooms_count');
+    const rooms = parseInt(roomsInput ? roomsInput.value : 0, 10) || 0;
+
+    // Update badge in section header
+    const badgeRoomsNum = document.getElementById('badge_rooms_num');
+    if (badgeRoomsNum) badgeRoomsNum.textContent = rooms;
+
+    // Update ratio card hints
+    const c1 = document.getElementById('calc_room_1');
+    const c2 = document.getElementById('calc_room_2');
+    if (c1) c1.textContent = rooms * 1;
+    if (c2) c2.textContent = rooms * 2;
+
+    const perRoom = getSelectedPerRoom();
+    if (shouldUpdateCapacity && rooms > 0) {
+        const invigInput = document.getElementById('capacity_invigilator');
+        if (invigInput) {
+            invigInput.value = rooms * perRoom;
+        }
+    }
+    recalcShiftSummary();
+}
+
 function updatePlanPerRoom(perRoom) {
     const r1 = document.getElementById('plan_radio_invig_1');
     const r2 = document.getElementById('plan_radio_invig_2');
@@ -840,15 +890,16 @@ function updatePlanPerRoom(perRoom) {
     const w2 = document.getElementById('plan_opt_wrap_2');
     if (w1 && w2) {
         if (perRoom === 1) {
-            w1.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2.5 px-3 cursor-pointer';
-            w2.className = 'form-check border bg-light rounded-3 p-2.5 px-3 cursor-pointer';
+            w1.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2 px-2.5 cursor-pointer';
+            w2.className = 'form-check border bg-light rounded-3 p-2 px-2.5 cursor-pointer';
         } else {
-            w2.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2.5 px-3 cursor-pointer';
-            w1.className = 'form-check border bg-light rounded-3 p-2.5 px-3 cursor-pointer';
+            w2.className = 'form-check border border-primary border-2 bg-primary-subtle rounded-3 p-2 px-2.5 cursor-pointer';
+            w1.className = 'form-check border bg-light rounded-3 p-2 px-2.5 cursor-pointer';
         }
     }
 
-    const rooms = parseInt(document.getElementById('hidden_rooms_count')?.value || 0, 10);
+    const roomsInput = document.getElementById('input_rooms_count');
+    const rooms = parseInt(roomsInput ? roomsInput.value : 0, 10) || 0;
     if (rooms > 0) {
         const invigInput = document.getElementById('capacity_invigilator');
         if (invigInput) {
@@ -991,6 +1042,7 @@ function syncLegacyQuotas() {
 
 document.addEventListener('DOMContentLoaded', function() {
     reindexQuotaGroups();
+    updatePlanFromRooms({% if is_edit %}false{% else %}true{% endif %});
     recalcShiftSummary();
     recalcExamSchedule('init');
 });

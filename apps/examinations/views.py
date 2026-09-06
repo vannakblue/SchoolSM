@@ -5751,6 +5751,10 @@ def exam_invigilator_plan_create(request):
             if found_ay:
                 default_ay = found_ay
 
+    if room_count == 0:
+        room_count = 5
+    default_slots_capacity = room_count * invigilators_per_room
+
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         ay_id = request.POST.get('academic_year')
@@ -5814,30 +5818,70 @@ def exam_invigilator_plan_create(request):
                 inspector_cap=capacity_building_inspector
             )
 
-            # 1. Create Default Teacher Duty Groups (Group 1 vs Group 2)
-            group_regular = TeacherDutyGroup.objects.create(
-                plan=plan,
-                name="ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)",
-                required_shifts=reg_quota,
-                description="គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់ (កូតាលំនាំដើម ៤ វេន)",
-                order=1
-            )
-            group_office = TeacherDutyGroup.objects.create(
-                plan=plan,
-                name="ក្រុមគ្រូប្រភេទទី២ (គ្រូការិយាល័យ/រដ្ឋបាល)",
-                required_shifts=off_quota,
-                description="គ្រូដែលបម្រើការងារនៅការិយាល័យ រដ្ឋបាល បណ្ណារក្ស (កូតាលំនាំដើម ៥ វេន)",
-                order=2
-            )
-            group_mgmt = TeacherDutyGroup.objects.create(
-                plan=plan,
-                name="គណៈគ្រប់គ្រង / នាយក-នាយករង (Management)",
-                required_shifts=2,
-                description="គណៈគ្រប់គ្រង និងប្រធានផ្នែក",
-                order=3
-            )
+            # 1. Create Teacher Duty Groups (From dynamic form submission or defaults)
+            posted_group_names = request.POST.getlist('quota_group_name[]')
+            posted_group_shifts = request.POST.getlist('quota_group_shifts[]')
+            posted_group_descs = request.POST.getlist('quota_group_description[]')
+
+            created_groups = []
+            if posted_group_names:
+                for idx, g_name in enumerate(posted_group_names):
+                    g_name = g_name.strip()
+                    if not g_name:
+                        continue
+                    try:
+                        shifts_val = int(posted_group_shifts[idx]) if idx < len(posted_group_shifts) else 4
+                    except (ValueError, TypeError):
+                        shifts_val = 4
+                    desc_val = posted_group_descs[idx].strip() if idx < len(posted_group_descs) else ''
+                    grp = TeacherDutyGroup.objects.create(
+                        plan=plan,
+                        name=g_name,
+                        required_shifts=shifts_val,
+                        description=desc_val,
+                        order=idx + 1
+                    )
+                    created_groups.append(grp)
+
+            if not created_groups:
+                # Default 3 groups
+                group_regular = TeacherDutyGroup.objects.create(
+                    plan=plan,
+                    name="ក្រុមគ្រូប្រភេទទី១ (គ្រូបង្រៀនធម្មតា)",
+                    required_shifts=reg_quota,
+                    description="គ្រូបង្រៀនទូទៅតាមមុខវិជ្ជា និងបន្ទុកថ្នាក់ (កូតាលំនាំដើម ៤ វេន)",
+                    order=1
+                )
+                group_office = TeacherDutyGroup.objects.create(
+                    plan=plan,
+                    name="ក្រុមគ្រូប្រភេទទី២ (គ្រូការិយាល័យ/រដ្ឋបាល)",
+                    required_shifts=off_quota,
+                    description="គ្រូដែលបម្រើការងារនៅការិយាល័យ រដ្ឋបាល បណ្ណារក្ស (កូតាលំនាំដើម ៥ វេន)",
+                    order=2
+                )
+                group_mgmt = TeacherDutyGroup.objects.create(
+                    plan=plan,
+                    name="គណៈគ្រប់គ្រង / នាយក-នាយករង (Management)",
+                    required_shifts=2,
+                    description="គណៈគ្រប់គ្រង និងប្រធានផ្នែក",
+                    order=3
+                )
+                created_groups = [group_regular, group_office, group_mgmt]
 
             # 2. Auto-Populate Teacher Quotas from Active Teachers
+            group_regular = created_groups[0]
+            group_office = created_groups[1] if len(created_groups) > 1 else created_groups[0]
+            group_mgmt = created_groups[2] if len(created_groups) > 2 else group_office
+
+            for g in created_groups:
+                g_lower = g.name.lower()
+                if any(kw in g_lower for kw in ['គ្រប់គ្រង', 'នាយក', 'management']):
+                    group_mgmt = g
+                elif any(kw in g_lower for kw in ['ការិយាល័យ', 'រដ្ឋបាល', 'office']):
+                    group_office = g
+                elif any(kw in g_lower for kw in ['ប្រភេទទី១', 'ធម្មតា', 'regular']):
+                    group_regular = g
+
             active_teachers = Teacher.objects.filter(status=Teacher.Status.ACTIVE)
             for t in active_teachers:
                 duty_lower = (t.current_duty or '').lower()
@@ -6365,6 +6409,35 @@ def exam_invigilator_roster_view(request, plan_id):
             reg.delete()
             messages.success(request, f"🗑️ បានដកឈ្មោះ {t_name} ចេញពីវេនប្រឡងដោយជោគជ័យ!")
 
+        elif action == 'admin_batch_assign_teacher_slots':
+            teacher_id = request.POST.get('teacher_id')
+            selected_slot_ids = request.POST.getlist('selected_slot_ids')
+            role = request.POST.get('role', ExamCommitteeRole.INVIGILATOR)
+            room = request.POST.get('room_assignment', '').strip()
+            teacher = get_object_or_404(Teacher, id=teacher_id)
+
+            assigned_in_batch = 0
+            if selected_slot_ids:
+                for slot_id in selected_slot_ids:
+                    slot = plan.shift_slots.filter(id=slot_id).first()
+                    if slot:
+                        reg, created = TeacherShiftRegistration.objects.get_or_create(
+                            slot=slot,
+                            teacher=teacher,
+                            defaults={'role': role, 'status': 'ADMIN_ASSIGNED', 'room_assignment': room}
+                        )
+                        if not created:
+                            reg.role = role
+                            reg.status = 'ADMIN_ASSIGNED'
+                            if room:
+                                reg.room_assignment = room
+                            reg.save(update_fields=['role', 'status', 'room_assignment'])
+                        assigned_in_batch += 1
+                messages.success(request, f"🎉 បានចាត់តាំងបំពេញវេនជូនលោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} ចំនួន {assigned_in_batch} វេន ដោយជោគជ័យ!")
+            else:
+                messages.warning(request, "⚠️ សូមជ្រើសរើសវេនប្រឡងយ៉ាងហោចណាស់មួយ!")
+            return redirect('exam_invigilator_roster_view', plan_id=plan.id)
+
         elif action == 'toggle_teacher_registration':
             plan.allow_teacher_registration = not plan.allow_teacher_registration
             plan.save(update_fields=['allow_teacher_registration'])
@@ -6396,39 +6469,63 @@ def exam_invigilator_roster_view(request, plan_id):
             for role_code in ExamCommitteeRole.values
         }
 
-    # Build list of unfulfilled teachers
+    # Build list of unfulfilled teachers (categorized into unrequested vs under_quota)
     active_teachers = list(Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name'))
     existing_quotas = {q.teacher_id: q for q in plan.teacher_quotas.select_related('duty_group').all()}
-    registrations_count_map = dict(
-        TeacherShiftRegistration.objects.filter(slot__plan=plan)
-        .exclude(status='CANCELLED')
-        .values('teacher_id')
-        .annotate(c=Count('id'))
-        .values_list('teacher_id', 'c')
-    )
+    
+    # Pre-map registrations for each teacher
+    teacher_registrations_qs = TeacherShiftRegistration.objects.filter(slot__plan=plan).exclude(status='CANCELLED')
+    teacher_registered_slot_ids = {}
+    for reg in teacher_registrations_qs:
+        if reg.teacher_id not in teacher_registered_slot_ids:
+            teacher_registered_slot_ids[reg.teacher_id] = set()
+        teacher_registered_slot_ids[reg.teacher_id].add(reg.slot_id)
 
     unfulfilled_teachers = []
+    unrequested_teachers = []
+    under_quota_teachers = []
+
     for t in active_teachers:
         q_obj = existing_quotas.get(t.id)
+        if q_obj and q_obj.is_exempt:
+            continue
         req = q_obj.effective_required_shifts if q_obj else plan.default_regular_quota
-        reg_count = registrations_count_map.get(t.id, 0)
-        if reg_count < req:
-            unfulfilled_teachers.append({
-                'teacher': t,
-                'required': req,
-                'registered': reg_count,
-                'shortage': req - reg_count,
-                'role': q_obj.get_assigned_role_display() if q_obj else 'គណៈកម្មការអនុរក្ស',
-                'group': q_obj.duty_group.name if (q_obj and q_obj.duty_group) else 'ធម្មតា',
-            })
+        reg_slots = teacher_registered_slot_ids.get(t.id, set())
+        reg_count = len(reg_slots)
+        
+        t_data = {
+            'teacher': t,
+            'required': req,
+            'registered': reg_count,
+            'shortage': max(0, req - reg_count),
+            'role': q_obj.get_assigned_role_display() if q_obj else 'គណៈកម្មការអនុរក្ស',
+            'role_code': q_obj.assigned_role if q_obj else ExamCommitteeRole.INVIGILATOR,
+            'group': q_obj.duty_group.name if (q_obj and q_obj.duty_group) else 'ធម្មតា',
+            'registered_slot_ids': list(reg_slots),
+        }
 
-    unfulfilled_teachers.sort(key=lambda x: -x['shortage'])
+        if reg_count < req:
+            unfulfilled_teachers.append(t_data)
+            if reg_count == 0:
+                unrequested_teachers.append(t_data)
+            else:
+                under_quota_teachers.append(t_data)
+
+    unfulfilled_teachers.sort(key=lambda x: (x['registered'] != 0, -x['shortage']))
+    unrequested_teachers.sort(key=lambda x: -x['shortage'])
+    under_quota_teachers.sort(key=lambda x: -x['shortage'])
+
+    # Build shortage dictionary for quick lookup in modals
+    teacher_shortage_map = {item['teacher'].id: item['shortage'] for item in unfulfilled_teachers}
 
     return render(request, 'examinations/invigilators/roster_matrix.html', {
         'plan': plan,
         'slots': slots,
         'committee_roles': ExamCommitteeRole.choices,
         'unfulfilled_teachers': unfulfilled_teachers,
+        'unrequested_teachers': unrequested_teachers,
+        'under_quota_teachers': under_quota_teachers,
+        'teacher_shortage_map': teacher_shortage_map,
         'active_teachers': active_teachers,
     })
 
@@ -6437,13 +6534,15 @@ def exam_invigilator_roster_view(request, plan_id):
 @role_required(['ADMIN'])
 def api_invigilator_auto_assign(request, plan_id):
     """
-    1-Click Auto-Assign: Automatically assigns unfulfilled teachers to slots that have empty spots.
+    1-Click Auto-Assign: Automatically assigns unfulfilled or unrequested teachers to slots that have empty spots.
+    Supports mode='unrequested_only' (only 0-shift teachers) and mode='all' (all teachers under quota).
     """
     if request.method != 'POST':
         return redirect('exam_invigilator_roster_view', plan_id=plan_id)
 
     plan = get_object_or_404(ExamInvigilatorPlan, id=plan_id)
     slots = list(plan.shift_slots.all().order_by('date', 'start_time'))
+    mode = request.POST.get('mode', 'all')
     
     active_teachers = list(Teacher.objects.filter(status=Teacher.Status.ACTIVE).order_by('khmer_name'))
     existing_quotas = {q.teacher_id: q for q in plan.teacher_quotas.select_related('duty_group').all()}
@@ -6458,16 +6557,25 @@ def api_invigilator_auto_assign(request, plan_id):
         if reg.slot_id in slot_registered_counts:
             slot_registered_counts[reg.slot_id] += 1
 
+    # Filter candidates
+    candidates = []
+    for t in active_teachers:
+        q_obj = existing_quotas.get(t.id)
+        if q_obj and q_obj.is_exempt:
+            continue
+        req = q_obj.effective_required_shifts if q_obj else plan.default_regular_quota
+        current_count = len(teacher_registered_slots[t.id])
+        if current_count < req:
+            if mode == 'unrequested_only' and current_count > 0:
+                continue
+            candidates.append((t, req, current_count, q_obj.assigned_role if q_obj else ExamCommitteeRole.INVIGILATOR))
+
+    # Prioritize teachers with 0 requested shifts first, then greatest shortage
+    candidates.sort(key=lambda x: (x[2] != 0, -(x[1] - x[2])))
+
     assigned_count = 0
     with transaction.atomic():
-        # Iterate over unfulfilled teachers
-        for t in active_teachers:
-            q_obj = existing_quotas.get(t.id)
-            if q_obj and q_obj.is_exempt:
-                continue
-            req = q_obj.effective_required_shifts if q_obj else plan.default_regular_quota
-            current_count = len(teacher_registered_slots[t.id])
-
+        for t, req, current_count, assigned_role in candidates:
             while current_count < req:
                 # Find available slot where teacher is not yet registered and spot is available
                 available_slot = None
@@ -6482,15 +6590,19 @@ def api_invigilator_auto_assign(request, plan_id):
                 TeacherShiftRegistration.objects.create(
                     slot=available_slot,
                     teacher=t,
+                    role=assigned_role,
                     status='ADMIN_ASSIGNED',
-                    notes='Auto-assigned by system'
+                    notes='Auto-assigned by Admin'
                 )
                 teacher_registered_slots[t.id].add(available_slot.id)
                 slot_registered_counts[available_slot.id] += 1
                 current_count += 1
                 assigned_count += 1
 
-    messages.success(request, f"⚡ បានចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំនួន {assigned_count} វេន ដោយជោគជ័យ!")
+    if mode == 'unrequested_only':
+        messages.success(request, f"⚡ បានចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំពោះគ្រូដែលមិនទាន់បានស្នើសុំចំនួន {assigned_count} វេន ដោយជោគជ័យ!")
+    else:
+        messages.success(request, f"⚡ បានចាត់តាំងបំពេញវេនស្វ័យប្រវត្តិចំពោះគ្រូខ្វះកូតាចំនួន {assigned_count} វេន ដោយជោគជ័យ!")
     return redirect('exam_invigilator_roster_view', plan_id=plan.id)
 
 
