@@ -106,6 +106,72 @@ class TelegramConfig(models.Model):
         return f"Telegram Bot Config ({'Active' if self.is_active else 'Disabled'}) - Auto-Backup: {'ON' if self.auto_backup_enabled else 'OFF'}"
 
 
+class GoogleSheetsConfig(models.Model):
+    """
+    Google Sheets & Google Drive Integration Settings for SchoolSM:
+    - Syncs Students (with photos via Google Drive), Attendance, Incomes, Expenses
+    - Organizes sheets per Academic Year
+    - Admin-only restricted access
+    - Backup & Restore support
+    """
+    is_active = models.BooleanField(default=False, verbose_name="បើកដំណើរការ Google Sheets Sync")
+    admin_email = models.CharField(max_length=255, blank=True, null=True, verbose_name="Gmail Admin សម្រាប់ទទួលសិទ្ធិមើលឯកសារ (Admin Only)")
+    service_account_json_path = models.CharField(max_length=500, blank=True, default="google_service_account.json", verbose_name="ទីតាំងឯកសារ JSON Credentials (Path)")
+    service_account_json_content = models.TextField(blank=True, null=True, verbose_name="ឬបិទភ្ជាប់ខ្លឹមសារ JSON Credentials ដោយផ្ទាល់")
+    drive_folder_name = models.CharField(max_length=200, default="SchoolSM_Cloud_Sync", verbose_name="ឈ្មោះ Folder លើ Google Drive")
+    drive_folder_id = models.CharField(max_length=200, blank=True, null=True, verbose_name="Google Drive Folder ID")
+    sync_students_with_photos = models.BooleanField(default=True, verbose_name="Upload រូបថតសិស្សទៅ Drive & បង្ហាញក្នុង Sheet (=IMAGE)")
+    spreadsheets_registry = models.JSONField(default=dict, blank=True, verbose_name="បញ្ជីតំណភ្ជាប់ Google Sheets តាមឆ្នាំសិក្សា")
+    last_sync_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ Sync ចុងក្រោយ")
+    last_sync_status = models.CharField(max_length=50, blank=True, null=True, verbose_name="ស្ថានភាព Sync ចុងក្រោយ")
+    last_sync_message = models.TextField(blank=True, null=True, verbose_name="កំណត់ត្រា Sync ចុងក្រោយ")
+
+    class Meta:
+        verbose_name = "ការកំណត់ Google Sheets / Google Sheets Config"
+        verbose_name_plural = "ការកំណត់ Google Sheets / Google Sheets Configs"
+
+    @classmethod
+    def get_config(cls):
+        config = cls.objects.first()
+        if not config:
+            config = cls.objects.create()
+        return config
+
+    def get_credentials_dict(self):
+        """Returns the service account credentials as a Python dict, or None if not configured."""
+        import json
+        from pathlib import Path
+        from django.conf import settings
+
+        if self.service_account_json_content and self.service_account_json_content.strip():
+            try:
+                return json.loads(self.service_account_json_content.strip())
+            except Exception:
+                pass
+
+        candidate_paths = [
+            Path(self.service_account_json_path) if self.service_account_json_path else None,
+            settings.BASE_DIR / 'google_service_account.json',
+            settings.BASE_DIR / 'credentials.json',
+            settings.BASE_DIR / 'service_account.json',
+        ]
+        for p in candidate_paths:
+            if p and p.exists() and p.is_file():
+                try:
+                    with open(p, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except Exception:
+                    continue
+        return None
+
+    def is_configured(self):
+        return bool(self.get_credentials_dict())
+
+    def __str__(self):
+        status = "Configured" if self.is_configured() else "Not Configured"
+        return f"Google Sheets Config [{status}] - Admin: {self.admin_email or 'None'}"
+
+
 class NotificationLog(models.Model):
     class Channel(models.TextChoices):
         TELEGRAM = 'TELEGRAM', 'Telegram Bot'

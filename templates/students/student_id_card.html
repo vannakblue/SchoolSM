@@ -1,117 +1,747 @@
+{% load static %}
+{% load i18n_extras %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>កាតសម្គាល់ខ្លួនសិស្ស - {{ student.khmer_name }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប័ណ្ណសម្គាល់ខ្លួនសិស្ស - MoEYS Standard Student ID Card</title>
+    
+    <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap, Battambang -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Kantumruy+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/custom.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
+        /* Font Tacteing Definition */
+        @font-face {
+            font-family: 'Tacteing';
+            src: url("{% static 'fonts/tacteng.ttf' %}") format('truetype'),
+                 local('Khmer OS Tacteing'),
+                 local('Tacteing'),
+                 local('KhmerOS_tacteing');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root {
+            /* Exact MoEYS Colors from User Images */
+            --card-border-color: #001ca8; /* Deep Royal Blue outer border & header */
+            --card-title-blue: #001ca8;   /* Royal Blue title */
+            --card-val-blue: #0000ff;     /* Vibrant Electric Blue for all student details */
+            --card-id-green: #00a651;     /* Vibrant Emerald Green for ID number matching Image 3 */
+            --card-width: 95mm;
+            --card-height: 136mm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background-color: #f1f5f9;
+            background-color: #0f172a;
+            font-family: 'Kantumruy Pro', 'Siemreap', sans-serif;
+            color: #000000;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* Top Action Toolbar (Hidden during Print) */
+        .print-toolbar {
+            background: #1e293b;
+            color: white;
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+            border-bottom: 1px solid #334155;
+        }
+
+        /* Admin Settings Bar */
+        .admin-customization-panel {
+            background: #0f172a;
+            border: 1px solid #3b82f6;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-top: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .tacteing-preview-box {
+            font-family: 'Tacteing', 'Khmer OS Tacteing', cursive;
+            font-size: 26px;
+            width: 44px;
+            height: 38px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #38bdf8;
+            user-select: none;
+        }
+
+        /* A4 Sheet Container (2x2 Grid = 4 Cards per Page) */
+        .a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 24px auto;
+            background: #ffffff;
+            padding: 9mm 7mm;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+            display: grid;
+            grid-template-columns: repeat(2, var(--card-width));
+            grid-template-rows: repeat(2, var(--card-height));
+            justify-content: center;
+            align-content: start;
+            gap: 7mm 6mm;
+            page-break-after: always;
+        }
+
+        .a4-sheet:last-child {
+            page-break-after: auto;
+        }
+
+        /* Individual ID Card Replica */
+        .moeys-id-card {
+            width: var(--card-width);
+            height: var(--card-height);
+            background: #ffffff;
+            border: 3px solid var(--card-border-color);
+            position: relative;
+            overflow: hidden;
+            padding: 8px 12px 10px 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* MoEYS Colored Emblem Background Watermark */
+        .card-watermark {
+            position: absolute;
+            top: 52%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 175px;
+            height: 175px;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .card-content-layer {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Top Header */
+        .header-top {
+            text-align: center;
+            line-height: 1.25;
+        }
+        .text-kingdom {
+            font-family: 'Moul', cursive;
+            font-size: 12.5px;
+            color: #000000;
+            letter-spacing: 0.2px;
+            margin-bottom: 2px;
+        }
+        .text-motto {
+            font-family: 'Moul', cursive;
+            font-size: 10.5px;
+            color: #000000;
+            letter-spacing: 0.8px;
+            margin-bottom: 2px;
+        }
+        
+        /* Tacteing Flourish Element (Customizable by Admin per Image 2) */
+        .tacteing-flourish-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 18px;
+            margin: -2px 0 1px 0;
+            overflow: visible;
+        }
+        .tacteing-char-val {
+            font-family: 'Tacteing', 'Khmer OS Tacteing', cursive;
+            font-size: 26px;
+            line-height: 1;
+            color: #000000;
+            display: inline-block;
+            cursor: pointer;
+            min-width: 20px;
+            text-align: center;
+            transition: all 0.2s;
+            user-select: text;
+        }
+
+        .text-dept-province {
+            font-family: 'Moul', cursive;
+            font-size: 10.5px;
+            color: var(--card-title-blue);
+            margin-top: 1px;
+            margin-bottom: 5px;
+        }
+        .header-divider-line {
+            border-bottom: 3px solid var(--card-border-color);
+            margin: 0 -12px 6px -12px;
+        }
+
+        /* Title & Academic Year Section */
+        .card-title-text {
+            font-family: 'Moul', cursive;
+            font-size: 16px;
+            color: var(--card-title-blue);
+            text-align: center;
+            margin: 3px 0 2px 0;
+            letter-spacing: 0.3px;
+        }
+        .card-id-number {
+            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--card-id-green);
+            text-align: center;
+            margin-bottom: 3px;
+            letter-spacing: 0.5px;
+        }
+        .card-id-number .id-tag,
+        .card-id-number .id-val {
+            color: var(--card-id-green);
+        }
+        .card-academic-year {
+            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
+            font-weight: 700;
+            font-size: 11.2px;
+            color: #000000;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        /* Student Details Rows */
+        .student-details {
+            font-size: 10.5px;
+            line-height: 1.62;
+            color: #000000;
+        }
+        .detail-row {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 2px;
+            white-space: nowrap;
+        }
+        .detail-label {
+            color: #000000;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .detail-value {
+            color: var(--card-val-blue);
+            font-weight: 700;
+        }
+        .radio-indicator {
+            font-size: 9px;
+            color: var(--card-val-blue);
+            margin: 0 4px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Bottom Section: Photo (Left) & Administration Signature (Right) */
+        .bottom-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto;
+            padding-top: 4px;
+        }
+
+        /* Photo Column (No text under photo per Image 5) */
+        .photo-column {
+            width: 90px;
+            flex-shrink: 0;
+        }
+        .photo-box {
+            width: 90px;
+            height: 116px;
+            background: #0284c7;
+            border: 1px solid var(--card-border-color);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .photo-default-avatar {
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            color: white;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
         }
-        .id-badge {
-            width: 350px;
-            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-            color: #ffffff;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 30px rgba(0,0,0,0.25);
-            border: 2px solid rgba(255,255,255,0.15);
+
+        /* Administration & Signature Column */
+        .admin-column {
+            flex-grow: 1;
+            padding-left: 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .lunar-date {
+            font-size: 8px;
+            line-height: 1.35;
+            color: #000000;
+            font-weight: 600;
+            white-space: nowrap;
+            margin-bottom: 2px;
+            cursor: pointer;
+        }
+        .solar-date {
+            font-size: 8.5px;
+            line-height: 1.35;
+            color: #000000;
+            font-weight: 600;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .principal-title {
+            font-family: 'Moul', cursive;
+            font-size: 12px;
+            color: #000000;
+            margin-top: 1px;
+            margin-bottom: 3px;
+        }
+        .seal-signature-space {
+            height: 50px;
+            width: 100%;
             position: relative;
-        }
-        .badge-header {
-            background: #ffffff;
-            color: #1e1b4b;
-            padding: 16px;
-            text-align: center;
-            border-bottom: 4px solid #f59e0b;
-        }
-        .badge-body {
-            padding: 24px 20px;
-            text-align: center;
-        }
-        .student-photo-frame {
-            width: 110px;
-            height: 125px;
-            border-radius: 12px;
-            background: #ffffff;
-            border: 3px solid #f59e0b;
-            margin: 0 auto 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
         }
-        .qr-mock {
-            background: #ffffff;
-            padding: 8px;
-            border-radius: 8px;
-            display: inline-block;
-            margin-top: 10px;
+        .seal-img {
+            max-height: 48px;
+            max-width: 48px;
+            opacity: 0.85;
+            position: absolute;
+            right: 8px;
+            top: 0;
+            pointer-events: none;
+        }
+        .signature-img {
+            max-height: 38px;
+            position: absolute;
+            bottom: 2px;
+            pointer-events: none;
+        }
+        .guilloche-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.22;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Hover & Focus styling for Editable Elements */
+        .tacteing-char-val:hover,
+        .card-lunar-display:hover,
+        .card-solar-display:hover,
+        .card-province-display:hover,
+        .card-school-display:hover {
+            outline: 1.5px dashed #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+            border-radius: 3px;
+        }
+        .tacteing-char-val:focus,
+        .card-lunar-display:focus,
+        .card-solar-display:focus,
+        .card-province-display:focus,
+        .card-school-display:focus {
+            outline: 2px solid #2563eb;
+            background-color: rgba(37, 99, 235, 0.15);
+            border-radius: 3px;
+        }
+
+        /* Single Mode preview centered */
+        .single-card-sheet {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 80px);
+            padding: 30px;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .a4-sheet {
+                margin: 0 auto !important;
+                padding: 8mm 6mm !important;
+                box-shadow: none !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+            }
+            .tacteing-char-val:hover,
+            .card-lunar-display:hover,
+            .card-solar-display:hover,
+            .card-province-display:hover,
+            .card-school-display:hover,
+            .tacteing-char-val:focus,
+            .card-lunar-display:focus,
+            .card-solar-display:focus,
+            .card-province-display:focus,
+            .card-school-display:focus {
+                outline: none !important;
+                background-color: transparent !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 6mm 4mm;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="no-print mb-3 d-flex gap-2">
-        <button onclick="window.print()" class="btn btn-primary">
-            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពកាត (Print ID Card)
-        </button>
-        <button onclick="window.close()" class="btn btn-secondary">បិទ (Close)</button>
-    </div>
 
-    <div class="id-badge">
-        <div class="badge-header">
-            <div class="fw-bold fs-5 d-flex align-items-center justify-content-center gap-2">
-                {% if school_info and school_info.logo %}
-                    <img src="{{ school_info.logo.url }}" alt="Logo" style="height: 28px; width: 28px; object-fit: contain;">
-                {% else %}
-                    <i class="fa-solid fa-graduation-cap text-primary"></i>
-                {% endif %}
-                <span>{{ school_info.short_name|default:"សាលារៀន SM" }}</span>
+    <!-- Top Action Toolbar (Hidden during Print) -->
+    <div class="print-toolbar no-print">
+        <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <a href="{% url 'student_list' %}" class="btn btn-sm btn-outline-light rounded-pill px-3">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+                <div class="fw-bold">
+                    <i class="fa-solid fa-id-card text-warning me-2"></i>
+                    <span>ប័ណ្ណសម្គាល់ខ្លួនសិស្ស (MoEYS Standard Student ID Card)</span>
+                    <span class="badge bg-primary rounded-pill ms-2">សរុប {{ total_students }} សិស្ស</span>
+                </div>
             </div>
-            <div class="small text-muted" style="font-size: 0.72rem; letter-spacing: 1px;">STUDENT IDENTIFICATION CARD</div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Classroom Filter -->
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <select name="classroom" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill" onchange="this.form.submit()">
+                        <option value="">-- បោះពុម្ពតាមថ្នាក់រៀន --</option>
+                        {% for c in classrooms %}
+                        <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id or student.classroom and student.classroom.id == c.id and mode == 'class' %}selected{% endif %}>
+                            ថ្នាក់ {{ c.name }} ({{ c.students.count }} នាក់)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <!-- Toggle Mode: 4 Cards Sheet vs Single Card -->
+                <div class="btn-group btn-group-sm">
+                    <a href="?mode=4_grid" class="btn {% if mode == '4_grid' or mode == 'batch' or not mode %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-start-pill">
+                        <i class="fa-solid fa-table-cells-large me-1"></i> សន្លឹក A4 (៤ ប័ណ្ណ/ទំព័រ)
+                    </a>
+                    {% if student %}
+                    <a href="?mode=single" class="btn {% if mode == 'single' %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-end-pill">
+                        <i class="fa-solid fa-id-badge me-1"></i> ប័ណ្ណទោល
+                    </a>
+                    {% endif %}
+                </div>
+
+                <!-- Admin Customization Toggle Button -->
+                <button type="button" id="btnToggleSettings" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែទិន្នន័យលើប័ណ្ណ (Admin Edit)
+                </button>
+
+                <!-- Print Button -->
+                <button onclick="window.print()" class="btn btn-sm btn-success fw-bold rounded-pill px-4 shadow-sm">
+                    <i class="fa-solid fa-print me-2"></i> បោះពុម្ពប័ណ្ណ (Print Cards)
+                </button>
+            </div>
         </div>
 
-        <div class="badge-body">
-            <div class="student-photo-frame">
-                {% if student.photo %}
-                <img src="{{ student.photo.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ student.khmer_name }}">
-                {% else %}
-                <i class="fa-solid fa-user fa-3x text-secondary"></i>
-                {% endif %}
+        <!-- Admin Live Customization Panel (Collapsible) -->
+        <div id="adminSettingsPanel" class="admin-customization-panel">
+            <div class="d-flex flex-wrap align-items-end gap-3 justify-content-between">
+                
+                <!-- 1. Font Tacteing Flourish (Image 2) -->
+                <div class="d-flex flex-column gap-1">
+                    <label class="small text-warning fw-bold">
+                        <i class="fa-solid fa-signature me-1"></i> ក្បាច់ Tacteing (រូបទី២):
+                    </label>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="text" id="inputTacteing" class="form-control form-control-sm bg-dark text-white border-warning text-center fw-bold" style="width: 65px;" value="{{ tacteing_char|default:'r' }}" maxlength="4" title="បញ្ចូលអក្សរសម្រាប់ Font Tacteing">
+                        <div class="tacteing-preview-box" id="previewTacteingGlyph" title="ទិដ្ឋភាពជាក់ស្តែងនៃ Font Tacteing">
+                            {{ tacteing_char|default:'r' }}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="r" title="ក្បាច់រលក r">r</button>
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="5" title="ក្បាច់ផ្កា 5">5</button>
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="6" title="ក្បាច់ស្លឹក 6">6</button>
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="h" title="ក្បាច់ផ្កាភ្ញី h">h</button>
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="s" title="ក្បាច់ចុងសន្លឹក s">s</button>
+                            <button type="button" class="btn btn-outline-secondary text-white btn-tacteing-preset" data-char="k" title="ក្បាច់កណ្តាល k">k</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Lunar Date (Image 4) -->
+                <div class="d-flex flex-column gap-1 flex-grow-1" style="min-width: 250px;">
+                    <label class="small text-info fw-bold">
+                        <i class="fa-solid fa-moon me-1"></i> ថ្ងៃខែឆ្នាំចន្ទគតិ (រូបទី៤):
+                    </label>
+                    <input type="text" id="inputLunarDate" class="form-control form-control-sm bg-dark text-white border-info" value="{{ lunar_date|default:'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០' }}">
+                </div>
+
+                <!-- 3. Solar Date (Image 4) -->
+                <div class="d-flex flex-column gap-1 flex-grow-1" style="min-width: 220px;">
+                    <label class="small text-info fw-bold">
+                        <i class="fa-solid fa-calendar-day me-1"></i> ថ្ងៃខែឆ្នាំសុរិយគតិ (រូបទី៤):
+                    </label>
+                    <input type="text" id="inputSolarDate" class="form-control form-control-sm bg-dark text-white border-info" value="{{ solar_date|default:'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦' }}">
+                </div>
+
+                <!-- 4. Province Name -->
+                <div class="d-flex flex-column gap-1" style="width: 140px;">
+                    <label class="small text-light fw-bold">ខេត្ត / រាជធានី:</label>
+                    <input type="text" id="inputProvinceName" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ province_name|default:'ខេត្ត កណ្តាល' }}">
+                </div>
+
+                <!-- 5. School Name -->
+                <div class="d-flex flex-column gap-1" style="width: 180px;">
+                    <label class="small text-light fw-bold">ឈ្មោះសាលា:</label>
+                    <input type="text" id="inputSchoolName" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ school_name|default:school_info.short_name|default:school_info.name_kh|default:'វិ. ហ៊ុន សែន កំពង់ក្ដី' }}">
+                </div>
+
+                <!-- Reset Button -->
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="btnResetDefaults" class="btn btn-sm btn-outline-danger rounded-pill px-3" title="កំណត់តម្លៃដើមឡើងវិញ">
+                        <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ឡើងវិញ
+                    </button>
+                    <span id="savedIndicator" class="badge bg-success rounded-pill px-2 py-1 small" style="display: none;">
+                        <i class="fa-solid fa-check me-1"></i> បានរក្សាទុក
+                    </span>
+                </div>
             </div>
 
-            <h4 class="fw-bold text-white mb-0">{{ student.khmer_name }}</h4>
-            <div class="text-warning fw-bold mb-3 small">{{ student.latin_name }}</div>
-
-            <div class="bg-dark bg-opacity-50 p-2 rounded-3 text-start small mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-white-50">កូដសិស្ស (ID):</span>
-                    <strong class="text-warning">{{ student.student_id }}</strong>
+            <!-- Hint Message -->
+            <div class="small text-secondary mt-2 d-flex align-items-center justify-content-between">
+                <div>
+                    <i class="fa-solid fa-circle-info text-info me-1"></i>
+                    <strong>ការណែនាំ:</strong> Admin អាចវាយបញ្ចូលក្នុងប្រអប់ខាងលើ ឬ <strong>ចុចផ្ទាល់លើផ្ទៃកាត (Click-to-edit)</strong> ដើម្បីកែប្រែភ្លាមៗ។ រាល់ការកែប្រែនឹងត្រូវ Update លើគ្រប់ប័ណ្ណដោយស្វ័យប្រវត្តិ។
                 </div>
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-white-50">ថ្នាក់រៀន (Class):</span>
-                    <strong>{{ student.classroom.name|default:"-" }}</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-white-50">ឆ្នាំសិក្សា (Year):</span>
-                    <strong>{{ student.academic_year.name|default:"2025-2026" }}</strong>
+                <div class="text-warning small">
+                    <i class="fa-solid fa-shield-halved me-1"></i> Font Tacteing & កាលបរិច្ឆេទទាំងពីរនឹងត្រូវរក្សាទុកក្នុង Browser ពេល Print
                 </div>
             </div>
-
-            <div class="qr-mock">
-                <i class="fa-solid fa-qrcode fa-3x text-dark"></i>
-            </div>
-            <div style="font-size: 0.65rem;" class="text-white-50 mt-1">Official Student ID • {{ school_info.short_name|default:"SchoolSM" }} ({{ school_info.school_code }})</div>
         </div>
     </div>
+
+    <!-- MAIN CARDS CONTAINER -->
+    {% if mode == 'single' and student %}
+        <!-- Single Card Preview -->
+        <div class="single-card-sheet no-print-bg">
+            {% include "students/_moeys_card_item.html" with st=student %}
+        </div>
+    {% else %}
+        <!-- A4 Sheets Grid (4 Cards per page, exactly as in image) -->
+        {% for page_students in pages %}
+        <div class="a4-sheet">
+            {% for st in page_students %}
+                {% include "students/_moeys_card_item.html" with st=st %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Two-Way Live Sync Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputTacteing = document.getElementById('inputTacteing');
+            const inputLunarDate = document.getElementById('inputLunarDate');
+            const inputSolarDate = document.getElementById('inputSolarDate');
+            const inputProvinceName = document.getElementById('inputProvinceName');
+            const inputSchoolName = document.getElementById('inputSchoolName');
+            const previewTacteing = document.getElementById('previewTacteingGlyph');
+            const savedIndicator = document.getElementById('savedIndicator');
+
+            const STORAGE_KEY = 'schoolsm_moeys_card_prefs_v2';
+
+            function showSavedFeedback() {
+                if (savedIndicator) {
+                    savedIndicator.style.display = 'inline-block';
+                    clearTimeout(savedIndicator._timer);
+                    savedIndicator._timer = setTimeout(() => {
+                        savedIndicator.style.display = 'none';
+                    }, 1800);
+                }
+            }
+
+            function updateAllCards(data, saveToStorage = true) {
+                if (data.tacteing !== undefined) {
+                    document.querySelectorAll('.card-tacteing-display').forEach(el => el.textContent = data.tacteing);
+                    if (previewTacteing) previewTacteing.textContent = data.tacteing;
+                    if (inputTacteing && inputTacteing.value !== data.tacteing) inputTacteing.value = data.tacteing;
+                }
+                if (data.lunar !== undefined) {
+                    document.querySelectorAll('.card-lunar-display').forEach(el => el.textContent = data.lunar);
+                    if (inputLunarDate && inputLunarDate.value !== data.lunar) inputLunarDate.value = data.lunar;
+                }
+                if (data.solar !== undefined) {
+                    document.querySelectorAll('.card-solar-display').forEach(el => el.textContent = data.solar);
+                    if (inputSolarDate && inputSolarDate.value !== data.solar) inputSolarDate.value = data.solar;
+                }
+                if (data.province !== undefined) {
+                    document.querySelectorAll('.card-province-display').forEach(el => el.textContent = data.province);
+                    if (inputProvinceName && inputProvinceName.value !== data.province) inputProvinceName.value = data.province;
+                }
+                if (data.school !== undefined) {
+                    document.querySelectorAll('.card-school-display').forEach(el => el.textContent = data.school);
+                    if (inputSchoolName && inputSchoolName.value !== data.school) inputSchoolName.value = data.school;
+                }
+
+                if (saveToStorage) {
+                    const current = {
+                        tacteing: inputTacteing ? inputTacteing.value : 'r',
+                        lunar: inputLunarDate ? inputLunarDate.value : '',
+                        solar: inputSolarDate ? inputSolarDate.value : '',
+                        province: inputProvinceName ? inputProvinceName.value : '',
+                        school: inputSchoolName ? inputSchoolName.value : '',
+                    };
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+                        showSavedFeedback();
+                    } catch (e) {}
+                }
+            }
+
+            // Load saved preferences from localStorage
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    updateAllCards(parsed, false);
+                }
+            } catch (e) {}
+
+            // Toolbar Input Listeners
+            if (inputTacteing) {
+                inputTacteing.addEventListener('input', function() {
+                    updateAllCards({ tacteing: this.value || ' ' });
+                });
+            }
+            if (inputLunarDate) {
+                inputLunarDate.addEventListener('input', function() {
+                    updateAllCards({ lunar: this.value });
+                });
+            }
+            if (inputSolarDate) {
+                inputSolarDate.addEventListener('input', function() {
+                    updateAllCards({ solar: this.value });
+                });
+            }
+            if (inputProvinceName) {
+                inputProvinceName.addEventListener('input', function() {
+                    updateAllCards({ province: this.value });
+                });
+            }
+            if (inputSchoolName) {
+                inputSchoolName.addEventListener('input', function() {
+                    updateAllCards({ school: this.value });
+                });
+            }
+
+            // Tacteing Preset Buttons
+            document.querySelectorAll('.btn-tacteing-preset').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const ch = this.getAttribute('data-char');
+                    updateAllCards({ tacteing: ch });
+                });
+            });
+
+            // In-place editing directly on any card element
+            document.body.addEventListener('input', function(e) {
+                if (e.target.classList.contains('card-tacteing-display')) {
+                    updateAllCards({ tacteing: e.target.textContent.trim() });
+                } else if (e.target.classList.contains('card-lunar-display')) {
+                    updateAllCards({ lunar: e.target.textContent.trim() });
+                } else if (e.target.classList.contains('card-solar-display')) {
+                    updateAllCards({ solar: e.target.textContent.trim() });
+                } else if (e.target.classList.contains('card-province-display')) {
+                    updateAllCards({ province: e.target.textContent.trim() });
+                } else if (e.target.classList.contains('card-school-display')) {
+                    updateAllCards({ school: e.target.textContent.trim() });
+                }
+            });
+
+            // Reset button handler
+            const btnReset = document.getElementById('btnResetDefaults');
+            if (btnReset) {
+                btnReset.addEventListener('click', function() {
+                    localStorage.removeItem(STORAGE_KEY);
+                    const defaults = {
+                        tacteing: 'r',
+                        lunar: 'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០',
+                        solar: 'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦',
+                        province: 'ខេត្ត កណ្តាល',
+                        school: 'វិ. ហ៊ុន សែន កំពង់ក្ដី'
+                    };
+                    updateAllCards(defaults, false);
+                });
+            }
+
+            // Toggle Settings Panel
+            const btnToggle = document.getElementById('btnToggleSettings');
+            const panel = document.getElementById('adminSettingsPanel');
+            if (btnToggle && panel) {
+                btnToggle.addEventListener('click', function() {
+                    if (panel.style.display === 'none') {
+                        panel.style.display = 'block';
+                        btnToggle.classList.replace('btn-outline-warning', 'btn-warning');
+                    } else {
+                        panel.style.display = 'none';
+                        btnToggle.classList.replace('btn-warning', 'btn-outline-warning');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

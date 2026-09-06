@@ -510,8 +510,28 @@
             <i class="fa-solid fa-database text-info me-2"></i>ការគ្រប់គ្រងទិន្នន័យ & Backup Snapshots (Data Safety & Recovery)
         </h4>
         <div class="row g-4">
+            <!-- Google Sheets & Drive Sync Suite -->
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="google sheets drive sync backup restore academic year excel cloud សមកាលកម្ម ទិន្នន័យ ឆ្នាំសិក្សា រូបថត សិស្ស វត្តមាន ចំណូល ចំណាយ">
+                <a href="{% url 'tool_google_sheets' %}" class="tool-card p-4 border-success border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="tool-icon-box bg-success bg-opacity-10 text-success">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </div>
+                        <span class="badge badge-soft-success rounded-pill">Google Sheets Live</span>
+                    </div>
+                    <h5 class="fw-bold mb-1 text-dark">Google Sheets & Drive តាមឆ្នាំសិក្សា</h5>
+                    <p class="text-muted small mb-3 flex-grow-1">
+                        រក្សាទុកទិន្នន័យសិស្ស (រួមទាំងរូបថត), វត្តមាន, និងចំណូល-ចំណាយ ទៅក្នុង Google Sheets តាមឆ្នាំសិក្សា។ Admin អាចមើលលើទូរស័ព្ទដៃ និង Restore មកវិញបាន។
+                    </p>
+                    <div class="d-flex align-items-center justify-content-between text-success fw-semibold small">
+                        <span>គ្រប់គ្រង Google Sheets Sync</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
             <!-- Database Backup & Snapshot Manager -->
-            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="database backup snapshot restore download sqlite data safety រក្សាទុក ទិន្នន័យ តេស្ត សុវត្ថិភាព">
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="database backup snapshot restore download sqlite data safety រក្សាទុក ទិន្នន័យ តេស្ត សុវត្ថិភាព">
                 <a href="{% url 'tool_database_backup' %}" class="tool-card p-4 border-info border-opacity-25">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="tool-icon-box bg-info bg-opacity-10 text-info">
@@ -531,7 +551,7 @@
             </div>
 
             <!-- Direct Download Live Database -->
-            <div class="col-xl-6 col-lg-6 col-md-6 tool-item" data-title="download database db.sqlite3 ទាញយក live data export">
+            <div class="col-xl-4 col-lg-4 col-md-6 tool-item" data-title="download database db.sqlite3 ទាញយក live data export">
                 <a href="{% url 'tool_database_download_live' %}" class="tool-card p-4">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">

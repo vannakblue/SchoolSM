@@ -33,6 +33,7 @@ urlpatterns = [
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),
     path('<int:pk>/id-card/', views.student_id_card, name='student_id_card'),
+    path('id-cards/', views.batch_student_id_cards, name='batch_student_id_cards'),
     path('<int:pk>/quick-status/', views.api_quick_set_student_status, name='student_quick_status'),
     path('<int:pk>/exam-status/', views.api_set_student_exam_status, name='student_set_exam_status'),
     path('batch/exam-status/', views.api_batch_set_student_exam_status, name='student_batch_set_exam_status'),

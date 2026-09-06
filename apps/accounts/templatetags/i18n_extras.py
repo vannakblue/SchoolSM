@@ -262,3 +262,67 @@ def khmer_full_date_filter(val, use_khmer_digits=True):
     return f"ថ្ងៃ {day_name} ទី {day_num} ខែ {month_name} ឆ្នាំ {year_num}"
 
 
+@register.filter(name='khmer_dob')
+def khmer_dob_filter(val):
+    """
+    Formats date of birth in standard Khmer official format:
+    e.g. ០៧ មេសា ២០០៨
+    """
+    if not val:
+        return ''
+    from datetime import date, datetime
+    if isinstance(val, str):
+        val = val.strip()
+        for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%Y/%m/%d'):
+            try:
+                val = datetime.strptime(val[:10], fmt).date()
+                break
+            except Exception:
+                pass
+    elif isinstance(val, datetime):
+        val = val.date()
+
+    if not isinstance(val, date):
+        return str(val)
+
+    day_str = f"{val.day:02d}"
+    day_kh = to_khmer_number_filter(day_str)
+    month_kh = KHMER_MONTHS.get(val.month, '')
+    year_kh = to_khmer_number_filter(val.year)
+    return f"{day_kh} {month_kh} {year_kh}"
+
+
+@register.filter(name='format_student_exam_id')
+def format_student_exam_id_filter(val):
+    """
+    Formats student ID into MoEYS card code spacing:
+    e.g. 0801 03069011121000001
+    """
+    if not val:
+        return '0801 03069011121000001'
+    s = str(val).strip()
+    # If it's already spaced, return as is
+    if ' ' in s:
+        return s
+    # If 15+ digits starting with 4 digits e.g. 0801...
+    if len(s) >= 10 and s[:4].isdigit():
+        return f"{s[:4]} {s[4:]}"
+    return s
+
+
+@register.filter(name='khmer_academic_year')
+def khmer_academic_year_filter(val):
+    """
+    Converts academic year string e.g. '2025-2026' into '២០២៥ - ២០២៦'
+    """
+    if not val:
+        return '២០២៥ - ២០២៦'
+    s = str(val).replace('ឆ្នាំសិក្សា', '').replace('(', '').replace(')', '').replace('បច្ចុប្បន្ន', '').strip()
+    parts = s.split('-')
+    if len(parts) == 2:
+        y1 = to_khmer_number_filter(parts[0].strip())
+        y2 = to_khmer_number_filter(parts[1].strip())
+        return f"{y1} - {y2}"
+    return to_khmer_number_filter(s)
+
+

@@ -770,3 +770,158 @@ def api_trigger_schedule_check(request):
 
     return redirect('tool_database_backup')
 
+
+# ==========================================
+# GOOGLE SHEETS & DRIVE SYNC SUITE
+# ==========================================
+
+@login_required
+@role_required(['ADMIN'])
+def google_sheets_dashboard_view(request):
+    """
+    Main Google Sheets Sync, Backup & Restore Dashboard.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.google_sheets_service import GoogleSheetsService
+
+    config = GoogleSheetsConfig.get_config()
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+    current_year = AcademicYear.objects.filter(is_current=True).first() or academic_years.first()
+    spreadsheets_registry = config.spreadsheets_registry or {}
+
+    return render(request, 'tools/google_sheets_dashboard.html', {
+        'page_title': 'សមកាលកម្ម Google Sheets & Drive (Academic Sync & Backup)',
+        'config': config,
+        'is_configured': config.is_configured(),
+        'academic_years': academic_years,
+        'current_year': current_year,
+        'spreadsheets_registry': spreadsheets_registry,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_save_google_sheets_config(request):
+    """
+    Saves Google Sheets credentials, admin email, and configuration.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    config = GoogleSheetsConfig.get_config()
+
+    config.admin_email = request.POST.get('admin_email', '').strip()
+    config.drive_folder_name = request.POST.get('drive_folder_name', 'SchoolSM_Cloud_Sync').strip()
+    config.sync_students_with_photos = (request.POST.get('sync_students_with_photos') == 'on' or request.POST.get('sync_students_with_photos') == 'true')
+    config.is_active = (request.POST.get('is_active') == 'on' or request.POST.get('is_active') == 'true')
+
+    # Upload JSON file or paste JSON content
+    credentials_file = request.FILES.get('credentials_file')
+    if credentials_file:
+        try:
+            content = credentials_file.read().decode('utf-8')
+            json.loads(content)
+            config.service_account_json_content = content
+        except Exception as e:
+            messages.error(request, f"ឯកសារ Credentials JSON មិនត្រឹមត្រូវ: {e}")
+            return redirect('tool_google_sheets')
+    else:
+        raw_json = request.POST.get('service_account_json_content', '').strip()
+        if raw_json:
+            try:
+                json.loads(raw_json)
+                config.service_account_json_content = raw_json
+            except Exception as e:
+                messages.error(request, f"ទម្រង់ JSON មិនត្រឹមត្រូវ: {e}")
+                return redirect('tool_google_sheets')
+
+    config.save()
+    messages.success(request, "បានរក្សាទុកការកំណត់ Google Sheets ដោយជោគជ័យ!")
+    return redirect('tool_google_sheets')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_sync_google_sheets(request):
+    """
+    Triggers immediate synchronization to Google Sheets for selected Academic Year.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.google_sheets_service import GoogleSheetsService
+
+    config = GoogleSheetsConfig.get_config()
+    if not config.is_configured():
+        msg = "សូមកំណត់ Google Service Account Credentials ជាមុនសិន។"
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('tool_google_sheets')
+
+    year_id = request.POST.get('academic_year_id')
+    ay = None
+    if year_id:
+        ay = AcademicYear.objects.filter(id=year_id).first() or AcademicYear.objects.filter(name=year_id).first()
+    if not ay:
+        ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.order_by('-start_date').first()
+
+    if not ay:
+        msg = "រកមិនឃើញឆ្នាំសិក្សាដែលត្រូវ Sync ទេ។"
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('tool_google_sheets')
+
+    try:
+        service = GoogleSheetsService(config=config)
+        stats = service.sync_academic_year(ay)
+        msg = (
+            f"✅ បាន Sync ទៅ Google Sheets ឆ្នាំសិក្សា {ay.name} ដោយជោគជ័យ! "
+            f"(សិស្ស {stats['students_synced']} នាក់, រូបថត {stats['photos_uploaded']}, "
+            f"វត្តមាន {stats['attendance_synced']}, ចំណូល {stats['incomes_synced']}, ចំណាយ {stats['expenses_synced']})"
+        )
+        messages.success(request, msg)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'stats': stats, 'message': msg})
+    except Exception as e:
+        msg = f"បរាជ័យក្នុងការ Sync Google Sheets: {str(e)}"
+        messages.error(request, msg)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': msg}, status=500)
+
+    return redirect('tool_google_sheets')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_restore_google_sheets(request):
+    """
+    Restores / re-imports data from Google Sheets back into system database.
+    """
+    from apps.accounts.models import GoogleSheetsConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.google_sheets_service import GoogleSheetsService
+
+    config = GoogleSheetsConfig.get_config()
+    year_id = request.POST.get('academic_year_id')
+    ay = AcademicYear.objects.filter(id=year_id).first() or AcademicYear.objects.filter(name=year_id).first()
+    if not ay:
+        messages.error(request, "សូមជ្រើសរើសឆ្នាំសិក្សាដែលត្រូវ Restore។")
+        return redirect('tool_google_sheets')
+
+    try:
+        service = GoogleSheetsService(config=config)
+        results = service.restore_from_academic_spreadsheet(ay)
+        msg = (
+            f"🎉 បានទាញយក និងស្តារទិន្នន័យពី Google Sheets ឆ្នាំ {ay.name} រួចរាល់! "
+            f"(សិស្សថ្មី {results['students_created']} នាក់, សិស្សចាស់ Update {results['students_restored']} នាក់, "
+            f"ចំណាយ {results['expenses_restored']})"
+        )
+        messages.success(request, msg)
+    except Exception as e:
+        messages.error(request, f"បរាជ័យក្នុងការ Restore ពី Google Sheets: {str(e)}")
+
+    return redirect('tool_google_sheets')
+

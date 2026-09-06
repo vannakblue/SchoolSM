@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}សមកាលកម្ម Google Sheets & Drive តាមឆ្នាំសិក្សា | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sheets-hero {
+        background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%);
+        border-radius: 20px;
+        padding: 32px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.18);
+        position: relative;
+        overflow: hidden;
+    }
+    .sheets-hero::after {
+        content: '\f1c3';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        right: -20px;
+        bottom: -30px;
+        font-size: 11rem;
+        opacity: 0.12;
+        transform: rotate(-10deg);
+        pointer-events: none;
+    }
+    .card-glass {
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,0.06);
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: all 0.25s ease;
+    }
+    .card-glass:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+    .badge-soft-emerald { background: #d1fae5; color: #065f46; font-weight: 600; }
+    .badge-soft-danger { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+    .badge-soft-info { background: #e0f2fe; color: #0369a1; font-weight: 600; }
+    .badge-soft-warning { background: #fef3c7; color: #b45309; font-weight: 600; }
+    .badge-soft-purple { background: #ede9fe; color: #6d28d9; font-weight: 600; }
+    
+    .sheet-kpi {
+        border-left: 4px solid #10b981;
+        background: #f0fdf4;
+        border-radius: 12px;
+        padding: 14px 18px;
+    }
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        background-color: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard_redirect' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}" class="text-decoration-none">មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Google Sheets Sync & Backup</li>
+        </ol>
+    </nav>
+
+    <!-- Hero Banner -->
+    <div class="sheets-hero">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white mb-2" style="font-size: 0.85rem;">
+                    <i class="fa-solid fa-file-excel text-warning"></i>
+                    <span>Cloud Sync, Real-time Backup & Mobile Viewing (Google Sheets & Drive)</span>
+                </div>
+                <h2 class="fw-bold mb-2">សមកាលកម្ម Google Sheets & Drive តាមឆ្នាំសិក្សា</h2>
+                <p class="lead mb-3 text-white-50" style="font-size: 1rem;">
+                    រក្សាទុកទិន្នន័យសិស្ស (រួមទាំងរូបថត), វត្តមាន, និងចំណូល-ចំណាយ ទៅក្នុង Google Sheets ដាច់ដោយឡែកតាមឆ្នាំសិក្សានីមួយៗ។ 
+                    Admin អាចបើកមើលទិន្នន័យដោយផ្ទាល់លើទូរស័ព្ទដៃតាម Google Sheets និងអាច Restore ត្រឡប់មកវិញបានគ្រប់ពេល។
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if is_configured %}
+                    <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#syncNowModal">
+                        <i class="fa-solid fa-arrows-rotate me-2"></i> ចាប់ផ្តើម Sync ឥឡូវនេះ
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#configModal">
+                        <i class="fa-solid fa-gear me-2"></i> ការកំណត់ Google API & Email
+                    </button>
+                    {% if is_configured and current_year %}
+                    <button class="btn btn-outline-light px-3 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#restoreModal">
+                        <i class="fa-solid fa-cloud-arrow-down me-2"></i> ទាញយកមកប្រើវិញ (Restore)
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-4 mt-3 mt-lg-0">
+                <div class="bg-black bg-opacity-25 p-3 rounded-4 border border-white border-opacity-20">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="small text-white-50">ស្ថានភាពការតភ្ជាប់</span>
+                        {% if is_configured %}
+                        <span class="badge badge-soft-emerald px-3 py-1 rounded-pill"><span class="pulse-dot me-1"></span> ភ្ជាប់បានជោគជ័យ</span>
+                        {% else %}
+                        <span class="badge badge-soft-danger px-3 py-1 rounded-pill"><i class="fa-solid fa-circle-exclamation me-1"></i> ពុំទាន់កំណត់</span>
+                        {% endif %}
+                    </div>
+                    <div class="small mb-1"><i class="fa-solid fa-user-shield me-2 text-warning"></i> Admin Gmail: <strong>{{ config.admin_email|default:"មិនទាន់កំណត់" }}</strong></div>
+                    <div class="small mb-1"><i class="fa-brands fa-google-drive me-2 text-info"></i> Drive Folder: <strong>{{ config.drive_folder_name }}</strong></div>
+                    <div class="small"><i class="fa-solid fa-camera me-2 text-success"></i> រូបថតសិស្ស: <strong>{% if config.sync_students_with_photos %}បើក Upload & Embed (=IMAGE){% else %}បិទ{% endif %}</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert / Last Sync Message -->
+    {% if config.last_sync_message %}
+    <div class="alert {% if config.last_sync_status == 'SUCCESS' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fa-solid {% if config.last_sync_status == 'SUCCESS' %}fa-circle-check text-success{% else %}fa-circle-xmark text-danger{% endif %} fs-4 me-3"></i>
+            <div>
+                <strong>ដំណឹង Sync ចុងក្រោយ ({{ config.last_sync_at|date:"d-m-Y H:i" }}):</strong>
+                <div>{{ config.last_sync_message }}</div>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <!-- Academic Year Google Sheets Registry -->
+    <div class="card card-glass mb-4">
+        <div class="card-header bg-white py-3 border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-table-cells text-success me-2"></i> បញ្ជី Google Sheets តាមឆ្នាំសិក្សានីមួយៗ (Academic Year Spreadsheets)
+                </h5>
+                <small class="text-muted">ឯកសារ Google Sheets នីមួយៗត្រូវបានបែងចែក និងការពារសិទ្ធិដោយឡែកពីគ្នា សម្រាប់តែ Admin ប៉ុណ្ណោះ</small>
+            </div>
+            <div>
+                <span class="badge badge-soft-info px-3 py-2 rounded-pill">
+                    <i class="fa-solid fa-calendar-days me-1"></i> មានទាំងអស់ {{ academic_years|length }} ឆ្នាំសិក្សា
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted small">
+                        <tr>
+                            <th class="ps-4">ឆ្នាំសិក្សា (Academic Year)</th>
+                            <th>ស្ថានភាព Google Spreadsheet</th>
+                            <th>សន្លឹកកិច្ចការ (Sheets)</th>
+                            <th>Sync ចុងក្រោយ</th>
+                            <th>សិទ្ធិចូលមើល</th>
+                            <th class="text-end pe-4">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ay in academic_years %}
+                        {% with reg_item=spreadsheets_registry|default_if_none:None %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="p-2 rounded-3 bg-success bg-opacity-10 text-success">
+                                        <i class="fa-solid fa-graduation-cap fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">{{ ay.name }}</h6>
+                                        {% if ay.is_current %}
+                                        <span class="badge badge-soft-emerald rounded-pill" style="font-size: 0.75rem;">ឆ្នាំសិក្សាបច្ចុប្បន្ន</span>
+                                        {% endif %}
+                                        <small class="text-muted d-block">{{ ay.start_date|date:"d-m-Y" }} ដល់ {{ ay.end_date|date:"d-m-Y" }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <!-- Check if registered in spreadsheets_registry -->
+                                <div id="reg_status_{{ ay.id }}">
+                                    {% if ay.name in spreadsheets_registry %}
+                                        <span class="badge badge-soft-emerald px-3 py-1 rounded-pill mb-1">
+                                            <i class="fa-solid fa-circle-check me-1"></i> បានបង្កើតរួចរាល់
+                                        </span>
+                                        <a href="{{ spreadsheets_registry|safe }}" target="_blank" class="d-block small text-decoration-none text-primary fw-semibold" id="link_sh_{{ ay.id }}">
+                                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកមើលក្នុង Google Sheets
+                                        </a>
+                                    {% else %}
+                                        <span class="badge badge-soft-warning px-3 py-1 rounded-pill">
+                                            <i class="fa-solid fa-hourglass-start me-1"></i> មិនទាន់ Sync លើកដំបូង
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1" style="font-size: 0.8rem;">
+                                    <span class="badge bg-light text-dark border">📋 សិស្ស + រូបថត</span>
+                                    <span class="badge bg-light text-dark border">📅 វត្តមាន</span>
+                                    <span class="badge bg-light text-dark border">💵 ចំណូល</span>
+                                    <span class="badge bg-light text-dark border">💸 ចំណាយ</span>
+                                    <span class="badge bg-light text-dark border">📊 សង្ខេប KPI</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="small text-muted">
+                                    {% if ay.name in spreadsheets_registry %}
+                                        <i class="fa-regular fa-clock me-1"></i> ធ្វើបច្ចុប្បន្នភាពរួច
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge badge-soft-purple px-2 py-1 rounded-pill">
+                                    <i class="fa-solid fa-lock me-1"></i> Only Admin
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-success rounded-pill px-3 me-1 btn-quick-sync" data-year-id="{{ ay.id }}" data-year-name="{{ ay.name }}">
+                                        <i class="fa-solid fa-arrows-rotate me-1"></i> Sync
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 btn-quick-restore" data-year-id="{{ ay.id }}" data-year-name="{{ ay.name }}">
+                                        <i class="fa-solid fa-download me-1"></i> Restore
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">មិនទាន់មានទិន្នន័យឆ្នាំសិក្សាឡើយ។</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Architecture Highlights -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card card-glass h-100 p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
+                        <i class="fa-solid fa-image fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">រូបថតសិស្សក្នុងក្រឡា (=IMAGE)</h6>
+                        <small class="text-muted">បច្ចេកវិទ្យា Google Drive Thumbnail</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    រូបថតសិស្សទាំងអស់ត្រូវបាន Upload ទៅកាន់ Folder លើ Google Drive និងបង្កើតរូបមន្ត <code>=IMAGE(...)</code> លើសន្លឹកកិច្ចការដោយស្វ័យប្រវត្តិ ធានាថាមើលឃើញរូបសិស្សច្បាស់ទោះបី Server ក្នុងកុំព្យូទ័របិទក៏ដោយ។
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card card-glass h-100 p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="p-3 rounded-4 bg-success bg-opacity-10 text-success">
+                        <i class="fa-solid fa-shield-halved fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">ឯកជនភាព Admin ផ្ដាច់មុខ</h6>
+                        <small class="text-muted">Restricted Permissions (Only Admin)</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    ឯកសារ Google Sheets និងរូបថតត្រូវបានកំណត់សិទ្ធិឯកជន និង Share ផ្ដាច់មុខតែទៅកាន់ Gmail របស់ Admin ប៉ុណ្ណោះ។ គ្មាននរណាម្នាក់ក្រៅពី Admin អាចចូលមើល ឬកែប្រែបានឡើយ។
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card card-glass h-100 p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
+                        <i class="fa-solid fa-clock-rotate-left fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">ទាញយកមកប្រើវិញ (Restore)</h6>
+                        <small class="text-muted">Two-way Sync & Data Recovery</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    ប្រសិនបើកុំព្យូទ័រមានបញ្ហា ឬលោកអ្នកចង់ផ្លាស់ប្តូរម៉ាស៊ីន Server ថ្មី លោកអ្នកអាចចុចប៊ូតុង <strong>Restore</strong> ដើម្បីទាញយកទិន្នន័យសិស្ស វត្តមាន និងហិរញ្ញវត្ថុពី Google Sheets មកបង្កើតក្នុង Database វិញភ្លាមៗ។
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. SYNC NOW MODAL -->
+<div class="modal fade" id="syncNowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{% url 'tool_google_sheets_sync' %}" id="syncForm">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-arrows-rotate me-2"></i> ចាប់ផ្តើម Sync ទៅ Google Sheets
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="small text-muted">
+                        ប្រព័ន្ធនឹងរៀបចំ និងរុញទិន្នន័យ (សិស្ស, រូបថត, វត្តមាន, វិក្កយបត្រ, និងចំណាយ) ទៅកាន់ Google Sheets តាមឆ្នាំសិក្សាដែលបានជ្រើសរើស។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ជ្រើសរើសឆ្នាំសិក្សា (Academic Year):</label>
+                        <select name="academic_year_id" class="form-select rounded-3" id="syncYearSelect" required>
+                            {% for ay in academic_years %}
+                            <option value="{{ ay.id }}" {% if ay.is_current %}selected{% endif %}>{{ ay.name }} {% if ay.is_current %}(បច្ចុប្បន្ន){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="syncPhotosSwitch" name="sync_photos" checked>
+                        <label class="form-check-label small fw-semibold" for="syncPhotosSwitch">
+                            Upload រូបថតសិស្សទៅ Drive & បង្ហាញក្នុង Sheet (=IMAGE)
+                        </label>
+                    </div>
+                    <div class="alert alert-info py-2 px-3 rounded-3 small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i> ការ Upload រូបថតអាចចំណាយពេលពីរបីវិនាទី អាស្រ័យលើចំនួនសិស្ស។
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4" id="btnStartSync">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> ចាប់ផ្តើម Sync
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. RESTORE MODAL -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{% url 'tool_google_sheets_restore' %}">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> ស្តារទិន្នន័យពី Google Sheets (Restore)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="small text-muted">
+                        មុខងារនេះនឹងអានទិន្នន័យពី Google Sheet នៃឆ្នាំសិក្សាដែលបានជ្រើសរើស រួចបង្កើត ឬធ្វើបច្ចុប្បន្នភាពសិស្ស និងចំណាយចូលក្នុង Database វិញ។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ជ្រើសរើសឆ្នាំសិក្សាដែលត្រូវ Restore:</label>
+                        <select name="academic_year_id" class="form-select rounded-3" id="restoreYearSelect" required>
+                            {% for ay in academic_years %}
+                            <option value="{{ ay.id }}" {% if ay.is_current %}selected{% endif %}>{{ ay.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-warning py-2 px-3 rounded-3 small mb-0">
+                        <i class="fa-solid fa-shield-halved me-1"></i> ទិន្នន័យដែលមានស្រាប់ក្នុងប្រព័ន្ធនឹងមិនត្រូវលុបទេ ប្រព័ន្ធនឹងផ្គូផ្គងតាមអត្តលេខសិស្ស (Student ID) ដើម្បី Update។
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-download me-1"></i> បញ្ជាក់ការ Restore
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. CONFIGURATION MODAL -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{% url 'tool_google_sheets_save_config' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="fa-solid fa-sliders me-2 text-primary"></i> ការកំណត់ Google API & សិទ្ធិ Admin
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Gmail របស់ Admin (Only Admin Access):</label>
+                            <input type="email" name="admin_email" class="form-control rounded-3" value="{{ config.admin_email|default:'' }}" placeholder="example_director@gmail.com" required>
+                            <div class="form-text text-muted small">Google Sheets & Drive នឹង Share សិទ្ធិផ្ដាច់មុខទៅកាន់ Email នេះ។</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">ឈ្មោះ Folder លើ Google Drive:</label>
+                            <input type="text" name="drive_folder_name" class="form-control rounded-3" value="{{ config.drive_folder_name|default:'SchoolSM_Cloud_Sync' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Upload ឯកសារ Service Account Credentials (.json):</label>
+                            <input type="file" name="credentials_file" class="form-control rounded-3" accept=".json">
+                            <div class="form-text text-muted small">ឯកសារទាញយកពី Google Cloud Console (Service Account Key)។</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">ឬបិទភ្ជាប់ខ្លឹមសារ JSON ផ្ទាល់ (Paste JSON):</label>
+                            <textarea name="service_account_json_content" class="form-control rounded-3 font-monospace small" rows="4" placeholder='{"type": "service_account", "project_id": "...", ...}'>{{ config.service_account_json_content|default:'' }}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="cfgActive" name="is_active" {% if config.is_active %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="cfgActive">បើកដំណើរការ Google Sheets Sync</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="cfgPhotos" name="sync_students_with_photos" {% if config.sync_students_with_photos %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="cfgPhotos">Upload រូបថតសិស្សទៅ Drive & បង្ហាញក្នុង Sheet</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step-by-step Help Accordion -->
+                    <div class="accordion mt-4" id="accordionHelp">
+                        <div class="accordion-item rounded-3 border">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed py-2 small fw-bold bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    <i class="fa-solid fa-circle-question me-2 text-info"></i> សេចក្តីណែនាំបង្កើត Google Service Account (ឥតគិតថ្លៃ ១០០%)
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionHelp">
+                                <div class="accordion-body small text-muted">
+                                    <ol class="mb-0 ps-3">
+                                        <li>ចូលទៅកាន់ <a href="https://console.cloud.google.com/" target="_blank" class="fw-bold">Google Cloud Console</a> ហើយបង្កើត Project ថ្មីមួយ (ឧ. SchoolSM-Sync)។</li>
+                                        <li>ចូលទៅ <strong>APIs & Services ➔ Library</strong> រួចចុច Enable <strong>Google Sheets API</strong> និង <strong>Google Drive API</strong>។</li>
+                                        <li>ចូលទៅ <strong>IAM & Admin ➔ Service Accounts</strong> រួចចុច <strong>Create Service Account</strong>។</li>
+                                        <li>ចុចលើ Service Account ដែលបានបង្កើត រួចចូល Tab <strong>Keys ➔ Add Key ➔ Create new key (JSON)</strong> នោះអ្នកនឹងទទួលបានឯកសារ <code>.json</code>។</li>
+                                        <li>យកឯកសារ JSON នោះមក Upload ឬចម្លងខ្លឹមសារដាក់ក្នុងប្រអប់ខាងលើនេះ។ រួចជាការស្រេច!</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quick Sync buttons
+        document.querySelectorAll('.btn-quick-sync').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const yearId = this.getAttribute('data-year-id');
+                const syncSelect = document.getElementById('syncYearSelect');
+                if (syncSelect) {
+                    syncSelect.value = yearId;
+                }
+                const modal = new bootstrap.Modal(document.getElementById('syncNowModal'));
+                modal.show();
+            });
+        });
+
+        // Quick Restore buttons
+        document.querySelectorAll('.btn-quick-restore').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const yearId = this.getAttribute('data-year-id');
+                const restoreSelect = document.getElementById('restoreYearSelect');
+                if (restoreSelect) {
+                    restoreSelect.value = yearId;
+                }
+                const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
+                modal.show();
+            });
+        });
+
+        // Form submit loading states
+        const syncForm = document.getElementById('syncForm');
+        if (syncForm) {
+            syncForm.addEventListener('submit', function() {
+                const btn = document.getElementById('btnStartSync');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> កំពុង Sync...';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

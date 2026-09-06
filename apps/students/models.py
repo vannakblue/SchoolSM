@@ -218,6 +218,7 @@ class Student(models.Model):
     current_address = models.TextField(blank=True, null=True, verbose_name="អាសយដ្ឋានបច្ចុប្បន្ន / Current Address")
     phone = models.CharField(max_length=30, blank=True, null=True, verbose_name="លេខទូរស័ព្ទសិស្ស / Student Phone")
     photo = models.ImageField(upload_to='students/photos/', blank=True, null=True, verbose_name="រូបថតសិស្ស (៤x៦) / Student Photo")
+    photo_drive_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="រូបថតលើ Google Drive (URL) / Google Drive Photo URL")
     birth_certificate = models.FileField(upload_to='students/docs/', blank=True, null=True, verbose_name="សំបុត្រកំណើត / Birth Certificate")
     
     # Academic association
@@ -361,6 +362,18 @@ class Student(models.Model):
 
     def get_status_display(self):
         return self.status_display_name
+
+    @property
+    def photo_url(self):
+        """Returns Google Drive photo URL if available, otherwise local uploaded photo URL."""
+        if self.photo_drive_url:
+            return self.photo_drive_url
+        if self.photo:
+            try:
+                return self.photo.url
+            except Exception:
+                pass
+        return None
 
     @property
     def is_disqualified_from_exams(self):

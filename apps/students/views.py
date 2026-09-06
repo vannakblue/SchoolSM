@@ -1023,8 +1023,126 @@ def student_edit(request, pk):
 
 @login_required
 def student_id_card(request, pk):
-    student = get_object_or_404(Student, pk=pk)
-    return render(request, 'students/student_id_card.html', {'student': student})
+    """
+    Renders official MoEYS-standard student ID card (single or 4-cards A4 preview).
+    """
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom
+    from apps.accounts.templatetags.i18n_extras import to_khmer_number_filter, KHMER_MONTHS
+    from django.utils import timezone
+
+    student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), pk=pk)
+    school_info = SchoolProfile.get_settings()
+
+    now = timezone.now()
+    day_kh = to_khmer_number_filter(f"{now.day:02d}")
+    month_kh = KHMER_MONTHS.get(now.month, 'ឧសភា')
+    year_kh = to_khmer_number_filter(now.year)
+
+    default_province_name = school_info.province or 'ខេត្ត កណ្តាល'
+    default_short_prov = default_province_name.replace('ខេត្ត', '').replace('រាជធានី', '').strip() or 'កណ្តាល'
+    
+    tacteing_char = request.GET.get('tacteing', 'r')
+    lunar_date = request.GET.get('lunar_date', 'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០')
+    solar_date = request.GET.get('solar_date', 'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦')
+    school_name = request.GET.get('school_name', school_info.short_name or school_info.name_kh or 'វិ. ហ៊ុន សែន កំពង់ក្ដី')
+    province_name = request.GET.get('province_name', default_province_name)
+
+    classrooms = Classroom.objects.all().order_by('name')
+
+    mode = request.GET.get('mode', '4_grid')
+    if mode == 'single':
+        students = [student]
+    elif mode == 'class' and student.classroom:
+        students = list(Student.objects.filter(classroom=student.classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
+    else:
+        peers = list(Student.objects.filter(classroom=student.classroom).exclude(pk=student.pk).select_related('classroom', 'academic_year').order_by('student_id')[:3]) if student.classroom else []
+        students = [student] + peers
+        while len(students) < 4:
+            students.append(student)
+
+    chunk_size = 4
+    pages = [students[i:i + chunk_size] for i in range(0, len(students), chunk_size)]
+
+    return render(request, 'students/student_id_card.html', {
+        'student': student,
+        'students': students,
+        'pages': pages,
+        'total_students': len(students),
+        'school_info': school_info,
+        'classrooms': classrooms,
+        'day_kh': day_kh,
+        'month_kh': month_kh,
+        'year_kh': year_kh,
+        'tacteing_char': tacteing_char,
+        'lunar_date': lunar_date,
+        'solar_date': solar_date,
+        'school_name': school_name,
+        'province_name': province_name,
+        'mode': mode,
+    })
+
+
+@login_required
+def batch_student_id_cards(request):
+    """
+    Renders batch of MoEYS-standard student ID cards for a whole classroom or grade (4 cards per A4 page).
+    """
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom
+    from apps.accounts.templatetags.i18n_extras import to_khmer_number_filter, KHMER_MONTHS
+    from django.utils import timezone
+
+    school_info = SchoolProfile.get_settings()
+    classrooms = Classroom.objects.all().order_by('name')
+
+    classroom_id = request.GET.get('classroom')
+    classroom = None
+    if classroom_id:
+        classroom = get_object_or_404(Classroom, pk=classroom_id)
+        students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
+    else:
+        classroom = classrooms.first()
+        if classroom:
+            students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:12])
+        else:
+            students = list(Student.objects.select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:4])
+
+    now = timezone.now()
+    day_kh = to_khmer_number_filter(f"{now.day:02d}")
+    month_kh = KHMER_MONTHS.get(now.month, 'ឧសភា')
+    year_kh = to_khmer_number_filter(now.year)
+
+    default_province_name = school_info.province or 'ខេត្ត កណ្តាល'
+    default_short_prov = default_province_name.replace('ខេត្ត', '').replace('រាជធានី', '').strip() or 'កណ្តាល'
+
+    tacteing_char = request.GET.get('tacteing', 'r')
+    lunar_date = request.GET.get('lunar_date', 'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០')
+    solar_date = request.GET.get('solar_date', 'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦')
+    school_name = request.GET.get('school_name', school_info.short_name or school_info.name_kh or 'វិ. ហ៊ុន សែន កំពង់ក្ដី')
+    province_name = request.GET.get('province_name', default_province_name)
+
+    chunk_size = 4
+    pages = [students[i:i + chunk_size] for i in range(0, len(students), chunk_size)]
+
+    return render(request, 'students/student_id_card.html', {
+        'student': students[0] if students else None,
+        'students': students,
+        'pages': pages,
+        'total_students': len(students),
+        'school_info': school_info,
+        'classrooms': classrooms,
+        'selected_classroom': classroom,
+        'day_kh': day_kh,
+        'month_kh': month_kh,
+        'year_kh': year_kh,
+        'tacteing_char': tacteing_char,
+        'lunar_date': lunar_date,
+        'solar_date': solar_date,
+        'school_name': school_name,
+        'province_name': province_name,
+        'mode': 'batch',
+    })
 
 
 # -------------------------------------------------------------

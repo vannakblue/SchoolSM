@@ -270,8 +270,8 @@
                     <!-- Student Info -->
                     <div class="d-flex align-items-center gap-3">
                         <div class="badge rounded-circle p-2 d-flex align-items-center justify-content-center bg-light text-primary border" style="width: 40px; height: 40px;">
-                            {% if st.photo %}
-                                <img src="{{ st.photo.url }}" class="rounded-circle w-100 h-100 object-fit-cover" alt="Student">
+                            {% if st.photo_url %}
+                                <img src="{{ st.photo_url }}" class="rounded-circle w-100 h-100 object-fit-cover" alt="Student">
                             {% else %}
                                 <i class="fa-solid fa-user-graduate"></i>
                             {% endif %}

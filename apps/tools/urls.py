@@ -40,6 +40,12 @@ urlpatterns = [
     path('database-backup/upload-restore/', views.api_upload_restore_database, name='tool_database_backup_upload_restore'),
     path('database-backup/delete/<str:filename>/', views.api_delete_database_backup, name='tool_database_backup_delete'),
 
+    # Google Sheets & Google Drive Suite
+    path('google-sheets/', views.google_sheets_dashboard_view, name='tool_google_sheets'),
+    path('google-sheets/save-config/', views.api_save_google_sheets_config, name='tool_google_sheets_save_config'),
+    path('google-sheets/sync/', views.api_sync_google_sheets, name='tool_google_sheets_sync'),
+    path('google-sheets/restore/', views.api_restore_google_sheets, name='tool_google_sheets_restore'),
+
     # Backend API Endpoints
     path('api/classroom/<int:classroom_id>/students/', views.api_classroom_students, name='api_tool_classroom_students'),
     path('api/pdf-merge/', views.api_pdf_merge, name='api_tool_pdf_merge'),

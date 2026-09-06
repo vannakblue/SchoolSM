@@ -13,6 +13,21 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Auto-load .env file if present (e.g. Neon.tech PostgreSQL connection string)
+env_path = BASE_DIR / '.env'
+if env_path.exists():
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    k, v = k.strip(), v.strip().strip("'").strip('"')
+                    if k and k not in os.environ:
+                        os.environ[k] = v
+    except Exception:
+        pass
+
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xeqsrma-9udx0s5m!-eojy9z6%xz=%4p(zy7mdbc*jvyo!1f34')
 
 DEBUG = 'RENDER' not in os.environ
