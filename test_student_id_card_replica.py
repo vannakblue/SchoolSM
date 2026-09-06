@@ -69,6 +69,34 @@ def test_student_card_replica():
     assert "Department of Examination Affairs" not in content_grid, "'Department of Examination Affairs' should be deleted"
     print("  [OK] 'Department of Examination Affairs' was deleted successfully.")
 
+    # Verify Watermark elements & controls
+    watermark_checks = [
+        "btnWatermarkMoeys",
+        "inputWatermarkFile",
+        "rangeWatermarkOpacity",
+        "rangeWatermarkSize",
+        "labelWatermarkSize",
+        "btnWatermarkSizeInc",
+        "btnWatermarkSizeDec",
+        "moeys-watermark-svg",
+        "user-custom-watermark-img",
+    ]
+    for w_elem in watermark_checks:
+        assert w_elem in content_grid, f"Missing watermark element: '{w_elem}'"
+        print(f"  [OK] Watermark element present: '{w_elem}'")
+
+    # Verify font switcher and "អត្តលេខ:" label
+    font_id_checks = [
+        "អត្តលេខ:",
+        "card-id-label-display",
+        "selectCardFont",
+        "Khmer OS Siemreap",
+        "inputIdLabel",
+    ]
+    for check_item in font_id_checks:
+        assert check_item in content_grid, f"Missing font/ID item: '{check_item}'"
+        print(f"  [OK] Font/ID label check present: '{check_item}'")
+
     # 4. Test batch cards view
     req_batch = factory.get(url_batch)
     req_batch.user = admin_user

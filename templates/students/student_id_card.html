@@ -29,6 +29,28 @@
             font-style: normal;
         }
 
+        /* Authentic Khmer OS Siemreap Font Definition */
+        @font-face {
+            font-family: 'Khmer OS Siemreap';
+            src: url("{% static 'fonts/KhmerOSsiemreap.ttf' %}") format('truetype'),
+                 local('Khmer OS Siemreap'),
+                 local('Khmer OS Siamreap'),
+                 local('KhmerOSsiemreap'),
+                 local('Siemreap');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Khmer OS Siemreap';
+            src: url("{% static 'fonts/KhmerOSsiemreap.ttf' %}") format('truetype'),
+                 local('Khmer OS Siemreap'),
+                 local('Khmer OS Siamreap'),
+                 local('KhmerOSsiemreap'),
+                 local('Siemreap');
+            font-weight: bold;
+            font-style: normal;
+        }
+
         :root {
             /* Exact MoEYS Colors from User Images */
             --card-border-color: #001ca8; /* Deep Royal Blue outer border & header */
@@ -37,6 +59,12 @@
             --card-id-green: #00a651;     /* Vibrant Emerald Green for ID number matching Image 3 */
             --card-width: 95mm;
             --card-height: 136mm;
+            --card-body-font: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif;
+            --details-font-size: 13px;
+            --details-row-gap: 5.5px;
+            --details-line-height: 1.85;
+            --watermark-opacity: 0.16;
+            --watermark-size: 180px;
         }
 
         * {
@@ -125,19 +153,31 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            font-family: var(--card-body-font);
         }
 
-        /* MoEYS Colored Emblem Background Watermark */
+        /* MoEYS or Custom Background Logo Watermark */
         .card-watermark {
             position: absolute;
             top: 52%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 175px;
-            height: 175px;
-            opacity: 0.16;
+            width: var(--watermark-size);
+            height: var(--watermark-size);
+            opacity: var(--watermark-opacity);
             pointer-events: none;
             z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-watermark svg,
+        .card-watermark img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .card-content-layer {
@@ -206,16 +246,16 @@
         /* Title & Academic Year Section */
         .card-title-text {
             font-family: 'Moul', cursive;
-            font-size: 16px;
+            font-size: 16.5px;
             color: var(--card-title-blue);
             text-align: center;
-            margin: 3px 0 2px 0;
+            margin: 2px 0 2px 0;
             letter-spacing: 0.3px;
         }
         .card-id-number {
-            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
+            font-family: var(--card-body-font);
             font-weight: 700;
-            font-size: 11px;
+            font-size: 12.5px;
             color: var(--card-id-green);
             text-align: center;
             margin-bottom: 3px;
@@ -226,39 +266,45 @@
             color: var(--card-id-green);
         }
         .card-academic-year {
-            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
+            font-family: var(--card-body-font);
             font-weight: 700;
-            font-size: 11.2px;
+            font-size: 12px;
             color: #000000;
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 11px;
         }
 
-        /* Student Details Rows */
+        /* Student Details Rows - Enlarged & spaced to fill down close to the photo */
         .student-details {
-            font-size: 10.5px;
-            line-height: 1.62;
+            font-family: var(--card-body-font);
+            font-size: var(--details-font-size);
+            line-height: var(--details-line-height);
             color: #000000;
+            margin-bottom: 6px;
         }
         .detail-row {
             display: flex;
             align-items: baseline;
-            margin-bottom: 2px;
+            margin-bottom: var(--details-row-gap);
             white-space: nowrap;
         }
         .detail-label {
+            font-family: var(--card-body-font);
             color: #000000;
             font-weight: 600;
-            margin-right: 4px;
+            font-size: var(--details-font-size);
+            margin-right: 5px;
         }
         .detail-value {
+            font-family: var(--card-body-font);
             color: var(--card-val-blue);
             font-weight: 700;
+            font-size: calc(var(--details-font-size) + 0.5px);
         }
         .radio-indicator {
-            font-size: 9px;
+            font-size: calc(var(--details-font-size) - 1.5px);
             color: var(--card-val-blue);
-            margin: 0 4px;
+            margin: 0 5px;
             display: inline-block;
             vertical-align: middle;
         }
@@ -315,6 +361,7 @@
             justify-content: flex-end;
         }
         .lunar-date {
+            font-family: var(--card-body-font);
             font-size: 8px;
             line-height: 1.35;
             color: #000000;
@@ -324,6 +371,7 @@
             cursor: pointer;
         }
         .solar-date {
+            font-family: var(--card-body-font);
             font-size: 8.5px;
             line-height: 1.35;
             color: #000000;
@@ -378,7 +426,8 @@
         .card-lunar-display:hover,
         .card-solar-display:hover,
         .card-province-display:hover,
-        .card-school-display:hover {
+        .card-school-display:hover,
+        .card-id-label-display:hover {
             outline: 1.5px dashed #3b82f6;
             background-color: rgba(59, 130, 246, 0.1);
             border-radius: 3px;
@@ -387,7 +436,8 @@
         .card-lunar-display:focus,
         .card-solar-display:focus,
         .card-province-display:focus,
-        .card-school-display:focus {
+        .card-school-display:focus,
+        .card-id-label-display:focus {
             outline: 2px solid #2563eb;
             background-color: rgba(37, 99, 235, 0.15);
             border-radius: 3px;
@@ -426,11 +476,13 @@
             .card-solar-display:hover,
             .card-province-display:hover,
             .card-school-display:hover,
+            .card-id-label-display:hover,
             .tacteing-char-val:focus,
             .card-lunar-display:focus,
             .card-solar-display:focus,
             .card-province-display:focus,
-            .card-school-display:focus {
+            .card-school-display:focus,
+            .card-id-label-display:focus {
                 outline: none !important;
                 background-color: transparent !important;
             }
@@ -498,10 +550,10 @@
         <div id="adminSettingsPanel" class="admin-customization-panel">
             <div class="d-flex flex-wrap align-items-end gap-3 justify-content-between">
                 
-                <!-- 1. Font Tacteing Flourish (Image 2) -->
+                <!-- 1. Font Tacteing Flourish -->
                 <div class="d-flex flex-column gap-1">
                     <label class="small text-warning fw-bold">
-                        <i class="fa-solid fa-signature me-1"></i> ក្បាច់ Tacteing (រូបទី២):
+                        <i class="fa-solid fa-signature me-1"></i> ក្បាច់ Tacteing:
                     </label>
                     <div class="d-flex align-items-center gap-2">
                         <input type="text" id="inputTacteing" class="form-control form-control-sm bg-dark text-white border-warning text-center fw-bold" style="width: 65px;" value="{{ tacteing_char|default:'r' }}" maxlength="4" title="បញ្ចូលអក្សរសម្រាប់ Font Tacteing">
@@ -519,18 +571,18 @@
                     </div>
                 </div>
 
-                <!-- 2. Lunar Date (Image 4) -->
+                <!-- 2. Lunar Date -->
                 <div class="d-flex flex-column gap-1 flex-grow-1" style="min-width: 250px;">
                     <label class="small text-info fw-bold">
-                        <i class="fa-solid fa-moon me-1"></i> ថ្ងៃខែឆ្នាំចន្ទគតិ (រូបទី៤):
+                        <i class="fa-solid fa-moon me-1"></i> ថ្ងៃខែឆ្នាំចន្ទគតិ:
                     </label>
                     <input type="text" id="inputLunarDate" class="form-control form-control-sm bg-dark text-white border-info" value="{{ lunar_date|default:'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០' }}">
                 </div>
 
-                <!-- 3. Solar Date (Image 4) -->
+                <!-- 3. Solar Date -->
                 <div class="d-flex flex-column gap-1 flex-grow-1" style="min-width: 220px;">
                     <label class="small text-info fw-bold">
-                        <i class="fa-solid fa-calendar-day me-1"></i> ថ្ងៃខែឆ្នាំសុរិយគតិ (រូបទី៤):
+                        <i class="fa-solid fa-calendar-day me-1"></i> ថ្ងៃខែឆ្នាំសុរិយគតិ:
                     </label>
                     <input type="text" id="inputSolarDate" class="form-control form-control-sm bg-dark text-white border-info" value="{{ solar_date|default:'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦' }}">
                 </div>
@@ -545,6 +597,81 @@
                 <div class="d-flex flex-column gap-1" style="width: 180px;">
                     <label class="small text-light fw-bold">ឈ្មោះសាលា:</label>
                     <input type="text" id="inputSchoolName" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ school_name|default:school_info.short_name|default:school_info.name_kh|default:'វិ. ហ៊ុន សែន កំពង់ក្ដី' }}">
+                </div>
+
+                <!-- 6. Details Font Size Controller (ពង្រីក/បង្រួមទំហំអក្សរសិស្ស) -->
+                <div class="d-flex flex-column gap-1" style="width: 145px;">
+                    <label class="small text-warning fw-bold"><i class="fa-solid fa-text-height me-1"></i> ទំហំអក្សរសិស្ស:</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" id="btnFontDec" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="បង្រួមអក្សរ"><i class="fa-solid fa-minus"></i></button>
+                        <span id="labelFontSize" class="badge bg-warning text-dark px-2 py-1 small fw-bold" style="min-width: 52px; text-align: center;">13px</span>
+                        <button type="button" id="btnFontInc" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="ពង្រីកអក្សរ"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <!-- 7. Background Logo Watermark Controller -->
+                <div class="d-flex flex-column gap-1" style="min-width: 275px;">
+                    <label class="small text-warning fw-bold">
+                        <i class="fa-solid fa-image me-1"></i> Watermark Logo ផ្ទៃខាងក្រោយ:
+                    </label>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" id="btnWatermarkMoeys" class="btn btn-warning text-dark fw-bold" title="ប្រើ Logo ក្រសួង MoEYS">
+                                MoEYS
+                            </button>
+                            {% if school_info.logo %}
+                            <button type="button" id="btnWatermarkSchool" class="btn btn-outline-light" data-url="{{ school_info.logo.url }}" title="ប្រើ Logo សាលារៀន">
+                                Logo សាលា
+                            </button>
+                            {% endif %}
+                            <label for="inputWatermarkFile" class="btn btn-outline-info mb-0" title="ជ្រើសរើស Logo ផ្ទាល់ខ្លួនពីកុំព្យូទ័រ" style="cursor: pointer;">
+                                <i class="fa-solid fa-upload me-1"></i> ប្តូរ Logo
+                            </label>
+                            <input type="file" id="inputWatermarkFile" accept="image/*" class="d-none">
+                        </div>
+
+                        <!-- Opacity Slider -->
+                        <div class="d-flex align-items-center gap-1 ms-1" title="កម្រិតភាពច្បាស់ Logo (Opacity)">
+                            <span class="small text-white-50"><i class="fa-solid fa-eye"></i></span>
+                            <input type="range" id="rangeWatermarkOpacity" min="0" max="60" value="16" step="1" style="width: 60px; accent-color: #3b82f6;">
+                            <span id="labelWatermarkOpacity" class="small text-info fw-bold" style="min-width: 28px;">16%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. Logo Size Controller (ពង្រីក/បង្រួមទំហំ Logo) -->
+                <div class="d-flex flex-column gap-1" style="width: 175px;">
+                    <label class="small text-warning fw-bold">
+                        <i class="fa-solid fa-up-right-and-down-left-from-center me-1"></i> ទំហំ Logo:
+                    </label>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" id="btnWatermarkSizeDec" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="បង្រួម Logo"><i class="fa-solid fa-minus"></i></button>
+                        <input type="range" id="rangeWatermarkSize" min="80" max="320" value="180" step="5" style="width: 60px; accent-color: #f59e0b;" title="អូសដើម្បីពង្រីក/បង្រួមទំហំ Logo">
+                        <button type="button" id="btnWatermarkSizeInc" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="ពង្រីក Logo"><i class="fa-solid fa-plus"></i></button>
+                        <span id="labelWatermarkSize" class="badge bg-warning text-dark px-2 py-1 small fw-bold" style="min-width: 48px; text-align: center;">180px</span>
+                    </div>
+                </div>
+
+                <!-- 9. Font Family Selector (ជ្រើសរើស Font អក្សរ ឧ. Khmer OS Siemreap) -->
+                <div class="d-flex flex-column gap-1" style="min-width: 175px;">
+                    <label class="small text-warning fw-bold">
+                        <i class="fa-solid fa-font me-1"></i> Font អក្សរលើប័ណ្ណ:
+                    </label>
+                    <select id="selectCardFont" class="form-select form-select-sm bg-dark text-white border-warning rounded-pill" title="ប្តូរប្រភេទ Font អក្សរលើប័ណ្ណ">
+                        <option value="'Khmer OS Siemreap', 'Siemreap', sans-serif" selected>Khmer OS Siemreap</option>
+                        <option value="'Kantumruy Pro', sans-serif">Kantumruy Pro</option>
+                        <option value="'Battambang', sans-serif">Battambang</option>
+                        <option value="'Khmer OS', sans-serif">Khmer OS</option>
+                        <option value="system-ui, sans-serif">System Default</option>
+                    </select>
+                </div>
+
+                <!-- 9. ID Label Controller (ប្តូរពី "លេខ" ទៅជា "អត្តលេខ") -->
+                <div class="d-flex flex-column gap-1" style="width: 105px;">
+                    <label class="small text-success fw-bold">
+                        <i class="fa-solid fa-id-badge me-1"></i> ស្លាកលេខ:
+                    </label>
+                    <input type="text" id="inputIdLabel" class="form-control form-control-sm bg-dark text-white border-success fw-bold text-center" value="{{ id_label|default:'អត្តលេខ:' }}" title="ប្តូរស្លាកលេខសម្គាល់សិស្ស">
                 </div>
 
                 <!-- Reset Button -->
@@ -595,6 +722,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const inputTacteing = document.getElementById('inputTacteing');
+            const inputIdLabel = document.getElementById('inputIdLabel');
+            const selectCardFont = document.getElementById('selectCardFont');
             const inputLunarDate = document.getElementById('inputLunarDate');
             const inputSolarDate = document.getElementById('inputSolarDate');
             const inputProvinceName = document.getElementById('inputProvinceName');
@@ -620,6 +749,10 @@
                     if (previewTacteing) previewTacteing.textContent = data.tacteing;
                     if (inputTacteing && inputTacteing.value !== data.tacteing) inputTacteing.value = data.tacteing;
                 }
+                if (data.id_label !== undefined) {
+                    document.querySelectorAll('.card-id-label-display').forEach(el => el.textContent = data.id_label);
+                    if (inputIdLabel && inputIdLabel.value !== data.id_label) inputIdLabel.value = data.id_label;
+                }
                 if (data.lunar !== undefined) {
                     document.querySelectorAll('.card-lunar-display').forEach(el => el.textContent = data.lunar);
                     if (inputLunarDate && inputLunarDate.value !== data.lunar) inputLunarDate.value = data.lunar;
@@ -640,6 +773,7 @@
                 if (saveToStorage) {
                     const current = {
                         tacteing: inputTacteing ? inputTacteing.value : 'r',
+                        id_label: inputIdLabel ? inputIdLabel.value : 'អត្តលេខ:',
                         lunar: inputLunarDate ? inputLunarDate.value : '',
                         solar: inputSolarDate ? inputSolarDate.value : '',
                         province: inputProvinceName ? inputProvinceName.value : '',
@@ -665,6 +799,11 @@
             if (inputTacteing) {
                 inputTacteing.addEventListener('input', function() {
                     updateAllCards({ tacteing: this.value || ' ' });
+                });
+            }
+            if (inputIdLabel) {
+                inputIdLabel.addEventListener('input', function() {
+                    updateAllCards({ id_label: this.value || ' ' });
                 });
             }
             if (inputLunarDate) {
@@ -700,6 +839,8 @@
             document.body.addEventListener('input', function(e) {
                 if (e.target.classList.contains('card-tacteing-display')) {
                     updateAllCards({ tacteing: e.target.textContent.trim() });
+                } else if (e.target.classList.contains('card-id-label-display')) {
+                    updateAllCards({ id_label: e.target.textContent.trim() });
                 } else if (e.target.classList.contains('card-lunar-display')) {
                     updateAllCards({ lunar: e.target.textContent.trim() });
                 } else if (e.target.classList.contains('card-solar-display')) {
@@ -711,13 +852,261 @@
                 }
             });
 
+            // Font Family Dynamic Switching (Khmer OS Siemreap, Kantumruy Pro, Battambang, etc.)
+            function applyCardFont(fontFamily, saveToStorage = true) {
+                document.documentElement.style.setProperty('--card-body-font', fontFamily);
+                if (selectCardFont && selectCardFont.value !== fontFamily) {
+                    selectCardFont.value = fontFamily;
+                }
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_card_font_family', fontFamily);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (selectCardFont) {
+                selectCardFont.addEventListener('change', function() {
+                    applyCardFont(this.value, true);
+                });
+            }
+
+            // Load saved font family from localStorage
+            try {
+                const savedFont = localStorage.getItem('schoolsm_card_font_family');
+                if (savedFont) {
+                    applyCardFont(savedFont, false);
+                }
+            } catch(e) {}
+
+            // Font Size Dynamic Adjustment (ពង្រីក/បង្រួមទំហំអក្សរសិស្ស)
+            let currentFontSize = 13.0;
+            const labelFontSize = document.getElementById('labelFontSize');
+            const btnFontInc = document.getElementById('btnFontInc');
+            const btnFontDec = document.getElementById('btnFontDec');
+
+            function applyFontSize(size, saveToStorage = true) {
+                currentFontSize = Math.min(16.0, Math.max(10.0, parseFloat(size)));
+                document.documentElement.style.setProperty('--details-font-size', currentFontSize + 'px');
+                const rowGap = Math.max(2, (currentFontSize - 10) * 1.2 + 2.5);
+                document.documentElement.style.setProperty('--details-row-gap', rowGap.toFixed(1) + 'px');
+                if (labelFontSize) labelFontSize.textContent = currentFontSize.toFixed(1) + 'px';
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_card_font_size', currentFontSize);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            // Load saved font size from localStorage
+            try {
+                const savedSize = localStorage.getItem('schoolsm_card_font_size');
+                if (savedSize) {
+                    applyFontSize(savedSize, false);
+                }
+            } catch(e) {}
+
+            if (btnFontInc) {
+                btnFontInc.addEventListener('click', function() {
+                    applyFontSize(currentFontSize + 0.5);
+                });
+            }
+            if (btnFontDec) {
+                btnFontDec.addEventListener('click', function() {
+                    applyFontSize(currentFontSize - 0.5);
+                });
+            }
+
+            // Watermark Logo & Opacity Controllers (ប្តូរ Background Watermark Logo)
+            const btnWatermarkMoeys = document.getElementById('btnWatermarkMoeys');
+            const btnWatermarkSchool = document.getElementById('btnWatermarkSchool');
+            const inputWatermarkFile = document.getElementById('inputWatermarkFile');
+            const rangeWatermarkOpacity = document.getElementById('rangeWatermarkOpacity');
+            const labelWatermarkOpacity = document.getElementById('labelWatermarkOpacity');
+
+            function setWatermarkOpacity(val, saveToStorage = true) {
+                const num = Math.min(100, Math.max(0, parseInt(val, 10)));
+                const opacityVal = (num / 100).toFixed(2);
+                document.documentElement.style.setProperty('--watermark-opacity', opacityVal);
+                if (labelWatermarkOpacity) labelWatermarkOpacity.textContent = num + '%';
+                if (rangeWatermarkOpacity && rangeWatermarkOpacity.value != num) rangeWatermarkOpacity.value = num;
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_watermark_opacity', num);
+                        showSavedFeedback();
+                    } catch (e) {}
+                }
+            }
+
+            function setWatermarkMode(mode, customUrl = null, saveToStorage = true) {
+                const svgs = document.querySelectorAll('.moeys-watermark-svg');
+                const imgs = document.querySelectorAll('.user-custom-watermark-img');
+
+                if (mode === 'moeys') {
+                    svgs.forEach(svg => svg.classList.remove('d-none'));
+                    imgs.forEach(img => {
+                        img.classList.add('d-none');
+                        img.src = '';
+                    });
+                    if (btnWatermarkMoeys) {
+                        btnWatermarkMoeys.className = 'btn btn-warning text-dark fw-bold';
+                    }
+                    if (btnWatermarkSchool) {
+                        btnWatermarkSchool.className = 'btn btn-outline-light';
+                    }
+                } else if (mode === 'school') {
+                    const schoolUrl = btnWatermarkSchool ? btnWatermarkSchool.getAttribute('data-url') : null;
+                    if (schoolUrl) {
+                        svgs.forEach(svg => svg.classList.add('d-none'));
+                        imgs.forEach(img => {
+                            img.src = schoolUrl;
+                            img.classList.remove('d-none');
+                        });
+                        if (btnWatermarkSchool) {
+                            btnWatermarkSchool.className = 'btn btn-warning text-dark fw-bold';
+                        }
+                        if (btnWatermarkMoeys) {
+                            btnWatermarkMoeys.className = 'btn btn-outline-light';
+                        }
+                    }
+                } else if (mode === 'custom' && customUrl) {
+                    svgs.forEach(svg => svg.classList.add('d-none'));
+                    imgs.forEach(img => {
+                        img.src = customUrl;
+                        img.classList.remove('d-none');
+                    });
+                    if (btnWatermarkMoeys) btnWatermarkMoeys.className = 'btn btn-outline-light';
+                    if (btnWatermarkSchool) btnWatermarkSchool.className = 'btn btn-outline-light';
+                }
+
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_watermark_mode', mode);
+                        if (mode === 'custom' && customUrl) {
+                            localStorage.setItem('schoolsm_watermark_custom_data', customUrl);
+                        } else if (mode !== 'custom') {
+                            localStorage.removeItem('schoolsm_watermark_custom_data');
+                        }
+                        showSavedFeedback();
+                    } catch (e) {}
+                }
+            }
+
+            if (btnWatermarkMoeys) {
+                btnWatermarkMoeys.addEventListener('click', function() {
+                    setWatermarkMode('moeys', null, true);
+                });
+            }
+
+            if (btnWatermarkSchool) {
+                btnWatermarkSchool.addEventListener('click', function() {
+                    setWatermarkMode('school', null, true);
+                });
+            }
+
+            if (inputWatermarkFile) {
+                inputWatermarkFile.addEventListener('change', function(e) {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const customDataUrl = evt.target.result;
+                        setWatermarkMode('custom', customDataUrl, true);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            if (rangeWatermarkOpacity) {
+                rangeWatermarkOpacity.addEventListener('input', function() {
+                    setWatermarkOpacity(this.value, true);
+                });
+            }
+
+            // Watermark Size Controller (ពង្រីក/បង្រួមទំហំ Logo)
+            let currentWatermarkSize = 180;
+            const rangeWatermarkSize = document.getElementById('rangeWatermarkSize');
+            const labelWatermarkSize = document.getElementById('labelWatermarkSize');
+            const btnWatermarkSizeInc = document.getElementById('btnWatermarkSizeInc');
+            const btnWatermarkSizeDec = document.getElementById('btnWatermarkSizeDec');
+
+            function applyWatermarkSize(size, saveToStorage = true) {
+                currentWatermarkSize = Math.min(320, Math.max(80, parseInt(size, 10) || 180));
+                document.documentElement.style.setProperty('--watermark-size', currentWatermarkSize + 'px');
+                if (labelWatermarkSize) labelWatermarkSize.textContent = currentWatermarkSize + 'px';
+                if (rangeWatermarkSize && rangeWatermarkSize.value != currentWatermarkSize) {
+                    rangeWatermarkSize.value = currentWatermarkSize;
+                }
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_watermark_size', currentWatermarkSize);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (rangeWatermarkSize) {
+                rangeWatermarkSize.addEventListener('input', function() {
+                    applyWatermarkSize(this.value, true);
+                });
+            }
+
+            if (btnWatermarkSizeInc) {
+                btnWatermarkSizeInc.addEventListener('click', function() {
+                    applyWatermarkSize(currentWatermarkSize + 10);
+                });
+            }
+
+            if (btnWatermarkSizeDec) {
+                btnWatermarkSizeDec.addEventListener('click', function() {
+                    applyWatermarkSize(currentWatermarkSize - 10);
+                });
+            }
+
+            // Restore saved watermark settings
+            try {
+                const savedOpacity = localStorage.getItem('schoolsm_watermark_opacity');
+                if (savedOpacity !== null) {
+                    setWatermarkOpacity(savedOpacity, false);
+                }
+                const savedSize = localStorage.getItem('schoolsm_watermark_size');
+                if (savedSize !== null) {
+                    applyWatermarkSize(savedSize, false);
+                }
+                const savedMode = localStorage.getItem('schoolsm_watermark_mode');
+                if (savedMode === 'school') {
+                    setWatermarkMode('school', null, false);
+                } else if (savedMode === 'custom') {
+                    const savedCustom = localStorage.getItem('schoolsm_watermark_custom_data');
+                    if (savedCustom) {
+                        setWatermarkMode('custom', savedCustom, false);
+                    }
+                } else if (savedMode === 'moeys') {
+                    setWatermarkMode('moeys', null, false);
+                }
+            } catch (e) {}
+
             // Reset button handler
             const btnReset = document.getElementById('btnResetDefaults');
             if (btnReset) {
                 btnReset.addEventListener('click', function() {
                     localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem('schoolsm_card_font_size');
+                    localStorage.removeItem('schoolsm_card_font_family');
+                    localStorage.removeItem('schoolsm_watermark_mode');
+                    localStorage.removeItem('schoolsm_watermark_custom_data');
+                    localStorage.removeItem('schoolsm_watermark_opacity');
+                    localStorage.removeItem('schoolsm_watermark_size');
+                    applyFontSize(13.0, false);
+                    applyCardFont("'Khmer OS Siemreap', 'Siemreap', sans-serif", false);
+                    setWatermarkOpacity(16, false);
+                    applyWatermarkSize(180, false);
+                    setWatermarkMode('moeys', null, false);
                     const defaults = {
                         tacteing: 'r',
+                        id_label: 'អត្តលេខ:',
                         lunar: 'ថ្ងៃចន្ទ ២កើត ខែជេស្ឋ ឆ្នាំម្សាញ់ សំរឹទ្ធិស័ក ព.ស. ២៥៧០',
                         solar: 'កណ្ដាល ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦',
                         province: 'ខេត្ត កណ្តាល',

@@ -2,7 +2,7 @@
 <div class="moeys-id-card">
     <!-- Authentic MoEYS Official Colored Background Watermark (រូបសញ្ញាក្រសួងអប់រំ យុវជន និងកីឡា) -->
     <div class="card-watermark">
-        <svg viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="moeys-watermark-svg" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Outer Golden Radiance Flames -->
             <g opacity="0.9">
                 <path d="M120 12 L124 28 L120 24 L116 28 Z" fill="#d97706"/>
@@ -45,6 +45,7 @@
             <!-- Motto Ribbon -->
             <path d="M62 170 Q120 160 178 170 L174 186 Q120 176 66 186 Z" fill="#1e3a8a" stroke="#d97706" stroke-width="1.5"/>
         </svg>
+        <img class="user-custom-watermark-img d-none" alt="Custom Watermark Logo">
     </div>
 
     <!-- Card Content Layer -->
@@ -70,7 +71,7 @@
         <div class="text-center">
             <div class="card-title-text">ប័ណ្ណសម្គាល់ខ្លួនសិស្ស</div>
             <div class="card-id-number">
-                <span class="id-tag">លេខ:</span> <span class="id-val">{{ st.student_id|format_student_exam_id|default:"0801 03069011121000001" }}</span>
+                <span class="id-tag card-id-label-display" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែ">{{ id_label|default:"អត្តលេខ:" }}</span> <span class="id-val">{{ st.student_id|format_student_exam_id|default:"0801 03069011121000001" }}</span>
             </div>
             <div class="card-academic-year">
                 ឆ្នាំសិក្សា {{ st.academic_year.name|khmer_academic_year|default:"២០២៥ - ២០២៦" }}
