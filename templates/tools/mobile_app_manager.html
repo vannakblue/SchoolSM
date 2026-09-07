@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}គ្រប់គ្រងកម្មវិធីទូរស័ព្ទ (SchoolSM Mobile App & APK Builder) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mobile-hero {
+        background: linear-gradient(135deg, #064e3b 0%, #0f172a 50%, #0284c7 100%);
+        border-radius: 20px;
+        padding: 35px 30px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 12px 30px rgba(2, 132, 199, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .mobile-hero::after {
+        content: '';
+        position: absolute;
+        right: -30px;
+        bottom: -30px;
+        width: 220px;
+        height: 220px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .stat-card-custom {
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.06);
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: all 0.25s ease;
+        height: 100%;
+    }
+    .stat-card-custom:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+    }
+    .qr-container-card {
+        border-radius: 20px;
+        border: 2px dashed #0284c7;
+        background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+        padding: 24px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    .qr-container-card:hover {
+        border-color: #0369a1;
+        box-shadow: 0 8px 25px rgba(2, 132, 199, 0.15);
+    }
+    .qr-image-wrapper {
+        background: #ffffff;
+        padding: 12px;
+        border-radius: 16px;
+        display: inline-block;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+    .terminal-console {
+        background-color: #090d16;
+        color: #10b981;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 0.85rem;
+        border-radius: 12px;
+        padding: 16px;
+        height: 320px;
+        overflow-y: auto;
+        border: 1px solid #1e293b;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    .terminal-console::-webkit-scrollbar {
+        width: 8px;
+    }
+    .terminal-console::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+    }
+    .badge-soft-success { background: #dcfce7; color: #15803d; font-weight: 600; }
+    .badge-soft-info { background: #e0f2fe; color: #0369a1; font-weight: 600; }
+    .badge-soft-warning { background: #fef3c7; color: #b45309; font-weight: 600; }
+    .badge-soft-danger { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+    
+    .ios-guide-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+    .step-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #0f172a;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard_redirect' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}" class="text-decoration-none">មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Mobile App & APK Builder</li>
+        </ol>
+    </nav>
+
+    <!-- Hero Header -->
+    <div class="mobile-hero">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white mb-2" style="font-size: 0.85rem;">
+                    <i class="fa-brands fa-android text-success"></i>
+                    <span>Flutter Cross-Platform Mobile Engine (Android & iOS)</span>
+                </div>
+                <h2 class="fw-bold mb-2">📱 គ្រប់គ្រងកម្មវិធីទូរស័ព្ទ (SchoolSM Mobile App & APK)</h2>
+                <p class="lead mb-3 text-white-50" style="font-size: 1rem;">
+                    បង្កើតឯកសារ Release Android APK ដោយផ្ទាល់លើ Web Browser, មើល Live Build Logs, ទាញយកឯកសារ APK និងចែករំលែក QR Code សម្រាប់ឱ្យគ្រូ/សិស្សស្កេនដំឡើងភ្លាមៗ។
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm text-dark" onclick="startApkBuild()" id="btnTriggerBuild">
+                        <i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)
+                    </button>
+                    {% if apk_exists %}
+                    <a href="{% url 'tool_download_mobile_apk' %}" class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm" id="btnDownloadHero">
+                        <i class="fa-solid fa-download me-2"></i> ទាញយក APK ({{ apk_size_mb }} MB)
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'dashboard_redirect' %}" target="_blank" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm">
+                        <i class="fa-solid fa-globe me-2"></i> បើកមើល Web Portal
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-center text-lg-end mt-4 mt-lg-0">
+                <div class="p-3 bg-white bg-opacity-10 rounded-4 d-inline-block backdrop-blur border border-white border-opacity-10 text-start">
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <div class="bg-success rounded-circle p-2 text-white">
+                            <i class="fa-brands fa-flutter fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="small text-white-50">Mobile Framework</div>
+                            <div class="fw-bold text-white">{{ flutter_version }}</div>
+                        </div>
+                    </div>
+                    <hr class="my-2 border-white border-opacity-20">
+                    <div class="small text-white-50">
+                        <div><i class="fa-solid fa-network-wired me-1"></i> Server LAN: <code class="text-warning fw-bold">{{ lan_ip }}:8000</code></div>
+                        <div class="mt-1"><i class="fa-solid fa-mobile-screen me-1"></i> Package: <code class="text-info">com.schoolsm.mobile</code></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Compilation Status Card (Shows during and after build) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" id="buildProgressSection">
+        <div class="card-header bg-dark text-white py-3 px-4 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm text-warning" role="status" id="buildSpinner" style="display: none;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <i class="fa-solid fa-terminal text-success" id="buildIconIdle"></i>
+                <span class="fw-bold" id="buildStatusTitle">ផ្ទាំងត្រួតពិនិត្យដំណើរការ Build (Build Console)</span>
+                <span class="badge badge-soft-info ms-2" id="buildStatusBadge">IDLE</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted" id="buildDurationText"></span>
+                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="clearConsoleLogs()">
+                    <i class="fa-solid fa-eraser me-1"></i> សម្អាត Log
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="terminal-console" id="terminalLogs">
+                <span class="text-muted">...ត្រៀមរួចរាល់... ចុចលើប៊ូតុង «បង្កើត APK ថ្មី» ខាងលើ ដើម្បីដំណើរការ Compile APK ដោយស្វ័យប្រវត្តិ។</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 2-Column Suite Content -->
+    <div class="row g-4 mb-4">
+        
+        <!-- Left Column: Android APK & Direct QR Code -->
+        <div class="col-lg-6">
+            <div class="stat-card-custom p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-success-subtle text-success p-3 rounded-4 fs-3">
+                            <i class="fa-brands fa-android"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0">Android APK Installer</h5>
+                            <span class="small text-muted">សម្រាប់ទូរស័ព្ទ Android (Samsung, Oppo, Xiaomi, Vivo...)</span>
+                        </div>
+                    </div>
+                    <span class="badge {% if apk_exists %}bg-success{% else %}bg-secondary{% endif %} rounded-pill px-3 py-2" id="apkStatusBadge">
+                        {% if apk_exists %}រួចរាល់ (Ready){% else %}មិនទាន់ Build{% endif %}
+                    </span>
+                </div>
+
+                <!-- File Info Table -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-sm align-middle mb-0 small">
+                        <tbody>
+                            <tr>
+                                <th class="bg-light text-muted w-35 ps-3">ឈ្មោះឯកសារ៖</th>
+                                <td class="fw-bold text-primary font-monospace ps-3">SchoolSM-Mobile.apk</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light text-muted ps-3">ទំហំឯកសារ (Size)៖</th>
+                                <td class="fw-semibold ps-3" id="apkFileSizeText">
+                                    {% if apk_exists %}{{ apk_size_mb }} MB{% else %}-{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light text-muted ps-3">កាលបរិច្ឆេទ Build ចុងក្រោយ៖</th>
+                                <td class="text-muted ps-3" id="apkFileMTimeText">
+                                    {% if apk_exists %}{{ apk_mtime|date:"d/m/Y h:i A" }}{% else %}មិនទាន់មាន{% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Direct Action Buttons -->
+                <div class="d-grid gap-2 d-sm-flex mb-4">
+                    <a href="{% url 'tool_download_mobile_apk' %}" class="btn btn-primary fw-bold py-2.5 px-4 rounded-3 flex-fill shadow-sm {% if not apk_exists %}disabled{% endif %}" id="btnDownloadMain">
+                        <i class="fa-solid fa-download me-2"></i> ទាញយក APK ដាក់កុំព្យូទ័រ
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary fw-bold py-2.5 px-3 rounded-3" onclick="copyDownloadUrl()" title="ចម្លងតំណភ្ជាប់">
+                        <i class="fa-solid fa-link me-1"></i> ចម្លង Link
+                    </button>
+                </div>
+
+                <!-- QR Code Direct Download Panel -->
+                <div class="qr-container-card">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <i class="fa-solid fa-qrcode text-primary fs-5"></i>
+                        <h6 class="fw-bold mb-0 text-dark">ស្កេន QR Code ដើម្បីទាញយកលើទូរស័ព្ទ</h6>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        យកកាមេរ៉ាទូរស័ព្ទ Android ឬកម្មវិធី QR Scanner មកស្កេនរូបខាងក្រោម ដើម្បីទាញយក និងដំឡើងលើទូរស័ព្ទដៃភ្លាមៗ
+                    </p>
+                    
+                    <div class="qr-image-wrapper mb-3">
+                        <img src="{% url 'tool_mobile_apk_qr' %}?t={{ now|date:'U' }}" alt="QR Code ទាញយក APK" style="width: 190px; height: 190px; display: block;" id="qrImage">
+                    </div>
+
+                    <div class="input-group input-group-sm max-w-sm mx-auto">
+                        <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-wifi"></i></span>
+                        <input type="text" class="form-control text-center font-monospace small" value="{{ lan_download_url }}" id="inputDownloadUrl" readonly>
+                        <button class="btn btn-outline-primary" type="button" onclick="copyDownloadUrl()">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                    <div class="form-text text-muted mt-2" style="font-size: 0.76rem;">
+                        <i class="fa-solid fa-circle-info text-info me-1"></i> ចំណាំ៖ ទូរស័ព្ទ និងកុំព្យូទ័រត្រូវភ្ជាប់បណ្តាញ Wi-Fi តែមួយ (ឬតាម Public IP)។
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Right Column: iOS (iPhone/iPad) & PWA Experience -->
+        <div class="col-lg-6">
+            <div class="stat-card-custom p-4 mb-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="bg-dark text-white p-3 rounded-4 fs-3">
+                        <i class="fa-brands fa-apple"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Apple iOS (iPhone & iPad)</h5>
+                        <span class="small text-muted">ដំណោះស្រាយងាយស្រួល និងរហ័សបំផុតសម្រាប់អ្នកប្រើ iPhone</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-info-subtle d-flex align-items-center gap-3 rounded-3 py-2 px-3 mb-3">
+                    <i class="fa-solid fa-lightbulb text-info fs-4"></i>
+                    <div class="small">
+                        <strong>មិនបាច់ដំឡើង App Store ឬ Jailbreak៖</strong> អ្នកប្រើ iPhone អាចប្រើប្រាស់មុខងារ <strong>«បន្ថែមទៅអេក្រង់ដើម (Add to Home Screen)»</strong> ដើម្បីដំណើរការ SchoolSM ពេញអេក្រង់ដូច Native App ១០០%!
+                    </div>
+                </div>
+
+                <!-- 4 Easy Steps for iPhone Users -->
+                <div class="bg-light p-3 rounded-4 border mb-3">
+                    <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list-check me-2 text-primary"></i> របៀបដំឡើងលើ iPhone ក្នុងរយៈពេល ៣០ វិនាទី៖</h6>
+                    
+                    <div class="ios-guide-step">
+                        <div class="step-number">១</div>
+                        <div>
+                            <strong class="text-dark">បើកកម្មវិធី Safari</strong>
+                            <div class="text-muted small">នៅលើទូរស័ព្ទ iPhone សូមបើកកម្មវិធី <strong>Safari</strong> រួចវាយអាសយដ្ឋាន Web សាលា (ឧ. <code>{{ lan_ip }}:8000</code>)។</div>
+                        </div>
+                    </div>
+
+                    <div class="ios-guide-step">
+                        <div class="step-number">២</div>
+                        <div>
+                            <strong class="text-dark">ចុចប៊ូតុង Share (ចែករំលែក)</strong>
+                            <div class="text-muted small">ចុចលើរូបប្រអប់ដែលមានព្រួញចង្អុលឡើងលើ <span class="badge bg-secondary"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</span> នៅបាតក្រោមនៃ Safari។</div>
+                        </div>
+                    </div>
+
+                    <div class="ios-guide-step">
+                        <div class="step-number">៣</div>
+                        <div>
+                            <strong class="text-dark">ជ្រើសរើស «Add to Home Screen»</strong>
+                            <div class="text-muted small">អូសចុះក្រោមបន្តិច រួចចុចលើពាក្យ <strong>«បន្ថែមទៅអេក្រង់ដើម (Add to Home Screen)»</strong> ជាមួយរូបសញ្ញា <i class="fa-regular fa-square-plus text-primary"></i>។</div>
+                        </div>
+                    </div>
+
+                    <div class="ios-guide-step mb-0">
+                        <div class="step-number">៤</div>
+                        <div>
+                            <strong class="text-dark">រួចរាល់ជាស្ថាពរ!</strong>
+                            <div class="text-muted small">រូប Icon សាលារៀន SM នឹងបង្ហាញលើអេក្រង់ iPhone ហើយពេលចុចបើក វានឹងដំណើរការពេញអេក្រង់ (Full Screen) យ៉ាងស្រស់ស្អាត។</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Xcode Export Button for Developers -->
+                <div class="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-white">
+                    <div>
+                        <div class="fw-bold text-dark"><i class="fa-brands fa-app-store-ios text-primary me-1"></i> សម្រាប់ Developer (Xcode Build)</div>
+                        <div class="text-muted small">ទាញយក Source Code iOS យកទៅ Compile លើកុំព្យូទ័រ Mac ជាមួយ Xcode</div>
+                    </div>
+                    <a href="{% url 'tool_export_ios_project' %}" class="btn btn-outline-dark fw-bold btn-sm rounded-pill px-3">
+                        <i class="fa-solid fa-file-zipper me-1"></i> ទាញយក ZIP
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Testing Credentials Reference -->
+            <div class="stat-card-custom p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="fa-solid fa-key text-warning fs-5"></i>
+                    <h6 class="fw-bold mb-0">គណនីសាកល្បង Login លើ Mobile App</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>តួនាទី (Role)</th>
+                                <th>ឈ្មោះគណនី (ID / User)</th>
+                                <th>ពាក្យសម្ងាត់ (Password)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Super Admin</span></td>
+                                <td class="font-monospace fw-bold">admin</td>
+                                <td class="font-monospace">1627</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">គ្រូបង្រៀន (Teacher)</span></td>
+                                <td class="font-monospace">លេខកូដគ្រូ (ឧ. 1670800407)</td>
+                                <td class="font-monospace">p123456</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">សិស្ស (Student)</span></td>
+                                <td class="font-monospace">លេខសម្គាល់សិស្ស (ឧ. STU-2026-0013)</td>
+                                <td class="font-monospace">p123456</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Build Trigger Confirmation Modal -->
+<div class="modal fade" id="buildConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-hammer text-warning me-2"></i> បញ្ជាក់ការ Compile APK
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="text-secondary mb-2">
+                    តើអ្នកពិតជាចង់ចាប់ផ្តើមបង្កើតឯកសារ Release Android APK ថ្មីមែនទេ?
+                </p>
+                <div class="alert alert-warning small border-0 mb-0">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                    ដំណើរការនេះនឹងប្រើប្រាស់ពេលប្រមាណ <strong>១ ទៅ ៣ នាទី</strong> លើម៉ាស៊ីន។ ក្នុងអំឡុងពេល Compile លោកអ្នកអាចបន្តមើលការវិវឌ្ឍតាម Live Console បាន។
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-warning fw-bold rounded-pill px-4 text-dark" onclick="executeApkBuild()">
+                    <i class="fa-solid fa-play me-1"></i> ចាប់ផ្តើមឥឡូវនេះ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let pollInterval = null;
+
+    function startApkBuild() {
+        const modal = new bootstrap.Modal(document.getElementById('buildConfirmModal'));
+        modal.show();
+    }
+
+    function executeApkBuild() {
+        const modalEl = document.getElementById('buildConfirmModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        const btnTrigger = document.getElementById('btnTriggerBuild');
+        btnTrigger.disabled = true;
+        btnTrigger.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> កំពុងចាប់ផ្តើម...';
+
+        fetch("{% url 'api_build_mobile_apk' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'started' || data.status === 'already_running') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ចាប់ផ្តើម Compile APK!',
+                    text: 'ប្រព័ន្ធកំពុងដំណើរការ Build នៅ Background។ សូមតាមដាននៅលើផ្ទាំង Build Console ខាងក្រោម។',
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+                startStatusPolling();
+            } else {
+                Swal.fire('កំហុស', data.message || 'មិនអាចចាប់ផ្តើមបានទេ', 'error');
+                btnTrigger.disabled = false;
+                btnTrigger.innerHTML = '<i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)';
+            }
+        })
+        .catch(err => {
+            Swal.fire('កំហុស', 'មានបញ្ហាបណ្តាញ៖ ' + err, 'error');
+            btnTrigger.disabled = false;
+            btnTrigger.innerHTML = '<i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)';
+        });
+    }
+
+    function startStatusPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        
+        document.getElementById('buildSpinner').style.display = 'inline-block';
+        document.getElementById('buildIconIdle').style.display = 'none';
+
+        pollInterval = setInterval(fetchBuildStatus, 2000);
+        fetchBuildStatus();
+    }
+
+    function fetchBuildStatus() {
+        fetch("{% url 'api_mobile_build_status' %}")
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById('buildStatusBadge');
+            const terminal = document.getElementById('terminalLogs');
+            const btnTrigger = document.getElementById('btnTriggerBuild');
+            const apkStatusBadge = document.getElementById('apkStatusBadge');
+            const apkSizeText = document.getElementById('apkFileSizeText');
+            const apkMTimeText = document.getElementById('apkFileMTimeText');
+            const btnDownloadMain = document.getElementById('btnDownloadMain');
+            const btnDownloadHero = document.getElementById('btnDownloadHero');
+
+            badge.innerText = (data.status || 'IDLE').toUpperCase();
+            
+            if (data.status === 'building') {
+                badge.className = 'badge badge-soft-warning ms-2';
+                document.getElementById('buildSpinner').style.display = 'inline-block';
+                document.getElementById('buildIconIdle').style.display = 'none';
+                btnTrigger.disabled = true;
+                btnTrigger.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> កំពុង Compile...';
+            } else if (data.status === 'success') {
+                badge.className = 'badge badge-soft-success ms-2';
+                document.getElementById('buildSpinner').style.display = 'none';
+                document.getElementById('buildIconIdle').style.display = 'inline-block';
+                btnTrigger.disabled = false;
+                btnTrigger.innerHTML = '<i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)';
+                clearInterval(pollInterval);
+            } else if (data.status === 'error') {
+                badge.className = 'badge badge-soft-danger ms-2';
+                document.getElementById('buildSpinner').style.display = 'none';
+                document.getElementById('buildIconIdle').style.display = 'inline-block';
+                btnTrigger.disabled = false;
+                btnTrigger.innerHTML = '<i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)';
+                clearInterval(pollInterval);
+            } else {
+                badge.className = 'badge badge-soft-info ms-2';
+                document.getElementById('buildSpinner').style.display = 'none';
+                document.getElementById('buildIconIdle').style.display = 'inline-block';
+                btnTrigger.disabled = false;
+                btnTrigger.innerHTML = '<i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)';
+            }
+
+            // Update Logs
+            if (data.logs && data.logs.length > 0) {
+                terminal.innerHTML = data.logs.map(line => {
+                    if (line.includes('[SUCCESS]') || line.includes('[DONE]')) {
+                        return `<span class="text-success fw-bold">${line}</span>`;
+                    } else if (line.includes('[ERROR]') || line.includes('[EXCEPTION]')) {
+                        return `<span class="text-danger fw-bold">${line}</span>`;
+                    } else if (line.includes('[*]')) {
+                        return `<span class="text-warning">${line}</span>`;
+                    } else {
+                        return `<span class="text-light text-opacity-75">${line}</span>`;
+                    }
+                }).join('\n');
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+
+            // Update APK File Info if build finished successfully
+            if (data.apk_exists) {
+                apkStatusBadge.className = 'badge bg-success rounded-pill px-3 py-2';
+                apkStatusBadge.innerText = 'រួចរាល់ (Ready)';
+                apkSizeText.innerText = data.apk_size_mb + ' MB';
+                if (data.apk_mtime_str) {
+                    apkMTimeText.innerText = data.apk_mtime_str;
+                }
+                if (btnDownloadMain) {
+                    btnDownloadMain.classList.remove('disabled');
+                }
+            }
+        })
+        .catch(err => {
+            console.error("Failed to fetch build status:", err);
+        });
+    }
+
+    function clearConsoleLogs() {
+        document.getElementById('terminalLogs').innerHTML = '<span class="text-muted">...Console logs cleared...</span>';
+    }
+
+    function copyDownloadUrl() {
+        const input = document.getElementById('inputDownloadUrl');
+        navigator.clipboard.writeText(input.value).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'បានចម្លងតំណភ្ជាប់!',
+                text: input.value,
+                timer: 1800,
+                showConfirmButton: false
+            });
+        }).catch(() => {
+            input.select();
+            document.execCommand('copy');
+            alert('បានចម្លងតំណភ្ជាប់៖ ' + input.value);
+        });
+    }
+
+    // Check on page load if a build was already running
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if build_state.status == 'building' %}
+        startStatusPolling();
+        {% endif %}
+    });
+</script>
+{% endblock %}

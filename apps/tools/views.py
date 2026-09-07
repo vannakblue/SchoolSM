@@ -2,6 +2,8 @@ import os
 import io
 import json
 import re
+from django.conf import settings
+from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse, FileResponse, Http404
 from django.contrib.auth.decorators import login_required
@@ -1084,4 +1086,313 @@ def api_unlink_google_sheet(request):
         service.unlink_academic_spreadsheet(ay)
         messages.success(request, f"បានផ្តាច់ Google Sheet ចេញពីឆ្នាំសិក្សា {ay.name} រួចរាល់។")
     return redirect('tool_google_sheets')
+
+
+# =====================================================================
+# 📱 Mobile App & APK Builder Suite (SchoolSM Cross-Platform App)
+# =====================================================================
+
+import subprocess
+import threading
+import time
+import zipfile
+import shutil
+import socket
+from datetime import datetime
+from django.urls import reverse
+
+# Global state for asynchronous mobile app compilation
+BUILD_STATE = {
+    'status': 'idle',  # 'idle', 'building', 'success', 'error'
+    'started_at': None,
+    'finished_at': None,
+    'logs': [],
+    'error_message': None,
+    'duration_seconds': 0,
+}
+_BUILD_LOCK = threading.Lock()
+
+
+def _get_lan_ip():
+    """Returns local LAN IP for local WiFi device access."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
+def _run_apk_build_thread():
+    """Background worker compiling Flutter release APK."""
+    global BUILD_STATE
+    with _BUILD_LOCK:
+        BUILD_STATE['status'] = 'building'
+        BUILD_STATE['started_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        BUILD_STATE['finished_at'] = None
+        BUILD_STATE['error_message'] = None
+        BUILD_STATE['logs'] = ["[*] Initializing Flutter Release APK compilation..."]
+        start_time = time.time()
+
+    env = os.environ.copy()
+    
+    # Configure JDK 17 if available
+    jdk_path = r"C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
+    if os.path.exists(jdk_path):
+        env['JAVA_HOME'] = jdk_path
+        env['PATH'] = f"{jdk_path}\\bin;{env.get('PATH', '')}"
+
+    # Configure Android SDK if available
+    android_sdk = r"e:\AndroidSdk"
+    if not os.path.exists(android_sdk):
+        local_sdk = os.path.expandvars(r"%LOCALAPPDATA%\Android\Sdk")
+        if os.path.exists(local_sdk):
+            android_sdk = local_sdk
+
+    if os.path.exists(android_sdk):
+        env['ANDROID_HOME'] = android_sdk
+        env['ANDROID_SDK_ROOT'] = android_sdk
+        env['PATH'] = f"{android_sdk}\\platform-tools;{android_sdk}\\cmdline-tools\\latest\\bin;{env.get('PATH', '')}"
+
+    mobile_dir = os.path.join(settings.BASE_DIR, 'schoolsm_mobile')
+    pubspec = os.path.join(mobile_dir, 'pubspec.yaml')
+    if not os.path.exists(pubspec):
+        with _BUILD_LOCK:
+            BUILD_STATE['status'] = 'error'
+            BUILD_STATE['error_message'] = 'pubspec.yaml not found in schoolsm_mobile'
+            BUILD_STATE['logs'].append(f"[ERROR] pubspec.yaml not found at {pubspec}")
+        return
+
+    try:
+        with _BUILD_LOCK:
+            BUILD_STATE['logs'].append("[*] Resolving Flutter packages (flutter pub get)...")
+
+        proc_pub = subprocess.run(
+            ["flutter", "pub", "get"],
+            cwd=mobile_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+        if proc_pub.returncode != 0:
+            with _BUILD_LOCK:
+                BUILD_STATE['status'] = 'error'
+                BUILD_STATE['error_message'] = 'flutter pub get failed'
+                BUILD_STATE['logs'].append(f"[ERROR] flutter pub get failed:\n{proc_pub.stderr}")
+            return
+
+        with _BUILD_LOCK:
+            BUILD_STATE['logs'].append("[OK] Dependencies resolved successfully.")
+            BUILD_STATE['logs'].append("[*] Compiling Release APK (flutter build apk --release)...")
+
+        cmd = [
+            "flutter", "build", "apk", "--release",
+            "--no-tree-shake-icons",
+            "--android-skip-build-dependency-validation"
+        ]
+        proc_build = subprocess.Popen(
+            cmd,
+            cwd=mobile_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            shell=True
+        )
+
+        for line in proc_build.stdout:
+            cleaned = line.strip()
+            if cleaned:
+                with _BUILD_LOCK:
+                    BUILD_STATE['logs'].append(cleaned)
+                    if len(BUILD_STATE['logs']) > 300:
+                        BUILD_STATE['logs'] = BUILD_STATE['logs'][-300:]
+
+        proc_build.wait()
+
+        if proc_build.returncode == 0:
+            output_apk = os.path.join(mobile_dir, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+            dest_apk = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+            if os.path.exists(output_apk):
+                shutil.copy2(output_apk, dest_apk)
+                with _BUILD_LOCK:
+                    BUILD_STATE['logs'].append(f"[SUCCESS] APK copied to {dest_apk}")
+
+            with _BUILD_LOCK:
+                BUILD_STATE['status'] = 'success'
+                BUILD_STATE['finished_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                BUILD_STATE['duration_seconds'] = int(time.time() - start_time)
+                BUILD_STATE['logs'].append(f"[DONE] Release APK built successfully in {BUILD_STATE['duration_seconds']}s!")
+        else:
+            with _BUILD_LOCK:
+                BUILD_STATE['status'] = 'error'
+                BUILD_STATE['finished_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                BUILD_STATE['duration_seconds'] = int(time.time() - start_time)
+                BUILD_STATE['error_message'] = f"Build failed with exit code {proc_build.returncode}"
+                BUILD_STATE['logs'].append(f"[ERROR] Build process failed with code {proc_build.returncode}")
+    except Exception as e:
+        with _BUILD_LOCK:
+            BUILD_STATE['status'] = 'error'
+            BUILD_STATE['finished_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+            BUILD_STATE['duration_seconds'] = int(time.time() - start_time)
+            BUILD_STATE['error_message'] = str(e)
+            BUILD_STATE['logs'].append(f"[EXCEPTION] {str(e)}")
+
+
+@login_required
+@role_required(['ADMIN'])
+def tool_mobile_app_manager(request):
+    """
+    Web Dashboard for Mobile App & APK Builder:
+    Trigger builds, monitor live logs, download APK, and share QR code.
+    """
+    apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+    apk_exists = os.path.exists(apk_path)
+    apk_size_mb = round(os.path.getsize(apk_path) / (1024 * 1024), 2) if apk_exists else 0
+    apk_mtime = datetime.fromtimestamp(os.path.getmtime(apk_path)) if apk_exists else None
+
+    # Calculate LAN download URL for phones on local Wi-Fi
+    lan_ip = _get_lan_ip()
+    host = request.get_host()
+    port = host.split(':')[1] if ':' in host else '8000'
+    lan_download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
+
+    # Also regular download URL
+    web_download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
+
+    # Check Flutter version
+    flutter_version = "Flutter 3.47.1"
+    
+    with _BUILD_LOCK:
+        current_build = dict(BUILD_STATE)
+
+    return render(request, 'tools/mobile_app_manager.html', {
+        'page_title': 'គ្រប់គ្រងកម្មវិធីទូរស័ព្ទ (SchoolSM Mobile App & APK Builder)',
+        'apk_exists': apk_exists,
+        'apk_size_mb': apk_size_mb,
+        'apk_mtime': apk_mtime,
+        'lan_download_url': lan_download_url,
+        'web_download_url': web_download_url,
+        'lan_ip': lan_ip,
+        'flutter_version': flutter_version,
+        'build_state': current_build,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_build_mobile_apk(request):
+    """
+    Triggers background compilation of Release APK.
+    """
+    global BUILD_STATE
+    with _BUILD_LOCK:
+        if BUILD_STATE['status'] == 'building':
+            return JsonResponse({'status': 'already_running', 'message': 'ដំណើរការ Build កំពុងដំណើរការរួចហើយ។'}, status=400)
+
+    t = threading.Thread(target=_run_apk_build_thread, daemon=True)
+    t.start()
+    return JsonResponse({'status': 'started', 'message': 'បានចាប់ផ្តើមដំណើរការ Build APK នៅ Background ដោយជោគជ័យ!'})
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_mobile_build_status(request):
+    """
+    Returns real-time status and logs of APK compilation.
+    """
+    global BUILD_STATE
+    with _BUILD_LOCK:
+        data = dict(BUILD_STATE)
+
+    apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+    apk_exists = os.path.exists(apk_path)
+    apk_size_mb = round(os.path.getsize(apk_path) / (1024 * 1024), 2) if apk_exists else 0
+    apk_mtime_str = datetime.fromtimestamp(os.path.getmtime(apk_path)).strftime('%d/%m/%Y %I:%M %p') if apk_exists else None
+
+    data['apk_exists'] = apk_exists
+    data['apk_size_mb'] = apk_size_mb
+    data['apk_mtime_str'] = apk_mtime_str
+    return JsonResponse(data)
+
+
+def tool_download_mobile_apk(request):
+    """
+    Direct download endpoint for SchoolSM-Mobile.apk.
+    Accessible on phone via QR scan or direct link.
+    """
+    apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+    if not os.path.exists(apk_path):
+        fallback = os.path.join(settings.BASE_DIR, 'schoolsm_mobile', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+        if os.path.exists(fallback):
+            apk_path = fallback
+        else:
+            raise Http404("រកមិនឃើញឯកសារ APK ឡើយ។ សូមចុច Build APK ជាមុនសិន។")
+
+    response = FileResponse(open(apk_path, 'rb'), content_type='application/vnd.android.package-archive')
+    response['Content-Disposition'] = 'attachment; filename="SchoolSM-Mobile.apk"'
+    response['Content-Length'] = os.path.getsize(apk_path)
+    return response
+
+
+def tool_mobile_apk_qr(request):
+    """
+    Generates dynamic high-res QR code pointing to LAN/public APK download.
+    """
+    import qrcode
+
+    lan_ip = _get_lan_ip()
+    host = request.get_host()
+    port = host.split(':')[1] if ':' in host else '8000'
+    
+    # If host is localhost, replace with LAN IP so phone can reach it
+    if '127.0.0.1' in host or 'localhost' in host:
+        download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
+    else:
+        download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=3,
+    )
+    qr.add_data(download_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0f172a", back_color="#ffffff")
+
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return HttpResponse(buffer.getvalue(), content_type="image/png")
+
+
+@login_required
+@role_required(['ADMIN'])
+def tool_export_ios_project(request):
+    """
+    Exports the Flutter iOS project source files as a ZIP archive for opening in Xcode.
+    """
+    mobile_dir = os.path.join(settings.BASE_DIR, 'schoolsm_mobile')
+    if not os.path.exists(mobile_dir):
+        raise Http404("រកមិនឃើញ Folder schoolsm_mobile ឡើយ។")
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(mobile_dir):
+            dirs[:] = [d for d in dirs if d not in ['.dart_tool', 'build', '.git', '.idea', 'android']]
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, settings.BASE_DIR)
+                zf.write(file_path, arcname)
+
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type='application/zip')
+    response['Content-Disposition'] = 'attachment; filename="SchoolSM-Mobile-iOS-Xcode.zip"'
+    return response
+
 

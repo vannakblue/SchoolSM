@@ -56,4 +56,13 @@ urlpatterns = [
     path('api/pdf-to-docx/', views.api_pdf_to_docx, name='api_tool_pdf_to_docx'),
     path('api/pdf-to-excel/', views.api_pdf_to_excel, name='api_tool_pdf_to_excel'),
     path('api/images-to-pdf/', views.api_images_to_pdf, name='api_tool_images_to_pdf'),
+
+    # 📱 Mobile App & APK Builder Suite
+    path('mobile-app/', views.tool_mobile_app_manager, name='tool_mobile_app_manager'),
+    path('mobile-app/build/', views.api_build_mobile_apk, name='api_build_mobile_apk'),
+    path('mobile-app/status/', views.api_mobile_build_status, name='api_mobile_build_status'),
+    path('mobile-app/download-apk/', views.tool_download_mobile_apk, name='tool_download_mobile_apk'),
+    path('mobile-app/qr-code/', views.tool_mobile_apk_qr, name='tool_mobile_apk_qr'),
+    path('mobile-app/export-ios/', views.tool_export_ios_project, name='tool_export_ios_project'),
 ]
+

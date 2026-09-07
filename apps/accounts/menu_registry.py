@@ -743,6 +743,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN'],
                 'url_name': 'tool_database_backup',
             },
+            {
+                'key': 'tool_mobile_app_manager',
+                'name_kh': 'កម្មវិធីទូរស័ព្ទ (Mobile APK)',
+                'name_en': 'Mobile App & APK Builder',
+                'icon': 'fa-solid fa-mobile-screen-button text-primary',
+                'default_roles': ['ADMIN'],
+                'url_name': 'tool_mobile_app_manager',
+            },
         ]
     },
 ]
