@@ -1289,6 +1289,7 @@ def tool_mobile_app_manager(request):
         'github_ipa_url': GITHUB_IPA_URL,
         'github_actions_url': GITHUB_ACTIONS_URL,
         'build_state': current_build,
+        'cloud_config': get_mobile_download_config(),
     })
 
 
@@ -1362,12 +1363,40 @@ def api_mobile_build_status(request):
     return JsonResponse(data)
 
 
+MOBILE_CONFIG_PATH = os.path.join(settings.BASE_DIR, 'mobile_download_config.json')
+
+
+def get_mobile_download_config():
+    """Reads custom cloud storage download links for APK & IPA."""
+    if os.path.exists(MOBILE_CONFIG_PATH):
+        try:
+            with open(MOBILE_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        'custom_apk_url': '',
+        'custom_ipa_url': '',
+    }
+
+
+def save_mobile_download_config(data):
+    """Writes custom cloud storage download links for APK & IPA."""
+    with open(MOBILE_CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 def tool_download_mobile_apk(request):
     """
     Direct download endpoint for SchoolSM-Mobile.apk.
-    Accessible on phone via QR scan or direct link.
-    If local file does not exist on Cloud Server, seamlessly redirects to GitHub Releases.
+    1. If Admin configured custom Cloud Storage URL (Google Drive, Dropbox, R2), redirect to it.
+    2. If local file exists, serve it.
+    3. Else fallback to GitHub Releases CDN.
     """
+    cfg = get_mobile_download_config()
+    if cfg.get('custom_apk_url'):
+        return redirect(cfg['custom_apk_url'])
+
     apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
     if os.path.exists(apk_path):
         response = FileResponse(open(apk_path, 'rb'), content_type='application/vnd.android.package-archive')
@@ -1389,9 +1418,14 @@ def tool_download_mobile_apk(request):
 def tool_download_mobile_ipa(request):
     """
     Direct download endpoint for SchoolSM-iOS.ipa.
-    Accessible on iPhone/Mac via direct link.
-    If local file does not exist, redirects to GitHub Releases CDN.
+    1. If Admin configured custom Cloud Storage URL, redirect to it.
+    2. If local file exists, serve it.
+    3. Else fallback to GitHub Releases CDN.
     """
+    cfg = get_mobile_download_config()
+    if cfg.get('custom_ipa_url'):
+        return redirect(cfg['custom_ipa_url'])
+
     ipa_path = os.path.join(settings.BASE_DIR, 'SchoolSM-iOS.ipa')
     if os.path.exists(ipa_path):
         response = FileResponse(open(ipa_path, 'rb'), content_type='application/octet-stream')
@@ -1407,6 +1441,26 @@ def tool_download_mobile_ipa(request):
     return redirect(GITHUB_IPA_URL)
 
 
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_save_mobile_cloud_config(request):
+    """
+    Saves custom cloud download links (Google Drive, Dropbox, Cloudflare R2, AWS S3, etc.)
+    """
+    custom_apk_url = request.POST.get('custom_apk_url', '').strip()
+    custom_ipa_url = request.POST.get('custom_ipa_url', '').strip()
+
+    data = {
+        'custom_apk_url': custom_apk_url,
+        'custom_ipa_url': custom_ipa_url,
+        'updated_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+    save_mobile_download_config(data)
+    messages.success(request, "🎉 បានរក្សាទុកការកំណត់ Cloud Storage (Custom URLs) ដោយជោគជ័យ!")
+    return redirect('tool_mobile_app_manager')
+
+
 def tool_public_mobile_download(request):
     """
     Public download portal allowing any user (students, parents, teachers)
@@ -1414,6 +1468,7 @@ def tool_public_mobile_download(request):
     """
     from apps.accounts.models import SchoolProfile
     school_profile = SchoolProfile.objects.first()
+    cfg = get_mobile_download_config()
 
     lan_ip = _get_lan_ip()
     host = request.get_host()
@@ -1437,8 +1492,11 @@ def tool_public_mobile_download(request):
         'ipa_download_url': ipa_download_url,
         'github_apk_url': GITHUB_APK_URL,
         'github_ipa_url': GITHUB_IPA_URL,
+        'custom_apk_url': cfg.get('custom_apk_url', ''),
+        'custom_ipa_url': cfg.get('custom_ipa_url', ''),
         'apk_size_mb': apk_size_mb,
     })
+
 
 
 

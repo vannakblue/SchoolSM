@@ -77,6 +77,35 @@ class MobileAppBuilderWebTest(TestCase):
         self.assertContains(response, 'Apple iOS')
         self.assertContains(response, 'APK')
 
+    def test_custom_cloud_config_and_redirect(self):
+        from apps.tools.views import get_mobile_download_config, save_mobile_download_config
+        original_config = get_mobile_download_config()
+        try:
+            self.client.force_login(self.admin_user)
+            post_data = {
+                'custom_apk_url': 'https://drive.google.com/uc?export=download&id=TEST_APK_ID',
+                'custom_ipa_url': 'https://drive.google.com/uc?export=download&id=TEST_IPA_ID',
+            }
+            res = self.client.post(reverse('api_save_mobile_cloud_config'), data=post_data)
+            self.assertEqual(res.status_code, 302)
+
+            cfg = get_mobile_download_config()
+            self.assertEqual(cfg.get('custom_apk_url'), 'https://drive.google.com/uc?export=download&id=TEST_APK_ID')
+            self.assertEqual(cfg.get('custom_ipa_url'), 'https://drive.google.com/uc?export=download&id=TEST_IPA_ID')
+
+            # Test APK redirect to custom URL
+            apk_res = self.client.get(reverse('tool_download_mobile_apk'))
+            self.assertEqual(apk_res.status_code, 302)
+            self.assertEqual(apk_res['Location'], 'https://drive.google.com/uc?export=download&id=TEST_APK_ID')
+
+            # Test IPA redirect to custom URL
+            ipa_res = self.client.get(reverse('tool_download_mobile_ipa'))
+            self.assertEqual(ipa_res.status_code, 302)
+            self.assertEqual(ipa_res['Location'], 'https://drive.google.com/uc?export=download&id=TEST_IPA_ID')
+        finally:
+            save_mobile_download_config(original_config)
+
+
 if __name__ == '__main__':
     import unittest
     suite = unittest.TestLoader().loadTestsFromTestCase(MobileAppBuilderWebTest)

@@ -211,6 +211,99 @@
         </div>
     </div>
 
+    <!-- Custom Cloud Storage Configuration Card (Google Drive, Dropbox, Cloudflare R2, AWS S3) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary-subtle text-primary p-2.5 rounded-3">
+                    <i class="fa-solid fa-cloud-arrow-down fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">☁️ ការកំណត់ Cloud Storage ផ្ទាល់ខ្លួន (Custom Cloud Storage Links)</h5>
+                    <div class="small text-muted">ភ្ជាប់តំណភ្ជាប់ផ្ទុកឯកសារ APK & IPA ពី Google Drive, Dropbox, Cloudflare R2, AWS S3 ឬ Firebase Storage</div>
+                </div>
+            </div>
+            <div>
+                {% if cloud_config.custom_apk_url or cloud_config.custom_ipa_url %}
+                <span class="badge bg-success rounded-pill px-3 py-2">
+                    <i class="fa-solid fa-circle-check me-1"></i> Cloud Links សកម្ម
+                </span>
+                {% else %}
+                <span class="badge bg-secondary rounded-pill px-3 py-2">
+                    <i class="fa-solid fa-circle-info me-1"></i> កំពុងប្រើ Server / GitHub CDN
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <form action="{% url 'api_save_mobile_cloud_config' %}" method="POST">
+                {% csrf_token %}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-brands fa-android text-success me-1"></i> តំណភ្ជាប់ Android APK (Custom Download Link)៖
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-link text-muted"></i></span>
+                            <input type="url" name="custom_apk_url" class="form-control" placeholder="https://drive.google.com/uc?export=download&id=... ឬ Dropbox / R2" value="{{ cloud_config.custom_apk_url }}">
+                            {% if cloud_config.custom_apk_url %}
+                            <a href="{{ cloud_config.custom_apk_url }}" target="_blank" class="btn btn-outline-success" title="តេស្តតំណភ្ជាប់">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> តេស្ត
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="form-text small text-muted">
+                            ប្រសិនបើបញ្ចូល, រាល់ការចុចទាញយក APK និងស្កេន QR Code នឹងទាញយកពី Cloud នេះដោយស្វ័យប្រវត្តិ។
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-dark small">
+                            <i class="fa-brands fa-apple text-dark me-1"></i> តំណភ្ជាប់ Apple iOS IPA (Custom Download Link)៖
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-link text-muted"></i></span>
+                            <input type="url" name="custom_ipa_url" class="form-control" placeholder="https://drive.google.com/uc?export=download&id=... ឬ Dropbox / R2" value="{{ cloud_config.custom_ipa_url }}">
+                            {% if cloud_config.custom_ipa_url %}
+                            <a href="{{ cloud_config.custom_ipa_url }}" target="_blank" class="btn btn-outline-dark" title="តេស្តតំណភ្ជាប់">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> តេស្ត
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="form-text small text-muted">
+                            សម្រាប់អ្នកប្រើ iOS ដែលចង់ទាញយកឯកសារ .ipa យកទៅដំឡើងតាមរយៈ Sideload / AltStore / Scarlet។
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Helper Accordion / Tips for Google Drive & Dropbox -->
+                <div class="alert alert-light border rounded-3 p-3 mb-3 bg-light">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-circle-question text-primary fs-5 mt-0.5"></i>
+                        <div class="small text-secondary">
+                            <strong class="text-dark">គន្លឹះបំប្លែងតំណភ្ជាប់ទៅជា Direct Download Link ៖</strong>
+                            <ul class="mb-0 ps-3 mt-1">
+                                <li><strong>Google Drive៖</strong> ដូរពី <code>https://drive.google.com/file/d/<b>FILE_ID</b>/view?usp=sharing</code> ទៅជា <code>https://drive.google.com/uc?export=download&id=<b>FILE_ID</b></code> (ត្រូវប្រាកដថាបានបើក Access ជា Anyone with the link)</li>
+                                <li><strong>Dropbox៖</strong> ដាក់ <code>?dl=1</code> នៅចុងបញ្ចប់ (ឧ. <code>https://www.dropbox.com/s/.../SchoolSM-Mobile.apk?dl=1</code>)</li>
+                                <li><strong>Cloudflare R2 / AWS S3 / Firebase៖</strong> ប្រើ Direct Public Bucket URL ដែលអ្នកបានបង្កើត។</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">
+                        {% if cloud_config.updated_at %}
+                        <i class="fa-regular fa-clock me-1"></i> បានកែប្រែចុងក្រោយ៖ {{ cloud_config.updated_at }}
+                        {% endif %}
+                    </span>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ Cloud Links
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Live Compilation Status Card (Shows during and after build) -->
     <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" id="buildProgressSection">
         <div class="card-header bg-dark text-white py-3 px-4 d-flex align-items-center justify-content-between">

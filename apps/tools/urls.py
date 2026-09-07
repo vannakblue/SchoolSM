@@ -67,5 +67,6 @@ urlpatterns = [
     path('mobile-app/download-ipa/', views.tool_download_mobile_ipa, name='tool_download_mobile_ipa'),
     path('mobile-app/qr-code/', views.tool_mobile_apk_qr, name='tool_mobile_apk_qr'),
     path('mobile-app/export-ios/', views.tool_export_ios_project, name='tool_export_ios_project'),
+    path('mobile-app/save-cloud-config/', views.api_save_mobile_cloud_config, name='api_save_mobile_cloud_config'),
 ]
 

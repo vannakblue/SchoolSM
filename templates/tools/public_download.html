@@ -142,9 +142,15 @@
                         </a>
 
                         <div class="text-center">
+                            {% if custom_apk_url %}
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1 small">
+                                <i class="fa-solid fa-cloud me-1"></i> Direct Cloud Storage (ល្បឿនលឿន)
+                            </span>
+                            {% else %}
                             <a href="{{ github_apk_url }}" target="_blank" class="small text-muted text-decoration-none">
                                 <i class="fa-brands fa-github me-1"></i> ឬទាញយកពី GitHub Release CDN
                             </a>
+                            {% endif %}
                         </div>
                     </div>
 
