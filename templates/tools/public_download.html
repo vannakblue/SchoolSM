@@ -1,0 +1,215 @@
+{% extends "website/base_website.html" %}
+{% load static %}
+
+{% block title %}ទាញយកកម្មវិធីទូរស័ព្ទដៃ (SchoolSM Mobile App) | {{ school_profile.name_kh|default:"សាលារៀន SM" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .download-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+        color: white;
+        padding: 5rem 0 4rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .platform-card {
+        border-radius: 24px;
+        border: 2px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 35px 28px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .platform-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(30, 64, 175, 0.14);
+        border-color: #3b82f6;
+    }
+    .platform-icon-circle {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        margin-bottom: 20px;
+    }
+    .qr-download-box {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 18px;
+        padding: 16px;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .btn-platform-android {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: #ffffff !important;
+        font-weight: 700;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-size: 1.05rem;
+        border: none;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+    }
+    .btn-platform-android:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+    }
+    .btn-platform-ios {
+        background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+        color: #ffffff !important;
+        font-weight: 700;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-size: 1.05rem;
+        border: none;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.35);
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+    }
+    .btn-platform-ios:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(15, 23, 42, 0.5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Header -->
+<section class="download-hero text-center">
+    <div class="container">
+        <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 mb-3 fs-6">
+            <i class="fa-solid fa-mobile-screen-button text-warning me-1"></i>
+            SchoolSM Mobile App Suite
+        </span>
+        <h1 class="display-5 fw-bold mb-3">ទាញយកកម្មវិធីទូរស័ព្ទដៃសាលារៀន</h1>
+        <p class="lead text-white-50 max-w-2xl mx-auto mb-0" style="font-size: 1.15rem;">
+            តាមដានវត្តមាន កាលវិភាគរៀន លទ្ធផលប្រឡងប្រចាំខែ និងពិន្ទុឆមាស បានយ៉ាងរហ័ស និងងាយស្រួលគ្រប់ពេលវេលាលើទូរស័ព្ទដៃរបស់អ្នក។
+        </p>
+    </div>
+</section>
+
+<!-- Main Platform Selection Area -->
+<section class="py-5" style="background-color: #f1f5f9;">
+    <div class="container py-3">
+        
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-dark">សូមជ្រើសរើសប្រភេទឧបករណ៍របស់អ្នក</h2>
+            <p class="text-muted">ជ្រើសរើសរវាងប្រព័ន្ធប្រតិបត្តិការ Android ឬ Apple iOS ខាងក្រោម៖</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            
+            <!-- 1. Android Option (APK) -->
+            <div class="col-lg-5 col-md-6">
+                <div class="platform-card">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="platform-icon-circle bg-success bg-opacity-10 text-success">
+                                <i class="fa-brands fa-android"></i>
+                            </div>
+                            <span class="badge bg-success rounded-pill px-3 py-1.5">Android 5.0+</span>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">ទូរស័ព្ទ Android</h3>
+                        <p class="text-muted small mb-3">
+                            សម្រាប់ Samsung, Oppo, Xiaomi, Vivo, Realme, Huawei, និងទូរស័ព្ទ Android គ្រប់ម៉ូដែល។
+                        </p>
+
+                        <div class="alert alert-success bg-success-subtle border-0 rounded-3 py-2 px-3 small mb-3 text-success">
+                            <i class="fa-solid fa-circle-check me-1"></i> <strong>ឯកសារ Installer APK ផ្ទាល់៖</strong> ទាញយកដំឡើងបាន ១០០% ដោយគ្មានដែនកំណត់!
+                        </div>
+
+                        <!-- Direct APK Download Button -->
+                        <a href="{{ apk_download_url }}" class="btn-platform-android mb-2 text-decoration-none">
+                            <i class="fa-solid fa-download fs-5"></i>
+                            <span>ទាញយកឯកសារ APK ({{ apk_size_mb }} MB)</span>
+                        </a>
+
+                        <div class="text-center">
+                            <a href="{{ github_apk_url }}" target="_blank" class="small text-muted text-decoration-none">
+                                <i class="fa-brands fa-github me-1"></i> ឬទាញយកពី GitHub Release CDN
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- QR Code for Android -->
+                    <div class="qr-download-box mt-4">
+                        <div class="small fw-bold text-dark mb-2">
+                            <i class="fa-solid fa-qrcode me-1 text-success"></i> ស្កេន QR Code ដើម្បីដំឡើងលើ Android
+                        </div>
+                        <img src="{% url 'tool_mobile_apk_qr' %}" alt="Android APK QR" style="width: 160px; height: 160px; border-radius: 12px; background: white; padding: 6px;" class="shadow-xs mb-2">
+                        <div class="text-muted small" style="font-size: 0.78rem;">
+                            បើកកាមេរ៉ាទូរស័ព្ទ Android ស្កេនដើម្បីទាញយកភ្លាមៗ
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Apple iOS Option (IPA & PWA) -->
+            <div class="col-lg-5 col-md-6">
+                <div class="platform-card">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="platform-icon-circle bg-dark text-white">
+                                <i class="fa-brands fa-apple"></i>
+                            </div>
+                            <span class="badge bg-dark rounded-pill px-3 py-1.5">iPhone & iPad</span>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">Apple iOS (iPhone)</h3>
+                        <p class="text-muted small mb-3">
+                            សម្រាប់ iPhone, iPad គ្រប់ជំនាន់ដំណើរការលើកម្មវិធី Safari។
+                        </p>
+
+                        <div class="alert alert-info bg-info-subtle border-0 rounded-3 py-2 px-3 small mb-3 text-info-emphasis">
+                            <i class="fa-solid fa-star text-warning me-1"></i> <strong>វិធីសាស្ត្រណែនាំបំផុត (PWA)៖</strong> ដំណើរការពេញអេក្រង់ដូច App ពិតប្រាកដ ដោយមិនបាច់ត្រូវការ App Store!
+                        </div>
+
+                        <!-- 1-Click Launch Web App (PWA) -->
+                        <a href="{% url 'website_home' %}" class="btn-platform-ios mb-2 text-decoration-none">
+                            <i class="fa-solid fa-square-plus fs-5 text-warning"></i>
+                            <span>ប្រើប្រាស់ Web App លើ Safari</span>
+                        </a>
+
+                        <div class="text-center mb-3">
+                            <a href="{{ ipa_download_url }}" class="small text-secondary text-decoration-none">
+                                <i class="fa-solid fa-file-arrow-down me-1"></i> ឬទាញយកឯកសារ .IPA (សម្រាប់ Sideload/AltStore)
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Visual PWA Guide for iOS -->
+                    <div class="qr-download-box mt-2 text-start p-3">
+                        <div class="small fw-bold text-dark mb-2 text-center">
+                            <i class="fa-brands fa-safari me-1 text-primary"></i> របៀបបង្កើត App លើ iPhone ក្នុង ៣០ វិនាទី៖
+                        </div>
+                        <ol class="small text-muted ps-3 mb-0" style="font-size: 0.82rem; line-height: 1.6;">
+                            <li>បើកវេបសាយនេះលើ <strong>Safari</strong> លើ iPhone របស់អ្នក</li>
+                            <li>ចុចប៊ូតុង <strong>Share (ចែករំលែក ⬆️)</strong> នៅបាតក្រោម</li>
+                            <li>ចុចលើពាក្យ <strong>«Add to Home Screen (បន្ថែមទៅអេក្រង់ដើម)»</strong></li>
+                            <li>រួចរាល់! Icon សាលានឹងបង្ហាញលើអេក្រង់ទូរស័ព្ទរបស់អ្នក</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+{% endblock %}

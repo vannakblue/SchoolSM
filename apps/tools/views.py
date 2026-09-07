@@ -1243,6 +1243,7 @@ def _run_apk_build_thread():
 
 
 GITHUB_APK_URL = "https://github.com/vannakblue/SchoolSM/releases/download/latest/SchoolSM-Mobile.apk"
+GITHUB_IPA_URL = "https://github.com/vannakblue/SchoolSM/releases/download/latest/SchoolSM-iOS.ipa"
 GITHUB_ACTIONS_URL = "https://github.com/vannakblue/SchoolSM/actions/workflows/build_mobile_apps.yml"
 
 
@@ -1285,6 +1286,7 @@ def tool_mobile_app_manager(request):
         'flutter_version': flutter_version,
         'flutter_installed': flutter_installed,
         'github_apk_url': GITHUB_APK_URL,
+        'github_ipa_url': GITHUB_IPA_URL,
         'github_actions_url': GITHUB_ACTIONS_URL,
         'build_state': current_build,
     })
@@ -1382,6 +1384,62 @@ def tool_download_mobile_apk(request):
 
     # If file not present on cloud server, redirect to GitHub Release CDN download
     return redirect(GITHUB_APK_URL)
+
+
+def tool_download_mobile_ipa(request):
+    """
+    Direct download endpoint for SchoolSM-iOS.ipa.
+    Accessible on iPhone/Mac via direct link.
+    If local file does not exist, redirects to GitHub Releases CDN.
+    """
+    ipa_path = os.path.join(settings.BASE_DIR, 'SchoolSM-iOS.ipa')
+    if os.path.exists(ipa_path):
+        response = FileResponse(open(ipa_path, 'rb'), content_type='application/octet-stream')
+        response['Content-Disposition'] = 'attachment; filename="SchoolSM-iOS.ipa"'
+        return response
+
+    fallback = os.path.join(settings.BASE_DIR, 'schoolsm_mobile', 'dist', 'SchoolSM-iOS.ipa')
+    if os.path.exists(fallback):
+        response = FileResponse(open(fallback, 'rb'), content_type='application/octet-stream')
+        response['Content-Disposition'] = 'attachment; filename="SchoolSM-iOS.ipa"'
+        return response
+
+    return redirect(GITHUB_IPA_URL)
+
+
+def tool_public_mobile_download(request):
+    """
+    Public download portal allowing any user (students, parents, teachers)
+    to choose between Android (APK) and Apple iOS (IPA / PWA) download.
+    """
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.objects.first()
+
+    lan_ip = _get_lan_ip()
+    host = request.get_host()
+    port = host.split(':')[1] if ':' in host else '8000'
+
+    if '127.0.0.1' in host or 'localhost' in host:
+        apk_download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
+        ipa_download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_ipa')}"
+    else:
+        apk_download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
+        ipa_download_url = request.build_absolute_uri(reverse('tool_download_mobile_ipa'))
+
+    apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+    apk_exists = os.path.exists(apk_path)
+    apk_size_mb = round(os.path.getsize(apk_path) / (1024 * 1024), 2) if apk_exists else 67.6
+
+    return render(request, 'tools/public_download.html', {
+        'page_title': 'ទាញយកកម្មវិធីទូរស័ព្ទ (SchoolSM Mobile App - Android & iOS)',
+        'school_profile': school_profile,
+        'apk_download_url': apk_download_url,
+        'ipa_download_url': ipa_download_url,
+        'github_apk_url': GITHUB_APK_URL,
+        'github_ipa_url': GITHUB_IPA_URL,
+        'apk_size_mb': apk_size_mb,
+    })
+
 
 
 

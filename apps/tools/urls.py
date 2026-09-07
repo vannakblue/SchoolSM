@@ -62,7 +62,9 @@ urlpatterns = [
     path('mobile-app/build/', views.api_build_mobile_apk, name='api_build_mobile_apk'),
     path('mobile-app/upload/', views.api_upload_mobile_apk, name='api_upload_mobile_apk'),
     path('mobile-app/status/', views.api_mobile_build_status, name='api_mobile_build_status'),
+    path('mobile-app/download/', views.tool_public_mobile_download, name='tool_public_mobile_download'),
     path('mobile-app/download-apk/', views.tool_download_mobile_apk, name='tool_download_mobile_apk'),
+    path('mobile-app/download-ipa/', views.tool_download_mobile_ipa, name='tool_download_mobile_ipa'),
     path('mobile-app/qr-code/', views.tool_mobile_apk_qr, name='tool_mobile_apk_qr'),
     path('mobile-app/export-ios/', views.tool_export_ios_project, name='tool_export_ios_project'),
 ]

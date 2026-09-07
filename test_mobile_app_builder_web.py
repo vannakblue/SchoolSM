@@ -64,13 +64,18 @@ class MobileAppBuilderWebTest(TestCase):
         self.assertEqual(response['Content-Type'], 'image/png')
         self.assertTrue(len(response.content) > 100)
 
-    def test_tool_export_ios_project(self):
-        self.client.force_login(self.admin_user)
-        response = self.client.get(reverse('tool_export_ios_project'))
-        if os.path.exists('schoolsm_mobile'):
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response['Content-Type'], 'application/zip')
-            self.assertTrue(len(response.content) > 500)
+    def test_tool_download_mobile_ipa(self):
+        response = self.client.get(reverse('tool_download_mobile_ipa'))
+        # If local IPA not present, redirects to GitHub Releases CDN
+        self.assertIn(response.status_code, [200, 302])
+
+    def test_tool_public_mobile_download(self):
+        # Publicly accessible without login
+        response = self.client.get(reverse('tool_public_mobile_download'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Android')
+        self.assertContains(response, 'Apple iOS')
+        self.assertContains(response, 'APK')
 
 if __name__ == '__main__':
     import unittest

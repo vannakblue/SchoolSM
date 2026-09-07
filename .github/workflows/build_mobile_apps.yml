@@ -127,3 +127,13 @@ jobs:
         with:
           name: SchoolSM-Mobile-iOS-IPA
           path: schoolsm_mobile/dist/SchoolSM-iOS.ipa
+
+      - name: Publish iOS IPA to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          tag_name: latest
+          files: schoolsm_mobile/dist/SchoolSM-iOS.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
