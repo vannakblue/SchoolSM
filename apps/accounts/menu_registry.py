@@ -324,19 +324,11 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'exam_exclusions_manage',
             },
             {
-                'key': 'exam_invigilator_admin',
-                'name_kh': 'គ្រប់គ្រងវេនអនុរក្សប្រឡង',
-                'name_en': 'Exam Invigilator Shifts',
-                'icon': 'fa-solid fa-clipboard-user text-warning',
-                'default_roles': ['ADMIN'],
-                'url_name': 'exam_invigilator_plans_list',
-            },
-            {
                 'key': 'exam_invigilator_request',
                 'name_kh': 'ស្នើសុំវេនអនុរក្សប្រឡង',
                 'name_en': 'Request Invigilator Shifts',
                 'icon': 'fa-solid fa-hand-holding-hand text-success',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['TEACHER'],
                 'url_name': 'exam_invigilator_teacher_portal',
             },
         ]
@@ -837,7 +829,7 @@ def get_menu_catalog() -> List[Dict[str, Any]]:
                 system_item_codes.add(itm['key'])
 
         existing_sys_codes = set(MenuItem.objects.filter(is_system=True).values_list('code', flat=True))
-        if not MenuSection.objects.exists() or not system_item_codes.issubset(existing_sys_codes):
+        if not MenuSection.objects.exists() or existing_sys_codes != system_item_codes:
             sync_system_menus_to_db()
 
         sections = MenuSection.objects.filter(is_active=True).prefetch_related('items').order_by('order', 'id')

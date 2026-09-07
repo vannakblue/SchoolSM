@@ -186,11 +186,21 @@ def run_tests():
     print(f"  ✓ Blocked with message: {data_locked['error']}")
 
     # -------------------------------------------------------------
-    # TEST 6: Unlock request to adjust shifts
+    # TEST 6: Unlock request to adjust shifts (Admin Only)
     # -------------------------------------------------------------
     print("\n--- TEST 6: Unlock request and swap shifts ---")
-    req_unlock = factory.post('/examinations/api/invigilator-request/unlock/')
-    req_unlock.user = user
+    admin_user, _ = User.objects.get_or_create(
+        username='admin_quota_test',
+        defaults={'role': User.Role.ADMIN, 'is_staff': True, 'is_superuser': True}
+    )
+    req_unlock_teacher = factory.post('/examinations/api/invigilator-request/unlock/')
+    req_unlock_teacher.user = user
+    resp_unlock_teacher = api_unlock_invigilator_request(req_unlock_teacher)
+    assert resp_unlock_teacher.status_code == 403, "Teacher self-unlock must be rejected (403)"
+    print("  ✓ Teacher self-unlock correctly rejected (403).")
+
+    req_unlock = factory.post('/examinations/api/invigilator-request/unlock/', {'teacher_id': teacher.id})
+    req_unlock.user = admin_user
     resp_unlock = api_unlock_invigilator_request(req_unlock)
     data_unlock = json.loads(resp_unlock.content)
     assert resp_unlock.status_code == 200
@@ -198,7 +208,7 @@ def run_tests():
     
     quota_obj.refresh_from_db()
     assert quota_obj.is_finalized is False
-    print("  ✓ Unlocked successfully! Teacher can now modify shifts.")
+    print("  ✓ Unlocked successfully by Admin! Teacher can now modify shifts.")
 
     # Swap slot 4 for slot 5
     req_rm4 = factory.post('/examinations/api/invigilator-slot/toggle/', {'slot_id': slots[3].id})
@@ -222,7 +232,7 @@ def run_tests():
     # -------------------------------------------------------------
     print("\n--- TEST 7: Mobile REST APIs Quota Verification ---")
     from rest_framework.test import APIClient
-    # Unlock for mobile testing
+    # Unlock by Admin for mobile testing
     api_unlock_invigilator_request(req_unlock)
 
     client = APIClient()
@@ -263,13 +273,18 @@ def run_tests():
     assert 'role_capacity' in resp_mob_slots.data['slots'][0]
     print("  ✓ Mobile Slots verified: includes role_capacity and registration flags.")
 
-    # Test Mobile Unlock API
-    resp_mob_unlock = client.post('/api/v1/exam-invigilator/unlock/', {}, format='json')
+    # Test Mobile Unlock API (403 for teacher, 200 for Admin)
+    resp_mob_unlock_fail = client.post('/api/v1/exam-invigilator/unlock/', {}, format='json')
+    assert resp_mob_unlock_fail.status_code == 403
+    print("  ✓ Mobile Unlock as teacher correctly rejected (403).")
+
+    client.force_authenticate(user=admin_user)
+    resp_mob_unlock = client.post('/api/v1/exam-invigilator/unlock/', {'teacher_id': teacher.id}, format='json')
     assert resp_mob_unlock.status_code == 200
     assert resp_mob_unlock.data['is_finalized'] is False
     quota_obj.refresh_from_db()
     assert quota_obj.is_finalized is False
-    print(f"  ✓ Mobile Unlock verified: {resp_mob_unlock.data['message']}")
+    print(f"  ✓ Mobile Unlock by Admin verified: {resp_mob_unlock.data['message']}")
 
 
     # -------------------------------------------------------------

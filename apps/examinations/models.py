@@ -781,6 +781,12 @@ class ExamInvigilatorPlan(models.Model):
         return f"{self.title} ({self.academic_year.name}) - {'🟢 បើកដំណើរការ' if self.is_active else '🔴 បិទ'}"
 
     @property
+    def duration_days(self):
+        if self.start_date and self.end_date:
+            return max(1, (self.end_date - self.start_date).days + 1)
+        return 1
+
+    @property
     def total_slots_count(self):
         return self.shift_slots.count()
 

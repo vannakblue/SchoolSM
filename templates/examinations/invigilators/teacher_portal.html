@@ -195,13 +195,13 @@
                         <i class="fa-solid fa-triangle-exclamation me-1"></i> មិនអាច Submit (លើស {{ over_count }} វេន)
                     </button>
                     {% elif is_finalized %}
-                    <div class="d-flex flex-column gap-1">
-                        <span class="badge bg-success py-1.5 px-2 text-wrap shadow-xs">
-                            <i class="fa-solid fa-circle-check me-1"></i> បានបញ្ចប់ការស្នើសុំរួចរាល់
+                    <div class="d-flex flex-column gap-1 text-center">
+                        <span class="badge bg-success py-2 px-2.5 text-wrap shadow-xs">
+                            <i class="fa-solid fa-lock me-1"></i> បានបញ្ចប់ និង Submit រួចរាល់
                         </span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="unlockRequest()">
-                            <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
-                        </button>
+                        <small class="text-muted" style="font-size: 0.72rem;">
+                            🔒 បញ្ចប់ការស្នើសុំជាផ្លូវការ (មិនអាចកែប្រែលើសពីម្តងឡើយ)
+                        </small>
                     </div>
                     {% elif can_finalize %}
                     <button type="button" class="btn btn-sm btn-success fw-bold w-100 py-2 shadow pulse-green" onclick="showFinalizeModal()" id="btnFinalizeAction">
@@ -229,14 +229,14 @@
         </div>
 
         <!-- Dynamic Sticky Banner for Finalized Confirmation -->
-        <div id="finalizedStickyAlert" class="alert alert-success py-2 px-3 mt-2 mb-0 small rounded-3 d-flex align-items-center justify-content-between {% if not is_finalized %}d-none{% endif %}">
+        <div id="finalizedStickyAlert" class="alert alert-success py-2.5 px-3 mt-2 mb-0 small rounded-3 d-flex align-items-center justify-content-between {% if not is_finalized %}d-none{% endif %}">
             <div>
-                <i class="fa-solid fa-circle-check me-1"></i>
-                <strong>ការស្នើសុំត្រូវបានបញ្ចប់ និង Submit ជាផ្លូវការ៖</strong> លោកគ្រូ-អ្នកគ្រូបាន Submit វេនអនុរក្សគ្រប់ចំនួនកូតា ({{ required_shifts }} វេន គត់) រួចរាល់ហើយ <span id="finalizedAtText">{% if finalized_at %}កាលពីថ្ងៃទី {{ finalized_at|date:"d/m/Y H:i" }}{% endif %}</span>! ប្រសិនបើចង់ផ្លាស់ប្តូរវេន សូមចុចប៊ូតុង «កែប្រែវេនឡើងវិញ»។
+                <i class="fa-solid fa-shield-halved text-success me-1.5 fs-5 align-middle"></i>
+                <strong>ការស្នើសុំត្រូវបានបញ្ចប់ និង Submit ជាផ្លូវការ៖</strong> លោកគ្រូ-អ្នកគ្រូបាន Submit វេនអនុរក្សគ្រប់ចំនួនកូតា ({{ required_shifts }} វេន គត់) រួចរាល់ហើយ <span id="finalizedAtText">{% if finalized_at %}កាលពីថ្ងៃទី {{ finalized_at|date:"d/m/Y H:i" }}{% endif %}</span>! <span class="badge bg-success-subtle text-success border border-success ms-1">🔒 បានចាក់សោរជាផ្លូវការ</span>
+                <div class="text-muted mt-1 ps-4" style="font-size: 0.75rem;">
+                    * យោងតាមបទបញ្ជាប្រឡង៖ ការស្នើសុំមិនអាចបង្កើត ឬកែប្រែឡើងវិញលើសពីម្តងឡើយ។ ប្រសិនបើមានការចាំបាច់ផ្លាស់ប្តូរវេនបន្ទាន់ សូមទាក់ទងគណៈគ្រប់គ្រង (Admin) ដើម្បីពិនិត្យ និងដោះសោរជូន។
+                </div>
             </div>
-            <button type="button" class="btn btn-xs btn-outline-success fw-bold ms-2" onclick="unlockRequest()">
-                <i class="fa-solid fa-unlock me-1"></i> កែប្រែ
-            </button>
         </div>
     </div>
 
@@ -843,15 +843,15 @@ function updateActionButtons(isOverQuota, isFinalized, canFinalize, remainingToC
         badgeHtml = `<span class="badge bg-danger">លើសកូតាកំណត់ (${currentCount}/${requiredShifts} វេន)</span>`;
     } else if (isFinalized) {
         buttonHtml = `
-            <div class="d-flex flex-column gap-1">
-                <span class="badge bg-success py-1.5 px-2 text-wrap shadow-xs">
-                    <i class="fa-solid fa-circle-check me-1"></i> បានបញ្ចប់ និង Submit រួចរាល់
+            <div class="d-flex flex-column gap-1 text-center">
+                <span class="badge bg-success py-2 px-2.5 text-wrap shadow-xs">
+                    <i class="fa-solid fa-lock me-1"></i> បានបញ្ចប់ និង Submit រួចរាល់
                 </span>
-                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="unlockRequest()">
-                    <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
-                </button>
+                <small class="text-muted" style="font-size: 0.72rem;">
+                    🔒 បញ្ចប់ការស្នើសុំជាផ្លូវការ (មិនអាចកែប្រែលើសពីម្តងឡើយ)
+                </small>
             </div>`;
-        badgeHtml = `<span class="badge bg-success">បានបញ្ចប់ និង Submit ជាផ្លូវការរួចរាល់</span>`;
+        badgeHtml = `<span class="badge bg-success">🔒 បានបញ្ចប់ និង Submit ជាផ្លូវការរួចរាល់ (មិនអាចកែប្រែលើសពីម្តងឡើយ)</span>`;
     } else if (canFinalize) {
         buttonHtml = `
             <button type="button" class="btn btn-sm btn-success fw-bold w-100 py-2 shadow pulse-green" onclick="showFinalizeModal()" id="btnFinalizeAction">
@@ -875,9 +875,9 @@ function updateActionButtons(isOverQuota, isFinalized, canFinalize, remainingToC
                 </button>`;
         } else if (isFinalized) {
             bottomContainer.innerHTML = `
-                <button type="button" class="btn btn-outline-secondary fw-bold px-4 py-2.5" onclick="unlockRequest()">
-                    <i class="fa-solid fa-lock-open me-1"></i> កែប្រែវេនឡើងវិញ
-                </button>`;
+                <div class="alert alert-success d-inline-flex align-items-center gap-2 mb-0 py-2 px-3 fw-bold">
+                    <i class="fa-solid fa-lock text-success"></i> បានបញ្ចប់ និង Submit រួចរាល់ (ទាក់ទង Admin ប្រសិនបើចាំបាច់ដោះសោរ)
+                </div>`;
         } else if (isOverQuota) {
             bottomContainer.innerHTML = `
                 <button type="button" class="btn btn-danger fw-bold px-4 py-2.5 shadow-xs disabled">

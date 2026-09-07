@@ -1,0 +1,375 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/api/api_client.dart';
+
+class TeacherGradeEntryScreen extends StatefulWidget {
+  const TeacherGradeEntryScreen({super.key});
+
+  @override
+  State<TeacherGradeEntryScreen> createState() => _TeacherGradeEntryScreenState();
+}
+
+class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
+  bool _isLoadingMeta = true;
+  bool _isLoadingSheet = false;
+  bool _isSaving = false;
+
+  List<dynamic> _examTerms = [];
+  List<dynamic> _classrooms = [];
+  List<dynamic> _subjects = [];
+
+  int? _selectedTermId;
+  int? _selectedClassroomId;
+  int? _selectedSubjectId;
+
+  List<dynamic> _students = [];
+  final Map<int, TextEditingController> _scoreControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMeta();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _scoreControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _fetchMeta() async {
+    setState(() => _isLoadingMeta = true);
+    try {
+      final res = await ApiClient().dio.get(ApiConstants.teacherGradeMeta);
+      final data = res.data;
+      if (data != null && data['status'] == 'success') {
+        final terms = (data['exam_terms'] as List?)?.toList() ?? [];
+        final classes = (data['classrooms'] as List?)?.toList() ?? [];
+        final subs = (data['subjects'] as List?)?.toList() ?? [];
+
+        setState(() {
+          _examTerms = terms;
+          _classrooms = classes;
+          _subjects = subs;
+
+          if (_examTerms.isNotEmpty) _selectedTermId = _examTerms.first['id'] as int?;
+          if (_classrooms.isNotEmpty) _selectedClassroomId = _classrooms.first['id'] as int?;
+          if (_subjects.isNotEmpty) _selectedSubjectId = _subjects.first['id'] as int?;
+
+          _isLoadingMeta = false;
+        });
+
+        if (_selectedTermId != null && _selectedClassroomId != null && _selectedSubjectId != null) {
+          _fetchSheet();
+        }
+      } else {
+        setState(() => _isLoadingMeta = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingMeta = false);
+    }
+  }
+
+  Future<void> _fetchSheet() async {
+    if (_selectedTermId == null || _selectedClassroomId == null || _selectedSubjectId == null) return;
+
+    setState(() => _isLoadingSheet = true);
+    try {
+      final res = await ApiClient().dio.get(
+        ApiConstants.teacherGradeSheet,
+        queryParameters: {
+          'exam_term_id': _selectedTermId,
+          'classroom_id': _selectedClassroomId,
+          'subject_id': _selectedSubjectId,
+        },
+      );
+      final data = res.data;
+      if (data['status'] == 'success') {
+        final list = data['students'] ?? [];
+        for (final c in _scoreControllers.values) {
+          c.dispose();
+        }
+        _scoreControllers.clear();
+
+        for (final s in list) {
+          final id = s['id'] as int;
+          final score = s['score'] != null ? s['score'].toString() : '';
+          _scoreControllers[id] = TextEditingController(text: score);
+        }
+
+        setState(() {
+          _students = list;
+          _isLoadingSheet = false;
+        });
+      } else {
+        setState(() => _isLoadingSheet = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingSheet = false);
+    }
+  }
+
+  Future<void> _saveGrades() async {
+    if (_students.isEmpty) return;
+
+    setState(() => _isSaving = true);
+    final gradesPayload = <Map<String, dynamic>>[];
+
+    for (final s in _students) {
+      final id = s['id'] as int;
+      final text = _scoreControllers[id]?.text.trim() ?? '';
+      if (text.isNotEmpty) {
+        final val = double.tryParse(text);
+        if (val != null) {
+          gradesPayload.add({'student_id': id, 'score': val});
+        }
+      }
+    }
+
+    try {
+      final res = await ApiClient().dio.post(
+        ApiConstants.teacherGradeSave,
+        data: {
+          'exam_term_id': _selectedTermId,
+          'classroom_id': _selectedClassroomId,
+          'subject_id': _selectedSubjectId,
+          'grades': gradesPayload,
+        },
+      );
+
+      setState(() => _isSaving = false);
+      if (res.data['status'] == 'success') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("🎉 បានរក្សាទុកពិន្ទុដោយជោគជ័យ!"),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiClient.getErrorMessage(e)),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int? safeTermId = (_selectedTermId != null && _examTerms.any((t) => t['id'] == _selectedTermId))
+        ? _selectedTermId
+        : (_examTerms.isNotEmpty ? _examTerms.first['id'] as int? : null);
+
+    final int? safeClassroomId = (_selectedClassroomId != null && _classrooms.any((c) => c['id'] == _selectedClassroomId))
+        ? _selectedClassroomId
+        : (_classrooms.isNotEmpty ? _classrooms.first['id'] as int? : null);
+
+    final int? safeSubjectId = (_selectedSubjectId != null && _subjects.any((s) => s['id'] == _selectedSubjectId))
+        ? _selectedSubjectId
+        : (_subjects.isNotEmpty ? _subjects.first['id'] as int? : null);
+
+    return Scaffold(
+      backgroundColor: AppColors.bgLight,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          "បញ្ចូលពិន្ទុសិស្ស (Grade Entry)",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+        ),
+      ),
+      body: _isLoadingMeta
+          ? const Center(child: SpinKitFadingCircle(color: AppColors.primary, size: 36))
+          : Column(
+              children: [
+                // Filter Dropdowns
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: safeTermId,
+                              isExpanded: true,
+                              decoration: _dropDeco("សម័យប្រឡង"),
+                              items: _examTerms.map<DropdownMenuItem<int>>((t) {
+                                return DropdownMenuItem<int>(
+                                  value: t['id'] as int,
+                                  child: Text(t['name'] ?? '', overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                              onChanged: (v) {
+                                setState(() => _selectedTermId = v);
+                                _fetchSheet();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: safeClassroomId,
+                              isExpanded: true,
+                              decoration: _dropDeco("ថ្នាក់រៀន"),
+                              items: _classrooms.map<DropdownMenuItem<int>>((c) {
+                                return DropdownMenuItem<int>(
+                                  value: c['id'] as int,
+                                  child: Text(c['name'] ?? '', overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                              onChanged: (v) {
+                                setState(() => _selectedClassroomId = v);
+                                _fetchSheet();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<int>(
+                        initialValue: safeSubjectId,
+                        isExpanded: true,
+                        decoration: _dropDeco("មុខវិជ្ជា (Subject)"),
+                        items: _subjects.map<DropdownMenuItem<int>>((s) {
+                          return DropdownMenuItem<int>(
+                            value: s['id'] as int,
+                            child: Text("${s['name']} (${s['code'] ?? ''})", overflow: TextOverflow.ellipsis),
+                          );
+                        }).toList(),
+                        onChanged: (v) {
+                          setState(() => _selectedSubjectId = v);
+                          _fetchSheet();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Student Score List
+                Expanded(
+                  child: _isLoadingSheet
+                      ? const Center(child: SpinKitFadingCircle(color: AppColors.primary, size: 36))
+                      : _students.isEmpty
+                          ? const Center(child: Text("ពុំមានទិន្នន័យសិស្សក្នុងថ្នាក់នេះឡើយ", style: TextStyle(color: AppColors.textSecondary)))
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _students.length,
+                              itemBuilder: (ctx, idx) {
+                                final s = _students[idx];
+                                final id = s['id'] as int;
+                                final controller = _scoreControllers[id];
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: AppColors.borderLight),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                        child: Text(
+                                          "${idx + 1}",
+                                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              s['khmer_name'] ?? '',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+                                            ),
+                                            Text(
+                                              s['student_id'] ?? '',
+                                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 80,
+                                        height: 44,
+                                        child: TextField(
+                                          controller: controller,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                                          decoration: InputDecoration(
+                                            hintText: "ពិន្ទុ",
+                                            hintStyle: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                            filled: true,
+                                            fillColor: AppColors.bgLight,
+                                            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.borderLight)),
+                                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                ),
+
+                // Save Action Bar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -3)),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: _isSaving ? null : _saveGrades,
+                      child: _isSaving
+                          ? const SpinKitThreeBounce(color: Colors.white, size: 22)
+                          : const Text("រក្សាទុកពិន្ទុ (Save Grades)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  InputDecoration _dropDeco(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(fontSize: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      filled: true,
+      fillColor: AppColors.bgLight,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+    );
+  }
+}

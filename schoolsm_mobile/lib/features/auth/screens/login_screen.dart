@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/services/auth_service.dart';
 import '../../dashboard/screens/main_navigation_screen.dart';
+import '../../students/screens/student_enrollment_screen.dart';
 
 class DemoRoleItem {
   final String key;
@@ -153,6 +154,27 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result['success']) {
+      if (result['is_demo'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.bolt_rounded, color: Colors.amber, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    result['message'] ?? "បានចូលប្រើប្រព័ន្ធសាកល្បង Demo!",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
@@ -662,6 +684,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                     Icon(Icons.arrow_forward, color: Colors.white, size: 20),
                                   ],
                                 ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Student Self-Enrollment / Admission Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.secondary,
+                            side: const BorderSide(color: AppColors.secondary, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen()),
+                            );
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.person_add_alt_1_rounded, size: 20, color: AppColors.secondary),
+                              SizedBox(width: 8),
+                              Text(
+                                "📝 ចុះឈ្មោះចូលរៀនថ្មី (Student Admission)",
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

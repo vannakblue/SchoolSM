@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,6 +21,37 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Set custom ErrorWidget.builder so release mode displays a graceful Khmer fallback
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: AppColors.bgLight,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline_rounded, size: 54, color: AppColors.danger),
+                const SizedBox(height: 14),
+                const Text(
+                  "មានបញ្ហាក្នុងការបង្ហាញទិន្នន័យ",
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  kReleaseMode ? "សូមបើកកម្មវិធីម្តងទៀត ឬត្រួតពិនិត្យការតភ្ជាប់អ៊ីនធឺណិត។" : details.exceptionAsString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  };
 
   runApp(
     MultiProvider(

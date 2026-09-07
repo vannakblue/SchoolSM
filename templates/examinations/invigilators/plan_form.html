@@ -46,6 +46,58 @@
             {% endif %}
         </div>
 
+        {% if is_edit and plan %}
+            {% if not plan.is_active or not plan.allow_teacher_registration %}
+            <div class="alert alert-warning border border-warning shadow-xs rounded-4 p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2.5 bg-warning bg-opacity-25 text-warning-emphasis rounded-circle fs-4">
+                        <i class="fa-solid fa-pencil"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-6">
+                            🟡 គម្រោងស្ថិតក្នុងដំណាក់កាលរៀបចំ និងព្រាងទុក (Draft Mode)
+                        </div>
+                        <small class="text-muted">
+                            Admin មានសិទ្ធិកែប្រែកាលបរិច្ឆេទ ចំនួនបន្ទប់ កូតា និងវេនប្រឡងបានច្រើនដងដោយសេរី មុនពេលដាក់ឱ្យគ្រូស្នើសុំ។ គ្រូបង្រៀនមិនទាន់អាចមើលឃើញ ឬស្នើសុំបានឡើយ។
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <form method="POST" action="{% url 'exam_invigilator_plan_toggle_active' plan.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success fw-bold rounded-pill px-3 shadow-sm btn-sm">
+                            <i class="fa-solid fa-rocket me-1"></i> ដាក់ឱ្យគ្រូស្នើសុំជាផ្លូវការ (Publish)
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-success border border-success shadow-xs rounded-4 p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2.5 bg-success bg-opacity-25 text-success rounded-circle fs-4">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-6">
+                            🟢 គម្រោងកំពុងបើកដំណើរការជាផ្លូវការ (Open for Teachers)
+                        </div>
+                        <small class="text-muted">
+                            គ្រូបង្រៀនអាចចូលមើល និងស្នើសុំវេនបាន។ លោកអ្នកនៅតែអាចកែប្រែព័ត៌មាន ឬបិទការស្នើសុំបណ្តោះអាសន្នដើម្បីកែប្រែបន្ថែមបានគ្រប់ពេល។
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <form method="POST" action="{% url 'exam_invigilator_plan_toggle_active' plan.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill px-3 shadow-sm btn-sm">
+                            <i class="fa-solid fa-pause me-1"></i> បិទការស្នើសុំបណ្តោះអាសន្ន (Pause)
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+
         <!-- Form Card -->
         <div class="custom-card p-4 mb-4 border-top border-4 border-primary shadow-sm">
             <form method="POST">
@@ -104,7 +156,14 @@
                                 <i class="fa-solid fa-calendar-check text-success me-1"></i>ចំនួនថ្ងៃប្រឡង (Days) *
                             </label>
                             <div class="input-group">
-                                <input type="number" id="plan_days_count" min="1" max="30" class="form-control fw-bold text-center fs-6 text-primary" value="4" oninput="recalcExamSchedule('days')">
+                                <input type="number" 
+                                       name="days_count" 
+                                       id="plan_days_count" 
+                                       min="1" 
+                                       max="30" 
+                                       class="form-control fw-bold text-center fs-6 text-primary" 
+                                       value="{% if plan and plan.duration_days %}{{ plan.duration_days }}{% elif duration_days %}{{ duration_days }}{% elif default_days %}{{ default_days }}{% else %}4{% endif %}" 
+                                       oninput="recalcExamSchedule('days')">
                                 <span class="input-group-text fw-bold">ថ្ងៃ</span>
                             </div>
                             <small class="text-muted" style="font-size: 0.72rem;">ឧ. ៤ ថ្ងៃប្រឡង = ៨ វេន</small>
@@ -380,8 +439,8 @@
                                 <i class="fa-solid fa-users-gear"></i> ចូលទៅផ្ទាំង «កូតាគ្រូ» <i class="fa-solid fa-arrow-right small"></i>
                             </a>
                             {% else %}
-                            <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3 py-1.5 rounded-pill text-nowrap d-inline-flex align-items-center gap-1.5">
-                                <i class="fa-solid fa-users-gear"></i> ផ្ទាំង «កូតាគ្រូ» <i class="fa-solid fa-arrow-right small"></i>
+                            <a href="{% url 'standardized_exam_list' %}" class="btn btn-sm btn-info text-white fw-bold shadow-xs px-3 py-1.5 rounded-pill text-nowrap d-inline-flex align-items-center gap-1.5">
+                                <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ទៅសម័យប្រឡង
                             </a>
                             {% endif %}
                         </div>
@@ -558,6 +617,15 @@
                                 🔄 ធ្វើបច្ចុប្បន្នភាពចំណុះអនុរក្សគ្រប់វេនប្រឡងទាំងអស់ក្នុងគម្រោងនេះ (Sync All Slots Capacity)
                             </label>
                         </div>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="regenerate_slots" name="regenerate_slots" {% if not plan or not plan.total_filled_spots %}checked{% endif %}>
+                            <label class="form-check-label small fw-bold text-danger cursor-pointer" for="regenerate_slots">
+                                ⚡ បង្កើតវេនប្រឡង (ព្រឹក &amp; រសៀល) ឡើងវិញស្វ័យប្រវត្តិតាមកាលបរិច្ឆេទថ្មី (Regenerate Slots)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                គូសធីកប្រសិនបើលោកអ្នកបានកែប្រែកាលបរិច្ឆេទប្រឡង ហើយចង់ឱ្យប្រព័ន្ធរៀបចំវេនប្រឡងថ្មីជំនួសវេនចាស់ (សម្រាប់តែគម្រោងដែលមិនទាន់មានគ្រូចុះឈ្មោះប៉ុណ្ណោះ)
+                            </div>
+                        </div>
                         {% else %}
                         <div class="form-check form-switch mt-3 pt-2 border-top">
                             <input class="form-check-input" type="checkbox" id="auto_create_slots" name="auto_create_slots" checked>
@@ -601,7 +669,7 @@
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 border-top">
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{% url 'exam_invigilator_plans_list' %}" class="btn btn-secondary fw-bold px-4">
+                        <a href="{% if linked_exam %}{% url 'standardized_exam_manage' linked_exam.id %}{% elif plan and plan.standardized_exam %}{% url 'standardized_exam_manage' plan.standardized_exam.id %}{% else %}{% url 'standardized_exam_list' %}{% endif %}" class="btn btn-secondary fw-bold px-4">
                             <i class="fa-solid fa-xmark me-1"></i> បោះបង់
                         </a>
                         {% if is_edit and plan %}
@@ -869,18 +937,60 @@ function recalcExamSchedule(source) {
     let endDate = parseLocalDate(endInput?.value);
     let days = parseInt(daysInput?.value || 0, 10);
 
-    if (!startDate && endDate && days > 0) {
-        startDate = new Date(endDate);
-        startDate.setDate(endDate.getDate() - (days - 1));
-        if (startInput) startInput.value = formatDateIso(startDate);
-    } else if (startDate && days > 0 && (source === 'days' || source === 'start_date' || !endDate)) {
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + (days - 1));
-        if (endInput) endInput.value = formatDateIso(endDate);
-    } else if (startDate && endDate && (source === 'end_date' || !days)) {
-        const diffTime = endDate.getTime() - startDate.getTime();
-        days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
-        if (daysInput) daysInput.value = days;
+    if (source === 'init') {
+        if (startDate && endDate) {
+            // Accurately compute duration days from start and end dates
+            const diffTime = endDate.getTime() - startDate.getTime();
+            days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            if (daysInput) daysInput.value = days;
+        } else if (startDate && days > 0) {
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + (days - 1));
+            if (endInput) endInput.value = formatDateIso(endDate);
+        } else if (endDate && days > 0) {
+            startDate = new Date(endDate);
+            startDate.setDate(endDate.getDate() - (days - 1));
+            if (startInput) startInput.value = formatDateIso(startDate);
+        }
+    } else if (source === 'days') {
+        if (isNaN(days) || days < 1) days = 1;
+        if (startDate) {
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + (days - 1));
+            if (endInput) endInput.value = formatDateIso(endDate);
+        } else if (endDate) {
+            startDate = new Date(endDate);
+            startDate.setDate(endDate.getDate() - (days - 1));
+            if (startInput) startInput.value = formatDateIso(startDate);
+        }
+        const regenSwitch = document.getElementById('regenerate_slots');
+        if (regenSwitch && !regenSwitch.disabled) regenSwitch.checked = true;
+    } else if (source === 'start_date') {
+        if (startDate) {
+            if (days > 0) {
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + (days - 1));
+                if (endInput) endInput.value = formatDateIso(endDate);
+            } else if (endDate) {
+                const diffTime = endDate.getTime() - startDate.getTime();
+                days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+                if (daysInput) daysInput.value = days;
+            }
+        }
+        const regenSwitch = document.getElementById('regenerate_slots');
+        if (regenSwitch && !regenSwitch.disabled) regenSwitch.checked = true;
+    } else if (source === 'end_date') {
+        if (startDate && endDate) {
+            if (endDate < startDate) {
+                endDate = new Date(startDate);
+                if (endInput) endInput.value = formatDateIso(endDate);
+            }
+            const diffTime = endDate.getTime() - startDate.getTime();
+            days = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            if (daysInput) daysInput.value = days;
+        }
+        const regenSwitch = document.getElementById('regenerate_slots');
+        if (regenSwitch && !regenSwitch.disabled) regenSwitch.checked = true;
     }
 
     if (days < 1) days = 1;

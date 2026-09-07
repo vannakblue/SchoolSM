@@ -11,6 +11,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        :root {
+            --row-height: {{ row_height|default:"22" }}px;
+            --table-font-size: {{ font_size|default:"9.5" }}pt;
+            --th-row-height: calc(var(--row-height) + 4px);
+            --th-font-size: var(--table-font-size);
+        }
+
         /* Page Setup - MoEYS Official A4 Portrait Standard */
         @page {
             size: A4 portrait;
@@ -42,27 +49,44 @@
         .no-print-bar {
             background: #0f172a;
             color: #f8fafc;
-            padding: 12px 24px;
+            padding: 10px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .bar-top-row {
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
-            position: sticky;
-            top: 0;
-            z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .bar-title {
-            font-size: 1.05rem;
+            font-size: 1.02rem;
             font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .bar-actions {
+        .badge-tag {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 9999px;
+        }
+
+        .bar-top-actions {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -123,6 +147,149 @@
             color: #fff;
         }
 
+        /* Interactive Sizing Toolbar Row */
+        .bar-tools-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
+            background: #1e293b;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tool-label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stepper-box {
+            display: inline-flex;
+            align-items: center;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .btn-step {
+            background: #334155;
+            color: #f1f5f9;
+            border: none;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-step:hover {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-step:active {
+            transform: scale(0.95);
+        }
+
+        .size-val {
+            min-width: 48px;
+            text-align: center;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #38bdf8;
+            padding: 2px 6px;
+            font-family: monospace;
+        }
+
+        .preset-chips {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .chip-btn {
+            background: rgba(51, 65, 85, 0.6);
+            color: #94a3b8;
+            border: 1px solid #475569;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.12s ease;
+        }
+
+        .chip-btn:hover {
+            background: #334155;
+            color: #f8fafc;
+            border-color: #64748b;
+        }
+
+        .chip-btn.active {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #3b82f6;
+            font-weight: 700;
+        }
+
+        .tool-divider {
+            width: 1px;
+            height: 22px;
+            background: #475569;
+        }
+
+        .btn-reset-tool {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px dashed #64748b;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-reset-tool:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: #ef4444;
+        }
+
+        /* Bottom Row: Filter & Text Overrides */
+        .bar-form-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-inputs-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
         /* Printable Pages Container */
         .pages-container {
             display: flex;
@@ -136,14 +303,15 @@
             background: #ffffff;
             width: 210mm;
             min-height: 297mm;
-            height: 297mm;
-            padding: 7mm 11mm 6mm 11mm;
+            height: auto;
+            box-sizing: border-box;
+            padding: 1.2cm 1.4cm 1.2cm 1.4cm;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
             page-break-after: always;
             page-break-inside: avoid;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             position: relative;
         }
 
@@ -222,7 +390,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* 4. Dual-Column Roster Table (8 Columns, Exactly 27 Rows) */
+        /* 4. Dual-Column Roster Table (8 Columns) */
         table.roster-table {
             width: 100%;
             border-collapse: collapse;
@@ -231,28 +399,32 @@
             margin-bottom: 4px;
         }
 
+        table.roster-table tr {
+            height: var(--row-height, 22px);
+        }
+
         table.roster-table th, 
         table.roster-table td {
             border: 1px solid #000;
             padding: 0 4px;
-            height: 25px;
-            max-height: 25px;
+            height: var(--row-height, 22px);
             vertical-align: middle;
+            line-height: 1.15;
         }
 
         table.roster-table th {
-            font-size: 9.5pt;
+            font-size: var(--th-font-size, 9.5pt);
             font-weight: 700;
             text-align: center;
             background: #fff;
-            height: 26px;
+            height: var(--th-row-height, 26px);
         }
 
         /* Column Width Distribution */
         .col-num {
             width: 4.8%;
             text-align: center;
-            font-size: 9.5pt;
+            font-size: var(--table-font-size, 9.5pt);
             font-family: inherit;
         }
 
@@ -260,7 +432,7 @@
             width: 23.2%;
             text-align: left;
             padding-left: 6px !important;
-            font-size: 9.5pt;
+            font-size: var(--table-font-size, 9.5pt);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -269,7 +441,7 @@
         .col-duty {
             width: 12%;
             text-align: center;
-            font-size: 9.5pt;
+            font-size: var(--table-font-size, 9.5pt);
             white-space: nowrap;
             overflow: hidden;
         }
@@ -279,13 +451,14 @@
             text-align: center;
         }
 
-        /* 5. Footer Section (Lunar Date, Solar Date, Principal Signature) */
+        /* 5. Footer Section (Placed Immediately After Last Row) */
         .footer-section {
             display: flex;
             justify-content: flex-end;
             align-items: flex-start;
-            margin-top: 4px;
+            margin-top: 14px;
             padding-right: 15px;
+            page-break-inside: avoid;
         }
 
         .footer-right {
@@ -308,35 +481,77 @@
         .principal-title {
             font-size: 11pt;
             letter-spacing: 0.3px;
-            margin-bottom: 55px; /* Vertical blank area for stamp & signature */
+            margin-bottom: 35px; /* Clean blank area for stamp & signature */
         }
 
         .signature-space {
             height: 10px;
         }
 
+        /* In-place Editable Elements */
+        [contenteditable="true"] {
+            outline: none;
+            cursor: text;
+            transition: all 0.15s ease-in-out;
+            border-radius: 3px;
+        }
+
+        [contenteditable="true"]:hover {
+            background-color: rgba(37, 99, 235, 0.08);
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+        }
+
+        [contenteditable="true"]:focus {
+            background-color: rgba(37, 99, 235, 0.12);
+            box-shadow: 0 0 0 2px #2563eb;
+        }
+
         /* Print Media Styles */
         @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             .no-print-bar {
                 display: none !important;
             }
 
-            body {
-                background: #ffffff !important;
-            }
-
             .pages-container {
                 padding: 0 !important;
+                margin: 0 !important;
                 gap: 0 !important;
+                display: block !important;
             }
 
             .print-page {
                 box-shadow: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                min-height: auto !important;
+                margin: 0 auto !important;
+                padding: 1.2cm 1.4cm 1.2cm 1.4cm !important;
+                width: 210mm !important;
+                min-height: 297mm !important;
+                height: auto !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+            }
+
+            .print-page:last-child {
+                page-break-after: auto !important;
+            }
+
+            [contenteditable="true"] {
+                background: transparent !important;
+                box-shadow: none !important;
+                outline: none !important;
             }
         }
     </style>
@@ -345,15 +560,17 @@
 
     <!-- On-Screen Control & Filtering Bar -->
     <div class="no-print-bar">
-        <div class="bar-title">
-            <i class="fa-solid fa-file-signature text-warning"></i>
-            <span>តារាងបែងចែកភារកិច្ចប្រឡង &amp; ចុះហត្ថលេខា (គំរូផ្លូវការ ១១.pdf)</span>
-        </div>
+        <!-- Top Row: Title, Shift Selector, Print & Navigation -->
+        <div class="bar-top-row">
+            <div class="bar-title">
+                <i class="fa-solid fa-file-signature text-warning"></i>
+                <span>តារាងបែងចែកភារកិច្ចប្រឡង &amp; ចុះហត្ថលេខា</span>
+                <span class="badge-tag">គំរូផ្លូវការ ១១.pdf</span>
+            </div>
 
-        <form method="GET" class="bar-actions" id="filterForm">
-            <!-- Shift Selector -->
-            <div>
-                <select name="slot_id" class="bar-select" onchange="document.getElementById('filterForm').submit()">
+            <div class="bar-top-actions">
+                <!-- Shift Selector -->
+                <select name="slot_id" class="bar-select" form="filterForm" onchange="document.getElementById('filterForm').submit()">
                     <option value="">-- បង្ហាញគ្រប់វេនទាំងអស់ ({{ all_slots|length }} វេន) --</option>
                     {% for sl in all_slots %}
                     <option value="{{ sl.id }}" {% if selected_slot_id == sl.id %}selected{% endif %}>
@@ -361,34 +578,99 @@
                     </option>
                     {% endfor %}
                 </select>
+
+                <!-- Print Button -->
+                <button type="button" class="btn-print" onclick="window.print()" title="បោះពុម្ពឥឡូវនេះ (Ctrl+P)">
+                    <i class="fa-solid fa-print"></i> បោះពុម្ព (Print)
+                </button>
+
+                <!-- Back to Roster -->
+                <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn-secondary-tool">
+                    <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ក្រោយ
+                </a>
+            </div>
+        </div>
+
+        <!-- Middle Row: Interactive Sizing Controls (Row Height & Font Size) -->
+        <div class="bar-tools-row">
+            <!-- Row Height Control Group -->
+            <div class="tool-group">
+                <span class="tool-label">
+                    <i class="fa-solid fa-arrows-up-down text-info"></i>
+                    <strong>កម្ពស់ជួរដេក (Row Height):</strong>
+                </span>
+                <div class="stepper-box">
+                    <button type="button" class="btn-step" onclick="adjustRowHeight(-1)" title="បង្រួមជួរដេក (ចុច ឬចុច [)">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <span id="rowHeightDisplay" class="size-val">{{ row_height|default:"22" }}px</span>
+                    <button type="button" class="btn-step" onclick="adjustRowHeight(1)" title="ពង្រីកជួរដេក (ចុច ឬចុច ])">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <!-- Preset chips -->
+                <div class="preset-chips">
+                    <button type="button" class="chip-btn" onclick="setRowHeight(20)">20px (ណែន)</button>
+                    <button type="button" class="chip-btn active" id="chipRow22" onclick="setRowHeight(22)">22px (ដើម)</button>
+                    <button type="button" class="chip-btn" onclick="setRowHeight(25)">25px (ល្មម)</button>
+                    <button type="button" class="chip-btn" onclick="setRowHeight(28)">28px (ធំ)</button>
+                    <button type="button" class="chip-btn" onclick="setRowHeight(32)">32px (ទូលាយ)</button>
+                </div>
             </div>
 
-            <!-- School Name Override -->
-            <div>
+            <div class="tool-divider"></div>
+
+            <!-- Font Size Control Group -->
+            <div class="tool-group">
+                <span class="tool-label">
+                    <i class="fa-solid fa-font text-warning"></i>
+                    <strong>ទំហំតួអក្សរ (Font Size):</strong>
+                </span>
+                <div class="stepper-box">
+                    <button type="button" class="btn-step" onclick="adjustFontSize(-0.5)" title="បន្ថយទំហំអក្សរ (ចុច ឬចុច Alt+-)">
+                        <i class="fa-solid fa-minus"></i> A
+                    </button>
+                    <span id="fontSizeDisplay" class="size-val">{{ font_size|default:"9.5" }}pt</span>
+                    <button type="button" class="btn-step" onclick="adjustFontSize(0.5)" title="បង្កើនទំហំអក្សរ (ចុច ឬចុច Alt++)">
+                        <i class="fa-solid fa-plus"></i> A
+                    </button>
+                </div>
+                <!-- Preset chips -->
+                <div class="preset-chips">
+                    <button type="button" class="chip-btn" onclick="setFontSize(8.5)">8.5pt</button>
+                    <button type="button" class="chip-btn" onclick="setFontSize(9.0)">9pt</button>
+                    <button type="button" class="chip-btn active" id="chipFont95" onclick="setFontSize(9.5)">9.5pt (ដើម)</button>
+                    <button type="button" class="chip-btn" onclick="setFontSize(10.5)">10.5pt</button>
+                    <button type="button" class="chip-btn" onclick="setFontSize(11.5)">11.5pt</button>
+                </div>
+            </div>
+
+            <div class="tool-divider"></div>
+
+            <!-- Reset Button -->
+            <button type="button" class="btn-reset-tool" onclick="resetTableSizing()" title="ត្រឡប់ទៅការកំណត់ដើម (22px, 9.5pt)">
+                <i class="fa-solid fa-rotate-left"></i> កំណត់ដើម
+            </button>
+        </div>
+
+        <!-- Bottom Row: Filter & Text Overrides Form -->
+        <form method="GET" class="bar-form-row" id="filterForm">
+            <input type="hidden" name="slot_id" value="{{ selected_slot_id|default:'' }}" id="hiddenSlotId">
+            <input type="hidden" name="row_height" value="{{ row_height|default:'22' }}" id="inputRowHeight">
+            <input type="hidden" name="font_size" value="{{ font_size|default:'9.5' }}" id="inputFontSize">
+
+            <div class="form-inputs-wrap">
                 <input type="text" name="school_name" class="bar-input" value="{{ school_name }}" placeholder="ឈ្មោះសាលារៀន..." title="កែប្រែឈ្មោះសាលា">
-            </div>
-
-            <!-- Title Override -->
-            <div>
                 <input type="text" name="title" class="bar-input" value="{{ main_title }}" placeholder="ចំណងជើង..." title="កែប្រែចំណងជើង">
+                <input type="text" name="location" class="bar-input" value="{{ location_name }}" placeholder="ទីតាំង..." style="width: 105px;" title="ទីតាំងសាលា (ឧ. កំពង់កន្ទួត)">
+                <input type="text" name="lunar_date" class="bar-input" value="{{ lunar_date }}" placeholder="កាលបរិច្ឆេទចន្ទគតិ..." style="width: 220px;" title="កែប្រែកាលបរិច្ឆេទចន្ទគតិ (ឧ. ថ្ងៃអង្គារ ៥រោច...)">
+                <input type="text" name="solar_date" class="bar-input" value="{{ solar_date }}" placeholder="កាលបរិច្ឆេទសុរិយគតិ..." style="width: 155px;" title="កែប្រែកាលបរិច្ឆេទសុរិយគតិ (ឧ. ទី០៦ ខែតុលា ឆ្នាំ២០២៦)">
+                <input type="text" name="signer_title" class="bar-input" value="{{ signer_title }}" placeholder="អ្នកចុះហត្ថលេខា..." style="width: 105px;" title="តួនាទីអ្នកចុះហត្ថលេខា (ឧ. នាយកសាលា)">
+
+                <button type="submit" class="btn-secondary-tool" title="អនុវត្តការផ្លាស់ប្តូរ">
+                    <i class="fa-solid fa-rotate me-1"></i> អនុវត្ត
+                </button>
             </div>
-
-            <!-- Location Override -->
-            <div>
-                <input type="text" name="location" class="bar-input" value="{{ location_name }}" placeholder="ទីតាំង..." style="width: 110px;" title="ទីតាំងសាលា (ឧ. កំពង់កន្ទួត)">
-            </div>
-
-            <button type="submit" class="btn-secondary-tool" title="អនុវត្តការផ្លាស់ប្តូរ">
-                <i class="fa-solid fa-rotate me-1"></i> អនុវត្ត
-            </button>
-
-            <button type="button" class="btn-print" onclick="window.print()">
-                <i class="fa-solid fa-print"></i> បោះពុម្ពឥឡូវនេះ (Print)
-            </button>
-
-            <a href="{% url 'exam_invigilator_roster_view' plan.id %}" class="btn-secondary-tool">
-                <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ក្រោយ
-            </a>
         </form>
     </div>
 
@@ -397,75 +679,72 @@
         {% for shift in shift_pages %}
             {% for pg in shift.pages %}
             <div class="print-page">
-                <!-- Page Top Container -->
-                <div>
-                    <!-- 1. Header Grid (School Name & Kingdom Motto) -->
-                    <div class="header-grid">
-                        <div class="school-header moul-font">
-                            {{ school_name }}
-                        </div>
-                        <div class="kingdom-header">
-                            <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                            <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                            <div class="divider-flourish">
-                                <svg width="105" height="12" viewBox="0 0 105 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M52.5 2C34 2 25 10 8 10C0 10 0 6 0 6M52.5 2C71 2 80 10 97 10C105 10 105 6 105 6" stroke="#000" stroke-width="1.1" stroke-linecap="round"/>
-                                    <circle cx="52.5" cy="2" r="2" fill="#000"/>
-                                </svg>
-                            </div>
+                <!-- 1. Header Grid (School Name & Kingdom Motto) -->
+                <div class="header-grid">
+                    <div class="school-header moul-font" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែឈ្មោះសាលារៀន">
+                        {{ school_name }}
+                    </div>
+                    <div class="kingdom-header">
+                        <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                        <div class="moul-font kingdom-motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                        <div class="divider-flourish">
+                            <svg width="105" height="12" viewBox="0 0 105 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M52.5 2C34 2 25 10 8 10C0 10 0 6 0 6M52.5 2C71 2 80 10 97 10C105 10 105 6 105 6" stroke="#000" stroke-width="1.1" stroke-linecap="round"/>
+                                <circle cx="52.5" cy="2" r="2" fill="#000"/>
+                            </svg>
                         </div>
                     </div>
-
-                    <!-- 2. Center Exam Title Block -->
-                    <div class="center-title-block">
-                        <div class="main-title moul-font">{{ main_title }}</div>
-                        <div class="exam-date-khmer">{{ shift.exam_date_kh }}</div>
-                    </div>
-
-                    <!-- 3. Shift Indicator (ព្រឹក / រសៀល) -->
-                    <div class="shift-indicator-row">
-                        <div class="shift-badge moul-font">{{ shift.shift_session_kh }}</div>
-                    </div>
-
-                    <!-- 4. Official MoEYS Dual-Column Table (Exact 8 Columns & 27 Rows = 54 Spots) -->
-                    <table class="roster-table">
-                        <thead>
-                            <tr>
-                                <th class="col-num">ល.រ</th>
-                                <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
-                                <th class="col-duty">តួនាទី</th>
-                                <th class="col-sig">ហត្ថលេខា</th>
-
-                                <th class="col-num">ល.រ</th>
-                                <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
-                                <th class="col-duty">តួនាទី</th>
-                                <th class="col-sig">ហត្ថលេខា</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for p in pg.pairs %}
-                            <tr>
-                                <td class="col-num">{{ p.left.order_num }}</td>
-                                <td class="col-name">{{ p.left.name }}</td>
-                                <td class="col-duty">{{ p.left.duty }}</td>
-                                <td class="col-sig"></td>
-
-                                <td class="col-num">{{ p.right.order_num }}</td>
-                                <td class="col-name">{{ p.right.name }}</td>
-                                <td class="col-duty">{{ p.right.duty }}</td>
-                                <td class="col-sig"></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
 
-                <!-- 5. Footer Section (Khmer Lunar Date, Solar Date & Principal Signature) -->
+                <!-- 2. Center Exam Title Block -->
+                <div class="center-title-block">
+                    <div class="main-title moul-font" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែចំណងជើង">{{ main_title }}</div>
+                    <div class="exam-date-khmer" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែកាលបរិច្ឆេទប្រឡង">{{ shift.exam_date_kh }}</div>
+                </div>
+
+                <!-- 3. Shift Indicator (ព្រឹក / រសៀល) -->
+                <div class="shift-indicator-row">
+                    <div class="shift-badge moul-font" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែវេន">{{ shift.shift_session_kh }}</div>
+                </div>
+
+                <!-- 4. Official MoEYS Dual-Column Table (Exact 8 Columns, Dynamically Balanced Pairs) -->
+                <table class="roster-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">ល.រ</th>
+                            <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
+                            <th class="col-duty">តួនាទី</th>
+                            <th class="col-sig">ហត្ថលេខា</th>
+
+                            <th class="col-num">ល.រ</th>
+                            <th class="col-name" style="text-align: center; padding-left: 0 !important;">គោត្តនាម-នាម</th>
+                            <th class="col-duty">តួនាទី</th>
+                            <th class="col-sig">ហត្ថលេខា</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pg.pairs %}
+                        <tr>
+                            <td class="col-num">{{ p.left.order_num|default:'' }}</td>
+                            <td class="col-name">{{ p.left.name }}</td>
+                            <td class="col-duty">{{ p.left.duty }}</td>
+                            <td class="col-sig"></td>
+
+                            <td class="col-num">{{ p.right.order_num|default:'' }}</td>
+                            <td class="col-name">{{ p.right.name }}</td>
+                            <td class="col-duty">{{ p.right.duty }}</td>
+                            <td class="col-sig"></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- 5. Footer Section (Placed Immediately After the Last Row) -->
                 <div class="footer-section">
                     <div class="footer-right">
-                        <div class="lunar-date">{{ shift.lunar_line }}</div>
-                        <div class="solar-date">{{ location_name }} {{ shift.solar_date_kh }}</div>
-                        <div class="principal-title moul-font">{{ signer_title }}</div>
+                        <div class="lunar-date" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែកាលបរិច្ឆេទចន្ទគតិ">{{ shift.lunar_line }}</div>
+                        <div class="solar-date" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែកាលបរិច្ឆេទសុរិយគតិ">{% if location_name in shift.solar_date_kh %}{{ shift.solar_date_kh }}{% else %}{{ location_name }} {{ shift.solar_date_kh }}{% endif %}</div>
+                        <div class="principal-title moul-font" contenteditable="true" spellcheck="false" title="ចុចត្រង់នេះដើម្បីកែប្រែតួនាទីអ្នកចុះហត្ថលេខា">{{ signer_title }}</div>
                         <div class="signature-space"></div>
                     </div>
                 </div>
@@ -482,5 +761,116 @@
         {% endfor %}
     </div>
 
+    <script>
+        // Initial values from Django or LocalStorage
+        let currentRowHeight = parseFloat("{{ row_height|default:'22' }}") || 22;
+        let currentFontSize = parseFloat("{{ font_size|default:'9.5' }}") || 9.5;
+
+        // Check localStorage if not explicitly set in URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('row_height') && localStorage.getItem('duty_roster_row_height')) {
+            currentRowHeight = parseFloat(localStorage.getItem('duty_roster_row_height')) || currentRowHeight;
+        }
+        if (!urlParams.has('font_size') && localStorage.getItem('duty_roster_font_size')) {
+            currentFontSize = parseFloat(localStorage.getItem('duty_roster_font_size')) || currentFontSize;
+        }
+
+        function applySizing(saveStorage = true) {
+            // Clamp values
+            currentRowHeight = Math.max(16, Math.min(50, Math.round(currentRowHeight)));
+            currentFontSize = Math.max(7.5, Math.min(15, Math.round(currentFontSize * 10) / 10));
+
+            // Update CSS Variables on root
+            document.documentElement.style.setProperty('--row-height', currentRowHeight + 'px');
+            document.documentElement.style.setProperty('--table-font-size', currentFontSize + 'pt');
+            document.documentElement.style.setProperty('--th-row-height', (currentRowHeight + 4) + 'px');
+            document.documentElement.style.setProperty('--th-font-size', currentFontSize + 'pt');
+
+            // Update on-screen display values
+            const rhDisplay = document.getElementById('rowHeightDisplay');
+            if (rhDisplay) rhDisplay.textContent = currentRowHeight + 'px';
+
+            const fsDisplay = document.getElementById('fontSizeDisplay');
+            if (fsDisplay) fsDisplay.textContent = currentFontSize + 'pt';
+
+            // Update hidden inputs for form submission persistence
+            const inRh = document.getElementById('inputRowHeight');
+            if (inRh) inRh.value = currentRowHeight;
+
+            const inFs = document.getElementById('inputFontSize');
+            if (inFs) inFs.value = currentFontSize;
+
+            // Save to localStorage
+            if (saveStorage) {
+                try {
+                    localStorage.setItem('duty_roster_row_height', currentRowHeight);
+                    localStorage.setItem('duty_roster_font_size', currentFontSize);
+                } catch (e) {}
+            }
+
+            // Update active state on preset chips
+            document.querySelectorAll('.tool-group .chip-btn').forEach(btn => {
+                const txt = btn.textContent;
+                const isRowMatch = txt.includes(currentRowHeight + 'px');
+                const isFontMatch = txt.includes(currentFontSize + 'pt');
+                if (isRowMatch || isFontMatch) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function adjustRowHeight(delta) {
+            currentRowHeight += delta;
+            applySizing(true);
+        }
+
+        function setRowHeight(val) {
+            currentRowHeight = val;
+            applySizing(true);
+        }
+
+        function adjustFontSize(delta) {
+            currentFontSize += delta;
+            applySizing(true);
+        }
+
+        function setFontSize(val) {
+            currentFontSize = val;
+            applySizing(true);
+        }
+
+        function resetTableSizing() {
+            currentRowHeight = 22;
+            currentFontSize = 9.5;
+            applySizing(true);
+        }
+
+        // Keyboard Shortcuts for power users
+        document.addEventListener('keydown', function(e) {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable) {
+                return;
+            }
+            if (e.key === ']' || (e.altKey && e.key === 'ArrowUp')) {
+                e.preventDefault();
+                adjustRowHeight(1);
+            } else if (e.key === '[' || (e.altKey && e.key === 'ArrowDown')) {
+                e.preventDefault();
+                adjustRowHeight(-1);
+            } else if (e.altKey && (e.key === '+' || e.key === '=')) {
+                e.preventDefault();
+                adjustFontSize(0.5);
+            } else if (e.altKey && (e.key === '-' || e.key === '_')) {
+                e.preventDefault();
+                adjustFontSize(-0.5);
+            }
+        });
+
+        // Initialize on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            applySizing(false);
+        });
+    </script>
 </body>
 </html>

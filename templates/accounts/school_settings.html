@@ -796,8 +796,8 @@
     let marker = null;
     let circle = null;
 
-    const DEFAULT_LAT = parseFloat("{{ school_profile.latitude|default:'11.5564' }}") || 11.5564;
-    const DEFAULT_LNG = parseFloat("{{ school_profile.longitude|default:'104.9282' }}") || 104.9282;
+    const DEFAULT_LAT = parseFloat("{{ school_profile.unlocalized_latitude }}") || 11.5564;
+    const DEFAULT_LNG = parseFloat("{{ school_profile.unlocalized_longitude }}") || 104.9282;
     const SCHOOL_NAME = "{{ school_profile.name_kh|escapejs }}";
 
     function initSchoolMap() {

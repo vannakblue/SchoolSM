@@ -61,7 +61,12 @@ def run_tests():
 
     # Assign teacher to 10a
     sub_math = Subject.objects.filter(code='M').first() or Subject.objects.first()
-    ClassSubject.objects.get_or_create(classroom=class_10a, teacher=teacher_prof, subject=sub_math)
+    cs_obj = ClassSubject.objects.filter(classroom=class_10a, subject=sub_math).first()
+    if cs_obj:
+        cs_obj.teacher = teacher_prof
+        cs_obj.save()
+    else:
+        ClassSubject.objects.create(classroom=class_10a, teacher=teacher_prof, subject=sub_math)
 
     # Setup 2 Test Students in 10A
     student_pass, _ = Student.objects.get_or_create(

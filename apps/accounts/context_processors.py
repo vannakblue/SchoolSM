@@ -103,6 +103,8 @@ def user_role_context(request):
             for item in sec.get('items', []):
                 if item.get('is_admin_only') and not is_admin:
                     continue
+                if item.get('key') == 'exam_invigilator_request' and is_admin:
+                    continue
                 if is_admin or menu_perms.get(item['key'], False):
                     all_visible_items.append((sec, item))
 
@@ -110,8 +112,20 @@ def user_role_context(request):
         best_active_key = None
         # Check exact url_name match
         if current_url_name:
+            INVIGILATOR_URLS = {
+                'exam_invigilator_plans_list',
+                'exam_invigilator_plan_create',
+                'exam_invigilator_plan_edit',
+                'exam_invigilator_plan_toggle_active',
+                'exam_invigilator_plan_delete',
+                'exam_invigilator_quotas_manage',
+                'exam_invigilator_roster_view',
+                'exam_invigilator_roster_print',
+                'api_invigilator_auto_assign',
+            }
+            mapped_url_name = 'standardized_exam_list' if current_url_name in INVIGILATOR_URLS else current_url_name
             for sec, item in all_visible_items:
-                if item.get('url_name') and item.get('url_name') == current_url_name:
+                if item.get('url_name') and item.get('url_name') == mapped_url_name:
                     best_active_key = item.get('key')
                     break
 
@@ -140,7 +154,9 @@ def user_role_context(request):
             for item in sec.get('items', []):
                 if item.get('is_admin_only') and not is_admin:
                     continue
-                if item.get('key') == 'exam_invigilator_request' and not is_admin:
+                if item.get('key') == 'exam_invigilator_request':
+                    if is_admin:
+                        continue
                     try:
                         from apps.examinations.models import ExamInvigilatorPlan
                         if not ExamInvigilatorPlan.objects.filter(is_active=True, allow_teacher_registration=True).exists():

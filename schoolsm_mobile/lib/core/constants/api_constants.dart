@@ -41,4 +41,29 @@ class ApiConstants {
   static String get timetable => "$baseUrl/api/v1/timetable/";
   static String get grades => "$baseUrl/api/v1/grades/";
   static String get notifications => "$baseUrl/api/v1/notifications/";
+
+  // Student Admission & Directory
+  static String get studentEnroll => "$baseUrl/api/v1/students/enroll/";
+  static String get studentCheckId => "$baseUrl/api/v1/students/check-id/";
+  static String get studentRomanize => "$baseUrl/api/v1/students/romanize/";
+  static String get studentsList => "$baseUrl/api/v1/students/";
+
+  // Student Promotion & Retention Matrix
+  static String get studentPromotionMeta => "$baseUrl/api/v1/students/promotion/meta/";
+  static String get studentPromotionStudents => "$baseUrl/api/v1/students/promotion/students/";
+  static String get studentPromotionSubmit => "$baseUrl/api/v1/students/promotion/submit/";
+
+  // Examination Seating & Teacher Grade Entry
+  static String get examSeating => "$baseUrl/api/v1/exams/seating/";
+  static String get teacherGradeMeta => "$baseUrl/api/v1/grades/teacher-entry/meta/";
+  static String get teacherGradeSheet => "$baseUrl/api/v1/grades/teacher-entry/sheet/";
+  static String get teacherGradeSave => "$baseUrl/api/v1/grades/teacher-entry/save/";
+  static String get blindScoringValidate => "$baseUrl/api/v1/grades/blind-scoring/validate-code/";
+  static String get blindScoringSave => "$baseUrl/api/v1/grades/blind-scoring/save-scores/";
+
+  // Exam Invigilation & Proctor Shifts
+  static String get invigilatorStatus => "$baseUrl/api/v1/exam-invigilator/status/";
+  static String get invigilatorSlots => "$baseUrl/api/v1/exam-invigilator/slots/";
+  static String get invigilatorToggle => "$baseUrl/api/v1/exam-invigilator/toggle/";
+  static String get invigilatorFinalize => "$baseUrl/api/v1/exam-invigilator/finalize/";
 }

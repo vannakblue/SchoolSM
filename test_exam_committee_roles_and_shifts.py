@@ -1,5 +1,9 @@
 import os
+import sys
 import django
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school_management.settings')
 django.setup()
@@ -136,6 +140,8 @@ def run_tests():
     t_tab1, _ = Teacher.objects.get_or_create(teacher_id="TEST_TAB_01", defaults={'khmer_name': 'អ្នកគ្រូ បូកស្រង់ ១'})
     t_tab2, _ = Teacher.objects.get_or_create(teacher_id="TEST_TAB_02", defaults={'khmer_name': 'លោកគ្រូ បូកស្រង់ ២'})
     t_tab3, _ = Teacher.objects.get_or_create(teacher_id="TEST_TAB_03", defaults={'khmer_name': 'អ្នកគ្រូ បូកស្រង់ ៣'})
+
+    TeacherShiftRegistration.objects.filter(slot__in=[slot1, slot2], teacher__in=[t_tab1, t_tab2, t_tab3]).delete()
 
     # Teacher 1 registers
     reg1 = TeacherShiftRegistration.objects.create(

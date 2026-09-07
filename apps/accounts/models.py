@@ -576,12 +576,54 @@ class SchoolProfile(models.Model):
         return static('img/school_logo.png')
 
     @property
+    def unlocalized_latitude(self):
+        if self.latitude is not None:
+            return f"{float(self.latitude):.6f}".rstrip('0').rstrip('.')
+        return "11.5564"
+
+    @property
+    def unlocalized_longitude(self):
+        if self.longitude is not None:
+            return f"{float(self.longitude):.6f}".rstrip('0').rstrip('.')
+        return "104.9282"
+
+    @property
     def google_maps_direct_url(self):
         if self.google_maps_url and self.google_maps_url.startswith('http') and 'schoolsm_sample' not in self.google_maps_url:
             return self.google_maps_url
-        if self.latitude and self.longitude:
-            return f"https://www.google.com/maps?q={self.latitude},{self.longitude}"
+        if self.latitude is not None and self.longitude is not None:
+            return f"https://www.google.com/maps?q={self.unlocalized_latitude},{self.unlocalized_longitude}"
         return "https://www.google.com/maps?q=11.5564,104.9282"
+
+    @property
+    def google_maps_embed_url(self):
+        """
+        Clean, unlocalized Google Maps embed URL for iframes.
+        Ensures dots are always used for decimal separation, avoiding L10N comma replacement.
+        """
+        import re, urllib.parse
+
+        # 1. If admin provided an iframe snippet or embed URL
+        if self.google_maps_url:
+            url_clean = self.google_maps_url.strip()
+            iframe_match = re.search(r'src=["\']([^"\']+)["\']', url_clean)
+            if iframe_match:
+                return iframe_match.group(1)
+            if 'output=embed' in url_clean or 'google.com/maps/embed' in url_clean:
+                return url_clean
+
+        # 2. If latitude and longitude exist, use dot decimal coordinates
+        if self.latitude is not None and self.longitude is not None:
+            lat = self.unlocalized_latitude
+            lng = self.unlocalized_longitude
+            return f"https://maps.google.com/maps?q={lat},{lng}&hl=km&z=16&output=embed"
+
+        # 3. Fallback to school name
+        if self.name_kh:
+            q = urllib.parse.quote(f"{self.name_kh} {self.province or ''}".strip())
+            return f"https://maps.google.com/maps?q={q}&hl=km&z=15&output=embed"
+
+        return "https://maps.google.com/maps?q=11.5564,104.9282&hl=km&z=16&output=embed"
 
     @property
     def full_address(self):

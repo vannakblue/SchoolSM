@@ -125,7 +125,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                               border: Border.all(color: AppColors.borderLight),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
+                                  color: Colors.black.withValues(alpha: 0.02),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -137,7 +137,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: color.withOpacity(0.12),
+                                    color: color.withValues(alpha: 0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -165,9 +165,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: color.withOpacity(0.1),
+                                    color: color.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: color.withOpacity(0.3)),
+                                    border: Border.all(color: color.withValues(alpha: 0.3)),
                                   ),
                                   child: Text(
                                     statusDisplay,

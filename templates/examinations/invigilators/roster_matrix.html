@@ -38,6 +38,10 @@
         </p>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2">
+        <a href="{% url 'exam_invigilator_plan_edit' plan.id %}" class="btn btn-outline-secondary btn-sm fw-bold shadow-xs" title="កែប្រែការកំណត់គម្រោង កាលបរិច្ឆេទ និងកូតា">
+            <i class="fa-solid fa-gear me-1"></i> កែប្រែការកំណត់គម្រោង
+        </a>
+
         <!-- Toggle Teacher Registration Button -->
         <form method="POST" class="d-inline">
             {% csrf_token %}
@@ -83,6 +87,15 @@
             </ul>
         </div>
 
+        <!-- Auto Assign Rooms All Slots Button -->
+        <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធបញ្ចូលបន្ទប់ស្វ័យប្រវត្តិ (Random Rooms 1..ចុងក្រោយ) សម្រាប់គ្រប់វេនប្រឡងទាំងអស់មែនទេ? (ករណីខ្វះ នឹងបង្ហាញបន្ទប់ខ្វះ, ករណីលើស នឹងអនុញ្ញាតឱ្យចាត់តាំងទៅតួនាទីផ្សេង)')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="auto_assign_rooms_all">
+            <button type="submit" class="btn btn-outline-info btn-sm fw-bold shadow-xs" title="បញ្ចូលបន្ទប់ស្វ័យប្រវត្តិ (Random) ជូនអនុរក្សគ្រប់វេនទាំងអស់">
+                <i class="fa-solid fa-dice me-1"></i> 🎲 បញ្ចូលបន្ទប់គ្រប់វេន
+            </button>
+        </form>
+
         <a href="{% url 'exam_invigilator_quotas_manage' plan.id %}" class="btn btn-outline-primary fw-bold btn-sm">
             <i class="fa-solid fa-users-gear me-1"></i> មុខងារ & កូតាគ្រូ
         </a>
@@ -119,6 +132,15 @@
                     <span class="badge {% if s.is_full %}bg-danger{% else %}bg-success{% endif %} fs-6 px-3 py-1.5">
                         <i class="fa-solid fa-user-check me-1"></i> សរុប {{ s.registered_count }} / {{ s.max_invigilators }} នាក់
                     </span>
+                    <!-- Auto-Assign Rooms Single Slot -->
+                    <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធបញ្ចូលបន្ទប់ស្វ័យប្រវត្តិ (Random 1 ដល់ {{ s.total_rooms }}) ជូនអនុរក្សក្នុងវេន «{{ s.session_name }}» នេះមែនទេ?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="auto_assign_rooms_slot">
+                        <input type="hidden" name="slot_id" value="{{ s.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary fw-bold shadow-xs" title="បញ្ចូលបន្ទប់ស្វ័យប្រវត្តិ (Random Rooms 1..{{ s.total_rooms }})">
+                            <i class="fa-solid fa-dice me-1"></i> 🎲 បញ្ចូលបន្ទប់
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-sm btn-primary fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#assignModal_{{ s.id }}">
                         <i class="fa-solid fa-user-plus me-1"></i> ចាត់តាំងគ្រូ
                     </button>
@@ -134,6 +156,134 @@
                 </span>
                 {% endfor %}
             </div>
+
+            <!-- Shortage Alert: Rooms Missing Invigilators (ករណីអនុរក្សមិនគ្រាន់) -->
+            {% if s.missing_rooms %}
+            <div class="alert alert-warning py-2.5 px-3 mb-3 rounded-3 border-warning d-flex flex-wrap align-items-center justify-content-between gap-2 shadow-2xs">
+                <div>
+                    <div class="fw-bold text-dark d-flex align-items-center gap-1.5 mb-1">
+                        <i class="fa-solid fa-triangle-exclamation text-danger fs-6"></i>
+                        <span>ស្ថានភាពបន្ទប់ឈរប្រឡង៖ ជាក់ស្តែងខ្វះអនុរក្សសរុប <strong>{{ s.missing_count }}</strong> នាក់ លើបន្ទប់ដូចខាងក្រោម៖</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1.5">
+                        {% for m in s.missing_rooms %}
+                        <span class="badge {% if m.assigned == 0 %}bg-danger text-white{% else %}bg-warning-subtle text-dark border border-warning{% endif %} px-2 py-1" style="font-size: 0.78rem;">
+                            {{ m.room }}: មាន {{ m.assigned }}/{{ m.required }} (ខ្វះ {{ m.missing }} នាក់)
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-warning fw-bold text-dark shadow-2xs" data-bs-toggle="modal" data-bs-target="#assignModal_{{ s.id }}">
+                    <i class="fa-solid fa-user-plus me-1"></i> បំពេញបន្ថែម
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- Surplus Invigilators Management Section (ករណីលើសអនុរក្ស) -->
+            {% if s.surplus_count > 0 %}
+            <div class="card border-info mb-3 bg-info-subtle shadow-2xs" style="border-radius: 0.85rem;">
+                <div class="card-header bg-white py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                    <div>
+                        <span class="badge bg-info text-white fw-bold me-1.5">លើសកូតាបន្ទប់</span>
+                        <strong class="text-dark">អនុរក្សលើសបន្ទប់ចំនួន {{ s.surplus_count }} នាក់</strong>
+                        <small class="text-muted d-block" style="font-size: 0.75rem;">(បន្ទប់ពេញហើយ អាចចាត់តាំងទៅមុខងារផ្សេងទៀត៖ កណ្តាល, ត្រួតអគារ, បូកស្រង់... ម្តងមួយ ឬទាំងអស់)</small>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <!-- Batch Reassignment Form -->
+                    <form method="POST" id="batchSurplusForm_{{ s.id }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reassign_surplus_teachers">
+                        
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 bg-white rounded-2 border">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="selectAllSurplus_{{ s.id }}" onchange="toggleSelectAllSurplus('{{ s.id }}', this)">
+                                <label class="form-check-label fw-bold small text-dark" for="selectAllSurplus_{{ s.id }}">
+                                    ជ្រើសទាំងអស់ (Select All {{ s.surplus_count }} នាក់)
+                                </label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small fw-bold text-muted">ប្តូរទៅកាន់៖</span>
+                                <select name="target_role" class="form-select form-select-sm fw-bold" style="width: 200px;" required>
+                                    <option value="SECRETARIAT">🏢 គណៈកម្មការកណ្តាល</option>
+                                    <option value="BUILDING_INSPECTOR">🔍 ត្រួតអគារ</option>
+                                    <option value="TABULATOR">📊 បូកស្រង់ពិន្ទុ</option>
+                                    <option value="VICE_PRESIDENT">🎖️ អនុប្រធាន</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary fw-bold text-nowrap" onclick="return confirm('តើលោកអ្នកចង់ចាត់តាំងគ្រូដែលបានជ្រើសរើសទាំងអស់ ទៅកាន់មុខងារថ្មីមែនទេ?')">
+                                    <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> ចាត់តាំងទាំងអស់
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive bg-white rounded-2 border">
+                            <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 35px;" class="text-center">#</th>
+                                        <th>ឈ្មោះគ្រូបង្រៀន</th>
+                                        <th>លេខកូដ / ទូរស័ព្ទ</th>
+                                        <th>ស្ថានភាពបន្ទប់</th>
+                                        <th style="width: 260px;" class="text-end">ចាត់តាំងម្តងមួយ (Single)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in s.surplus_invigilators %}
+                                    <tr>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input surplus-cb-{{ s.id }}" name="selected_reg_ids" value="{{ r.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark">{{ r.teacher.khmer_name }}</div>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted font-monospace">{{ r.teacher.teacher_id }} • {{ r.teacher.phone|default:"-" }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 0.72rem;">គ្មានបន្ទប់ឈរ (លើសកូតា)</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <!-- Inline Single Reassign Form (Change Role OR Assign Room) -->
+                                            <div class="d-inline-flex align-items-center gap-1">
+                                                <select class="form-select form-select-sm py-0.5" id="single_role_{{ r.id }}" style="width: 125px; font-size: 0.78rem;">
+                                                    <option value="SECRETARIAT">🏢 កណ្តាល</option>
+                                                    <option value="BUILDING_INSPECTOR">🔍 ត្រួតអគារ</option>
+                                                    <option value="TABULATOR">📊 បូកស្រង់</option>
+                                                    <option value="VICE_PRESIDENT">🎖️ អនុប្រធាន</option>
+                                                </select>
+                                                <button type="button" class="btn btn-xs btn-outline-primary fw-bold py-1 px-1.5 text-nowrap" onclick="reassignSingleSurplus('{{ r.id }}')">
+                                                    ប្តូរមុខងារ
+                                                </button>
+                                                <form method="POST" class="d-inline-flex align-items-center gap-1 ms-1">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="admin_update_registration">
+                                                    <input type="hidden" name="registration_id" value="{{ r.id }}">
+                                                    <input type="hidden" name="role" value="INVIGILATOR">
+                                                    <input type="text" name="room_assignment" list="room_list_{{ s.id }}" class="form-control form-control-sm py-0.5 px-1.5 fw-semibold text-primary" placeholder="បន្ទប់..." style="width: 110px; font-size: 0.76rem;" required>
+                                                    <button type="submit" class="btn btn-xs btn-success fw-bold py-1 px-1.5 text-nowrap" title="ចាត់បន្ទប់ឱ្យគ្រូនេះ">
+                                                        <i class="fa-solid fa-door-open me-0.5"></i>ចាត់បន្ទប់
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Room Suggestions Datalist for this Slot -->
+            <datalist id="room_list_{{ s.id }}">
+                {% for r_num in s.room_numbers_list %}
+                <option value="{{ r_num }} (អនុរក្ស ១)"></option>
+                <option value="{{ r_num }} (អនុរក្ស ២)"></option>
+                <option value="{{ r_num }}"></option>
+                {% endfor %}
+            </datalist>
 
             <!-- Registrations Grid in Slot -->
             <div class="table-responsive rounded-3 border">
@@ -155,12 +305,40 @@
                             <td>
                                 <div class="fw-bold text-primary">{{ r.teacher.khmer_name }}</div>
                                 <small class="text-muted font-monospace">{{ r.teacher.teacher_id }} • {{ r.teacher.phone|default:"-" }}</small>
+                                {% if r.is_finalized %}
+                                <div class="d-inline-flex align-items-center gap-1 mt-0.5">
+                                    <span class="badge bg-success-subtle text-success border border-success" style="font-size: 0.68rem;"><i class="fa-solid fa-lock me-0.5"></i>បាន Submit</span>
+                                    {% if r.quota_id %}
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ដោះសោរការស្នើសុំជូនលោកគ្រូ/អ្នកគ្រូ {{ r.teacher.khmer_name }} មែនទេ?')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="admin_unlock_teacher">
+                                        <input type="hidden" name="quota_id" value="{{ r.quota_id }}">
+                                        <button type="submit" class="btn btn-xs btn-outline-warning py-0 px-1 border-0" title="ដោះសោរឱ្យគ្រូអាចកែប្រែបាន" style="font-size: 0.7rem;">
+                                            🔓 ដោះសោរ
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if r.role == 'PRESIDENT' %}bg-warning text-dark{% elif r.role == 'VICE_PRESIDENT' %}bg-info text-white{% elif r.role == 'SECRETARIAT' %}bg-primary text-white{% elif r.role == 'BUILDING_INSPECTOR' %}bg-secondary text-white{% elif r.role == 'TABULATOR' %}bg-dark text-white{% else %}bg-success-subtle text-success border border-success{% endif %} fw-bold px-2 py-1">
-                                    {% if r.role == 'PRESIDENT' %}👑 {% elif r.role == 'VICE_PRESIDENT' %}🎖️ {% elif r.role == 'SECRETARIAT' %}🏢 {% elif r.role == 'BUILDING_INSPECTOR' %}🔍 {% elif r.role == 'TABULATOR' %}📊 {% else %}👤 {% endif %}
-                                    {{ r.get_role_display }}
-                                </span>
+                                <form method="POST" class="d-inline-flex align-items-center gap-1 m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="admin_update_registration">
+                                    <input type="hidden" name="registration_id" value="{{ r.id }}">
+                                    <input type="hidden" name="room_assignment" value="{% if r.role == 'INVIGILATOR' %}{{ r.room_assignment|default:'' }}{% endif %}">
+                                    <select name="role" 
+                                            class="form-select form-select-sm py-0.5 px-1.5 fw-bold {% if r.role == 'PRESIDENT' %}text-warning bg-warning-subtle border-warning{% elif r.role == 'VICE_PRESIDENT' %}text-info bg-info-subtle border-info{% elif r.role == 'SECRETARIAT' %}text-primary bg-primary-subtle border-primary{% elif r.role == 'BUILDING_INSPECTOR' %}text-secondary bg-secondary-subtle border-secondary{% elif r.role == 'TABULATOR' %}text-dark bg-light border-dark{% else %}text-success bg-success-subtle border-success{% endif %}" 
+                                            onchange="this.form.submit()" 
+                                            title="ចុចដើម្បីប្តូរតួនាទី (ឧ. ប្តូរទៅជា «កណ្តាល», «ត្រួតអគារ»...)" 
+                                            style="font-size: 0.78rem; width: 155px; cursor: pointer;">
+                                        {% for r_code, r_label in committee_roles %}
+                                        <option value="{{ r_code }}" {% if r.role == r_code %}selected{% endif %}>
+                                            {% if r_code == 'PRESIDENT' %}👑 {% elif r_code == 'VICE_PRESIDENT' %}🎖️ {% elif r_code == 'SECRETARIAT' %}🏢 {% elif r_code == 'BUILDING_INSPECTOR' %}🔍 {% elif r_code == 'TABULATOR' %}📊 {% else %}👤 {% endif %}{{ r_label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
                             </td>
                             <td>
                                 <form method="POST" class="d-flex gap-1 align-items-center">
@@ -168,7 +346,19 @@
                                     <input type="hidden" name="action" value="admin_update_registration">
                                     <input type="hidden" name="registration_id" value="{{ r.id }}">
                                     <input type="hidden" name="role" value="{{ r.role }}">
-                                    <input type="text" name="room_assignment" class="form-control form-control-sm py-0.5 px-2" placeholder="ឧ. បន្ទប់ ០១" value="{{ r.room_assignment|default:'' }}" style="font-size: 0.8rem; width: 150px;" onchange="this.form.submit()">
+                                    <div class="input-group input-group-sm" style="width: 175px;">
+                                        <input type="text" 
+                                               name="room_assignment" 
+                                               list="room_list_{{ s.id }}" 
+                                               class="form-control form-control-sm py-0.5 px-2 fw-semibold text-primary" 
+                                               placeholder="ឧ. បន្ទប់ 01" 
+                                               value="{{ r.room_assignment|default:'' }}" 
+                                               style="font-size: 0.8rem;" 
+                                               title="ចុចដើម្បីរើស ឬវាយលេខបន្ទប់ដោយសេរី">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm px-2 py-0.5" title="រក្សាទុកបន្ទប់">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                    </div>
                                 </form>
                             </td>
                             <td class="text-center">
@@ -478,6 +668,51 @@ function filterUnfulfilled(type, btn) {
             }
         }
     });
+}
+
+function toggleSelectAllSurplus(slotId, masterCb) {
+    document.querySelectorAll('.surplus-cb-' + slotId).forEach(cb => {
+        cb.checked = masterCb.checked;
+    });
+}
+
+function reassignSingleSurplus(regId) {
+    const sel = document.getElementById('single_role_' + regId);
+    if (!sel) return;
+    const targetRole = sel.value;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '';
+    
+    const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrf) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrf.value;
+        form.appendChild(csrfInput);
+    }
+    
+    const act = document.createElement('input');
+    act.type = 'hidden';
+    act.name = 'action';
+    act.value = 'reassign_surplus_teachers';
+    form.appendChild(act);
+    
+    const reg = document.createElement('input');
+    reg.type = 'hidden';
+    reg.name = 'registration_id';
+    reg.value = regId;
+    form.appendChild(reg);
+    
+    const role = document.createElement('input');
+    role.type = 'hidden';
+    role.name = 'target_role';
+    role.value = targetRole;
+    form.appendChild(role);
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 {% endblock %}
