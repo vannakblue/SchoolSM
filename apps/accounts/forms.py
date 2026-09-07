@@ -92,9 +92,9 @@ class SchoolProfileForm(forms.ModelForm):
             'student_id_digits': forms.Select(attrs={'class': 'form-select', 'id': 'id_student_id_digits'}),
             'student_id_include_grade': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_student_id_include_grade'}),
             
-            'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-            'seal': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-            'principal_signature': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_logo'}),
+            'seal': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_seal'}),
+            'principal_signature': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_principal_signature'}),
 
             'ministry_name': forms.TextInput(attrs={'class': 'form-control'}),
             'poe_name': forms.TextInput(attrs={'class': 'form-control'}),
