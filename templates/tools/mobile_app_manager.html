@@ -133,6 +133,9 @@
                     <button type="button" class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm text-dark" onclick="startApkBuild()" id="btnTriggerBuild">
                         <i class="fa-solid fa-hammer me-2"></i> បង្កើត APK ថ្មី (Build Release APK)
                     </button>
+                    <button type="button" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#uploadApkModal" title="Upload ឯកសារ APK ដែលបាន Build ពីកុំព្យូទ័រ">
+                        <i class="fa-solid fa-cloud-arrow-up me-2 text-primary"></i> Upload APK ឡើង Server
+                    </button>
                     {% if apk_exists %}
                     <a href="{% url 'tool_download_mobile_apk' %}" class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm" id="btnDownloadHero">
                         <i class="fa-solid fa-download me-2"></i> ទាញយក APK ({{ apk_size_mb }} MB)
@@ -142,6 +145,14 @@
                         <i class="fa-solid fa-globe me-2"></i> បើកមើល Web Portal
                     </a>
                 </div>
+                {% if not flutter_installed %}
+                <div class="alert alert-warning border-0 bg-warning bg-opacity-25 text-white d-flex align-items-center gap-2 mt-3 mb-0 py-2 px-3 rounded-3" style="backdrop-filter: blur(4px); font-size: 0.85rem;">
+                    <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                    <div>
+                        <strong>Cloud Server (Render.com) Notice៖</strong> Server នេះមិនមានដំឡើង Flutter SDK ទេ។ សូមធ្វើការ Build APK លើកុំព្យូទ័ររបស់អ្នក (Local PC) រួចចុចប៊ូតុង <strong>«Upload APK ឡើង Server»</strong> ខាងលើដើម្បីឱ្យអ្នកប្រើប្រាស់អាចទាញយកបាន។
+                    </div>
+                </div>
+                {% endif %}
             </div>
             <div class="col-lg-4 text-center text-lg-end mt-4 mt-lg-0">
                 <div class="p-3 bg-white bg-opacity-10 rounded-4 d-inline-block backdrop-blur border border-white border-opacity-10 text-start">
@@ -158,6 +169,42 @@
                     <div class="small text-white-50">
                         <div><i class="fa-solid fa-network-wired me-1"></i> Server LAN: <code class="text-warning fw-bold">{{ lan_ip }}:8000</code></div>
                         <div class="mt-1"><i class="fa-solid fa-mobile-screen me-1"></i> Package: <code class="text-info">com.schoolsm.mobile</code></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cloud Compilation via GitHub Actions Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); color: white;">
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">
+                            <i class="fa-brands fa-github me-1"></i> GitHub Actions CI/CD (Cloud Engine)
+                        </span>
+                        <span class="badge bg-success rounded-pill px-2.5 py-1">RAM 7 GB • 2 Cores</span>
+                    </div>
+                    <h4 class="fw-bold mb-1 text-white">☁️ បង្កើត Release APK តាម Cloud Server (GitHub Actions)</h4>
+                    <p class="text-white-50 mb-3 small">
+                        ស័ក្តិសមបំផុតសម្រាប់ <strong>Render.com</strong>! ដំណើរការ Compile នឹងធ្វើឡើងលើ Cloud Server ដ៏ខ្លាំងក្លារបស់ GitHub ដោយស្វ័យប្រវត្តិ រួចបញ្ចេញផ្សាយឯកសារ APK ទៅកាន់ GitHub Releases ព្រមទាំងផ្តល់តំណភ្ជាប់ទាញយកល្បឿនលឿនលើ CDN ពិភពលោក។
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ github_actions_url }}" target="_blank" class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm text-dark">
+                            <i class="fa-solid fa-cloud-bolt me-2"></i> បើកដំណើរការ Cloud Build លើ GitHub
+                        </a>
+                        <a href="{{ github_apk_url }}" target="_blank" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-download me-1 text-info"></i> ទាញយកពី GitHub Releases (CDN)
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-center text-lg-end mt-3 mt-lg-0">
+                    <div class="p-3 bg-white bg-opacity-10 rounded-4 d-inline-block border border-white border-opacity-10 text-start">
+                        <div class="small text-white-50 mb-1">🔗 តំណភ្ជាប់ទាញយក APK អចិន្ត្រៃយ៍៖</div>
+                        <div class="font-monospace text-warning small text-break" style="max-width: 280px; font-size: 0.72rem;">
+                            {{ github_apk_url }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -411,6 +458,43 @@
         </div>
     </div>
 </div>
+
+
+<!-- Upload Pre-Built APK Modal (For Cloud Servers like Render.com) -->
+<div class="modal fade" id="uploadApkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <form action="{% url 'api_upload_mobile_apk' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i> Upload ឯកសារ APK ឡើង Server
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="text-secondary small mb-3">
+                        សម្រាប់ Cloud Server (Render.com) ដែលមិនមាន Flutter SDK លោកអ្នកអាចជ្រើសរើសឯកសារ <code>SchoolSM-Mobile.apk</code> ដែលបាន Compile រួចពីរង្វង់កុំព្យូទ័ររបស់អ្នក (Local PC) មក Upload ទីនេះ។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">ជ្រើសរើសឯកសារ APK (.apk)៖</label>
+                        <input type="file" name="apk_file" class="form-control rounded-3" accept=".apk" required>
+                        <div class="form-text small text-muted">
+                            ទីតាំងលើកុំព្យូទ័រ៖ <code>E:\SchoolSM\SchoolSM-Mobile.apk</code>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-upload me-1"></i> ចាប់ផ្តើម Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
 <script>
     let pollInterval = null;

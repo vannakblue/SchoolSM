@@ -60,6 +60,7 @@ urlpatterns = [
     # 📱 Mobile App & APK Builder Suite
     path('mobile-app/', views.tool_mobile_app_manager, name='tool_mobile_app_manager'),
     path('mobile-app/build/', views.api_build_mobile_apk, name='api_build_mobile_apk'),
+    path('mobile-app/upload/', views.api_upload_mobile_apk, name='api_upload_mobile_apk'),
     path('mobile-app/status/', views.api_mobile_build_status, name='api_mobile_build_status'),
     path('mobile-app/download-apk/', views.tool_download_mobile_apk, name='tool_download_mobile_apk'),
     path('mobile-app/qr-code/', views.tool_mobile_apk_qr, name='tool_mobile_apk_qr'),

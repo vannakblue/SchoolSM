@@ -1242,6 +1242,10 @@ def _run_apk_build_thread():
             BUILD_STATE['logs'].append(f"[EXCEPTION] {str(e)}")
 
 
+GITHUB_APK_URL = "https://github.com/vannakblue/SchoolSM/releases/download/latest/SchoolSM-Mobile.apk"
+GITHUB_ACTIONS_URL = "https://github.com/vannakblue/SchoolSM/actions/workflows/build_mobile_apps.yml"
+
+
 @login_required
 @role_required(['ADMIN'])
 def tool_mobile_app_manager(request):
@@ -1263,8 +1267,9 @@ def tool_mobile_app_manager(request):
     # Also regular download URL
     web_download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
 
-    # Check Flutter version
-    flutter_version = "Flutter 3.47.1"
+    # Check Flutter availability on current server
+    flutter_installed = bool(shutil.which('flutter'))
+    flutter_version = "Flutter 3.47.1" if flutter_installed else "Not Installed (Cloud Server)"
     
     with _BUILD_LOCK:
         current_build = dict(BUILD_STATE)
@@ -1278,6 +1283,9 @@ def tool_mobile_app_manager(request):
         'web_download_url': web_download_url,
         'lan_ip': lan_ip,
         'flutter_version': flutter_version,
+        'flutter_installed': flutter_installed,
+        'github_apk_url': GITHUB_APK_URL,
+        'github_actions_url': GITHUB_ACTIONS_URL,
         'build_state': current_build,
     })
 
@@ -1289,6 +1297,12 @@ def api_build_mobile_apk(request):
     """
     Triggers background compilation of Release APK.
     """
+    if not shutil.which('flutter'):
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Cloud Server (ដូចជា Render.com) មិនមានដំឡើង Flutter SDK & Android SDK ឡើយ។ សូមចុចប្រើប្រាស់ Cloud Build តាម GitHub Actions ឬ Build លើ Local PC រួច Upload ឯកសារ APK មកវិញ។'
+        }, status=400)
+
     global BUILD_STATE
     with _BUILD_LOCK:
         if BUILD_STATE['status'] == 'building':
@@ -1297,6 +1311,32 @@ def api_build_mobile_apk(request):
     t = threading.Thread(target=_run_apk_build_thread, daemon=True)
     t.start()
     return JsonResponse({'status': 'started', 'message': 'បានចាប់ផ្តើមដំណើរការ Build APK នៅ Background ដោយជោគជ័យ!'})
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_upload_mobile_apk(request):
+    """
+    Allows Admin to upload pre-built SchoolSM-Mobile.apk from local PC to Cloud Server.
+    """
+    if 'apk_file' not in request.FILES:
+        messages.error(request, "សូមជ្រើសរើសឯកសារ .apk ជាមុនសិន។")
+        return redirect('tool_mobile_app_manager')
+
+    apk_file = request.FILES['apk_file']
+    if not apk_file.name.lower().endswith('.apk'):
+        messages.error(request, "ឯកសារដែលបានជ្រើសរើសមិនមែនជាប្រភេទ Android APK (.apk) ឡើយ។")
+        return redirect('tool_mobile_app_manager')
+
+    dest_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
+    with open(dest_path, 'wb+') as destination:
+        for chunk in apk_file.chunks():
+            destination.write(chunk)
+
+    size_mb = round(os.path.getsize(dest_path) / (1024 * 1024), 2)
+    messages.success(request, f"🎉 បាន Upload ឯកសារ SchoolSM-Mobile.apk ({size_mb} MB) ឡើងទៅកាន់ Server ដោយជោគជ័យ! អ្នកប្រើប្រាស់អាចទាញយក និងស្កេន QR Code បានឥឡូវនេះ។")
+    return redirect('tool_mobile_app_manager')
 
 
 @login_required
@@ -1324,19 +1364,25 @@ def tool_download_mobile_apk(request):
     """
     Direct download endpoint for SchoolSM-Mobile.apk.
     Accessible on phone via QR scan or direct link.
+    If local file does not exist on Cloud Server, seamlessly redirects to GitHub Releases.
     """
     apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
-    if not os.path.exists(apk_path):
-        fallback = os.path.join(settings.BASE_DIR, 'schoolsm_mobile', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
-        if os.path.exists(fallback):
-            apk_path = fallback
-        else:
-            raise Http404("រកមិនឃើញឯកសារ APK ឡើយ។ សូមចុច Build APK ជាមុនសិន។")
+    if os.path.exists(apk_path):
+        response = FileResponse(open(apk_path, 'rb'), content_type='application/vnd.android.package-archive')
+        response['Content-Disposition'] = 'attachment; filename="SchoolSM-Mobile.apk"'
+        response['Content-Length'] = os.path.getsize(apk_path)
+        return response
 
-    response = FileResponse(open(apk_path, 'rb'), content_type='application/vnd.android.package-archive')
-    response['Content-Disposition'] = 'attachment; filename="SchoolSM-Mobile.apk"'
-    response['Content-Length'] = os.path.getsize(apk_path)
-    return response
+    fallback = os.path.join(settings.BASE_DIR, 'schoolsm_mobile', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk')
+    if os.path.exists(fallback):
+        response = FileResponse(open(fallback, 'rb'), content_type='application/vnd.android.package-archive')
+        response['Content-Disposition'] = 'attachment; filename="SchoolSM-Mobile.apk"'
+        response['Content-Length'] = os.path.getsize(fallback)
+        return response
+
+    # If file not present on cloud server, redirect to GitHub Release CDN download
+    return redirect(GITHUB_APK_URL)
+
 
 
 def tool_mobile_apk_qr(request):

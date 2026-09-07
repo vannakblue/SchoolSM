@@ -66,6 +66,30 @@ jobs:
           name: SchoolSM-Android-AAB
           path: schoolsm_mobile/build/app/outputs/bundle/release/*.aab
 
+      - name: Publish Android APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: always()
+        with:
+          tag_name: latest
+          name: "SchoolSM Mobile App (Latest Build)"
+          body: |
+            ## 📱 SchoolSM Mobile Application (Release APK)
+            - **Branch**: `${{ github.ref_name }}`
+            - **Commit**: `${{ github.sha }}`
+            - **Platform**: Android 5.0+ (API 21-34)
+            - **Build System**: GitHub Actions Cloud Runner
+            
+            ### 📥 Download & Install
+            Click below to download the latest `.apk` directly to your phone:
+            - [Download SchoolSM-Mobile.apk](https://github.com/vannakblue/SchoolSM/releases/download/latest/SchoolSM-Mobile.apk)
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: dist/SchoolSM-Mobile.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
   build_ios:
     name: Build iOS (IPA & App Bundle)
     runs-on: macos-latest
