@@ -122,22 +122,57 @@
             <h5 class="fw-bold text-dark mb-0">
                 <i class="fa-solid fa-layer-group text-info me-2"></i>ក្រុមប្រភេទគ្រូ & កូតាវេន (Duty Groups)
             </h5>
-            <small class="text-muted">បែងចែកកូតាចំនួនវេនដែលគ្រូក្នុងក្រុមនីមួយៗត្រូវជ្រើសរើស (ឧ. ធម្មតា=៤វេន, ការិយាល័យ=៥វេន)</small>
+            <small class="text-muted">បែងចែកកូតាចំនួនវេនដែលគ្រូក្នុងក្រុមនីមួយៗត្រូវជ្រើសរើស ឬកំណត់រួមស្មើគ្នាទាំងអស់</small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-primary fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#setUnifiedQuotaModal">
+                <i class="fa-solid fa-calculator me-1"></i> 🌟 កំណត់កូតារួម (Unified Quota)
+            </button>
             <!-- 1-Click Auto Classify Teachers Form -->
             <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់ថ្នាក់ និងកំណត់កូតាគ្រូទាំងអស់ស្វ័យប្រវត្តិតាមមុខតំណែង (គ្រូធម្មតា=៤, គ្រូការិយាល័យ=៥) មែនទេ?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="auto_classify_teachers">
                 <button type="submit" class="btn btn-sm btn-outline-success fw-bold shadow-xs">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់ថ្នាក់គ្រូស្វ័យប្រវត្តិតាមមុខតំណែង
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ចាត់ថ្នាក់គ្រូស្វ័យប្រវត្តិ
                 </button>
             </form>
-            <button type="button" class="btn btn-sm btn-info text-white fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#addGroupModal">
+            <button type="button" class="btn btn-sm btn-outline-info fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#addGroupModal">
                 <i class="fa-solid fa-plus me-1"></i> បន្ថែមក្រុមថ្មី
             </button>
         </div>
     </div>
+
+    {% if plan.is_unified_quota %}
+    <!-- Unified Quota Active Banner -->
+    <div class="alert alert-primary p-3 rounded-3 border-0 shadow-2xs mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="fa-solid fa-calculator fs-5"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-dark fs-6 mb-0.5">
+                    🌟 គម្រោងនេះកំពុងអនុវត្ត៖ «កំណត់កូតារួមសម្រាប់គ្រូគ្រប់ប្រភេទ» (<span class="text-primary font-monospace fs-5 fw-bold">{{ plan.unified_quota }}</span> វេន / នាក់)
+                </div>
+                <small class="text-muted d-block">
+                    គ្រូគ្រប់ប្រភេទទាំងអស់ (គ្រូបង្រៀនទូទៅ, បន្ទុកថ្នាក់, ការិយាល័យ, រដ្ឋបាល...) មានកូតា និងសិទ្ធិជ្រើសរើសវេនស្មើគ្នាដូចគ្នាទាំងអស់គឺ <strong>{{ plan.unified_quota }} វេន</strong>។
+                </small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary fw-bold px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#setUnifiedQuotaModal">
+                <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែកូតារួម
+            </button>
+            <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ប្តូរមកប្រើប្រាស់ការបែងចែកកូតាតាមប្រភេទក្រុមគ្រូផ្សេងៗគ្នាវិញមែនទេ?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_unified_quota">
+                <input type="hidden" name="is_unified_quota" value="false">
+                <button type="submit" class="btn btn-sm btn-outline-secondary fw-bold px-2.5">
+                    <i class="fa-solid fa-layer-group me-1"></i> ប្តូរមកតាមក្រុមវិញ
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Groups Cards Row -->
     <div class="row g-3">
@@ -258,6 +293,53 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-info text-white fw-bold px-4">
                         <i class="fa-solid fa-plus me-1"></i> បង្កើតក្រុម
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Set Unified Quota -->
+<div class="modal fade" id="setUnifiedQuotaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-calculator me-2"></i>កំណត់កូតារួមសម្រាប់គ្រូគ្រប់ប្រភេទ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_unified_quota">
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-primary-subtle border border-primary-subtle rounded-3 text-dark small mb-3">
+                        <div class="fw-bold mb-1"><i class="fa-solid fa-circle-check text-primary me-1"></i> សិទ្ធិកំណត់រួមរបស់ Admin៖</div>
+                        <div>នៅពេលបើកដំណើរការជម្រើសនេះ គ្រូគ្រប់ប្រភេទទាំងអស់ក្នុងសាលា (គ្រូធម្មតា, គ្រូបន្ទុកថ្នាក់, គ្រូការិយាល័យ, រដ្ឋបាល, បណ្ណារក្ស...) នឹងមានកូតា និងសិទ្ធិជ្រើសរើសវេនស្មើគ្នាដូចគ្នាទាំងអស់។</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">ស្ថានភាពកូតារួម *</label>
+                        <div class="form-check form-switch fs-6">
+                            <input class="form-check-input" type="checkbox" name="is_unified_quota" id="modal_is_unified_quota" {% if plan.is_unified_quota %}checked{% endif %}>
+                            <label class="form-check-label fw-bold small text-dark ms-1" for="modal_is_unified_quota">
+                                បើកប្រើប្រាស់ «កំណត់កូតារួមសម្រាប់គ្រូគ្រប់ប្រភេទ»
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">កូតាចំនួនវេនរួម (Unified Quota Shifts) *</label>
+                        <div class="input-group">
+                            <input type="number" min="1" max="30" name="unified_quota" class="form-control text-center fw-bold fs-5 font-monospace text-primary" required value="{{ plan.unified_quota|default:4 }}">
+                            <span class="input-group-text fw-bold">វេន / នាក់</span>
+                        </div>
+                        <small class="text-muted d-block mt-1">គ្រូគ្រប់គ្នានឹងត្រូវបំពេញចំនួនវេនស្មើគ្នានេះ។</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកូតារួម
                     </button>
                 </div>
             </form>

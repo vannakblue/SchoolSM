@@ -287,10 +287,10 @@ def student_attendance_grid(request):
     auto_period_num, auto_session = get_current_period_info(now_dt.time())
 
     # 1. Determine Selected Date & Timetable Slots for Teacher
-    req_class_id = request.GET.get('classroom')
-    req_date_str = request.GET.get('date', today_date.strftime('%Y-%m-%d'))
-    req_session = request.GET.get('session')
-    req_period = request.GET.get('period')
+    req_class_id = request.POST.get('classroom') or request.GET.get('classroom')
+    req_date_str = request.POST.get('date') or request.GET.get('date', today_date.strftime('%Y-%m-%d'))
+    req_session = request.POST.get('session') or request.GET.get('session')
+    req_period = request.POST.get('period') or request.GET.get('period')
 
     try:
         selected_date = datetime.strptime(req_date_str, '%Y-%m-%d').date()
@@ -424,7 +424,7 @@ def student_attendance_grid(request):
     # Fallback for Admin or Teacher without timetable match
     if not selected_class:
         if req_class_id:
-            selected_class = classrooms.filter(id=req_class_id).first()
+            selected_class = classrooms.filter(id=req_class_id).first() or Classroom.objects.filter(id=req_class_id).first()
         elif teacher_profile:
             teacher_class = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year).first()
             selected_class = teacher_class or classrooms.first()
@@ -540,6 +540,9 @@ def student_attendance_grid(request):
             log_obj.submission_count += 1
             log_obj.recorded_by = request.user
             log_obj.save()
+            messages.success(request, f"✅ បានកែប្រែ និងរក្សាទុកការស្រង់អវត្តមានសិស្សថ្នាក់ {selected_class.name} (ម៉ោងទី {period_num_save}) ឡើងវិញជាលើកទី {log_obj.submission_count} ដោយជោគជ័យ! (សិស្សអវត្តមាន/សុំច្បាប់/យឺត សរុប៖ {saved_absent_count} នាក់)")
+        else:
+            messages.success(request, f"✅ បានរក្សាទុកការស្រង់អវត្តមានសិស្សថ្នាក់ {selected_class.name} (ម៉ោងទី {period_num_save}) ជោគជ័យ! (សិស្សអវត្តមាន/សុំច្បាប់/យឺត សរុប៖ {saved_absent_count} នាក់)")
 
         # Trigger Automated Hourly Period Absence Dispatch (Guardians, Homeroom, Management)
         att_settings = AttendanceSetting.get_settings()
@@ -563,6 +566,7 @@ def student_attendance_grid(request):
 
     # 5. Load Students Data with Absence Flags
     students_data = []
+    existing_records = {}
     if selected_class:
         students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('student_id')
         records_qs = StudentAttendance.objects.filter(
@@ -585,6 +589,20 @@ def student_attendance_grid(request):
                 'notes': att.notes if att else '',
             })
 
+    last_submit_log = timing_eval.get('submission_log') if timing_eval else None
+    if not last_submit_log and selected_class:
+        last_submit_log = AttendanceSubmissionLog.objects.filter(
+            classroom=selected_class,
+            date=selected_date,
+            session=selected_session,
+            period_number=selected_period
+        ).first()
+
+    has_already_submitted = bool(
+        (last_submit_log is not None and last_submit_log.submission_count > 0) or
+        existing_records
+    )
+
     return render(request, 'attendance/attendance_grid.html', {
         'classrooms': classrooms,
         'selected_class': selected_class,
@@ -605,6 +623,8 @@ def student_attendance_grid(request):
         'timing_eval': timing_eval,
         'is_form_disabled': is_form_disabled,
         'teacher_schedule_alert': teacher_schedule_alert,
+        'has_already_submitted': has_already_submitted,
+        'last_submit_log': last_submit_log,
     })
 
 
@@ -1724,6 +1744,138 @@ def assembly_attendance_view(request):
         'alarm_active': alarm_active,
     }
     return render(request, 'attendance/assembly_attendance.html', context)
+
+
+# =====================================================================
+# HOMEROOM TEACHER ATTENDANCE ROLL CALL SHEET (ROSTER PRINT)
+# =====================================================================
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def homeroom_attendance_roster_view(request, classroom_id: int):
+    """
+    Official Monthly Student Attendance Roll Call Register (បញ្ជីហៅឈ្មោះសិស្សប្រចាំខែ ថ្ងៃទី១ ដល់ ៣១)
+    Standardized to Cambodian Ministry of Education (MoEYS) classroom roll call standards.
+    Restricted to Homeroom Teacher of this classroom and Administrators.
+    """
+    import calendar
+    from datetime import date, datetime
+    from django.shortcuts import get_object_or_404, redirect
+    from django.contrib import messages
+    from apps.academics.models import Classroom
+    from apps.students.models import Student
+    from apps.attendance.models import StudentAttendance
+    from apps.accounts.models import SchoolProfile
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    if not can_teacher_manage_homeroom(request.user, classroom.id):
+        messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
+        return redirect('teacher_dashboard')
+
+    now = datetime.now()
+    selected_month_raw = request.GET.get('month')
+    selected_year_raw = request.GET.get('year')
+
+    selected_month = int(selected_month_raw) if (selected_month_raw and selected_month_raw.isdigit() and 1 <= int(selected_month_raw) <= 12) else now.month
+    selected_year = int(selected_year_raw) if (selected_year_raw and selected_year_raw.isdigit()) else now.year
+
+    # Days in month
+    _, total_days = calendar.monthrange(selected_year, selected_month)
+
+    day_numbers = []
+    for d in range(1, total_days + 1):
+        cur_d = date(selected_year, selected_month, d)
+        day_numbers.append({
+            'day': d,
+            'is_sunday': (cur_d.weekday() == 6),
+            'date': cur_d,
+        })
+
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+
+    # Pull existing attendances for this month
+    start_date = date(selected_year, selected_month, 1)
+    end_date = date(selected_year, selected_month, total_days)
+
+    att_qs = StudentAttendance.objects.filter(
+        student__classroom=classroom,
+        date__gte=start_date,
+        date__lte=end_date
+    )
+
+    attendance_map = {} # (student_id, day) -> status
+    for a in att_qs:
+        attendance_map[(a.student_id, a.date.day)] = a.status
+
+    students_data = []
+    female_cnt = 0
+    male_cnt = 0
+
+    for stu in students:
+        if stu.gender == 'F':
+            female_cnt += 1
+        else:
+            male_cnt += 1
+
+        day_logs = []
+        excused = 0
+        unexcused = 0
+        late = 0
+        present = 0
+
+        for d_info in day_numbers:
+            d = d_info['day']
+            st = attendance_map.get((stu.id, d))
+            if st == 'PRESENT':
+                present += 1
+            elif st == 'EXCUSED_LEAVE':
+                excused += 1
+            elif st == 'UNEXCUSED_ABSENCE':
+                unexcused += 1
+            elif st == 'LATE':
+                late += 1
+
+            day_logs.append({
+                'day': d,
+                'is_sunday': d_info['is_sunday'],
+                'status': st,
+            })
+
+        students_data.append({
+            'student': stu,
+            'day_logs': day_logs,
+            'excused_count': excused,
+            'unexcused_count': unexcused,
+            'late_count': late,
+            'present_count': present,
+            'total_absence': excused + unexcused,
+        })
+
+    KHMER_MONTHS = [
+        "", "មករា (January)", "កុម្ភៈ (February)", "មីនា (March)", "មេសា (April)",
+        "ឧសភា (May)", "មិថុនា (June)", "កក្កដា (July)", "សីហា (August)",
+        "កញ្ញា (September)", "តុលា (October)", "វិច្ឆិកា (November)", "ធ្នូ (December)"
+    ]
+
+    month_list = [{'number': m, 'name': f"ខែ {KHMER_MONTHS[m]}"} for m in range(1, 13)]
+    selected_month_name = f"ខែ {KHMER_MONTHS[selected_month]}"
+    school_profile = SchoolProfile.objects.first()
+
+    return render(request, 'attendance/homeroom_roster_print.html', {
+        'classroom': classroom,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'selected_month_name': selected_month_name,
+        'month_list': month_list,
+        'days_in_month': total_days,
+        'day_numbers': day_numbers,
+        'students_data': students_data,
+        'female_count': female_cnt,
+        'male_count': male_cnt,
+        'school_profile': school_profile,
+    })
+
 
 
 

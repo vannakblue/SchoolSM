@@ -265,7 +265,7 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
                 cid = cid.strip()
                 if cid and cid not in targets:
                     targets.append(cid)
-        if settings.custom_dispatch_groups:
+        if getattr(settings, 'custom_dispatch_groups', None):
             for cid in settings.custom_dispatch_groups.split(','):
                 cid = cid.strip()
                 if cid and cid not in targets:

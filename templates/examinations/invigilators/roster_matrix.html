@@ -397,10 +397,9 @@
                             </thead>
                             <tbody>
                                 {% for s in slots %}
-                                {% with is_reg=s.id in item.registered_slot_ids %}
-                                <tr class="{% if is_reg %}table-light text-muted{% endif %}">
+                                <tr class="{% if s.id in item.registered_slot_ids %}table-light text-muted{% endif %}">
                                     <td class="text-center">
-                                        {% if is_reg %}
+                                        {% if s.id in item.registered_slot_ids %}
                                         <i class="fa-solid fa-circle-check text-success" title="បានចុះឈ្មោះរួចហើយ"></i>
                                         {% elif s.is_full %}
                                         <i class="fa-solid fa-ban text-muted" title="វេននេះពេញហើយ"></i>
@@ -418,7 +417,7 @@
                                         </span>
                                     </td>
                                     <td class="text-center small">
-                                        {% if is_reg %}
+                                        {% if s.id in item.registered_slot_ids %}
                                         <span class="badge bg-success-subtle text-success border border-success">បានចុះរួច</span>
                                         {% elif s.is_full %}
                                         <span class="badge bg-danger-subtle text-danger border border-danger">ពេញ</span>
@@ -427,7 +426,6 @@
                                         {% endif %}
                                     </td>
                                 </tr>
-                                {% endwith %}
                                 {% endfor %}
                             </tbody>
                         </table>

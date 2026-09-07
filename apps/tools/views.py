@@ -511,14 +511,20 @@ def database_backup_view(request):
     Main Database Backup & Snapshot Manager dashboard.
     """
     from apps.accounts.models import TelegramConfig
+    from apps.academics.models import AcademicYear
+    from apps.tools.backup_utils import list_academic_year_backups
     stats = get_db_statistics()
     backups = list_backups()
+    year_backups = list_academic_year_backups()
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
     telegram_config = TelegramConfig.get_config()
     return render(request, 'tools/db_backup.html', {
         'page_title': 'ការគ្រប់គ្រង Database Backup & Snapshot',
         'stats': stats,
         'backups': backups,
         'total_backups': len(backups),
+        'year_backups': year_backups,
+        'academic_years': academic_years,
         'telegram_config': telegram_config,
     })
 
@@ -586,7 +592,12 @@ def download_database_backup(request, filename=None):
         safe_filename = os.path.basename(filename)
         backup_file = get_backup_dir() / safe_filename
         if not backup_file.exists():
-            raise Http404("Backup snapshot not found")
+            from apps.tools.backup_utils import get_academic_year_backup_dir
+            alt_file = get_academic_year_backup_dir() / safe_filename
+            if alt_file.exists():
+                backup_file = alt_file
+            else:
+                raise Http404("Backup snapshot not found")
 
         content_type = 'application/json' if safe_filename.endswith('.json') else 'application/x-sqlite3'
         response = FileResponse(open(backup_file, 'rb'), content_type=content_type)
@@ -768,6 +779,82 @@ def api_trigger_schedule_check(request):
     except Exception as e:
         messages.error(request, f"បរាជ័យក្នុងការតេស្ត Auto-Backup: {str(e)}")
 
+    return redirect('tool_database_backup')
+
+
+# =====================================================================
+# ACADEMIC YEAR SPECIFIC DATA BACKUP & RESTORE VIEWS
+# =====================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def tool_academic_year_backup_export(request, year_id):
+    """
+    Creates and downloads a complete portable JSON backup package for a specific Academic Year.
+    """
+    from apps.academics.models import AcademicYear
+    from apps.tools.backup_utils import create_academic_year_backup
+    ay = get_object_or_404(AcademicYear, id=year_id)
+    user_info = f"{request.user.get_full_name() or request.user.username} (Admin)"
+
+    try:
+        res = create_academic_year_backup(ay, user_info=user_info)
+        filepath = res['filepath']
+        filename = res['filename']
+
+        if request.GET.get('action') == 'save_only':
+            messages.success(request, f"🎉 បានបង្កើត និងរក្សាទុកកញ្ចប់ Backup ឆ្នាំសិក្សា «{ay.name}» ដោយជោគជ័យ! ({filename})")
+            return redirect('tool_database_backup')
+
+        # Download file directly
+        response = FileResponse(open(filepath, 'rb'), content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        messages.error(request, f"បរាជ័យក្នុងការ Backup ឆ្នាំសិក្សា {ay.name}: {str(e)}")
+        return redirect('tool_database_backup')
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def tool_academic_year_backup_restore(request):
+    """
+    Restores an Academic Year Backup Package from an uploaded JSON file or saved file.
+    """
+    from apps.tools.backup_utils import restore_academic_year_backup, get_academic_year_backup_dir
+    user_info = f"{request.user.get_full_name() or request.user.username}"
+
+    # Case 1: Uploaded JSON File
+    if 'year_backup_file' in request.FILES:
+        uploaded_file = request.FILES['year_backup_file']
+        if not uploaded_file.name.lower().endswith('.json'):
+            messages.error(request, "ឯកសារ Backup ឆ្នាំសិក្សាត្រូវតែជាប្រភេទ JSON (.json)!")
+            return redirect('tool_database_backup')
+        try:
+            content = uploaded_file.read().decode('utf-8')
+            res = restore_academic_year_backup(content, user_info=user_info)
+            messages.success(request, res['message'])
+        except Exception as e:
+            messages.error(request, f"បរាជ័យក្នុងការ Restore ឆ្នាំសិក្សាពី {uploaded_file.name}: {str(e)}")
+        return redirect('tool_database_backup')
+
+    # Case 2: Selected from existing backups list
+    filename = request.POST.get('filename', '').strip()
+    if filename:
+        safe_name = os.path.basename(filename)
+        target_path = get_academic_year_backup_dir() / safe_name
+        if not target_path.exists():
+            messages.error(request, f"រកមិនឃើញឯកសារ {safe_name} ឡើយ!")
+            return redirect('tool_database_backup')
+        try:
+            res = restore_academic_year_backup(target_path, user_info=user_info)
+            messages.success(request, res['message'])
+        except Exception as e:
+            messages.error(request, f"បរាជ័យក្នុងការ Restore ឆ្នាំសិក្សាពី {safe_name}: {str(e)}")
+        return redirect('tool_database_backup')
+
+    messages.error(request, "សូមជ្រើសរើសឯកសារ JSON ឬ Upload ឯកសារដើម្បី Restore!")
     return redirect('tool_database_backup')
 
 

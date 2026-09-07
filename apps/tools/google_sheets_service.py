@@ -563,7 +563,48 @@ class GoogleSheetsService:
             stats['expenses_synced'] = len(exp_rows)
 
         # -------------------------------------------------------------
-        # 5. DASHBOARD SUMMARY TAB
+        # 5. EXAM SCORES TAB (ពិន្ទុ & លទ្ធផលប្រឡង)
+        # -------------------------------------------------------------
+        from apps.examinations.models import Grade
+        exam_headers = [
+            "សម័យប្រឡង (Exam Term)",
+            "ថ្នាក់រៀន (Classroom)",
+            "អត្តលេខ (Student ID)",
+            "ឈ្មោះសិស្ស (Student Name)",
+            "មុខវិជ្ជា (Subject)",
+            "ពិន្ទុទទួលបាន (Score)",
+            "ពិន្ទុពេញ (Max Score)",
+            "និទ្ទេស (Grade)",
+            "មតិយោបល់ (Remarks)"
+        ]
+        ws_scores = self._prepare_worksheet(sh, "📊 ពិន្ទុ & លទ្ធផលប្រឡង (Exam Scores)", exam_headers, rows_count=5000)
+
+        grades_qs = Grade.objects.filter(exam_term__academic_year=ay).select_related(
+            'student', 'subject', 'exam_term', 'classroom'
+        ).order_by('exam_term__name', 'classroom__name', 'student__student_id', 'subject__name_kh')[:4000]
+
+        score_rows = []
+        for g in grades_qs:
+            score_rows.append([
+                g.exam_term.name if g.exam_term else "",
+                g.classroom.name if g.classroom else (g.student.classroom.name if g.student and g.student.classroom else ""),
+                g.student.student_id if g.student else "",
+                g.student.khmer_name if g.student else "",
+                g.subject.name_kh if (g.subject and hasattr(g.subject, 'name_kh') and g.subject.name_kh) else (g.subject.name if g.subject else ""),
+                float(g.score),
+                float(g.max_score),
+                g.grade_letter or "",
+                g.remarks or ""
+            ])
+
+        if score_rows:
+            ws_scores.update(score_rows, f"A2:I{len(score_rows) + 1}", value_input_option='USER_ENTERED')
+            stats['grades_synced'] = len(score_rows)
+        else:
+            stats['grades_synced'] = 0
+
+        # -------------------------------------------------------------
+        # 6. DASHBOARD SUMMARY TAB
         # -------------------------------------------------------------
         ws_summary = self._prepare_worksheet(sh, "📊 សង្ខេបស្ថិតិ (Summary)", ["សូចនាករគន្លឹះ (KPI Metric)", "តម្លៃ / ចំនួន (Value)", "កំណត់សម្គាល់ (Notes)"])
         
@@ -581,6 +622,7 @@ class GoogleSheetsService:
             ["ឆ្នាំសិក្សា (Academic Year)", ay.name, f"{ay.start_date} ដល់ {ay.end_date}"],
             ["កាលបរិច្ឆេទធ្វើបច្ចុប្បន្នភាពចុងក្រោយ", datetime.now().strftime('%d-%m-%Y %H:%M:%S'), "Auto-synced by SchoolSM"],
             ["សរុបសិស្សទាំងអស់ (Total Students)", total_students, f"ប្រុស {boys_count} នាក់ / ស្រី {girls_count} នាក់"],
+            ["សរុបពិន្ទុប្រឡង (Total Exam Grades)", stats['grades_synced'], "កំណត់ត្រាពិន្ទុ & លទ្ធផលប្រឡង"],
             ["សរុបចំណូលទទួលបាន (Total Collected)", f"${total_incomes:,.2f}", f"ពីវិក្កយបត្រ {len(invoices)} សន្លឹក"],
             ["សរុបចំណាយទូទៅ (Total Expenses)", f"${total_expenses:,.2f}", f"ពីប្រតិបត្តិការ {len(expenses)} លើក"],
             ["សមតុល្យសាច់ប្រាក់សុទ្ធ (Net Cash Balance)", f"${net_balance:,.2f}", "ចំណូល ដក ចំណាយ"],
@@ -607,7 +649,8 @@ class GoogleSheetsService:
         self.config.last_sync_message = (
             f"បាន Sync ទិន្នន័យឆ្នាំសិក្សា {ay.name} ដោយជោគជ័យ៖ "
             f"សិស្ស {stats['students_synced']} នាក់ (រូបថត {stats['photos_uploaded']}), "
-            f"វត្តមាន {stats['attendance_synced']}, ចំណូល {stats['incomes_synced']}, ចំណាយ {stats['expenses_synced']}."
+            f"ពិន្ទុ {stats['grades_synced']}, វត្តមាន {stats['attendance_synced']}, "
+            f"ចំណូល {stats['incomes_synced']}, ចំណាយ {stats['expenses_synced']}."
         )
         self.config.save()
 
@@ -772,5 +815,137 @@ class GoogleSheetsService:
                             restore_stats['expenses_restored'] += 1
         except Exception as e:
             restore_stats['errors'].append(f"Expense restore warning: {e}")
+
+        # 3. RESTORE ATTENDANCE
+        try:
+            ws_att = sh.worksheet("📅 វត្តមាន (Attendance)")
+            att_records = ws_att.get_all_values()
+            if len(att_records) > 1:
+                for row in att_records[1:]:
+                    if len(row) < 7 or not row[0].strip() or not row[3].strip():
+                        continue
+                    date_raw = row[0].strip()
+                    session_str = row[1].strip()
+                    period_str = row[2].strip()
+                    stu_id = row[3].strip()
+                    class_name = row[5].strip() if len(row) > 5 else ""
+                    status_str = row[6].strip() if len(row) > 6 else "វត្តមាន"
+                    notes = row[7].strip() if len(row) > 7 else ""
+
+                    att_date = None
+                    for fmt in ('%d-%m-%Y', '%Y-%m-%d', '%d/%m/%Y'):
+                        try:
+                            att_date = datetime.strptime(date_raw, fmt).date()
+                            break
+                        except Exception:
+                            pass
+                    if not att_date:
+                        continue
+
+                    student = Student.objects.filter(student_id=stu_id).first()
+                    if not student:
+                        continue
+
+                    classroom = None
+                    if class_name:
+                        classroom = Classroom.objects.filter(name__iexact=class_name).first()
+                    if not classroom:
+                        classroom = student.classroom
+
+                    # Parse status
+                    att_status = StudentAttendance.Status.PRESENT
+                    if "អវត្តមានគ្មានច្បាប់" in status_str or "UNEXCUSED" in status_str.upper() or "ABSENT" in status_str.upper():
+                        att_status = StudentAttendance.Status.ABSENT
+                    elif "ច្បាប់" in status_str or "EXCUSED" in status_str.upper() or "PERMISSION" in status_str.upper():
+                        att_status = StudentAttendance.Status.PERMISSION
+                    elif "យឺត" in status_str or "LATE" in status_str.upper():
+                        att_status = StudentAttendance.Status.LATE
+
+                    # Parse session & period
+                    session_val = StudentAttendance.Session.MORNING
+                    if "រសៀល" in session_str or "AFTERNOON" in session_str.upper():
+                        session_val = StudentAttendance.Session.AFTERNOON
+
+                    import re
+                    period_num = None
+                    p_match = re.search(r'\d+', period_str)
+                    if p_match:
+                        period_num = int(p_match.group(0))
+
+                    StudentAttendance.objects.update_or_create(
+                        student=student,
+                        date=att_date,
+                        session=session_val,
+                        period_number=period_num,
+                        defaults={
+                            'classroom': classroom,
+                            'status': att_status,
+                            'notes': notes
+                        }
+                    )
+                    restore_stats['attendance_restored'] += 1
+        except Exception as e:
+            restore_stats['errors'].append(f"Attendance restore warning: {e}")
+
+        # 4. RESTORE EXAM SCORES (GRADES)
+        try:
+            ws_scores = sh.worksheet("📊 ពិន្ទុ & លទ្ធផលប្រឡង (Exam Scores)")
+            score_records = ws_scores.get_all_values()
+            if len(score_records) > 1:
+                from apps.examinations.models import ExamTerm, Grade
+                from apps.academics.models import Subject
+                for row in score_records[1:]:
+                    if len(row) < 6 or not row[0].strip() or not row[2].strip() or not row[4].strip():
+                        continue
+                    term_name = row[0].strip()
+                    classroom_name = row[1].strip() if len(row) > 1 else ""
+                    student_id = row[2].strip()
+                    subject_name = row[4].strip()
+                    score_raw = row[5].strip()
+                    max_score_raw = row[6].strip() if len(row) > 6 and row[6].strip() else "100"
+                    remarks = row[8].strip() if len(row) > 8 else ""
+
+                    try:
+                        clean_score = str(score_raw).replace(',', '').strip()
+                        clean_max = str(max_score_raw).replace(',', '').strip()
+                        score_val = Decimal(clean_score)
+                        max_score_val = Decimal(clean_max)
+                    except Exception:
+                        continue
+
+                    student = Student.objects.filter(student_id=student_id).first()
+                    if not student:
+                        continue
+
+                    exam_term = ExamTerm.objects.filter(name__iexact=term_name, academic_year=ay).first()
+                    if not exam_term:
+                        exam_term = ExamTerm.objects.filter(academic_year=ay).first()
+                        if not exam_term:
+                            continue
+
+                    subject = Subject.objects.filter(name_kh__iexact=subject_name).first() or Subject.objects.filter(name__iexact=subject_name).first()
+                    if not subject:
+                        continue
+
+                    classroom = None
+                    if classroom_name:
+                        classroom = Classroom.objects.filter(name__iexact=classroom_name).first()
+                    if not classroom:
+                        classroom = student.classroom
+
+                    Grade.objects.update_or_create(
+                        student=student,
+                        subject=subject,
+                        exam_term=exam_term,
+                        defaults={
+                            'classroom': classroom,
+                            'score': score_val,
+                            'max_score': max_score_val,
+                            'remarks': remarks
+                        }
+                    )
+                    restore_stats['grades_restored'] = restore_stats.get('grades_restored', 0) + 1
+        except Exception as e:
+            restore_stats['errors'].append(f"Exam scores restore warning: {e}")
 
         return restore_stats

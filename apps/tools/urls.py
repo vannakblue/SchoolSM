@@ -39,6 +39,8 @@ urlpatterns = [
     path('database-backup/restore/', views.api_restore_database_backup, name='tool_database_backup_restore'),
     path('database-backup/upload-restore/', views.api_upload_restore_database, name='tool_database_backup_upload_restore'),
     path('database-backup/delete/<str:filename>/', views.api_delete_database_backup, name='tool_database_backup_delete'),
+    path('academic-year-backup/<int:year_id>/export/', views.tool_academic_year_backup_export, name='tool_academic_year_backup_export'),
+    path('academic-year-backup/restore/', views.tool_academic_year_backup_restore, name='tool_academic_year_backup_restore'),
 
     # Google Sheets & Google Drive Suite
     path('google-sheets/', views.google_sheets_dashboard_view, name='tool_google_sheets'),

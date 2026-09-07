@@ -13,6 +13,7 @@ urlpatterns = [
     path('assembly/', views.assembly_attendance_view, name='assembly_attendance'),
     path('telegram/send-class/', views.send_class_attendance_telegram_view, name='send_class_attendance_telegram'),
     path('telegram/send-missing-teachers/', views.send_missing_teachers_telegram_view, name='send_missing_teachers_telegram'),
+    path('homeroom/<int:classroom_id>/roster-print/', views.homeroom_attendance_roster_view, name='homeroom_attendance_roster_view'),
 ]
 
 

@@ -68,11 +68,22 @@
             </div>
             <h2 class="fw-bold text-primary mb-1">
                 <i class="fa-solid fa-ranking-star me-2"></i>តារាងបិទផ្សាយបណ្តោះអាសន្ន (Provisional Results Board)
+                {% if exam.is_provisional_published %}
+                <span class="badge bg-success fs-7 fw-normal ms-2 shadow-xs"><i class="fa-solid fa-bullhorn me-1"></i>កំពុងបើកដំណើរការ (Active)</span>
+                {% else %}
+                <span class="badge bg-secondary fs-7 fw-normal ms-2"><i class="fa-solid fa-clock me-1"></i>មិនទាន់បើក (Draft)</span>
+                {% endif %}
             </h2>
             <p class="text-muted small mb-0">{{ exam.name }} • កាលបរិច្ឆេទប្រឡង៖ <strong>{{ exam.exam_date|date:"d/m/Y" }}</strong></p>
         </div>
 
         <div class="d-flex flex-wrap gap-2">
+            {% if is_admin %}
+            <button type="button" class="btn btn-sm {% if exam.is_provisional_published %}btn-outline-danger{% else %}btn-warning text-dark{% endif %} fw-bold shadow-sm" onclick="toggleBoardProvisionalPublish()">
+                <i class="fa-solid {% if exam.is_provisional_published %}fa-eye-slash{% else %}fa-bullhorn{% endif %} me-1"></i>
+                {% if exam.is_provisional_published %}បិទការចេញលទ្ធផលបណ្តោះអាសន្ន{% else %}បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន{% endif %}
+            </button>
+            {% endif %}
             <!-- Official Results Print & Mentions Sheets -->
             <div class="dropdown d-inline">
                 <button class="btn btn-outline-danger btn-sm fw-bold dropdown-toggle shadow-sm bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -359,4 +370,41 @@
         </table>
     </div>
 </div>
+
+{% if is_admin %}
+<script>
+function toggleBoardProvisionalPublish() {
+    const isCurrentlyPublished = {{ exam.is_provisional_published|yesno:"true,false" }};
+    const actionText = isCurrentlyPublished ? "បិទការចេញលទ្ធផលបណ្តោះអាសន្ន" : "បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន";
+    const confirmMsg = isCurrentlyPublished
+        ? "តើលោកអ្នកពិតជាចង់បិទការចេញលទ្ធផលបណ្តោះអាសន្នសម្រាប់សម័យប្រឡងនេះមែនទេ? (ពិន្ទុ និងមធ្យមភាគនឹងត្រូវបានលាក់ពីគ្រូ សិស្ស និងអាណាព្យាបាល)"
+        : "តើលោកអ្នកពិតជាចង់បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្នមែនទេ? (ប្រព័ន្ធនឹងគណនាពិន្ទុ និងមធ្យមភាគឡើងវិញដោយស្វ័យប្រវត្តិ ហើយគ្រូ សិស្ស និងអាណាព្យាបាលអាចចូលមើលឃើញបាន)";
+
+    if (!confirm(confirmMsg)) return;
+
+    fetch('{% url "api_toggle_exam_provisional_publish" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            apply_to_session: true
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចផ្លាស់ប្តូរបានទេ!'));
+        }
+    })
+    .catch(err => {
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
+</script>
+{% endif %}
 {% endblock %}

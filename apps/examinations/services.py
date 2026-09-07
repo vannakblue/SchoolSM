@@ -611,6 +611,7 @@ def get_student_exam_seating_data(student):
             Q(student=student) |
             (Q(student_code__iexact=student.student_id) if student.student_id else Q())
         ).select_related('exam', 'room', 'exam__academic_year')
+        .prefetch_related('subject_scores__exam_subject__subject')
     )
 
     candidacies_map = {}
@@ -684,6 +685,26 @@ def get_student_exam_seating_data(student):
         building = cand.room.building if (cand and cand.room and cand.room.building) else "អគារ A"
         roll_num = cand.roll_number if (cand and cand.roll_number) else (student.student_id or "-")
 
+        # Provisional Results Release Data
+        is_prov_open = bool(ex.is_provisional_published or ex.is_published)
+        cand_scores_list = []
+        exam_subj_objs = list(ex.exam_subjects.all().select_related('subject').order_by('order', 'id'))
+        total_max = sum(es.max_score for es in exam_subj_objs) if exam_subj_objs else Decimal('100.00')
+
+        if is_prov_open and cand:
+            scores_dict = {sc.exam_subject_id: sc for sc in cand.subject_scores.all()}
+            for es in exam_subj_objs:
+                sc_obj = scores_dict.get(es.id)
+                sc_val = sc_obj.score if sc_obj else None
+                is_abs = sc_obj.is_absent if sc_obj else False
+                cand_scores_list.append({
+                    'subject_name': es.subject.name_kh,
+                    'score': sc_val,
+                    'max_score': es.max_score,
+                    'coefficient': es.coefficient,
+                    'is_absent': is_abs,
+                })
+
         exam_seating_info.append({
             'exam': ex,
             'exam_id': ex.id,
@@ -708,7 +729,195 @@ def get_student_exam_seating_data(student):
             'admission_slip_url': f"/examinations/student/admission-slip/{cand.id}/" if cand else None,
             'subjects': exam_subjects_list,
             'total_subjects': len(exam_subjects_list),
+
+            # Provisional results fields
+            'is_provisional_published': is_prov_open,
+            'provisional_published_at': ex.provisional_published_at,
+            'total_score': cand.total_score if (cand and is_prov_open) else None,
+            'average_score': cand.average_score if (cand and is_prov_open) else None,
+            'grade_letter': cand.grade_letter if (cand and is_prov_open) else '-',
+            'rank_overall': cand.rank_overall if (cand and is_prov_open) else None,
+            'rank_in_room': cand.rank_in_room if (cand and is_prov_open) else None,
+            'total_max_score': total_max,
+            'subject_scores': cand_scores_list,
+            'provisional_slip_url': f"/examinations/student/provisional-slip/{cand.id}/" if (cand and is_prov_open) else None,
         })
 
     return exam_seating_info
+
+
+def get_student_cumulative_dossier_data(student):
+    """
+    Constructs comprehensive multi-year Academic Dossier (សៀវភៅសិក្ខាគារិក) data
+    for Grades 7 to 12 up to the student's actual current grade.
+    Standardized to Cambodian Ministry of Education (MoEYS) Secondary & High School standards.
+    """
+    if not student:
+        return None
+
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom
+    from apps.students.models import StudentPromotionRecord
+    from apps.attendance.models import StudentAttendance
+    from apps.examinations.models import StudentTransferGrade, Grade
+
+    school_profile = SchoolProfile.objects.first()
+    default_school_name = getattr(school_profile, 'name_kh', None) or getattr(school_profile, 'school_name_kh', None) or "វិទ្យាល័យសម្តេចហ៊ុនសែន"
+
+    current_cls = student.classroom
+    current_grade = current_cls.grade_level if current_cls else 7
+    current_ay = current_cls.academic_year if (current_cls and current_cls.academic_year) else getattr(student, 'academic_year', None)
+
+    # 1. Historical promotion records
+    promotions = list(StudentPromotionRecord.objects.filter(student=student).select_related(
+        'from_academic_year', 'to_academic_year', 'from_classroom', 'to_classroom'
+    ).order_by('created_at'))
+
+    # 2. Transfer grades
+    transfer_grades = list(StudentTransferGrade.objects.filter(student=student).select_related('academic_year'))
+    transfers_by_year = {}
+    for tg in transfer_grades:
+        if tg.academic_year_id not in transfers_by_year:
+            transfers_by_year[tg.academic_year_id] = {}
+        transfers_by_year[tg.academic_year_id][tg.semester] = tg
+
+    # 3. Collect historical grade classrooms
+    past_classes_qs = Classroom.objects.filter(
+        id__in=Grade.objects.filter(student=student).values_list('classroom_id', flat=True).distinct()
+    ).select_related('academic_year', 'homeroom_teacher')
+    classes_by_grade = {c.grade_level: c for c in past_classes_qs}
+
+    if current_cls and current_cls.grade_level:
+        classes_by_grade[current_cls.grade_level] = current_cls
+
+    # 4. Current year results computed via AcademicResultService
+    current_annual_info = None
+    if current_cls and current_ay:
+        try:
+            annual_res = AcademicResultService.compute_annual_results(current_cls, current_ay)
+            for item in annual_res.get('students_data', []):
+                if item['student'].id == student.id:
+                    current_annual_info = item
+                    break
+        except Exception:
+            current_annual_info = None
+
+    # 5. Build record for Grades 7 to 12
+    grade_records = []
+    for g_num in range(7, 13):
+        is_current = (g_num == current_grade)
+        is_past = (g_num < current_grade)
+        is_future = (g_num > current_grade)
+
+        cls_obj = classes_by_grade.get(g_num)
+        hr_teacher_name = "-"
+        ay_name = "-"
+        cls_name = f"{g_num}A"
+        school_name = default_school_name
+        s1_avg = None
+        s2_avg = None
+        annual_avg = None
+        grade_letter = "-"
+        rank_val = "-"
+        total_stus = cls_obj.total_students if cls_obj else "-"
+        excused_abs = 0
+        unexcused_abs = 0
+        conduct_val = "ល្អ"
+        decision_val = "-"
+        remarks = ""
+
+        if cls_obj:
+            cls_name = cls_obj.name
+            ay_name = cls_obj.academic_year.name if cls_obj.academic_year else "-"
+            hr_teacher_name = cls_obj.homeroom_teacher.khmer_name if cls_obj.homeroom_teacher else "-"
+
+        if is_current and current_annual_info:
+            s1_avg = current_annual_info.get('s1_average')
+            s2_avg = current_annual_info.get('s2_average')
+            annual_avg = current_annual_info.get('annual_average')
+            grade_letter = current_annual_info.get('grade_letter', '-')
+            rank_val = current_annual_info.get('rank', '-')
+            total_stus = current_cls.total_students if current_cls else "-"
+            decision_val = "កំពុងសិក្សា (Enrolled)"
+            if current_annual_info.get('passed'):
+                conduct_val = "ល្អណាស់"
+
+            # Attendance for current year
+            if current_ay:
+                att_qs = StudentAttendance.objects.filter(student=student)
+                if current_ay.start_date and current_ay.end_date:
+                    att_qs = att_qs.filter(date__gte=current_ay.start_date, date__lte=current_ay.end_date)
+                excused_abs = att_qs.filter(status='EXCUSED_LEAVE').count()
+                unexcused_abs = att_qs.filter(status='UNEXCUSED_ABSENCE').count()
+
+        elif is_past:
+            # Check promotion records
+            p_rec = next((p for p in promotions if p.from_classroom and p.from_classroom.grade_level == g_num), None)
+            if p_rec:
+                ay_name = p_rec.from_academic_year.name if p_rec.from_academic_year else ay_name
+                cls_name = p_rec.from_classroom.name if p_rec.from_classroom else cls_name
+                hr_teacher_name = p_rec.from_classroom.homeroom_teacher.khmer_name if (p_rec.from_classroom and p_rec.from_classroom.homeroom_teacher) else hr_teacher_name
+                decision_val = p_rec.get_action_display()
+                remarks = p_rec.get_standard_reason_display()
+
+            # Past grades calculation if class object exists
+            if cls_obj and cls_obj.academic_year and cls_obj.id != getattr(current_cls, 'id', None):
+                try:
+                    p_res = AcademicResultService.compute_annual_results(cls_obj, cls_obj.academic_year)
+                    for item in p_res.get('students_data', []):
+                        if item['student'].id == student.id:
+                            s1_avg = item.get('s1_average')
+                            s2_avg = item.get('s2_average')
+                            annual_avg = item.get('annual_average')
+                            grade_letter = item.get('grade_letter', '-')
+                            rank_val = item.get('rank', '-')
+                            if item.get('passed'):
+                                decision_val = "អនុញ្ញាតឱ្យឡើងថ្នាក់ (Promoted)"
+                            break
+                except Exception:
+                    pass
+
+            if not decision_val or decision_val == "-":
+                decision_val = "បានបញ្ចប់ការសិក្សាថ្នាក់នេះ"
+
+        elif is_future:
+            decision_val = "មិនទាន់រៀនដល់"
+            ay_name = "-"
+            cls_name = "-"
+            hr_teacher_name = "-"
+
+        grade_records.append({
+            'grade_level': g_num,
+            'grade_label': f"ថ្នាក់ទី {g_num}",
+            'is_current': is_current,
+            'is_past': is_past,
+            'is_future': is_future,
+            'school_name': school_name,
+            'academic_year_name': ay_name,
+            'classroom_name': cls_name,
+            'homeroom_teacher_name': hr_teacher_name,
+            'semester_1_average': s1_avg,
+            'semester_2_average': s2_avg,
+            'annual_average': annual_avg,
+            'grade_letter': grade_letter,
+            'rank': rank_val,
+            'total_students': total_stus,
+            'conduct': conduct_val,
+            'excused_absence': excused_abs,
+            'unexcused_absence': unexcused_abs,
+            'total_absence': excused_abs + unexcused_abs,
+            'decision': decision_val,
+            'remarks': remarks,
+        })
+
+    return {
+        'student': student,
+        'school_profile': school_profile,
+        'school_name': default_school_name,
+        'current_grade': current_grade,
+        'current_classroom': current_cls,
+        'current_academic_year': current_ay,
+        'grade_records': grade_records,
+    }
+
 

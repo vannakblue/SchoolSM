@@ -28,6 +28,8 @@ class ExamTerm(models.Model):
     start_date = models.DateField(verbose_name="ថ្ងៃចាប់ផ្តើម / Start Date")
     end_date = models.DateField(verbose_name="ថ្ងៃបញ្ចប់ / End Date")
     is_published = models.BooleanField(default=True, verbose_name="ប្រកាសលទ្ធផលជាសាធារណៈ / Published")
+    is_provisional_published = models.BooleanField(default=False, verbose_name="ចេញលទ្ធផលបណ្តោះអាសន្ន / Provisional Results Published", help_text="បើកដំណើរការឱ្យគ្រូ សិស្ស និងអាណាព្យាបាលអាចមើលឃើញពិន្ទុ និងមធ្យមភាគបណ្តោះអាសន្ន")
+    provisional_published_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទចេញលទ្ធផលបណ្តោះអាសន្ន / Provisional Published At")
 
     # Admin Grading Window & Deadline Controls
     grading_start_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើមបញ្ចូលពិន្ទុ / Grading Start Time")
@@ -240,6 +242,8 @@ class StandardizedExam(models.Model):
     candidates_per_room = models.IntegerField(default=25, verbose_name="ចំនួនបេក្ខជនក្នុងមួយបន្ទប់ / Candidates Per Room")
     description = models.TextField(blank=True, null=True, verbose_name="ការពិពណ៌នា/សេចក្តីណែនាំ / Description")
     is_published = models.BooleanField(default=True, verbose_name="ប្រកាសលទ្ធផល / Published")
+    is_provisional_published = models.BooleanField(default=False, verbose_name="ចេញលទ្ធផលបណ្តោះអាសន្ន / Provisional Results Published", help_text="បើកដំណើរការឱ្យគ្រូ សិស្ស និងអាណាព្យាបាលអាចមើលឃើញពិន្ទុ និងមធ្យមភាគបណ្តោះអាសន្ន")
+    provisional_published_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទចេញលទ្ធផលបណ្តោះអាសន្ន / Provisional Published At")
 
     # Admin Grading Window & Deadline Controls
     class GradingMethod(models.TextChoices):
@@ -745,6 +749,15 @@ class ExamInvigilatorPlan(models.Model):
     
     default_regular_quota = models.PositiveIntegerField(default=4, verbose_name="កូតាលំនាំដើមគ្រូធម្មតា / Regular Teacher Default Quota (4 វេន)")
     default_office_quota = models.PositiveIntegerField(default=5, verbose_name="កូតាលំនាំដើមគ្រូការិយាល័យ / Office Teacher Default Quota (5 វេន)")
+    is_unified_quota = models.BooleanField(
+        default=False, 
+        verbose_name="កំណត់កូតារួមសម្រាប់គ្រូគ្រប់ប្រភេទ / Unified Quota for All Teacher Types", 
+        help_text="បើកជម្រើសនេះដើម្បីឱ្យគ្រូគ្រប់ប្រភេទទាំងអស់ជ្រើសរើសវេនស្មើគ្នាដូចគ្នាទាំងអស់"
+    )
+    unified_quota = models.PositiveIntegerField(
+        default=4, 
+        verbose_name="កូតាចំនួនវេនរួម / Unified Quota Value"
+    )
     
     invigilators_per_room = models.PositiveSmallIntegerField(
         default=2,
@@ -870,6 +883,10 @@ class TeacherDutyQuota(models.Model):
             return 0
         if self.auto_assign_all_shifts:
             return self.plan.shift_slots.count()
+        if self.plan.is_unified_quota:
+            if self.custom_required_shifts is not None:
+                return self.custom_required_shifts
+            return self.plan.unified_quota or 4
         if self.custom_required_shifts is not None:
             return self.custom_required_shifts
         if self.duty_group:

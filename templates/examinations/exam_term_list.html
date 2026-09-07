@@ -57,11 +57,22 @@
                     </td>
                     <td>{{ t.start_date|date:"d/m/Y" }} ដល់ {{ t.end_date|date:"d/m/Y" }}</td>
                     <td>
-                        {% if t.is_published %}
-                        <span class="badge bg-success">បានប្រកាសលទ្ធផល (Published)</span>
-                        {% else %}
-                        <span class="badge bg-warning text-dark">មិនទាន់ប្រកាស</span>
-                        {% endif %}
+                        <div class="d-flex flex-column gap-1">
+                            {% if t.is_provisional_published %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-solid fa-bullhorn me-1"></i>លទ្ធផលបណ្តោះអាសន្ន
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">
+                                <i class="fa-solid fa-clock me-1"></i>បណ្តោះអាសន្ន៖ មិនទាន់បើក
+                            </span>
+                            {% endif %}
+                            {% if t.is_published %}
+                            <span class="badge bg-success">បានប្រកាសផ្លូវការ</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">មិនទាន់ប្រកាស</span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-1 align-items-center">
@@ -81,6 +92,9 @@
                                 <i class="fa-solid fa-book-open-reader"></i>
                             </a>
                             {% if is_admin %}
+                            <button type="button" class="btn btn-sm {% if t.is_provisional_published %}btn-outline-danger{% else %}btn-outline-warning text-dark{% endif %}" title="{% if t.is_provisional_published %}បិទការចេញលទ្ធផលបណ្តោះអាសន្ន{% else %}បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន{% endif %}" onclick="toggleTermProvisional({{ t.id }}, '{{ t.name|escapejs }}', {{ t.is_provisional_published|yesno:'true,false' }})">
+                                <i class="fa-solid {% if t.is_provisional_published %}fa-eye-slash{% else %}fa-bullhorn{% endif %}"></i>
+                            </button>
                             <a href="{% url 'exam_term_edit' t.id %}" class="btn btn-sm btn-outline-secondary" title="កែប្រែសម័យប្រឡង">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </a>
@@ -104,4 +118,31 @@
         </table>
     </div>
 </div>
+
+{% if is_admin %}
+<script>
+function toggleTermProvisional(termId, termName, isPublished) {
+    const action = isPublished ? "បិទការចេញលទ្ធផលបណ្តោះអាសន្ន" : "បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន";
+    if (!confirm('តើលោកអ្នកពិតជាចង់ ' + action + ' សម្រាប់សម័យប្រឡង «' + termName + '» មែនទេ?')) return;
+
+    fetch('/examinations/terms/' + termId + '/toggle-provisional-publish/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'បរាជ័យ!'));
+        }
+    })
+    .catch(e => alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + e));
+}
+</script>
+{% endif %}
 {% endblock %}

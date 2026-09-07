@@ -35,6 +35,15 @@
                 {% endif %}
                 {% endwith %}
                 <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar-days text-primary me-1"></i>{{ exam.academic_year.name }}</span>
+                {% if exam.is_provisional_published %}
+                <span class="badge bg-success px-2.5 py-1 shadow-xs" id="examHeaderProvBadge">
+                    <i class="fa-solid fa-bullhorn me-1"></i>លទ្ធផលបណ្តោះអាសន្ន៖ បើកដំណើរការ
+                </span>
+                {% else %}
+                <span class="badge bg-secondary px-2.5 py-1" id="examHeaderProvBadge">
+                    <i class="fa-solid fa-clock me-1"></i>លទ្ធផលបណ្តោះអាសន្ន៖ មិនទាន់បើក
+                </span>
+                {% endif %}
                 {% if exam.is_published %}
                 <span class="badge bg-success px-2.5 py-1"><i class="fa-solid fa-circle-check me-1"></i>បានប្រកាសលទ្ធផល</span>
                 {% else %}
@@ -57,6 +66,10 @@
 
         <div class="d-flex flex-wrap gap-2">
             {% if is_admin %}
+            <button type="button" class="btn {% if exam.is_provisional_published %}btn-outline-danger{% else %}btn-warning text-dark{% endif %} fw-bold btn-sm shadow-xs" data-bs-toggle="modal" data-bs-target="#toggleProvisionalPublishModal" id="topBtnToggleProv">
+                <i class="fa-solid {% if exam.is_provisional_published %}fa-eye-slash{% else %}fa-bullhorn{% endif %} me-1"></i>
+                {% if exam.is_provisional_published %}បិទការចេញលទ្ធផលបណ្តោះអាសន្ន{% else %}បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន{% endif %}
+            </button>
             <button type="button" class="btn btn-outline-warning text-dark fw-bold btn-sm shadow-xs" data-bs-toggle="modal" data-bs-target="#examManageGradingModal">
                 <i class="fa-solid fa-clock me-1"></i> កំណត់ពេលបញ្ចូលពិន្ទុ
             </button>
@@ -159,6 +172,14 @@
             <a href="{% url 'exam_provisional_results_view' exam.id %}" class="btn btn-danger btn-sm fw-bold shadow-sm">
                 <i class="fa-solid fa-ranking-star me-1"></i> តារាងបិទផ្សាយបណ្តោះអាសន្ន
             </a>
+
+            {% if is_admin %}
+            <!-- Quick Toggle Provisional Release Button -->
+            <button type="button" class="btn btn-sm {% if exam.is_provisional_published %}btn-outline-danger bg-white{% else %}btn-warning text-dark{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#toggleProvisionalPublishModal" id="quickBtnToggleProv">
+                <i class="fa-solid {% if exam.is_provisional_published %}fa-eye-slash{% else %}fa-bullhorn{% endif %} me-1"></i>
+                {% if exam.is_provisional_published %}បិទការចេញលទ្ធផលបណ្តោះអាសន្ន{% else %}បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន{% endif %}
+            </button>
+            {% endif %}
 
             <!-- Comprehensive Analytics Reports -->
             <a href="{% url 'exam_analytics_view' exam.id %}" class="btn btn-sm fw-bold shadow-sm text-white" style="background-color: #0f766e; border-color: #0f766e;" title="របាយការណ៍វិភាគលទ្ធផលប្រឡង តាមថ្នាក់/កម្រិតថ្នាក់/កម្រិតសាលា">
@@ -1690,7 +1711,99 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function submitToggleProvisionalPublish() {
+    const btn = document.getElementById('btnConfirmToggleProv');
+    const applyToSession = document.getElementById('provApplyToSession') ? document.getElementById('provApplyToSession').checked : false;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងដំណើរការ...';
+
+    fetch('{% url "api_toggle_exam_provisional_publish" exam.id %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            apply_to_session: applyToSession
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        if (data.status === 'success') {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('កំហុស៖ ' + (data.message || 'មិនអាចផ្លាស់ប្តូរបានទេ!'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        alert('បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
 </script>
 {% endif %}
+
+<!-- Modal: Toggle Provisional Results Release -->
+<div class="modal fade" id="toggleProvisionalPublishModal" tabindex="-1" aria-labelledby="toggleProvisionalPublishModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary" id="toggleProvisionalPublishModalLabel">
+                    <i class="fa-solid fa-bullhorn me-2 text-warning"></i>
+                    {% if exam.is_provisional_published %}បិទការចេញលទ្ធផលបណ្តោះអាសន្ន{% else %}បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន{% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                {% if not exam.is_provisional_published %}
+                <div class="alert alert-warning border-0 rounded-3 mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-warning fs-4 mt-0.5"></i>
+                        <div>
+                            <strong class="text-dark">សេចក្តីបញ្ជាក់មុនពេលបើកដំណើរការ៖</strong>
+                            <p class="small text-muted mb-0 mt-1">
+                                នៅពេលលោកអ្នកចុចបើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន ប្រព័ន្ធនឹង៖
+                            </p>
+                            <ul class="small text-muted mb-0 ps-3 mt-1">
+                                <li><strong>គណនាពិន្ទុសរុប មធ្យមភាគ និងចំណាត់ថ្នាក់ឡើងវិញដោយស្វ័យប្រវត្តិ</strong>។</li>
+                                <li>អនុញ្ញាតឱ្យ <strong>លោកគ្រូ/អ្នកគ្រូ</strong> អាចចូលពិនិត្យតារាងពិន្ទុ និងចំណាត់ថ្នាក់ទូទាំងកម្រិតបាន។</li>
+                                <li>អនុញ្ញាតឱ្យ <strong>សិស្សានុសិស្ស និងអាណាព្យាបាល</strong> អាចចូលគណនីផ្ទាល់ខ្លួនដើម្បីមើលឃើញពិន្ទុ មធ្យមភាគ និងបោះពុម្ពព្រឹត្តិបត្រពិន្ទុបណ្តោះអាសន្នបាន។</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-danger-subtle border border-danger-subtle rounded-3 mb-3 text-danger">
+                    <i class="fa-solid fa-lock me-1"></i>
+                    ការបិទដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន នឹងលាក់ពិន្ទុ និងមធ្យមភាគពីគណនីគ្រូ សិស្ស និងអាណាព្យាបាលរហូតដល់បើកឡើងវិញ។
+                </div>
+                {% endif %}
+
+                <div class="form-check p-3 bg-light rounded-3 border mb-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="provApplyToSession" checked>
+                    <label class="form-check-label fw-bold text-dark small" for="provApplyToSession">
+                        អនុវត្តសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡងនេះ (Apply to all grades in session)
+                    </label>
+                    <div class="text-muted" style="font-size: 0.75rem; margin-left: 1.5rem;">
+                        បើក/បិទ ព្រមគ្នាសម្រាប់គ្រប់ថ្នាក់ទី ៧ ដល់ ១២ នៃសម័យប្រឡងកាលបរិច្ឆេទ {{ exam.exam_date|date:"d/m/Y" }} នេះ។
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn {% if exam.is_provisional_published %}btn-danger{% else %}btn-warning text-dark{% endif %} rounded-pill px-4 fw-bold shadow-sm" id="btnConfirmToggleProv" onclick="submitToggleProvisionalPublish()">
+                    <i class="fa-solid {% if exam.is_provisional_published %}fa-eye-slash{% else %}fa-check-circle{% endif %} me-1"></i>
+                    {% if exam.is_provisional_published %}បិទការចេញលទ្ធផល{% else %}យល់ព្រមបើកដំណើរការ{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 

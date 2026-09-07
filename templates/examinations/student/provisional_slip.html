@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ព្រឹត្តិបត្រពិន្ទុបណ្តោះអាសន្ន - {{ candidate.candidate_name_kh }} | {{ exam.name }}</title>
+    <!-- Google Fonts: Khmer Battambang, Moul, Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;600;700&family=Moul&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --dark: #0f172a;
+            --border-color: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Battambang', 'Outfit', sans-serif;
+            background-color: #f8fafc;
+            color: var(--dark);
+            padding: 24px;
+        }
+
+        .slip-container {
+            max-width: 840px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 40px 45px;
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08);
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        .no-print-bar {
+            max-width: 840px;
+            margin: 0 auto 16px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 20px;
+            font-size: 0.92rem;
+            font-weight: bold;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #2563eb;
+            color: #ffffff;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1.5px solid #64748b;
+            color: #334155;
+        }
+
+        /* Header */
+        .school-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .motto-km {
+            font-family: 'Moul', serif;
+            font-size: 1.05rem;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .motto-en {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #64748b;
+            margin-bottom: 12px;
+        }
+
+        .title-badge {
+            display: inline-block;
+            background: #eef2ff;
+            color: #1e3a8a;
+            border: 2px solid #2563eb;
+            font-family: 'Moul', serif;
+            font-size: 1.15rem;
+            padding: 8px 24px;
+            border-radius: 9999px;
+            margin-bottom: 6px;
+        }
+
+        .subtitle-text {
+            color: #475569;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Candidate Details Grid */
+        .candidate-info-box {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 24px;
+            font-size: 0.92rem;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: baseline;
+        }
+
+        .info-label {
+            width: 42%;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .info-val {
+            color: #0f172a;
+            font-weight: bold;
+        }
+
+        /* Summary Banner */
+        .summary-banner {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .summary-box {
+            background: #ffffff;
+            border: 2px solid #3b82f6;
+            border-radius: 0.75rem;
+            padding: 14px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .summary-val {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #1e3a8a;
+        }
+
+        /* Subjects Table */
+        .subjects-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .subjects-table th, .subjects-table td {
+            border: 1px solid #cbd5e1;
+            padding: 9px 12px;
+            font-size: 0.9rem;
+        }
+
+        .subjects-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .badge-letter {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.82rem;
+        }
+        .badge-A { background: #dcfce7; color: #166534; }
+        .badge-B { background: #dbeafe; color: #1e40af; }
+        .badge-C { background: #e0f2fe; color: #0369a1; }
+        .badge-D { background: #fef9c3; color: #854d0e; }
+        .badge-E { background: #f3f4f6; color: #374151; }
+        .badge-F { background: #fee2e2; color: #991b1b; }
+
+        /* Notice Box */
+        .notice-box {
+            background: #eff6ff;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 0.5rem;
+            padding: 12px 16px;
+            margin: 20px 0;
+            font-size: 0.82rem;
+            color: #1e40af;
+            line-height: 1.6;
+        }
+
+        /* Signatures */
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 36px;
+            text-align: center;
+            font-size: 0.92rem;
+        }
+
+        .sig-block {
+            width: 42%;
+        }
+
+        .sig-role {
+            font-weight: bold;
+            color: #1e293b;
+            margin-top: 6px;
+        }
+
+        .sig-space {
+            height: 70px;
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                color: #000000 !important;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .slip-container {
+                box-shadow: none !important;
+                border: 2px solid #000000 !important;
+                padding: 25px 30px !important;
+                max-width: 100% !important;
+            }
+            .summary-box {
+                border-color: #000000 !important;
+            }
+            .title-badge {
+                border-color: #000000 !important;
+                color: #000000 !important;
+                background: transparent !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Action Bar (Hidden when printing) -->
+    <div class="no-print-bar">
+        <a href="javascript:history.back()" class="btn btn-outline">
+            <i class="fa-solid fa-arrow-left"></i> ត្រឡប់ក្រោយ
+        </a>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fa-solid fa-print"></i> បោះពុម្ពព្រឹត្តិបត្រពិន្ទុ (Print)
+            </button>
+        </div>
+    </div>
+
+    <!-- Official Slip Container -->
+    <div class="slip-container">
+
+        <!-- Header -->
+        <div class="school-header">
+            <div class="motto-km">ព្រះរាជាណាចក្រកម្ពុជា</div>
+            <div class="motto-km">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            <div class="motto-en">Kingdom of Cambodia • Nation Religion King</div>
+            <div style="margin: 10px 0 16px 0;">
+                <div class="title-badge">ព្រឹត្តិបត្រលទ្ធផលបណ្តោះអាសន្ន</div>
+                <div class="subtitle-text">{{ exam.name }} • ឆ្នាំសិក្សា {{ exam.academic_year.name }}</div>
+            </div>
+        </div>
+
+        <!-- Candidate Info Box -->
+        <div class="candidate-info-box">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">គោត្តនាម-នាម៖</span>
+                    <span class="info-val">{{ candidate.candidate_name_kh }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ឈ្មោះឡាតាំង៖</span>
+                    <span class="info-val">{{ candidate.candidate_name_en|default:"-" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ភេទ / ថ្ងៃកំណើត៖</span>
+                    <span class="info-val">{{ candidate.get_gender_display }} • {{ candidate.dob|date:"d/m/Y"|default:"-" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">អត្តលេខបេក្ខជន៖</span>
+                    <span class="info-val font-monospace" style="color: #2563eb;">{{ candidate.roll_number }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ថ្នាក់ដើម៖</span>
+                    <span class="info-val">{{ candidate.origin_class|default:"-" }} (ថ្នាក់ទី {{ exam.grade_level }})</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">បន្ទប់ប្រឡង & លេខតុ៖</span>
+                    <span class="info-val text-primary">{{ candidate.room.room_name|default:"-" }} • តុលេខ {{ candidate.desk_number|stringformat:"02d" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Summary Banner -->
+        <div class="summary-banner">
+            <div class="summary-box">
+                <div class="summary-label">ពិន្ទុសរុបទទួលបាន</div>
+                <div class="summary-val text-primary">{{ candidate.total_score }} <span style="font-size: 0.8rem; color: #64748b; font-weight: normal;">/ {{ total_max }}</span></div>
+            </div>
+            <div class="summary-box" style="border-color: #10b981;">
+                <div class="summary-label">មធ្យមភាគ (Average)</div>
+                <div class="summary-val" style="color: #059669;">{{ candidate.average_score|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box" style="border-color: #8b5cf6;">
+                <div class="summary-label">និទ្ទេសរួម (Grade)</div>
+                <div class="summary-val" style="color: #6d28d9;">
+                    {% if candidate.grade_letter != '-' %}{{ candidate.grade_letter }}{% else %}-{% endif %}
+                </div>
+            </div>
+            <div class="summary-box" style="border-color: #f59e0b;">
+                <div class="summary-label">ចំណាត់ថ្នាក់ទូទៅ</div>
+                <div class="summary-val" style="color: #b45309;">
+                    {% if candidate.rank_overall %}លេខ {{ candidate.rank_overall }}{% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Scores Table -->
+        <table class="subjects-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ល.រ</th>
+                    <th style="text-align: left;">មុខវិជ្ជាប្រឡង</th>
+                    <th style="width: 100px;">មេគុណ</th>
+                    <th style="width: 110px;">ពិន្ទុពេញ</th>
+                    <th style="width: 120px;">ពិន្ទុទទួលបាន</th>
+                    <th style="width: 90px;">និទ្ទេស</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in subject_rows %}
+                <tr>
+                    <td style="text-align: center; color: #64748b;">{{ forloop.counter }}</td>
+                    <td style="font-weight: bold; color: #1e293b;">{{ row.subject_name }}</td>
+                    <td style="text-align: center;">{{ row.coefficient }}</td>
+                    <td style="text-align: center; color: #475569;">{{ row.max_score }}</td>
+                    <td style="text-align: center; font-weight: bold; font-size: 0.95rem;" class="{% if row.is_absent %}text-danger{% elif row.score is not None and row.score >= 25 %}text-primary{% else %}text-danger{% endif %}">
+                        {% if row.is_absent %}
+                        <span style="color: #dc2626;">អវត្តមាន</span>
+                        {% elif row.score is not None %}
+                        {{ row.score }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="badge-letter badge-{{ row.grade_letter }}">{{ row.grade_letter }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: #f8fafc; font-weight: bold;">
+                    <td colspan="3" style="text-align: right; padding-right: 15px;">ពិន្ទុសរុប & មធ្យមភាគ៖</td>
+                    <td style="text-align: center;">{{ total_max }}</td>
+                    <td style="text-align: center; color: #1e3a8a; font-size: 1.05rem;">{{ candidate.total_score }}</td>
+                    <td style="text-align: center; color: #059669; font-size: 1.05rem;">{{ candidate.average_score|floatformat:2 }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Notice / Disclaimer -->
+        <div class="notice-box">
+            <i class="fa-solid fa-circle-info" style="margin-right: 4px;"></i>
+            <strong>សម្គាល់៖</strong> នេះជាព្រឹត្តិបត្រពិន្ទុបណ្តោះអាសន្នចេញដោយស្វ័យប្រវត្តិតាមប្រព័ន្ធ SchoolSM។ លទ្ធផលផ្លូវការចុងក្រោយនឹងត្រូវប្រកាស និងបោះត្រាដោយគណៈកម្មការប្រឡងសាលារៀន។
+        </div>
+
+        <!-- Signatures -->
+        <div class="signatures">
+            <div class="sig-block">
+                <div>បានឃើញ និងឯកភាព</div>
+                <div class="sig-role">គណៈកម្មការបូកស្រង់ពិន្ទុ</div>
+                <div class="sig-space"></div>
+                <div style="font-weight: bold;">................................................</div>
+            </div>
+
+            <div class="sig-block">
+                <div>ថ្ងៃ...................ខែ...............ឆ្នាំ ២០២...</div>
+                <div class="sig-role">ប្រធានមណ្ឌលប្រឡង / នាយកសាលា</div>
+                <div class="sig-space"></div>
+                <div style="font-weight: bold;">................................................</div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

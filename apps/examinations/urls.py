@@ -7,6 +7,7 @@ urlpatterns = [
     path('terms/create/', views.exam_term_create, name='exam_term_create'),
     path('terms/<int:term_id>/edit/', views.exam_term_edit, name='exam_term_edit'),
     path('terms/<int:term_id>/delete/', views.exam_term_delete, name='exam_term_delete'),
+    path('terms/<int:term_id>/toggle-provisional-publish/', views.api_toggle_term_provisional_publish, name='api_toggle_term_provisional_publish'),
     path('terms/<int:term_id>/graph/', views.term_results_graph_view, name='term_results_graph_view'),
     path('term-subjects/', views.exam_term_subjects_manage, name='exam_term_subjects_manage'),
     path('api/term-subject/toggle/', views.api_toggle_exam_term_subject, name='api_toggle_exam_term_subject'),
@@ -17,10 +18,14 @@ urlpatterns = [
     path('results/semester/', views.semester_results_view, name='semester_results'),
     path('results/semester/subject-ranks/print/', views.semester_subject_ranks_print_view, name='semester_subject_ranks_print_view'),
     path('results/semester/subject-ranks/export-excel/', views.export_semester_subject_ranks_excel, name='export_semester_subject_ranks_excel'),
-    path('results/semester/export-excel/', views.export_semester_results_excel, name='export_semester_results_excel'),
+    path('results/monthly/print/', views.monthly_results_print_view, name='monthly_results_print_view'),
     path('results/annual/', views.annual_results_view, name='annual_results'),
     path('results/annual/print/', views.annual_results_print_view, name='annual_results_print_view'),
     path('results/annual/export-excel/', views.export_annual_results_excel, name='export_annual_results_excel'),
+    path('homeroom/<int:classroom_id>/tracking-book/', views.homeroom_study_tracking_book_view, name='homeroom_study_tracking_book_view'),
+    path('reports/slow-learners/', views.slow_learners_report_view, name='slow_learners_report_view'),
+    path('students/<int:student_id>/cumulative-dossier/', views.student_cumulative_dossier_view, name='student_cumulative_dossier_view'),
+    path('homeroom/<int:classroom_id>/cumulative-dossier/', views.homeroom_cumulative_dossier_batch_view, name='homeroom_cumulative_dossier_batch_view'),
     path('api/transfer-grade/save/', views.api_save_transfer_grade, name='api_save_transfer_grade'),
     path('api/transfer-grade/<int:student_id>/', views.api_get_transfer_grade, name='api_get_transfer_grade'),
     path('report-card/<int:student_id>/<int:term_id>/', views.report_card_view, name='report_card'),
@@ -78,6 +83,7 @@ urlpatterns = [
     path('standardized/api/validate-secret-code/', views.api_exam_validate_secret_code, name='api_exam_validate_secret_code'),
     path('standardized/api/save-blind-scores/', views.api_exam_save_blind_scores, name='api_exam_save_blind_scores'),
     path('standardized/<int:exam_id>/toggle-grading-lock/', views.api_toggle_exam_grading_lock, name='api_toggle_exam_grading_lock'),
+    path('standardized/<int:exam_id>/toggle-provisional-publish/', views.api_toggle_exam_provisional_publish, name='api_toggle_exam_provisional_publish'),
     path('standardized/<int:exam_id>/set-grading-window/', views.api_update_exam_grading_window, name='api_update_exam_grading_window'),
 
     # Admin Secret Codes Directory & Regenerate
@@ -112,6 +118,7 @@ urlpatterns = [
     
     # Student & Parent Exam Admission Slip & Telegram Seating Dispatch
     path('student/admission-slip/<int:candidate_id>/', views.student_exam_admission_slip, name='student_exam_admission_slip'),
+    path('student/provisional-slip/<int:candidate_id>/', views.student_exam_provisional_slip, name='student_exam_provisional_slip'),
     path('standardized/<int:exam_id>/send-seating-telegram/', views.api_send_exam_seating_telegram, name='api_send_exam_seating_telegram'),
 ]
 

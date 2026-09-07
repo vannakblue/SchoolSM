@@ -208,8 +208,23 @@ def teacher_dashboard(request):
             cls_qs = cls_qs.filter(academic_year=current_year)
         my_homeroom = cls_qs.first()
 
+        my_female_count = 0
+        my_male_count = 0
+        homeroom_slow_learners_count = 0
         if my_homeroom:
             my_students_count = my_homeroom.students.filter(status='ACTIVE').count()
+            my_female_count = my_homeroom.students.filter(status='ACTIVE', gender='F').count()
+            my_male_count = my_students_count - my_female_count
+            try:
+                from apps.examinations.models import Grade
+                from django.db.models import F
+                homeroom_slow_learners_count = Grade.objects.filter(
+                    classroom=my_homeroom,
+                    score__isnull=False,
+                    score__lt=F('max_score') * 0.5
+                ).values('student_id').distinct().count()
+            except Exception:
+                homeroom_slow_learners_count = 0
 
         taught_class_ids = Timetable.objects.filter(
             teacher=teacher,
@@ -217,6 +232,22 @@ def teacher_dashboard(request):
         ).order_by().values_list('classroom_id', flat=True).distinct() if current_year else Timetable.objects.filter(teacher=teacher).order_by().values_list('classroom_id', flat=True).distinct()
         
         my_classes = Classroom.objects.filter(id__in=taught_class_ids)
+
+        teaching_classes_with_subjects = []
+        from apps.academics.models import ClassSubject
+        for cls in my_classes:
+            subs = list(Subject.objects.filter(
+                id__in=ClassSubject.objects.filter(classroom=cls, teacher=teacher).values_list('subject_id', flat=True)
+            ))
+            if not subs:
+                subs = list(Subject.objects.filter(
+                    id__in=Timetable.objects.filter(classroom=cls, teacher=teacher).values_list('subject_id', flat=True)
+                ))
+            teaching_classes_with_subjects.append({
+                'classroom': cls,
+                'subjects': subs,
+                'first_subject': subs[0] if subs else None,
+            })
 
     today = datetime.now().date()
     today_att_done = False
@@ -266,6 +297,42 @@ def teacher_dashboard(request):
         except Exception:
             today_duty_list = []
 
+    # Exams with active provisional results for teachers
+    prov_exam_qs = StandardizedExam.objects.filter(
+        Q(is_provisional_published=True) | Q(is_published=True)
+    ).select_related('academic_year')
+    if current_year:
+        prov_exam_qs = prov_exam_qs.filter(academic_year=current_year)
+
+    provisional_exams = []
+    for ex in prov_exam_qs.order_by('-exam_date')[:6]:
+        total_cands = ex.candidates.count()
+        passed_cands = ex.candidates.filter(grade_letter__in=['A', 'B', 'C', 'D', 'E']).count()
+        avg_sc = ex.candidates.aggregate(a=Avg('average_score'))['a'] or 0.0
+
+        homeroom_stats = None
+        if my_homeroom:
+            hr_cands = ex.candidates.filter(origin_class=my_homeroom.name)
+            hr_cnt = hr_cands.count()
+            if hr_cnt > 0:
+                hr_passed = hr_cands.filter(grade_letter__in=['A', 'B', 'C', 'D', 'E']).count()
+                hr_avg = hr_cands.aggregate(a=Avg('average_score'))['a'] or 0.0
+                homeroom_stats = {
+                    'total': hr_cnt,
+                    'passed': hr_passed,
+                    'pass_rate': round((hr_passed / hr_cnt) * 100, 1),
+                    'average': round(float(hr_avg), 2),
+                }
+
+        provisional_exams.append({
+            'exam': ex,
+            'total_candidates': total_cands,
+            'passed_candidates': passed_cands,
+            'pass_rate': round((passed_cands / total_cands) * 100, 1) if total_cands > 0 else 0.0,
+            'average_score': round(float(avg_sc), 2),
+            'homeroom_stats': homeroom_stats,
+        })
+
     return render(request, 'dashboard/teacher_dashboard.html', {
         'teacher': teacher,
         'today_schedule': today_schedule,
@@ -273,6 +340,11 @@ def teacher_dashboard(request):
         'my_classes': my_classes,
         'my_homeroom': my_homeroom,
         'my_students_count': my_students_count,
+        'my_female_count': my_female_count,
+        'my_male_count': my_male_count,
+        'homeroom_slow_learners_count': homeroom_slow_learners_count,
+        'teaching_classes_with_subjects': teaching_classes_with_subjects,
+        'latest_term': recent_terms[0] if recent_terms else None,
         'today_att_done': today_att_done,
         'today_teacher_att': today_teacher_att,
         'today_punch': today_punch,
@@ -280,6 +352,7 @@ def teacher_dashboard(request):
         'my_month_late': my_month_late,
         'att_config': att_config,
         'recent_terms': recent_terms,
+        'provisional_exams': provisional_exams,
         'announcements': announcements,
         'active_year': current_year,
     })
@@ -338,6 +411,15 @@ def student_dashboard(request):
     # Standardized Exam Seating & Eligibility Information (Auto partitioned room & desk number)
     exam_seating_info = get_student_exam_seating_data(student) if student else []
 
+    # Find latest exam with provisional results released
+    latest_provisional_exam = None
+    for item in exam_seating_info:
+        if item.get('is_provisional_published') and item.get('average_score') is not None:
+            latest_provisional_exam = item
+            if avg_score == 0.0 and item.get('average_score') is not None:
+                avg_score = float(item.get('average_score'))
+            break
+
     return render(request, 'dashboard/student_dashboard.html', {
         'student': student,
         'children_list': children_list,
@@ -348,6 +430,7 @@ def student_dashboard(request):
         'invoices': invoices,
         'announcements': announcements,
         'latest_term': latest_term,
+        'latest_provisional_exam': latest_provisional_exam,
         'att_rate': att_rate,
         'absent_days': absent_days,
         'avg_score': avg_score,

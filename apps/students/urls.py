@@ -44,6 +44,7 @@ urlpatterns = [
     path('archives/', views.student_archives_list, name='student_archives_list'),
     path('archives/<int:pk>/download/', views.download_student_archive_excel, name='download_student_archive_excel'),
     path('archives/<int:pk>/json/', views.api_get_archive_json_snapshot, name='api_get_archive_json_snapshot'),
+    path('archives/<int:pk>/restore/', views.api_restore_student_archive, name='api_restore_student_archive'),
     path('api/academic-year-purge-preview/', views.api_get_academic_year_purge_preview, name='api_get_academic_year_purge_preview'),
     path('api/academic-year-purge-execute/', views.api_execute_academic_year_purge, name='api_execute_academic_year_purge'),
 ]

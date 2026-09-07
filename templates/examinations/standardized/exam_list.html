@@ -299,11 +299,18 @@
                                         </span>
                                         {% endif %}
                                     </div>
-                                    {% if ex.is_published %}
-                                    <span class="badge bg-success px-2 py-0.5" style="font-size: 0.7rem;"><i class="fa-solid fa-check me-1"></i>ប្រកាស</span>
-                                    {% else %}
-                                    <span class="badge bg-warning text-dark px-2 py-0.5" style="font-size: 0.7rem;">ព្រាង</span>
-                                    {% endif %}
+                                    <div class="d-flex align-items-center gap-1">
+                                        {% if ex.is_provisional_published %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style="font-size: 0.7rem;" title="បានបើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន">
+                                            <i class="fa-solid fa-bullhorn me-1"></i>លទ្ធផលបណ្តោះអាសន្ន
+                                        </span>
+                                        {% endif %}
+                                        {% if ex.is_published %}
+                                        <span class="badge bg-success px-2 py-0.5" style="font-size: 0.7rem;"><i class="fa-solid fa-check me-1"></i>ប្រកាស</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark px-2 py-0.5" style="font-size: 0.7rem;">ព្រាង</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
 
                                 <!-- Sub Exam Name -->

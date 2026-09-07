@@ -347,6 +347,119 @@
         </form>
     </div>
 
+    <!-- Academic Year Data Backup & Restore Dedicated Panel -->
+    <div class="action-panel p-4 mb-4 border-start border-4 border-success">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-success bg-opacity-10 text-success fw-bold mb-2" style="font-size: 0.82rem;">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Year-Specific Data Isolation & Safety (រក្សាទុក & ស្តារទិន្នន័យតាមឆ្នាំសិក្សា)</span>
+                </div>
+                <h5 class="fw-bold mb-1 text-dark">
+                    <i class="fa-solid fa-folder-tree text-success me-2"></i>ការគ្រប់គ្រង Backup & Restore ទិន្នន័យតាមឆ្នាំសិក្សា (Academic Year Packages)
+                </h5>
+                <p class="text-muted small mb-0">
+                    រក្សាទុកទិន្នន័យសិស្ស ថ្នាក់រៀន ពិន្ទុ & លទ្ធផលប្រឡង កំណត់ត្រាវត្តមាន និងការឡើងថ្នាក់ជាកញ្ចប់ JSON ដាច់ដោយឡែកតាមឆ្នាំសិក្សា អាច Restore មកវិញបានគ្រប់ពេលវេលាដោយសុវត្ថិភាព ១០០%។
+                </p>
+            </div>
+            <div class="mt-2 mt-md-0 d-flex gap-2">
+                <a href="{% url 'student_archives_list' %}" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill fw-semibold">
+                    <i class="fa-solid fa-box-archive me-1"></i> មើលប័ណ្ណសារសិស្ស (Archives)
+                </a>
+                <button class="btn btn-outline-success btn-sm px-3 py-2 rounded-pill fw-semibold" data-bs-toggle="modal" data-bs-target="#uploadYearRestoreModal">
+                    <i class="fa-solid fa-upload me-1"></i> Upload Year Backup (.json)
+                </button>
+            </div>
+        </div>
+
+        <!-- Year Export Quick Action -->
+        <div class="p-3 bg-light rounded-4 mb-3">
+            <form action="" method="GET" id="exportYearForm" class="row g-2 align-items-center">
+                <div class="col-12 col-md-5">
+                    <label class="form-label small fw-bold text-secondary mb-1">ជ្រើសរើសឆ្នាំសិក្សាដែលចង់ Export Backup៖</label>
+                    <select id="exportYearSelect" class="form-select rounded-3">
+                        {% for ay in academic_years %}
+                        <option value="{{ ay.id }}" {% if ay.is_current %}selected{% endif %}>
+                            📅 {{ ay.name }} {% if ay.is_current %}(ឆ្នាំសិក្សាបច្ចុប្បន្ន - Current){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-7 d-flex gap-2 align-items-end mt-2 mt-md-0">
+                    <button type="button" class="btn btn-success fw-semibold px-3 rounded-3" onclick="triggerExportYear('download')">
+                        <i class="fa-solid fa-download me-1"></i> ទាញយកកញ្ចប់ JSON (.json)
+                    </button>
+                    <button type="button" class="btn btn-outline-success fw-semibold px-3 rounded-3" onclick="triggerExportYear('save_only')">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកលើ Server
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- List of Saved Academic Year Backups -->
+        {% if year_backups %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-secondary small fw-bold">
+                        <th style="width: 40px;">#</th>
+                        <th>ឆ្នាំសិក្សា</th>
+                        <th>កាលបរិច្ឆេទ & ម៉ោង</th>
+                        <th>ឈ្មោះឯកសារ</th>
+                        <th>ទំហំ</th>
+                        <th>ទិន្នន័យ (សិស្ស/ថ្នាក់/ពិន្ទុ/វត្តមាន)</th>
+                        <th>បង្កើតដោយ</th>
+                        <th class="text-end" style="min-width: 180px;">សកម្មភាព (Actions)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for yb in year_backups %}
+                    <tr>
+                        <td class="text-muted fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1 fs-6">
+                                📅 {{ yb.academic_year_name }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark small">{{ yb.created_at }}</div>
+                        </td>
+                        <td>
+                            <code class="text-muted small">{{ yb.filename }}</code>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ yb.size_formatted }}</span>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                <span class="me-2 text-primary fw-semibold"><i class="fa-solid fa-user-graduate"></i> {{ yb.students_count }}</span>
+                                <span class="me-2 text-warning fw-semibold"><i class="fa-solid fa-school"></i> {{ yb.classrooms_count }}</span>
+                                <span class="me-2 text-info fw-semibold"><i class="fa-solid fa-square-poll-vertical"></i> {{ yb.grades_count }}</span>
+                                <span class="text-danger fw-semibold"><i class="fa-solid fa-clipboard-user"></i> {{ yb.attendances_count }}</span>
+                            </small>
+                        </td>
+                        <td class="text-muted small">{{ yb.created_by }}</td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-success fw-semibold px-2.5 py-1 me-1"
+                                    onclick="confirmRestoreYear('{{ yb.filename }}', '{{ yb.academic_year_name|escapejs }}', '{{ yb.students_count }}', '{{ yb.grades_count }}', '{{ yb.attendances_count }}')">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Restore
+                            </button>
+                            <a href="{% url 'tool_database_backup_download' yb.filename %}" class="btn btn-sm btn-outline-primary px-2 py-1" title="ទាញយកឯកសារ JSON">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-center text-muted bg-light rounded-3">
+            <small><i class="fa-solid fa-circle-info me-1"></i> មិនទាន់មានឯកសារ Backup តាមឆ្នាំសិក្សាដែលបានរក្សាទុកលើ Server នៅឡើយទេ។ លោកអ្នកអាចជ្រើសរើសឆ្នាំសិក្សាខាងលើដើម្បី Export បាន។</small>
+        </div>
+        {% endif %}
+    </div>
+
     <!-- Snapshots Table Card -->
     <div class="action-panel p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -592,12 +705,113 @@
     </div>
 </div>
 
+<!-- Modal: Upload Academic Year Backup JSON -->
+<div class="modal fade" id="uploadYearRestoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_academic_year_backup_restore' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-cloud-arrow-up me-2"></i>Upload & Restore Backup តាមឆ្នាំសិក្សា
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted small mb-3">
+                        ជ្រើសរើសឯកសារកញ្ចប់ Backup ឆ្នាំសិក្សា (ប្រភេទ <strong>.json</strong>) ដើម្បី Restore ចូលក្នុងប្រព័ន្ធ៖
+                    </p>
+                    <div class="mb-3">
+                        <input type="file" name="year_backup_file" class="form-control form-control-lg rounded-3 fs-6" accept=".json" required>
+                    </div>
+                    <div class="alert alert-info border-0 rounded-3 small mb-0">
+                        <i class="fa-solid fa-shield-check text-success me-1"></i>
+                        ប្រព័ន្ធនឹងធ្វើការ match ថ្នាក់រៀន សិស្ស ពិន្ទុ និងវត្តមានទៅតាមឆ្នាំសិក្សាក្នុងឯកសារនោះយ៉ាងត្រឹមត្រូវ ១០០% ដោយមិនប៉ះពាល់ដល់ឆ្នាំសិក្សាដទៃទៀតឡើយ។
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Upload & Restore
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirm Restore Saved Year Backup -->
+<div class="modal fade" id="confirmRestoreYearModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form action="{% url 'tool_academic_year_backup_restore' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="filename" id="restoreYearFilenameInput">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-rotate-left me-2"></i>បញ្ជាក់ការ Restore ទិន្នន័យឆ្នាំសិក្សា
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="p-3 bg-light rounded-3 mb-3">
+                        <div class="small text-muted mb-1">ឆ្នាំសិក្សាដែលត្រូវ Restore៖</div>
+                        <div class="fw-bold text-success fs-5" id="restoreYearModalName">-</div>
+                        <div class="small text-muted mt-1" id="restoreYearModalFilename">Filename: -</div>
+                    </div>
+                    <div class="alert alert-warning border-0 small rounded-3 mb-0">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>ទិន្នន័យដែលនឹងត្រូវ Restore / Update៖</strong>
+                        <ul class="mb-0 mt-1" id="restoreYearModalCounts">
+                            <li>សិស្ស</li>
+                            <li>ពិន្ទុ & លទ្ធផលប្រឡង</li>
+                            <li>វត្តមានសិស្ស</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-rotate-left me-1"></i> យល់ព្រម Restore ភ្លាមៗ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal 4: Delete Confirmation Form (Hidden) -->
 <form id="deleteBackupForm" method="POST" style="display: none;">
     {% csrf_token %}
 </form>
 
 <script>
+    function triggerExportYear(action) {
+        const yearSelect = document.getElementById('exportYearSelect');
+        if (!yearSelect || !yearSelect.value) {
+            alert('សូមជ្រើសរើសឆ្នាំសិក្សា!');
+            return;
+        }
+        const yearId = yearSelect.value;
+        let url = `/tools/backup/academic-year/${yearId}/export/`;
+        if (action === 'save_only') {
+            url += '?action=save_only';
+        }
+        window.location.href = url;
+    }
+
+    function confirmRestoreYear(filename, yearName, studentsCount, gradesCount, attCount) {
+        document.getElementById('restoreYearFilenameInput').value = filename;
+        document.getElementById('restoreYearModalName').innerText = '📅 ' + yearName;
+        document.getElementById('restoreYearModalFilename').innerText = 'ឯកសារ៖ ' + filename;
+        document.getElementById('restoreYearModalCounts').innerHTML = `
+            <li>👥 សិស្ស៖ ${studentsCount} នាក់</li>
+            <li>📝 ពិន្ទុ & លទ្ធផលប្រឡង៖ ${gradesCount} កំណត់ត្រា</li>
+            <li>📅 វត្តមានសិស្ស៖ ${attCount} កំណត់ត្រា</li>
+        `;
+        new bootstrap.Modal(document.getElementById('confirmRestoreYearModal')).show();
+    }
+
     function confirmRestore(filename, label, time) {
         document.getElementById('restoreFilenameInput').value = filename;
         document.getElementById('restoreModalLabel').innerText = label || filename;

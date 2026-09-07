@@ -10,7 +10,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.db import transaction
 from apps.accounts.decorators import role_required
 from apps.accounts.models import User
@@ -2405,6 +2406,37 @@ def api_get_archive_json_snapshot(request, pk):
         'attendances_count': archive.attendances_count,
         'payload': archive.archive_payload,
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_restore_student_archive(request, pk):
+    """
+    Restores an AcademicYearStudentArchive snapshot back into the active database.
+    Restores students, classrooms, exam scores (Grade), and attendances.
+    """
+    from .models import AcademicYearStudentArchive
+    from apps.tools.backup_utils import restore_academic_year_backup
+    from django.http import JsonResponse
+    from django.contrib import messages
+
+    archive = get_object_or_404(AcademicYearStudentArchive, pk=pk)
+    user_info = f"{request.user.get_full_name() or request.user.username} (Admin Restore)"
+
+    try:
+        res = restore_academic_year_backup(archive.archive_payload, user_info=user_info)
+        messages.success(request, res['message'])
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'status': 'success', 'message': res['message'], 'results': res['results']})
+        return redirect('student_archives_list')
+    except Exception as e:
+        err_msg = f"បរាជ័យក្នុងការ Restore ប័ណ្ណសារ {archive.academic_year_name}: {str(e)}"
+        messages.error(request, err_msg)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'status': 'error', 'message': err_msg}, status=500)
+        return redirect('student_archives_list')
+
 
 
 @login_required

@@ -280,10 +280,15 @@
                         កាលបរិច្ឆេទ៖ <strong>{{ selected_date }}</strong>
                     </span>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
                     <span class="counter-badge bg-danger bg-opacity-10 text-danger border border-danger-subtle" id="badgeAbsentCount">
                         <i class="fa-solid fa-user-xmark me-1"></i> អវត្តមាន៖ <span id="countAbsentText">{{ absent_students_count }}</span> នាក់
                     </span>
+                    {% if has_already_submitted %}
+                    <span class="badge bg-warning-subtle text-dark border border-warning px-2.5 py-1.5 fw-semibold" title="ម៉ោងនេះបានចុះអវត្តមានរួចរាល់ហើយ">
+                        <i class="fa-solid fa-circle-check text-success me-1"></i> បានចុះរួចរាល់ម្តងហើយ {% if last_submit_log %}(លើកទី {{ last_submit_log.submission_count }}){% endif %}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
             <div class="d-flex gap-2 align-items-center">
@@ -430,13 +435,75 @@
                 <i class="fa-solid fa-lock me-2"></i> បានចាក់សោ (Locked)
             </button>
             {% else %}
-            <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm">
-                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកការស្រង់អវត្តមាន
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                {% if has_already_submitted %}
+                <span class="badge bg-warning-subtle text-dark border border-warning px-3 py-2 fw-semibold d-none d-md-inline-block">
+                    <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> ម៉ោងនេះបានចុះរួចរាល់ម្តងហើយ {% if last_submit_log %}(លើកទី {{ last_submit_log.submission_count }}){% endif %}
+                </span>
+                <button type="submit" class="btn btn-warning btn-lg px-4 fw-bold shadow-sm text-dark" id="btnSaveAttendance">
+                    <i class="fa-solid fa-rotate-right me-2"></i> កែប្រែ & ចុះម្តងទៀត
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm" id="btnSaveAttendance">
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកការស្រង់អវត្តមាន
+                </button>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>
 </form>
+
+<!-- Modal: Re-Submission Confirmation -->
+<div class="modal fade" id="reSubmitConfirmModal" tabindex="-1" aria-labelledby="reSubmitConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-warning bg-opacity-10 border-bottom border-warning-subtle py-3">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="reSubmitConfirmModalLabel">
+                    <i class="fa-solid fa-triangle-exclamation text-warning fs-4"></i>
+                    បញ្ជាក់ការចុះអវត្តមានឡើងវិញ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="d-flex align-items-center gap-2 text-dark fw-bold mb-2">
+                        <i class="fa-solid fa-circle-info text-primary"></i>
+                        <span>ព័ត៌មានម៉ោងបង្រៀន៖</span>
+                    </div>
+                    <ul class="list-unstyled mb-0 small text-secondary ps-2">
+                        <li>• ថ្នាក់រៀន៖ <strong class="text-dark">{{ selected_class.name }}</strong></li>
+                        <li>• កាលបរិច្ឆេទ៖ <strong class="text-dark">{{ selected_date }}</strong> ({{ selected_session }})</li>
+                        <li>• ម៉ោងទី៖ <strong class="text-dark">{{ selected_period|default:"--" }}</strong></li>
+                        {% if last_submit_log %}
+                        <li>• ចុះលើកមុនដោយ៖ <strong class="text-dark">{{ last_submit_log.recorded_by.get_full_name|default:last_submit_log.recorded_by.username }}</strong></li>
+                        <li>• ចំនួនដងដែលបានចុះ៖ <span class="badge bg-secondary text-white">{{ last_submit_log.submission_count }} ដង</span></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div class="alert alert-warning border-0 rounded-3 mb-3 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-bell fs-4 text-warning"></i>
+                    <div class="small fw-semibold text-dark">
+                        លោកគ្រូ-អ្នកគ្រូបានចុះអវត្តមានសិស្សសម្រាប់ម៉ោងនេះរួចរាល់ម្តងហើយ!
+                    </div>
+                </div>
+
+                <p class="text-dark mb-0 fs-6 fw-bold text-center">
+                    តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់ចុះ និងកែប្រែទិន្នន័យម្តងទៀតមែនឬទេ?
+                </p>
+            </div>
+            <div class="modal-footer bg-light border-0 py-3 rounded-bottom-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary px-3 fw-semibold rounded-3" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark me-1"></i> បោះបង់ (Cancel)
+                </button>
+                <button type="button" class="btn btn-warning fw-bold px-4 rounded-3 text-dark shadow-sm" onclick="proceedSubmitAttendance()">
+                    <i class="fa-solid fa-check-double me-1"></i> បាទ/ចាស! ខ្ញុំពិតជាចង់ចុះម្តងទៀត
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 {% block extra_js %}
@@ -585,9 +652,38 @@
         });
     }
 
+    const hasAlreadySubmitted = {{ has_already_submitted|yesno:"true,false" }};
+    let isConfirmedSubmit = false;
+
+    function proceedSubmitAttendance() {
+        isConfirmedSubmit = true;
+        const modalEl = document.getElementById('reSubmitConfirmModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+        const form = document.getElementById('attendanceForm');
+        if (form) form.submit();
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         syncMasterCheckState();
         updateAbsentCounter();
+
+        const attForm = document.getElementById('attendanceForm');
+        if (attForm) {
+            attForm.addEventListener('submit', function(e) {
+                if (hasAlreadySubmitted && !isConfirmedSubmit) {
+                    e.preventDefault();
+                    const modalEl = document.getElementById('reSubmitConfirmModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                    return false;
+                }
+            });
+        }
 
         {% if teacher_schedule_alert and teacher_schedule_alert.show_modal %}
         const schedModalEl = document.getElementById('teacherScheduleModal');

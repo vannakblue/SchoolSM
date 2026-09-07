@@ -67,7 +67,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-1.5">
                             <i class="fa-solid fa-user-shield text-secondary"></i>
-                            <span class="small">{{ a.archived_by.get_full_name|default:a.archived_by.username|default:"Admin" }}</span>
+                            <span class="small">{% if a.archived_by %}{{ a.archived_by.get_full_name|default:a.archived_by.username }}{% else %}Admin{% endif %}</span>
                         </div>
                     </td>
                     <td>
@@ -98,9 +98,12 @@
                             <button type="button" class="btn btn-outline-secondary" onclick="viewArchiveSnapshot({{ a.id }})" title="{% if is_khmer %}មើលទិន្នន័យ Snapshot (JSON){% else %}View JSON Snapshot{% endif %}">
                                 <i class="fa-solid fa-code"></i>
                             </button>
-                            <a href="{% url 'download_student_archive_excel' a.id %}" class="btn btn-success" title="{% if is_khmer %}ទាញយក Excel ប័ណ្ណសារ (.xlsx){% else %}Download Excel (.xlsx){% endif %}">
-                                <i class="fa-solid fa-file-excel me-1"></i> {% if is_khmer %}ទាញយក Excel{% else %}Download Excel{% endif %}
+                            <a href="{% url 'download_student_archive_excel' a.id %}" class="btn btn-outline-success" title="{% if is_khmer %}ទាញយក Excel ប័ណ្ណសារ (.xlsx){% else %}Download Excel (.xlsx){% endif %}">
+                                <i class="fa-solid fa-file-excel me-1"></i> {% if is_khmer %}Excel{% else %}Excel{% endif %}
                             </a>
+                            <button type="button" class="btn btn-primary" onclick="openRestoreArchiveModal({{ a.id }}, '{{ a.academic_year.name|escapejs }}', {{ a.students_count }}, {{ a.grades_count }}, {{ a.attendances_count }})" title="{% if is_khmer %}ស្តារទិន្នន័យត្រឡប់មកវិញ (Restore){% else %}Restore Archive{% endif %}">
+                                <i class="fa-solid fa-rotate-left me-1"></i> {% if is_khmer %}ស្តារមកវិញ{% else %}Restore{% endif %}
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -163,10 +166,95 @@
     </div>
 </div>
 
+<!-- Modal: Confirm Restore Archive -->
+<div class="modal fade" id="confirmRestoreArchiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-rotate-left text-warning me-2"></i>{% if is_khmer %}ស្តារទិន្នន័យប័ណ្ណសារសិស្សឡើងវិញ{% else %}Restore Student Archive{% endif %}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-3">
+                    <div class="avatar avatar-lg bg-light-primary text-primary mx-auto mb-2 rounded-circle p-3 d-inline-flex">
+                        <i class="fa-solid fa-clock-rotate-left fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark" id="restoreModalYearName">ឆ្នាំសិក្សា៖ -</h5>
+                    <p class="text-muted small">{% if is_khmer %}តើលោកអ្នកពិតជាចង់ស្តារទិន្នន័យប័ណ្ណសារនៃឆ្នាំសិក្សានេះចូលក្នុងប្រព័ន្ធវិញមែនឬទេ?{% else %}Are you sure you want to restore this archive back into the system?{% endif %}</p>
+                </div>
+
+                <div class="alert alert-warning border-0 rounded-3 small">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                    <strong>{% if is_khmer %}ព័ត៌មានដែលនឹងត្រូវស្តារ៖{% else %}Records to be restored:{% endif %}</strong>
+                    <ul class="mb-0 mt-1">
+                        <li id="restoreModalStudents">សិស្ស៖ 0 នាក់</li>
+                        <li id="restoreModalGrades">ពិន្ទុ & លទ្ធផលប្រឡង៖ 0 កំណត់ត្រា</li>
+                        <li id="restoreModalAtt">វត្តមានសិស្ស៖ 0 កំណត់ត្រា</li>
+                    </ul>
+                </div>
+                <div class="alert alert-info border-0 rounded-3 small mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    {% if is_khmer %}ប្រព័ន្ធនឹងរក្សាទុក ឬ update ទិន្នន័យសិស្ស និងថ្នាក់រៀនដោយសុវត្ថិភាព មិនប៉ះពាល់ដល់ឆ្នាំសិក្សាផ្សេងៗឡើយ។{% else %}Existing records for this year will be updated or created safely without affecting other years.{% endif %}
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">{% if is_khmer %}បោះបង់{% else %}Cancel{% endif %}</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="confirmRestoreArchiveBtn" onclick="executeRestoreArchive()">
+                    <i class="fa-solid fa-rotate-left me-1"></i> {% if is_khmer %}យល់ព្រមស្តារទិន្នន័យ{% else %}Confirm Restore{% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+let currentRestoreArchiveId = null;
+
+function openRestoreArchiveModal(archiveId, yearName, studentsCount, gradesCount, attCount) {
+    currentRestoreArchiveId = archiveId;
+    document.getElementById('restoreModalYearName').innerText = '📅 ឆ្នាំសិក្សា៖ ' + yearName;
+    document.getElementById('restoreModalStudents').innerText = '👥 សិស្ស៖ ' + studentsCount + ' នាក់';
+    document.getElementById('restoreModalGrades').innerText = '📝 ពិន្ទុ & លទ្ធផលប្រឡង៖ ' + gradesCount + ' កំណត់ត្រា';
+    document.getElementById('restoreModalAtt').innerText = '📅 វត្តមានសិស្ស៖ ' + attCount + ' កំណត់ត្រា';
+    new bootstrap.Modal(document.getElementById('confirmRestoreArchiveModal')).show();
+}
+
+function executeRestoreArchive() {
+    if (!currentRestoreArchiveId) return;
+    const btn = document.getElementById('confirmRestoreArchiveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> កំពុងស្តារទិន្នន័យ...';
+
+    fetch(`/students/archives/${currentRestoreArchiveId}/restore/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ ' + data.message);
+            window.location.reload();
+        } else {
+            alert('❌ បរាជ័យក្នុងការស្តារទិន្នន័យ៖ ' + (data.message || 'Error'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate-left me-1"></i> យល់ព្រមស្តារទិន្នន័យ';
+        }
+    })
+    .catch(err => {
+        alert('❌ បរាជ័យ៖ ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rotate-left me-1"></i> យល់ព្រមស្តារទិន្នន័យ';
+    });
+}
+
 function viewArchiveSnapshot(archiveId) {
     fetch(`/students/archives/${archiveId}/json/`)
         .then(res => res.json())

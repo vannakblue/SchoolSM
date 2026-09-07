@@ -224,7 +224,8 @@ def grade_entry_matrix(request):
                     subject = rule.subject
                     
                     # If teacher is not admin, only allow saving subjects they teach (or all in classroom if homeroom)
-                    if teacher_profile and teacher_assigned_subjects and (subject.id not in teacher_assigned_subjects) and (selected_class.id not in homeroom_cls_ids):
+                    from apps.teachers.permissions import can_teacher_grade_subject
+                    if not can_teacher_grade_subject(request.user, selected_class.id, subject.id):
                         continue
 
                     field_name = f"score_{student.id}_{subject.id}"
@@ -288,9 +289,8 @@ def grade_entry_matrix(request):
                     display_score = '0.00'
                     display_letter = 'F'
 
-                can_edit_subject = (is_admin or is_grading_open) and is_tested and (
-                    is_admin or not teacher_profile or (rule.subject_id in teacher_assigned_subjects) or (selected_class.id in homeroom_cls_ids)
-                )
+                from apps.teachers.permissions import can_teacher_grade_subject
+                can_edit_subject = (is_admin or is_grading_open) and is_tested and can_teacher_grade_subject(request.user, selected_class.id, rule.subject_id)
 
                 row_scores.append({
                     'subject': rule.subject,
@@ -723,15 +723,8 @@ def standardized_exam_list(request):
             if p.standardized_exam_id and p.standardized_exam_id in sess_exams_ids:
                 matched_plan = p
                 break
-            # 3. Session key with same academic year and date prefix
-            if p.session_key and p.session_key.startswith(date_prefix):
-                p_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', p.title, flags=re.IGNORECASE).strip().lower()
-                s_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', clean_sess_title, flags=re.IGNORECASE).strip().lower()
-                if p_clean and s_clean and (p_clean in s_clean or s_clean in p_clean):
-                    matched_plan = p
-                    break
-            # 4. Same academic year and exam date within plan range, with clean title fuzzy match
-            if p.academic_year_id == sess['academic_year'].id and p.start_date <= sess['exam_date'] <= p.end_date:
+            # 3. Same academic year with clean title match
+            if p.academic_year_id == sess['academic_year'].id:
                 p_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', p.title, flags=re.IGNORECASE).strip().lower()
                 s_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', clean_sess_title, flags=re.IGNORECASE).strip().lower()
                 if p_clean and s_clean and (p_clean in s_clean or s_clean in p_clean):
@@ -1652,7 +1645,8 @@ def standardized_exam_manage(request, exam_id):
     invigilator_plan = ExamInvigilatorPlan.objects.filter(
         Q(standardized_exam=exam) |
         Q(session_key=session_key) |
-        (Q(academic_year=exam.academic_year, start_date__lte=exam.exam_date, end_date__gte=exam.exam_date) & (Q(title__icontains=clean_title) | Q(title__icontains=exam.name)))
+        Q(academic_year=exam.academic_year, session_key__icontains=clean_title) |
+        Q(academic_year=exam.academic_year, title__icontains=clean_title)
     ).prefetch_related('shift_slots__registrations').first()
 
     # Total rooms across all grade levels in this session
@@ -2723,15 +2717,21 @@ def exam_room_scores_entry(request, exam_id):
 
 
 @login_required
-@role_required(['ADMIN'])
+@role_required(['ADMIN', 'TEACHER'])
 def exam_provisional_results_view(request, exam_id):
     """
     Master Grade-Level Provisional Results Posting Board (តារាងបិទផ្សាយបណ្តោះអាសន្នតាមកម្រិតថ្នាក់).
     Supports sorting by Name (Alphabetical) and by Rank, filtering by Grade (A-F) or Room,
     with summary stats, official print view, and Excel export.
+    Accessible to: ADMIN always, TEACHER when is_provisional_published=True or is_published=True.
     """
     exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
-    
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+    if not is_admin and not exam.is_provisional_published and not exam.is_published:
+        messages.warning(request, f"⚠️ សម័យប្រឡង «{exam.name}» មិនទាន់ត្រូវបាន Admin បើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ននៅឡើយទេ!")
+        return redirect('teacher_dashboard')
+
     # Auto-recalculate ranks to guarantee freshness
     exam.recalculate_all_ranks()
 
@@ -2826,6 +2826,7 @@ def exam_provisional_results_view(request, exam_id):
         'selected_gender': gender_filter or '',
         'selected_sort': sort_by,
         'search_q': search_q,
+        'is_admin': is_admin,
     })
 
 
@@ -3845,6 +3846,204 @@ def api_update_exam_grading_window(request, exam_id):
         'grading_method_display': exam.get_grading_method_display(),
         'grading_start_datetime': exam.grading_start_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_start_datetime else None,
         'grading_end_datetime': exam.grading_end_datetime.strftime('%d/%m/%Y %H:%M') if exam.grading_end_datetime else None,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_exam_provisional_publish(request, exam_id):
+    """
+    1-Click instant toggle to activate/deactivate provisional results publication for a Standardized Exam
+    (or all exams in the same session).
+    When activated:
+    - Automatically triggers exam.recalculate_all_ranks() so all scores, averages, letter grades (A-F),
+      and rankings are freshly calculated.
+    - Sets is_provisional_published = True and provisional_published_at = timezone.now().
+    - Enables teachers, students, and parents to view subject scores and averages in their respective accounts.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST method required'}, status=405)
+
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+    except Exception:
+        data = request.POST
+
+    apply_to_session = str(data.get('apply_to_session', '')).lower() in ['true', '1', 'yes']
+
+    new_state = not exam.is_provisional_published
+    if 'is_provisional_published' in data:
+        new_state = str(data.get('is_provisional_published')).lower() in ['true', '1', 'yes']
+
+    now = timezone.now()
+
+    if apply_to_session:
+        clean_title = get_clean_exam_session_title(exam.name)
+        session_exams = list(StandardizedExam.objects.filter(
+            academic_year=exam.academic_year,
+            exam_date=exam.exam_date
+        ))
+        matched_exams = [e for e in session_exams if get_clean_exam_session_title(e.name) == clean_title]
+        matched_ids = [e.id for e in matched_exams]
+
+        for e in matched_exams:
+            if new_state:
+                e.recalculate_all_ranks()
+            e.is_provisional_published = new_state
+            e.provisional_published_at = now if new_state else None
+            e.save(update_fields=['is_provisional_published', 'provisional_published_at', 'updated_at'])
+            if e.exam_term:
+                e.exam_term.is_provisional_published = new_state
+                e.exam_term.provisional_published_at = now if new_state else None
+                e.exam_term.save(update_fields=['is_provisional_published', 'provisional_published_at'])
+
+        count = len(matched_ids)
+        action_str = "🟢 បានបើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន" if new_state else "🔒 បានបិទការចេញលទ្ធផលបណ្តោះអាសន្ន"
+        msg = f"{action_str} សម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់នៃសម័យប្រឡង «{clean_title}» ({count} កម្រិត) ដោយជោគជ័យ! គ្រូ សិស្ស និងអាណាព្យាបាលអាចចូលមើលពិន្ទុ និងមធ្យមភាគបាន។" if new_state else f"{action_str} សម្រាប់សម័យប្រឡង «{clean_title}» ដោយជោគជ័យ!"
+    else:
+        if new_state:
+            exam.recalculate_all_ranks()
+        exam.is_provisional_published = new_state
+        exam.provisional_published_at = now if new_state else None
+        exam.save(update_fields=['is_provisional_published', 'provisional_published_at', 'updated_at'])
+        if exam.exam_term:
+            exam.exam_term.is_provisional_published = new_state
+            exam.exam_term.provisional_published_at = now if new_state else None
+            exam.exam_term.save(update_fields=['is_provisional_published', 'provisional_published_at'])
+
+        action_str = "🟢 បានបើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន" if new_state else "🔒 បានបិទការចេញលទ្ធផលបណ្តោះអាសន្ន"
+        msg = f"{action_str} សម្រាប់សម័យប្រឡង «{exam.name}» ដោយជោគជ័យ! គ្រូ សិស្ស និងអាណាព្យាបាលអាចចូលមើលពិន្ទុ និងមធ្យមភាគបាន។" if new_state else f"{action_str} សម្រាប់សម័យប្រឡង «{exam.name}» ដោយជោគជ័យ!"
+
+    exam.refresh_from_db()
+    return JsonResponse({
+        'status': 'success',
+        'message': msg,
+        'is_provisional_published': exam.is_provisional_published,
+        'provisional_published_at': exam.provisional_published_at.strftime('%d/%m/%Y %H:%M') if exam.provisional_published_at else None,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_term_provisional_publish(request, term_id):
+    """
+    1-Click instant toggle for provisional results on ExamTerm (Monthly / Semester Exam).
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST method required'}, status=405)
+
+    term = get_object_or_404(ExamTerm, id=term_id)
+    try:
+        data = json.loads(request.body) if request.body else request.POST
+    except Exception:
+        data = request.POST
+
+    new_state = not term.is_provisional_published
+    if 'is_provisional_published' in data:
+        new_state = str(data.get('is_provisional_published')).lower() in ['true', '1', 'yes']
+
+    now = timezone.now()
+    term.is_provisional_published = new_state
+    term.provisional_published_at = now if new_state else None
+    term.save(update_fields=['is_provisional_published', 'provisional_published_at'])
+
+    # Also sync linked StandardizedExams if any
+    term.standardized_exams.all().update(
+        is_provisional_published=new_state,
+        provisional_published_at=now if new_state else None
+    )
+
+    action_str = "🟢 បានបើកដំណើរការចេញលទ្ធផលបណ្តោះអាសន្ន" if new_state else "🔒 បានបិទការចេញលទ្ធផលបណ្តោះអាសន្ន"
+    msg = f"{action_str} សម្រាប់សម័យប្រឡង «{term.name}» ដោយជោគជ័យ! គ្រូ សិស្ស និងអាណាព្យាបាលអាចចូលមើលពិន្ទុ និងមធ្យមភាគបាន។" if new_state else f"{action_str} សម្រាប់សម័យប្រឡង «{term.name}» ដោយជោគជ័យ!"
+
+    return JsonResponse({
+        'status': 'success',
+        'message': msg,
+        'is_provisional_published': term.is_provisional_published,
+        'provisional_published_at': term.provisional_published_at.strftime('%d/%m/%Y %H:%M') if term.provisional_published_at else None,
+    })
+
+
+@login_required
+def student_exam_provisional_slip(request, candidate_id):
+    """
+    Official Printable Provisional Exam Result Slip (ព្រឹត្តិបត្រពិន្ទុបណ្តោះអាសន្ន).
+    Accessible to: ADMIN, TEACHER, or the Student (or Parent of student).
+    Requires exam.is_provisional_published=True or exam.is_published=True (unless Admin).
+    """
+    cand = get_object_or_404(
+        ExamCandidate.objects.select_related('exam', 'room', 'student', 'exam__academic_year'),
+        id=candidate_id
+    )
+    user = request.user
+    is_admin = user.is_superuser or getattr(user, 'role', '') == 'ADMIN'
+    is_teacher = getattr(user, 'role', '') == 'TEACHER'
+
+    # Permission check for students and parents
+    if not is_admin and not is_teacher:
+        from .services import resolve_student_and_children_for_user
+        _, children = resolve_student_and_children_for_user(user, None)
+        child_ids = [c.id for c in children] if children else []
+        if cand.student_id not in child_ids and cand.student_code != getattr(user, 'username', ''):
+            messages.error(request, "លោកអ្នកពុំមានសិទ្ធិចូលមើលព្រឹត្តិបត្រពិន្ទុរបស់បេក្ខជនរូបនេះឡើយ!")
+            return redirect('student_dashboard')
+
+    if not is_admin and not cand.exam.is_provisional_published and not cand.exam.is_published:
+        messages.warning(request, f"⚠️ សម័យប្រឡង «{cand.exam.name}» មិនទាន់ត្រូវបានប្រកាសលទ្ធផលបណ្តោះអាសន្ននៅឡើយទេ!")
+        return redirect('student_dashboard' if not is_teacher else 'teacher_dashboard')
+
+    # Subject scores
+    subjects = list(cand.exam.exam_subjects.select_related('subject').order_by('order', 'id'))
+    cand_scores_dict = {sc.exam_subject_id: sc for sc in cand.subject_scores.all()}
+
+    subject_rows = []
+    total_obtained = Decimal('0.00')
+    total_coef_sum = Decimal('0.00')
+    total_max = Decimal('0.00')
+
+    for s in subjects:
+        sc_obj = cand_scores_dict.get(s.id)
+        score_val = sc_obj.score if sc_obj else None
+        is_abs = sc_obj.is_absent if sc_obj else False
+        total_max += s.max_score
+        total_coef_sum += s.coefficient
+
+        if score_val is not None:
+            total_obtained += score_val
+
+        # Letter grade per subject
+        pct = (float(score_val) / float(s.max_score) * 100) if (s.max_score and score_val is not None) else 0.0
+        grade_let = '-'
+        if score_val is not None:
+            if pct >= 85.0: grade_let = 'A'
+            elif pct >= 75.0: grade_let = 'B'
+            elif pct >= 65.0: grade_let = 'C'
+            elif pct >= 55.0: grade_let = 'D'
+            elif pct >= 45.0: grade_let = 'E'
+            else: grade_let = 'F'
+
+        subject_rows.append({
+            'subject_name': s.subject.name_kh,
+            'subject_code': s.subject.code,
+            'max_score': s.max_score,
+            'coefficient': s.coefficient,
+            'score': score_val,
+            'is_absent': is_abs,
+            'grade_letter': grade_let,
+        })
+
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.objects.first()
+
+    return render(request, 'examinations/student/provisional_slip.html', {
+        'candidate': cand,
+        'exam': cand.exam,
+        'subject_rows': subject_rows,
+        'total_max': total_max,
+        'school_profile': school_profile,
+        'is_admin': is_admin,
+        'is_teacher': is_teacher,
     })
 
 
@@ -5809,9 +6008,10 @@ def exam_invigilator_plan_create(request):
     pre_exam_id = request.GET.get('exam_id')
     pre_session_key = request.GET.get('session_key', '').strip()
     pre_title = request.GET.get('title', '').strip()
+    pre_clean_name = request.GET.get('clean_session_name', '').strip()
     pre_date_str = request.GET.get('date', '').strip()
     pre_rooms_str = request.GET.get('rooms', '').strip()
-    pre_year_id = request.GET.get('year')
+    pre_year_id = request.GET.get('year') or request.GET.get('academic_year')
     pre_invigilators_per_room = request.GET.get('invigilators_per_room', '2').strip()
     invigilators_per_room = 1 if pre_invigilators_per_room == '1' else 2
 
@@ -5827,7 +6027,7 @@ def exam_invigilator_plan_create(request):
     room_count = 0
 
     session_exams_count = 0
-    clean_session_name = ""
+    clean_session_name = pre_clean_name
     if linked_exam:
         default_ay = linked_exam.academic_year
         clean_name = get_clean_exam_session_title(linked_exam.name)
@@ -5849,8 +6049,8 @@ def exam_invigilator_plan_create(request):
         room_count = total_session_rooms if total_session_rooms > 0 else linked_exam.rooms.count()
         if room_count > 0:
             default_slots_capacity = room_count * invigilators_per_room
-    elif pre_title:
-        clean_name = get_clean_exam_session_title(pre_title)
+    elif pre_title or pre_clean_name:
+        clean_name = get_clean_exam_session_title(pre_clean_name or pre_title)
         clean_session_name = clean_name
         default_title = clean_name if clean_name.startswith("វេនអនុរក្ស") else f"វេនអនុរក្ស៖ {clean_name}"
         if pre_date_str:
@@ -5872,6 +6072,33 @@ def exam_invigilator_plan_create(request):
         room_count = 5
     default_slots_capacity = room_count * invigilators_per_room
 
+    # Guard: Prevent showing creation form a second time if a plan ALREADY exists for this exam/session
+    existing_plan = None
+    if pre_session_key:
+        existing_plan = ExamInvigilatorPlan.objects.filter(session_key=pre_session_key).first()
+
+    if not existing_plan and linked_exam:
+        existing_plan = ExamInvigilatorPlan.objects.filter(
+            Q(standardized_exam=linked_exam) |
+            Q(session_key=pre_session_key) |
+            Q(academic_year=linked_exam.academic_year, session_key__icontains=clean_session_name) |
+            Q(academic_year=linked_exam.academic_year, title__icontains=clean_session_name)
+        ).first()
+
+    if not existing_plan and clean_session_name and default_ay:
+        existing_plan = ExamInvigilatorPlan.objects.filter(
+            Q(academic_year=default_ay, session_key__icontains=clean_session_name) |
+            Q(academic_year=default_ay, title__icontains=clean_session_name)
+        ).first()
+
+    if existing_plan:
+        messages.info(
+            request,
+            f"ℹ️ សម័យប្រឡង «{clean_session_name or existing_plan.display_session_name}» ត្រូវបានរៀបចំគម្រោងវេនអនុរក្សរួចរាល់ហើយ! "
+            f"ប្រព័ន្ធបាននាំលោកអ្នកមកកាន់ផ្ទាំងគ្រប់គ្រង/កែសម្រួលគម្រោងនេះ (មិនបាច់បង្កើតជាលើកទី២ឡើយ)។"
+        )
+        return redirect('exam_invigilator_plan_edit', plan_id=existing_plan.id)
+
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         ay_id = request.POST.get('academic_year')
@@ -5886,8 +6113,16 @@ def exam_invigilator_plan_create(request):
 
         is_active = (request.POST.get('is_active') == 'on')
         allow_reg = (request.POST.get('allow_teacher_registration') == 'on')
-        reg_quota = int(request.POST.get('default_regular_quota', 4))
-        off_quota = int(request.POST.get('default_office_quota', 5))
+
+        quota_mode = request.POST.get('quota_mode', 'GROUPS')
+        is_unified = (quota_mode == 'UNIFIED' or request.POST.get('is_unified_quota') == 'on')
+        unified_quota = int(request.POST.get('unified_quota', 4))
+        if is_unified:
+            reg_quota = unified_quota
+            off_quota = unified_quota
+        else:
+            reg_quota = int(request.POST.get('default_regular_quota', 4))
+            off_quota = int(request.POST.get('default_office_quota', 5))
         auto_create_slots = (request.POST.get('auto_create_slots') == 'on')
         
         post_invig_per_room = int(request.POST.get('invigilators_per_room', 2))
@@ -5924,6 +6159,8 @@ def exam_invigilator_plan_create(request):
                 allow_teacher_registration=allow_reg,
                 default_regular_quota=reg_quota,
                 default_office_quota=off_quota,
+                is_unified_quota=is_unified,
+                unified_quota=unified_quota,
                 invigilators_per_room=post_invig_per_room,
                 rooms_count=post_rooms_count
             )
@@ -5947,10 +6184,10 @@ def exam_invigilator_plan_create(request):
                     if not g_name:
                         continue
                     try:
-                        shifts_val = int(posted_group_shifts[idx]) if idx < len(posted_group_shifts) else 4
+                        shifts_val = unified_quota if is_unified else (int(posted_group_shifts[idx]) if idx < len(posted_group_shifts) else 4)
                     except (ValueError, TypeError):
-                        shifts_val = 4
-                    desc_val = posted_group_descs[idx].strip() if idx < len(posted_group_descs) else ''
+                        shifts_val = unified_quota if is_unified else 4
+                    desc_val = posted_group_descs[idx].strip() if idx < len(posted_descs) else ''
                     grp = TeacherDutyGroup.objects.create(
                         plan=plan,
                         name=g_name,
@@ -6108,8 +6345,53 @@ def exam_invigilator_plan_edit(request, plan_id):
             plan.description = request.POST.get('description', '').strip()
             plan.is_active = (request.POST.get('is_active') == 'on')
             plan.allow_teacher_registration = (request.POST.get('allow_teacher_registration') == 'on')
-            plan.default_regular_quota = int(request.POST.get('default_regular_quota', plan.default_regular_quota))
-            plan.default_office_quota = int(request.POST.get('default_office_quota', plan.default_office_quota))
+
+            quota_mode = request.POST.get('quota_mode', 'GROUPS' if not plan.is_unified_quota else 'UNIFIED')
+            is_unified = (quota_mode == 'UNIFIED' or request.POST.get('is_unified_quota') == 'on')
+            unified_val = int(request.POST.get('unified_quota', plan.unified_quota or 4))
+            plan.is_unified_quota = is_unified
+            plan.unified_quota = unified_val
+            if is_unified:
+                plan.default_regular_quota = unified_val
+                plan.default_office_quota = unified_val
+                plan.duty_groups.all().update(required_shifts=unified_val)
+            else:
+                plan.default_regular_quota = int(request.POST.get('default_regular_quota', plan.default_regular_quota))
+                plan.default_office_quota = int(request.POST.get('default_office_quota', plan.default_office_quota))
+                
+                # Update duty groups if posted
+                posted_ids = request.POST.getlist('quota_group_id[]')
+                posted_names = request.POST.getlist('quota_group_name[]')
+                posted_shifts = request.POST.getlist('quota_group_shifts[]')
+                posted_descs = request.POST.getlist('quota_group_description[]')
+                if posted_names:
+                    kept_ids = []
+                    for idx, g_name in enumerate(posted_names):
+                        g_name = g_name.strip()
+                        if not g_name:
+                            continue
+                        gid = posted_ids[idx] if idx < len(posted_ids) and posted_ids[idx].isdigit() else None
+                        try:
+                            s_val = int(posted_shifts[idx]) if idx < len(posted_shifts) else 4
+                        except (ValueError, TypeError):
+                            s_val = 4
+                        d_val = posted_descs[idx].strip() if idx < len(posted_descs) else ''
+                        if gid:
+                            grp = TeacherDutyGroup.objects.filter(id=int(gid), plan=plan).first()
+                            if grp:
+                                grp.name = g_name
+                                grp.required_shifts = s_val
+                                grp.description = d_val
+                                grp.order = idx + 1
+                                grp.save()
+                                kept_ids.append(grp.id)
+                        else:
+                            new_g = TeacherDutyGroup.objects.create(
+                                plan=plan, name=g_name, required_shifts=s_val, description=d_val, order=idx + 1
+                            )
+                            kept_ids.append(new_g.id)
+                    if kept_ids:
+                        plan.duty_groups.exclude(id__in=kept_ids).delete()
 
             post_invig_per_room = int(request.POST.get('invigilators_per_room', plan.invigilators_per_room or 2))
             plan.invigilators_per_room = post_invig_per_room
@@ -6227,6 +6509,7 @@ def exam_invigilator_plan_edit(request, plan_id):
 
     return render(request, 'examinations/invigilators/plan_form.html', {
         'plan': plan,
+        'duty_groups': list(plan.duty_groups.all()),
         'slots': slots,
         'academic_years': academic_years,
         'room_count': room_count,
@@ -6438,7 +6721,20 @@ def exam_invigilator_quotas_manage(request, plan_id):
                         reg.role = q.assigned_role
                         reg.save(update_fields=['role'])
                 synced_count += 1
-            messages.success(request, f"⚡ បានចាត់តាំងប្រធាន/អនុប្រធានចូលគ្រប់វេនប្រឡងទាំងអស់ស្វ័យប្រវត្តិចំនួន {synced_count} នាក់!")
+        elif action == 'set_unified_quota':
+            is_unified = (request.POST.get('is_unified_quota') == 'on' or request.POST.get('is_unified_quota') == 'true')
+            val = int(request.POST.get('unified_quota', 4))
+            plan.is_unified_quota = is_unified
+            plan.unified_quota = val
+            if is_unified:
+                plan.default_regular_quota = val
+                plan.default_office_quota = val
+                plan.duty_groups.all().update(required_shifts=val)
+            plan.save(update_fields=['is_unified_quota', 'unified_quota', 'default_regular_quota', 'default_office_quota'])
+            if is_unified:
+                messages.success(request, f"🌟 បានកំណត់កូតារួម {val} វេន ស្មើគ្នាសម្រាប់គ្រូគ្រប់ប្រភេទទាំងអស់ដោយជោគជ័យ!")
+            else:
+                messages.success(request, "👥 បានប្តូរមកប្រើប្រាស់ការបែងចែកកូតាតាមក្រុមគ្រូនីមួយៗវិញដោយជោគជ័យ!")
 
         return redirect('exam_invigilator_quotas_manage', plan_id=plan.id)
 
@@ -8132,8 +8428,441 @@ def exam_analytics_export_excel(request, exam_id=None):
         buffer.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
     return response
+
+
+# =====================================================================
+# HOMEROOM TEACHER & SUBJECT TEACHER ACADEMIC REPORTS & PRIVILEGES
+# =====================================================================
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def monthly_results_print_view(request):
+    """
+    Official MoEYS A4 Landscape Printable View for Monthly Exam Term Results & Class Ranking Table.
+    Enforces Homeroom Teacher & Subject Teacher permissions.
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.teachers.permissions import can_teacher_manage_homeroom, get_teacher_privileges
+
+    active_year = get_active_academic_year(request)
+    priv = get_teacher_privileges(request.user)
+
+    terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
+    selected_term_id = request.GET.get('term', str(terms.first().id if terms.first() else ''))
+    selected_term = terms.filter(id=selected_term_id).first() if selected_term_id else None
+
+    # Classrooms filter: if homeroom teacher, prefer their homeroom
+    if priv['is_admin']:
+        classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    else:
+        # Homeroom classes + teaching classes
+        allowed_ids = set(priv['homeroom_classrooms'].values_list('id', flat=True)) | priv['teaching_class_ids']
+        classrooms = Classroom.objects.filter(id__in=allowed_ids).order_by('grade_level', 'code')
+
+    selected_class_id = request.GET.get('classroom')
+    selected_class = None
+    if selected_class_id and str(selected_class_id).isdigit():
+        selected_class = classrooms.filter(id=int(selected_class_id)).first()
+    if not selected_class:
+        selected_class = priv['primary_homeroom'] or classrooms.first()
+
+    # Permission verification
+    if selected_class and not priv['is_admin'] and not can_teacher_manage_homeroom(request.user, selected_class.id) and (selected_class.id not in priv['teaching_class_ids']):
+        messages.error(request, "⚠️ លោកគ្រូ-អ្នកគ្រូ គ្មានសិទ្ធិចូលមើល ឬបោះពុម្ពលទ្ធផលថ្នាក់រៀននេះឡើយ!")
+        return redirect('teacher_dashboard')
+
+    subject_rules = []
+    summary_results = []
+    total_tested_max = Decimal('0.00')
+    passed_count = 0
+    failed_count = 0
+    highest_score = Decimal('0.00')
+
+    if selected_term and selected_class:
+        from .services import get_effective_term_subjects
+        subject_rules = get_effective_term_subjects(
+            exam_term=selected_term,
+            classroom=selected_class,
+            include_non_tested=False
+        )
+        total_tested_max = sum(r.max_score for r in subject_rules)
+
+        students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('student_id')
+        grades_map = {
+            (g.student_id, g.subject_id): g
+            for g in Grade.objects.filter(classroom=selected_class, exam_term=selected_term)
+        }
+
+        student_ranks = []
+        for student in students:
+            total_score = Decimal('0.00')
+            subject_details = []
+
+            for rule in subject_rules:
+                sub = rule.subject
+                grade_obj = grades_map.get((student.id, sub.id))
+                if grade_obj and grade_obj.score is not None:
+                    total_score += grade_obj.score
+                    subject_details.append({'subject': sub, 'score': grade_obj.score, 'max_score': rule.max_score, 'letter': grade_obj.grade_letter})
+                else:
+                    subject_details.append({'subject': sub, 'score': None, 'max_score': rule.max_score, 'letter': '-'})
+
+            percentage = round((float(total_score) / float(total_tested_max)) * 100, 2) if total_tested_max > 0 else 0.0
+            
+            if percentage >= 90:
+                letter = 'A'
+            elif percentage >= 80:
+                letter = 'B'
+            elif percentage >= 70:
+                letter = 'C'
+            elif percentage >= 60:
+                letter = 'D'
+            elif percentage >= 50:
+                letter = 'E'
+            else:
+                letter = 'F'
+
+            student_ranks.append({
+                'student': student,
+                'subject_details': subject_details,
+                'total_score': total_score,
+                'percentage': percentage,
+                'letter': letter,
+                'passed': percentage >= 50.0,
+            })
+
+        student_ranks.sort(key=lambda x: x['total_score'], reverse=True)
+        for idx, item in enumerate(student_ranks, 1):
+            item['rank'] = idx
+            summary_results.append(item)
+            if item['passed']:
+                passed_count += 1
+            else:
+                failed_count += 1
+            if item['total_score'] > highest_score:
+                highest_score = item['total_score']
+
+    school_profile = SchoolProfile.objects.first()
+    total_stus = len(summary_results)
+    female_cnt = sum(1 for s in summary_results if s['student'].gender == 'F')
+    pass_pct = round((passed_count / total_stus * 100), 1) if total_stus > 0 else 0.0
+    class_avg_pct = round(sum(s['percentage'] for s in summary_results) / total_stus, 1) if total_stus > 0 else 0.0
+
+    return render(request, 'examinations/monthly_results_print.html', {
+        'selected_term': selected_term,
+        'selected_class': selected_class,
+        'subject_rules': subject_rules,
+        'summary_results': summary_results,
+        'total_tested_max': total_tested_max,
+        'total_students': total_stus,
+        'female_students': female_cnt,
+        'passed_count': passed_count,
+        'failed_count': failed_count,
+        'pass_rate': pass_pct,
+        'highest_score': highest_score,
+        'class_average_percent': class_avg_pct,
+        'school_profile': school_profile,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def homeroom_study_tracking_book_view(request, classroom_id: int):
+    """
+    Official Homeroom Study Tracking Book (សៀវភៅតាមដានការសិក្សា / Carnet de Notes)
+    Enforces Homeroom Teacher permission for this classroom.
+    """
+    from apps.accounts.models import SchoolProfile
+    from apps.attendance.models import StudentAttendance
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    if not can_teacher_manage_homeroom(request.user, classroom.id):
+        messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
+        return redirect('teacher_dashboard')
+
+    ay = classroom.academic_year
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+
+    # Compute annual and semester results
+    annual_res = AcademicResultService.compute_annual_results(classroom, ay) if ay else {'students_data': []}
+    annual_map = {item['student'].id: item for item in annual_res.get('students_data', [])}
+
+    # Attendance summary
+    att_qs = StudentAttendance.objects.filter(student__in=students)
+    if ay and ay.start_date and ay.end_date:
+        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+    
+    excused_by_student = {}
+    unexcused_by_student = {}
+    for att in att_qs:
+        sid = att.student_id
+        if att.status == 'EXCUSED_LEAVE':
+            excused_by_student[sid] = excused_by_student.get(sid, 0) + 1
+        elif att.status == 'UNEXCUSED_ABSENCE':
+            unexcused_by_student[sid] = unexcused_by_student.get(sid, 0) + 1
+
+    tracking_data = []
+    promoted_cnt = 0
+    retained_cnt = 0
+    female_cnt = 0
+
+    for stu in students:
+        if stu.gender == 'F':
+            female_cnt += 1
+        ann_item = annual_map.get(stu.id, {})
+        s1_avg = ann_item.get('s1_average')
+        s2_avg = ann_item.get('s2_average')
+        ann_avg = ann_item.get('annual_average')
+        ann_let = ann_item.get('grade_letter', '-')
+        ann_rank = ann_item.get('rank', '-')
+        passed = ann_item.get('passed', False)
+        
+        if passed:
+            promoted_cnt += 1
+            decision = "អនុញ្ញាតឱ្យឡើងថ្នាក់"
+            conduct = "ល្អណាស់" if (ann_avg and ann_avg >= 80) else "ល្អ"
+        elif ann_avg is not None:
+            retained_cnt += 1
+            decision = "ត្រួតថ្នាក់"
+            conduct = "មធ្យម"
+        else:
+            decision = "កំពុងសិក្សា"
+            conduct = "ល្អ"
+
+        s1_data = ann_item.get('s1_data') or {}
+        s2_data = ann_item.get('s2_data') or {}
+
+        e_abs = excused_by_student.get(stu.id, 0)
+        u_abs = unexcused_by_student.get(stu.id, 0)
+
+        tracking_data.append({
+            'student': stu,
+            's1_avg': s1_avg,
+            's1_letter': s1_data.get('letter_grade', '-'),
+            's1_rank': s1_data.get('rank', '-'),
+            's2_avg': s2_avg,
+            's2_letter': s2_data.get('letter_grade', '-'),
+            's2_rank': s2_data.get('rank', '-'),
+            'annual_avg': ann_avg,
+            'annual_letter': ann_let,
+            'annual_rank': ann_rank,
+            'passed': passed,
+            'excused_absences': e_abs,
+            'unexcused_absences': u_abs,
+            'total_absences': e_abs + u_abs,
+            'conduct': conduct,
+            'decision': decision,
+        })
+
+    school_profile = SchoolProfile.objects.first()
+    total_stus = len(tracking_data)
+    pass_pct = round((promoted_cnt / total_stus * 100), 1) if total_stus > 0 else 0.0
+
+    return render(request, 'examinations/homeroom/study_tracking_book.html', {
+        'classroom': classroom,
+        'tracking_data': tracking_data,
+        'school_profile': school_profile,
+        'total_students': total_stus,
+        'female_count': female_cnt,
+        'promoted_count': promoted_cnt,
+        'retained_count': retained_cnt,
+        'pass_rate': pass_pct,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def slow_learners_report_view(request):
+    """
+    Dedicated Diagnostic Report: Subject Slow Learners & Remedial Intervention List (បញ្ជីសិស្សរៀនយឺតតាមមុខវិជ្ជា)
+    - Subject Teacher: defaults to and filters by their assigned classes and assigned subjects.
+    - Homeroom Teacher: can analyze all subjects across their homeroom classroom.
+    - Admin: full access across all classrooms and subjects.
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import ClassSubject
+    from apps.accounts.models import SchoolProfile
+    from apps.attendance.models import StudentAttendance
+    from apps.teachers.permissions import get_teacher_privileges
+
+    active_year = get_active_academic_year(request)
+    priv = get_teacher_privileges(request.user)
+
+    terms = ExamTerm.objects.filter(academic_year=active_year).order_by('-start_date') if active_year else ExamTerm.objects.all().order_by('-start_date')
+    if not terms.exists():
+        terms = ExamTerm.objects.all().order_by('-start_date')
+    selected_term_id = request.GET.get('term') or request.GET.get('exam_term_id') or str(terms.first().id if terms.first() else '')
+    selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else terms.first()
+
+    # Available classrooms based on teacher assignments
+    if priv['is_admin']:
+        classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    else:
+        allowed_cls_ids = set(priv['homeroom_classrooms'].values_list('id', flat=True)) | priv['teaching_class_ids']
+        classrooms = Classroom.objects.filter(id__in=allowed_cls_ids).order_by('grade_level', 'code')
+
+    selected_class_id = request.GET.get('classroom') or request.GET.get('classroom_id')
+    selected_class = None
+    if selected_class_id and str(selected_class_id).isdigit():
+        selected_class = Classroom.objects.filter(id=int(selected_class_id)).first()
+    if not selected_class:
+        selected_class = priv['primary_homeroom'] or classrooms.first()
+
+    # Subjects for the classroom
+    class_subjects = selected_class.get_assigned_subjects() if selected_class else Subject.objects.none()
+    if not priv['is_admin'] and selected_class and not priv['homeroom_classrooms'].filter(id=selected_class.id).exists():
+        # Regular subject teacher: restrict to subjects they teach
+        class_subjects = class_subjects.filter(id__in=priv['teaching_subject_ids'])
+
+    selected_sub_id = request.GET.get('subject') or request.GET.get('subject_id')
+    selected_subject = None
+    if selected_sub_id and str(selected_sub_id).isdigit():
+        selected_subject = Subject.objects.filter(id=int(selected_sub_id)).first()
+
+    # Query grades below 50% threshold
+    slow_students = []
+    affected_subjects = set()
+    homeroom_teacher_map = {}
+    if selected_class:
+        for cs in ClassSubject.objects.filter(classroom=selected_class).select_related('teacher'):
+            if cs.teacher:
+                homeroom_teacher_map[cs.subject_id] = cs.teacher.khmer_name
+
+    if selected_term and selected_class:
+        grades_qs = Grade.objects.filter(
+            classroom=selected_class,
+            exam_term=selected_term
+        ).select_related('student', 'subject')
+
+        if selected_subject:
+            grades_qs = grades_qs.filter(subject=selected_subject)
+        elif not priv['is_admin'] and not priv['homeroom_classrooms'].filter(id=selected_class.id).exists():
+            grades_qs = grades_qs.filter(subject__in=class_subjects)
+
+        # Pre-count absences
+        att_qs = StudentAttendance.objects.filter(
+            student__classroom=selected_class,
+            status='UNEXCUSED_ABSENCE'
+        )
+        if selected_term.start_date and selected_term.end_date:
+            att_qs = att_qs.filter(date__gte=selected_term.start_date, date__lte=selected_term.end_date)
+        absences_by_student = {}
+        for a in att_qs:
+            absences_by_student[a.student_id] = absences_by_student.get(a.student_id, 0) + 1
+
+        for g in grades_qs:
+            if g.score is None:
+                continue
+            max_sc = g.max_score or Decimal('50.00')
+            pass_mark = max_sc * Decimal('0.5')
+            if g.score < pass_mark:
+                pct = round((float(g.score) / float(max_sc)) * 100, 1)
+                deficit = round(pass_mark - g.score, 1)
+                t_name = homeroom_teacher_map.get(g.subject_id, '')
+                abs_cnt = absences_by_student.get(g.student_id, 0)
+
+                remedial_action = "បំប៉នបន្ថែមម៉ោងសិក្សា"
+                if abs_cnt >= 3:
+                    remedial_action = "ជួបអាណាព្យាបាល & បំប៉នវត្តមាន"
+                elif pct < 30:
+                    remedial_action = "បង្រៀនពង្រឹងមូលដ្ឋានគ្រឹះឡើងវិញ"
+
+                slow_students.append({
+                    'student': g.student,
+                    'subject': g.subject,
+                    'teacher_name': t_name,
+                    'score': g.score,
+                    'max_score': max_sc,
+                    'percentage': pct,
+                    'deficit_score': deficit,
+                    'absence_count': abs_cnt,
+                    'remedial_action': remedial_action,
+                })
+                affected_subjects.add(g.subject_id)
+
+        slow_students.sort(key=lambda x: x['percentage'])
+
+    school_profile = SchoolProfile.objects.first()
+    slow_count = len(slow_students)
+    slow_female = sum(1 for s in slow_students if s['student'].gender == 'F')
+    female_pct = round((slow_female / slow_count * 100), 1) if slow_count > 0 else 0.0
+
+    homeroom_cls_ids = set(priv['homeroom_classrooms'].values_list('id', flat=True))
+
+    return render(request, 'examinations/reports/slow_learners_list.html', {
+        'terms': terms,
+        'classrooms': classrooms,
+        'subjects': class_subjects,
+        'selected_term': selected_term,
+        'selected_class': selected_class,
+        'selected_subject': selected_subject,
+        'slow_students': slow_students,
+        'slow_students_count': slow_count,
+        'slow_female_count': slow_female,
+        'female_slow_percent': female_pct,
+        'affected_subjects_count': len(affected_subjects),
+        'homeroom_cls_ids': homeroom_cls_ids,
+        'school_profile': school_profile,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'STUDENT'])
+def student_cumulative_dossier_view(request, student_id: int):
+    """
+    Official MoEYS Student Cumulative Academic Dossier Booklet (សៀវភៅសិក្ខាគារិក ពីថ្នាក់ទី៧ ដល់ ទី១២)
+    Single student view.
+    """
+    from .services import get_student_cumulative_dossier_data
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), id=student_id)
+
+    # Permission check: Admin, Homeroom teacher of student, or the student themselves
+    is_admin = bool(request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
+    is_owner = bool(student.user_id == request.user.id)
+    is_homeroom = bool(student.classroom and can_teacher_manage_homeroom(request.user, student.classroom.id))
+
+    if not (is_admin or is_homeroom or is_owner):
+        messages.error(request, "⚠️ លោកគ្រូ-អ្នកគ្រូ គ្មានសិទ្ធិចូលមើលសៀវភៅសិក្ខាគារិករបស់សិស្សនេះឡើយ!")
+        return redirect('teacher_dashboard')
+
+    dossier = get_student_cumulative_dossier_data(student)
+
+    return render(request, 'examinations/student/cumulative_dossier.html', {
+        'dossier_list': [dossier] if dossier else [],
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def homeroom_cumulative_dossier_batch_view(request, classroom_id: int):
+    """
+    Batch generation of Student Cumulative Academic Dossier Booklets (សៀវភៅសិក្ខាគារិក)
+    for all students in a homeroom classroom.
+    """
+    from .services import get_student_cumulative_dossier_data
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    if not can_teacher_manage_homeroom(request.user, classroom.id):
+        messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
+        return redirect('teacher_dashboard')
+
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+    dossier_list = []
+    for stu in students:
+        d_data = get_student_cumulative_dossier_data(stu)
+        if d_data:
+            dossier_list.append(d_data)
+
+    return render(request, 'examinations/student/cumulative_dossier.html', {
+        'dossier_list': dossier_list,
+    })
+
 
 
 
