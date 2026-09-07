@@ -339,8 +339,24 @@ def run_tests():
     assert 'id="fontSizeDisplay"' in html_custom, "Font size display badge must be present"
     print("12. [PASS] Row height (28px) and Font size (11.5pt) live controls & CSS variables verified!")
 
+    # 13. VERIFY NO DUPLICATE SLOT_ID FORM INPUT & RESILIENT MULTI-PARAM HANDLING
+    # Verify template does not contain redundant hidden slot_id input
+    assert '<input type="hidden" name="slot_id"' not in html_custom, "Redundant hidden slot_id input must not exist"
+    assert '<select name="slot_id" class="bar-select" form="filterForm"' in html_custom, "Select element must bind to filterForm"
+
+    # Test that even if query string contains duplicate slot_id (e.g. ?slot_id=X&slot_id=), it selects slot X correctly
+    req_dup_slot = factory.get(f'/examinations/invigilator-plans/{plan.id}/roster/print/?slot_id={slot.id}&slot_id=&row_height=28&font_size=11')
+    req_dup_slot.user = admin_user
+    req_dup_slot.session = SessionStore()
+    setattr(req_dup_slot, '_messages', FallbackStorage(req_dup_slot))
+    resp_dup = exam_invigilator_roster_print(req_dup_slot, plan_id=plan.id)
+    assert resp_dup.status_code == 200
+    html_dup = resp_dup.content.decode('utf-8')
+    assert f'value="{slot.id}" selected' in html_dup, f"Option with value={slot.id} must be selected in HTML"
+    print("13. [PASS] Slot ID single form binding & duplicate param resilience verified!")
+
     print("\n================================================================================")
-    print("🎉 ALL 12 TESTS PASSED (100%)! ROSTER PRINT SHEET COMPLIES 100% WITH ALL SPECS.")
+    print("🎉 ALL 13 TESTS PASSED (100%)! ROSTER PRINT SHEET COMPLIES 100% WITH ALL SPECS.")
     print("================================================================================")
 
 

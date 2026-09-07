@@ -5988,15 +5988,15 @@ def exam_invigilator_plan_create(request):
     active_year = get_active_academic_year(request)
     academic_years = AcademicYear.objects.all().order_by('-start_date')
 
-    # Read pre-linking parameters if opened from an exam session
-    pre_exam_id = request.GET.get('exam_id')
-    pre_session_key = request.GET.get('session_key', '').strip()
-    pre_title = request.GET.get('title', '').strip()
-    pre_clean_name = request.GET.get('clean_session_name', '').strip()
-    pre_date_str = request.GET.get('date', '').strip()
-    pre_rooms_str = request.GET.get('rooms', '').strip()
-    pre_year_id = request.GET.get('year') or request.GET.get('academic_year')
-    pre_invigilators_per_room = request.GET.get('invigilators_per_room', '2').strip()
+    # Read pre-linking parameters if opened from an exam session or submitted via form
+    pre_exam_id = request.GET.get('exam_id') or request.POST.get('exam_id')
+    pre_session_key = (request.GET.get('session_key', '') or request.POST.get('session_key', '')).strip()
+    pre_title = (request.GET.get('title', '') or request.POST.get('title', '')).strip()
+    pre_clean_name = (request.GET.get('clean_session_name', '') or request.POST.get('clean_session_name', '')).strip()
+    pre_date_str = (request.GET.get('date', '') or request.POST.get('date', '') or request.POST.get('start_date', '')).strip()
+    pre_rooms_str = (request.GET.get('rooms', '') or request.POST.get('rooms', '') or request.POST.get('rooms_count', '')).strip()
+    pre_year_id = request.GET.get('year') or request.GET.get('academic_year') or request.POST.get('year') or request.POST.get('academic_year')
+    pre_invigilators_per_room = (request.GET.get('invigilators_per_room', '') or request.POST.get('invigilators_per_room', '2')).strip()
     invigilators_per_room = 1 if pre_invigilators_per_room == '1' else 2
 
     # Guard: Invigilator plans can only exist and operate via Exam Sessions (សម័យប្រឡង)
@@ -7353,9 +7353,11 @@ def exam_invigilator_roster_print(request, plan_id):
         font_size_val = 9.5
 
     row_height_str = str(int(row_height_val))
-    font_size_str = str(font_size_val)
+    font_size_str = str(int(font_size_val)) if font_size_val.is_integer() else str(font_size_val)
 
-    slot_id = request.GET.get('slot_id', '').strip() or request.GET.get('slot', '').strip()
+    # Resilient slot_id extraction (handles list if multiple slot_id params are submitted)
+    slot_ids = [s.strip() for s in request.GET.getlist('slot_id') if s.strip()]
+    slot_id = slot_ids[0] if slot_ids else (request.GET.get('slot_id', '').strip() or request.GET.get('slot', '').strip())
     if slot_id and slot_id.isdigit():
         filtered_slots = [s for s in all_slots if s.id == int(slot_id)]
     else:
