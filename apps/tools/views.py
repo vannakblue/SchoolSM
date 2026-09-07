@@ -1125,8 +1125,65 @@ def _get_lan_ip():
         return "127.0.0.1"
 
 
+def find_flutter_executable():
+    """Finds flutter.bat or flutter executable on Windows/Linux."""
+    which_path = shutil.which('flutter')
+    if which_path:
+        return which_path
+    common_paths = [
+        r"C:\src\flutter\bin\flutter.bat",
+        r"C:\src\flutter\bin\flutter",
+        r"C:\flutter\bin\flutter.bat",
+        r"C:\flutter\bin\flutter",
+        r"e:\flutter\bin\flutter.bat",
+        r"e:\flutter\bin\flutter",
+        r"d:\flutter\bin\flutter.bat",
+        r"d:\flutter\bin\flutter",
+        os.path.expandvars(r"%LOCALAPPDATA%\flutter\bin\flutter.bat"),
+    ]
+    for p in common_paths:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def normalize_direct_download_url(url: str) -> str:
+    """
+    Converts Google Drive and Dropbox preview links to direct download links.
+    - Google Drive:
+        https://drive.google.com/file/d/<ID>/view?usp=sharing -> https://drive.google.com/uc?export=download&id=<ID>
+        https://drive.google.com/open?id=<ID> -> https://drive.google.com/uc?export=download&id=<ID>
+    - Dropbox:
+        https://www.dropbox.com/s/.../app.apk?dl=0 -> ...?dl=1
+    """
+    if not url:
+        return ""
+    url = url.strip()
+
+    # Google Drive file/d/ID or open?id=ID
+    gd_match = re.search(r'drive\.google\.com/file/d/([a-zA-Z0-9_-]+)', url)
+    if gd_match:
+        file_id = gd_match.group(1)
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    gd_open_match = re.search(r'drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)', url)
+    if gd_open_match:
+        file_id = gd_open_match.group(1)
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    # Dropbox ?dl=0 -> ?dl=1
+    if 'dropbox.com' in url:
+        if 'dl=0' in url:
+            return url.replace('dl=0', 'dl=1')
+        elif '?dl=1' not in url and '&dl=1' not in url:
+            sep = '&' if '?' in url else '?'
+            return f"{url}{sep}dl=1"
+
+    return url
+
+
 def _run_apk_build_thread():
-    """Background worker compiling Flutter release APK."""
+    """Background worker compiling Flutter release APK on Local PC."""
     global BUILD_STATE
     with _BUILD_LOCK:
         BUILD_STATE['status'] = 'building'
@@ -1156,6 +1213,13 @@ def _run_apk_build_thread():
         env['ANDROID_SDK_ROOT'] = android_sdk
         env['PATH'] = f"{android_sdk}\\platform-tools;{android_sdk}\\cmdline-tools\\latest\\bin;{env.get('PATH', '')}"
 
+    # Configure Flutter in PATH
+    flutter_bin = find_flutter_executable()
+    if flutter_bin:
+        flutter_dir = os.path.dirname(flutter_bin)
+        env['PATH'] = f"{flutter_dir};{env.get('PATH', '')}"
+    flutter_cmd = flutter_bin if flutter_bin else "flutter"
+
     mobile_dir = os.path.join(settings.BASE_DIR, 'schoolsm_mobile')
     pubspec = os.path.join(mobile_dir, 'pubspec.yaml')
     if not os.path.exists(pubspec):
@@ -1170,7 +1234,7 @@ def _run_apk_build_thread():
             BUILD_STATE['logs'].append("[*] Resolving Flutter packages (flutter pub get)...")
 
         proc_pub = subprocess.run(
-            ["flutter", "pub", "get"],
+            [flutter_cmd, "pub", "get"],
             cwd=mobile_dir,
             env=env,
             capture_output=True,
@@ -1189,7 +1253,7 @@ def _run_apk_build_thread():
             BUILD_STATE['logs'].append("[*] Compiling Release APK (flutter build apk --release)...")
 
         cmd = [
-            "flutter", "build", "apk", "--release",
+            flutter_cmd, "build", "apk", "--release",
             "--no-tree-shake-icons",
             "--android-skip-build-dependency-validation"
         ]
@@ -1252,7 +1316,7 @@ GITHUB_ACTIONS_URL = "https://github.com/vannakblue/SchoolSM/actions/workflows/b
 def tool_mobile_app_manager(request):
     """
     Web Dashboard for Mobile App & APK Builder:
-    Trigger builds, monitor live logs, download APK, and share QR code.
+    Trigger builds (Local 100%), manage Custom Cloud Storage, download APK, and share QR code.
     """
     apk_path = os.path.join(settings.BASE_DIR, 'SchoolSM-Mobile.apk')
     apk_exists = os.path.exists(apk_path)
@@ -1264,13 +1328,23 @@ def tool_mobile_app_manager(request):
     host = request.get_host()
     port = host.split(':')[1] if ':' in host else '8000'
     lan_download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
-
-    # Also regular download URL
     web_download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
 
-    # Check Flutter availability on current server
-    flutter_installed = bool(shutil.which('flutter'))
-    flutter_version = "Flutter 3.47.1" if flutter_installed else "Not Installed (Cloud Server)"
+    # Read Custom Cloud Storage Config
+    cloud_config = get_mobile_download_config()
+    custom_apk_url = cloud_config.get('custom_apk_url', '').strip()
+    is_cloud_active = bool(custom_apk_url)
+
+    # Effective download URL for user / QR display
+    if is_cloud_active:
+        effective_download_url = custom_apk_url
+    else:
+        effective_download_url = lan_download_url
+
+    # Check Flutter availability on current server / local PC
+    flutter_bin = find_flutter_executable()
+    flutter_installed = bool(flutter_bin)
+    flutter_version = "Flutter (ម៉ាស៊ីន Local ត្រៀមរួចរាល់ 100%)" if flutter_installed else "មិនទាន់ដំឡើង (Cloud Server)"
     
     with _BUILD_LOCK:
         current_build = dict(BUILD_STATE)
@@ -1280,8 +1354,10 @@ def tool_mobile_app_manager(request):
         'apk_exists': apk_exists,
         'apk_size_mb': apk_size_mb,
         'apk_mtime': apk_mtime,
+        'effective_download_url': effective_download_url,
         'lan_download_url': lan_download_url,
         'web_download_url': web_download_url,
+        'is_cloud_active': is_cloud_active,
         'lan_ip': lan_ip,
         'flutter_version': flutter_version,
         'flutter_installed': flutter_installed,
@@ -1289,7 +1365,7 @@ def tool_mobile_app_manager(request):
         'github_ipa_url': GITHUB_IPA_URL,
         'github_actions_url': GITHUB_ACTIONS_URL,
         'build_state': current_build,
-        'cloud_config': get_mobile_download_config(),
+        'cloud_config': cloud_config,
     })
 
 
@@ -1298,9 +1374,9 @@ def tool_mobile_app_manager(request):
 @require_POST
 def api_build_mobile_apk(request):
     """
-    Triggers background compilation of Release APK.
+    Triggers background compilation of Release APK on Local PC (100%).
     """
-    if not shutil.which('flutter'):
+    if not find_flutter_executable():
         return JsonResponse({
             'status': 'error',
             'message': 'Cloud Server (ដូចជា Render.com) មិនមានដំឡើង Flutter SDK & Android SDK ឡើយ។ សូមចុចប្រើប្រាស់ Cloud Build តាម GitHub Actions ឬ Build លើ Local PC រួច Upload ឯកសារ APK មកវិញ។'
@@ -1447,17 +1523,21 @@ def tool_download_mobile_ipa(request):
 def api_save_mobile_cloud_config(request):
     """
     Saves custom cloud download links (Google Drive, Dropbox, Cloudflare R2, AWS S3, etc.)
+    Automatically normalizes share URLs to direct download URLs.
     """
-    custom_apk_url = request.POST.get('custom_apk_url', '').strip()
-    custom_ipa_url = request.POST.get('custom_ipa_url', '').strip()
+    raw_apk_url = request.POST.get('custom_apk_url', '').strip()
+    raw_ipa_url = request.POST.get('custom_ipa_url', '').strip()
+
+    custom_apk_url = normalize_direct_download_url(raw_apk_url)
+    custom_ipa_url = normalize_direct_download_url(raw_ipa_url)
 
     data = {
         'custom_apk_url': custom_apk_url,
         'custom_ipa_url': custom_ipa_url,
-        'updated_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'updated_at': timezone.now().strftime('%d/%m/%Y %I:%M %p'),
     }
     save_mobile_download_config(data)
-    messages.success(request, "🎉 បានរក្សាទុកការកំណត់ Cloud Storage (Custom URLs) ដោយជោគជ័យ!")
+    messages.success(request, "🎉 បានរក្សាទុកការកំណត់ Cloud Storage (Custom URLs) ដោយជោគជ័យ! អ្នកប្រើប្រាស់អាចស្កេន QR Code ឬចុចទាញយកបានភ្លាមៗ។")
     return redirect('tool_mobile_app_manager')
 
 
@@ -1498,24 +1578,30 @@ def tool_public_mobile_download(request):
     })
 
 
-
-
-
 def tool_mobile_apk_qr(request):
     """
-    Generates dynamic high-res QR code pointing to LAN/public APK download.
+    Generates dynamic high-res QR code pointing to APK download.
+    If Admin configured custom Cloud Storage (Google Drive, Dropbox, etc.),
+    the QR code points directly to custom_apk_url so that ANY phone scanning it
+    can download immediately from any network in the world!
     """
     import qrcode
 
-    lan_ip = _get_lan_ip()
-    host = request.get_host()
-    port = host.split(':')[1] if ':' in host else '8000'
-    
-    # If host is localhost, replace with LAN IP so phone can reach it
-    if '127.0.0.1' in host or 'localhost' in host:
-        download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
+    cfg = get_mobile_download_config()
+    custom_apk_url = cfg.get('custom_apk_url', '').strip()
+
+    if custom_apk_url:
+        download_url = custom_apk_url
     else:
-        download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
+        lan_ip = _get_lan_ip()
+        host = request.get_host()
+        port = host.split(':')[1] if ':' in host else '8000'
+        
+        # If host is localhost, replace with LAN IP so phone can reach it
+        if '127.0.0.1' in host or 'localhost' in host:
+            download_url = f"http://{lan_ip}:{port}{reverse('tool_download_mobile_apk')}"
+        else:
+            download_url = request.build_absolute_uri(reverse('tool_download_mobile_apk'))
 
     qr = qrcode.QRCode(
         version=1,
