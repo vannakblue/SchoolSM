@@ -322,8 +322,19 @@
             </div>
 
             <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- 25-Row vs Actual Count Toggle Switch -->
+                <div class="btn-group btn-group-sm me-1 shadow-xs" role="group" aria-label="Pad 25 rows toggle">
+                    <button type="button" class="btn {% if pad_25 %}btn-primary text-white fw-bold{% else %}btn-outline-secondary bg-white text-dark{% endif %}" onclick="setPad25('1')" title="ទុកចន្លោះជួរដេកទទេរហូតដល់លេខរៀងទី ២៥ (ស្តង់ដារ ២៥ តុ/បន្ទប់)">
+                        <i class="fa-solid fa-table-cells me-1"></i> ទុកចន្លោះដល់លេខ ២៥
+                    </button>
+                    <button type="button" class="btn {% if not pad_25 %}btn-primary text-white fw-bold{% else %}btn-outline-secondary bg-white text-dark{% endif %}" onclick="setPad25('0')" title="បិទបញ្ចប់តារាងត្រឹមចំនួនសិស្សជាក់ស្តែងក្នុងបន្ទប់">
+                        <i class="fa-solid fa-compress me-1"></i> បិទត្រឹមចំនួនជាក់ស្តែង
+                    </button>
+                </div>
+
                 <!-- Room Filter Form -->
                 <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <input type="hidden" name="pad_25" value="{% if pad_25 %}1{% else %}0{% endif %}">
                     <!-- Preserve any custom query params -->
                     {% if request.GET.province %}<input type="hidden" name="province" value="{{ request.GET.province }}">{% endif %}
                     {% if request.GET.school_name %}<input type="hidden" name="school_name" value="{{ request.GET.school_name }}">{% endif %}
@@ -365,6 +376,27 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <!-- 25 Rows Option in Modal -->
+                        <div class="mb-3 p-2.5 bg-light rounded-3 border">
+                            <label class="form-label small fw-bold text-dark d-block mb-2">
+                                <i class="fa-solid fa-list-ol text-primary me-1"></i> ទម្រង់ចំនួនជួរដេកក្នុងតារាងបន្ទប់ប្រឡង
+                            </label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="pad_25" id="radio_pad_25_1" value="1" {% if pad_25 %}checked{% endif %}>
+                                <label class="form-check-label small" for="radio_pad_25_1">
+                                    <strong>ទុកចន្លោះដល់លេខរៀងទី ២៥ (ស្តង់ដារ ២៥ តុ/បន្ទប់)</strong>
+                                    <div class="text-muted" style="font-size: 0.75rem;">រក្សាទុកជួរដេកទទេរហូតដល់លេខរៀងទី ២៥ ទោះបន្ទប់មានសិស្សតិចជាង ២៥ នាក់ក៏ដោយ។</div>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="pad_25" id="radio_pad_25_0" value="0" {% if not pad_25 %}checked{% endif %}>
+                                <label class="form-check-label small" for="radio_pad_25_0">
+                                    <strong>បិទត្រឹមចំនួនជាក់ស្តែង</strong>
+                                    <div class="text-muted" style="font-size: 0.75rem;">បង្ហាញជួរដេកត្រឹមចំនួនសិស្សជាក់ស្តែងក្នុងបន្ទប់ និងចុះហត្ថលេខាពីក្រោមភ្លាមៗ។</div>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-bold">ខេត្ត/រាជធានី (Province / City)</label>
                             <input type="text" name="province" class="form-control form-control-sm" value="{{ province_name }}">
@@ -490,6 +522,12 @@
     <!-- Bootstrap 5 JS for modal -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function setPad25(val) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('pad_25', val);
+            window.location.href = url.toString();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const roleTitles = document.querySelectorAll('.principal-title');
             const roleInput = document.getElementById('inputSignRole');

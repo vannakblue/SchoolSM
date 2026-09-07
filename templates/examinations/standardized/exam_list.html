@@ -663,6 +663,11 @@
                                     <i class="fa-solid fa-plus-circle me-1"></i> រៀបចំវេនអនុរក្សសម្រាប់សម័យប្រឡងនេះឥឡូវនេះ
                                 </a>
                             </div>
+                            <div class="mt-2.5">
+                                <a href="{% url 'exam_invigilator_plans_list' %}" class="small text-decoration-none text-muted">
+                                    <i class="fa-solid fa-list-check me-1"></i> ឬចូលទៅមើលបញ្ជីគម្រោងវេនអនុរក្សទាំងអស់
+                                </a>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -801,6 +806,9 @@
                                 <option value="CONTINUOUS_IN_SHIFT" selected>
                                     ⚡ រាប់បន្តគ្នាតាមវេនប្រឡងក្នុងសម័យប្រឡងនេះ (Continuous in Shift - ព្រឹកបន្តព្រឹក បន្ទប់ ០១ ដល់ ..., រសៀលចាប់ពី បន្ទប់ ០១ ឡើងវិញ)
                                 </option>
+                                <option value="GRADE_RANGE_IN_SHIFT">
+                                    🎯 រាប់បន្តគ្នាតាមចន្លោះកម្រិតថ្នាក់ក្នុងវេន (Range in Shift - ឧ. ថ្នាក់ទី ៧ ដល់ ៩ រាប់បន្តគ្នា ចាប់ពីថ្នាក់ទី ១០ រាប់លេខតុ ១ ឡើងវិញ)
+                                </option>
                                 <option value="RESET_PER_GRADE">
                                     🔄 រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នីមួយៗដាច់ដោយឡែក (Reset per Grade - បន្ទប់ ០១ លេខតុ ០១ គ្រប់កម្រិត)
                                 </option>
@@ -808,6 +816,46 @@
                                     🔢 រាប់បន្តគ្នារហូតគ្រប់កម្រិតថ្នាក់ទាំងអស់ក្នុងសម័យប្រឡងនេះ (Continuous across All Grades - បន្ទប់ ០១ រហូតដល់ចុងក្រោយ)
                                 </option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Batch Grade Range Options (Shown when GRADE_RANGE_IN_SHIFT selected) -->
+                    <div id="batchGradeRangeInputs" class="p-3 bg-light rounded-3 border border-primary border-opacity-25 mb-3 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold small text-primary"><i class="fa-solid fa-sliders me-1"></i> កំណត់ចន្លោះកម្រិតថ្នាក់ដែលត្រូវរាប់បន្តគ្នាក្នុងវេនតែមួយ៖</span>
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" style="font-size: 0.72rem;" onclick="setBatchRangePreset(7, 9)">៧ ដល់ ៩</button>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" style="font-size: 0.72rem;" onclick="setBatchRangePreset(10, 12)">១០ ដល់ ១២</button>
+                            </div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">លេខតុ ១ ចាប់ពីថ្នាក់ទី</label>
+                                <select name="range_from_grade" id="batch_range_from_grade" class="form-select form-select-sm fw-bold">
+                                    <option value="7" selected>ថ្នាក់ទី ៧</option>
+                                    <option value="8">ថ្នាក់ទី ៨</option>
+                                    <option value="9">ថ្នាក់ទី ៩</option>
+                                    <option value="10">ថ្នាក់ទី ១០</option>
+                                    <option value="11">ថ្នាក់ទី ១១</option>
+                                    <option value="12">ថ្នាក់ទី ១២</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">រហូតដល់ថ្នាក់ទី</label>
+                                <select name="range_to_grade" id="batch_range_to_grade" class="form-select form-select-sm fw-bold">
+                                    <option value="7">ថ្នាក់ទី ៧</option>
+                                    <option value="8">ថ្នាក់ទី ៨</option>
+                                    <option value="9" selected>ថ្នាក់ទី ៩</option>
+                                    <option value="10">ថ្នាក់ទី ១០</option>
+                                    <option value="11">ថ្នាក់ទី ១១</option>
+                                    <option value="12">ថ្នាក់ទី ១២</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                    💡 ថ្នាក់ដែលស្ថិតក្នុងចន្លោះនេះនឹងរាប់បន្ទប់ និងលេខតុបន្តគ្នា។ ថ្នាក់បន្ទាប់ពីចន្លោះនេះ នឹងចាប់ផ្ដើមរាប់ពី <strong>បន្ទប់ ០១ និងលេខតុ ១</strong> ឡើងវិញ។
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -842,6 +890,24 @@
 </div>
 
 <script>
+document.getElementById('batch_numbering_mode')?.addEventListener('change', function() {
+    const rangeDiv = document.getElementById('batchGradeRangeInputs');
+    if (rangeDiv) {
+        if (this.value === 'GRADE_RANGE_IN_SHIFT') {
+            rangeDiv.classList.remove('d-none');
+        } else {
+            rangeDiv.classList.add('d-none');
+        }
+    }
+});
+
+function setBatchRangePreset(fromG, toG) {
+    const fromSel = document.getElementById('batch_range_from_grade');
+    const toSel = document.getElementById('batch_range_to_grade');
+    if (fromSel) fromSel.value = fromG;
+    if (toSel) toSel.value = toG;
+}
+
 function toggleAllSessions(expand) {
     const collapsibles = document.querySelectorAll('.session-card .collapse');
     collapsibles.forEach(el => {

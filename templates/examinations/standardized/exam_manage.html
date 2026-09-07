@@ -656,6 +656,54 @@ function batchSetDiscipline(action) {
                             </label>
                         </div>
 
+                        <div class="form-check p-3 bg-light rounded-3 border border-primary border-opacity-25 shadow-2xs">
+                            <input class="form-check-input" type="radio" name="numbering_mode" id="mode_range" value="GRADE_RANGE_IN_SHIFT" onchange="toggleCustomNumbering(this.value)">
+                            <label class="form-check-label fw-bold small text-dark d-block" for="mode_range">
+                                🎯 រាប់បន្តគ្នាតាមចន្លោះកម្រិតថ្នាក់ក្នុងវេន {{ exam.get_session_display }} (Range in Same Shift)
+                                <div class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                    កំណត់ឱ្យ <strong>លេខតុ ១ (បន្ទប់ ០១)</strong> ចាប់ផ្ដើមចេញពីកម្រិតថ្នាក់ណា ដល់កម្រិតថ្នាក់ណា ក្នុងវេនជាមួយគ្នានេះ។
+                                </div>
+                            </label>
+                            <div id="gradeRangeInputs" class="pt-2 d-none">
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <span class="text-muted small align-self-center me-1" style="font-size: 0.75rem;">ជម្រើសរហ័ស៖</span>
+                                    <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" style="font-size: 0.75rem;" onclick="setRangePreset(7, 9)">
+                                        ថ្នាក់ទី ៧ ដល់ ទី ៩ (អនុវិទ្យាល័យ)
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" style="font-size: 0.75rem;" onclick="setRangePreset(10, 12)">
+                                        ថ្នាក់ទី ១០ ដល់ ទី ១២ (វិទ្យាល័យ)
+                                    </button>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-primary mb-1">
+                                            <i class="fa-solid fa-play me-1"></i> លេខតុ ១ ចាប់ពីថ្នាក់ទី
+                                        </label>
+                                        <select name="range_from_grade" id="range_from_grade" class="form-select form-select-sm fw-bold border-primary" onchange="updateRangeHelpText()">
+                                            {% for g in all_standard_grades|default:"7,8,9,10,11,12" %}
+                                            <option value="{{ g }}" {% if exam.grade_level in "7,8,9" and g == 7 or exam.grade_level in "10,11,12" and g == 10 or g == exam.grade_level %}selected{% endif %}>ថ្នាក់ទី {{ g }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-primary mb-1">
+                                            <i class="fa-solid fa-flag-checkered me-1"></i> រហូតដល់ថ្នាក់ទី
+                                        </label>
+                                        <select name="range_to_grade" id="range_to_grade" class="form-select form-select-sm fw-bold border-primary" onchange="updateRangeHelpText()">
+                                            {% for g in all_standard_grades|default:"7,8,9,10,11,12" %}
+                                            <option value="{{ g }}" {% if exam.grade_level in "7,8,9" and g == 9 or exam.grade_level in "10,11,12" and g == 12 or g == exam.grade_level %}selected{% endif %}>ថ្នាក់ទី {{ g }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <div class="alert alert-info py-2 px-2.5 mb-0 small rounded-2" id="rangeExplanationBox" style="font-size: 0.78rem;">
+                                            <!-- Dynamic explanation via JS -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-check p-3 bg-light rounded-3 border">
                             <input class="form-check-input" type="radio" name="numbering_mode" id="mode_all" value="CONTINUOUS_ALL_GRADES" onchange="toggleCustomNumbering(this.value)">
                             <label class="form-check-label fw-bold small text-dark d-block" for="mode_all">
@@ -722,12 +770,56 @@ function batchSetDiscipline(action) {
 <script>
 function toggleCustomNumbering(val) {
     const customDiv = document.getElementById('customNumberingInputs');
-    if (!customDiv) return;
-    if (val === 'CUSTOM') {
-        customDiv.classList.remove('d-none');
-    } else {
-        customDiv.classList.add('d-none');
+    const rangeDiv = document.getElementById('gradeRangeInputs');
+    if (customDiv) {
+        if (val === 'CUSTOM') {
+            customDiv.classList.remove('d-none');
+        } else {
+            customDiv.classList.add('d-none');
+        }
     }
+    if (rangeDiv) {
+        if (val === 'GRADE_RANGE_IN_SHIFT') {
+            rangeDiv.classList.remove('d-none');
+            updateRangeHelpText();
+        } else {
+            rangeDiv.classList.add('d-none');
+        }
+    }
+}
+
+function setRangePreset(fromG, toG) {
+    const fromSel = document.getElementById('range_from_grade');
+    const toSel = document.getElementById('range_to_grade');
+    if (fromSel) fromSel.value = fromG;
+    if (toSel) toSel.value = toG;
+    updateRangeHelpText();
+}
+
+function updateRangeHelpText() {
+    const fromSel = document.getElementById('range_from_grade');
+    const toSel = document.getElementById('range_to_grade');
+    const box = document.getElementById('rangeExplanationBox');
+    if (!fromSel || !toSel || !box) return;
+
+    let fromG = parseInt(fromSel.value);
+    let toG = parseInt(toSel.value);
+    if (fromG > toG) {
+        const tmp = fromG; fromG = toG; toG = tmp;
+        fromSel.value = fromG;
+        toSel.value = toG;
+    }
+    const currG = {{ exam.grade_level }};
+
+    let html = '';
+    if (currG === fromG) {
+        html = `✨ <strong>សម័យប្រឡងថ្នាក់ទី ${currG} នេះ</strong> ជាថ្នាក់ចាប់ផ្ដើមនៃចន្លោះ (ថ្នាក់ទី ${fromG} ដល់ ទី ${toG}) ដូច្នេះនឹងចាប់ផ្ដើមរាប់ពី <strong>បន្ទប់ ០១ និងលេខតុ ១ (អត្តលេខ ០០១)</strong> ភ្លាមៗ។`;
+    } else if (currG > fromG && currG <= toG) {
+        html = `✨ <strong>សម័យប្រឡងថ្នាក់ទី ${currG} នេះ</strong> ស្ថិតក្នុងចន្លោះ (ថ្នាក់ទី ${fromG} ដល់ ទី ${toG}) ដូច្នេះនឹងរាប់លេខបន្ទប់ និងលេខតុបន្តពីថ្នាក់ទីមុនៗ (ដែលចាប់ផ្ដើមលេខតុ ១ ពីថ្នាក់ទី ${fromG})។`;
+    } else {
+        html = `⚠️ សម័យប្រឡងថ្នាក់ទី ${currG} នេះនៅក្រៅចន្លោះ (ថ្នាក់ទី ${fromG} ដល់ ទី ${toG}) ដូច្នេះនឹងចាប់ផ្ដើមរាប់ពី <strong>បន្ទប់ ០១ និងលេខតុ ១</strong> ដោយស្វ័យប្រវត្តិ។`;
+    }
+    box.innerHTML = html;
 }
 </script>
 

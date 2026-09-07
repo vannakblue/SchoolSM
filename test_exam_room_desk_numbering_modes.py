@@ -92,8 +92,8 @@ def test_numbering_modes():
     assert g7_rooms[0].room_number == 1 and g7_rooms[1].room_number == 2
     g7_cands = list(exam_g7.candidates.order_by('roll_number'))
     assert g7_cands[0].roll_number == "001" and g7_cands[0].desk_number == 1
-    assert g7_cands[49].roll_number == "050" and g7_cands[49].desk_number == 25
-    print("✅ Grade 7 (Morning): Rooms 01-02, Roll 001-050 [RESET_PER_GRADE PASSED]")
+    assert g7_cands[49].roll_number == "050" and g7_cands[49].desk_number == 50
+    print("✅ Grade 7 (Morning): Rooms 01-02, Roll 001-050, Desks 1-50 [RESET_PER_GRADE PASSED]")
 
     # Generate rooms for G8 with RESET_PER_GRADE
     res = client.post(f'/examinations/standardized/{exam_g8.id}/generate-rooms/', {'numbering_mode': 'RESET_PER_GRADE'})
@@ -103,20 +103,20 @@ def test_numbering_modes():
     assert g8_rooms[0].room_number == 1 and g8_rooms[1].room_number == 2
     g8_cands = list(exam_g8.candidates.order_by('roll_number'))
     assert g8_cands[0].roll_number == "001" and g8_cands[0].desk_number == 1
-    assert g8_cands[49].roll_number == "050" and g8_cands[49].desk_number == 25
-    print("✅ Grade 8 (Morning): Rooms 01-02, Roll 001-050 [RESET_PER_GRADE PASSED]")
+    assert g8_cands[49].roll_number == "050" and g8_cands[49].desk_number == 50
+    print("✅ Grade 8 (Morning): Rooms 01-02, Roll 001-050, Desks 1-50 [RESET_PER_GRADE PASSED]")
 
     print("\n--- 2. Testing CONTINUOUS_IN_SHIFT (រាប់បន្តគ្នាតាមវេនប្រឡង) ---")
-    # Regenerate G8 with CONTINUOUS_IN_SHIFT (should continue after G7: Rooms 03-04, Roll 051-100)
+    # Regenerate G8 with CONTINUOUS_IN_SHIFT (should continue after G7: Rooms 03-04, Roll 051-100, Desks 51-100)
     res = client.post(f'/examinations/standardized/{exam_g8.id}/generate-rooms/', {'numbering_mode': 'CONTINUOUS_IN_SHIFT'})
     assert res.status_code == 302
     g8_rooms = list(exam_g8.rooms.order_by('room_number'))
     assert len(g8_rooms) == 2
     assert g8_rooms[0].room_number == 3 and g8_rooms[1].room_number == 4
     g8_cands = list(exam_g8.candidates.order_by('roll_number'))
-    assert g8_cands[0].roll_number == "051" and g8_cands[0].desk_number == 1
-    assert g8_cands[49].roll_number == "100" and g8_cands[49].desk_number == 25
-    print(f"✅ Grade 8 (Morning Shift Continuation): Rooms {g8_rooms[0].room_number:02d}-{g8_rooms[1].room_number:02d}, Roll {g8_cands[0].roll_number}-{g8_cands[49].roll_number} [OK]")
+    assert g8_cands[0].roll_number == "051" and g8_cands[0].desk_number == 51
+    assert g8_cands[49].roll_number == "100" and g8_cands[49].desk_number == 100
+    print(f"✅ Grade 8 (Morning Shift Continuation): Rooms {g8_rooms[0].room_number:02d}-{g8_rooms[1].room_number:02d}, Roll {g8_cands[0].roll_number}-{g8_cands[49].roll_number}, Desks {g8_cands[0].desk_number}-{g8_cands[49].desk_number} [OK]")
 
     # Generate G11 (Afternoon shift starting)
     res = client.post(f'/examinations/standardized/{exam_g11.id}/generate-rooms/', {'numbering_mode': 'CONTINUOUS_IN_SHIFT'})
@@ -125,8 +125,9 @@ def test_numbering_modes():
     assert len(g11_rooms) == 2
     assert g11_rooms[0].room_number == 1 and g11_rooms[1].room_number == 2
     g11_cands = list(exam_g11.candidates.order_by('roll_number'))
-    assert g11_cands[0].roll_number == "001" and g11_cands[49].roll_number == "050"
-    print(f"✅ Grade 11 (Afternoon Shift Start): Rooms {g11_rooms[0].room_number:02d}-{g11_rooms[1].room_number:02d}, Roll {g11_cands[0].roll_number}-{g11_cands[49].roll_number} [OK]")
+    assert g11_cands[0].roll_number == "001" and g11_cands[0].desk_number == 1
+    assert g11_cands[49].roll_number == "050" and g11_cands[49].desk_number == 50
+    print(f"✅ Grade 11 (Afternoon Shift Start): Rooms {g11_rooms[0].room_number:02d}-{g11_rooms[1].room_number:02d}, Roll {g11_cands[0].roll_number}-{g11_cands[49].roll_number}, Desks 1-50 [OK]")
 
     # Generate G12 (Afternoon shift continuation)
     res = client.post(f'/examinations/standardized/{exam_g12.id}/generate-rooms/', {'numbering_mode': 'CONTINUOUS_IN_SHIFT'})
@@ -135,8 +136,9 @@ def test_numbering_modes():
     assert len(g12_rooms) == 2
     assert g12_rooms[0].room_number == 3 and g12_rooms[1].room_number == 4
     g12_cands = list(exam_g12.candidates.order_by('roll_number'))
-    assert g12_cands[0].roll_number == "051" and g12_cands[49].roll_number == "100"
-    print(f"✅ Grade 12 (Afternoon Shift Continuation): Rooms {g12_rooms[0].room_number:02d}-{g12_rooms[1].room_number:02d}, Roll {g12_cands[0].roll_number}-{g12_cands[49].roll_number} [OK]")
+    assert g12_cands[0].roll_number == "051" and g12_cands[0].desk_number == 51
+    assert g12_cands[49].roll_number == "100" and g12_cands[49].desk_number == 100
+    print(f"✅ Grade 12 (Afternoon Shift Continuation): Rooms {g12_rooms[0].room_number:02d}-{g12_rooms[1].room_number:02d}, Roll {g12_cands[0].roll_number}-{g12_cands[49].roll_number}, Desks 51-100 [OK]")
 
     print("\n--- 3. Testing CUSTOM Starting Numbers ---")
     res = client.post(f'/examinations/standardized/{exam_g7.id}/generate-rooms/', {

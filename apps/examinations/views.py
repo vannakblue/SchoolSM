@@ -710,18 +710,42 @@ def standardized_exam_list(request):
     all_plans = list(ExamInvigilatorPlan.objects.select_related('academic_year').prefetch_related('shift_slots__registrations').all())
     for sess in exam_sessions:
         matched_plan = None
+        clean_sess_title = sess['title'].strip().lower()
+        sess_exams_ids = [item['exam'].id for item in sess['exams_data']]
+        date_prefix = f"{sess['academic_year'].id}_{sess['exam_date']}"
+
         for p in all_plans:
+            # 1. Exact session_key match
             if p.session_key and p.session_key == sess['group_key']:
                 matched_plan = p
                 break
-            if p.standardized_exam_id and p.standardized_exam_id in [item['exam'].id for item in sess['exams_data']]:
+            # 2. Standardized exam direct link
+            if p.standardized_exam_id and p.standardized_exam_id in sess_exams_ids:
                 matched_plan = p
                 break
-            if p.academic_year_id == sess['academic_year'].id and p.start_date <= sess['exam_date'] <= p.end_date and (sess['title'].lower() in p.title.lower() or p.title.lower() in sess['title'].lower()):
-                matched_plan = p
-                break
+            # 3. Session key with same academic year and date prefix
+            if p.session_key and p.session_key.startswith(date_prefix):
+                p_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', p.title, flags=re.IGNORECASE).strip().lower()
+                s_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', clean_sess_title, flags=re.IGNORECASE).strip().lower()
+                if p_clean and s_clean and (p_clean in s_clean or s_clean in p_clean):
+                    matched_plan = p
+                    break
+            # 4. Same academic year and exam date within plan range, with clean title fuzzy match
+            if p.academic_year_id == sess['academic_year'].id and p.start_date <= sess['exam_date'] <= p.end_date:
+                p_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', p.title, flags=re.IGNORECASE).strip().lower()
+                s_clean = re.sub(r'^(?:វេនអនុរក្ស|គម្រោងវេនអនុរក្ស|ការស្នើសុំវេនអនុរក្ស)[:៖\s]*', '', clean_sess_title, flags=re.IGNORECASE).strip().lower()
+                if p_clean and s_clean and (p_clean in s_clean or s_clean in p_clean):
+                    matched_plan = p
+                    break
+
         sess['invigilator_plan'] = matched_plan
         if matched_plan:
+            if not matched_plan.session_key:
+                try:
+                    matched_plan.session_key = sess['group_key']
+                    ExamInvigilatorPlan.objects.filter(id=matched_plan.id).update(session_key=sess['group_key'])
+                except Exception:
+                    pass
             slots = list(matched_plan.shift_slots.all())
             matched_plan.calc_total_capacity = sum(s.max_invigilators for s in slots)
             matched_plan.calc_total_registered = sum(s.registered_count for s in slots)
@@ -1638,6 +1662,9 @@ def standardized_exam_manage(request, exam_id):
         name__icontains=clean_title
     )
     session_total_rooms = ExamRoom.objects.filter(exam__in=session_exams).count()
+    session_grades = sorted(list(set(e.grade_level for e in session_exams if e.grade_level)))
+    if not session_grades:
+        session_grades = [7, 8, 9, 10, 11, 12]
 
     if invigilator_plan:
         slots = list(invigilator_plan.shift_slots.all())
@@ -1649,6 +1676,8 @@ def standardized_exam_manage(request, exam_id):
         'clean_title': clean_title,
         'session_key': session_key,
         'session_total_rooms': session_total_rooms,
+        'session_grades': session_grades,
+        'all_standard_grades': [7, 8, 9, 10, 11, 12],
         'invigilator_plan': invigilator_plan,
         'candidates': candidates_qs,
         'rooms': rooms,
@@ -1734,9 +1763,11 @@ def partition_exam_rooms(exam, start_room_number=1, start_roll_number=1, cap=25,
     for idx, cand in enumerate(candidates):
         room_idx = idx // cap
         desk_num = (idx % cap) + 1
+        room_obj = created_rooms[room_idx]
+        global_desk_num = (room_obj.room_number - 1) * cap + desk_num
 
-        cand.room = created_rooms[room_idx]
-        cand.desk_number = desk_num
+        cand.room = room_obj
+        cand.desk_number = global_desk_num
         cand.roll_number = f"{start_roll_number + idx:03d}"
         cand.save(update_fields=['room', 'desk_number', 'roll_number'])
 
@@ -1773,6 +1804,8 @@ def exam_generate_rooms(request, exam_id):
 
     start_room_number = 1
     start_roll_number = 1
+    from_grade = None
+    to_grade = None
 
     clean_title = get_clean_exam_session_title(exam.name)
 
@@ -1790,6 +1823,46 @@ def exam_generate_rooms(request, exam_id):
         total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
         start_room_number = total_prior_rooms + 1
         start_roll_number = total_prior_candidates + 1
+
+    elif numbering_mode == 'GRADE_RANGE_IN_SHIFT':
+        # Sequential desk/room numbering within specified grade range in the same shift
+        raw_from = request.POST.get('range_from_grade', '').strip()
+        raw_to = request.POST.get('range_to_grade', '').strip()
+
+        if exam.grade_level in [7, 8, 9]:
+            default_from, default_to = 7, 9
+        elif exam.grade_level in [10, 11, 12]:
+            default_from, default_to = 10, 12
+        else:
+            default_from, default_to = exam.grade_level, exam.grade_level
+
+        from_grade = int(raw_from) if raw_from and raw_from.isdigit() else default_from
+        to_grade = int(raw_to) if raw_to and raw_to.isdigit() else default_to
+        if from_grade > to_grade:
+            from_grade, to_grade = to_grade, from_grade
+
+        if exam.grade_level == from_grade:
+            # First grade in the specified range -> start from Room 01, Desk 1, Roll 001
+            start_room_number = 1
+            start_roll_number = 1
+        elif exam.grade_level > from_grade and exam.grade_level <= to_grade:
+            # Continuation within the range: sum prior exams in [from_grade, exam.grade_level)
+            same_session_exams = StandardizedExam.objects.filter(
+                academic_year=exam.academic_year,
+                exam_date=exam.exam_date,
+                session=exam.session,
+                grade_level__gte=from_grade,
+                grade_level__lt=exam.grade_level
+            )
+            prior_exams = [e for e in same_session_exams if get_clean_exam_session_title(e.name) == clean_title]
+            total_prior_rooms = sum(e.rooms.count() for e in prior_exams)
+            total_prior_candidates = sum(e.candidates.count() for e in prior_exams)
+            start_room_number = total_prior_rooms + 1
+            start_roll_number = total_prior_candidates + 1
+        else:
+            # Outside range, start fresh from 1
+            start_room_number = 1
+            start_roll_number = 1
 
     elif numbering_mode == 'CONTINUOUS_ALL_GRADES':
         # Find previous exams in the SAME EXAM SESSION with lower grade_level
@@ -1824,6 +1897,7 @@ def exam_generate_rooms(request, exam_id):
     mode_labels = {
         'RESET_PER_GRADE': 'រាប់ចាប់ពីលេខ ១ សម្រាប់កម្រិតថ្នាក់នេះ',
         'CONTINUOUS_IN_SHIFT': f'រាប់បន្តគ្នាក្នុង {exam.get_session_display()}',
+        'GRADE_RANGE_IN_SHIFT': f'រាប់បន្តគ្នាក្នុងចន្លោះថ្នាក់ទី {from_grade or exam.grade_level} ដល់ ទី {to_grade or exam.grade_level} ក្នុងវេន {exam.get_session_display()}',
         'CONTINUOUS_ALL_GRADES': 'រាប់បន្តគ្នាគ្រប់កម្រិតថ្នាក់ក្នុងសម័យប្រឡងនេះ',
         'CUSTOM': f'កំណត់ដោយខ្លួនឯង (បន្ទប់ទី {start_room_number:02d}, អត្តលេខ {start_roll_number:03d})'
     }
@@ -1981,6 +2055,43 @@ def exam_batch_generate_rooms(request):
                 if c_count > 0 or r_count > 0:
                     shift_counters[sess]['room'] = next_room
                     shift_counters[sess]['roll'] = next_roll
+                    total_exams_processed += 1
+                    total_candidates_partitioned += c_count
+                    total_rooms_created += r_count
+
+        elif numbering_mode == 'GRADE_RANGE_IN_SHIFT':
+            raw_from = request.POST.get('range_from_grade', '').strip()
+            raw_to = request.POST.get('range_to_grade', '').strip()
+            from_grade = int(raw_from) if raw_from and raw_from.isdigit() else 7
+            to_grade = int(raw_to) if raw_to and raw_to.isdigit() else 9
+            if from_grade > to_grade:
+                from_grade, to_grade = to_grade, from_grade
+
+            shift_counters = {
+                'MORNING': {'room': 1, 'roll': 1, 'last_grade': None},
+                'AFTERNOON': {'room': 1, 'roll': 1, 'last_grade': None},
+                'FULL_DAY': {'room': 1, 'roll': 1, 'last_grade': None},
+            }
+            for exam in exams:
+                sess = exam.session if exam.session in shift_counters else 'MORNING'
+                if exam.grade_level == from_grade or (exam.grade_level > to_grade and shift_counters[sess]['last_grade'] and shift_counters[sess]['last_grade'] <= to_grade):
+                    shift_counters[sess]['room'] = 1
+                    shift_counters[sess]['roll'] = 1
+
+                curr_room = shift_counters[sess]['room']
+                curr_roll = shift_counters[sess]['roll']
+                c_count, r_count, next_room, next_roll = partition_exam_rooms(
+                    exam,
+                    start_room_number=curr_room,
+                    start_roll_number=curr_roll,
+                    cap=cap,
+                    building=building,
+                    candidate_order=candidate_order
+                )
+                if c_count > 0 or r_count > 0:
+                    shift_counters[sess]['room'] = next_room
+                    shift_counters[sess]['roll'] = next_roll
+                    shift_counters[sess]['last_grade'] = exam.grade_level
                     total_exams_processed += 1
                     total_candidates_partitioned += c_count
                     total_rooms_created += r_count
@@ -2173,6 +2284,9 @@ def exam_room_postings_view(request, exam_id):
     # Signer title (e.g. នាយក, នាយិកា, ប្រធានមណ្ឌល)
     sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
 
+    pad_25_param = request.GET.get('pad_25')
+    pad_25 = False if pad_25_param in ['0', 'false', 'no'] else True
+
     rooms_data = []
     for r in rooms_qs:
         cand_list = list(r.candidates.select_related('student').order_by('desk_number', 'roll_number', 'id'))
@@ -2183,8 +2297,7 @@ def exam_room_postings_view(request, exam_id):
         room_num_int = r.room_number if isinstance(r.room_number, int) else 1
         base_desk = (room_num_int - 1) * 25
 
-        pad_25 = request.GET.get('pad_25', '1') != '0'
-        row_limit = 25 if pad_25 else total_cands
+        row_limit = max(25, total_cands) if pad_25 else total_cands
 
         rows = []
         for i in range(1, row_limit + 1):
@@ -2261,6 +2374,7 @@ def exam_room_postings_view(request, exam_id):
         'sign_role': sign_role,
         'sign_date_raw': sign_date.strftime('%Y-%m-%d'),
         'school_profile': school_profile,
+        'pad_25': pad_25,
     })
 
 
@@ -2412,6 +2526,9 @@ def exam_subject_attendance_view(request, exam_id):
     # Signer title (e.g. នាយក, នាយិកា, ប្រធានមណ្ឌល)
     sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
 
+    pad_25_param = request.GET.get('pad_25')
+    pad_25 = True if pad_25_param in ['1', 'true', 'yes'] else False
+
     rooms_data = []
     for r in rooms_qs:
         cand_list = list(r.candidates.select_related('student').order_by('desk_number', 'roll_number', 'id'))
@@ -2421,8 +2538,7 @@ def exam_subject_attendance_view(request, exam_id):
         room_num_int = r.room_number if isinstance(r.room_number, int) else 1
         base_desk = (room_num_int - 1) * 25
 
-        pad_25 = request.GET.get('pad_25') == '1'
-        row_limit = 25 if pad_25 else total_cands
+        row_limit = max(25, total_cands) if pad_25 else total_cands
 
         rows = []
         for i in range(1, row_limit + 1):
@@ -2500,6 +2616,7 @@ def exam_subject_attendance_view(request, exam_id):
         'sign_role': sign_role,
         'sign_date_raw': sign_date.strftime('%Y-%m-%d'),
         'school_profile': school_profile,
+        'pad_25': pad_25,
     })
 
 
