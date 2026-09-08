@@ -1460,8 +1460,8 @@ def api_ai_chat(request):
     )
 
     api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
-    model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
-    thinking_level = getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium').lower()
+    model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+    thinking_level = (getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium')).lower()
 
     if api_key:
         try:
@@ -1478,9 +1478,15 @@ def api_ai_chat(request):
 
             gen_config = {
                 "temperature": 0.7,
-                "maxOutputTokens": 2048,
+                "maxOutputTokens": 4096,
             }
-            if 'thinking' in model_name:
+            # Handle Gemini 3.8 Flash & Gemini 3.x thinkingLevel (low, medium, high)
+            if '3.' in model_name:
+                valid_level = thinking_level if thinking_level in ['low', 'medium', 'high'] else 'medium'
+                gen_config["thinkingConfig"] = {
+                    "thinkingLevel": valid_level
+                }
+            elif 'thinking' in model_name:
                 budget_map = {'low': 1024, 'medium': 4096, 'high': 8192}
                 budget = budget_map.get(thinking_level, 4096)
                 gen_config["thinkingConfig"] = {"thinkingBudget": budget}
@@ -1496,12 +1502,19 @@ def api_ai_chat(request):
             resp = requests.post(url, json=payload, timeout=25)
             if resp.status_code == 200:
                 result_json = resp.json()
-                reply_text = result_json['candidates'][0]['content']['parts'][0]['text']
+                candidate = result_json.get('candidates', [{}])[0]
+                parts = candidate.get('content', {}).get('parts', [])
+                # Separate thought traces from final response text
+                answer_parts = [p.get('text', '') for p in parts if not p.get('thought') and p.get('text')]
+                if not answer_parts:
+                    answer_parts = [p.get('text', '') for p in parts if p.get('text')]
+                reply_text = "\n".join(answer_parts)
                 return JsonResponse({
                     'status': 'success',
                     'reply': reply_text,
                     'provider': 'Gemini AI',
-                    'model': model_name
+                    'model': model_name,
+                    'thinking_level': thinking_level
                 })
             else:
                 reply_text = get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count)
@@ -1572,14 +1585,16 @@ def get_smart_local_ai_response(user_message, user, school_name, active_year, st
 
     if any(k in msg for k in ['api', 'gemini', 'key', 'កំណត់']):
         return (
-            f"🤖 **របៀបភ្ជាប់ Gemini API Key ពេញលេញទៅក្នុង SchoolSM**:\n\n"
-            f"1. ចូលទៅកាន់ [Google AI Studio](https://aistudio.google.com/) រួចចុច **Get API Key** (ឥតគិតថ្លៃ)\n"
+            f"🤖 **របៀបភ្ជាប់ Gemini 3.8 Flash API ពេញលេញទៅក្នុង SchoolSM**:\n\n"
+            f"1. ចូលទៅកាន់ [Google AI Studio](https://aistudio.google.com/) រួចចុច **Get API Key** (ឥតគិតថ្លៃ 100%)\n"
             f"2. បើកឯកសារ `.env` ក្នុង Folder គម្រោង SchoolSM\n"
-            f"3. បន្ថែមបន្ទាត់៖\n"
+            f"3. បន្ថែមបន្ទាត់កំណត់រចនាសម្ព័ន្ធ៖\n"
             f"   ```bash\n"
             f"   GEMINI_API_KEY=AIzaSyYourGeneratedApiKeyHere\n"
-            f"   GEMINI_MODEL=gemini-1.5-flash\n"
+            f"   GEMINI_MODEL=gemini-3.8-flash\n"
+            f"   GEMINI_THINKING_LEVEL=medium\n"
             f"   ```\n"
+            f"   *(ជម្រើស Thinking Level: `low` (ល្បឿនលឿន), `medium` (លំនឹង), `high` (វិភាគស៊ីជម្រៅ))*\n\n"
             f"4. រួច Save ជាការស្រេច! AI នឹងដំណើរការ Generative Intelligence ឆ្លាតវៃភ្លាមៗ។"
         )
 
