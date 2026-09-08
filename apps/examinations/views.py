@@ -793,7 +793,44 @@ def report_card_western_view(request, student_id, term_id=None):
     term = get_object_or_404(ExamTerm, pk=term_id) if term_id else ExamTerm.objects.filter(academic_year=student.academic_year).first()
 
     data = _calculate_bilingual_report_card_data(student, term=term, request=request)
+    data['reports'] = [data]
+    data['is_batch'] = False
     return render(request, 'examinations/report_card_western.html', data)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def classroom_report_cards_western_view(request, classroom_id: int):
+    """
+    Batch generation & printing of Western International Bilingual EOY Report Cards
+    for all active students in a classroom.
+    """
+    from apps.academics.models import Classroom
+    from apps.students.models import Student
+    from apps.examinations.models import ExamTerm
+    from django.shortcuts import get_object_or_404, render
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    term_id = request.GET.get('term_id')
+    term = ExamTerm.objects.filter(pk=term_id).first() if term_id else ExamTerm.objects.filter(academic_year=classroom.academic_year).first()
+
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('khmer_name', 'id')
+    reports = []
+    for stu in students:
+        r_data = _calculate_bilingual_report_card_data(stu, term=term, academic_year=classroom.academic_year, request=request)
+        reports.append(r_data)
+
+    first_rep = reports[0] if reports else {}
+    context = {
+        'classroom': classroom,
+        'term': term,
+        'academic_year': classroom.academic_year,
+        'reports': reports,
+        'is_batch': True,
+        'school_info': first_rep.get('school_info'),
+        'student': first_rep.get('student'),
+    }
+    return render(request, 'examinations/report_card_western.html', context)
 
 
 @login_required

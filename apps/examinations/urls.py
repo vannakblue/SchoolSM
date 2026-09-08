@@ -31,6 +31,7 @@ urlpatterns = [
     path('report-card/<int:student_id>/<int:term_id>/', views.report_card_view, name='report_card'),
     path('report-card/<int:student_id>/western/', views.report_card_western_view, name='report_card_western_default'),
     path('report-card/<int:student_id>/<int:term_id>/western/', views.report_card_western_view, name='report_card_western'),
+    path('classroom/<int:classroom_id>/report-cards/western/', views.classroom_report_cards_western_view, name='classroom_report_cards_western'),
     path('api/report-card/send-telegram/', views.api_send_report_card_telegram, name='api_send_report_card_telegram'),
     path('api/report-card/send-class-telegram/', views.api_send_class_report_cards_telegram, name='api_send_class_report_cards_telegram'),
 

@@ -144,8 +144,40 @@ def run_tests():
     assert resp_def.status_code == 200
     print("  ✓ HTTP 200 OK: /examinations/report-card/<id>/western/ rendered cleanly")
 
+    # 6. Test Batch Printing for Whole Classroom (/examinations/classroom/<id>/report-cards/western/)
+    print("\n[Phase 6] Testing Classroom Whole-Batch Western Print URL...")
+    url_batch = f'/examinations/classroom/{cls_4b.id}/report-cards/western/?term_id={term_s2.id}'
+    resp_batch = client.get(url_batch)
+    assert resp_batch.status_code == 200
+    content_batch = resp_batch.content.decode('utf-8')
+    assert 'ថ្នាក់៖ 4B' in content_batch
+    assert 'Page 1 of 2' in content_batch
+    assert 'Page 2 of 2' in content_batch
+    assert student.khmer_name in content_batch
+    print(f"  ✓ HTTP 200 OK: Whole classroom batch Western report cards rendered with page-breaks")
+
+    # 7. Test Behavior & Registrar Customizer GET parameters
+    print("\n[Phase 7] Testing Behavior & Registrar Name Customizer...")
+    url_custom = f'/examinations/report-card/{student.id}/{term_s2.id}/western/?conduct=A&attitude=A&registrar_name=Dr.+Sok+Piseth'
+    resp_custom = client.get(url_custom)
+    assert resp_custom.status_code == 200
+    content_custom = resp_custom.content.decode('utf-8')
+    assert 'Dr. Sok Piseth' in content_custom
+    assert 'id="customizeModal"' in content_custom
+    print("  ✓ HTTP 200 OK: Customizer GET params and modal operational")
+
+    # 8. Test Grade Summary Page Integration
+    print("\n[Phase 8] Testing Grade Summary Page Western Buttons...")
+    url_summary = f'/examinations/summary/?term_id={term_s2.id}&classroom_id={cls_4b.id}'
+    resp_summary = client.get(url_summary)
+    assert resp_summary.status_code == 200
+    content_summary = resp_summary.content.decode('utf-8')
+    assert f'/examinations/classroom/{cls_4b.id}/report-cards/western/' in content_summary
+    assert 'Western' in content_summary
+    print("  ✓ HTTP 200 OK: Grade summary page displays 1-click Western batch and student buttons")
+
     print("\n" + "=" * 75)
-    print("🎉 ALL PHASES OF WESTERN REPORT CARD SUITE PASSED 100% SUCCESSFULLY!")
+    print("🎉 ALL 8 PHASES OF WESTERN REPORT CARD SUITE PASSED 100% SUCCESSFULLY!")
     print("=" * 75)
 
 if __name__ == '__main__':
