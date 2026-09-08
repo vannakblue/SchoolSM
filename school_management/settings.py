@@ -23,7 +23,7 @@ if env_path.exists():
                 if line and not line.startswith('#') and '=' in line:
                     k, v = line.split('=', 1)
                     k, v = k.strip(), v.strip().strip("'").strip('"')
-                    if k and k not in os.environ:
+                    if k:
                         os.environ[k] = v
     except Exception:
         pass
