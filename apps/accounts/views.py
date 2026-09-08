@@ -1460,7 +1460,8 @@ def api_ai_chat(request):
     )
 
     api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
-    model_name = getattr(settings, 'GEMINI_MODEL', 'gemini-1.5-flash')
+    model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+    thinking_level = getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium').lower()
 
     if api_key:
         try:
@@ -1475,15 +1476,21 @@ def api_ai_chat(request):
 
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
+            gen_config = {
+                "temperature": 0.7,
+                "maxOutputTokens": 2048,
+            }
+            if 'thinking' in model_name:
+                budget_map = {'low': 1024, 'medium': 4096, 'high': 8192}
+                budget = budget_map.get(thinking_level, 4096)
+                gen_config["thinkingConfig"] = {"thinkingBudget": budget}
+
             payload = {
                 "contents": contents,
                 "systemInstruction": {
                     "parts": [{"text": system_instruction}]
                 },
-                "generationConfig": {
-                    "temperature": 0.7,
-                    "maxOutputTokens": 1200,
-                }
+                "generationConfig": gen_config
             }
 
             resp = requests.post(url, json=payload, timeout=25)
