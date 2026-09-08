@@ -1394,6 +1394,198 @@ def set_language_preference_view(request):
     return response
 
 
+# ==============================================================================
+# IN-APP AI AGENT (GOOGLE GEMINI API INTEGRATION)
+# ==============================================================================
+
+@login_required
+def api_ai_chat(request):
+    """
+    Handles live conversational AI Assistant for Admin, Teachers, and Students.
+    Powered by Google Gemini API with seamless context injection.
+    """
+    import os
+    import json
+    import requests
+    from django.conf import settings
+    from apps.academics.utils import get_active_academic_year
+    from apps.students.models import Student
+    from apps.teachers.models import Teacher
+    from apps.academics.models import Classroom
+    from apps.examinations.models import ExamTerm
+    from .models import SchoolProfile
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Only POST allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        user_message = str(data.get('message', '')).strip()
+        history = data.get('history', [])
+    except Exception:
+        user_message = request.POST.get('message', '').strip()
+        history = []
+
+    if not user_message:
+        return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូលខ្លឹមសារសំណួរ!'}, status=400)
+
+    user = request.user
+    role_name = user.get_role_display()
+    active_year = get_active_academic_year(request)
+    school = SchoolProfile.objects.first()
+    school_name = school.name_kh if school else 'សាលារៀន SM'
+
+    students_count = Student.objects.filter(status='ACTIVE').count() or Student.objects.count()
+    teachers_count = Teacher.objects.filter(status='ACTIVE').count() or Teacher.objects.count()
+    classrooms_count = Classroom.objects.count()
+    exam_terms_count = ExamTerm.objects.count()
+
+    system_instruction = (
+        f"You are the official SchoolSM AI Assistant (ជំនួយការឆ្លាតវៃសាលារៀន) for '{school_name}'.\n"
+        f"You assist school administrators, teachers, accountants, and students.\n"
+        f"Live System Context:\n"
+        f"- Current User: {user.display_name} (Role: {role_name}, Username: {user.username})\n"
+        f"- Active Academic Year: {active_year.name if active_year else '2026-2027'}\n"
+        f"- Current System Stats: {students_count} Active Students, {teachers_count} Active Teachers, {classrooms_count} Classrooms, {exam_terms_count} Exam Terms.\n"
+        f"- MoEYS Standards: You are an expert in Cambodia's Ministry of Education, Youth and Sport (MoEYS) rules, "
+        f"including standardized letter grading (A >= 90%, B >= 80%, C >= 70%, D >= 60%, E >= 50%, F < 50%), "
+        f"semester final averages, monthly evaluations, automated timetable generation, and attendance management.\n"
+        f"Guidelines:\n"
+        f"1. Respond primarily in fluent, polite Khmer language (ភាសាខ្មែរ) with an encouraging educational tone. "
+        f"If the user asks in English, reply in English or bilingual.\n"
+        f"2. Format your responses using clean Markdown (bold text, bullet points, numbered lists, tables, or code snippets).\n"
+        f"3. For Teachers: You can generate complete quiz/exam questions (MCQs with 4 options A/B/C/D and explanations), lesson plans, and teaching strategies.\n"
+        f"4. For Admins: You can help draft official letters/announcements, summarize stats, and troubleshoot school workflows.\n"
+        f"5. For Students: Explain lesson concepts step-by-step in clear Khmer."
+    )
+
+    api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
+    model_name = getattr(settings, 'GEMINI_MODEL', 'gemini-1.5-flash')
+
+    if api_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            contents = []
+
+            for h in history[-6:]:
+                role = "user" if h.get('sender') == 'user' else "model"
+                text = h.get('text', '')
+                if text:
+                    contents.append({"role": role, "parts": [{"text": text}]})
+
+            contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+            payload = {
+                "contents": contents,
+                "systemInstruction": {
+                    "parts": [{"text": system_instruction}]
+                },
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 1200,
+                }
+            }
+
+            resp = requests.post(url, json=payload, timeout=25)
+            if resp.status_code == 200:
+                result_json = resp.json()
+                reply_text = result_json['candidates'][0]['content']['parts'][0]['text']
+                return JsonResponse({
+                    'status': 'success',
+                    'reply': reply_text,
+                    'provider': 'Gemini AI',
+                    'model': model_name
+                })
+            else:
+                reply_text = get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count)
+                return JsonResponse({
+                    'status': 'success',
+                    'reply': reply_text,
+                    'provider': 'SchoolSM AI Assistant (Offline Fallback)'
+                })
+        except Exception:
+            reply_text = get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count)
+            return JsonResponse({
+                'status': 'success',
+                'reply': reply_text,
+                'provider': 'SchoolSM AI Assistant (Offline Fallback)'
+            })
+    else:
+        reply_text = get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count)
+        return JsonResponse({
+            'status': 'success',
+            'reply': reply_text,
+            'provider': 'SchoolSM AI Assistant'
+        })
+
+
+def get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count):
+    """
+    Intelligent built-in Khmer response engine when Gemini API key is not yet configured.
+    """
+    msg = user_message.lower()
+    ay_name = active_year.name if active_year else '2026-2027'
+
+    if any(k in msg for k in ['សួស្តី', 'hello', 'hi', 'ជំរាបសួរ']):
+        return (
+            f"👋 **សួស្តី {user.display_name}!** ខ្ញុំជា **SchoolSM AI Assistant (ជំនួយការឆ្លាតវៃ)** ប្រចាំ {school_name}។\n\n"
+            f"ខ្ញុំអាចជួយលោកអ្នកបានជាច្រើនដូចជា៖\n"
+            f"- 📊 **ពិនិត្យស្ថិតិសាលា**: សិស្សសរុប {students_count} នាក់, គ្រូបង្រៀន {teachers_count} នាក់ (ឆ្នាំសិក្សា {ay_name})\n"
+            f"- 📝 **ជំនួយការគ្រូ**: បង្កើតសំណួរវិញ្ញាសា MCQs, កិច្ចតែងការបង្រៀន\n"
+            f"- ⚖️ **ច្បាប់ពិន្ទុ & វត្តមាន**: ពន្យល់រូបមន្តគណនាពិន្ទុឆមាស និងការកំណត់ MoEYS\n"
+            f"- 💡 **ការកំណត់ប្រព័ន្ធ**: ណែនាំអំពីការប្រើប្រាស់ទំព័រផ្សេងៗ\n\n"
+            f"*(💡 ចំណាំ៖ ដើម្បីឱ្យខ្ញុំអាចឆ្លើយគ្រប់សំណួរទូទៅ និងស្រាវជ្រាវកម្រិតខ្ពស់តាម Google Gemini សូមបញ្ចូល `GEMINI_API_KEY` ក្នុង `.env`)*"
+        )
+
+    if any(k in msg for k in ['ពិន្ទុ', 'និទ្ទេស', 'grade', 'moeys']):
+        return (
+            f"📚 **កម្រិតនិទ្ទេស និងការគណនាពិន្ទុតាមស្តង់ដារក្រសួង (MoEYS Standard)**:\n\n"
+            f"| និទ្ទេស | ភាគរយ (%) | ការវាយតម្លៃ |\n"
+            f"|:---:|:---:|:---|\n"
+            f"| **A** | 90% - 100% | ល្អប្រសើរ (Excellent) |\n"
+            f"| **B** | 80% - 89.99% | ល្អណាស់ (Very Good) |\n"
+            f"| **C** | 70% - 79.99% | ល្អ (Good) |\n"
+            f"| **D** | 60% - 69.99% | ល្អបង្គួរ (Fair / Above Average) |\n"
+            f"| **E** | 50% - 59.99% | មធ្យម (Passing / Average) |\n"
+            f"| **F** | ក្រោម 50% | ធ្លាក់ (Fail / Below Passing) |\n\n"
+            f"👉 មធ្យមភាគប្រចាំឆមាស ត្រូវបានគណនាដោយស្វ័យប្រវត្តិតាមរូបមន្តកំណត់ដោយរដ្ឋបាលសាលា។"
+        )
+
+    if any(k in msg for k in ['វិញ្ញាសា', 'ប្រឡង', 'exam', 'សំណួរ']):
+        return (
+            f"📝 **ការបង្កើតវិញ្ញាសា និងការប្រឡងអនឡាញ (Online Exams)**:\n\n"
+            f"លោកគ្រូ-អ្នកគ្រូ និង Admin អាចបង្កើតវិញ្ញាសាអនឡាញបានយ៉ាងងាយ៖\n"
+            f"1. ចូលទៅកាន់ម៉ឺនុយ **«ការប្រឡង & ពិន្ទុ» ➔ «វិញ្ញាសាប្រឡងអនឡាញ»**\n"
+            f"2. ចុច **«+ បង្កើតវិញ្ញាសាថ្មី»**\n"
+            f"3. ជ្រើសរើស **សម័យប្រឡង (Exam Term)** និង **មុខវិជ្ជា (Subject)**\n"
+            f"4. កំណត់ **រយៈពេល (នាទី)** និងកម្រិតថ្នាក់\n"
+            f"5. បន្ថែមសំណួរ MCQs (ជម្រើស A/B/C/D) រួចចុច **ផ្សព្វផ្សាយ (Publish)** ជាការស្រេច!\n\n"
+            f"📱 សិស្សអាចចូលប្រឡងបានទាំងលើ **Web Browser** និង **កម្មវិធីទូរស័ព្ទដៃ (Flutter Mobile App)**។"
+        )
+
+    if any(k in msg for k in ['api', 'gemini', 'key', 'កំណត់']):
+        return (
+            f"🤖 **របៀបភ្ជាប់ Gemini API Key ពេញលេញទៅក្នុង SchoolSM**:\n\n"
+            f"1. ចូលទៅកាន់ [Google AI Studio](https://aistudio.google.com/) រួចចុច **Get API Key** (ឥតគិតថ្លៃ)\n"
+            f"2. បើកឯកសារ `.env` ក្នុង Folder គម្រោង SchoolSM\n"
+            f"3. បន្ថែមបន្ទាត់៖\n"
+            f"   ```bash\n"
+            f"   GEMINI_API_KEY=AIzaSyYourGeneratedApiKeyHere\n"
+            f"   GEMINI_MODEL=gemini-1.5-flash\n"
+            f"   ```\n"
+            f"4. រួច Save ជាការស្រេច! AI នឹងដំណើរការ Generative Intelligence ឆ្លាតវៃភ្លាមៗ។"
+        )
+
+    return (
+        f"🤖 **SchoolSM AI Assistant**:\n\n"
+        f"អរគុណសម្រាប់សំណួររបស់លោកអ្នក៖ *«{user_message}»*。\n\n"
+        f"បច្ចុប្បន្ន ប្រព័ន្ធ SchoolSM កំពុងគ្រប់គ្រងសិស្សសរុប **{students_count} នាក់** ក្នុងឆ្នាំសិក្សា **{ay_name}**។\n"
+        f"ដើម្បីឱ្យខ្ញុំអាចឆ្លើយតប និងបង្កើតខ្លឹមសារលម្អិតកាន់តែស៊ីជម្រៅតាមរយៈ Generative AI សូមបញ្ចូល **`GEMINI_API_KEY`** ក្នុងឯកសារ `.env`។\n\n"
+        f"ទន្ទឹមនឹងនេះ ប្រសិនបើអ្នកចង់ផ្ញើសំណើ ឬសារផ្ទាល់ទៅកាន់ Admin ឬលោកគ្រូ-អ្នកគ្រូ សូមចុចលើ Tab **«💬 សារ Admin/គ្រូ»** ខាងលើ!"
+    )
+
+
+
 
 
 

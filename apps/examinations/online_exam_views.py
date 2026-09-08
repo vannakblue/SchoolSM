@@ -23,6 +23,7 @@ from .models import (
 )
 from .forms import OnlineExamForm, OnlineExamQuestionForm
 from apps.academics.models import Classroom, Subject, AcademicYear, GradeLevelRule, ClassSubject
+from apps.academics.utils import get_active_academic_year
 from apps.students.models import Student
 from apps.teachers.models import Teacher
 from apps.examinations.services import resolve_student_and_children_for_user
@@ -95,8 +96,9 @@ def online_exam_create(request):
     Create a new online exam paper.
     """
     teacher = getattr(request.user, 'teacher_profile', None)
+    active_year = get_active_academic_year(request)
     if request.method == 'POST':
-        form = OnlineExamForm(request.POST, teacher=teacher)
+        form = OnlineExamForm(request.POST, teacher=teacher, academic_year=active_year)
         if form.is_valid():
             exam = form.save(commit=False)
             exam.created_by = request.user
@@ -119,7 +121,7 @@ def online_exam_create(request):
             'show_result_immediately': True,
             'show_correct_answers': True,
         }
-        form = OnlineExamForm(initial=initial_data, teacher=teacher)
+        form = OnlineExamForm(initial=initial_data, teacher=teacher, academic_year=active_year)
 
     return render(request, 'examinations/online_exams/exam_form.html', {
         'form': form,
@@ -136,6 +138,7 @@ def online_exam_edit(request, exam_id):
     """
     exam = get_object_or_404(OnlineExam, id=exam_id)
     teacher = getattr(request.user, 'teacher_profile', None)
+    active_year = get_active_academic_year(request) or exam.exam_term.academic_year
 
     # Permission check
     if not (request.user.role == 'ADMIN' or request.user.is_superuser or exam.created_by == request.user or exam.teacher == teacher):
@@ -143,13 +146,13 @@ def online_exam_edit(request, exam_id):
         return redirect('online_exam_list')
 
     if request.method == 'POST':
-        form = OnlineExamForm(request.POST, instance=exam, teacher=teacher)
+        form = OnlineExamForm(request.POST, instance=exam, teacher=teacher, academic_year=active_year)
         if form.is_valid():
             form.save()
             messages.success(request, f'បានកែប្រែវិញ្ញាសា "{exam.title}" ដោយជោគជ័យ!')
             return redirect('online_exam_list')
     else:
-        form = OnlineExamForm(instance=exam, teacher=teacher)
+        form = OnlineExamForm(instance=exam, teacher=teacher, academic_year=active_year)
 
     return render(request, 'examinations/online_exams/exam_form.html', {
         'form': form,

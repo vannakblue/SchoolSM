@@ -27,6 +27,24 @@
     <!-- Custom Design CSS -->
     <link rel="stylesheet" href="/static/css/custom.css?v=2.5">
 
+    <!-- Anti-FOUC Synchronous Theme Initialization -->
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('app_theme');
+                if (!savedTheme) {
+                    savedTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-bs-theme', savedTheme);
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark-theme');
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                }
+            } catch(e) {}
+        })();
+    </script>
+
     <!-- Dynamic Admin-Configured Fonts and Theme Palette -->
     <style>
         :root {
@@ -46,6 +64,24 @@
         }
         .report-title, .page-header-title {
             font-family: var(--font-title);
+        }
+
+        /* High-priority Dark Mode Overrides for Base */
+        [data-bs-theme="dark"],
+        html[data-bs-theme="dark"] {
+            --bg-app: #0b1329 !important;
+            --bg-card: #131d35 !important;
+            --bg-sidebar: #070d1e !important;
+            --text-main: #f1f5f9 !important;
+            --text-muted: #94a3b8 !important;
+            --border-color: #24324f !important;
+            --header-bg-custom: #0f182e !important;
+            --footer-bg-custom: #070d1e !important;
+            color-scheme: dark;
+        }
+        html[data-bs-theme="dark"] body {
+            background-color: #0b1329 !important;
+            color: #f1f5f9 !important;
         }
     </style>
     
@@ -311,6 +347,11 @@
                         </ul>
                     </div>
 
+                    <!-- Dark / Light Theme Toggle Button -->
+                    <button type="button" class="btn btn-sm btn-light border rounded-pill d-flex align-items-center justify-content-center shadow-xs theme-toggle-btn" id="themeToggleBtn" onclick="toggleAppTheme()" title="{% if is_khmer %}ប្តូររវាង Dark / Light Mode{% else %}Toggle Dark / Light Mode{% endif %}" style="width: 36px; height: 36px;">
+                        <i class="fa-solid fa-moon text-secondary fs-6" id="themeToggleIcon"></i>
+                    </button>
+
                     <!-- Quick Role Switch Dropdown for Easy Demo Testing -->
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-primary dropdown-toggle rounded-pill" type="button" data-bs-toggle="dropdown">
@@ -355,6 +396,12 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                             <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fa-solid fa-user-gear me-2"></i>{% if is_khmer %}ព័ត៌មានគណនី{% else %}My Profile{% endif %}</a></li>
                             <li><a class="dropdown-item" href="{% url 'profile' %}#change-password-section"><i class="fa-solid fa-key me-2"></i>{% if is_khmer %}ប្តូរពាក្យសម្ងាត់{% else %}Change Password{% endif %}</a></li>
+                            <li>
+                                <button type="button" class="dropdown-item d-flex align-items-center justify-content-between py-2" onclick="toggleAppTheme()">
+                                    <span><i class="fa-solid fa-circle-half-stroke me-2 text-warning"></i>{% if is_khmer %}រចនាបទងងឹត (Dark Mode){% else %}Dark Mode{% endif %}</span>
+                                    <span class="badge rounded-pill bg-secondary-subtle text-secondary small px-2" id="themeCurrentBadge">Light</span>
+                                </button>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="fa-solid fa-right-from-bracket me-2"></i>{% if is_khmer %}ចាកចេញ{% else %}Logout{% endif %}</a></li>
                         </ul>
@@ -660,6 +707,66 @@
             if (!text) return '';
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
+
+        // ==========================================
+        // Modern Theme Switcher (Dark / Light Mode)
+        // ==========================================
+        function updateThemeUI(theme) {
+            const toggleIcon = document.getElementById('themeToggleIcon');
+            const toggleBtn = document.getElementById('themeToggleBtn');
+            const themeBadge = document.getElementById('themeCurrentBadge');
+
+            if (theme === 'dark') {
+                if (toggleIcon) {
+                    toggleIcon.className = 'fa-solid fa-sun text-warning fs-6';
+                }
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', 'ប្តូរទៅ Light Mode / Switch to Light Mode');
+                }
+                if (themeBadge) {
+                    themeBadge.textContent = 'Dark';
+                    themeBadge.className = 'badge rounded-pill bg-warning text-dark small px-2';
+                }
+            } else {
+                if (toggleIcon) {
+                    toggleIcon.className = 'fa-solid fa-moon text-secondary fs-6';
+                }
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', 'ប្តូរទៅ Dark Mode / Switch to Dark Mode');
+                }
+                if (themeBadge) {
+                    themeBadge.textContent = 'Light';
+                    themeBadge.className = 'badge rounded-pill bg-secondary-subtle text-secondary small px-2';
+                }
+            }
+        }
+
+        function toggleAppTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            } else {
+                document.documentElement.classList.remove('dark-theme');
+            }
+
+            try {
+                localStorage.setItem('app_theme', newTheme);
+                document.cookie = "app_theme=" + newTheme + ";path=/;max-age=31536000;SameSite=Lax";
+            } catch(e) {}
+
+            updateThemeUI(newTheme);
+
+            window.dispatchEvent(new CustomEvent('appThemeChanged', { detail: { theme: newTheme } }));
+        }
+
+        // Synchronize Theme UI State on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            updateThemeUI(currentTheme);
+        });
     </script>
 
     <!-- Global Floating Pop Chat Widget -->

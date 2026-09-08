@@ -53,12 +53,27 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-bold">សម័យប្រឡង (Exam Term) <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-bold mb-0">សម័យប្រឡង (Exam Term) <span class="text-danger">*</span></label>
+                            <a href="{% url 'exam_term_create' %}?next={{ request.get_full_path|urlencode }}" class="small text-primary text-decoration-none fw-semibold" target="_blank" title="បង្កើតសម័យប្រឡងថ្មី">
+                                <i class="fa-solid fa-circle-plus me-1"></i>បង្កើតសម័យប្រឡងថ្មី
+                            </a>
+                        </div>
                         {{ form.exam_term }}
+                        {% if not form.fields.exam_term.queryset.exists %}
+                        <div class="alert alert-warning py-1.5 px-3 small mt-2 mb-0 rounded-3">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i> មិនទាន់មានសម័យប្រឡងក្នុងប្រព័ន្ធនៅឡើយទេ។ សូម <a href="{% url 'exam_term_create' %}?next={{ request.get_full_path|urlencode }}" class="fw-bold alert-link">ចុចទីនេះដើម្បីបង្កើតសម័យប្រឡង</a> ជាមុនសិន។
+                        </div>
+                        {% endif %}
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-bold">មុខវិជ្ជា (Subject) <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-bold mb-0">មុខវិជ្ជា (Subject) <span class="text-danger">*</span></label>
+                            <a href="{% url 'subject_list' %}?next={{ request.get_full_path|urlencode }}" class="small text-primary text-decoration-none fw-semibold" target="_blank" title="គ្រប់គ្រងមុខវិជ្ជា">
+                                <i class="fa-solid fa-gear me-1"></i>គ្រប់គ្រងមុខវិជ្ជា
+                            </a>
+                        </div>
                         {{ form.subject }}
                     </div>
 

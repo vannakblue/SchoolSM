@@ -28,7 +28,104 @@
 
     <!-- Floating Chat Window Container -->
     <div id="popChatWindow" class="pop-chat-window shadow-2xl d-none">
-        
+        <!-- Top Mode Switcher Bar: AI Agent vs Direct Chat -->
+        <div class="pop-chat-mode-tabs d-flex border-bottom bg-light px-2 pt-2 gap-1 flex-shrink-0">
+            <button type="button" class="btn btn-sm flex-fill rounded-top-3 fw-bold small py-1.5 active pop-chat-tab-btn" id="tabBtnAiAgent" onclick="switchPopChatMode('ai')">
+                <i class="fa-solid fa-robot text-primary me-1"></i> ជំនួយការ AI (Gemini)
+            </button>
+            <button type="button" class="btn btn-sm flex-fill rounded-top-3 fw-bold small py-1.5 pop-chat-tab-btn" id="tabBtnDirectChat" onclick="switchPopChatMode('direct')">
+                {% if is_admin %}
+                <i class="fa-solid fa-inbox text-warning me-1"></i> សារពីគ្រូ
+                {% else %}
+                <i class="fa-solid fa-paper-plane text-info me-1"></i> ផ្ញើសារ Admin
+                {% endif %}
+            </button>
+            <button type="button" class="btn btn-sm btn-link text-muted p-1 text-decoration-none" onclick="togglePopChat()" title="បិទ">
+                <i class="fa-solid fa-xmark fs-5"></i>
+            </button>
+        </div>
+
+        <!-- ==================== 1. AI AGENT VIEW (GEMINI POWERED) ==================== -->
+        <div id="popChatAiView" class="d-flex flex-column h-100 flex-grow-1 overflow-hidden">
+            <!-- AI Header -->
+            <div class="pop-chat-header d-flex align-items-center justify-content-between text-white p-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="pop-chat-avatar-circle" style="background: linear-gradient(135deg, #6366f1, #06b6d4);">
+                        <i class="fa-solid fa-robot text-white"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 fs-6">SchoolSM AI Agent</h6>
+                        <small class="text-white-50" style="font-size: 0.72rem;">ជំនួយការឆ្លាតវៃ (Google Gemini)</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="clearAiChatHistory()" title="ជម្រះការជជែក (Clear Chat)">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Quick Suggestion Chips Bar -->
+            <div class="pop-chat-chips-bar p-2 bg-light border-bottom overflow-x-auto" style="white-space: nowrap;">
+                <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill small py-1 px-2.5" onclick="sendAiQuickPrompt('សង្ខេបស្ថិតិទូទៅនៃសាលារៀន និងថ្នាក់រៀន')">
+                        <i class="fa-solid fa-chart-pie me-1"></i> ស្ថិតិសាលា
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-success rounded-pill small py-1 px-2.5" onclick="sendAiQuickPrompt('ជួយបង្កើតសំណួរវិញ្ញាសាតេស្ត MCQs ៥ សំណួរ ជាមួយជម្រើស A B C D និងការពន្យល់')">
+                        <i class="fa-solid fa-file-pen me-1"></i> បង្កើតវិញ្ញាសា
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-warning rounded-pill small py-1 px-2.5" onclick="sendAiQuickPrompt('តើកម្រិតនិទ្ទេស A B C D E F របស់ក្រសួង MoEYS គណនាយ៉ាងដូចម្តេច?')">
+                        <i class="fa-solid fa-award me-1"></i> និទ្ទេស MoEYS
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill small py-1 px-2.5" onclick="sendAiQuickPrompt('របៀបបញ្ចូលពិន្ទុ និងគណនាមធ្យមភាគប្រចាំឆមាស')">
+                        <i class="fa-solid fa-calculator me-1"></i> របៀបបញ្ចូលពិន្ទុ
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Messages Area -->
+            <div id="popChatAiMessages" class="pop-chat-messages p-3 flex-grow-1 overflow-y-auto">
+                <!-- Welcome Bot Card -->
+                <div class="pop-chat-msg pop-chat-msg-bot mb-3">
+                    <div class="pop-chat-msg-bubble p-3 rounded-4 shadow-xs">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
+                            </span>
+                            <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                        </div>
+                        <div class="small line-height-relaxed">
+                            សួស្តី <strong>{{ user_display_name }}</strong>! 👋 ខ្ញុំជា <strong>SchoolSM AI Agent</strong>។ លោកអ្នកអាចសួរនាំអំពី៖
+                            <ul class="mb-2 mt-1 ps-3">
+                                <li>ការគ្រប់គ្រងសាលា ស្ថិតិសិស្ស និងគ្រូ</li>
+                                <li>ការបង្កើតវិញ្ញាសាប្រឡង និងលំហាត់ MCQs</li>
+                                <li>ច្បាប់ពិន្ទុ និងការគណនាមធ្យមភាគ MoEYS</li>
+                                <li>ការណែនាំអំពីរបៀបប្រើប្រាស់ប្រព័ន្ធគ្រប់គ្រងសាលា</li>
+                            </ul>
+                            សូមវាយបញ្ចូលសំណួរ ឬចុចលើប៊ូតុងផ្លូវកាត់ខាងលើដើម្បីចាប់ផ្តើម!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Typing Indicator -->
+            <div id="popChatAiTyping" class="px-3 py-1 bg-transparent small text-primary d-none">
+                <i class="fa-solid fa-circle-notch fa-spin me-1"></i> AI កំពុងគិត និងវិភាគចម្លើយ...
+            </div>
+
+            <!-- AI Input Footer -->
+            <div class="pop-chat-footer p-2 bg-white border-top">
+                <form id="popChatAiForm" onsubmit="handleAiChatSubmit(event)" class="d-flex align-items-center gap-2 m-0">
+                    <input type="text" id="popChatAiInput" class="form-control form-control-sm rounded-pill px-3" placeholder="សួរ AI អំពីអ្វីក៏បាន... (ឧ. ជួយបង្កើតវិញ្ញាសា)" autocomplete="off">
+                    <button type="submit" id="popChatAiSendBtn" class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;" title="ផ្ញើសំណួរទៅកាន់ AI">
+                        <i class="fa-solid fa-paper-plane" id="popChatAiSendIcon"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== 2. DIRECT CHAT CONTAINER ==================== -->
+        <div id="popChatDirectContainer" class="d-none flex-column h-100 flex-grow-1 overflow-hidden">
         {% if is_admin %}
         <!-- ==================== ADMIN VIEW ==================== -->
         <!-- Admin Threads List View (Inbox) -->
@@ -211,6 +308,7 @@
             </div>
         </div>
         {% endif %}
+        </div> <!-- End of #popChatDirectContainer -->
 
     </div>
 </div>
@@ -225,6 +323,49 @@
     font-family: inherit;
     user-select: none;
     touch-action: none;
+}
+
+.pop-chat-tab-btn {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.2s ease;
+}
+.pop-chat-tab-btn.active {
+    background: #ffffff;
+    color: #4f46e5;
+    border-bottom: 2.5px solid #4f46e5;
+}
+[data-bs-theme="dark"] .pop-chat-tab-btn.active {
+    background: #182542 !important;
+    color: #818cf8 !important;
+    border-bottom-color: #818cf8 !important;
+}
+.pop-chat-ai-markdown {
+    line-height: 1.65;
+    word-break: break-word;
+}
+.pop-chat-ai-markdown p {
+    margin-bottom: 0.5rem;
+}
+.pop-chat-ai-markdown ul, .pop-chat-ai-markdown ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.25rem;
+}
+.pop-chat-ai-markdown table {
+    width: 100%;
+    margin: 8px 0;
+    font-size: 0.8rem;
+    border-collapse: collapse;
+}
+.pop-chat-ai-markdown table th, .pop-chat-ai-markdown table td {
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+}
+[data-bs-theme="dark"] .pop-chat-ai-markdown table th,
+[data-bs-theme="dark"] .pop-chat-ai-markdown table td {
+    border-color: #334155;
 }
 
 .pop-chat-bubble-container {
@@ -438,6 +579,8 @@
 </style>
 
 <script>
+let popChatCurrentMode = 'ai';
+let aiChatHistory = [];
 let popChatActiveTargetUserId = null;
 let allAdminThreadsData = [];
 
@@ -453,6 +596,183 @@ let isDraggingPopChat = false;
 let dragStartX = 0, dragStartY = 0;
 let widgetStartX = 0, widgetStartY = 0;
 let hasDraggedSignificant = false;
+
+// ==============================================================================
+// AI AGENT CONTROLS & FUNCTIONS
+// ==============================================================================
+
+function switchPopChatMode(mode) {
+    popChatCurrentMode = mode;
+    const aiView = document.getElementById('popChatAiView');
+    const directContainer = document.getElementById('popChatDirectContainer');
+    const tabAi = document.getElementById('tabBtnAiAgent');
+    const tabDirect = document.getElementById('tabBtnDirectChat');
+
+    if (mode === 'ai') {
+        if (aiView) aiView.classList.remove('d-none');
+        if (directContainer) directContainer.classList.add('d-none');
+        if (tabAi) tabAi.classList.add('active');
+        if (tabDirect) tabDirect.classList.remove('active');
+        setTimeout(() => {
+            const input = document.getElementById('popChatAiInput');
+            if (input) input.focus();
+        }, 80);
+    } else {
+        if (aiView) aiView.classList.add('d-none');
+        if (directContainer) directContainer.classList.remove('d-none');
+        if (tabDirect) tabDirect.classList.add('active');
+        if (tabAi) tabAi.classList.remove('active');
+
+        const root = document.getElementById('popChatWidget');
+        const isAdmin = root && root.getAttribute('data-is-admin') === 'true';
+        if (isAdmin) {
+            loadAdminThreads();
+        } else {
+            loadTeacherMessages();
+            setTimeout(() => {
+                const input = document.getElementById('popChatInput');
+                if (input) input.focus();
+            }, 80);
+        }
+    }
+}
+
+function handleAiChatSubmit(e) {
+    if (e) e.preventDefault();
+    const input = document.getElementById('popChatAiInput');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+
+    input.value = '';
+    const messagesContainer = document.getElementById('popChatAiMessages');
+    const typingIndicator = document.getElementById('popChatAiTyping');
+
+    // Append user message bubble
+    appendAiMessage('user', text);
+
+    // Show Typing indicator
+    if (typingIndicator) typingIndicator.classList.remove('d-none');
+    if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Get CSRF Token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    // Call Backend API
+    fetch('/accounts/api/ai-chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            message: text,
+            history: aiChatHistory
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (typingIndicator) typingIndicator.classList.add('d-none');
+        if (data.status === 'success') {
+            appendAiMessage('model', data.reply, data.provider);
+            aiChatHistory.push({ sender: 'user', text: text });
+            aiChatHistory.push({ sender: 'model', text: data.reply });
+            if (aiChatHistory.length > 12) {
+                aiChatHistory = aiChatHistory.slice(-12);
+            }
+        } else {
+            appendAiMessage('model', '⚠️ មានបញ្ហាក្នុងការតភ្ជាប់ AI៖ ' + (data.message || 'សូមព្យាយាមម្តងទៀត'));
+        }
+    })
+    .catch(err => {
+        if (typingIndicator) typingIndicator.classList.add('d-none');
+        appendAiMessage('model', '⚠️ បរាជ័យក្នុងការតភ្ជាប់បណ្តាញ AI។ សូមសាកល្បងម្តងទៀត។');
+    });
+}
+
+function sendAiQuickPrompt(promptText) {
+    const input = document.getElementById('popChatAiInput');
+    if (input) {
+        input.value = promptText;
+        handleAiChatSubmit(null);
+    }
+}
+
+function clearAiChatHistory() {
+    aiChatHistory = [];
+    const container = document.getElementById('popChatAiMessages');
+    if (container) {
+        container.innerHTML = `
+            <div class="pop-chat-msg pop-chat-msg-bot mb-3">
+                <div class="pop-chat-msg-bubble p-3 rounded-4 shadow-xs">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
+                        </span>
+                        <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                    </div>
+                    <div class="small text-muted">
+                        🔄 បានជម្រះប្រវត្តិជជែករួចរាល់។ តើខ្ញុំអាចជួយអ្វីលោកអ្នកបន្ថែមទៀតបានទេ?
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function appendAiMessage(sender, text, provider) {
+    const container = document.getElementById('popChatAiMessages');
+    if (!container) return;
+
+    const isMe = sender === 'user';
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    let contentHtml = isMe ? escapeHtmlPopChat(text) : renderSimpleMarkdown(text);
+    let badgeHtml = '';
+    if (!isMe) {
+        badgeHtml = `
+            <div class="d-flex align-items-center gap-1 mb-1">
+                <span class="badge bg-primary text-white rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                    <i class="fa-solid fa-robot me-1"></i> ${escapeHtmlPopChat(provider || 'Gemini AI')}
+                </span>
+                <span class="text-muted" style="font-size: 0.65rem;">${timeStr}</span>
+            </div>
+        `;
+    }
+
+    const msgHtml = `
+        <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
+            <div class="pop-chat-msg-bubble ${isMe ? '' : 'pop-chat-ai-markdown'}">
+                ${badgeHtml}
+                <div>${contentHtml}</div>
+                ${isMe ? `<div class="text-white-50 text-end mt-1" style="font-size: 0.65rem;">${timeStr}</div>` : ''}
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', msgHtml);
+    container.scrollTop = container.scrollHeight;
+}
+
+function renderSimpleMarkdown(md) {
+    if (!md) return '';
+    let html = escapeHtmlPopChat(md);
+
+    // Bold **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Italic *text*
+    html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+    // Inline code `code`
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-dark-subtle px-1.5 py-0.5 rounded font-monospace small">$1</code>');
+    // Code blocks ```code```
+    html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-dark text-white p-2 rounded small overflow-auto"><code>$1</code></pre>');
+    // Bullet points
+    html = html.replace(/^[\s]*[-*]\s+(.*)$/gm, '<li class="ms-3">$1</li>');
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+}
 
 function handlePopChatClick(e) {
     if (hasDraggedSignificant) {
@@ -482,7 +802,12 @@ function togglePopChat() {
             adjustPopChatWindowOrientation(rect.left, rect.top);
         }
 
-        if (isAdmin) {
+        if (popChatCurrentMode === 'ai') {
+            setTimeout(() => {
+                const input = document.getElementById('popChatAiInput');
+                if (input) input.focus();
+            }, 100);
+        } else if (isAdmin) {
             loadAdminThreads();
         } else {
             loadTeacherMessages();

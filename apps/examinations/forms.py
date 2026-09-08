@@ -163,14 +163,22 @@ class OnlineExamForm(forms.ModelForm):
             'access_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ទុកទទេប្រសិនបើគ្មាន PIN'}),
         }
 
-    def __init__(self, *args, teacher=None, **kwargs):
+    def __init__(self, *args, teacher=None, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.academics.models import Classroom, Subject
         from .models import ExamTerm
 
-        # Order active terms
-        self.fields['exam_term'].queryset = ExamTerm.objects.all().order_by('-start_date')
+        # Order active terms - prioritize terms in the active academic year if available
+        terms_qs = ExamTerm.objects.all().select_related('academic_year').order_by('-start_date')
+        if academic_year:
+            year_terms = terms_qs.filter(academic_year=academic_year)
+            if year_terms.exists():
+                terms_qs = year_terms
+
+        self.fields['exam_term'].queryset = terms_qs
+        self.fields['exam_term'].empty_label = "-- ជ្រើសរើសសម័យប្រឡង / Select Exam Term --"
         self.fields['subject'].queryset = Subject.objects.all().order_by('order', 'id')
+        self.fields['subject'].empty_label = "-- ជ្រើសរើសមុខវិជ្ជា / Select Subject --"
         self.fields['target_classrooms'].queryset = Classroom.objects.all().order_by('grade_level', 'name')
         self.fields['target_classrooms'].required = False
 
