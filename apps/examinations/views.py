@@ -447,11 +447,363 @@ def grade_summary_view(request):
     })
 
 
+def _calculate_bilingual_report_card_data(student, term=None, academic_year=None, request=None):
+    """
+    Calculates the complete 2-Semester and Overall Annual Result data matching
+    Western International School / Bilingual School report card template.
+    Returns data for:
+      - Subject breakdown with 1st Semester, 2nd Semester, and Overall Result
+      - Total Overall Average, GPA (4.0 scale), Grade Rank (X of Y)
+      - Promotion box (Pass - Promoted to Grade X)
+      - Evaluation of Behavior (Conduct, Integrity, Participation, Attitude, Diligence, Grooming)
+      - Class Attendance (Total days, Excused, Unexcused, Total, Tardy, Presence %)
+      - Grading Scale table
+      - Signatures & Seals
+    """
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Subject, Classroom, AcademicYear
+    from apps.attendance.models import StudentAttendance
+    from apps.examinations.models import ExamTerm, Grade
+    from decimal import Decimal
+
+    school_info = SchoolProfile.get_settings()
+    classroom = student.classroom
+    ay = academic_year or (term.academic_year if term else student.academic_year)
+    if not ay:
+        ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    # Grading Scale mapping: Letter Grade & Grade Point (GP) on 4.0 scale
+    def get_letter_and_gp(pct):
+        if pct is None:
+            return '-', 0.0
+        p = float(pct)
+        if p >= 89.5:
+            return 'A', 4.0
+        if p >= 79.5:
+            return 'B', 3.0
+        if p >= 69.5:
+            return 'C', 2.0
+        if p >= 59.5:
+            return 'D', 1.5
+        if p >= 49.5:
+            return 'E', 1.0
+        return 'F', 0.0
+
+    # Get exam terms for Semester 1 and Semester 2
+    terms_s1 = list(ExamTerm.objects.filter(academic_year=ay, semester=1, is_counted_in_semester=True))
+    terms_s2 = list(ExamTerm.objects.filter(academic_year=ay, semester=2, is_counted_in_semester=True))
+
+    # Fallback if no specific semester field set
+    if not terms_s1 and not terms_s2:
+        all_terms = list(ExamTerm.objects.filter(academic_year=ay).order_by('start_date'))
+        mid = max(1, len(all_terms) // 2)
+        terms_s1 = all_terms[:mid]
+        terms_s2 = all_terms[mid:]
+
+    # Get all subjects for student's classroom
+    subjects = []
+    if classroom:
+        rules = classroom.get_subject_rules()
+        subjects = [r.subject for r in rules if r.subject]
+    if not subjects:
+        subjects = list(Subject.objects.filter(subject_grades__student=student).distinct())
+    if not subjects:
+        subjects = list(Subject.objects.all().order_by('order', 'id')[:8])
+
+    # Fetch all grades for this student in this academic year
+    grades_qs = Grade.objects.filter(student=student, exam_term__academic_year=ay).select_related('subject', 'exam_term')
+    grades_map = {}
+    for g in grades_qs:
+        grades_map[(g.subject_id, g.exam_term_id)] = g
+
+    # Build subject rows
+    subject_rows = []
+    s1_total_weighted_pct = 0.0
+    s1_total_credits = 0
+    s1_total_gp_points = 0.0
+
+    s2_total_weighted_pct = 0.0
+    s2_total_credits = 0
+    s2_total_gp_points = 0.0
+
+    failed_core_count = 0
+
+    for idx, sub in enumerate(subjects, 1):
+        credits = sub.credit if (sub.credit and sub.credit > 0) else 3
+
+        # Sem 1 Scores
+        s1_scores = []
+        for t in terms_s1:
+            if (sub.id, t.id) in grades_map:
+                g = grades_map[(sub.id, t.id)]
+                if g.max_score and g.max_score > 0:
+                    s1_scores.append((float(g.score) / float(g.max_score)) * 100)
+
+        # Sem 2 Scores
+        s2_scores = []
+        for t in terms_s2:
+            if (sub.id, t.id) in grades_map:
+                g = grades_map[(sub.id, t.id)]
+                if g.max_score and g.max_score > 0:
+                    s2_scores.append((float(g.score) / float(g.max_score)) * 100)
+
+        # If term is specifically given and belongs to S1 or S2, populate actively
+        if not s1_scores and term and term in terms_s1 and (sub.id, term.id) in grades_map:
+            g = grades_map[(sub.id, term.id)]
+            if g.max_score and g.max_score > 0:
+                s1_scores.append((float(g.score) / float(g.max_score)) * 100)
+        if not s2_scores and term and term in terms_s2 and (sub.id, term.id) in grades_map:
+            g = grades_map[(sub.id, term.id)]
+            if g.max_score and g.max_score > 0:
+                s2_scores.append((float(g.score) / float(g.max_score)) * 100)
+
+        # Calculate Sem 1 subject values
+        if s1_scores:
+            s1_pct = round(sum(s1_scores) / len(s1_scores), 2)
+            s1_let, s1_gp = get_letter_and_gp(s1_pct)
+            s1_cred = credits
+            s1_total_weighted_pct += s1_pct * credits
+            s1_total_credits += credits
+            s1_total_gp_points += s1_gp * credits
+        else:
+            s1_pct = None
+            s1_let, s1_gp = '-', 0.0
+            s1_cred = credits
+
+        # Calculate Sem 2 subject values
+        if s2_scores:
+            s2_pct = round(sum(s2_scores) / len(s2_scores), 2)
+            s2_let, s2_gp = get_letter_and_gp(s2_pct)
+            s2_cred = credits
+            s2_total_weighted_pct += s2_pct * credits
+            s2_total_credits += credits
+            s2_total_gp_points += s2_gp * credits
+        else:
+            s2_pct = None
+            s2_let, s2_gp = '-', 0.0
+            s2_cred = credits
+
+        # Calculate Overall subject values
+        if s1_pct is not None and s2_pct is not None:
+            ov_pct = round((s1_pct * 0.5) + (s2_pct * 0.5), 2)
+            ov_cred = s1_cred + s2_cred
+        elif s1_pct is not None:
+            ov_pct = s1_pct
+            ov_cred = s1_cred
+        elif s2_pct is not None:
+            ov_pct = s2_pct
+            ov_cred = s2_cred
+        else:
+            ov_pct = None
+            ov_cred = credits
+
+        if ov_pct is not None:
+            ov_let, ov_gp = get_letter_and_gp(ov_pct)
+            if ov_pct < 50:
+                failed_core_count += 1
+        else:
+            ov_let, ov_gp = '-', 0.0
+
+        subject_rows.append({
+            'no': idx,
+            'subject': sub,
+            'name_kh': sub.name_kh,
+            'name_en': sub.name_en or sub.name_kh,
+            's1_pct': f"{s1_pct:.2f}" if s1_pct is not None else '-',
+            's1_letter': s1_let,
+            's1_credits': s1_cred if s1_pct is not None else '-',
+            's2_pct': f"{s2_pct:.2f}" if s2_pct is not None else '-',
+            's2_letter': s2_let,
+            's2_credits': s2_cred if s2_pct is not None else '-',
+            'ov_pct': f"{ov_pct:.2f}" if ov_pct is not None else '-',
+            'ov_letter': ov_let,
+            'ov_credits': ov_cred if ov_pct is not None else '-',
+        })
+
+    # Overall summary averages
+    s1_avg = round(s1_total_weighted_pct / s1_total_credits, 2) if s1_total_credits > 0 else None
+    s1_gpa = round(s1_total_gp_points / s1_total_credits, 2) if s1_total_credits > 0 else None
+    s1_letter = get_letter_and_gp(s1_avg)[0] if s1_avg is not None else '-'
+
+    s2_avg = round(s2_total_weighted_pct / s2_total_credits, 2) if s2_total_credits > 0 else None
+    s2_gpa = round(s2_total_gp_points / s2_total_credits, 2) if s2_total_credits > 0 else None
+    s2_letter = get_letter_and_gp(s2_avg)[0] if s2_avg is not None else '-'
+
+    if s1_avg is not None and s2_avg is not None:
+        ov_avg = round((s1_avg * 0.5) + (s2_avg * 0.5), 2)
+        ov_gpa = round(((s1_gpa or 0.0) * 0.5) + ((s2_gpa or 0.0) * 0.5), 2)
+        ov_credits = s1_total_credits + s2_total_credits
+    elif s1_avg is not None:
+        ov_avg = s1_avg
+        ov_gpa = s1_gpa
+        ov_credits = s1_total_credits
+    elif s2_avg is not None:
+        ov_avg = s2_avg
+        ov_gpa = s2_gpa
+        ov_credits = s2_total_credits
+    else:
+        ov_avg = None
+        ov_gpa = None
+        ov_credits = 0
+
+    ov_letter = get_letter_and_gp(ov_avg)[0] if ov_avg is not None else '-'
+
+    # Calculate class ranks
+    class_students = list(Student.objects.filter(classroom=classroom, status='ACTIVE')) if classroom else [student]
+    total_in_class = len(class_students) if class_students else 1
+
+    s1_ranks, s2_ranks, ov_ranks = [], [], []
+    for cs in class_students:
+        cs_s1_pts, cs_s1_cr = 0.0, 0
+        cs_s2_pts, cs_s2_cr = 0.0, 0
+        cs_grades = list(Grade.objects.filter(student=cs, exam_term__academic_year=ay).select_related('subject', 'exam_term'))
+        for g in cs_grades:
+            cr = g.subject.credit or 3
+            if g.max_score and g.max_score > 0:
+                pct = (float(g.score) / float(g.max_score)) * 100
+                if g.exam_term in terms_s1:
+                    cs_s1_pts += pct * cr
+                    cs_s1_cr += cr
+                elif g.exam_term in terms_s2:
+                    cs_s2_pts += pct * cr
+                    cs_s2_cr += cr
+        cs_s1_a = cs_s1_pts / cs_s1_cr if cs_s1_cr > 0 else 0.0
+        cs_s2_a = cs_s2_pts / cs_s2_cr if cs_s2_cr > 0 else 0.0
+        cs_ov_a = (cs_s1_a * 0.5 + cs_s2_a * 0.5) if (cs_s1_cr and cs_s2_cr) else (cs_s1_a or cs_s2_a)
+        s1_ranks.append((cs.id, cs_s1_a))
+        s2_ranks.append((cs.id, cs_s2_a))
+        ov_ranks.append((cs.id, cs_ov_a))
+
+    s1_ranks.sort(key=lambda x: x[1], reverse=True)
+    s2_ranks.sort(key=lambda x: x[1], reverse=True)
+    ov_ranks.sort(key=lambda x: x[1], reverse=True)
+
+    def find_rank(rank_list, target_id):
+        for i, (sid, _) in enumerate(rank_list, 1):
+            if sid == target_id:
+                return i
+        return 1
+
+    s1_rank = find_rank(s1_ranks, student.id)
+    s2_rank = find_rank(s2_ranks, student.id)
+    ov_rank = find_rank(ov_ranks, student.id)
+
+    # Promotion Status: Promoted to Grade X
+    current_grade_num = classroom.grade_level if classroom else 4
+    is_promoted = (ov_avg is not None and ov_avg >= 50.0) and (failed_core_count <= 2)
+    promoted_grade = current_grade_num + 1 if is_promoted else current_grade_num
+    promotion_status_kh = "ជាប់/ត្រូវបានឡើងថ្នាក់ទី" if is_promoted else "នៅរៀនថ្នាក់ដដែល"
+    promotion_status_en = "Pass - Promoted to Grade" if is_promoted else "Retained in Grade"
+
+    # Attendance Data
+    att_qs = StudentAttendance.objects.filter(student=student)
+    if ay and ay.start_date and ay.end_date:
+        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+    
+    excused_absences = att_qs.filter(status=StudentAttendance.Status.PERMISSION).count()
+    unexcused_absences = att_qs.filter(status=StudentAttendance.Status.ABSENT).count()
+    total_absences = excused_absences + unexcused_absences
+    times_tardy = att_qs.filter(status=StudentAttendance.Status.LATE).count()
+    
+    total_school_days = 179
+    if classroom and ay and ay.start_date and ay.end_date:
+        actual_days = StudentAttendance.objects.filter(classroom=classroom, date__gte=ay.start_date, date__lte=ay.end_date).values('date').distinct().count()
+        if actual_days > 0:
+            total_school_days = actual_days
+
+    overall_presence = round(((total_school_days - total_absences) / total_school_days) * 100) if total_school_days > 0 else 100
+    if overall_presence < 0:
+        overall_presence = 0
+
+    # Behavior Evaluation (6 categories)
+    def _b_val(param_name, default_val):
+        if request and request.GET.get(param_name):
+            return request.GET.get(param_name).strip().upper()
+        return default_val
+
+    def_conduct = 'A' if ov_avg and ov_avg >= 90 else ('B' if ov_avg and ov_avg >= 70 else 'C')
+    def_diligence = 'A' if ov_avg and ov_avg >= 85 else 'B'
+
+    behavior_ratings = [
+        {'title_kh': 'វិន័យសាលា', 'title_en': 'Conduct', 'rating': _b_val('conduct', def_conduct)},
+        {'title_kh': 'ឥរិយាបថក្នុងការកែប្រែ', 'title_en': 'Attitude towards correction', 'rating': _b_val('attitude', 'B')},
+        {'title_kh': 'ភាពស្មោះត្រង់', 'title_en': 'Integrity', 'rating': _b_val('integrity', 'B')},
+        {'title_kh': 'ការប្រឹងប្រែងនិងយកចិត្តទុកដាក់', 'title_en': 'Diligence', 'rating': _b_val('diligence', def_diligence)},
+        {'title_kh': 'សកម្មភាពក្នុងថ្នាក់', 'title_en': 'Class Participation', 'rating': _b_val('participation', 'B')},
+        {'title_kh': 'អនាម័យនិងការស្លៀកពាក់', 'title_en': 'Hygiene & Grooming', 'rating': _b_val('grooming', 'A')},
+    ]
+
+    from datetime import date
+    default_date_str = term.end_date.strftime('%B %d, %Y') if (term and term.end_date) else date.today().strftime('%B %d, %Y')
+    report_date = request.GET.get('report_date', default_date_str) if request else default_date_str
+    registrar_name = request.GET.get('registrar_name', 'Mr. BAN Dara') if request else 'Mr. BAN Dara'
+    principal_name = school_info.principal_name if (school_info and school_info.principal_name) else 'Mr. PRAK Boreth'
+
+    return {
+        'student': student,
+        'term': term,
+        'classroom': classroom,
+        'academic_year': ay,
+        'school_info': school_info,
+        'subjects': subject_rows,
+        's1_avg': f"{s1_avg:.2f}" if s1_avg is not None else '-',
+        's1_letter': s1_letter,
+        's1_credits': s1_total_credits if s1_avg is not None else '-',
+        's1_gpa': f"{s1_gpa:.2f}" if s1_gpa is not None else '-',
+        's1_rank': s1_rank,
+        's2_avg': f"{s2_avg:.2f}" if s2_avg is not None else '-',
+        's2_letter': s2_letter,
+        's2_credits': s2_total_credits if s2_avg is not None else '-',
+        's2_gpa': f"{s2_gpa:.2f}" if s2_gpa is not None else '-',
+        's2_rank': s2_rank,
+        'ov_avg': f"{ov_avg:.2f}" if ov_avg is not None else '-',
+        'ov_letter': ov_letter,
+        'ov_credits': ov_credits if ov_avg is not None else '-',
+        'ov_gpa': f"{ov_gpa:.2f}" if ov_gpa is not None else '-',
+        'ov_rank': ov_rank,
+        'total_in_class': total_in_class,
+        'is_promoted': is_promoted,
+        'promoted_grade': promoted_grade,
+        'promotion_status_kh': promotion_status_kh,
+        'promotion_status_en': promotion_status_en,
+        'total_school_days': total_school_days,
+        'excused_absences': excused_absences,
+        'unexcused_absences': unexcused_absences,
+        'total_absences': total_absences,
+        'times_tardy': times_tardy,
+        'overall_presence': overall_presence,
+        'behavior_ratings': behavior_ratings,
+        'report_date': report_date,
+        'registrar_name': registrar_name,
+        'principal_name': principal_name,
+    }
+
+
+@login_required
+def report_card_western_view(request, student_id, term_id=None):
+    """
+    Renders the Western International School / Bilingual Academic Report Card
+    (Page 1: Student info & semester details, Page 2: Cumulative results, Promotion, Behavior, Attendance, Signatures).
+    """
+    from apps.students.models import Student
+    from apps.examinations.models import ExamTerm
+    from django.shortcuts import get_object_or_404, render
+
+    student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), pk=student_id)
+    term = get_object_or_404(ExamTerm, pk=term_id) if term_id else ExamTerm.objects.filter(academic_year=student.academic_year).first()
+
+    data = _calculate_bilingual_report_card_data(student, term=term, request=request)
+    return render(request, 'examinations/report_card_western.html', data)
+
+
 @login_required
 def report_card_view(request, student_id, term_id):
     """
     Official MoEYS Academic Transcript & Report Card with accurate scoring rule breakdown
     """
+    if request.GET.get('template') == 'western' or request.GET.get('format') == 'western':
+        return report_card_western_view(request, student_id, term_id)
+
     student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), pk=student_id)
     term = get_object_or_404(ExamTerm, pk=term_id)
     classroom = student.classroom

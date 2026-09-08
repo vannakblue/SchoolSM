@@ -1,0 +1,855 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ព្រឹត្តិបត្រពិន្ទុប្រចាំឆមាស & ប្រចាំឆ្នាំ - {{ student.khmer_name }} ({{ student.student_id }})</title>
+
+    <!-- Google Fonts for Authentic Khmer & English Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;600;700&family=Kantumruy+Pro:wght@400;600;700&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-navy: #1e3a8a;
+            --header-orange: #fcd3b6;
+            --header-dark-orange: #f8b988;
+            --table-border: #475569;
+            --bg-light-peach: #fff7ed;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Siemreap', 'Battambang', Arial, sans-serif;
+            font-size: 8.5pt;
+            color: #0f172a;
+            padding: 20px 10px;
+            margin: 0;
+        }
+
+        .font-muol {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+        }
+
+        .font-battambang {
+            font-family: 'Battambang', sans-serif;
+        }
+
+        /* Screen Toolbar */
+        .no-print-toolbar {
+            max-width: 920px;
+            margin: 0 auto 20px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 12px 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Page Container (A4 Portrait format) */
+        .sheet-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 25px auto;
+            background: #ffffff;
+            padding: 12mm 15mm;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+            position: relative;
+        }
+
+        /* Kingdom & School Header */
+        .national-motto-kh {
+            font-family: 'Moul', serif;
+            font-size: 9pt;
+            color: #000000;
+            text-align: right;
+            margin-bottom: 2px;
+        }
+        .national-motto-sub {
+            font-family: 'Moul', serif;
+            font-size: 8.5pt;
+            color: #000000;
+            text-align: right;
+            margin-bottom: 4px;
+        }
+
+        .school-logo-img {
+            max-height: 58px;
+            max-width: 65px;
+            object-fit: contain;
+        }
+
+        .school-title-kh {
+            font-family: 'Moul', serif;
+            font-size: 9.5pt;
+            color: var(--primary-navy);
+            margin-bottom: 2px;
+        }
+        .school-title-en {
+            font-weight: 700;
+            font-size: 8.5pt;
+            color: var(--primary-navy);
+            letter-spacing: 0.5px;
+        }
+
+        .report-main-title {
+            text-align: center;
+            margin: 10px 0 14px 0;
+        }
+        .report-main-title h4 {
+            font-family: 'Moul', serif;
+            font-size: 11pt;
+            color: #000000;
+            margin: 0 0 2px 0;
+        }
+        .report-main-title h5 {
+            font-weight: 800;
+            font-size: 9.5pt;
+            letter-spacing: 0.5px;
+            color: #000000;
+            margin: 0;
+        }
+
+        /* Student Meta Info Box */
+        .student-info-grid {
+            width: 100%;
+            border: 1px solid var(--table-border);
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 8pt;
+        }
+        .student-info-grid td {
+            padding: 4px 8px;
+            border: 1px solid #cbd5e1;
+            vertical-align: middle;
+        }
+        .student-info-grid .info-lbl {
+            font-weight: bold;
+            color: #334155;
+            background-color: #f8fafc;
+            width: 18%;
+        }
+        .student-info-grid .info-val {
+            font-weight: 600;
+            color: #0f172a;
+            width: 32%;
+        }
+
+        /* Results & Subjects Table */
+        .table-result {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.8pt;
+            margin-bottom: 8px;
+        }
+        .table-result th, .table-result td {
+            border: 1px solid var(--table-border);
+            padding: 3px 4px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table-result thead th {
+            background-color: var(--header-orange);
+            font-weight: bold;
+            color: #000000;
+            line-height: 1.25;
+        }
+        .table-result thead .th-tier1 {
+            background-color: var(--header-dark-orange);
+            font-size: 8.2pt;
+        }
+        .table-result .subject-name-col {
+            text-align: left;
+            padding-left: 6px;
+            font-weight: 600;
+        }
+
+        /* Summary Total Rows */
+        .tr-summary td {
+            font-weight: bold;
+            background-color: #ffffff;
+            font-size: 8pt;
+        }
+        .tr-summary-title {
+            text-align: left !important;
+            padding-left: 6px !important;
+            font-weight: 700;
+        }
+        .highlight-circle {
+            display: inline-block;
+            border: 2px solid #ef4444;
+            border-radius: 50%;
+            padding: 1px 7px;
+            color: #000000;
+            font-weight: 800;
+        }
+
+        /* Overall Result Promotion Box */
+        .promotion-box {
+            width: 100%;
+            border: 1.5px solid var(--table-border);
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            background-color: #ffffff;
+        }
+        .promo-col-left {
+            width: 30%;
+            padding: 6px 10px;
+            border-right: 1.5px solid var(--table-border);
+            text-align: center;
+            font-weight: bold;
+            line-height: 1.3;
+        }
+        .promo-col-mid {
+            width: 48%;
+            padding: 6px 10px;
+            border-right: 1.5px solid var(--table-border);
+            text-align: center;
+            font-weight: bold;
+            font-size: 8.8pt;
+            line-height: 1.3;
+        }
+        .promo-col-right {
+            width: 22%;
+            text-align: center;
+            font-size: 26pt;
+            font-weight: 800;
+            line-height: 1;
+            padding: 2px;
+            color: #000000;
+        }
+
+        /* Policy Note */
+        .policy-note {
+            font-size: 6.8pt;
+            font-style: italic;
+            color: #1e293b;
+            line-height: 1.35;
+            margin-bottom: 8px;
+        }
+
+        /* Behavior Table */
+        .behavior-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.8pt;
+            margin-bottom: 2px;
+        }
+        .behavior-table th, .behavior-table td {
+            border: 1px solid var(--table-border);
+            padding: 3px 6px;
+            vertical-align: middle;
+        }
+        .behavior-table thead th {
+            background-color: var(--header-dark-orange);
+            text-align: center;
+            font-weight: bold;
+            font-size: 8pt;
+        }
+        .behavior-table .b-label {
+            font-weight: 600;
+            width: 38%;
+        }
+        .behavior-table .b-val {
+            text-align: center;
+            font-weight: 700;
+            width: 12%;
+            font-size: 8.5pt;
+        }
+        .behavior-scale-note {
+            font-size: 6.8pt;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        /* Side-by-Side Attendance and Grading Scale */
+        .split-tables-row {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        .att-table-wrap {
+            width: 48%;
+        }
+        .grade-scale-wrap {
+            width: 52%;
+        }
+        .sub-box-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.5pt;
+        }
+        .sub-box-table th, .sub-box-table td {
+            border: 1px solid var(--table-border);
+            padding: 2.5px 5px;
+            vertical-align: middle;
+        }
+        .sub-box-table thead th {
+            background-color: var(--header-dark-orange);
+            text-align: center;
+            font-weight: bold;
+            font-size: 7.8pt;
+        }
+        .sub-box-table .th-sub {
+            background-color: var(--header-orange);
+            font-weight: 600;
+            font-size: 7.5pt;
+        }
+
+        /* Signatures Block */
+        .signatures-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 14px;
+            padding: 0 25px;
+        }
+        .sig-col {
+            text-align: center;
+            width: 42%;
+            position: relative;
+        }
+        .sig-line {
+            width: 140px;
+            border-bottom: 1px solid #000000;
+            margin: 0 auto 5px auto;
+        }
+        .sig-stamp-img {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85px;
+            height: 85px;
+            pointer-events: none;
+            opacity: 0.85;
+            z-index: 1;
+        }
+        .sig-signature-img {
+            height: 44px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto -8px auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .page-num-footer {
+            text-align: center;
+            font-size: 7.5pt;
+            font-weight: 600;
+            margin-top: 12px;
+            color: #475569;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print-toolbar {
+                display: none !important;
+            }
+            .sheet-page {
+                width: 100% !important;
+                min-height: auto !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 8mm 10mm !important;
+                margin: 0 !important;
+            }
+            .page-break-after {
+                page-break-after: always;
+                break-after: page;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 0.8cm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Toolbar (Screen Only) -->
+    <div class="no-print-toolbar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary fs-6 px-3 py-2">
+                <i class="fa-solid fa-graduation-cap me-1"></i> Western / Bilingual EOY Report Card
+            </span>
+            <span class="text-muted small">
+                សិស្ស៖ <strong>{{ student.khmer_name }}</strong> ({{ student.student_id }})
+            </span>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary fw-bold px-3">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ព / រក្សាទុកជា PDF (A4)
+            </button>
+            <a href="{% url 'report_card' student_id=student.id term_id=term.id %}?template=standard" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-rotate me-1"></i> ប្តូរទៅគំរូ MoEYS Standard
+            </a>
+            <button onclick="window.close()" class="btn btn-outline-dark">
+                បិទ
+            </button>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PAGE 1: STUDENT PROFILE & FIRST SEMESTER OVERVIEW                   -->
+    <!-- =================================================================== -->
+    <div class="sheet-page page-break-after">
+        <!-- National & School Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <!-- Left: School Logo & Title -->
+            <div class="d-flex align-items-center gap-3">
+                <img src="{% if school_info.logo_url %}{{ school_info.logo_url }}{% else %}{% static 'img/school_logo.png' %}{% endif %}" 
+                     alt="School Logo" class="school-logo-img" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                <div>
+                    <div class="school-title-kh">{{ school_info.name_kh|default:"សាលាអន្តរជាតិ វេសថឺន" }}</div>
+                    <div class="school-title-en">{{ school_info.name_en|default:"WESTERN INTERNATIONAL SCHOOL" }}</div>
+                    <div class="text-muted small" style="font-size: 7.2pt;">
+                        {{ school_info.address|default:"Stadium Campus, Phnom Penh, Cambodia" }} • Tel: {{ school_info.phone|default:"023 990 888" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Kingdom Motto -->
+            <div>
+                <div class="national-motto-kh">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="national-motto-sub">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div style="text-align: right; color: #b45309; font-size: 8pt; letter-spacing: 2px;">❖ ❖ ❖</div>
+            </div>
+        </div>
+
+        <div class="report-main-title">
+            <h4>ព្រឹត្តិបត្រពិន្ទុប្រចាំឆមាសលើកទី ២ និងប្រចាំឆ្នាំ</h4>
+            <h5>SECOND SEMESTER & ANNUAL REPORT (2026 - 2027)</h5>
+        </div>
+
+        <!-- Student Meta Information Grid -->
+        <table class="student-info-grid">
+            <tr>
+                <td class="info-lbl">ឈ្មោះសិស្ស / Name:</td>
+                <td class="info-val"><strong class="fs-6 text-primary">{{ student.khmer_name }}</strong> ({{ student.latin_name }})</td>
+                <td class="info-lbl">អត្តលេខ / Student ID:</td>
+                <td class="info-val font-monospace fw-bold">{{ student.student_id }}</td>
+            </tr>
+            <tr>
+                <td class="info-lbl">ថ្នាក់រៀន / Grade:</td>
+                <td class="info-val">{{ classroom.name|default:"4B" }} ({{ classroom.get_track_display }})</td>
+                <td class="info-lbl">ឆ្នាំសិក្សា / Academic Year:</td>
+                <td class="info-val">{{ academic_year.name|default:"2026 - 2027" }}</td>
+            </tr>
+            <tr>
+                <td class="info-lbl">ថ្ងៃខែឆ្នាំកំណើត / DOB:</td>
+                <td class="info-val">{{ student.date_of_birth|date:"d/m/Y"|default:"-" }}</td>
+                <td class="info-lbl">ភេទ / Gender:</td>
+                <td class="info-val">{{ student.get_gender_display }}</td>
+            </tr>
+            <tr>
+                <td class="info-lbl">គ្រូបន្ទុកថ្នាក់ / Homeroom:</td>
+                <td class="info-val" colspan="3">{{ classroom.homeroom_teacher.khmer_name|default:"គ្រូបន្ទុកថ្នាក់" }}</td>
+            </tr>
+        </table>
+
+        <!-- Page 1: Semester Detail Progress Overview -->
+        <div style="margin: 15px 0 10px 0; font-weight: bold; font-size: 8.5pt; color: #1e3a8a; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px;">
+            <i class="fa-solid fa-list-check me-1"></i> កំណត់ត្រាវឌ្ឍនភាពសិក្សាប្រចាំឆមាសនីមួយៗ (SEMESTER ASSESSMENT OVERVIEW)
+        </div>
+
+        <table class="table-result">
+            <thead>
+                <tr class="th-tier1">
+                    <th rowspan="2" width="30">N°</th>
+                    <th rowspan="2" width="220">មុខវិជ្ជា<br>Subject</th>
+                    <th colspan="3">ឆមាសទី ១ (1st Semester)</th>
+                    <th colspan="3">ឆមាសទី ២ (2nd Semester)</th>
+                </tr>
+                <tr>
+                    <th width="50">ពិន្ទុ<br>% Grade</th>
+                    <th width="45">និទ្ទេស<br>Letter</th>
+                    <th width="50">ក្រេឌីត<br>Credits</th>
+                    <th width="50">ពិន្ទុ<br>% Grade</th>
+                    <th width="45">និទ្ទេស<br>Letter</th>
+                    <th width="50">ក្រេឌីត<br>Credits</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in subjects %}
+                <tr>
+                    <td>{{ row.no }}</td>
+                    <td class="subject-name-col">{{ row.name_kh }} <span class="text-muted small">({{ row.name_en }})</span></td>
+                    <td>{{ row.s1_pct }}</td>
+                    <td><strong>{{ row.s1_letter }}</strong></td>
+                    <td>{{ row.s1_credits }}</td>
+                    <td>{{ row.s2_pct }}</td>
+                    <td><strong>{{ row.s2_letter }}</strong></td>
+                    <td>{{ row.s2_credits }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">មធ្យមភាគសរុប / Total Overall Average</td>
+                    <td>{{ s1_avg }}</td>
+                    <td>{{ s1_letter }}</td>
+                    <td>{{ s1_credits }}</td>
+                    <td>{{ s2_avg }}</td>
+                    <td>{{ s2_letter }}</td>
+                    <td>{{ s2_credits }}</td>
+                </tr>
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">GPA (Semester)</td>
+                    <td colspan="3"><span class="fw-bold">{{ s1_gpa }}</span></td>
+                    <td colspan="3"><span class="fw-bold">{{ s2_gpa }}</span></td>
+                </tr>
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">ចំណាត់ថ្នាក់ / Grade Rank</td>
+                    <td colspan="3">{{ s1_rank }} of {{ total_in_class }}</td>
+                    <td colspan="3">{{ s2_rank }} of {{ total_in_class }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Teacher's General Comments -->
+        <div style="margin-top: 20px; border: 1px solid var(--table-border); border-radius: 4px; padding: 10px 14px; background: #fafafa;">
+            <div class="fw-bold text-dark mb-1" style="font-size: 8.2pt;">
+                <i class="fa-solid fa-comment-dots text-primary me-1"></i> មតិយោបល់ទូទៅរបស់គ្រូបន្ទុកថ្នាក់ (Teacher's General Remarks):
+            </div>
+            <p class="mb-0 text-muted" style="font-size: 7.8pt; line-height: 1.5;">
+                {% if ov_avg and ov_avg >= 85 %}
+                សិស្សមានការប្រឹងប្រែងរៀនសូត្រយ៉ាងល្អប្រសើរ គោរពវិន័យសាលាបានខ្ជាប់ខ្ជួន យកចិត្តទុកដាក់ស្តាប់ការពន្យល់ និងចូលរួមសកម្មភាពយ៉ាងសកម្មក្នុងថ្នាក់រៀន។ សូមបន្តរក្សាភាពឆ្នើមនេះទៅឆ្នាំបន្តបន្ទាប់ទៀត!
+                {% elif ov_avg and ov_avg >= 65 %}
+                សិស្សមានការយល់ដឹងល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។ គួរខិតខំចំណាយពេលរំលឹកមេរៀនបន្ថែមលើមុខវិជ្ជាស្នូលមួយចំនួន ដើម្បីទទួលបានលទ្ធផលកាន់តែប្រសើរឡើង។
+                {% else %}
+                សិស្សត្រូវខិតខំប្រឹងប្រែងបន្ថែមទៀតលើការរៀនសូត្រ និងការបំពេញកិច្ចការផ្ទះឱ្យបានទៀងទាត់។
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="page-num-footer">Page 1 of 2</div>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- PAGE 2: CUMULATIVE RESULTS, PROMOTION, BEHAVIOR, ATTENDANCE & SIGS  -->
+    <!-- (EXACT REPLICA OF THE USER'S ATTACHED SCREENSHOT)                   -->
+    <!-- =================================================================== -->
+    <div class="sheet-page">
+
+        <!-- 1. Result Summary Table (លទ្ធផលសរុប / Result) -->
+        <div class="fw-bold mb-1" style="font-size: 8.2pt; color: #000000;">
+            លទ្ធផលសរុប / Result
+        </div>
+
+        <table class="table-result">
+            <thead>
+                <tr class="th-tier1">
+                    <th rowspan="2" width="28">N°</th>
+                    <th rowspan="2" width="160">មុខវិជ្ជា<br>Subject</th>
+                    <th colspan="3" width="160">ឆមាសទី ១<br>1<sup>st</sup> Semester</th>
+                    <th colspan="3" width="160">ឆមាសទី ២<br>2<sup>nd</sup> Semester</th>
+                    <th colspan="3" width="160">លទ្ធផលប្រចាំឆ្នាំ<br>Overall Result</th>
+                </tr>
+                <tr>
+                    <th width="50">ពិន្ទុ<br><span style="font-size: 6.8pt;">Percent<br>Grade</span></th>
+                    <th width="45">និទ្ទេស<br><span style="font-size: 6.8pt;">Letter<br>Grade</span></th>
+                    <th width="50">ក្រេឌីត<br><span style="font-size: 6.8pt;">Attempted<br>Credits</span></th>
+
+                    <th width="50">ពិន្ទុ<br><span style="font-size: 6.8pt;">Percent<br>Grade</span></th>
+                    <th width="45">និទ្ទេស<br><span style="font-size: 6.8pt;">Letter<br>Grade</span></th>
+                    <th width="50">ក្រេឌីត<br><span style="font-size: 6.8pt;">Attempted<br>Credits</span></th>
+
+                    <th width="50">ពិន្ទុ<br><span style="font-size: 6.8pt;">Percent<br>Grade</span></th>
+                    <th width="45">និទ្ទេស<br><span style="font-size: 6.8pt;">Letter<br>Grade</span></th>
+                    <th width="50">ក្រេឌីត<br><span style="font-size: 6.8pt;">Attempted<br>Credits</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in subjects %}
+                <tr>
+                    <td>{{ row.no }}</td>
+                    <td class="subject-name-col">{{ row.name_kh }} <span class="text-muted small">({{ row.name_en }})</span></td>
+                    <td>{{ row.s1_pct }}</td>
+                    <td><strong>{{ row.s1_letter }}</strong></td>
+                    <td>{{ row.s1_credits }}</td>
+
+                    <td>{{ row.s2_pct }}</td>
+                    <td><strong>{{ row.s2_letter }}</strong></td>
+                    <td>{{ row.s2_credits }}</td>
+
+                    <td><strong>{{ row.ov_pct }}</strong></td>
+                    <td><strong>{{ row.ov_letter }}</strong></td>
+                    <td>{{ row.ov_credits }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <!-- Total Overall Average -->
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">មធ្យមភាគសរុប / Total Overall Average</td>
+                    <td>{{ s1_avg }}</td>
+                    <td>{{ s1_letter }}</td>
+                    <td>{{ s1_credits }}</td>
+
+                    <td>{{ s2_avg }}</td>
+                    <td>{{ s2_letter }}</td>
+                    <td>{{ s2_credits }}</td>
+
+                    <td class="fw-bold">{{ ov_avg }}</td>
+                    <td><strong>{{ ov_letter }}</strong></td>
+                    <td>{{ ov_credits }}</td>
+                </tr>
+
+                <!-- GPA -->
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">GPA</td>
+                    <td colspan="3">{{ s1_gpa }}</td>
+                    <td colspan="3">{{ s2_gpa }}</td>
+                    <td colspan="3">
+                        <span class="highlight-circle">{{ ov_gpa }}</span>
+                    </td>
+                </tr>
+
+                <!-- Grade Rank -->
+                <tr class="tr-summary">
+                    <td colspan="2" class="tr-summary-title">ចំណាត់ថ្នាក់ / Grade Rank</td>
+                    <td colspan="3">{{ s1_rank }} of {{ total_in_class }}</td>
+                    <td colspan="3">{{ s2_rank }} of {{ total_in_class }}</td>
+                    <td colspan="3">
+                        <span class="highlight-circle">{{ ov_rank }} of {{ total_in_class }}</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- 2. Overall Result Promotion Box -->
+        <div class="promotion-box">
+            <div class="promo-col-left">
+                <div class="font-battambang">លទ្ធផលប្រចាំឆ្នាំ</div>
+                <div>Overall Result</div>
+            </div>
+            <div class="promo-col-mid">
+                <div class="font-battambang">{{ promotion_status_kh }}</div>
+                <div>{{ promotion_status_en }}</div>
+            </div>
+            <div class="promo-col-right">
+                {{ promoted_grade }}
+            </div>
+        </div>
+
+        <!-- 3. Policy Note -->
+        <div class="policy-note">
+            Note: - Overall Result (100%) = 1<sup>st</sup> Semester (50%) + 2<sup>nd</sup> Semester (50%)<br>
+            - Failing more than <u>two core subjects</u> a year or attaining the total overall average score less than 50, a student will be retained in the same grade.
+        </div>
+
+        <!-- 4. Evaluation of Behavior in Class and School -->
+        <table class="behavior-table">
+            <thead>
+                <tr>
+                    <th colspan="4">ការវាយតម្លៃលើចរិយាសម្បត្តិសិស្ស / Evaluation of Behavior in Class and School</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="b-label">{{ behavior_ratings.0.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.0.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.0.rating }}</td>
+                    <td class="b-label">{{ behavior_ratings.1.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.1.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.1.rating }}</td>
+                </tr>
+                <tr>
+                    <td class="b-label">{{ behavior_ratings.2.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.2.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.2.rating }}</td>
+                    <td class="b-label">{{ behavior_ratings.3.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.3.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.3.rating }}</td>
+                </tr>
+                <tr>
+                    <td class="b-label">{{ behavior_ratings.4.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.4.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.4.rating }}</td>
+                    <td class="b-label">{{ behavior_ratings.5.title_kh }} <span class="text-muted fw-normal">/ {{ behavior_ratings.5.title_en }}</span></td>
+                    <td class="b-val">{{ behavior_ratings.5.rating }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="behavior-scale-note">
+            Evaluation Rating Scale: <strong>A</strong> = Excellent, <strong>B</strong> = Very Good, <strong>C</strong> = Good, <strong>D</strong> = Satisfactory, <strong>E</strong> = Average, <strong>F</strong> = Poor
+        </div>
+
+        <!-- 5. Side-by-Side: Attendance & Grading Scale -->
+        <div class="split-tables-row">
+            <!-- Left: Class Attendance -->
+            <div class="att-table-wrap">
+                <table class="sub-box-table">
+                    <thead>
+                        <tr>
+                            <th colspan="2">អវត្តមាន / Class Attendance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ចំនួនថ្ងៃរៀនសរុប <span class="text-muted">/ Total School Days</span></td>
+                            <td class="text-center font-monospace">{{ total_school_days }}</td>
+                        </tr>
+                        <tr>
+                            <td>អវត្តមានមានច្បាប់ <span class="text-muted">/ Excused Absences</span></td>
+                            <td class="text-center font-monospace">{{ excused_absences }}</td>
+                        </tr>
+                        <tr>
+                            <td>អវត្តមានឥតច្បាប់ <span class="text-muted">/ Unexcused Absences</span></td>
+                            <td class="text-center font-monospace">{{ unexcused_absences }}</td>
+                        </tr>
+                        <tr>
+                            <td>អវត្តមានសរុប <span class="text-muted">/ Total Absences</span></td>
+                            <td class="text-center font-monospace fw-bold">{{ total_absences }}</td>
+                        </tr>
+                        <tr>
+                            <td>ចំនួនយឺត <span class="text-muted">/ Times Tardy</span></td>
+                            <td class="text-center font-monospace">{{ times_tardy }}</td>
+                        </tr>
+                        <tr style="background-color: #fef3c7; font-weight: bold;">
+                            <td>វត្តមានសរុប <span class="text-muted">/ Overall Presence</span></td>
+                            <td class="text-center text-primary">{{ overall_presence }}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right: Grading Scale -->
+            <div class="grade-scale-wrap">
+                <table class="sub-box-table">
+                    <thead>
+                        <tr>
+                            <th colspan="4">Grading Scale</th>
+                        </tr>
+                        <tr class="th-sub">
+                            <th width="30">Letter Grade</th>
+                            <th>Description</th>
+                            <th width="45">% Grade</th>
+                            <th width="30">GP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold">A</td>
+                            <td>Excellent</td>
+                            <td class="text-center">90 - 100</td>
+                            <td class="text-center fw-bold">4</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">B</td>
+                            <td>Very Good</td>
+                            <td class="text-center">80 - 89</td>
+                            <td class="text-center fw-bold">3</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">C</td>
+                            <td>Good</td>
+                            <td class="text-center">70 - 79</td>
+                            <td class="text-center fw-bold">2</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">D</td>
+                            <td>Satisfactory</td>
+                            <td class="text-center">60 - 69</td>
+                            <td class="text-center fw-bold">1.5</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">E</td>
+                            <td>Passing</td>
+                            <td class="text-center">50 - 59</td>
+                            <td class="text-center fw-bold">1</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold text-danger">F</td>
+                            <td>Failing</td>
+                            <td class="text-center">0 - 49</td>
+                            <td class="text-center fw-bold">0</td>
+                        </tr>
+                        <tr style="font-size: 6.8pt; background-color: #f8fafc;">
+                            <td colspan="2" class="text-center text-muted">I: Incomplete</td>
+                            <td colspan="2" class="text-center text-muted">N/A: Not Applicable</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 6. Official Signatures and Seals -->
+        <div class="signatures-grid">
+            <!-- Left: Registrar Officer -->
+            <div class="sig-col">
+                <div style="height: 48px;">
+                    <!-- Registrar signature placeholder -->
+                    <svg width="100" height="44" viewBox="0 0 100 44" fill="none" style="display: block; margin: 0 auto;">
+                        <path d="M15 35 C25 15, 30 5, 45 25 C55 35, 65 15, 85 20 C70 25, 40 40, 20 30" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="50" cy="18" r="14" stroke="#1e3a8a" stroke-width="1.5" stroke-dasharray="2 2" fill="none"/>
+                    </svg>
+                </div>
+                <div class="sig-line"></div>
+                <div class="fw-bold" style="font-size: 8.5pt;">{{ registrar_name }}</div>
+                <div class="text-muted small" style="font-size: 7.2pt;">Registrar' Officer</div>
+                <div class="text-muted small" style="font-size: 7.2pt;">Date: {{ report_date }}</div>
+            </div>
+
+            <!-- Right: Principal & Official Seal -->
+            <div class="sig-col">
+                <div style="height: 48px; position: relative;">
+                    <!-- Red circular school stamp -->
+                    {% if school_info and school_info.seal %}
+                    <img src="{{ school_info.seal.url }}" alt="School Seal" class="sig-stamp-img">
+                    {% else %}
+                    <!-- SVG Authentic Cambodian School Stamp -->
+                    <svg class="sig-stamp-img" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="46" stroke="#dc2626" stroke-width="2.5" fill="none"/>
+                        <circle cx="50" cy="50" r="42" stroke="#dc2626" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+                        <circle cx="50" cy="50" r="28" stroke="#dc2626" stroke-width="1.5" fill="none"/>
+                        <text x="50" y="24" font-size="6.5" font-weight="bold" fill="#dc2626" text-anchor="middle" font-family="Moul, serif">សាលាអន្តរជាតិ</text>
+                        <text x="50" y="80" font-size="6.2" font-weight="bold" fill="#dc2626" text-anchor="middle">WESTERN INT. SCHOOL</text>
+                        <path d="M50 35 L55 45 L65 47 L58 55 L60 65 L50 60 L40 65 L42 55 L35 47 L45 45 Z" fill="#dc2626" opacity="0.8"/>
+                    </svg>
+                    {% endif %}
+
+                    <!-- Principal Signature -->
+                    {% if school_info and school_info.principal_signature %}
+                    <img src="{{ school_info.principal_signature.url }}" alt="Signature" class="sig-signature-img">
+                    {% else %}
+                    <svg class="sig-signature-img" width="120" height="42" viewBox="0 0 120 42" fill="none">
+                        <path d="M10 28 C20 10, 35 5, 45 22 C55 35, 75 10, 95 18 C105 22, 115 15, 110 32 C95 38, 60 40, 30 35" stroke="#1d4ed8" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                <div class="sig-line"></div>
+                <div class="fw-bold" style="font-size: 8.5pt;">{{ principal_name }}</div>
+                <div class="text-muted small" style="font-size: 7.2pt;">School Principal, Stadium</div>
+                <div class="text-muted small" style="font-size: 7.2pt;">Date: {{ report_date }}</div>
+            </div>
+        </div>
+
+        <div class="page-num-footer">Page 2 of 2</div>
+    </div>
+
+</body>
+</html>
