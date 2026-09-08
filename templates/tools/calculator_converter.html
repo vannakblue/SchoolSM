@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត (Scientific Calculator & Unit Converter) | SchoolSM{% endblock %}
 
@@ -117,6 +118,11 @@
                 <i class="fa-solid fa-scale-balanced me-2 text-success"></i> កម្មវិធីបំលែងខ្នាត (Unit Converter)
             </button>
         </li>
+        <li class="nav-item">
+            <button class="nav-link py-2 fw-bold" data-bs-toggle="pill" data-bs-target="#tab-ai-solver" type="button">
+                <i class="fa-solid fa-wand-magic-sparkles me-2 text-warning"></i> ✨ AI ដោះស្រាយលំហាត់ជាជំហានៗ (Math & Science Solver)
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content">
@@ -173,6 +179,12 @@
                     <div class="col-3"><button type="button" class="btn btn-calc-sci w-100 calc-btn" onclick="calcSci('pi')">π</button></div>
                     <div class="col-3"><button type="button" class="btn btn-calc-equal w-100 calc-btn" onclick="calcEvaluate()">=</button></div>
                 </div>
+
+                <div class="mt-3 text-center">
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill w-100 py-1.5" onclick="explainCurrentCalculation()">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1 text-warning"></i> ✨ AI ពន្យល់កន្សោមគណិតខាងលើជាជំហានៗ
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -225,6 +237,56 @@
                 <!-- Explanation / Formula Box -->
                 <div class="alert alert-info border-0 rounded-3 small mb-0 text-center" id="conversionFormulaText">
                     រូបមន្តបំលែងនឹងបង្ហាញនៅទីនេះ
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: AI Step-by-step Math & Science Solver -->
+        <div class="tab-pane fade" id="tab-ai-solver">
+            <div class="card border-0 shadow-sm rounded-4 p-4" style="max-width: 820px; margin: 0 auto;">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">
+                            <i class="fa-solid fa-brain text-warning me-2"></i>✨ AI ដោះស្រាយ និងពន្យល់លំហាត់ជាជំហានៗ
+                        </h5>
+                        <p class="text-muted small mb-0">ដំណើរការដោយ Gemini 3.8 Flash (High Reasoning) ដោះស្រាយគណិតវិទ្យា រូបវិទ្យា គីមីវិទ្យា</p>
+                    </div>
+                    <span class="badge bg-primary text-white rounded-pill px-3 py-1.5 small">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini 3.8 Flash
+                    </span>
+                </div>
+
+                <!-- Preset Quick Buttons -->
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="setMathProblem('ដោះស្រាយសមីការដឺក្រេទី២៖ 2x^2 + 5x - 3 = 0')">
+                        សមីការដឺក្រេទី២
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="setMathProblem('គណនាលីមីត៖ lim(x->2) (x^2 - 4)/(x - 2)')">
+                        លីមីត (Limits)
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="setMathProblem('គណនាដេរីវេនៃអនុគមន៍ f(x) = 3x^4 - 5x^2 + 2x - 7')">
+                        ដេរីវេ (Derivatives)
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="setMathProblem('តុល្យការសមីការគីមី៖ Al + O2 -> Al2O3 និងគណនាម៉ាស Al2O3 ដែលកកើត')">
+                        សមីការគីមី (Chemistry)
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="setMathProblem('ឡានមួយចេញដំណើរពីល្បឿន 10 m/s ទៅ 25 m/s ក្នុងរយៈពេល 5 វិនាទី។ រកសំទុះ និងចម្ងាយចរ។')">
+                        រូបវិទ្យាចលនា (Physics)
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted">វាយបញ្ចូលលំហាត់ ឬរូបមន្តគណិតវិទ្យា/រូបវិទ្យា/គីមីវិទ្យា៖</label>
+                    <textarea id="aiMathInput" class="form-control rounded-3" rows="4" placeholder="ឧ. រកឫសនៃសមីការ 3x^2 - 4x + 1 = 0 ឬសរសេរលំហាត់ជាភាសាខ្មែរ..."></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-light rounded-pill px-3" onclick="document.getElementById('aiMathInput').value = ''">
+                        <i class="fa-solid fa-trash-can me-1 text-danger"></i> សម្អាត
+                    </button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="solveMathWithAi()">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ដោះស្រាយជាជំហានៗជាមួយ AI
+                    </button>
                 </div>
             </div>
         </div>
@@ -415,5 +477,35 @@
     window.addEventListener('DOMContentLoaded', () => {
         initUnitCategory();
     });
+
+    // AI Math & Science Solver Functions
+    function setMathProblem(problem) {
+        document.getElementById('aiMathInput').value = problem;
+    }
+
+    function solveMathWithAi() {
+        const problem = document.getElementById('aiMathInput').value.trim();
+        ToolAiAssistant.run({
+            tool: 'calculator_converter',
+            action: 'step_by_step_solve',
+            actionTitle: 'ដំណោះស្រាយជាជំហានៗ (Math & Science Solver)',
+            content: problem,
+            thinkingLevel: 'high'
+        });
+    }
+
+    function explainCurrentCalculation() {
+        const current = document.getElementById('calcDisplay').innerText.trim();
+        const history = document.getElementById('calcHistory').innerText.trim();
+        const expr = history ? `${history} = ${current}` : current;
+        ToolAiAssistant.run({
+            tool: 'calculator_converter',
+            action: 'step_by_step_solve',
+            actionTitle: `ពន្យល់កន្សោមគណិត (${expr})`,
+            content: `សូមពន្យល់ និងបកស្រាយកន្សោមគណិតវិទ្យាខាងក្រោមឱ្យសិស្សងាយយល់៖ ${expr}`,
+            thinkingLevel: 'medium'
+        });
+    }
 </script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
 {% endblock %}

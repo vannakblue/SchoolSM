@@ -51,6 +51,7 @@ urlpatterns = [
     path('google-sheets/restore/', views.api_restore_google_sheets, name='tool_google_sheets_restore'),
 
     # Backend API Endpoints
+    path('api/ai-assist/', views.api_tool_ai_assist, name='api_tool_ai_assist'),
     path('api/classroom/<int:classroom_id>/students/', views.api_classroom_students, name='api_tool_classroom_students'),
     path('api/pdf-merge/', views.api_pdf_merge, name='api_tool_pdf_merge'),
     path('api/pdf-to-docx/', views.api_pdf_to_docx, name='api_tool_pdf_to_docx'),

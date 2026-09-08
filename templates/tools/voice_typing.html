@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}វាយអត្ថបទតាមសំឡេង (Voice Typing & Dictation) | SchoolSM{% endblock %}
 
@@ -228,6 +229,30 @@
         <!-- Stats & Download Options Column -->
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <!-- AI Voice Actions Panel -->
+                <div class="p-3 mb-4 rounded-4 border" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08)); border-color: rgba(99, 102, 241, 0.25) !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini 3.8 Flash AI
+                        </span>
+                        <small class="text-muted fw-bold" style="font-size: 0.72rem;">ជំនួយការសំឡេង</small>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiVoiceAction('auto_format', 'រៀបចំកថាខណ្ឌ & វណ្ណយុត្តិស្វ័យប្រវត្តិ')">
+                            <i class="fa-solid fa-paragraph me-1.5 text-success"></i> រៀបចំកថាខណ្ឌ & វណ្ណយុត្តិ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiVoiceAction('lesson_plan', 'បម្លែងជាកិច្ចតែងការបង្រៀន MoEYS')">
+                            <i class="fa-solid fa-book-open-reader me-1.5 text-warning"></i> បម្លែងជាកិច្ចតែងការបង្រៀន
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiVoiceAction('meeting_minutes', 'បម្លែងជាកំណត់ហេតុប្រជុំសាលា')">
+                            <i class="fa-solid fa-clipboard-list me-1.5 text-info"></i> បម្លែងជាកំណត់ហេតុប្រជុំ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiVoiceAction('speech_polish', 'កែសម្រួលសេចក្តីព្រាងឱ្យរលូន')">
+                            <i class="fa-solid fa-feather-pointed me-1.5 text-danger"></i> កែសម្រួលសេចក្តីព្រាងឱ្យរលូន
+                        </button>
+                    </div>
+                </div>
+
                 <h5 class="fw-bold text-dark mb-3">
                     <i class="fa-solid fa-chart-simple text-primary me-2"></i>ស្ថិតិអត្ថបទ (Live Stats)
                 </h5>
@@ -565,5 +590,20 @@
             exportAsTextFile();
         }
     }
+
+    function runAiVoiceAction(action, title) {
+        const text = document.getElementById('dictationBox').innerText.trim();
+        ToolAiAssistant.run({
+            tool: 'voice_typing',
+            action: action,
+            actionTitle: title,
+            content: text,
+            onApply: function (resultText) {
+                document.getElementById('dictationBox').innerText = resultText;
+                updateLiveStats();
+            }
+        });
+    }
 </script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
 {% endblock %}

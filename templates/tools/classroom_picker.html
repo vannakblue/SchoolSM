@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}ចាប់ឆ្នោតសិស្ស & ចែកក្រុមរៀន (Classroom Lucky Draw) | SchoolSM{% endblock %}
 
@@ -164,9 +165,12 @@
                             <textarea id="namesTextarea" class="form-control" rows="8" placeholder="សុខ ពិសិដ្ឋ&#10;ចាន់ ថាវី&#10;កែវ សុផល&#10;លឹម ហុង" oninput="updateNamesFromTextarea()"></textarea>
                         </div>
 
-                        <div class="d-flex gap-2 mb-3">
-                            <button type="button" class="btn btn-warning w-100 rounded-pill fw-bold text-dark" onclick="spinWheel()">
+                        <div class="d-flex flex-column gap-2 mb-3">
+                            <button type="button" class="btn btn-warning w-100 rounded-pill fw-bold text-dark shadow-xs py-2" onclick="spinWheel()">
                                 <i class="fa-solid fa-play me-1"></i> បង្វិលកង់ចាប់ឆ្នោត
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-semibold py-1.5" onclick="runAiWheelQuiz()">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ✨ AI បង្កើតសំណួរ ១២ ដាក់លើកង់
                             </button>
                         </div>
 
@@ -206,11 +210,19 @@
                         </select>
                     </div>
 
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold" onclick="generateTeams()">
-                            <i class="fa-solid fa-dice me-1"></i> ចែកក្រុមដោយស្វ័យប្រវត្តិ
+                    <div class="col-md-4 d-flex flex-column gap-2 justify-content-end">
+                        <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-xs" onclick="generateTeams()">
+                            <i class="fa-solid fa-dice me-1"></i> ចែកក្រុមធម្មតា
+                        </button>
+                        <button type="button" class="btn btn-outline-primary w-100 rounded-pill py-1.5 fw-semibold small" onclick="runAiPedagogicalGrouping()">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ✨ AI ចែកក្រុមគរុកោសល្យ
                         </button>
                     </div>
+                </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="runAiTeamTopics()">
+                        <i class="fa-solid fa-lightbulb me-1"></i> ✨ AI បង្កើតប្រធានបទពិភាក្សាសម្រាប់ក្រុម
+                    </button>
                 </div>
 
                 <div id="teamsOutputContainer" class="row g-3">
@@ -518,5 +530,53 @@
         totalSeconds = 45 * 60;
         document.getElementById('timerDigits').innerText = formatTime(totalSeconds);
     }
+
+    // AI Features for Classroom Picker
+    function runAiWheelQuiz() {
+        ToolAiAssistant.run({
+            tool: 'classroom_picker',
+            action: 'quiz_wheel',
+            actionTitle: 'បង្កើតសំណួរ ១២ ដាក់លើកង់បង្វិល',
+            content: 'quiz_wheel',
+            onApply: function(resultText) {
+                // Parse questions and put them on the wheel
+                const questions = resultText.split('\n')
+                    .map(l => l.replace(/^[\d\.\-\*\s]+/, '').trim())
+                    .filter(l => l.length > 5 && !l.startsWith('#'))
+                    .slice(0, 16);
+                if (questions.length >= 4) {
+                    namesList = questions;
+                    document.getElementById('namesTextarea').value = namesList.join('\n');
+                    drawWheel();
+                    updateCountBadge();
+                }
+            }
+        });
+    }
+
+    function runAiPedagogicalGrouping() {
+        const text = document.getElementById('namesTextarea').value.trim();
+        const teamCount = document.getElementById('teamCountSelect').value || 4;
+        ToolAiAssistant.run({
+            tool: 'classroom_picker',
+            action: 'balance_teams',
+            actionTitle: 'ចែកក្រុមគរុកោសល្យ & ផ្តល់តួនាទី',
+            content: text,
+            options: { num_teams: teamCount }
+        });
+    }
+
+    function runAiTeamTopics() {
+        const theme = prompt('សូមបញ្ចូលមុខវិជ្ជា ឬប្រធានបទមេរៀន (ឧ. ប្រវត្តិវិទ្យា, បរិស្ថាន, វិទ្យាសាស្ត្រ)៖', 'ការអភិរក្សបរិស្ថាន និងការប្រែប្រួលអាកាសធាតុ');
+        if (!theme) return;
+        ToolAiAssistant.run({
+            tool: 'classroom_picker',
+            action: 'team_topics',
+            actionTitle: `ប្រធានបទពិភាក្សា (${theme})`,
+            content: theme,
+            options: { theme: theme }
+        });
+    }
 </script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
 {% endblock %}

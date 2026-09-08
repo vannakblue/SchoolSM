@@ -1644,3 +1644,44 @@ def tool_export_ios_project(request):
     return response
 
 
+@login_required
+@require_POST
+def api_tool_ai_assist(request):
+    """
+    Unified AI Agent endpoint for all tools in SchoolSM Digital Tools Hub.
+    Powered by Google Gemini 3.8 Flash with Dynamic Thinking Levels.
+    """
+    from .ai_service import ToolAiService
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = request.POST
+
+    tool_name = str(data.get('tool', '')).strip().lower()
+    action = str(data.get('action', '')).strip().lower()
+    content = str(data.get('content', '')).strip()
+    options = data.get('options', {})
+    if isinstance(options, str):
+        try:
+            options = json.loads(options)
+        except Exception:
+            options = {}
+
+    thinking_level = str(data.get('thinking_level', '')).strip().lower()
+
+    if not content and action not in ['quiz_wheel']:
+        return JsonResponse({'status': 'error', 'message': 'សូមបញ្ចូល ឬជ្រើសរើសខ្លឹមសារជាមុនសិន!'}, status=400)
+
+    res = ToolAiService.process_tool_ai(
+        tool_name=tool_name,
+        action=action,
+        content=content,
+        options=options,
+        thinking_level=thinking_level,
+        user=request.user
+    )
+
+    return JsonResponse(res)
+
+

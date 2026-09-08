@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}មជ្ឈមណ្ឌលឧបករណ៍អនឡាញ (Online Tools Hub) | SchoolSM{% endblock %}
 
@@ -139,9 +140,14 @@
                     <span class="badge bg-white bg-opacity-15 text-white fw-normal"><i class="fa-solid fa-mobile-screen me-1 text-success"></i> ប្រើលើទូរស័ព្ទ & កុំព្យូទ័រ</span>
                 </div>
             </div>
-            <div class="col-lg-4 mt-4 mt-lg-0 text-lg-end">
+            <div class="col-lg-5 mt-4 mt-lg-0 text-lg-end">
                 <div class="position-relative d-inline-block w-100">
-                    <input type="text" id="toolSearchInput" class="form-control form-control-lg quick-search-box w-100" placeholder="🔍 ស្វែងរកឧបករណ៍... (Search Tools)" oninput="filterTools()">
+                    <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white p-1">
+                        <input type="text" id="toolSearchInput" class="form-control border-0 ps-3 quick-search-box" placeholder="🔍 ស្វែងរកឧបករណ៍ ឬសួរ AI..." oninput="filterTools()">
+                        <button type="button" class="btn btn-warning rounded-pill px-3 fw-bold d-flex align-items-center gap-1 shadow-xs" onclick="askAiToolFinder()" title="សួរ AI ណែនាំឧបករណ៍">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="d-none d-sm-inline">សួរ AI</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -408,7 +414,10 @@
                         <div class="tool-icon-box bg-warning bg-opacity-15 text-warning-emphasis">
                             <i class="fa-solid fa-dharmachakra"></i>
                         </div>
-                        <span class="badge badge-soft-warning rounded-pill">🎉 ពេញនិយមក្នុងថ្នាក់</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge badge-soft-warning rounded-pill">🎉 ពេញនិយម</span>
+                            <span class="badge bg-warning text-dark rounded-pill"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>AI</span>
+                        </div>
                     </div>
                     <h5 class="fw-bold mb-1 text-dark">ចាប់ឆ្នោតសិស្ស & ចែកក្រុម</h5>
                     <p class="text-muted small mb-3 flex-grow-1">
@@ -448,7 +457,10 @@
                         <div class="tool-icon-box bg-info bg-opacity-10 text-info">
                             <i class="fa-solid fa-spell-check"></i>
                         </div>
-                        <span class="badge badge-soft-info rounded-pill">វិភាគអត្ថបទ</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge badge-soft-info rounded-pill">វិភាគ</span>
+                            <span class="badge bg-primary rounded-pill"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>AI</span>
+                        </div>
                     </div>
                     <h5 class="fw-bold mb-1 text-dark">រាប់ពាក្យ & វិភាគអត្ថបទ</h5>
                     <p class="text-muted small mb-3 flex-grow-1">
@@ -468,7 +480,10 @@
                         <div class="tool-icon-box bg-danger bg-opacity-10 text-danger">
                             <i class="fa-solid fa-microphone-lines"></i>
                         </div>
-                        <span class="badge badge-soft-danger rounded-pill">Speech to Text</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge badge-soft-danger rounded-pill">Voice</span>
+                            <span class="badge bg-danger rounded-pill"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>AI</span>
+                        </div>
                     </div>
                     <h5 class="fw-bold mb-1 text-dark">វាយអត្ថបទតាមសំឡេង (Voice Typing)</h5>
                     <p class="text-muted small mb-3 flex-grow-1">
@@ -488,7 +503,10 @@
                         <div class="tool-icon-box bg-primary bg-opacity-10 text-primary">
                             <i class="fa-solid fa-calculator"></i>
                         </div>
-                        <span class="badge badge-soft-primary rounded-pill">គណិតវិទ្យា & ខ្នាត</span>
+                        <div class="d-flex gap-1">
+                            <span class="badge badge-soft-primary rounded-pill">គណិត</span>
+                            <span class="badge bg-success rounded-pill"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>AI Solver</span>
+                        </div>
                     </div>
                     <h5 class="fw-bold mb-1 text-dark">ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត</h5>
                     <p class="text-muted small mb-3 flex-grow-1">
@@ -634,5 +652,40 @@
             }
         });
     }
+
+    function askAiToolFinder() {
+        const query = document.getElementById('toolSearchInput').value.trim();
+        if (!query) {
+            Swal.fire({
+                icon: 'question',
+                title: '✨ សួរ AI ណែនាំឧបករណ៍',
+                text: 'សូមវាយបញ្ចូលនូវអ្វីដែលលោកអ្នកចង់ធ្វើ (ឧទាហរណ៍៖ "ចង់បង្កើតកិច្ចតែងការបង្រៀន", "ចង់បែងចែកក្រុមសិស្ស", "ចង់សង្ខេបអត្ថបទ")...',
+                input: 'text',
+                inputPlaceholder: 'វាយបញ្ចូលសំណួរទីនេះ...',
+                showCancelButton: true,
+                confirmButtonText: 'សួរ AI',
+                cancelButtonText: 'បោះបង់',
+                confirmButtonColor: '#1e3c72'
+            }).then(res => {
+                if (res.isConfirmed && res.value) {
+                    ToolAiAssistant.run({
+                        tool: 'hub',
+                        action: 'smart_tool_finder',
+                        actionTitle: 'ណែនាំឧបករណ៍ឌីជីថល',
+                        content: res.value
+                    });
+                }
+            });
+            return;
+        }
+
+        ToolAiAssistant.run({
+            tool: 'hub',
+            action: 'smart_tool_finder',
+            actionTitle: 'ណែនាំឧបករណ៍ឌីជីថល',
+            content: query
+        });
+    }
 </script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
 {% endblock %}

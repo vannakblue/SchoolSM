@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}រាប់ពាក្យ & វិភាគអត្ថបទ (Word Counter & Text Analyzer) | SchoolSM{% endblock %}
 
@@ -117,8 +118,35 @@
         <!-- Quick Utilities Panel -->
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 85px;">
+                <!-- AI Magic Assistant Panel -->
+                <div class="p-3 mb-4 rounded-4 border" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08)); border-color: rgba(99, 102, 241, 0.25) !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini 3.8 Flash AI
+                        </span>
+                        <small class="text-muted fw-bold" style="font-size: 0.72rem;">ឆ្លាតវៃ & រហ័ស</small>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiTextAction('grammar_check', 'ពិនិត្យអក្ខរាវិរុទ្ធ & វេយ្យាករណ៍ខ្មែរ')">
+                            <i class="fa-solid fa-spell-check me-1.5 text-success"></i> ពិនិត្យអក្ខរាវិរុទ្ធ & វេយ្យាករណ៍
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiTextAction('summarize', 'សង្ខេបខ្លឹមសារអត្ថបទ')">
+                            <i class="fa-solid fa-compress me-1.5 text-warning"></i> សង្ខេបអត្ថបទ (Summary)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiTextAction('formal_tone', 'កែសម្រួលជាលិខិតរដ្ឋបាលសាលា')">
+                            <i class="fa-solid fa-file-signature me-1.5 text-info"></i> កែសម្រួលជាលិខិតរដ្ឋបាលផ្លូវការ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiTextAction('generate_quiz', 'បង្កើតវិញ្ញាសា MCQs ពីអត្ថបទ')">
+                            <i class="fa-solid fa-file-circle-question me-1.5" style="color: #7e22ce;"></i> បង្កើតវិញ្ញាសា MCQs ៥ សំណួរ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start rounded-3 fw-semibold py-1.5" onclick="runAiTextAction('translate', 'បកប្រែភាសា ខ្មែរ ⇄ English')">
+                            <i class="fa-solid fa-language me-1.5 text-danger"></i> បកប្រែ ខ្មែរ ⇄ English
+                        </button>
+                    </div>
+                </div>
+
                 <h5 class="fw-bold text-dark mb-3">
-                    <i class="fa-solid fa-wand-magic-sparkles text-info me-2"></i>ឧបករណ៍កែសម្រួលអត្ថបទ
+                    <i class="fa-solid fa-screwdriver-wrench text-info me-2"></i>ឧបករណ៍កែសម្រួលអត្ថបទ
                 </h5>
 
                 <div class="d-grid gap-2 mb-4">
@@ -245,7 +273,21 @@
                 showConfirmButton: false,
                 timer: 2000
             });
+    }
+
+    function runAiTextAction(action, title) {
+        const text = document.getElementById('mainTextArea').value.trim();
+        ToolAiAssistant.run({
+            tool: 'text_analyzer',
+            action: action,
+            actionTitle: title,
+            content: text,
+            onApply: function (resultText) {
+                document.getElementById('mainTextArea').value = resultText;
+                analyzeText();
+            }
         });
     }
 </script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
 {% endblock %}
