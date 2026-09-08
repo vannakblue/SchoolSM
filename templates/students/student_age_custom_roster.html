@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+{% load static i18n_extras %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Paper sheet container replicating the MoEYS official look */
+    .moeys-sheet {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border-radius: 8px;
+        padding: 30px 35px;
+        margin-bottom: 2rem;
+        font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
+    }
+    [data-bs-theme="dark"] .moeys-sheet {
+        background-color: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .font-muol {
+        font-family: 'Moul', 'Khmer OS Muol Light', serif;
+    }
+    .font-siemreap {
+        font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
+    }
+
+    /* Official document table styling matching screenshots */
+    .roster-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+        margin-top: 15px;
+        color: #0f172a;
+    }
+    [data-bs-theme="dark"] .roster-table {
+        color: #f1f5f9;
+    }
+
+    .roster-table th, .roster-table td {
+        border: 1px solid #475569;
+        padding: 6px 8px;
+        vertical-align: middle;
+    }
+    [data-bs-theme="dark"] .roster-table th, 
+    [data-bs-theme="dark"] .roster-table td {
+        border-color: #64748b;
+    }
+
+    .roster-table th {
+        background-color: #f8fafc;
+        font-weight: bold;
+        text-align: center;
+    }
+    [data-bs-theme="dark"] .roster-table th {
+        background-color: #0f172a;
+    }
+
+    .roster-table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.04);
+    }
+    [data-bs-theme="dark"] .roster-table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.15);
+    }
+
+    .cell-center { text-align: center; }
+    .cell-left { text-align: left; }
+    .cell-right { text-align: right; }
+
+    /* Quick Preset Badges */
+    .preset-btn {
+        transition: all 0.2s ease;
+        font-size: 0.88rem;
+    }
+    .preset-btn.active {
+        background-color: #1d4ed8 !important;
+        color: #ffffff !important;
+        border-color: #1d4ed8 !important;
+        box-shadow: 0 2px 4px rgba(29, 78, 216, 0.3);
+    }
+
+    /* Action bar sticky style */
+    .top-action-bar {
+        background-color: var(--bs-card-bg, #ffffff);
+        border: 1px solid var(--bs-border-color, #e2e8f0);
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'student_list' %}" class="text-decoration-none">សិស្ស</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'student_age_grade_statistics' %}" class="text-decoration-none">ស្ថិតិតាមអាយុ & កម្រិតថ្នាក់</a></li>
+            <li class="breadcrumb-item active" aria-current="page">បញ្ជីសម្រង់សិស្សតាមអាយុ (កែតម្រូវបាន)</li>
+        </ol>
+    </nav>
+
+    <!-- Top Action Bar -->
+    <div class="top-action-bar shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h4 class="fw-bold mb-1 text-primary d-flex align-items-center">
+                    <i class="fa-solid fa-users-rectangle me-2"></i>
+                    បញ្ជីសម្រង់សិស្សតាមអាយុ (ដែលអាចកែតម្រូវបាន)
+                </h4>
+                <p class="text-muted small mb-0">
+                    ទាញយក និងបោះពុម្ពតារាងសម្រង់ឈ្មោះសិស្សតាមលក្ខខណ្ឌអាយុ និងទម្រង់គំរូផ្លូវការក្រសួងអប់រំ យុវជន និងកីឡា
+                </p>
+            </div>
+
+            <!-- Quick Export & Print Actions -->
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'student_age_custom_roster_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success fw-bold">
+                    <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (.xlsx)
+                </a>
+                <a href="{% url 'student_age_custom_roster_print' %}?{{ request.GET.urlencode }}" target="_blank" class="btn btn-outline-danger fw-bold">
+                    <i class="fa-solid fa-file-pdf me-1"></i> រក្សាទុកជា PDF / បោះពុម្ព
+                </a>
+                <a href="{% url 'student_age_grade_statistics' %}" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-chart-pie me-1"></i> ស្ថិតិអាយុទូទៅ (Matrix)
+                </a>
+            </div>
+        </div>
+
+        <hr class="my-3 opacity-25">
+
+        <!-- Quick Presets -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="small fw-bold text-secondary me-1"><i class="fa-solid fa-sliders me-1"></i> គំរូទូទៅរហ័ស៖</span>
+            
+            <a href="?format=format_a&mode=range&min_age=13&max_age=14&academic_year={{ active_year.id }}" 
+               class="btn btn-sm btn-outline-primary preset-btn {% if template_format == 'format_a' and mode == 'range' and min_age == 13 and max_age == 14 %}active{% endif %}">
+                <i class="fa-solid fa-table me-1"></i> គំរូទី១៖ អាយុ ១៣ ដល់ ១៤ ឆ្នាំ (Format A)
+            </a>
+
+            <a href="?format=format_b&mode=threshold&min_age=15&academic_year={{ active_year.id }}" 
+               class="btn btn-sm btn-outline-primary preset-btn {% if template_format == 'format_b' and mode == 'threshold' and min_age == 15 %}active{% endif %}">
+                <i class="fa-solid fa-location-dot me-1"></i> គំរូទី២៖ អាយុ ១៥ ឆ្នាំឡើង + អាសយដ្ឋាន (Format B)
+            </a>
+
+            <a href="?format=format_a&mode=max&max_age=12&academic_year={{ active_year.id }}" 
+               class="btn btn-sm btn-outline-secondary preset-btn {% if mode == 'max' and max_age == 12 %}active{% endif %}">
+                អាយុ ≤ ១២ ឆ្នាំ
+            </a>
+
+            <a href="?format=format_a&mode=threshold&min_age=20&academic_year={{ active_year.id }}" 
+               class="btn btn-sm btn-outline-secondary preset-btn {% if mode == 'threshold' and min_age == 20 %}active{% endif %}">
+                អាយុ ≥ ២០ ឆ្នាំ
+            </a>
+
+            <a href="?format={{ template_format }}&mode=all&academic_year={{ active_year.id }}" 
+               class="btn btn-sm btn-outline-secondary preset-btn {% if mode == 'all' %}active{% endif %}">
+                គ្រប់អាយុ (ទាំងអស់)
+            </a>
+        </div>
+    </div>
+
+    <!-- Customization Form Card -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-body-tertiary py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark d-flex align-items-center">
+                    <i class="fa-solid fa-pen-to-square text-primary me-2"></i>
+                    ផ្ទាំងកែតម្រូវលក្ខខណ្ឌ & ទម្រង់តារាង (Customization Controls)
+                </span>
+                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#customFilterCollapse">
+                    <i class="fa-solid fa-chevron-down"></i> បង្រួម/ពង្រីក
+                </button>
+            </div>
+        </div>
+        <div class="collapse show" id="customFilterCollapse">
+            <div class="card-body p-3 p-md-4">
+                <form method="get" action="{% url 'student_age_custom_roster' %}" id="customRosterForm">
+                    <div class="row g-3">
+                        <!-- Format Selection -->
+                        <div class="col-md-4 col-lg-3">
+                            <label class="form-label small fw-bold text-primary">
+                                <i class="fa-solid fa-table-cells me-1"></i> ទម្រង់តារាង (Template Format)
+                            </label>
+                            <select name="format" class="form-select form-select-sm" id="formatSelect" onchange="this.form.submit()">
+                                <option value="format_a" {% if template_format == 'format_a' %}selected{% endif %}>
+                                    គំរូទី១ (Format A) - បំបែកថ្នាក់/បន្ទប់ + មានជួរអាយុ
+                                </option>
+                                <option value="format_b" {% if template_format == 'format_b' %}selected{% endif %}>
+                                    គំរូទី២ (Format B) - បំបែកអាសយដ្ឋាន ៤ ជួរ (ភូមិ, ឃុំ, ស្រុក, ខេត្ត)
+                                </option>
+                            </select>
+                            <div class="form-text small">ជ្រើសរើសទម្រង់ដូចគំរូរូបភាពទី១ ឬទី២</div>
+                        </div>
+
+                        <!-- Age Mode -->
+                        <div class="col-md-4 col-lg-3">
+                            <label class="form-label small fw-bold text-primary">
+                                <i class="fa-solid fa-filter me-1"></i> របៀបចម្រាញ់អាយុ (Age Mode)
+                            </label>
+                            <select name="mode" class="form-select form-select-sm" id="modeSelect" onchange="toggleAgeInputs()">
+                                <option value="range" {% if mode == 'range' %}selected{% endif %}>ចន្លោះអាយុ (Range: ពី...ដល់...)</option>
+                                <option value="threshold" {% if mode == 'threshold' %}selected{% endif %}>ចាប់ពីអាយុឡើងទៅ (Threshold: ≥ X)</option>
+                                <option value="exact" {% if mode == 'exact' %}selected{% endif %}>អាយុជាក់លាក់ (Exact: = X)</option>
+                                <option value="max" {% if mode == 'max' %}selected{% endif %}>អាយុចុះក្រោម (Under: ≤ X)</option>
+                                <option value="all" {% if mode == 'all' %}selected{% endif %}>មិនកំណត់អាយុ (សិស្សទាំងអស់)</option>
+                            </select>
+                        </div>
+
+                        <!-- Min Age -->
+                        <div class="col-6 col-md-2" id="minAgeGroup">
+                            <label class="form-label small fw-bold" id="minAgeLabel">អាយុចាប់ពី (Min Age)</label>
+                            <input type="number" name="min_age" class="form-control form-control-sm" value="{{ min_age }}" min="0" max="100">
+                        </div>
+
+                        <!-- Max Age -->
+                        <div class="col-6 col-md-2" id="maxAgeGroup">
+                            <label class="form-label small fw-bold">ដល់អាយុ (Max Age)</label>
+                            <input type="number" name="max_age" class="form-control form-control-sm" value="{{ max_age }}" min="0" max="100">
+                        </div>
+
+                        <!-- Academic Year -->
+                        <div class="col-md-4 col-lg-2">
+                            <label class="form-label small fw-bold">ឆ្នាំសិក្សា</label>
+                            <select name="academic_year" class="form-select form-select-sm" onchange="this.form.submit()">
+                                {% for y in all_years %}
+                                <option value="{{ y.id }}" {% if active_year and active_year.id == y.id %}selected{% endif %}>
+                                    {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Grade Level -->
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <label class="form-label small fw-bold">កម្រិតថ្នាក់</label>
+                            <select name="grade_level" class="form-select form-select-sm">
+                                <option value="ALL" {% if grade_level == 'ALL' %}selected{% endif %}>គ្រប់កម្រិត (៧ ដល់ ១២)</option>
+                                <option value="7" {% if grade_level == '7' %}selected{% endif %}>ថ្នាក់ទី ៧</option>
+                                <option value="8" {% if grade_level == '8' %}selected{% endif %}>ថ្នាក់ទី ៨</option>
+                                <option value="9" {% if grade_level == '9' %}selected{% endif %}>ថ្នាក់ទី ៩</option>
+                                <option value="10" {% if grade_level == '10' %}selected{% endif %}>ថ្នាក់ទី ១០</option>
+                                <option value="11" {% if grade_level == '11' %}selected{% endif %}>ថ្នាក់ទី ១១</option>
+                                <option value="12" {% if grade_level == '12' %}selected{% endif %}>ថ្នាក់ទី ១២</option>
+                            </select>
+                        </div>
+
+                        <!-- Classroom -->
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <label class="form-label small fw-bold">បន្ទប់ថ្នាក់</label>
+                            <select name="classroom" class="form-select form-select-sm">
+                                <option value="ALL">គ្រប់បន្ទប់</option>
+                                {% for c in all_classrooms %}
+                                <option value="{{ c.id }}" {% if classroom_id == c.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Gender -->
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <label class="form-label small fw-bold">ភេទ</label>
+                            <select name="gender" class="form-select form-select-sm">
+                                <option value="ALL" {% if gender_filter == 'ALL' %}selected{% endif %}>ទាំងពីរភេទ</option>
+                                <option value="F" {% if gender_filter == 'F' %}selected{% endif %}>ស្រី (ស)</option>
+                                <option value="M" {% if gender_filter == 'M' %}selected{% endif %}>ប្រុស (ប)</option>
+                            </select>
+                        </div>
+
+                        <!-- Calc Method -->
+                        <div class="col-6 col-md-3 col-lg-2">
+                            <label class="form-label small fw-bold">កាលបរិច្ឆេទគិតអាយុ</label>
+                            <select name="calc_method" class="form-select form-select-sm">
+                                <option value="exact" {% if calc_method == 'exact' %}selected{% endif %}>៣១ តុលា (ក្រសួងអប់រំ)</option>
+                                <option value="calendar" {% if calc_method == 'calendar' %}selected{% endif %}>ឆ្នាំប្រតិទិន (ឆ្នាំបច្ចុប្បន្ន - ឆ្នាំកំណើត)</option>
+                            </select>
+                        </div>
+
+                        <!-- Editable Title -->
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small fw-bold text-success">
+                                <i class="fa-solid fa-heading me-1"></i> កែសម្រួលចំណងជើងរបាយការណ៍ (Custom Title)
+                            </label>
+                            <input type="text" name="custom_title" class="form-control form-control-sm" 
+                                   value="{{ request.GET.custom_title|default:'' }}" 
+                                   placeholder="ទុកទទេដើម្បីប្រើចំណងជើងស្វ័យប្រវត្តិ ({{ title }})">
+                        </div>
+
+                        <!-- Editable School Name -->
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small fw-bold text-success">
+                                <i class="fa-solid fa-school me-1"></i> ឈ្មោះគ្រឹះស្ថានសិក្សា (School Name)
+                            </label>
+                            <input type="text" name="school_name" class="form-control form-control-sm" 
+                                   value="{{ school_name }}" placeholder="វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត">
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="col-md-12 col-lg-4 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
+                                <i class="fa-solid fa-check me-1"></i> អនុវត្តការកែតម្រូវ
+                            </button>
+                            <a href="{% url 'student_age_custom_roster' %}" class="btn btn-light btn-sm border">
+                                <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ឡើងវិញ
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary KPI Badges -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 bg-primary bg-opacity-10 rounded-3">
+                <div class="small text-primary fw-bold">សិស្សសរុបក្នុងបញ្ជី</div>
+                <div class="h3 fw-bold text-primary mb-0 mt-1">{{ total_count_kh }} <span class="fs-6 fw-normal text-muted">នាក់</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 bg-danger bg-opacity-10 rounded-3">
+                <div class="small text-danger fw-bold">សិស្សស្រី ({{ female_pct }}%)</div>
+                <div class="h3 fw-bold text-danger mb-0 mt-1">{{ female_count_kh }} <span class="fs-6 fw-normal text-muted">នាក់</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 bg-info bg-opacity-10 rounded-3">
+                <div class="small text-info-emphasis fw-bold">សិស្សប្រុស</div>
+                <div class="h3 fw-bold text-info-emphasis mb-0 mt-1">{{ male_count_kh }} <span class="fs-6 fw-normal text-muted">នាក់</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 bg-secondary bg-opacity-10 rounded-3">
+                <div class="small text-secondary fw-bold">ទម្រង់តារាងកំពុងបង្ហាញ</div>
+                <div class="h5 fw-bold text-secondary mb-0 mt-2">
+                    {% if template_format == 'format_a' %}
+                        <span class="badge bg-primary">គំរូទី១ (Format A)</span>
+                    {% else %}
+                        <span class="badge bg-success">គំរូទី២ (Format B)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Official MoEYS Document Sheet Container -->
+    <div class="moeys-sheet">
+        <!-- Document Header: Top Right Kingdom + Top Left School Name -->
+        <div class="row align-items-start mb-4">
+            <div class="col-6 text-start">
+                <div class="font-muol text-dark" style="font-size: 1.05rem;">
+                    {{ school_name }}
+                </div>
+            </div>
+            <div class="col-6 text-end">
+                <div class="font-muol text-dark" style="font-size: 1.05rem; line-height: 1.5;">
+                    ព្រះរាជាណាចក្រកម្ពុជា
+                </div>
+                <div class="font-muol text-dark" style="font-size: 0.95rem; line-height: 1.4;">
+                    ជាតិ សាសនា ព្រះមហាក្សត្រ
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Center Title -->
+        <div class="text-center my-4">
+            <h4 class="font-muol fw-bold text-dark mb-1" style="font-size: 1.28rem; letter-spacing: 0.5px;">
+                {{ title }}
+            </h4>
+            <div class="small text-muted font-siemreap">
+                ឆ្នាំសិក្សា {{ active_year.name|default:"២០២៦-២០២៧" }} (គិតត្រឹមថ្ងៃទី ៣១ ខែតុលា ឆ្នាំ {{ ref_year }})
+            </div>
+        </div>
+
+        <!-- The Table: Format A or Format B -->
+        <div class="table-responsive">
+            {% if template_format == 'format_a' %}
+            <!-- ================= FORMAT A TABLE (8 visual columns) ================= -->
+            <table class="roster-table" id="rosterTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;" class="cell-center">លរ</th>
+                        <th style="width: 100px;" class="cell-center">អត្តលេខ</th>
+                        <th style="min-width: 220px;" class="cell-center">គោត្តនាម និងនាម</th>
+                        <th style="width: 50px;" class="cell-center">ភេទ</th>
+                        <th style="width: 120px;" class="cell-center">ថ្ងៃខែឆ្នាំកំណើត</th>
+                        <th colspan="2" class="cell-center" style="width: 100px;">ថ្នាក់ទី</th>
+                        <th style="width: 65px;" class="cell-center">អាយុ</th>
+                        <th style="min-width: 100px;" class="cell-center">ផ្សេងៗ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td class="cell-center">{{ s.no }}</td>
+                        <td class="cell-center fw-medium">{{ s.student_id }}</td>
+                        <td class="cell-left fw-medium ps-3">{{ s.khmer_name }}</td>
+                        <td class="cell-center">{{ s.gender_kh }}</td>
+                        <td class="cell-center">{{ s.dob_kh }}</td>
+                        <td class="cell-center" style="width: 50px;">{{ s.grade_level }}</td>
+                        <td class="cell-center" style="width: 50px;">{{ s.section }}</td>
+                        <td class="cell-center fw-bold">{{ s.age }}</td>
+                        <td class="cell-center">{{ s.remarks }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-users-slash fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                            មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌចម្រាញ់នេះទេ សូមសាកល្បងជ្រើសរើសចន្លោះអាយុ ឬកម្រិតថ្នាក់ផ្សេង។
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% else %}
+            <!-- ================= FORMAT B TABLE (10 visual columns with Address) ================= -->
+            <table class="roster-table" id="rosterTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 45px;" class="cell-center">លរ</th>
+                        <th rowspan="2" style="width: 95px;" class="cell-center">អត្តលេខ</th>
+                        <th rowspan="2" style="min-width: 200px;" class="cell-center">គោត្តនាម និងនាម</th>
+                        <th rowspan="2" style="width: 45px;" class="cell-center">ភេទ</th>
+                        <th rowspan="2" style="width: 115px;" class="cell-center">ថ្ងៃខែឆ្នាំកំណើត</th>
+                        <th rowspan="2" style="width: 80px;" class="cell-center">ថ្នាក់</th>
+                        <th colspan="4" class="cell-center">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                        <th rowspan="2" style="min-width: 90px;" class="cell-center">ផ្សេងៗ</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 110px;" class="cell-center">ភូមិ</th>
+                        <th style="width: 110px;" class="cell-center">ឃុំ/សង្កាត់</th>
+                        <th style="width: 120px;" class="cell-center">ស្រុក/ខណ្ឌ</th>
+                        <th style="width: 110px;" class="cell-center">ខេត្ត/ក្រុង</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td class="cell-center">{{ s.no }}</td>
+                        <td class="cell-center fw-medium">{{ s.student_id }}</td>
+                        <td class="cell-left fw-medium ps-3">{{ s.khmer_name }}</td>
+                        <td class="cell-center">{{ s.gender_kh }}</td>
+                        <td class="cell-center">{{ s.dob_kh }}</td>
+                        <td class="cell-center">{{ s.class_display }}</td>
+                        <td class="cell-center">{{ s.village }}</td>
+                        <td class="cell-center">{{ s.commune }}</td>
+                        <td class="cell-center">{{ s.district }}</td>
+                        <td class="cell-center">{{ s.province }}</td>
+                        <td class="cell-center">{{ s.remarks }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-users-slash fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                            មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌចម្រាញ់នេះទេ សូមសាកល្បងជ្រើសរើសចន្លោះអាយុ ឬកម្រិតថ្នាក់ផ្សេង។
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+        <!-- Document Footer Statistics -->
+        {% if students %}
+        <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top text-muted small">
+            <div>
+                <strong>បញ្ឈប់បញ្ជីត្រឹមលេខរៀងទី {{ total_count_kh }}</strong> 
+                (សរុបចំនួន {{ total_count_kh }} នាក់, ស្រីចំនួន {{ female_count_kh }} នាក់, ប្រុសចំនួន {{ male_count_kh }} នាក់)
+            </div>
+            <div>
+                <a href="{% url 'student_age_custom_roster_print' %}?{{ request.GET.urlencode }}" target="_blank" class="text-decoration-none text-danger fw-bold">
+                    <i class="fa-solid fa-print me-1"></i> បើកទំព័របោះពុម្ពពេញលេញ (Print Preview)
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleAgeInputs() {
+        const mode = document.getElementById('modeSelect').value;
+        const minGroup = document.getElementById('minAgeGroup');
+        const maxGroup = document.getElementById('maxAgeGroup');
+        const minLabel = document.getElementById('minAgeLabel');
+
+        if (mode === 'range') {
+            minGroup.style.display = 'block';
+            maxGroup.style.display = 'block';
+            minLabel.textContent = 'អាយុចាប់ពី (Min Age)';
+        } else if (mode === 'threshold') {
+            minGroup.style.display = 'block';
+            maxGroup.style.display = 'none';
+            minLabel.textContent = 'អាយុចាប់ពី (≥ X ឆ្នាំឡើង)';
+        } else if (mode === 'exact') {
+            minGroup.style.display = 'block';
+            maxGroup.style.display = 'none';
+            minLabel.textContent = 'អាយុជាក់លាក់ (= X ឆ្នាំ)';
+        } else if (mode === 'max') {
+            minGroup.style.display = 'none';
+            maxGroup.style.display = 'block';
+        } else if (mode === 'all') {
+            minGroup.style.display = 'none';
+            maxGroup.style.display = 'none';
+        }
+    }
+
+    // Run on load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleAgeInputs();
+    });
+</script>
+{% endblock %}

@@ -63,6 +63,11 @@ urlpatterns = [
     path('classrooms/restore-default/', views.classroom_restore_default, name='classroom_restore_default'),
     path('classrooms/sync-40-classes/', views.sync_40_classrooms_and_roster, name='sync_40_classrooms_and_roster'),
 
+    # Homeroom Teachers Management & Approval Print
+    path('homeroom-teachers/', views.homeroom_teachers_manage, name='homeroom_teachers_manage'),
+    path('homeroom-teachers/update-ajax/', views.homeroom_teachers_update_ajax, name='homeroom_teachers_update_ajax'),
+    path('homeroom-teachers/print/', views.homeroom_teachers_approval_print, name='homeroom_teachers_approval_print'),
+
     # Subjects
     path('subjects/', views.subject_list, name='subject_list'),
     path('subjects/create/', views.subject_create, name='subject_create'),

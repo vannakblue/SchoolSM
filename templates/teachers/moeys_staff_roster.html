@@ -1,0 +1,399 @@
+{% extends 'base.html' %}
+{% load static i18n_extras %}
+
+{% block title %}បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ ឆ្នាំសិក្សា ២០២៦-២០២៧ | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .roster-container {
+        background-color: var(--bs-card-bg, #ffffff);
+    }
+    .roster-table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.82rem;
+        background-color: #ffffff;
+    }
+    .roster-table th, .roster-table td {
+        border: 1px solid #94a3b8;
+        padding: 5px 6px;
+        vertical-align: middle;
+    }
+    [data-bs-theme="dark"] .roster-table {
+        background-color: #1e293b;
+        color: #f1f5f9;
+    }
+    [data-bs-theme="dark"] .roster-table th, 
+    [data-bs-theme="dark"] .roster-table td {
+        border-color: #475569;
+    }
+    .roster-table thead th {
+        font-family: 'Khmer OS Muol Light', 'Khmer OS Battambang', sans-serif;
+        font-weight: normal;
+        background-color: #f1f5f9;
+        color: #0f172a;
+        text-align: center;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+    [data-bs-theme="dark"] .roster-table thead th {
+        background-color: #0f172a;
+        color: #f8fafc;
+    }
+    .th-main-header {
+        background-color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .th-main-header {
+        background-color: #1e293b !important;
+    }
+    .font-muol {
+        font-family: 'Khmer OS Muol Light', serif;
+    }
+    .font-battambang {
+        font-family: 'Khmer OS Battambang', sans-serif;
+    }
+    .cell-nowrap {
+        white-space: nowrap;
+    }
+    .roster-footer-box {
+        font-size: 0.86rem;
+        line-height: 1.6;
+    }
+
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .app-main {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        .app-header, .app-sidebar, .sidebar-backdrop {
+            display: none !important;
+        }
+        body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-size: 8pt !important;
+        }
+        .custom-card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        .roster-table {
+            font-size: 7pt !important;
+        }
+        .roster-table th, .roster-table td {
+            border: 0.5pt solid #000000 !important;
+            padding: 2px 3px !important;
+            color: #000000 !important;
+        }
+        .roster-table thead th {
+            background-color: #f1f5f9 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        @page {
+            size: A3 landscape;
+            margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ */
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Top Action Bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3 no-print">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'teacher_list' %}" class="text-decoration-none">បញ្ជីគ្រូបង្រៀន</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">តារាងគ្រប់គ្រងបុគ្គលិក ២០២៦-២០២៧</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0 text-primary">
+                <i class="fa-solid fa-file-invoice me-2"></i>បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ
+            </h2>
+            <p class="text-muted small mb-0">ទម្រង់ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា ឆ្នាំសិក្សា ២០២៦-២០២៧ (យោងតាមឯកសារ 2026.xlsx)</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'teacher_list' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left me-1"></i> បញ្ជីគ្រូ
+            </a>
+            <a href="{% url 'moeys_staff_roster_export_excel' %}" class="btn btn-success fw-semibold shadow-sm">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (.xlsx)
+            </a>
+            <a href="{% url 'moeys_staff_roster_print' %}" target="_blank" class="btn btn-outline-primary fw-semibold shadow-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> ទំព័របោះពុម្ព A3/A4
+            </a>
+            <button type="button" onclick="window.print()" class="btn btn-dark fw-semibold shadow-sm">
+                <i class="fa-solid fa-print me-1"></i> រក្សាទុកជា PDF / បោះពុម្ព
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Statistic Cards (Screen Only) -->
+    <div class="row g-3 mb-4 no-print">
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-primary h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">បុគ្គលិកសរុប</div>
+                <h3 class="fw-bold mb-0 text-dark">{{ all_staff_count }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">ស្រី៖ <strong class="text-danger">{{ total_female }}</strong>, ប្រុស៖ <strong>{{ total_male }}</strong></small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-danger h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">បុគ្គលិកស្រី</div>
+                <h3 class="fw-bold mb-0 text-danger">{{ total_female }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">សមាមាត្រ៖ <strong>53.8%</strong></small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-info h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">ក្របខ័ណ្ឌ ក (ទុតិយភូមិ)</div>
+                <h3 class="fw-bold mb-0 text-info">{{ count_cat_a }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">ស្រី៖ <strong>29</strong> នាក់</small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-success h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">ក្របខ័ណ្ឌ ខ (បឋមភូមិ)</div>
+                <h3 class="fw-bold mb-0 text-success">{{ count_cat_b }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">ស្រី៖ <strong>31</strong> នាក់</small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-warning h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">ក្របខ័ណ្ឌ គ (បឋម/ផ្សេងៗ)</div>
+                <h3 class="fw-bold mb-0 text-warning">{{ count_cat_c }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">ស្រី៖ <strong>4</strong> នាក់</small>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6">
+            <div class="custom-card p-3 border-start border-4 border-secondary h-100 shadow-sm">
+                <div class="text-muted small fw-semibold">សិស្សសរុបយោង</div>
+                <h3 class="fw-bold mb-0 text-dark">{{ tot_students }} <small class="fs-6 text-muted">នាក់</small></h3>
+                <small class="text-muted">ស្រី៖ <strong class="text-danger">{{ tot_students_female }}</strong> នាក់</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Live Search Toolbar (Screen Only) -->
+    <div class="custom-card p-3 mb-4 shadow-sm no-print">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label fw-semibold small text-muted mb-1">🔍 ស្វែងរកបុគ្គលិក</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="វាយឈ្មោះ, អត្តលេខ, ឯកទេស, តួនាទី, លេខទូរស័ព្ទ...">
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold small text-muted mb-1">🏛️ ក្របខ័ណ្ឌ (ប្រភេទ)</label>
+                <select name="cat" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- ទាំងអស់ --</option>
+                    <option value="ក" {% if cat_filter == 'ក' %}selected{% endif %}>ក្របខ័ណ្ឌ ក ({{ count_cat_a }} នាក់)</option>
+                    <option value="ខ" {% if cat_filter == 'ខ' %}selected{% endif %}>ក្របខ័ណ្ឌ ខ ({{ count_cat_b }} នាក់)</option>
+                    <option value="គ" {% if cat_filter == 'គ' %}selected{% endif %}>ក្របខ័ណ្ឌ គ ({{ count_cat_c }} នាក់)</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold small text-muted mb-1">💼 ភារកិច្ច/តួនាទី</label>
+                <select name="duty" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- ទាំងអស់ --</option>
+                    {% for d in all_duties %}
+                    <option value="{{ d }}" {% if duty_filter == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold small text-muted mb-1">🚻 ភេទ</label>
+                <select name="gender" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- ទាំងអស់ --</option>
+                    <option value="ស" {% if gender_filter == 'ស' %}selected{% endif %}>ស្រី (Female)</option>
+                    <option value="ប" {% if gender_filter == 'ប' %}selected{% endif %}>ប្រុស (Male)</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                    <i class="fa-solid fa-filter me-1"></i> ច្រោះ
+                </button>
+                {% if query or cat_filter or duty_filter or gender_filter %}
+                <a href="{% url 'moeys_staff_roster' %}" class="btn btn-outline-secondary" title="សម្អាត Filter">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Official Document Wrapper (Matches 2026.xlsx exact layout) -->
+    <div class="custom-card p-4 shadow-sm mb-4 roster-container">
+        
+        <!-- Document Header (Kingdom & Ministry) -->
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <!-- Left Info -->
+            <div class="text-start">
+                <div class="font-muol" style="font-size: 0.95rem; color: #0f172a;">ស្រុកកណ្ដាលស្ទឹង</div>
+                <div class="font-muol" style="font-size: 0.95rem; color: #0f172a;">ការិយាល័យអប់រំ យុវជន និងកីឡា</div>
+                <div class="font-muol" style="font-size: 0.95rem; color: #1e40af;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត</div>
+            </div>
+            <!-- Right Motto -->
+            <div class="text-center" style="min-width: 260px;">
+                <div class="font-muol" style="font-size: 1.05rem; color: #0f172a;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="font-muol" style="font-size: 1.05rem; color: #0f172a;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div style="font-size: 0.85rem; letter-spacing: 3px; color: #0f172a;">3 3 3</div>
+            </div>
+        </div>
+
+        <!-- Main Title -->
+        <div class="text-center my-3">
+            <h4 class="font-muol text-primary mb-1" style="font-size: 1.15rem; letter-spacing: 0.5px;">
+                បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ ឆ្នាំសិក្សា ២០២៦-២០២៧
+            </h4>
+        </div>
+
+        <!-- Main Table (20 Columns exact replica) -->
+        <div class="table-responsive">
+            <table class="roster-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 38px;">លរ</th>
+                        <th rowspan="2" style="width: 95px;">អត្តលេខ</th>
+                        <th rowspan="2" style="min-width: 130px;">គោត្តនាម<br>និងនាម</th>
+                        <th rowspan="2" style="width: 38px;">ភេទ</th>
+                        <th rowspan="2" style="width: 80px;">ថ្ងៃខែឆ្នាំ<br>កំណើត</th>
+                        <th colspan="2" class="th-main-header">កំរិតវប្បធម៌</th>
+                        <th rowspan="2" style="width: 95px;">កម្រិត<br>បណ្តុះបណ្តាល</th>
+                        <th rowspan="2" style="width: 85px;">ថ្ងៃចូលបំរើ<br>ការងាររដ្ឋ</th>
+                        <th rowspan="2" style="width: 85px;">ថ្ងៃខែឆ្នាំតែង<br>តាំងស៊ប់</th>
+                        <th rowspan="2" style="width: 95px;">មុខវិជ្ជា<br>ឯកទេសទី១</th>
+                        <th rowspan="2" style="width: 95px;">មុខវិជ្ជា<br>ឯកទេសទី២</th>
+                        <th rowspan="2" style="width: 75px;">ភារកិច្ច<br>បច្ចុប្បន្ន</th>
+                        <th colspan="6" class="th-main-header">កាំបៀវត្សបច្ចុប្បន្ន</th>
+                        <th rowspan="2" style="width: 95px;">លេខទូរស័ព្ទ</th>
+                    </tr>
+                    <tr>
+                        <!-- Under កំរិតវប្បធម៌ -->
+                        <th style="width: 95px;">សញ្ញាបត្រ</th>
+                        <th style="width: 110px;">ឯកទេស</th>
+                        <!-- Under កាំបៀវត្សបច្ចុប្បន្ន -->
+                        <th style="width: 42px;">ប្រភេទ</th>
+                        <th style="width: 42px;">កម្រិត</th>
+                        <th style="width: 42px;">កាំ</th>
+                        <th style="width: 80px;">ឆ្នាំទទួល</th>
+                        <th style="width: 120px;">ប្រ.លេខ</th>
+                        <th style="width: 60px;">លេខរៀង</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in staff_list %}
+                    <tr>
+                        <td class="text-center">{{ s.no }}</td>
+                        <td class="text-center font-monospace">{{ s.teacher_id }}</td>
+                        <td class="font-battambang fw-semibold cell-nowrap">{{ s.name }}</td>
+                        <td class="text-center">
+                            {% if s.gender == 'ស' %}
+                                <span class="badge bg-danger-subtle text-danger">ស</span>
+                            {% else %}
+                                <span class="badge bg-primary-subtle text-primary">ប</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center cell-nowrap">{{ s.dob }}</td>
+                        <td class="text-center cell-nowrap">{{ s.degree|default:"-" }}</td>
+                        <td class="cell-nowrap">{{ s.specialization|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.training_level|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.hire_date|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.permanent_date|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.sub1|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.sub2|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">
+                            {% if 'នាយក' in s.duty %}
+                                <span class="badge bg-danger text-white">{{ s.duty }}</span>
+                            {% elif 'លេខា' in s.duty %}
+                                <span class="badge bg-info-subtle text-info fw-semibold">{{ s.duty }}</span>
+                            {% elif 'បរបន្ទុក' in s.duty %}
+                                <span class="badge bg-warning text-dark">{{ s.duty }}</span>
+                            {% else %}
+                                {{ s.duty }}
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">{{ s.sal_cat|default:"-" }}</td>
+                        <td class="text-center">{{ s.sal_lvl|default:"-" }}</td>
+                        <td class="text-center">{{ s.sal_step|default:"-" }}</td>
+                        <td class="text-center cell-nowrap">{{ s.prakas_year|default:"-" }}</td>
+                        <td class="text-center font-monospace small cell-nowrap">{{ s.prakas_no|default:"-" }}</td>
+                        <td class="text-center font-monospace">{{ s.prakas_idx|default:"-" }}</td>
+                        <td class="text-center cell-nowrap font-monospace">
+                            {% if s.phone %}
+                            <a href="tel:{{ s.phone }}" class="text-decoration-none text-dark">{{ s.phone }}</a>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="20" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-folder-open fs-2 mb-2"></i>
+                            <p class="mb-0">មិនមានទិន្នន័យបុគ្គលិកត្រូវនឹងលក្ខខណ្ឌស្វែងរកទេ</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Official Footer & Signatures Block (Exact replica of rows 127 to 137) -->
+        <div class="mt-4 pt-3 border-top roster-footer-box">
+            <div class="row">
+                <!-- Left Column: Staff Framework and Students Statistics -->
+                <div class="col-md-7 col-12">
+                    <div class="fw-bold mb-1">
+                        បញ្ឈប់បញ្ជីត្រឹមលេខរៀងទី <u>១១៩ (មួយរយដប់ប្រាំបួន)</u> សរុប <u>១១៩</u> នាក់ ស្រី <u>៦៤</u> នាក់
+                    </div>
+                    <div class="ps-3 mb-2">
+                        <div>ក្នុងនោះក្របខ័ណ្ឌ៖</div>
+                        <ul class="list-unstyled ps-3 mb-2">
+                            <li>• គ្រូមធ្យមសិក្សាទុតិយភូមិ (ក្របខ័ណ្ឌ ក)៖ <strong>៦០</strong> នាក់ (ស្រី <strong>២៩</strong> នាក់)</li>
+                            <li>• គ្រូមធ្យមសិក្សាបឋមភូមិ (ក្របខ័ណ្ឌ ខ)៖ <strong>៥៤</strong> នាក់ (ស្រី <strong>៣១</strong> នាក់)</li>
+                            <li>• គ្រូបឋមសិក្សា/ផ្សេងៗ (ក្របខ័ណ្ឌ គ)៖ <strong>០៥</strong> នាក់ (ស្រី <strong>០៤</strong> នាក់)</li>
+                        </ul>
+                    </div>
+
+                    <div class="fw-semibold text-muted small mb-1">ស្ថិតិសិស្សតាមកម្រិតថ្នាក់ (សម្រាប់យោង)៖</div>
+                    <div class="row g-2 small ps-2">
+                        {% for st in student_stats %}
+                        <div class="col-sm-6 col-12">
+                            <span class="fw-semibold">{{ st.grade }}៖</span> {{ st.classes }} ថ្នាក់, សិស្សសរុបៈ <strong>{{ st.total }}</strong> នាក់ (ស្រី <strong>{{ st.female }}</strong>)
+                        </div>
+                        {% endfor %}
+                        <div class="col-12 mt-1">
+                            <span class="badge bg-primary-subtle text-primary">សិស្សសរុបសាលា៖ {{ tot_students }} នាក់ (ស្រី {{ tot_students_female }} នាក់)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Official Approvals and Signatures -->
+                <div class="col-md-5 col-12 d-flex flex-column justify-content-between text-center mt-3 mt-md-0">
+                    <div>
+                        <div class="small text-muted mb-1">ថ្ងៃសៅរ៍ ១១កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div class="small fw-semibold mb-2">កំពង់កន្ទួត ថ្ងៃទី០១ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="font-muol text-dark mb-5">នាយកសាលា</div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top border-secondary-subtle">
+                        <div class="font-muol text-dark mb-1">បានឃើញ និងឯកភាព</div>
+                        <div class="small text-muted mb-1">ថ្ងៃចន្ទ ១៣កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div class="small fw-semibold mb-2">ថ្ងៃទី ០៣ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="font-muol text-primary">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡាស្រុក</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

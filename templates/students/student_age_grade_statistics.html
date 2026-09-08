@@ -174,7 +174,7 @@
         }
         @page {
             size: A4 landscape;
-            margin: 10mm 8mm 10mm 8mm;
+            margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ */
         }
     }
 </style>
@@ -200,12 +200,23 @@
             <a href="{% url 'student_list' %}" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសិស្ស
             </a>
+            <a href="{% url 'student_age_custom_roster' %}?academic_year={{ active_year.id }}" class="btn btn-primary fw-semibold shadow-sm">
+                <i class="fa-solid fa-users-rectangle me-1"></i> បញ្ជីសម្រង់តាមអាយុ (កែតម្រូវបាន)
+            </a>
             <a href="{% url 'export_student_age_grade_excel' %}?academic_year={{ active_year.id }}&calc_method={{ calc_method }}&status={{ status_filter }}&ref_year={{ ref_year }}" class="btn btn-success fw-semibold shadow-sm">
-                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (៤ សន្លឹក)
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (៤ សន្លឹក + បញ្ជីសិស្សយោង)
             </a>
             <button type="button" onclick="window.print()" class="btn btn-outline-dark fw-semibold shadow-sm">
                 <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print A4)
             </button>
+        </div>
+    </div>
+
+    <!-- MoEYS Age Clamping & Reference Roster Notice -->
+    <div class="alert alert-info border-info-subtle d-flex align-items-center mb-3 py-2 px-3 no-print rounded-3 shadow-xs">
+        <i class="fa-solid fa-circle-info fs-5 me-2 text-info"></i>
+        <div class="small">
+            <strong>គោលការណ៍កម្រិតអាយុ MoEYS៖</strong> សិស្សដែលមានអាយុតិចជាង ១២ ឆ្នាំ ត្រូវបានបូកគណនាចូលជួរ <strong>«អាយុ ១២ ឆ្នាំ (≤ ១២)»</strong> និងសិស្សដែលមានអាយុលើសពី ២០ ឆ្នាំ ត្រូវបានបូកគណនាចូលជួរ <strong>«អាយុ ២០ ឆ្នាំ (≥ ២០)»</strong>។ Admin អាចចុចលើតួលេខក្នុងតារាងដើម្បីស្វែងរក និងពិនិត្យ <strong>អាយុពិតប្រាកដ</strong> របស់សិស្ស ឬទាញយកឯកសារ Excel ដែលមានភ្ជាប់សន្លឹក <strong>«បញ្ជីសិស្សយោង (Roster)»</strong> សម្រាប់ផ្ទៀងផ្ទាត់។
         </div>
     </div>
 
@@ -772,7 +783,7 @@
 <!-- INTERACTIVE DRILLDOWN MODAL (Shows Student List on Click)    -->
 <!-- ============================================================ -->
 <div class="modal fade no-print" id="studentDrilldownModal" tabindex="-1" aria-labelledby="studentDrilldownTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white py-3">
                 <div>
@@ -790,24 +801,27 @@
                 </div>
                 <div id="drilldownContent" class="d-none">
                     <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <span class="badge bg-primary fs-6" id="drilldownCountBadge">សរុប 0 នាក់</span>
-                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary fs-6" id="drilldownCountBadge">សរុប 0 នាក់</span>
+                            <span class="badge bg-light text-secondary border font-monospace small"><i class="fa-solid fa-info-circle me-1"></i>បង្ហាញអាយុពិត និងសម្គាល់ជួរគណនា</span>
+                        </div>
+                        <div class="input-group input-group-sm" style="max-width: 300px;">
                             <span class="input-group-text bg-white"><i class="fa-solid fa-filter text-muted"></i></span>
-                            <input type="text" id="drilldownFilterInput" class="form-control" placeholder="ស្វែងរកក្នុងតារាង..." onkeyup="filterDrilldownTable()">
+                            <input type="text" id="drilldownFilterInput" class="form-control" placeholder="ស្វែងរកឈ្មោះ, អត្តលេខ, ថ្នាក់, អាយុ..." onkeyup="filterDrilldownTable()">
                         </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="drilldownTable">
                             <thead class="table-light">
                                 <tr class="text-muted small">
-                                    <th style="width: 50px;">ល.រ</th>
-                                    <th>អត្តលេខ</th>
+                                    <th style="width: 50px;" class="text-center">ល.រ</th>
+                                    <th style="width: 110px;">អត្តលេខ</th>
                                     <th>ឈ្មោះសិស្ស (ខ្មែរ-ឡាតាំង)</th>
-                                    <th style="width: 70px;">ភេទ</th>
-                                    <th>ថ្ងៃខែឆ្នាំកំណើត</th>
-                                    <th style="width: 70px;">អាយុ</th>
-                                    <th>ថ្នាក់រៀន</th>
-                                    <th style="width: 90px;">ស្ថានភាព</th>
+                                    <th style="width: 75px;" class="text-center">ភេទ</th>
+                                    <th style="width: 110px;" class="text-center">ថ្ងៃខែឆ្នាំកំណើត</th>
+                                    <th style="width: 170px;" class="text-center">អាយុ (ពិត / តារាង)</th>
+                                    <th style="width: 110px;">ថ្នាក់រៀន</th>
+                                    <th style="width: 90px;" class="text-center">ស្ថានភាព</th>
                                 </tr>
                             </thead>
                             <tbody id="drilldownTableBody">
@@ -878,9 +892,24 @@
 
                     data.students.forEach((s, idx) => {
                         const tr = document.createElement('tr');
+                        if (s.is_clamped) {
+                            tr.classList.add('table-warning');
+                        }
                         const isFemale = s.gender_code === 'F';
                         const genderBadge = isFemale ? '<span class="badge bg-danger-subtle text-danger">ស្រី</span>' : '<span class="badge bg-primary-subtle text-primary">ប្រុស</span>';
                         const repBadge = s.is_repeater ? '<span class="badge bg-warning text-dark">ត្រួត</span>' : '<span class="badge bg-success-subtle text-success">ថ្មី</span>';
+
+                        let ageHtml = '';
+                        if (s.is_clamped) {
+                            ageHtml = `
+                                <div><span class="fw-bold text-danger">${s.real_age} ឆ្នាំ</span> <small class="text-muted">(ពិត)</small></div>
+                                <span class="badge bg-warning text-dark border border-warning" style="font-size: 0.72rem; white-space: normal;">
+                                    ${s.age_remark}
+                                </span>
+                            `;
+                        } else {
+                            ageHtml = `<span class="fw-bold text-danger">${s.real_age || s.age} ឆ្នាំ</span>`;
+                        }
 
                         tr.innerHTML = `
                             <td class="text-center text-muted small">${idx + 1}</td>
@@ -889,11 +918,11 @@
                                 <div class="fw-semibold text-dark">${s.khmer_name}</div>
                                 <small class="text-muted font-monospace">${s.latin_name || ''}</small>
                             </td>
-                            <td>${genderBadge}</td>
-                            <td><small class="text-muted">${s.date_of_birth || '-'}</small></td>
-                            <td class="text-center"><span class="fw-bold text-danger">${s.age} ឆ្នាំ</span></td>
+                            <td class="text-center">${genderBadge}</td>
+                            <td class="text-center"><small class="text-muted">${s.date_of_birth || '-'}</small></td>
+                            <td class="text-center">${ageHtml}</td>
                             <td><span class="badge bg-info-subtle text-info fw-semibold">${s.classroom || '-'}</span></td>
-                            <td>${repBadge}</td>
+                            <td class="text-center">${repBadge}</td>
                         `;
                         tbody.appendChild(tr);
                     });

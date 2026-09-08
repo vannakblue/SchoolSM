@@ -12,6 +12,12 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% if is_admin %}
+        <a href="{% url 'homeroom_teachers_manage' %}{% if selected_year %}?year={{ selected_year }}{% endif %}" class="btn btn-indigo fw-bold text-white shadow-sm" style="background-color: #4f46e5;">
+            <i class="fa-solid fa-user-tie me-1"></i> កំណត់គ្រូបន្ទុកថ្នាក់
+        </a>
+        <a href="{% url 'homeroom_teachers_approval_print' %}{% if selected_year %}?year={{ selected_year }}{% endif %}" target="_blank" class="btn btn-outline-primary fw-bold shadow-sm">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពបញ្ជីគ្រូបន្ទុកថ្នាក់
+        </a>
         <button type="button" class="btn btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAutoCreateClasses">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតថ្នាក់ស្វ័យប្រវត្តិ (Quick Auto)
         </button>

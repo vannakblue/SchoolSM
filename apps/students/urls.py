@@ -35,6 +35,16 @@ urlpatterns = [
     path('statistics/age-grade/export-excel/', views.export_student_age_grade_excel, name='export_student_age_grade_excel'),
     path('api/age-grade-drilldown/', views.api_student_age_grade_drilldown, name='api_student_age_grade_drilldown'),
 
+    # MoEYS Customizable Student Age Roster Reports (Format A & B)
+    path('reports/age-roster/', views.student_age_custom_roster, name='student_age_custom_roster'),
+    path('reports/age-roster/export-excel/', views.student_age_custom_roster_export_excel, name='student_age_custom_roster_export_excel'),
+    path('reports/age-roster/print/', views.student_age_custom_roster_print, name='student_age_custom_roster_print'),
+
+    # MoEYS Official Individual Student Information Extract (សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ - 35 Columns)
+    path('reports/moeys-individual-roster/', views.moeys_individual_student_roster, name='moeys_individual_student_roster'),
+    path('reports/moeys-individual-roster/export-excel/', views.moeys_individual_student_roster_export_excel, name='moeys_individual_student_roster_export_excel'),
+    path('reports/moeys-individual-roster/print/', views.moeys_individual_student_roster_print, name='moeys_individual_student_roster_print'),
+
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),
     path('<int:pk>/id-card/', views.student_id_card, name='student_id_card'),

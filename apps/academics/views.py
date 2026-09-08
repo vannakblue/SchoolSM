@@ -7961,3 +7961,232 @@ def location_export_csv(request):
             ])
 
     return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def homeroom_teachers_manage(request):
+    """
+    Admin interface to assign / manage Homeroom Teachers (គ្រូបន្ទុកថ្នាក់)
+    across all classrooms for a selected academic year.
+    Supports single-click bulk saving of homeroom teachers and room numbers.
+    """
+    from .utils import get_active_academic_year
+    from apps.teachers.models import Teacher
+    from collections import Counter
+
+    active_year = get_active_academic_year(request)
+    selected_year_id = request.GET.get('year') or request.POST.get('year')
+    if selected_year_id and str(selected_year_id).isdigit():
+        target_year = AcademicYear.objects.filter(id=int(selected_year_id)).first() or active_year
+    else:
+        target_year = active_year
+
+    if request.method == 'POST' and not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Batch save homeroom teachers and room numbers
+        classrooms_qs = Classroom.objects.filter(academic_year=target_year)
+        updated_count = 0
+        with transaction.atomic():
+            for c in classrooms_qs:
+                teacher_param = request.POST.get(f'teacher_{c.id}')
+                room_param = request.POST.get(f'room_{c.id}')
+                
+                changed = False
+                if teacher_param is not None:
+                    teacher_param = teacher_param.strip()
+                    new_teacher_id = int(teacher_param) if (teacher_param and teacher_param.isdigit()) else None
+                    if c.homeroom_teacher_id != new_teacher_id:
+                        c.homeroom_teacher_id = new_teacher_id
+                        changed = True
+                
+                if room_param is not None:
+                    room_str = room_param.strip()
+                    if c.room_number != room_str:
+                        c.room_number = room_str
+                        changed = True
+                
+                if changed:
+                    c.save(update_fields=['homeroom_teacher', 'room_number'])
+                    updated_count += 1
+
+        messages.success(request, f"🎉 បានរក្សាទុកការចាត់តាំងគ្រូបន្ទុកថ្នាក់ចំនួន {updated_count} ថ្នាក់ដោយជោគជ័យ!")
+        redirect_url = f"{request.path}?year={target_year.id}" if target_year else request.path
+        return redirect(redirect_url)
+
+    # Prepare classrooms with active student counts
+    classrooms = Classroom.objects.filter(
+        academic_year=target_year
+    ).select_related(
+        'homeroom_teacher', 'academic_year'
+    ).annotate(
+        annotated_total_students=Count('students', filter=Q(students__status='ACTIVE'), distinct=True),
+        annotated_female_students=Count('students', filter=Q(students__status='ACTIVE', students__gender='F'), distinct=True)
+    ).order_by('grade_level', 'code')
+
+    # All active teachers for dropdown
+    teachers = Teacher.objects.filter(status='ACTIVE').order_by('khmer_name')
+
+    # Statistics & checks
+    total_classes = classrooms.count()
+    assigned_count = sum(1 for c in classrooms if c.homeroom_teacher_id)
+    unassigned_count = total_classes - assigned_count
+    
+    # Check duplicate teacher assignments
+    assigned_teacher_ids = [c.homeroom_teacher_id for c in classrooms if c.homeroom_teacher_id]
+    teacher_counts = Counter(assigned_teacher_ids)
+    duplicate_teacher_ids = {tid for tid, cnt in teacher_counts.items() if cnt > 1}
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    context = {
+        'classrooms': classrooms,
+        'teachers': teachers,
+        'target_year': target_year,
+        'academic_years': academic_years,
+        'selected_year_id': str(target_year.id) if target_year else '',
+        'total_classes': total_classes,
+        'assigned_count': assigned_count,
+        'unassigned_count': unassigned_count,
+        'duplicate_teacher_ids': duplicate_teacher_ids,
+        'is_admin': True,
+    }
+    return render(request, 'academics/homeroom_teachers_manage.html', context)
+
+
+@login_required
+@role_required(['ADMIN'])
+def homeroom_teachers_update_ajax(request):
+    """
+    AJAX endpoint for instant inline update of a single classroom's homeroom teacher or room.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    classroom_id = request.POST.get('classroom_id')
+    teacher_id = request.POST.get('teacher_id')
+    room_number = request.POST.get('room_number')
+
+    classroom = get_object_or_404(Classroom, id=classroom_id)
+    
+    if teacher_id is not None:
+        t_str = str(teacher_id).strip()
+        new_tid = int(t_str) if (t_str and t_str.isdigit()) else None
+        classroom.homeroom_teacher_id = new_tid
+    
+    if room_number is not None:
+        classroom.room_number = str(room_number).strip()
+
+    classroom.save(update_fields=['homeroom_teacher', 'room_number'])
+    
+    teacher_name = classroom.homeroom_teacher.khmer_name if classroom.homeroom_teacher else ''
+    return JsonResponse({
+        'status': 'success',
+        'message': f"បានធ្វើបច្ចុប្បន្នភាពថ្នាក់ {classroom.clean_code or classroom.name}!",
+        'teacher_name': teacher_name,
+        'has_homeroom': bool(classroom.homeroom_teacher_id)
+    })
+
+
+@login_required
+def homeroom_teachers_approval_print(request):
+    """
+    Official MoEYS Printable Sheet of Homeroom Teachers for Principal / Director approval.
+    Includes:
+    - Ministry / School Header
+    - Title: បញ្ជីរាយនាមគ្រូទទួលបន្ទុកថ្នាក់ សម្រាប់នាយកសាលាពិនិត្យ និងអនុម័ត
+    - Formatted columns with Khmer digits
+    - Academic Office verification & Principal Approval Signature / Seal blocks.
+    """
+    from .utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.accounts.templatetags.i18n_extras import to_khmer_number_filter
+
+    active_year = get_active_academic_year(request)
+    selected_year_id = request.GET.get('year')
+    if selected_year_id and str(selected_year_id).isdigit():
+        target_year = AcademicYear.objects.filter(id=int(selected_year_id)).first() or active_year
+    else:
+        target_year = active_year
+
+    school_profile = SchoolProfile.get_settings()
+
+    classrooms = Classroom.objects.filter(
+        academic_year=target_year
+    ).select_related(
+        'homeroom_teacher', 'academic_year'
+    ).annotate(
+        annotated_total_students=Count('students', filter=Q(students__status='ACTIVE'), distinct=True),
+        annotated_female_students=Count('students', filter=Q(students__status='ACTIVE', students__gender='F'), distinct=True)
+    ).order_by('grade_level', 'code')
+
+    classroom_rows = []
+    total_students_school = 0
+    total_female_school = 0
+    total_homeroom_assigned = 0
+
+    for idx, c in enumerate(classrooms, 1):
+        tot_stu = getattr(c, 'annotated_total_students', 0)
+        fem_stu = getattr(c, 'annotated_female_students', 0)
+        total_students_school += tot_stu
+        total_female_school += fem_stu
+        if c.homeroom_teacher_id:
+            total_homeroom_assigned += 1
+
+        ht = c.homeroom_teacher
+        gender_kh = ''
+        if ht:
+            gender_kh = 'ប្រុស' if ht.gender == 'M' else 'ស្រី'
+
+        classroom_rows.append({
+            'index_kh': to_khmer_number_filter(idx),
+            'classroom': c,
+            'class_code': c.clean_code or c.name,
+            'grade_kh': to_khmer_number_filter(c.grade_level),
+            'track_kh': c.get_track_display(),
+            'room_number': c.room_number or '-',
+            'total_students': tot_stu,
+            'total_students_kh': to_khmer_number_filter(tot_stu),
+            'female_students': fem_stu,
+            'female_students_kh': to_khmer_number_filter(fem_stu),
+            'teacher_khmer_name': ht.khmer_name if ht else '................................',
+            'teacher_latin_name': ht.latin_name if ht else '',
+            'teacher_gender_kh': gender_kh,
+            'teacher_phone': ht.phone if ht else '',
+            'teacher_specialization': ht.specialization or (ht.primary_subject if hasattr(ht, 'primary_subject') else '') if ht else '',
+            'has_teacher': bool(ht),
+        })
+
+    # Sign date calculations
+    now = timezone.now()
+    sign_day_kh = to_khmer_number_filter(f"{now.day:02d}")
+    sign_year_kh = to_khmer_number_filter(now.year)
+    sign_month_names = {
+        1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា', 5: 'ឧសភា', 6: 'មិថុនា',
+        7: 'កក្កដា', 8: 'សីហា', 9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ'
+    }
+    sign_month_kh = sign_month_names.get(now.month, '')
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    context = {
+        'school': school_profile,
+        'target_year': target_year,
+        'academic_years': academic_years,
+        'selected_year_id': str(target_year.id) if target_year else '',
+        'classroom_rows': classroom_rows,
+        'total_classes': len(classroom_rows),
+        'total_classes_kh': to_khmer_number_filter(len(classroom_rows)),
+        'total_assigned_kh': to_khmer_number_filter(total_homeroom_assigned),
+        'total_students_school': total_students_school,
+        'total_students_school_kh': to_khmer_number_filter(total_students_school),
+        'total_female_school': total_female_school,
+        'total_female_school_kh': to_khmer_number_filter(total_female_school),
+        'sign_day_kh': sign_day_kh,
+        'sign_month_kh': sign_month_kh,
+        'sign_year_kh': sign_year_kh,
+        'sign_role': request.GET.get('sign_role', 'នាយកសាលា'),
+        'sign_name': request.GET.get('sign_name', ''),
+        'show_seal': request.GET.get('seal', '1') == '1',
+        'show_signature': request.GET.get('signature', '1') == '1',
+    }
+    return render(request, 'academics/homeroom_teachers_approval_print.html', context)

@@ -512,12 +512,28 @@ class ExamSubject(models.Model):
     start_time = models.TimeField(blank=True, null=True, verbose_name="ម៉ោងចាប់ផ្តើម / Start Time")
     end_time = models.TimeField(blank=True, null=True, verbose_name="ម៉ោងបញ្ចប់ / End Time")
     order = models.IntegerField(default=1, verbose_name="លំដាប់មុខវិជ្ជា / Display Order")
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True, verbose_name="រយៈពេល (គិតជានាទី) / Duration in Minutes")
 
     class Meta:
         ordering = ['order', 'id']
         unique_together = ('exam', 'subject')
         verbose_name = "មុខវិជ្ជាប្រឡងតេស្ត / Exam Subject"
         verbose_name_plural = "មុខវិជ្ជាប្រឡងតេស្តទាំងអស់ / Exam Subjects"
+
+    @property
+    def effective_duration_minutes(self):
+        """Returns explicit duration_minutes if set, or calculates difference between start_time and end_time."""
+        if self.duration_minutes is not None and self.duration_minutes > 0:
+            return self.duration_minutes
+        if self.start_time and self.end_time:
+            from datetime import datetime, date
+            dummy = date.today()
+            dt_start = datetime.combine(dummy, self.start_time)
+            dt_end = datetime.combine(dummy, self.end_time)
+            diff = (dt_end - dt_start).total_seconds() / 60
+            if diff > 0:
+                return int(diff)
+        return None
 
     def __str__(self):
         return f"{self.subject.name_kh} (ពេញ {self.max_score}, មេគុណ {self.coefficient}) - {self.exam.name}"

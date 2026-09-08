@@ -9355,6 +9355,338 @@ def homeroom_cumulative_dossier_batch_view(request, classroom_id: int):
     })
 
 
+KHMER_WEEKDAYS_MAP = {
+    0: 'ថ្ងៃច័ន្ទ',
+    1: 'ថ្ងៃអង្គារ',
+    2: 'ថ្ងៃពុធ',
+    3: 'ថ្ងៃព្រហស្បតិ៍',
+    4: 'ថ្ងៃសុក្រ',
+    5: 'ថ្ងៃសៅរ៍',
+    6: 'ថ្ងៃអាទិត្យ',
+}
+
+
+def format_khmer_time_str(t):
+    """Formats a datetime.time or HH:MM into 'HH : MM' with Khmer digits (e.g. '០៧ : ៣០')."""
+    if not t:
+        return ''
+    if hasattr(t, 'strftime'):
+        h = f"{t.hour:02d}"
+        m = f"{t.minute:02d}"
+    else:
+        parts = str(t).split(':')
+        h = f"{int(parts[0]):02d}" if len(parts) > 0 and parts[0].isdigit() else '00'
+        m = f"{int(parts[1]):02d}" if len(parts) > 1 and parts[1].isdigit() else '00'
+    return f"{to_khmer_digits(h)} : {to_khmer_digits(m)}"
+
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_schedule_manage(request, exam_id):
+    """
+    Admin Timetable Schedule Editor for Standardized Exams (តារាងប្រព្រឹត្តទៅនៃវិញ្ញាសា).
+    Allows Admin to configure Start Time, End Time, Subject, Duration in minutes, Day/Date,
+    and Morning/Afternoon session for each examination paper.
+    """
+    from datetime import datetime, time, timedelta
+    from apps.academics.models import Subject
+
+    exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
+    all_subjects = Subject.objects.all().order_by('order', 'name_kh')
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'save_all')
+
+        if action == 'save_all':
+            # Bulk save timetable rows
+            row_ids = request.POST.getlist('row_id')
+            with transaction.atomic():
+                for rid in row_ids:
+                    es = exam.exam_subjects.filter(id=rid).first()
+                    if not es:
+                        continue
+
+                    sub_id = request.POST.get(f'subject_{rid}')
+                    date_val = request.POST.get(f'date_{rid}')
+                    sess_val = request.POST.get(f'session_{rid}')
+                    start_val = request.POST.get(f'start_{rid}')
+                    end_val = request.POST.get(f'end_{rid}')
+                    duration_val = request.POST.get(f'duration_{rid}')
+                    order_val = request.POST.get(f'order_{rid}')
+
+                    if sub_id and str(sub_id).isdigit():
+                        es.subject_id = int(sub_id)
+
+                    if date_val:
+                        try:
+                            es.exam_date = datetime.strptime(date_val.strip(), '%Y-%m-%d').date()
+                        except ValueError:
+                            pass
+                    else:
+                        es.exam_date = exam.exam_date
+
+                    if sess_val in ['MORNING', 'AFTERNOON']:
+                        es.session = sess_val
+
+                    if start_val:
+                        try:
+                            st_parts = start_val.strip().split(':')
+                            es.start_time = time(int(st_parts[0]), int(st_parts[1]))
+                        except Exception:
+                            pass
+
+                    if end_val:
+                        try:
+                            et_parts = end_val.strip().split(':')
+                            es.end_time = time(int(et_parts[0]), int(et_parts[1]))
+                        except Exception:
+                            pass
+
+                    if duration_val and str(duration_val).strip().isdigit():
+                        es.duration_minutes = int(duration_val.strip())
+                    elif es.start_time and es.end_time:
+                        d_start = datetime.combine(datetime.today(), es.start_time)
+                        d_end = datetime.combine(datetime.today(), es.end_time)
+                        diff = int((d_end - d_start).total_seconds() // 60)
+                        if diff > 0:
+                            es.duration_minutes = diff
+
+                    if order_val and str(order_val).strip().isdigit():
+                        es.order = int(order_val.strip())
+
+                    es.save()
+
+            messages.success(request, "🎉 បានរក្សាទុកតារាងប្រព្រឹត្តទៅនៃវិញ្ញាសាដោយជោគជ័យ!")
+            return redirect('standardized_exam_schedule_manage', exam_id=exam.id)
+
+        elif action == 'add_row':
+            # Add a single new subject row
+            sub_id = request.POST.get('new_subject_id')
+            sub = Subject.objects.filter(id=sub_id).first() if sub_id else all_subjects.first()
+            if sub:
+                last_order = (exam.exam_subjects.aggregate(m=models.Max('order'))['m'] or 0) + 1
+                ExamSubject.objects.create(
+                    exam=exam,
+                    subject=sub,
+                    exam_date=exam.exam_date,
+                    session='MORNING',
+                    start_time=time(7, 30),
+                    end_time=time(9, 0),
+                    duration_minutes=90,
+                    order=last_order
+                )
+                messages.success(request, f"⚡ បានបន្ថែមមុខវិជ្ជា «{sub.name_kh}» ទៅក្នុងកាលវិភាគ!")
+            return redirect('standardized_exam_schedule_manage', exam_id=exam.id)
+
+        elif action == 'delete_row':
+            row_id = request.POST.get('row_id')
+            if row_id:
+                exam.exam_subjects.filter(id=row_id).delete()
+                messages.success(request, "🗑️ បានលុបមុខវិជ្ជាចេញពីកាលវិភាគ!")
+            return redirect('standardized_exam_schedule_manage', exam_id=exam.id)
+
+    # Prepare subjects list
+    exam_subjects = exam.exam_subjects.select_related('subject').order_by('exam_date', 'session', 'start_time', 'order')
+
+    context = {
+        'exam': exam,
+        'exam_subjects': exam_subjects,
+        'all_subjects': all_subjects,
+        'total_subjects': exam_subjects.count(),
+        'default_exam_date': exam.exam_date.strftime('%Y-%m-%d') if exam.exam_date else '',
+    }
+    return render(request, 'examinations/standardized/exam_schedule_manage.html', context)
+
+
+@login_required
+@role_required(['ADMIN'])
+def standardized_exam_schedule_apply_photo_preset(request, exam_id):
+    """
+    1-Click Preset to apply the exact MoEYS timetable shown in the reference image:
+    Grade 12 Social Science Track (10 Subjects, 3 Days):
+    Day 1:
+      - Morning: Math (07:30 - 09:00, 90m), Geography (09:30 - 11:00, 90m)
+      - Afternoon: History (14:00 - 15:30, 90m), Chemistry (15:50 - 16:50, 60m)
+    Day 2:
+      - Morning: Civics/Moral (07:30 - 09:00, 90m), Physics (09:30 - 10:30, 60m)
+      - Afternoon: Biology (14:00 - 15:00, 60m), Earth Science (15:30 - 16:30, 60m)
+    Day 3:
+      - Morning: Khmer (07:30 - 10:00, 150m), Foreign Language (10:10 - 11:10, 60m)
+    """
+    from datetime import time, timedelta, date
+    from apps.academics.models import Subject
+
+    exam = get_object_or_404(StandardizedExam, id=exam_id)
+    base_date = exam.exam_date or date.today()
+
+    PHOTO_ITEMS = [
+        # Day 1 (offset 0)
+        {'offset': 0, 'sess': 'MORNING', 'start': time(7, 30), 'end': time(9, 0), 'dur': 90, 'search': ['គណិត', 'Math'], 'name_kh': 'គណិតវិទ្យា', 'order': 1},
+        {'offset': 0, 'sess': 'MORNING', 'start': time(9, 30), 'end': time(11, 0), 'dur': 90, 'search': ['ភូមិ', 'Geo'], 'name_kh': 'ភូមិវិទ្យា', 'order': 2},
+        {'offset': 0, 'sess': 'AFTERNOON', 'start': time(14, 0), 'end': time(15, 30), 'dur': 90, 'search': ['ប្រវត្តិ', 'Hist'], 'name_kh': 'ប្រវត្តិវិទ្យា', 'order': 3},
+        {'offset': 0, 'sess': 'AFTERNOON', 'start': time(15, 50), 'end': time(16, 50), 'dur': 60, 'search': ['គីមី', 'Chem'], 'name_kh': 'គីមីវិទ្យា', 'order': 4},
+        # Day 2 (offset 1)
+        {'offset': 1, 'sess': 'MORNING', 'start': time(7, 30), 'end': time(9, 0), 'dur': 90, 'search': ['សីលធម៌', 'ពលរដ្ឋ', 'Moral'], 'name_kh': 'សីលធម៌', 'order': 5},
+        {'offset': 1, 'sess': 'MORNING', 'start': time(9, 30), 'end': time(10, 30), 'dur': 60, 'search': ['រូប', 'Phys'], 'name_kh': 'រូបវិទ្យា', 'order': 6},
+        {'offset': 1, 'sess': 'AFTERNOON', 'start': time(14, 0), 'end': time(15, 0), 'dur': 60, 'search': ['ជីវ', 'Bio'], 'name_kh': 'ជីវវិទ្យា', 'order': 7},
+        {'offset': 1, 'sess': 'AFTERNOON', 'start': time(15, 30), 'end': time(16, 30), 'dur': 60, 'search': ['ផែនដី', 'Earth'], 'name_kh': 'ផែនដីវិទ្យា', 'order': 8},
+        # Day 3 (offset 2)
+        {'offset': 2, 'sess': 'MORNING', 'start': time(7, 30), 'end': time(10, 0), 'dur': 150, 'search': ['ភាសាខ្មែរ', 'តែងសេចក្តី', 'Khmer'], 'name_kh': 'ភាសាខ្មែរ', 'order': 9},
+        {'offset': 2, 'sess': 'MORNING', 'start': time(10, 10), 'end': time(11, 10), 'dur': 60, 'search': ['ភាសាបរទេស', 'អង់គ្លេស', 'English'], 'name_kh': 'ភាសាបរទេស', 'order': 10},
+    ]
+
+    all_subjects = list(Subject.objects.all())
+
+    def get_or_create_subj(item):
+        for s in all_subjects:
+            for kw in item['search']:
+                if kw.lower() in s.name_kh.lower() or (s.name_en and kw.lower() in s.name_en.lower()) or (s.code and kw.lower() == s.code.lower()):
+                    return s
+        new_sub = Subject.objects.create(name_kh=item['name_kh'], name_en=item['name_kh'], code=item['name_kh'][:3].upper())
+        all_subjects.append(new_sub)
+        return new_sub
+
+    with transaction.atomic():
+        exam.exam_subjects.all().delete()
+        for it in PHOTO_ITEMS:
+            sub = get_or_create_subj(it)
+            s_date = base_date + timedelta(days=it['offset'])
+            ExamSubject.objects.create(
+                exam=exam,
+                subject=sub,
+                exam_date=s_date,
+                session=it['sess'],
+                start_time=it['start'],
+                end_time=it['end'],
+                duration_minutes=it['dur'],
+                order=it['order']
+            )
+
+    messages.success(request, "🎉 បានផ្ទុកកាលវិភាគ ១០ មុខវិជ្ជា ៣ ថ្ងៃ (ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម) ដូចក្នុងរូបភាពគំរូដោយជោគជ័យ!")
+    return redirect('standardized_exam_schedule_manage', exam_id=exam.id)
+
+
+@login_required
+def standardized_exam_schedule_print(request, exam_id):
+    """
+    Official MoEYS Timetable Schedule Print Sheet (តារាងប្រព្រឹត្តទៅនៃវិញ្ញាសា).
+    Exact 1:1 visual replica matching the user's reference photograph:
+    - Top national motto: ព្រះរាជាណាចក្រកម្ពុជា / ជាតិ សាសនា ព្រះមហាក្សត្រ
+    - Top left: Ministry / Department of Education & School Name
+    - Centered Exam Title:
+        តារាងប្រព្រឹត្តទៅ នៃវិញ្ញាសា
+        [Exam Name] សម្រាប់ ថ្នាក់ទី [Grade] ថ្នាក់ [Track]
+        សម័យប្រឡង៖ [Date]
+    - Day & Shift grouped schedule with Khmer numerals:
+        ម៉ោង ០៧ : ៣០    ដល់ម៉ោង    ០៩ : ០០    គណិតវិទ្យា    ( ៩០ នាទី )
+    - Bottom right signature block with lunar date, school short code date, role, seal, signature, and name.
+    """
+    from apps.accounts.models import SchoolProfile
+    from collections import defaultdict
+    import datetime
+
+    exam = get_object_or_404(StandardizedExam.objects.select_related('academic_year'), id=exam_id)
+    school = SchoolProfile.get_settings()
+
+    exam_subjects = list(exam.exam_subjects.select_related('subject').order_by('exam_date', 'session', 'start_time', 'order'))
+
+    # Group subjects by unique date
+    dates_grouped = defaultdict(lambda: {'morning': [], 'afternoon': []})
+    for es in exam_subjects:
+        d = es.exam_date or exam.exam_date
+        sess_key = 'morning' if es.session == 'MORNING' else 'afternoon'
+        dates_grouped[d][sess_key].append(es)
+
+    # Sort dates chronologically
+    sorted_dates = sorted(dates_grouped.keys())
+
+    days_schedule = []
+    for day_idx, d in enumerate(sorted_dates, 1):
+        day_kh_num = to_khmer_digits(day_idx)
+        w_name = KHMER_WEEKDAYS_MAP.get(d.weekday(), '')
+        d_num = to_khmer_digits(d.day)
+        m_name = KHMER_MONTH_NAMES.get(d.month, '')
+        y_num = to_khmer_digits(d.year)
+
+        day_header_text = f"ថ្ងៃទី{day_kh_num} ( {w_name} ទី{d_num} ខែ{m_name} ឆ្នាំ{y_num} )"
+
+        def format_item(es):
+            dur = es.effective_duration_minutes or 60
+            return {
+                'start_time_kh': format_khmer_time_str(es.start_time) if es.start_time else '០៧ : ៣០',
+                'end_time_kh': format_khmer_time_str(es.end_time) if es.end_time else '០៩ : ០០',
+                'subject_name': es.subject.name_kh if es.subject else '',
+                'duration_minutes_kh': to_khmer_digits(dur),
+                'duration_label': f"( {to_khmer_digits(dur)} នាទី )",
+            }
+
+        morning_list = [format_item(es) for es in dates_grouped[d]['morning']]
+        afternoon_list = [format_item(es) for es in dates_grouped[d]['afternoon']]
+
+        days_schedule.append({
+            'day_index': day_idx,
+            'day_header': day_header_text,
+            'morning_items': morning_list,
+            'afternoon_items': afternoon_list,
+        })
+
+    # Track display formatting
+    track_labels = {
+        'SOCIAL': 'វិទ្យាសាស្ត្រសង្គម',
+        'SCIENCE': 'វិទ្យាសាស្ត្រ',
+        'GENERAL': 'កម្មវិធីទូទៅ',
+        'ALL': 'គ្រប់ជំនាញ',
+    }
+    track_text = track_labels.get(exam.track, exam.get_track_display())
+
+    # Exam date line: e.g. "សម័យប្រឡង៖ ១០ មិថុនា ២០២៦"
+    exam_d = exam.exam_date
+    if exam_d:
+        exam_date_kh = f"{to_khmer_digits(exam_d.day)} {KHMER_MONTH_NAMES.get(exam_d.month, '')} {to_khmer_digits(exam_d.year)}"
+    else:
+        exam_date_kh = "........................"
+
+    # Signature date formatting
+    sign_date = request.GET.get('sign_date')
+    if sign_date:
+        try:
+            sd = datetime.datetime.strptime(sign_date.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            sd = (exam_d - datetime.timedelta(days=1)) if exam_d else datetime.date.today()
+    else:
+        sd = (exam_d - datetime.timedelta(days=1)) if exam_d else datetime.date.today()
+
+    sign_day_kh = to_khmer_digits(sd.day)
+    sign_month_kh = KHMER_MONTH_NAMES.get(sd.month, '')
+    sign_year_kh = to_khmer_digits(sd.year)
+
+    # School short code for date line: e.g. "វិ.ច.ប.ក.ស"
+    school_code_line = request.GET.get('school_code', school.short_name or 'វិ.ច.ប.ក.ស')
+
+    # Lunar date line
+    default_lunar = "ថ្ងៃអង្គារ ៩រោច ខែជេស្ឋ ឆ្នាំថោះ បញ្ចស័ក ព.ស. ២៥៧០"
+    lunar_date_line = request.GET.get('lunar_date', default_lunar)
+
+    context = {
+        'exam': exam,
+        'school': school,
+        'grade_kh': to_khmer_digits(exam.grade_level),
+        'track_kh': track_text,
+        'exam_date_kh': exam_date_kh,
+        'days_schedule': days_schedule,
+        'lunar_date_line': lunar_date_line,
+        'school_code_line': school_code_line,
+        'sign_day_kh': sign_day_kh,
+        'sign_month_kh': sign_month_kh,
+        'sign_year_kh': sign_year_kh,
+        'sign_role': request.GET.get('sign_role', 'នាយក'),
+        'sign_name': request.GET.get('sign_name', 'ឈិន កុសល'),
+        'show_seal': request.GET.get('seal', '1') == '1',
+        'show_signature': request.GET.get('signature', '1') == '1',
+    }
+    return render(request, 'examinations/standardized/exam_schedule_print.html', context)
+
+
 
 
 

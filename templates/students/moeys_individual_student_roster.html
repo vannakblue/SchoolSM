@@ -1,0 +1,528 @@
+{% extends 'base.html' %}
+{% load static i18n_extras %}
+
+{% block title %}សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* MoEYS Official Document Sheet */
+    .moeys-sheet {
+        background-color: var(--bs-card-bg, #ffffff);
+        border: 1px solid var(--bs-border-color, #cbd5e1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 2rem;
+        font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
+    }
+
+    .font-muol {
+        font-family: 'Moul', 'Khmer OS Muol Light', serif;
+    }
+    .font-siemreap {
+        font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
+    }
+
+    /* Roster Table Design - Replicating សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ.xlsx */
+    .table-roster-wrapper {
+        overflow-x: auto;
+        position: relative;
+        border: 1px solid #94a3b8;
+        border-radius: 8px;
+        background: #fff;
+    }
+    [data-bs-theme="dark"] .table-roster-wrapper {
+        border-color: #475569;
+        background: #1e293b;
+    }
+
+    .roster-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+        white-space: nowrap;
+        color: #0f172a;
+    }
+    [data-bs-theme="dark"] .roster-table {
+        color: #f1f5f9;
+    }
+
+    .roster-table th, .roster-table td {
+        border: 1px solid #94a3b8;
+        padding: 5px 7px;
+        vertical-align: middle;
+    }
+    [data-bs-theme="dark"] .roster-table th,
+    [data-bs-theme="dark"] .roster-table td {
+        border-color: #475569;
+    }
+
+    .roster-table thead th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+    [data-bs-theme="dark"] .roster-table thead th {
+        background-color: #0f172a;
+    }
+
+    .roster-table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.06);
+    }
+    [data-bs-theme="dark"] .roster-table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.18);
+    }
+
+    .cell-c { text-align: center; }
+    .cell-l { text-align: left; }
+    .cell-r { text-align: right; }
+
+    .track-check {
+        font-weight: bold;
+        color: #16a34a;
+        font-size: 1.05rem;
+    }
+
+    .poor1-tag {
+        background-color: #fee2e2;
+        color: #991b1b;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+    }
+    .poor2-tag {
+        background-color: #fef3c7;
+        color: #92400e;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+    }
+    .risk-tag {
+        background-color: #ffedd5;
+        color: #9a3412;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+    }
+
+    /* KPI Summary Card */
+    .kpi-stat-card {
+        border-radius: 10px;
+        border: 1px solid var(--bs-border-color, #e2e8f0);
+        padding: 14px 16px;
+        background-color: var(--bs-card-bg, #ffffff);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .kpi-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+    [data-bs-theme="dark"] .stat-label {
+        color: #94a3b8;
+    }
+    .stat-val {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}" class="text-decoration-none"><i class="fas fa-home me-1"></i>ទំព័រដើម</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'student_list' %}" class="text-decoration-none">សិស្ស</a></li>
+            <li class="breadcrumb-item active" aria-current="page">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns)</li>
+        </ol>
+    </nav>
+
+    <!-- Header Actions Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-white p-3 rounded-3 border shadow-sm" style="background-color: var(--bs-card-bg) !important;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 p-2 bg-primary bg-opacity-10 text-primary">
+                <i class="fas fa-file-invoice fa-2x"></i>
+            </div>
+            <div>
+                <h4 class="mb-1 font-muol text-primary" style="font-size: 1.25rem;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
+                <div class="text-muted small">
+                    <span class="badge bg-secondary me-1">គំរូផ្លូវការក្រសួង MoEYS ៣៥ជួរឈរ</span>
+                    <span>ឆ្នាំសិក្សា <strong>{{ active_year.name|default:"២០២៦-២០២៧" }}</strong></span>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <!-- Dynamic Grade Options Management Button -->
+            <a href="{% url 'grade_options_manager' %}" class="btn btn-outline-secondary btn-sm" title="កំណត់បែបបទ & ជម្រើសចុះឈ្មោះតាមកម្រិតថ្នាក់">
+                <i class="fas fa-sliders-h me-1 text-primary"></i> បែបបទ & ជម្រើសចុះឈ្មោះ
+            </a>
+
+            <!-- Export Excel Button -->
+            <a href="{% url 'moeys_individual_student_roster_export_excel' %}?academic_year={{ active_year.id }}&grade_level={{ grade_filter }}&classroom={{ class_id }}&track={{ track_filter }}&equity={{ equity_filter }}&gender={{ gender_filter }}&q={{ search_q }}" 
+               class="btn btn-success btn-sm fw-bold">
+                <i class="fas fa-file-excel me-1"></i> ទាញយក Excel (.xlsx)
+            </a>
+
+            <!-- Print / Save as PDF Button -->
+            <a href="{% url 'moeys_individual_student_roster_print' %}?academic_year={{ active_year.id }}&grade_level={{ grade_filter }}&classroom={{ class_id }}&track={{ track_filter }}&equity={{ equity_filter }}&gender={{ gender_filter }}&q={{ search_q }}" 
+               target="_blank" class="btn btn-primary btn-sm fw-bold">
+                <i class="fas fa-print me-1"></i> បោះពុម្ព / រក្សាទុកជា PDF
+            </a>
+
+            <!-- Quick Add Student -->
+            <a href="{% url 'student_enroll' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-plus me-1"></i> បញ្ចូលសិស្សថ្មី
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-users text-primary me-1"></i>សិស្សសរុប</div>
+                <div class="stat-val text-primary">{{ total_count }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">ស្រី {{ total_female }} នាក់ ({{ female_pct }}%)</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-id-card text-danger me-1"></i>ប័ណ្ណក្រ១ (ទីទ័លក្រ)</div>
+                <div class="stat-val text-danger">{{ total_poor1 }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">សមធម៌កម្រិត ១</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-id-card text-warning me-1"></i>ប័ណ្ណក្រ២ (ក្រីក្រ)</div>
+                <div class="stat-val text-warning">{{ total_poor2 }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">សមធម៌កម្រិត ២</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-shield-alt text-info me-1"></i>ងាយរងគ្រោះ</div>
+                <div class="stat-val text-info">{{ total_risk }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">ប័ណ្ណហានិភ័យ</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-atom text-success me-1"></i>ផ្នែកវិទ្យាសាស្ត្រ</div>
+                <div class="stat-val text-success">{{ total_sc }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">ថ្នាក់វិទ្យាសាស្ត្រពិត</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="kpi-stat-card text-center">
+                <div class="stat-label"><i class="fas fa-book-reader text-purple me-1"></i>ផ្នែកសង្គម / វិជ្ជាជីវៈ</div>
+                <div class="stat-val text-dark">{{ total_ss }} / {{ total_voc }} <span class="fs-6 fw-normal">នាក់</span></div>
+                <small class="text-muted">សង្គម / បច្ចេកទេស</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Filter Bar -->
+    <div class="card border mb-3 shadow-sm">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-end">
+                <!-- Academic Year -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">ឆ្នាំសិក្សា</label>
+                    <select name="academic_year" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for y in all_years %}
+                        <option value="{{ y.id }}" {% if y.id == active_year.id %}selected{% endif %}>{{ y.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Grade Level -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">កម្រិតថ្នាក់</label>
+                    <select name="grade_level" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if grade_filter == 'ALL' %}selected{% endif %}>-- ទាំងអស់ (៧ ដល់ ១២) --</option>
+                        <option value="12" {% if grade_filter == '12' %}selected{% endif %}>ថ្នាក់ទី ១២ (កម្រិតបាក់ឌុប)</option>
+                        <option value="11" {% if grade_filter == '11' %}selected{% endif %}>ថ្នាក់ទី ១១</option>
+                        <option value="10" {% if grade_filter == '10' %}selected{% endif %}>ថ្នាក់ទី ១០</option>
+                        <option value="9" {% if grade_filter == '9' %}selected{% endif %}>ថ្នាក់ទី ៩ (កម្រិតឌុប)</option>
+                        <option value="8" {% if grade_filter == '8' %}selected{% endif %}>ថ្នាក់ទី ៨</option>
+                        <option value="7" {% if grade_filter == '7' %}selected{% endif %}>ថ្នាក់ទី ៧</option>
+                    </select>
+                </div>
+
+                <!-- Classroom -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">បន្ទប់ / ថ្នាក់</label>
+                    <select name="classroom" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if class_id == 'ALL' %}selected{% endif %}>-- គ្រប់បន្ទប់ --</option>
+                        {% for c in all_classrooms %}
+                        <option value="{{ c.id }}" {% if class_id == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.name }} ({{ c.grade_level }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Track Selection -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">ផ្នែកជ្រើសរើស (Track)</label>
+                    <select name="track" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if track_filter == 'ALL' %}selected{% endif %}>-- គ្រប់ផ្នែក --</option>
+                        <option value="SCIENCE" {% if track_filter == 'SCIENCE' %}selected{% endif %}>វិទ្យាសាស្ត្រ (Science)</option>
+                        <option value="SOCIAL" {% if track_filter == 'SOCIAL' %}selected{% endif %}>វិទ្យាសាស្ត្រសង្គម (Social)</option>
+                        <option value="VOCATIONAL" {% if track_filter == 'VOCATIONAL' %}selected{% endif %}>បច្ចេកទេស/វិជ្ជាជីវៈ (Vocational)</option>
+                    </select>
+                </div>
+
+                <!-- Equity Filter -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">ស្ថានភាពសមធម៌ / ក្រីក្រ</label>
+                    <select name="equity" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if equity_filter == 'ALL' %}selected{% endif %}>-- ទាំងអស់ --</option>
+                        <option value="POOR1" {% if equity_filter == 'POOR1' %}selected{% endif %}>ប័ណ្ណក្រ១ (ក្រីក្រកម្រិត១)</option>
+                        <option value="POOR2" {% if equity_filter == 'POOR2' %}selected{% endif %}>ប័ណ្ណក្រ២ (ក្រីក្រកម្រិត២)</option>
+                        <option value="RISK" {% if equity_filter == 'RISK' %}selected{% endif %}>ប័ណ្ណងាយរងគ្រោះ</option>
+                    </select>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="col-md-1 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">ភេទ</label>
+                    <select name="gender" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if gender_filter == 'ALL' %}selected{% endif %}>ទាំងអស់</option>
+                        <option value="F" {% if gender_filter == 'F' %}selected{% endif %}>ស្រី</option>
+                        <option value="M" {% if gender_filter == 'M' %}selected{% endif %}>ប្រុស</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div class="col-md-3 col-sm-12">
+                    <label class="form-label small fw-bold mb-1">ស្វែងរកសិស្ស</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="q" value="{{ search_q }}" class="form-control" placeholder="អត្តលេខ, ឈ្មោះ, ឪពុកម្តាយ, ទូរស័ព្ទ...">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                        {% if search_q or grade_filter != '12' or class_id != 'ALL' or track_filter != 'ALL' or equity_filter != 'ALL' or gender_filter != 'ALL' %}
+                        <a href="{% url 'moeys_individual_student_roster' %}" class="btn btn-outline-secondary" title="កំណត់ឡើងវិញ"><i class="fas fa-undo"></i></a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Table Container: Official Document Format (សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ) -->
+    <div class="moeys-sheet">
+        <!-- Ministry Document Header -->
+        <div class="row mb-3">
+            <div class="col-6">
+                <div class="font-muol text-primary" style="font-size: 1rem;">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                <div class="fw-bold small text-muted">នាយកដ្ឋានមធ្យមសិក្សាចំណេះទូទៅ</div>
+            </div>
+            <div class="col-6 text-end">
+                <div class="font-muol text-dark" style="font-size: 0.95rem;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="font-muol text-dark" style="font-size: 0.85rem;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            </div>
+        </div>
+
+        <div class="text-center my-3">
+            <h4 class="font-muol text-primary mb-1" style="font-size: 1.35rem; letter-spacing: 0.5px;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
+            <div class="fw-bold small text-secondary">
+                {% if grade_filter != 'ALL' %}កម្រិតថ្នាក់ទី {{ grade_filter }}{% else %}គ្រប់កម្រិតថ្នាក់{% endif %} 
+                - ឆ្នាំសិក្សា {{ active_year.name|default:"២០២៦-២០២៧" }}
+                (បង្ហាញចំនួន {{ total_count }} នាក់ / ស្រី {{ total_female }} នាក់)
+            </div>
+        </div>
+
+        <!-- 35-Column Table -->
+        <div class="table-roster-wrapper">
+            <table class="roster-table table-hover">
+                <thead>
+                    <!-- Header Row 1 -->
+                    <tr>
+                        <th rowspan="2" style="width: 45px;">ល.រ</th>
+                        <th rowspan="2" style="width: 85px;">អត្តលេខ</th>
+                        <th rowspan="2" style="width: 100px;">គោត្តនាម</th>
+                        <th rowspan="2" style="width: 90px;">នាម</th>
+                        <th rowspan="2" style="width: 50px;">ភេទ</th>
+                        <th colspan="3">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
+                        <th colspan="3">ទីកន្លែងកំណើត</th>
+                        <th colspan="2">ថ្នាក់រៀន</th>
+                        <th colspan="2">ឪពុក</th>
+                        <th colspan="2">ម្តាយ</th>
+                        <th colspan="2">អាណាព្យាបាល</th>
+                        <th rowspan="2" style="width: 75px;">កុមារកំព្រា</th>
+                        <th rowspan="2" style="width: 130px;">សាលាបឋម</th>
+                        <th rowspan="2" style="width: 130px;">សាលាអនុវិទ្យាល័យ</th>
+                        <th rowspan="2" style="width: 80px;">ជនជាតិភាគតិច</th>
+                        <th colspan="3">ពិការភាព</th>
+                        <th colspan="2">ប័ណ្ណសមធម៌</th>
+                        <th rowspan="2" style="width: 80px;">ងាយរងគ្រោះ</th>
+                        <th rowspan="2" style="width: 80px;">អាហារូបករណ៍</th>
+                        <th rowspan="2" style="width: 105px;">លេខទូរស័ព្ទ</th>
+                        <th rowspan="2" style="width: 85px;">ស្ថានភាពសិស្ស</th>
+                        <th colspan="3">មុខវិជ្ជាជ្រើសរើស (P)</th>
+                    </tr>
+                    <!-- Header Row 2 -->
+                    <tr>
+                        <th style="width: 45px;">ថ្ងៃ</th>
+                        <th style="width: 45px;">ខែ</th>
+                        <th style="width: 55px;">ឆ្នាំ</th>
+                        <th style="width: 95px;">ឃុំ/សង្កាត់</th>
+                        <th style="width: 95px;">ស្រុក/ខណ្ឌ</th>
+                        <th style="width: 95px;">រាជធានី/ខេត្ត</th>
+                        <th style="width: 50px;">កម្រិត</th>
+                        <th style="width: 50px;">បន្ទប់</th>
+                        <th style="width: 110px;">ឈ្មោះឪពុក</th>
+                        <th style="width: 90px;">មុខរបរ</th>
+                        <th style="width: 110px;">ឈ្មោះម្តាយ</th>
+                        <th style="width: 90px;">មុខរបរ</th>
+                        <th style="width: 110px;">ឈ្មោះ</th>
+                        <th style="width: 90px;">មុខរបរ</th>
+                        <th style="width: 75px;">កាយសម្បទា</th>
+                        <th style="width: 65px;">គំហើញ</th>
+                        <th style="width: 65px;">សោតវិញ្ញាណ</th>
+                        <th style="width: 60px;">ក្រ១</th>
+                        <th style="width: 60px;">ក្រ២</th>
+                        <th style="width: 70px;">វិទ្យាសាស្ត្រ</th>
+                        <th style="width: 80px;">វិទ្យាសាស្ត្រសង្គម</th>
+                        <th style="width: 85px;">បច្ចេកទេស/វិជ្ជាជីវៈ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <!-- 1: No -->
+                        <td class="cell-c text-muted">{{ s.no }}</td>
+                        <!-- 2: ID -->
+                        <td class="cell-c fw-bold">
+                            <a href="{% url 'student_detail' s.pk %}" class="text-decoration-none text-primary" title="មើលព័ត៌មានលម្អិត">
+                                {{ s.student_id }}
+                            </a>
+                        </td>
+                        <!-- 3: Surname -->
+                        <td class="cell-l fw-semibold">{{ s.surname }}</td>
+                        <!-- 4: Given Name -->
+                        <td class="cell-l fw-semibold">
+                            <a href="{% url 'student_edit' s.pk %}" class="text-decoration-none text-dark" title="កែសម្រួលព័ត៌មានសិស្ស">
+                                {{ s.given_name }}
+                            </a>
+                        </td>
+                        <!-- 5: Gender -->
+                        <td class="cell-c {% if s.gender == 'ស្រី' %}text-danger fw-bold{% endif %}">{{ s.gender }}</td>
+                        <!-- 6-8: DOB -->
+                        <td class="cell-c">{{ s.dob_d }}</td>
+                        <td class="cell-c">{{ s.dob_m }}</td>
+                        <td class="cell-c">{{ s.dob_y }}</td>
+                        <!-- 9-11: POB -->
+                        <td class="cell-l">{{ s.pob_commune }}</td>
+                        <td class="cell-l">{{ s.pob_district }}</td>
+                        <td class="cell-l">{{ s.pob_province }}</td>
+                        <!-- 12-13: Grade & Section -->
+                        <td class="cell-c fw-bold">{{ s.grade_num }}</td>
+                        <td class="cell-c fw-bold text-primary">{{ s.class_letter }}</td>
+                        <!-- 14-17: Parents -->
+                        <td class="cell-l">{{ s.father_name }}</td>
+                        <td class="cell-l text-muted">{{ s.father_job }}</td>
+                        <td class="cell-l">{{ s.mother_name }}</td>
+                        <td class="cell-l text-muted">{{ s.mother_job }}</td>
+                        <!-- 18-19: Guardian -->
+                        <td class="cell-l">{{ s.guardian_name }}</td>
+                        <td class="cell-l text-muted">{{ s.guardian_job }}</td>
+                        <!-- 20: Orphan -->
+                        <td class="cell-c">{{ s.orphan_status }}</td>
+                        <!-- 21-22: Schools -->
+                        <td class="cell-l">{{ s.primary_school }}</td>
+                        <td class="cell-l">{{ s.secondary_school }}</td>
+                        <!-- 23: Minority -->
+                        <td class="cell-c">{{ s.ethnic_minority }}</td>
+                        <!-- 24-26: Disabilities -->
+                        <td class="cell-c">{{ s.disability_physical }}</td>
+                        <td class="cell-c">{{ s.disability_sight }}</td>
+                        <td class="cell-c">{{ s.disability_hearing }}</td>
+                        <!-- 27-28: Equity Cards -->
+                        <td class="cell-c">
+                            {% if 'ក្រ១' in s.equity_card_1 or 'មាន' in s.equity_card_1 %}
+                            <span class="poor1-tag">{{ s.equity_card_1 }}</span>
+                            {% else %}
+                            {{ s.equity_card_1 }}
+                            {% endif %}
+                        </td>
+                        <td class="cell-c">
+                            {% if 'ក្រ២' in s.equity_card_2 or 'មាន' in s.equity_card_2 %}
+                            <span class="poor2-tag">{{ s.equity_card_2 }}</span>
+                            {% else %}
+                            {{ s.equity_card_2 }}
+                            {% endif %}
+                        </td>
+                        <!-- 29: Risk -->
+                        <td class="cell-c">
+                            {% if s.risk_card and s.risk_card != '-' %}
+                            <span class="risk-tag">{{ s.risk_card }}</span>
+                            {% else %}
+                            {{ s.risk_card }}
+                            {% endif %}
+                        </td>
+                        <!-- 30: Scholarship -->
+                        <td class="cell-c">{{ s.scholarship }}</td>
+                        <!-- 31: Phone -->
+                        <td class="cell-c">{{ s.phone }}</td>
+                        <!-- 32: Status -->
+                        <td class="cell-c">
+                            <span class="badge bg-light text-dark border">{{ s.status }}</span>
+                        </td>
+                        <!-- 33-35: Tracks (P) -->
+                        <td class="cell-c">
+                            {% if s.is_sc %}<span class="track-check">P</span>{% endif %}
+                        </td>
+                        <td class="cell-c">
+                            {% if s.is_ss %}<span class="track-check">P</span>{% endif %}
+                        </td>
+                        <td class="cell-c">
+                            {% if s.is_voc %}<span class="track-check">P</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="35" class="text-center py-4 text-muted">
+                            <i class="fas fa-folder-open fa-2x mb-2 d-block text-secondary"></i>
+                            មិនមានទិន្នន័យសិស្សត្រូវតាមលក្ខខណ្ឌចម្រាញ់នេះទេ។
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Document Signatures Footer -->
+        <div class="row mt-4 pt-3 text-center">
+            <div class="col-4">
+                <div class="fw-bold">បានឃើញ និងអនុម័ត</div>
+                <div class="font-muol text-primary mt-1 mb-5">នាយកសាលា</div>
+                <div class="text-muted small">...................................................</div>
+            </div>
+            <div class="col-4">
+                <div class="fw-bold">បានពិនិត្យត្រឹមត្រូវ</div>
+                <div class="font-muol text-primary mt-1 mb-5">ប្រធានផ្នែក / គ្រូបន្ទុកថ្នាក់</div>
+                <div class="text-muted small">...................................................</div>
+            </div>
+            <div class="col-4">
+                <div class="text-muted small">ថ្ងៃ................ខែ..............ឆ្នាំ............... ព.ស. ២៥៦៩</div>
+                <div class="font-muol text-primary mt-1 mb-5">អ្នករៀបចំសម្រង់</div>
+                <div class="text-muted small">...................................................</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -109,6 +109,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'classroom_list',
             },
             {
+                'key': 'homeroom_teachers_manage',
+                'name_kh': 'គ្រូបន្ទុកថ្នាក់',
+                'name_en': 'Homeroom Teachers',
+                'icon': 'fa-solid fa-user-tie text-indigo',
+                'default_roles': ['ADMIN'],
+                'url_name': 'homeroom_teachers_manage',
+            },
+            {
                 'key': 'subject_list',
                 'name_kh': 'មុខវិជ្ជាសិក្សា',
                 'name_en': 'Subjects & Curriculum',
@@ -155,6 +163,22 @@ MENU_SECTIONS_CATALOG = [
                 'icon': 'fa-solid fa-chart-column text-info',
                 'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
                 'url_name': 'student_age_grade_statistics',
+            },
+            {
+                'key': 'student_age_custom_roster',
+                'name_kh': 'បញ្ជីសម្រង់សិស្សតាមអាយុ',
+                'name_en': 'Customizable Age Roster',
+                'icon': 'fa-solid fa-users-rectangle text-primary',
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'url_name': 'student_age_custom_roster',
+            },
+            {
+                'key': 'moeys_individual_student_roster',
+                'name_kh': 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ',
+                'name_en': 'MoEYS Individual Student Extract (35 Cols)',
+                'icon': 'fa-solid fa-file-invoice text-success',
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'url_name': 'moeys_individual_student_roster',
             },
         ]
     },
@@ -372,6 +396,14 @@ MENU_SECTIONS_CATALOG = [
                 'icon': 'fa-solid fa-chalkboard-user',
                 'default_roles': ['ADMIN'],
                 'url_name': 'teacher_list',
+            },
+            {
+                'key': 'moeys_staff_roster',
+                'name_kh': 'តារាងគ្រប់គ្រងបុគ្គលិក ២០២៦-២០២៧',
+                'name_en': 'MoEYS Staff Roster 2026-2027',
+                'icon': 'fa-solid fa-file-invoice text-primary',
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'url_name': 'moeys_staff_roster',
             },
             {
                 'key': 'teacher_attendance',

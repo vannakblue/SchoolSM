@@ -1388,4 +1388,273 @@ def teacher_self_update_portal(request):
     return render(request, 'teachers/teacher_self_update_portal.html', context)
 
 
+# ----------------- MOEYS STAFF & CIVIL SERVANT ROSTER 2026-2027 -----------------
+
+def _get_moeys_staff_roster_data():
+    """
+    Parses and returns the complete MoEYS Staff Roster matching 2026.xlsx.
+    """
+    import os
+    import openpyxl
+    from datetime import datetime, date
+    from django.conf import settings
+
+    excel_path = os.path.join(settings.BASE_DIR, '2026.xlsx')
+    if not os.path.exists(excel_path):
+        excel_path = os.path.join(settings.BASE_DIR, ' 2026.xlsx')
+
+    staff_list = []
+    framework_summary = {
+        'A': {'name': 'ក្របខ័ណ្ឌ ក (គ្រូមធ្យមសិក្សាទុតិយភូមិ)', 'code': 'ក', 'total': 60, 'female': 29},
+        'B': {'name': 'ក្របខ័ណ្ឌ ខ (គ្រូមធ្យមសិក្សាបឋមភូមិ)', 'code': 'ខ', 'total': 54, 'female': 31},
+        'C': {'name': 'ក្របខ័ណ្ឌ គ (គ្រូបឋមសិក្សា/ផ្សេងៗ)', 'code': 'គ', 'total': 5, 'female': 4},
+    }
+    student_stats = [
+        {'grade': 'ថ្នាក់ទី៧', 'classes': '០៥', 'total': 249, 'female': 131},
+        {'grade': 'ថ្នាក់ទី៨', 'classes': '០៤', 'total': 183, 'female': 108},
+        {'grade': 'ថ្នាក់ទី៩', 'classes': '០៤', 'total': 160, 'female': 87},
+        {'grade': 'ថ្នាក់ទី១០', 'classes': '១១', 'total': 476, 'female': 255},
+        {'grade': 'ថ្នាក់ទី១១', 'classes': '០៩', 'total': 460, 'female': 263},
+        {'grade': 'ថ្នាក់ទី១២', 'classes': '០៩', 'total': 434, 'female': 264},
+    ]
+
+    def _fmt_d(v):
+        if not v:
+            return ''
+        if isinstance(v, (datetime, date)):
+            return v.strftime('%d/%m/%Y')
+        return str(v).strip()
+
+    def _fmt_phone(v):
+        if not v:
+            return ''
+        s = str(v).strip()
+        if s.isdigit() and len(s) in [8, 9] and not s.startswith('0'):
+            s = '0' + s
+        return s
+
+    if os.path.exists(excel_path):
+        wb = openpyxl.load_workbook(excel_path, data_only=True)
+        ws = wb['2026-2027']
+        for r in range(8, 127):
+            no = ws.cell(r, 1).value
+            tid = str(ws.cell(r, 2).value or '').strip()
+            name = str(ws.cell(r, 3).value or '').strip()
+            if not name:
+                continue
+            gender = str(ws.cell(r, 4).value or '').strip()
+            dob = ws.cell(r, 5).value
+            degree = str(ws.cell(r, 6).value or '').strip()
+            spec = str(ws.cell(r, 7).value or '').strip()
+            train = str(ws.cell(r, 8).value or '').strip()
+            hire_d = ws.cell(r, 9).value
+            perm_d = ws.cell(r, 10).value
+            sub1 = str(ws.cell(r, 11).value or '').strip()
+            sub2 = str(ws.cell(r, 12).value or '').strip()
+            duty = str(ws.cell(r, 13).value or '').strip()
+            sal_cat = str(ws.cell(r, 14).value or '').strip()
+            sal_lvl = ws.cell(r, 15).value
+            sal_step = ws.cell(r, 16).value
+            prakas_yr = ws.cell(r, 17).value
+            prakas_no = str(ws.cell(r, 18).value or '').strip()
+            prakas_idx = ws.cell(r, 19).value
+            phone = ws.cell(r, 20).value
+
+            staff_list.append({
+                'no': no,
+                'teacher_id': tid,
+                'name': name,
+                'gender': gender,
+                'is_female': gender == 'ស',
+                'dob': _fmt_d(dob),
+                'degree': degree,
+                'specialization': spec,
+                'training_level': train,
+                'hire_date': _fmt_d(hire_d),
+                'permanent_date': _fmt_d(perm_d),
+                'sub1': sub1,
+                'sub2': sub2,
+                'duty': duty or 'គ្រូបង្រៀន',
+                'sal_cat': sal_cat,
+                'sal_lvl': sal_lvl if sal_lvl is not None else '',
+                'sal_step': sal_step if sal_step is not None else '',
+                'prakas_year': _fmt_d(prakas_yr),
+                'prakas_no': prakas_no,
+                'prakas_idx': prakas_idx if prakas_idx is not None else '',
+                'phone': _fmt_phone(phone),
+            })
+    else:
+        teachers_qs = Teacher.objects.all().order_by('id')
+        for idx, t in enumerate(teachers_qs, 1):
+            gender_code = 'ស' if t.gender == 'F' else 'ប'
+            staff_list.append({
+                'no': idx,
+                'teacher_id': t.teacher_id,
+                'name': t.khmer_name,
+                'gender': gender_code,
+                'is_female': gender_code == 'ស',
+                'dob': t.date_of_birth.strftime('%d/%m/%Y') if t.date_of_birth else '',
+                'degree': t.qualification or '',
+                'specialization': t.specialization or '',
+                'training_level': t.training_level or '',
+                'hire_date': t.state_hire_date.strftime('%d/%m/%Y') if t.state_hire_date else '',
+                'permanent_date': t.permanent_date.strftime('%d/%m/%Y') if t.permanent_date else '',
+                'sub1': t.primary_subject or '',
+                'sub2': t.secondary_subject or '',
+                'duty': t.current_duty or 'គ្រូបង្រៀន',
+                'sal_cat': t.prakas_category or 'ក',
+                'sal_lvl': '',
+                'sal_step': '',
+                'prakas_year': '',
+                'prakas_no': t.prakas_number or '',
+                'prakas_idx': '',
+                'phone': _fmt_phone(t.phone),
+            })
+
+    return {
+        'staff_list': staff_list,
+        'framework_summary': framework_summary,
+        'student_stats': student_stats,
+    }
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def moeys_staff_roster(request):
+    """
+    Interactive web view matching the official MoEYS Civil Servant & Teacher Directory (2026.xlsx).
+    Provides live filtering, KPI metrics, Excel export, and print-to-PDF view.
+    """
+    from apps.accounts.models import SchoolProfile
+    school_info = SchoolProfile.get_settings()
+
+    data = _get_moeys_staff_roster_data()
+    all_staff = data['staff_list']
+    framework_summary = data['framework_summary']
+    student_stats = data['student_stats']
+
+    query = request.GET.get('q', '').strip().lower()
+    cat_filter = request.GET.get('cat', '').strip()
+    duty_filter = request.GET.get('duty', '').strip()
+    gender_filter = request.GET.get('gender', '').strip()
+
+    filtered_staff = all_staff
+    if query:
+        filtered_staff = [
+            s for s in filtered_staff
+            if query in s['name'].lower()
+            or query in str(s['teacher_id']).lower()
+            or query in s['sub1'].lower()
+            or query in s['sub2'].lower()
+            or query in s['duty'].lower()
+            or query in s['phone'].lower()
+            or query in s['specialization'].lower()
+        ]
+
+    if cat_filter:
+        filtered_staff = [s for s in filtered_staff if s['sal_cat'] == cat_filter]
+
+    if duty_filter:
+        filtered_staff = [s for s in filtered_staff if duty_filter in s['duty']]
+
+    if gender_filter:
+        filtered_staff = [s for s in filtered_staff if s['gender'] == gender_filter]
+
+    # Metrics
+    total_staff = len(all_staff)
+    total_female = sum(1 for s in all_staff if s['is_female'])
+    total_male = total_staff - total_female
+    count_cat_a = sum(1 for s in all_staff if s['sal_cat'] == 'ក')
+    count_cat_b = sum(1 for s in all_staff if s['sal_cat'] == 'ខ')
+    count_cat_c = sum(1 for s in all_staff if s['sal_cat'] == 'គ')
+
+    # Available duties for dropdown
+    all_duties = sorted(list(set(s['duty'] for s in all_staff if s['duty'])))
+
+    # Total students in footer
+    tot_students = sum(st['total'] for st in student_stats)
+    tot_students_female = sum(st['female'] for st in student_stats)
+
+    context = {
+        'school_info': school_info,
+        'staff_list': filtered_staff,
+        'all_staff_count': total_staff,
+        'filtered_count': len(filtered_staff),
+        'total_female': total_female,
+        'total_male': total_male,
+        'count_cat_a': count_cat_a,
+        'count_cat_b': count_cat_b,
+        'count_cat_c': count_cat_c,
+        'framework_summary': framework_summary,
+        'student_stats': student_stats,
+        'tot_students': tot_students,
+        'tot_students_female': tot_students_female,
+        'all_duties': all_duties,
+        'query': query,
+        'cat_filter': cat_filter,
+        'duty_filter': duty_filter,
+        'gender_filter': gender_filter,
+    }
+    return render(request, 'teachers/moeys_staff_roster.html', context)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def moeys_staff_roster_export_excel(request):
+    """
+    Downloads the exact MoEYS Civil Servant & Teacher Directory (.xlsx) matching 2026.xlsx.
+    """
+    import os
+    from django.conf import settings
+    from django.http import HttpResponse, Http404
+
+    excel_path = os.path.join(settings.BASE_DIR, '2026.xlsx')
+    if not os.path.exists(excel_path):
+        excel_path = os.path.join(settings.BASE_DIR, ' 2026.xlsx')
+
+    if os.path.exists(excel_path):
+        with open(excel_path, 'rb') as f:
+            file_data = f.read()
+        response = HttpResponse(file_data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="moeys_staff_roster_2026_2027.xlsx"'
+        return response
+    else:
+        raise Http404("Excel file 2026.xlsx not found.")
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def moeys_staff_roster_print(request):
+    """
+    Dedicated printable view formatted for A4/A3 Landscape PDF saving (រក្សាទុកជា PDF).
+    """
+    from apps.accounts.models import SchoolProfile
+    school_info = SchoolProfile.get_settings()
+
+    data = _get_moeys_staff_roster_data()
+    all_staff = data['staff_list']
+    framework_summary = data['framework_summary']
+    student_stats = data['student_stats']
+
+    total_staff = len(all_staff)
+    total_female = sum(1 for s in all_staff if s['is_female'])
+    total_male = total_staff - total_female
+
+    tot_students = sum(st['total'] for st in student_stats)
+    tot_students_female = sum(st['female'] for st in student_stats)
+
+    context = {
+        'school_info': school_info,
+        'staff_list': all_staff,
+        'total_staff': total_staff,
+        'total_female': total_female,
+        'total_male': total_male,
+        'framework_summary': framework_summary,
+        'student_stats': student_stats,
+        'tot_students': tot_students,
+        'tot_students_female': tot_students_female,
+    }
+    return render(request, 'teachers/moeys_staff_roster_print.html', context)
+
+
 

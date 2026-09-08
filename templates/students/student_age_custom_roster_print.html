@@ -1,0 +1,379 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - {{ school_name }}</title>
+    
+    <!-- Khmer Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        @page {
+            {% if template_format == 'format_b' %}
+            size: A4 landscape;
+            margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ (Default 1.2cm) */
+            {% else %}
+            size: A4 portrait;
+            margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ (Default 1.2cm) */
+            {% endif %}
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
+            font-size: 9pt;
+            color: #000000;
+            background: #ffffff;
+            line-height: 1.35;
+            padding: 10px;
+        }
+
+        .font-muol {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+        }
+
+        /* Screen Toolbar */
+        .no-print-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .no-print-bar button, .no-print-bar a {
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .no-print-bar button:hover, .no-print-bar a:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-green {
+            background-color: #16a34a !important;
+        }
+        .btn-green:hover {
+            background-color: #15803d !important;
+        }
+        .btn-gray {
+            background-color: #475569 !important;
+        }
+
+        /* Printable Container */
+        .print-container {
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Header Layout */
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .header-left {
+            text-align: left;
+            font-size: 10pt;
+        }
+        .header-right {
+            text-align: center;
+            font-size: 10.5pt;
+        }
+        .header-right .sub {
+            font-size: 9.5pt;
+            margin-top: 2px;
+        }
+
+        /* Title */
+        .doc-title {
+            text-align: center;
+            margin: 15px 0 12px 0;
+        }
+        .doc-title h1 {
+            font-size: 12.5pt;
+            font-weight: normal;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .doc-title .doc-subtitle {
+            font-size: 8.5pt;
+            color: #333333;
+        }
+
+        /* Table */
+        table.roster-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.8pt;
+        }
+        table.roster-table th, table.roster-table td {
+            border: 0.8px solid #000000;
+            padding: 4px 5px;
+            vertical-align: middle;
+        }
+        table.roster-table th {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f8fafc;
+        }
+        .cell-center { text-align: center; }
+        .cell-left { text-align: left; }
+
+        /* Footer */
+        .doc-footer {
+            margin-top: 15px;
+            font-size: 9pt;
+        }
+        .stop-line {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .signature-block {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            page-break-inside: avoid;
+        }
+        .sig-box {
+            text-align: center;
+            width: 250px;
+        }
+
+        @media print {
+            .no-print-bar {
+                display: none !important;
+            }
+            body {
+                padding: 0;
+            }
+            thead {
+                display: table-header-group;
+            }
+            tr {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- On-screen Action Toolbar -->
+    <div class="no-print-bar">
+        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <div>
+                <strong><i class="fa-solid fa-file-pdf"></i> ទំព័របោះពុម្ពផ្លូវការ (MoEYS Official Print / Save as PDF)</strong>
+                <span style="font-size: 12px; margin-left: 10px; opacity: 0.85;">
+                    {{ title }} • សរុប {{ total_count_kh }} នាក់
+                </span>
+            </div>
+            <!-- Margin & Paper Size Controls -->
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px;">
+                <label style="opacity: 0.9;"><i class="fa-solid fa-arrows-to-dot"></i> គែមជុំវិញ (Margin):</label>
+                <select id="marginSelector" onchange="changePrintSettings()" style="background: #334155; color: #fff; border: 1px solid #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                    <option value="1.2cm" selected>១.២ cm (ស្តង់ដារ ១-១.៥cm)</option>
+                    <option value="1.0cm">១.០ cm (អប្បបរមា ១cm)</option>
+                    <option value="1.5cm">១.៥ cm (អតិបរមា ១.៥cm)</option>
+                </select>
+
+                <label style="opacity: 0.9; margin-left: 5px;"><i class="fa-solid fa-file"></i> ទម្រង់ក្រដាស:</label>
+                <select id="pageSizeSelector" onchange="changePrintSettings()" style="background: #334155; color: #fff; border: 1px solid #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                    {% if template_format == 'format_b' %}
+                    <option value="A4 landscape" selected>A4 Landscape</option>
+                    <option value="A4 portrait">A4 Portrait</option>
+                    {% else %}
+                    <option value="A4 portrait" selected>A4 Portrait</option>
+                    <option value="A4 landscape">A4 Landscape</option>
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" class="btn-green">
+                <i class="fa-solid fa-print"></i> បោះពុម្ព / រក្សាទុកជា PDF
+            </button>
+            <a href="{% url 'student_age_custom_roster_export_excel' %}?{{ request.GET.urlencode }}" class="btn-green">
+                <i class="fa-solid fa-file-excel"></i> Excel
+            </a>
+            <button onclick="window.close()" class="btn-gray">
+                <i class="fa-solid fa-xmark"></i> បិទ
+            </button>
+        </div>
+    </div>
+
+    <div class="print-container">
+        <!-- Header -->
+        <div class="doc-header">
+            <div class="header-left font-muol">
+                {{ school_name }}
+            </div>
+            <div class="header-right font-muol">
+                <div>ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="sub">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div class="doc-title">
+            <h1 class="font-muol">{{ title }}</h1>
+            <div class="doc-subtitle font-siemreap">
+                ឆ្នាំសិក្សា {{ active_year.name|default:"២០២៦-២០២៧" }} (គិតត្រឹមថ្ងៃទី ៣១ ខែតុលា ឆ្នាំ {{ ref_year }})
+            </div>
+        </div>
+
+        <!-- Roster Table -->
+        {% if template_format == 'format_a' %}
+        <!-- ================= FORMAT A TABLE ================= -->
+        <table class="roster-table">
+            <thead>
+                <tr>
+                    <th style="width: 35px;" class="cell-center">លរ</th>
+                    <th style="width: 80px;" class="cell-center">អត្តលេខ</th>
+                    <th style="min-width: 180px;" class="cell-center">គោត្តនាម និងនាម</th>
+                    <th style="width: 35px;" class="cell-center">ភេទ</th>
+                    <th style="width: 105px;" class="cell-center">ថ្ងៃខែឆ្នាំកំណើត</th>
+                    <th colspan="2" class="cell-center" style="width: 85px;">ថ្នាក់ទី</th>
+                    <th style="width: 55px;" class="cell-center">អាយុ</th>
+                    <th style="min-width: 80px;" class="cell-center">ផ្សេងៗ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    <td class="cell-center">{{ s.no }}</td>
+                    <td class="cell-center">{{ s.student_id }}</td>
+                    <td class="cell-left" style="padding-left: 8px;">{{ s.khmer_name }}</td>
+                    <td class="cell-center">{{ s.gender_kh }}</td>
+                    <td class="cell-center">{{ s.dob_kh }}</td>
+                    <td class="cell-center" style="width: 42px;">{{ s.grade_level }}</td>
+                    <td class="cell-center" style="width: 43px;">{{ s.section }}</td>
+                    <td class="cell-center fw-bold">{{ s.age }}</td>
+                    <td class="cell-center">{{ s.remarks }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="cell-center" style="padding: 20px;">មិនមានទិន្នន័យសិស្សឡើយ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% else %}
+        <!-- ================= FORMAT B TABLE ================= -->
+        <table class="roster-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 35px;" class="cell-center">លរ</th>
+                    <th rowspan="2" style="width: 75px;" class="cell-center">អត្តលេខ</th>
+                    <th rowspan="2" style="min-width: 170px;" class="cell-center">គោត្តនាម និងនាម</th>
+                    <th rowspan="2" style="width: 35px;" class="cell-center">ភេទ</th>
+                    <th rowspan="2" style="width: 100px;" class="cell-center">ថ្ងៃខែឆ្នាំកំណើត</th>
+                    <th rowspan="2" style="width: 70px;" class="cell-center">ថ្នាក់</th>
+                    <th colspan="4" class="cell-center">អាសយដ្ឋានបច្ចុប្បន្ន</th>
+                    <th rowspan="2" style="min-width: 70px;" class="cell-center">ផ្សេងៗ</th>
+                </tr>
+                <tr>
+                    <th style="width: 95px;" class="cell-center">ភូមិ</th>
+                    <th style="width: 95px;" class="cell-center">ឃុំ/សង្កាត់</th>
+                    <th style="width: 105px;" class="cell-center">ស្រុក/ខណ្ឌ</th>
+                    <th style="width: 95px;" class="cell-center">ខេត្ត/ក្រុង</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    <td class="cell-center">{{ s.no }}</td>
+                    <td class="cell-center">{{ s.student_id }}</td>
+                    <td class="cell-left" style="padding-left: 8px;">{{ s.khmer_name }}</td>
+                    <td class="cell-center">{{ s.gender_kh }}</td>
+                    <td class="cell-center">{{ s.dob_kh }}</td>
+                    <td class="cell-center">{{ s.class_display }}</td>
+                    <td class="cell-center">{{ s.village }}</td>
+                    <td class="cell-center">{{ s.commune }}</td>
+                    <td class="cell-center">{{ s.district }}</td>
+                    <td class="cell-center">{{ s.province }}</td>
+                    <td class="cell-center">{{ s.remarks }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="cell-center" style="padding: 20px;">មិនមានទិន្នន័យសិស្សឡើយ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Footer Statistics & Signatures -->
+        <div class="doc-footer">
+            <div class="stop-line">
+                បញ្ឈប់បញ្ជីត្រឹមលេខរៀងទី {{ total_count_kh }} (សិស្សសរុបចំនួន {{ total_count_kh }} នាក់, ស្រីចំនួន {{ female_count_kh }} នាក់, ប្រុសចំនួន {{ male_count_kh }} នាក់)
+            </div>
+
+            <div class="signature-block">
+                <div class="sig-box">
+                    <div>បានឃើញ និងឯកភាព</div>
+                    <div class="font-muol" style="margin-top: 5px;">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡា</div>
+                    <div style="height: 65px;"></div>
+                </div>
+                <div class="sig-box">
+                    <div>ថ្ងៃទី........ខែ...............ឆ្នាំ២០២...</div>
+                    <div class="font-muol" style="margin-top: 5px;">នាយកសាលា</div>
+                    <div style="height: 65px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function changePrintSettings() {
+            let el = document.getElementById('print-dynamic-style');
+            if (!el) {
+                el = document.createElement('style');
+                el.id = 'print-dynamic-style';
+                document.head.appendChild(el);
+            }
+            const marginVal = document.getElementById('marginSelector').value;
+            const sizeVal = document.getElementById('pageSizeSelector').value;
+            el.innerHTML = `
+                @page { size: ${sizeVal} !important; margin: ${marginVal} !important; }
+                .print-container { padding: ${marginVal} !important; }
+            `;
+        }
+    </script>
+
+    {% if request.GET.autoprint %}
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        });
+    </script>
+    {% endif %}
+
+</body>
+</html>

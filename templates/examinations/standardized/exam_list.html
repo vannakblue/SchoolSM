@@ -363,6 +363,12 @@
                                         </button>
                                         <ul class="dropdown-menu shadow-sm small">
                                             <li>
+                                                <a class="dropdown-item fw-bold text-primary" href="{% url 'standardized_exam_schedule_print' ex.id %}" target="_blank">
+                                                    <i class="fa-solid fa-calendar-day me-2 text-primary"></i> តារាងប្រព្រឹត្តទៅនៃវិញ្ញាសា
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
                                                 <a class="dropdown-item" href="{% url 'exam_room_postings_view' ex.id %}" target="_blank">
                                                     <i class="fa-solid fa-door-open me-2 text-primary"></i> តារាងបិទផ្សាយតាមបន្ទប់
                                                 </a>
@@ -391,6 +397,9 @@
                                     </div>
 
                                     <div class="d-flex gap-1">
+                                        <a href="{% url 'standardized_exam_schedule_manage' ex.id %}" class="btn btn-sm btn-light border text-primary py-1 px-2" title="កាលវិភាគវិញ្ញាសា">
+                                            <i class="fa-solid fa-calendar-days"></i>
+                                        </a>
                                         <a href="{% url 'standardized_exam_edit' ex.id %}" class="btn btn-sm btn-light border text-muted py-1 px-2" title="កែប្រែ">
                                             <i class="fa-solid fa-pen"></i>
                                         </a>

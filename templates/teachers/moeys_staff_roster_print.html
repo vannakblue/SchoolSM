@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ ឆ្នាំសិក្សា ២០២៦-២០២៧</title>
+    <!-- Google Fonts for Khmer -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Moul&family=Siemreap&family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style id="base-style">
+        :root {
+            --row-pad-v: 2.5px;
+            --col-pad-h: 3px;
+            --tbl-font-size: 7.5pt;
+            --tbl-border-color: #000000;
+        }
+
+        @page {
+            size: A3 landscape;
+            margin: 1.2cm; /* ចន្លោះពី ១ ទៅ ១.៥cm ជុំវិញ (ស្តង់ដារ ១.២cm) */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Siemreap', 'Battambang', sans-serif;
+            font-size: 8.5pt;
+            line-height: 1.25;
+            color: #000000;
+            background-color: #f1f5f9;
+            padding: 15px;
+        }
+        .font-muol {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+            font-weight: normal;
+        }
+        .font-battambang {
+            font-family: 'Battambang', sans-serif;
+        }
+        .page-container {
+            width: 100%;
+            max-width: 1650px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 15mm 10mm;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        /* Floating Top Bar for Screen */
+        .no-print-bar {
+            position: sticky;
+            top: 10px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        }
+        .bar-main-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-print { background-color: #2563eb; color: #ffffff; }
+        .btn-print:hover { background-color: #1d4ed8; }
+        .btn-excel { background-color: #16a34a; color: #ffffff; }
+        .btn-excel:hover { background-color: #15803d; }
+        .btn-adjust { background-color: #0284c7; color: #ffffff; }
+        .btn-adjust:hover { background-color: #0369a1; }
+        .btn-adjust.active { background-color: #38bdf8; color: #0f172a; }
+        .btn-edit-mode { background-color: #7c3aed; color: #ffffff; }
+        .btn-edit-mode:hover { background-color: #6d28d9; }
+        .btn-edit-mode.active { background-color: #a78bfa; color: #0f172a; }
+        .btn-close-view { background-color: #475569; color: #ffffff; }
+        .btn-close-view:hover { background-color: #334155; }
+
+        /* Secondary Adjustment Drawer / Toolbar */
+        .adjust-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: #0f172a;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            font-size: 12px;
+        }
+        .adjust-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        .adjust-group label {
+            opacity: 0.9;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .stepper-btn {
+            background: #334155;
+            color: #ffffff;
+            border: 1px solid #64748b;
+            border-radius: 4px;
+            width: 26px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .stepper-btn:hover {
+            background: #475569;
+        }
+        .stepper-val {
+            min-width: 44px;
+            text-align: center;
+            font-weight: bold;
+            color: #38bdf8;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        /* Column Selector Dropdown Modal */
+        .dropdown-menu-cols {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            min-width: 260px;
+        }
+        .dropdown-menu-cols.show {
+            display: block;
+        }
+        .col-check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            color: #e2e8f0;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .col-check-item:hover {
+            color: #38bdf8;
+        }
+        
+        /* Table Styles matching 2026.xlsx */
+        .table-responsive-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            position: relative;
+        }
+
+        .roster-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--tbl-font-size);
+            table-layout: auto;
+        }
+        .roster-table th, .roster-table td {
+            border: 0.5pt solid var(--tbl-border-color);
+            padding: var(--row-pad-v) var(--col-pad-h);
+            vertical-align: middle;
+            font-size: var(--tbl-font-size);
+            position: relative;
+        }
+        .roster-table thead {
+            display: table-header-group;
+        }
+        .roster-table thead th {
+            font-family: 'Moul', serif;
+            font-size: var(--tbl-font-size);
+            font-weight: normal;
+            background-color: #f8fafc;
+            text-align: center;
+            line-height: 1.2;
+            user-select: none;
+            position: relative;
+        }
+
+        /* Enhanced Interactive Column Resizer Handles (Easy to Grab) */
+        .col-resizer {
+            position: absolute;
+            top: 0;
+            right: -6px;
+            width: 14px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+            z-index: 30;
+        }
+        .col-resizer::after {
+            content: '';
+            position: absolute;
+            right: 6px;
+            top: 10%;
+            height: 80%;
+            width: 2px;
+            background-color: transparent;
+            transition: background-color 0.15s;
+        }
+        .col-resizer:hover::after, .is-resizing .col-resizer::after {
+            background-color: #0284c7;
+        }
+        .col-resizer:hover {
+            background-color: rgba(2, 132, 199, 0.18);
+        }
+
+        /* Global vertical guideline during dragging */
+        .resizing-guide-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #0284c7;
+            z-index: 9999;
+            pointer-events: none;
+            display: none;
+        }
+        .resizing-tooltip {
+            position: absolute;
+            top: -28px;
+            transform: translateX(-50%);
+            background: #0284c7;
+            color: #ffffff;
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            display: none;
+            z-index: 10000;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        /* Inline Edit Highlighting */
+        .edit-mode-active td {
+            outline: 1px dashed rgba(124, 58, 237, 0.35);
+        }
+        .edit-mode-active td:focus {
+            outline: 2px solid #7c3aed !important;
+            background-color: #faf5ff !important;
+        }
+
+        .text-center { text-align: center; }
+        .text-start { text-align: left; }
+        .text-end { text-align: right; }
+        .nowrap { white-space: nowrap; }
+        .wrap-cell { white-space: normal !important; word-break: break-word; }
+        .fw-bold { font-weight: bold; }
+
+        .roster-footer {
+            margin-top: 15px;
+            font-size: 8pt;
+            line-height: 1.5;
+            page-break-inside: avoid;
+            position: relative;
+            transition: box-shadow 0.15s ease;
+        }
+        .footer-cols {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .footer-left {
+            width: 60%;
+        }
+        .footer-right {
+            width: 38%;
+            text-align: center;
+        }
+
+        /* Screen Drag Bar for Movable Footer */
+        .footer-drag-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f5f9;
+            border: 1.5px dashed #0284c7;
+            border-radius: 6px;
+            padding: 5px 12px;
+            margin-bottom: 10px;
+            cursor: move;
+            user-select: none;
+            font-size: 11.5px;
+            transition: all 0.15s ease;
+        }
+        .footer-drag-bar:hover {
+            background: #e0f2fe;
+            border-color: #0369a1;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.2);
+        }
+        .drag-badge {
+            color: #0369a1;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+        }
+        .quick-move-btns {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .quick-move-btns button {
+            background: #ffffff;
+            border: 1px solid #94a3b8;
+            color: #0f172a;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            transition: all 0.15s;
+        }
+        .quick-move-btns button:hover {
+            background: #0284c7;
+            color: #ffffff;
+            border-color: #0284c7;
+        }
+
+        /* Individual Movable Sub-blocks */
+        .movable-sub-block {
+            position: relative;
+            transition: box-shadow 0.15s ease;
+            border-radius: 4px;
+            cursor: grab;
+        }
+        .movable-sub-block:hover {
+            outline: 1.5px dashed #0284c7;
+            background-color: rgba(2, 132, 199, 0.04);
+        }
+        .movable-sub-block.is-selected {
+            outline: 2px solid #0284c7 !important;
+            background-color: rgba(2, 132, 199, 0.06) !important;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+        }
+        .movable-sub-block.is-dragging {
+            cursor: grabbing !important;
+            opacity: 0.85;
+            outline: 2px solid #0284c7 !important;
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.3) !important;
+            z-index: 50;
+        }
+        .sub-block-drag-handle {
+            display: none;
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: #0284c7;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 4px 4px 0 0;
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 60;
+        }
+        .movable-sub-block:hover .sub-block-drag-handle,
+        .movable-sub-block.is-selected .sub-block-drag-handle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Print Settings */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+            }
+            .no-print-bar, .col-resizer, .resizing-guide-line, .resizing-tooltip, .footer-drag-bar {
+                display: none !important;
+            }
+            .movable-sub-block {
+                outline: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                cursor: default !important;
+            }
+            .sub-block-drag-handle {
+                display: none !important;
+            }
+            .page-container {
+                max-width: none !important;
+                width: 100% !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            .roster-table th, .roster-table td {
+                border: 0.5pt solid #000000 !important;
+                outline: none !important;
+            }
+            .roster-table thead th {
+                background-color: #f1f5f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tr {
+                page-break-inside: avoid;
+            }
+            .roster-footer {
+                page-break-inside: avoid;
+            }
+            @page {
+                size: A3 landscape;
+                margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ (Default 1.2cm) */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating Top Control Bar for Screen -->
+    <div class="no-print-bar">
+        <div class="bar-main-row">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div>
+                    <strong><i class="fa-solid fa-file-pdf me-1"></i>ទម្រង់បោះពុម្ព & រក្សាទុកជា PDF</strong>
+                    <span style="opacity: 0.8; font-size: 11px; margin-left: 8px;">ចន្លោះគែម ១ ទៅ 1.5cm</span>
+                </div>
+                
+                <!-- Margin & Paper Size Controls -->
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; flex-wrap: wrap;">
+                    <label style="opacity: 0.9;"><i class="fa-solid fa-arrows-to-dot"></i> គែមជុំវិញ (Margin):</label>
+                    <select id="marginSelector" onchange="changePrintSettings()" style="background: #334155; color: #fff; border: 1px solid #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                        <option value="1.2cm" selected>១.២ cm (ស្តង់ដារ ១-១.៥cm - ណែនាំ)</option>
+                        <option value="1.0cm">១.០ cm (អប្បបរមា ១cm)</option>
+                        <option value="1.5cm">១.៥ cm (អតិបរមា ១.៥cm)</option>
+                    </select>
+
+                    <label style="opacity: 0.9; margin-left: 5px;"><i class="fa-solid fa-file"></i> ទំហំក្រដាស:</label>
+                    <select id="pageSizeSelector" onchange="changePrintSettings()" style="background: #334155; color: #fff; border: 1px solid #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                        <option value="A3 landscape" selected>A3 Landscape (ច្បាស់បំផុត)</option>
+                        <option value="A4 landscape">A4 Landscape</option>
+                    </select>
+
+                    <label style="opacity: 0.9; margin-left: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; background: rgba(255,255,255,0.08); padding: 2px 7px; border-radius: 4px;" title="ធីកប្រអប់នេះប្រសិនបើលោកអ្នកជ្រើស Margins: None ក្នុង Chrome Print ដើម្បីបង្ខំឱ្យមានគែម ១-១.៥cm ក្នុងទំព័រ">
+                        <input type="checkbox" id="chkForcePadding" onchange="changePrintSettings()">
+                        <span><i class="fa-solid fa-shield-halved text-warning"></i> បង្ខំគែមក្នុង (បើប្រើ Margins: None)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Chrome Print Guidance Banner -->
+            <div style="width: 100%; background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; padding: 7px 12px; font-size: 11.5px; color: #e0f2fe; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-circle-info" style="color: #38bdf8; font-size: 14px; flex-shrink: 0;"></i>
+                <span><strong>ការណែនាំពេល Print / Save as PDF៖</strong> ក្នុងផ្ទាំង Print របស់ Browser សូមជ្រើសរើស <strong>Margins: "Default"</strong> (លំនាំដើម) ដើម្បីឱ្យគែម <strong>១ ទៅ ១.៥ cm (1.2cm)</strong> បង្ហាញពេញលេញស្វ័យប្រវត្តគ្រប់ទំព័រ។ (ប្រសិនបើជ្រើស <strong>"None"</strong> ដូចក្នុងរូបថត Browser នឹងកាត់គែម 1.2cm ចោលទាំងអស់ ប៉ុន្តែលោកអ្នកក៏អាចធីកប្រអប់ <em>"បង្ខំគែមក្នុង"</em> ខាងលើបានផងដែរ)។</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <!-- Adjust Columns & Rows Button -->
+                <button id="btnToggleAdjust" onclick="toggleAdjustBar()" class="btn-action btn-adjust" title="កែសម្រួលទទឹងជួរឈរ កម្ពស់ជួរដេក និងទំហំអក្សរ">
+                    <i class="fa-solid fa-sliders"></i> កែតម្រូវជួរឈរ & ជួរដេក
+                </button>
+
+                <!-- Direct Edit Mode Toggle Button -->
+                <button id="btnToggleEdit" onclick="toggleEditMode()" class="btn-action btn-edit-mode" title="អនុញ្ញាតឱ្យចុចកែសម្រួលអត្ថបទក្នុងក្រឡាផ្ទាល់">
+                    <i class="fa-solid fa-pen-to-square"></i> កែអត្ថបទផ្ទាល់
+                </button>
+
+                <button onclick="window.print()" class="btn-action btn-print">
+                    <i class="fa-solid fa-print"></i> រក្សាទុកជា PDF / បោះពុម្ព
+                </button>
+                <a href="{% url 'moeys_staff_roster_export_excel' %}" class="btn-action btn-excel">
+                    <i class="fa-solid fa-file-excel"></i> ទាញយក Excel (.xlsx)
+                </a>
+                <button onclick="window.close()" class="btn-action btn-close-view">
+                    <i class="fa-solid fa-xmark"></i> បិទ
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Adjustment Drawer for Columns, Rows, Padding, and Visibility -->
+        <div id="tableAdjustBar" class="adjust-panel">
+            <!-- Hint Guide -->
+            <div style="width: 100%; font-size: 11px; color: #38bdf8; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-circle-info"></i>
+                <span><strong>ការណែនាំ៖</strong> អ្នកអាច<strong>ចាប់ទាញបន្ទាត់គែមខាងស្តាំនៃក្បាលជួរឈរនីមួយៗ (↔)</strong> ដើម្បីពង្រីក ឬបង្រួមទទឹងជួរឈរនោះបានភ្លាមៗ។</span>
+            </div>
+
+            <!-- 1. Column Width / Padding Adjustments -->
+            <div class="adjust-group">
+                <label><i class="fa-solid fa-arrows-left-right me-1 text-info"></i>ទទឹង/ចន្លោះជួរឈរ:</label>
+                <button class="stepper-btn" onclick="stepColPadding(-0.5)" title="បង្រួមចន្លោះជួរឈរ">-</button>
+                <span id="colPadDisplay" class="stepper-val">3.0px</span>
+                <button class="stepper-btn" onclick="stepColPadding(0.5)" title="ពង្រីកចន្លោះជួរឈរ">+</button>
+            </div>
+
+            <!-- 2. Row Height / Padding Adjustments -->
+            <div class="adjust-group">
+                <label><i class="fa-solid fa-arrows-up-down me-1 text-warning"></i>កម្ពស់ជួរដេក:</label>
+                <button class="stepper-btn" onclick="stepRowPadding(-0.5)" title="បង្រួមកម្ពស់ជួរដេក">-</button>
+                <span id="rowPadDisplay" class="stepper-val">2.5px</span>
+                <button class="stepper-btn" onclick="stepRowPadding(0.5)" title="ពង្រីកកម្ពស់ជួរដេក">+</button>
+            </div>
+
+            <!-- 3. Font Size Adjustments -->
+            <div class="adjust-group">
+                <label><i class="fa-solid fa-font me-1 text-success"></i>ទំហំអក្សរ:</label>
+                <button class="stepper-btn" onclick="stepFontSize(-0.5)" title="បន្ថយទំហំអក្សរ">A-</button>
+                <span id="fontSizeDisplay" class="stepper-val">7.5pt</span>
+                <button class="stepper-btn" onclick="stepFontSize(0.5)" title="បង្កើនទំហំអក្សរ">A+</button>
+            </div>
+
+            <!-- 4. Text Wrapping Toggle -->
+            <div class="adjust-group">
+                <button id="btnTextWrap" onclick="toggleTextWrap()" class="btn-action" style="padding: 4px 10px; font-size: 11px; background: #334155; color: #fff;">
+                    <i class="fa-solid fa-text-width me-1"></i> <span id="wrapTextLabel">កាត់បន្ទាត់: បិទ</span>
+                </button>
+            </div>
+
+            <!-- 5. Auto Fit Columns Evenly -->
+            <div class="adjust-group">
+                <button onclick="autoDistributeColumns()" class="btn-action" style="padding: 4px 10px; font-size: 11px; background: #334155; color: #fff;" title="រៀបចំទទឹងជួរឈរឱ្យស៊ីគ្នាល្អពេញទំព័រ">
+                    <i class="fa-solid fa-table-cells me-1 text-info"></i> តម្រឹមទទឹងស្វ័យប្រវត្ត
+                </button>
+            </div>
+
+            <!-- 6. Column Visibility Dropdown -->
+            <div class="adjust-group" style="position: relative;">
+                <button onclick="toggleColDropdown(event)" class="btn-action" style="padding: 4px 10px; font-size: 11px; background: #334155; color: #fff;">
+                    <i class="fa-solid fa-table-columns me-1 text-primary"></i> លាក់/បង្ហាញជួរឈរ <i class="fa-solid fa-chevron-down ms-1"></i>
+                </button>
+                <div id="colDropdownMenu" class="dropdown-menu-cols">
+                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid #475569; padding-bottom: 4px; color: #38bdf8;">
+                        ជ្រើសរើសជួរឈរដែលត្រូវបង្ហាញ
+                    </div>
+                    <div id="colCheckboxesContainer"></div>
+                    <div style="margin-top: 8px; border-top: 1px solid #475569; padding-top: 6px; display: flex; justify-content: space-between;">
+                        <button onclick="selectAllColumns(true)" style="background:none; border:none; color:#38bdf8; font-size:11px; cursor:pointer;">បង្ហាញទាំងអស់</button>
+                        <button onclick="toggleColDropdown(event)" style="background:#475569; border:none; color:#fff; font-size:11px; padding:2px 8px; border-radius:3px; cursor:pointer;">បិទ</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Move Footer & Sub-Blocks Controls -->
+            <div class="adjust-group" style="display: flex; align-items: center; gap: 5px;">
+                <label><i class="fa-solid fa-arrows-up-down-left-right me-1 text-info"></i>រំកិលប្លុក:</label>
+                <select id="subBlockSelector" onchange="onSelectSubBlock(this.value)" style="background: #334155; color: #fff; border: 1px solid #64748b; padding: 3px 6px; border-radius: 4px; font-size: 11px; cursor: pointer;">
+                    <option value="movableFooter">ប្លុកទាំងអស់ (រួម)</option>
+                    <option value="blockStaffSummary">១. បញ្ឈប់បញ្ជី & ក្របខ័ណ្ឌ</option>
+                    <option value="blockStudentCol1">២. ស្ថិតិសិស្ស (៧, ៩, ១១)</option>
+                    <option value="blockStudentCol2">៣. ស្ថិតិសិស្ស (៨, ១០, ១២)</option>
+                    <option value="blockSigPrincipal">៤. នាយកសាលា</option>
+                    <option value="blockSigDistrict">៥. ប្រធានការិយាល័យ</option>
+                </select>
+                <button class="stepper-btn" onclick="shiftActiveBlock(0, -5)" title="រំកិលឡើងលើ 5px">▲</button>
+                <button class="stepper-btn" onclick="shiftActiveBlock(0, 5)" title="រំកិលចុះក្រោម 5px">▼</button>
+                <button class="stepper-btn" onclick="shiftActiveBlock(-5, 0)" title="រំកិលទៅឆ្វេង 5px">◄</button>
+                <button class="stepper-btn" onclick="shiftActiveBlock(5, 0)" title="រំកិលទៅស្តាំ 5px">►</button>
+                <button onclick="resetActiveBlock()" class="btn-action" style="padding: 3px 7px; font-size: 11px; background: #475569; color: #fff;" title="កំណត់ទីតាំងប្លុកដែលបានជ្រើសរើសទៅដើម">
+                    <i class="fa-solid fa-rotate-left"></i> ដើម
+                </button>
+                <button onclick="togglePageBreakFooter()" id="btnTopPageBreakFooter" class="btn-action" style="padding: 4px 8px; font-size: 11px; background: #334155; color: #fff;" title="ផ្តាច់ប្លុកក្រោមទៅទំព័រថ្មី ឬបន្តបន្ទាប់">
+                    <i class="fa-solid fa-file-export me-1"></i> <span id="topPageBreakText">ទំព័រថ្មី: បិទ</span>
+                </button>
+            </div>
+
+            <!-- 8. Reset All Adjustments -->
+            <div class="adjust-group">
+                <button onclick="resetAllAdjustments()" class="btn-action" style="padding: 4px 10px; font-size: 11px; background: #ef4444; color: #fff;" title="កំណត់ជួរឈរ ជួរដេក និងការកំណត់ទាំងអស់ទៅដូចដើម">
+                    <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ឡើងវិញ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Container -->
+    <div class="page-container" id="printableSheet">
+        <!-- Visual guide line while dragging column border -->
+        <div class="resizing-guide-line" id="resizingGuideLine">
+            <div class="resizing-tooltip" id="resizingTooltip">100px</div>
+        </div>
+        
+        <!-- Header Banner -->
+        <table style="width: 100%; border: none; margin-bottom: 8px;">
+            <tr style="border: none;">
+                <td style="border: none; text-align: left; vertical-align: top; width: 45%;">
+                    <div class="font-muol" style="font-size: 9.5pt;">ស្រុកកណ្ដាលស្ទឹង</div>
+                    <div class="font-muol" style="font-size: 9.5pt;">ការិយាល័យអប់រំ យុវជន និងកីឡា</div>
+                    <div class="font-muol" style="font-size: 9.5pt;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត</div>
+                </td>
+                <td style="border: none; text-align: center; vertical-align: top; width: 55%;">
+                    <div class="font-muol" style="font-size: 10.5pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="font-muol" style="font-size: 10.5pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <div style="letter-spacing: 4px; font-size: 9pt;">3 3 3</div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Main Title -->
+        <div style="text-align: center; margin-bottom: 10px;">
+            <div class="font-muol" style="font-size: 11pt; letter-spacing: 0.5px;">
+                បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ ឆ្នាំសិក្សា ២០២៦-២០២៧
+            </div>
+        </div>
+
+        <!-- 20-Column Table (Exact Replica of 2026.xlsx) with 100% Header-Data Alignment -->
+        <div class="table-responsive-wrapper">
+            <table class="roster-table" id="rosterStaffTable">
+                <colgroup id="staffColgroup">
+                    <col data-col="0" style="width: 32px;">
+                    <col data-col="1" style="width: 82px;">
+                    <col data-col="2" style="width: 125px;">
+                    <col data-col="3" style="width: 30px;">
+                    <col data-col="4" style="width: 72px;">
+                    <col data-col="5" style="width: 80px;">
+                    <col data-col="6" style="width: 95px;">
+                    <col data-col="7" style="width: 80px;">
+                    <col data-col="8" style="width: 72px;">
+                    <col data-col="9" style="width: 72px;">
+                    <col data-col="10" style="width: 80px;">
+                    <col data-col="11" style="width: 80px;">
+                    <col data-col="12" style="width: 68px;">
+                    <col data-col="13" style="width: 35px;">
+                    <col data-col="14" style="width: 30px;">
+                    <col data-col="15" style="width: 30px;">
+                    <col data-col="16" style="width: 70px;">
+                    <col data-col="17" style="width: 95px;">
+                    <col data-col="18" style="width: 48px;">
+                    <col data-col="19" style="width: 82px;">
+                </colgroup>
+                <thead>
+                    <tr id="headerRow1">
+                        <th rowspan="2" data-col="0" style="width: 32px;">លរ<div class="col-resizer" data-col="0"></div></th>
+                        <th rowspan="2" data-col="1" style="width: 82px;">អត្តលេខ<div class="col-resizer" data-col="1"></div></th>
+                        <th rowspan="2" data-col="2" style="width: 125px;">គោត្តនាម<br>និងនាម<div class="col-resizer" data-col="2"></div></th>
+                        <th rowspan="2" data-col="3" style="width: 30px;">ភេទ<div class="col-resizer" data-col="3"></div></th>
+                        <th rowspan="2" data-col="4" style="width: 72px;">ថ្ងៃខែឆ្នាំ<br>កំណើត<div class="col-resizer" data-col="4"></div></th>
+                        <th colspan="2" data-parent="edu">កំរិតវប្បធម៌</th>
+                        <th rowspan="2" data-col="7" style="width: 80px;">កម្រិត<br>បណ្តុះបណ្តាល<div class="col-resizer" data-col="7"></div></th>
+                        <th rowspan="2" data-col="8" style="width: 72px;">ថ្ងៃចូលបំរើ<br>ការងាររដ្ឋ<div class="col-resizer" data-col="8"></div></th>
+                        <th rowspan="2" data-col="9" style="width: 72px;">ថ្ងៃខែឆ្នាំតែង<br>តាំងស៊ប់<div class="col-resizer" data-col="9"></div></th>
+                        <th rowspan="2" data-col="10" style="width: 80px;">មុខវិជ្ជា<br>ឯកទេសទី១<div class="col-resizer" data-col="10"></div></th>
+                        <th rowspan="2" data-col="11" style="width: 80px;">មុខវិជ្ជា<br>ឯកទេសទី២<div class="col-resizer" data-col="11"></div></th>
+                        <th rowspan="2" data-col="12" style="width: 68px;">ភារកិច្ច<br>បច្ចុប្បន្ន<div class="col-resizer" data-col="12"></div></th>
+                        <th colspan="6" data-parent="sal">កាំបៀវត្សបច្ចុប្បន្ន</th>
+                        <th rowspan="2" data-col="19" style="width: 82px;">លេខទូរស័ព្ទ<div class="col-resizer" data-col="19"></div></th>
+                    </tr>
+                    <tr id="headerRow2">
+                        <th data-col="5" style="width: 80px;">សញ្ញាបត្រ<div class="col-resizer" data-col="5"></div></th>
+                        <th data-col="6" style="width: 95px;">ឯកទេស<div class="col-resizer" data-col="6"></div></th>
+                        <th data-col="13" style="width: 35px;">ប្រភេទ<div class="col-resizer" data-col="13"></div></th>
+                        <th data-col="14" style="width: 30px;">កម្រិត<div class="col-resizer" data-col="14"></div></th>
+                        <th data-col="15" style="width: 30px;">កាំ<div class="col-resizer" data-col="15"></div></th>
+                        <th data-col="16" style="width: 70px;">ឆ្នាំទទួល<div class="col-resizer" data-col="16"></div></th>
+                        <th data-col="17" style="width: 95px;">ប្រ.លេខ<div class="col-resizer" data-col="17"></div></th>
+                        <th data-col="18" style="width: 48px;">លេខរៀង<div class="col-resizer" data-col="18"></div></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for s in staff_list %}
+                    <tr data-row-idx="{{ forloop.counter0 }}">
+                        <td class="text-center" data-col="0">{{ s.no }}</td>
+                        <td class="text-center nowrap" data-col="1">{{ s.teacher_id }}</td>
+                        <td class="nowrap" data-col="2">{{ s.name }}</td>
+                        <td class="text-center" data-col="3">{{ s.gender }}</td>
+                        <td class="text-center nowrap" data-col="4">{{ s.dob }}</td>
+                        <td class="text-center nowrap" data-col="5">{{ s.degree|default:"" }}</td>
+                        <td class="nowrap" data-col="6">{{ s.specialization|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="7">{{ s.training_level|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="8">{{ s.hire_date|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="9">{{ s.permanent_date|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="10">{{ s.sub1|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="11">{{ s.sub2|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="12">{{ s.duty|default:"" }}</td>
+                        <td class="text-center" data-col="13">{{ s.sal_cat|default:"" }}</td>
+                        <td class="text-center" data-col="14">{{ s.sal_lvl|default:"" }}</td>
+                        <td class="text-center" data-col="15">{{ s.sal_step|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="16">{{ s.prakas_year|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="17">{{ s.prakas_no|default:"" }}</td>
+                        <td class="text-center" data-col="18">{{ s.prakas_idx|default:"" }}</td>
+                        <td class="text-center nowrap" data-col="19">{{ s.phone|default:"" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer Summary & Signatures (Matching rows 127-137) -->
+        <div class="roster-footer" id="movableFooter">
+            <!-- Screen Drag & Adjustment Bar for Footer Block -->
+            <div class="footer-drag-bar" id="footerDragHandle" title="ចុចទាញទីនេះដើម្បីរំកិលទីតាំងប្លុកខាងក្រោម (Drag to Move Footer)">
+                <div class="drag-badge">
+                    <i class="fa-solid fa-arrows-up-down-left-right me-1"></i>
+                    <span>ចាប់ទាញដើម្បីរំកិលប្លុកហត្ថលេខា & ស្ថិតិ (Move Footer)</span>
+                    <span id="footerOffsetInfo" style="margin-left: 8px; font-weight: normal; font-size: 10.5px; color: #64748b;">(X: 0px, Y: 0px)</span>
+                </div>
+                <div class="quick-move-btns" onclick="event.stopPropagation();">
+                    <button type="button" onclick="shiftFooterY(-10)" title="រំកិលឡើងលើ 10px"><i class="fa-solid fa-arrow-up"></i> ឡើងលើ</button>
+                    <button type="button" onclick="shiftFooterY(10)" title="រំកិលចុះក្រោម 10px"><i class="fa-solid fa-arrow-down"></i> ចុះក្រោម</button>
+                    <button type="button" onclick="shiftFooterX(-15)" title="រំកិលទៅឆ្វេង 15px"><i class="fa-solid fa-arrow-left"></i> ឆ្វេង</button>
+                    <button type="button" onclick="shiftFooterX(15)" title="រំកិលទៅស្តាំ 15px"><i class="fa-solid fa-arrow-right"></i> ស្តាំ</button>
+                    <button type="button" id="btnFooterPageBreak" onclick="togglePageBreakFooter()" title="ផ្តាច់ទៅទំព័រថ្មី ឬបន្តបន្ទាប់ពីតារាង"><i class="fa-solid fa-file-export"></i> ផ្តាច់ទៅទំព័រថ្មី: បិទ</button>
+                    <button type="button" onclick="resetFooterPosition()" title="កំណត់ទីតាំងដើមឡើងវិញ" style="color: #dc2626;"><i class="fa-solid fa-rotate-left"></i> ដើម</button>
+                </div>
+            </div>
+
+            <div class="footer-cols">
+                <!-- Left: Stats -->
+                <div class="footer-left">
+                    <!-- Sub-block 1: Staff Framework Breakdown -->
+                    <div class="movable-sub-block" id="blockStaffSummary" data-block-id="blockStaffSummary" data-block-name="បញ្ឈប់បញ្ជី & ក្របខ័ណ្ឌ" style="padding: 4px; margin-bottom: 6px;">
+                        <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>បញ្ឈប់បញ្ជី & ក្របខ័ណ្ឌ</span> <span class="sub-block-pos">(0, 0)</span></div>
+                        <div style="font-weight: bold; margin-bottom: 4px;">
+                            បញ្ឈប់បញ្ជីត្រឹមលេខរៀងទី <u>១១៩ (មួយរយដប់ប្រាំបួន)</u> សរុប <u>{{ staff_list|length }}</u> នាក់ ស្រី <u>{{ female_count|default:"៦៤" }}</u> នាក់
+                        </div>
+                        <div style="padding-left: 12px; margin-bottom: 2px;">
+                            <div>ក្នុងនោះក្របខ័ណ្ឌ៖</div>
+                            <div style="padding-left: 12px;">
+                                • គ្រូមធ្យមសិក្សាទុតិយភូមិ (ក្របខ័ណ្ឌ ក)៖ <strong>៦០</strong> នាក់ (ស្រី <strong>២៩</strong> នាក់)<br>
+                                • គ្រូមធ្យមសិក្សាបឋមភូមិ (ក្របខ័ណ្ឌ ខ)៖ <strong>៥៤</strong> នាក់ (ស្រី <strong>៣១</strong> នាក់)<br>
+                                • គ្រូបឋមសិក្សា/ផ្សេងៗ (ក្របខ័ណ្ឌ គ)៖ <strong>០៥</strong> នាក់ (ស្រី <strong>០៤</strong> នាក់)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sub-blocks 2 & 3: Student Statistics (2 Columns as in screenshots) -->
+                    <div style="display: flex; gap: 14px; margin-top: 4px; font-size: 7.5pt;">
+                        <!-- Sub-block 2: Student Stats Col 1 (7, 9, 11) -->
+                        <div class="movable-sub-block" id="blockStudentCol1" data-block-id="blockStudentCol1" data-block-name="ស្ថិតិសិស្ស (៧, ៩, ១១)" style="flex: 1; padding: 4px;">
+                            <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>ស្ថិតិសិស្ស (៧, ៩, ១១)</span> <span class="sub-block-pos">(0, 0)</span></div>
+                            <div style="font-weight: bold; margin-bottom: 2px;">ស្ថិតិសិស្សតាមកម្រិតថ្នាក់ (សម្រាប់យោង)៖</div>
+                            {% for st in student_stats %}
+                                {% if forloop.counter == 1 or forloop.counter == 3 or forloop.counter == 5 %}
+                                <div>{{ st.grade }}៖ {{ st.classes }} ថ្នាក់, សិស្សសរុបៈ <strong>{{ st.total }}</strong> នាក់ (ស្រី <strong>{{ st.female }}</strong>)</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Sub-block 3: Student Stats Col 2 (8, 10, 12) -->
+                        <div class="movable-sub-block" id="blockStudentCol2" data-block-id="blockStudentCol2" data-block-name="ស្ថិតិសិស្ស (៨, ១០, ១២)" style="flex: 1; padding: 4px; padding-top: 18px;">
+                            <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>ស្ថិតិសិស្ស (៨, ១០, ១២)</span> <span class="sub-block-pos">(0, 0)</span></div>
+                            {% for st in student_stats %}
+                                {% if forloop.counter == 2 or forloop.counter == 4 or forloop.counter == 6 %}
+                                <div>{{ st.grade }}៖ {{ st.classes }} ថ្នាក់, សិស្សសរុបៈ <strong>{{ st.total }}</strong> នាក់ (ស្រី <strong>{{ st.female }}</strong>)</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Approvals & Signatures -->
+                <div class="footer-right">
+                    <!-- Sub-block 4: Principal Approval -->
+                    <div class="movable-sub-block" id="blockSigPrincipal" data-block-id="blockSigPrincipal" data-block-name="ហត្ថលេខានាយកសាលា" style="margin-bottom: 25px; padding: 4px;">
+                        <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>នាយកសាលា</span> <span class="sub-block-pos">(0, 0)</span></div>
+                        <div style="font-size: 7.5pt;">ថ្ងៃសៅរ៍ ១១កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div style="font-weight: bold; margin-bottom: 2px;">កំពង់កន្ទួត ថ្ងៃទី០១ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">នាយកសាលា</div>
+                    </div>
+
+                    <!-- Sub-block 5: District Officer Approval -->
+                    <div class="movable-sub-block" id="blockSigDistrict" data-block-id="blockSigDistrict" data-block-name="ហត្ថលេខាប្រធានការិយាល័យ" style="margin-top: 25px; padding: 4px;">
+                        <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>ប្រធានការិយាល័យ</span> <span class="sub-block-pos">(0, 0)</span></div>
+                        <div class="font-muol" style="font-size: 9pt;">បានឃើញ និងឯកភាព</div>
+                        <div style="font-size: 7.5pt;">ថ្ងៃចន្ទ ១៣កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div style="font-weight: bold; margin-bottom: 2px;">ថ្ងៃទី ០៣ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡាស្រុក</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Column & Row Adjustment Engine -->
+    <script>
+        // Column Definitions & Metadata (Strict 20 Columns matching 2026.xlsx)
+        const COLUMN_DEFS = [
+            { id: 0, label: "លរ", defaultWidth: 32 },
+            { id: 1, label: "អត្តលេខ", defaultWidth: 82 },
+            { id: 2, label: "គោត្តនាម និងនាម", defaultWidth: 125 },
+            { id: 3, label: "ភេទ", defaultWidth: 30 },
+            { id: 4, label: "ថ្ងៃខែឆ្នាំកំណើត", defaultWidth: 72 },
+            { id: 5, label: "សញ្ញាបត្រ (វប្បធម៌)", defaultWidth: 80, parent: 'edu' },
+            { id: 6, label: "ឯកទេស (វប្បធម៌)", defaultWidth: 95, parent: 'edu' },
+            { id: 7, label: "កម្រិតបណ្តុះបណ្តាល", defaultWidth: 80 },
+            { id: 8, label: "ថ្ងៃចូលបំរើការងាររដ្ឋ", defaultWidth: 72 },
+            { id: 9, label: "ថ្ងៃតែងតាំងស៊ប់", defaultWidth: 72 },
+            { id: 10, label: "មុខវិជ្ជាឯកទេសទី១", defaultWidth: 80 },
+            { id: 11, label: "មុខវិជ្ជាឯកទេសទី២", defaultWidth: 80 },
+            { id: 12, label: "ភារកិច្ចបច្ចុប្បន្ន", defaultWidth: 68 },
+            { id: 13, label: "ប្រភេទ (កាំ)", defaultWidth: 35, parent: 'sal' },
+            { id: 14, label: "កម្រិត (កាំ)", defaultWidth: 30, parent: 'sal' },
+            { id: 15, label: "កាំ", defaultWidth: 30, parent: 'sal' },
+            { id: 16, label: "ឆ្នាំទទួល (កាំ)", defaultWidth: 70, parent: 'sal' },
+            { id: 17, label: "ប្រកាសលេខ", defaultWidth: 95, parent: 'sal' },
+            { id: 18, label: "លេខរៀងប្រកាស", defaultWidth: 48, parent: 'sal' },
+            { id: 19, label: "លេខទូរស័ព្ទ", defaultWidth: 82 }
+        ];
+
+        // State variables
+        let colPadding = 3.0;
+        let rowPadding = 2.5;
+        let fontSize = 7.5;
+        let isTextWrap = false;
+        let isEditMode = false;
+        let hiddenColumns = new Set();
+        let customColWidths = {};
+        let footerOffsetY = 0;
+        let footerOffsetX = 0;
+        let footerPageBreak = false;
+        let activeBlockId = 'movableFooter';
+        let subBlockOffsets = {
+            blockStaffSummary: { x: 0, y: 0 },
+            blockStudentCol1: { x: 0, y: 0 },
+            blockStudentCol2: { x: 0, y: 0 },
+            blockSigPrincipal: { x: 0, y: 0 },
+            blockSigDistrict: { x: 0, y: 0 },
+        };
+
+        // Local Storage Keys
+        const STORAGE_PREFIX = "moeys_staff_roster_clean_";
+
+        function loadSavedPreferences() {
+            try {
+                // Clear any old corrupted order
+                localStorage.removeItem("moeys_staff_roster_v2_col_order");
+                localStorage.removeItem("moeys_staff_roster_col_order");
+
+                const savedColPad = localStorage.getItem(STORAGE_PREFIX + "col_pad");
+                if (savedColPad) colPadding = parseFloat(savedColPad);
+
+                const savedRowPad = localStorage.getItem(STORAGE_PREFIX + "row_pad");
+                if (savedRowPad) rowPadding = parseFloat(savedRowPad);
+
+                const savedFontSize = localStorage.getItem(STORAGE_PREFIX + "font_size");
+                if (savedFontSize) fontSize = parseFloat(savedFontSize);
+
+                const savedWrap = localStorage.getItem(STORAGE_PREFIX + "wrap");
+                if (savedWrap) isTextWrap = (savedWrap === 'true');
+
+                const savedHidden = localStorage.getItem(STORAGE_PREFIX + "hidden_cols");
+                if (savedHidden) hiddenColumns = new Set(JSON.parse(savedHidden));
+
+                const savedWidths = localStorage.getItem(STORAGE_PREFIX + "col_widths");
+                if (savedWidths) customColWidths = JSON.parse(savedWidths);
+
+                const savedFootY = localStorage.getItem(STORAGE_PREFIX + "footer_y");
+                if (savedFootY) footerOffsetY = parseInt(savedFootY, 10) || 0;
+
+                const savedFootX = localStorage.getItem(STORAGE_PREFIX + "footer_x");
+                if (savedFootX) footerOffsetX = parseInt(savedFootX, 10) || 0;
+
+                const savedFootPB = localStorage.getItem(STORAGE_PREFIX + "footer_page_break");
+                if (savedFootPB) footerPageBreak = (savedFootPB === 'true');
+
+                const savedSubBlocks = localStorage.getItem(STORAGE_PREFIX + "sub_block_offsets");
+                if (savedSubBlocks) {
+                    try {
+                        const parsed = JSON.parse(savedSubBlocks);
+                        subBlockOffsets = Object.assign(subBlockOffsets, parsed);
+                    } catch(e) {}
+                }
+            } catch(e) {
+                console.warn("Could not load preferences from localStorage", e);
+            }
+        }
+
+        function savePreferences() {
+            try {
+                localStorage.setItem(STORAGE_PREFIX + "col_pad", colPadding);
+                localStorage.setItem(STORAGE_PREFIX + "row_pad", rowPadding);
+                localStorage.setItem(STORAGE_PREFIX + "font_size", fontSize);
+                localStorage.setItem(STORAGE_PREFIX + "wrap", isTextWrap);
+                localStorage.setItem(STORAGE_PREFIX + "hidden_cols", JSON.stringify(Array.from(hiddenColumns)));
+                localStorage.setItem(STORAGE_PREFIX + "col_widths", JSON.stringify(customColWidths));
+                localStorage.setItem(STORAGE_PREFIX + "footer_y", footerOffsetY);
+                localStorage.setItem(STORAGE_PREFIX + "footer_x", footerOffsetX);
+                localStorage.setItem(STORAGE_PREFIX + "footer_page_break", footerPageBreak);
+                localStorage.setItem(STORAGE_PREFIX + "sub_block_offsets", JSON.stringify(subBlockOffsets));
+            } catch(e) {
+                console.warn("Could not save to localStorage", e);
+            }
+        }
+
+        // Apply dynamic styles and column widths to table
+        function applyStyles() {
+            document.documentElement.style.setProperty('--col-pad-h', colPadding + 'px');
+            document.documentElement.style.setProperty('--row-pad-v', rowPadding + 'px');
+            document.documentElement.style.setProperty('--tbl-font-size', fontSize + 'pt');
+
+            document.getElementById('colPadDisplay').textContent = colPadding.toFixed(1) + 'px';
+            document.getElementById('rowPadDisplay').textContent = rowPadding.toFixed(1) + 'px';
+            document.getElementById('fontSizeDisplay').textContent = fontSize.toFixed(1) + 'pt';
+
+            // Text wrap handling
+            const cells = document.querySelectorAll('.roster-table td, .roster-table th');
+            cells.forEach(cell => {
+                if (isTextWrap) {
+                    cell.classList.add('wrap-cell');
+                    cell.classList.remove('nowrap');
+                } else {
+                    cell.classList.remove('wrap-cell');
+                }
+            });
+
+            document.getElementById('wrapTextLabel').textContent = "កាត់បន្ទាត់: " + (isTextWrap ? "បើក" : "បិទ");
+            const btnWrap = document.getElementById('btnTextWrap');
+            if (isTextWrap) {
+                btnWrap.style.background = '#0284c7';
+            } else {
+                btnWrap.style.background = '#334155';
+            }
+
+            // Apply custom column widths to <col> and <th> tags
+            COLUMN_DEFS.forEach(colDef => {
+                const w = customColWidths[colDef.id] || colDef.defaultWidth;
+                const colEl = document.querySelector(`col[data-col="${colDef.id}"]`);
+                if (colEl) colEl.style.width = w + 'px';
+
+                const thEl = document.querySelector(`th[data-col="${colDef.id}"]`);
+                if (thEl) thEl.style.width = w + 'px';
+            });
+
+            // Apply column visibility
+            COLUMN_DEFS.forEach(colDef => {
+                const isHidden = hiddenColumns.has(colDef.id);
+                const colEls = document.querySelectorAll(`[data-col="${colDef.id}"]`);
+                colEls.forEach(el => {
+                    el.style.display = isHidden ? 'none' : '';
+                });
+            });
+
+            // Update parent header spans for education (cols 5, 6) & salary (cols 13-18)
+            updateParentHeaderSpans();
+            savePreferences();
+        }
+
+        function updateParentHeaderSpans() {
+            // Check education parent (cols 5 and 6)
+            const eduColsVisible = [5, 6].filter(c => !hiddenColumns.has(c)).length;
+            const eduParentTh = document.querySelector('th[data-parent="edu"]');
+            if (eduParentTh) {
+                if (eduColsVisible === 0) {
+                    eduParentTh.style.display = 'none';
+                } else {
+                    eduParentTh.style.display = '';
+                    eduParentTh.colSpan = eduColsVisible;
+                }
+            }
+
+            // Check salary parent (cols 13 to 18)
+            const salColsVisible = [13, 14, 15, 16, 17, 18].filter(c => !hiddenColumns.has(c)).length;
+            const salParentTh = document.querySelector('th[data-parent="sal"]');
+            if (salParentTh) {
+                if (salColsVisible === 0) {
+                    salParentTh.style.display = 'none';
+                } else {
+                    salParentTh.style.display = '';
+                    salParentTh.colSpan = salColsVisible;
+                }
+            }
+        }
+
+        // Stepper handlers
+        function stepColPadding(delta) {
+            colPadding = Math.max(0.5, Math.min(10.0, colPadding + delta));
+            applyStyles();
+        }
+
+        function stepRowPadding(delta) {
+            rowPadding = Math.max(0.5, Math.min(12.0, rowPadding + delta));
+            applyStyles();
+        }
+
+        function stepFontSize(delta) {
+            fontSize = Math.max(5.0, Math.min(12.0, fontSize + delta));
+            applyStyles();
+        }
+
+        function toggleTextWrap() {
+            isTextWrap = !isTextWrap;
+            applyStyles();
+        }
+
+        function toggleAdjustBar() {
+            const bar = document.getElementById('tableAdjustBar');
+            const btn = document.getElementById('btnToggleAdjust');
+            if (bar.style.display === 'none') {
+                bar.style.display = 'flex';
+                btn.classList.add('active');
+            } else {
+                bar.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        }
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('btnToggleEdit');
+            const table = document.getElementById('rosterStaffTable');
+            const cells = table.querySelectorAll('tbody td');
+
+            if (isEditMode) {
+                btn.classList.add('active');
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> រួចរាល់ (ចាក់សោ)`;
+                table.classList.add('edit-mode-active');
+                cells.forEach(td => td.setAttribute('contenteditable', 'true'));
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> កែអត្ថបទផ្ទាល់`;
+                table.classList.remove('edit-mode-active');
+                cells.forEach(td => td.removeAttribute('contenteditable'));
+            }
+        }
+
+        // Auto-distribute column widths evenly across page
+        function autoDistributeColumns() {
+            const table = document.getElementById('rosterStaffTable');
+            const visibleDefs = COLUMN_DEFS.filter(c => !hiddenColumns.has(c.id));
+            const totalDefault = visibleDefs.reduce((acc, c) => acc + c.defaultWidth, 0);
+            const containerWidth = table.parentElement.clientWidth || 1400;
+
+            visibleDefs.forEach(col => {
+                const ratio = col.defaultWidth / totalDefault;
+                const newW = Math.max(25, Math.round(containerWidth * ratio));
+                customColWidths[col.id] = newW;
+            });
+            applyStyles();
+        }
+
+        // Column Visibility Checklist in Dropdown
+        function initColumnCheckboxes() {
+            const container = document.getElementById('colCheckboxesContainer');
+            container.innerHTML = '';
+            COLUMN_DEFS.forEach(col => {
+                const isChecked = !hiddenColumns.has(col.id);
+                const div = document.createElement('label');
+                div.className = 'col-check-item';
+                div.innerHTML = `
+                    <input type="checkbox" data-col-id="${col.id}" ${isChecked ? 'checked' : ''} onchange="onColumnCheckboxChange(${col.id}, this.checked)">
+                    <span>${col.label}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function onColumnCheckboxChange(colId, isVisible) {
+            if (isVisible) {
+                hiddenColumns.delete(colId);
+            } else {
+                hiddenColumns.add(colId);
+            }
+            applyStyles();
+        }
+
+        function selectAllColumns(show) {
+            if (show) {
+                hiddenColumns.clear();
+            } else {
+                COLUMN_DEFS.forEach(c => hiddenColumns.add(c.id));
+            }
+            initColumnCheckboxes();
+            applyStyles();
+        }
+
+        function toggleColDropdown(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('colDropdownMenu');
+            menu.classList.toggle('show');
+        }
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('colDropdownMenu');
+            if (menu && !menu.contains(e.target) && !e.target.closest('button[onclick*="toggleColDropdown"]')) {
+                menu.classList.remove('show');
+            }
+        });
+
+        // Reset All Settings to Initial Default
+        function resetAllAdjustments() {
+            if (confirm("តើអ្នកពិតជាចង់កំណត់ទំហំជួរឈរ ជួរដេក និងការកំណត់ទាំងអស់ទៅដូចដើមវិញមែនទេ?")) {
+                colPadding = 3.0;
+                rowPadding = 2.5;
+                fontSize = 7.5;
+                isTextWrap = false;
+                hiddenColumns.clear();
+                customColWidths = {};
+                footerOffsetY = 0;
+                footerOffsetX = 0;
+                footerPageBreak = false;
+                Object.keys(subBlockOffsets).forEach(id => {
+                    subBlockOffsets[id] = { x: 0, y: 0 };
+                });
+                localStorage.clear();
+                initColumnCheckboxes();
+                applyStyles();
+                applyFooterPosition();
+                applyAllSubBlockPositions();
+            }
+        }
+
+        // ==========================================================
+        // Movable Footer & Sub-Blocks Engine (Drag & Steppers & Keyboard)
+        // ==========================================================
+        function applySubBlockPosition(blockId) {
+            const el = document.getElementById(blockId);
+            if (!el) return;
+            const pos = subBlockOffsets[blockId] || { x: 0, y: 0 };
+            el.style.position = 'relative';
+            el.style.left = pos.x + 'px';
+            el.style.top = pos.y + 'px';
+
+            const posBadge = el.querySelector('.sub-block-pos');
+            if (posBadge) {
+                posBadge.textContent = `(${pos.x}px, ${pos.y}px)`;
+            }
+        }
+
+        function applyAllSubBlockPositions() {
+            Object.keys(subBlockOffsets).forEach(id => applySubBlockPosition(id));
+        }
+
+        function onSelectSubBlock(blockId) {
+            activeBlockId = blockId;
+            const selectEl = document.getElementById('subBlockSelector');
+            if (selectEl && selectEl.value !== blockId) {
+                selectEl.value = blockId;
+            }
+
+            // Remove selected class from all sub-blocks
+            document.querySelectorAll('.movable-sub-block').forEach(b => b.classList.remove('is-selected'));
+
+            if (blockId !== 'movableFooter') {
+                const target = document.getElementById(blockId);
+                if (target) {
+                    target.classList.add('is-selected');
+                }
+            }
+        }
+
+        function shiftActiveBlock(dx, dy) {
+            if (activeBlockId === 'movableFooter') {
+                footerOffsetX += dx;
+                footerOffsetY += dy;
+                applyFooterPosition();
+            } else {
+                if (!subBlockOffsets[activeBlockId]) {
+                    subBlockOffsets[activeBlockId] = { x: 0, y: 0 };
+                }
+                subBlockOffsets[activeBlockId].x += dx;
+                subBlockOffsets[activeBlockId].y += dy;
+                applySubBlockPosition(activeBlockId);
+            }
+            savePreferences();
+        }
+
+        function resetActiveBlock() {
+            if (activeBlockId === 'movableFooter') {
+                resetFooterPosition();
+            } else {
+                if (subBlockOffsets[activeBlockId]) {
+                    subBlockOffsets[activeBlockId] = { x: 0, y: 0 };
+                    applySubBlockPosition(activeBlockId);
+                    savePreferences();
+                }
+            }
+        }
+
+        function initDraggableSubBlocks() {
+            const blocks = document.querySelectorAll('.movable-sub-block');
+            blocks.forEach(block => {
+                // Click to select
+                block.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    onSelectSubBlock(this.id);
+                });
+
+                // Double click to reset
+                block.addEventListener('dblclick', function(e) {
+                    e.stopPropagation();
+                    subBlockOffsets[this.id] = { x: 0, y: 0 };
+                    applySubBlockPosition(this.id);
+                    savePreferences();
+                });
+
+                // Drag with mouse
+                block.addEventListener('mousedown', function(e) {
+                    if (e.target.closest('button') || e.target.isContentEditable) return;
+
+                    onSelectSubBlock(this.id);
+
+                    let isDragging = true;
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const currentBlockId = this.id;
+                    if (!subBlockOffsets[currentBlockId]) {
+                        subBlockOffsets[currentBlockId] = { x: 0, y: 0 };
+                    }
+                    const initX = subBlockOffsets[currentBlockId].x;
+                    const initY = subBlockOffsets[currentBlockId].y;
+
+                    block.classList.add('is-dragging');
+                    document.body.style.cursor = 'grabbing';
+                    e.preventDefault();
+
+                    function onMove(me) {
+                        if (!isDragging) return;
+                        subBlockOffsets[currentBlockId].x = initX + (me.clientX - startX);
+                        subBlockOffsets[currentBlockId].y = initY + (me.clientY - startY);
+                        applySubBlockPosition(currentBlockId);
+                    }
+
+                    function onUp() {
+                        if (!isDragging) return;
+                        isDragging = false;
+                        block.classList.remove('is-dragging');
+                        document.body.style.cursor = '';
+                        savePreferences();
+
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                    }
+
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                });
+            });
+
+            // Keyboard Arrow Support for Nudging Active Block
+            window.addEventListener('keydown', function(e) {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
+                        return;
+                    }
+                    e.preventDefault();
+                    const step = e.shiftKey ? 10 : 2;
+                    if (e.key === 'ArrowUp') shiftActiveBlock(0, -step);
+                    if (e.key === 'ArrowDown') shiftActiveBlock(0, step);
+                    if (e.key === 'ArrowLeft') shiftActiveBlock(-step, 0);
+                    if (e.key === 'ArrowRight') shiftActiveBlock(step, 0);
+                }
+            });
+        }
+
+        function applyFooterPosition() {
+            const footer = document.getElementById('movableFooter');
+            if (!footer) return;
+
+            footer.style.position = 'relative';
+            footer.style.top = footerOffsetY + 'px';
+            footer.style.left = footerOffsetX + 'px';
+
+            if (footerPageBreak) {
+                footer.style.pageBreakBefore = 'always';
+                footer.style.breakBefore = 'page';
+            } else {
+                footer.style.pageBreakBefore = 'avoid';
+                footer.style.breakBefore = 'auto';
+            }
+
+            const info = document.getElementById('footerOffsetInfo');
+            if (info) {
+                info.textContent = `(X: ${footerOffsetX}px, Y: ${footerOffsetY}px)`;
+            }
+
+            const pbBtn = document.getElementById('btnFooterPageBreak');
+            if (pbBtn) {
+                pbBtn.innerHTML = `<i class="fa-solid fa-file-export"></i> ផ្តាច់ទៅទំព័រថ្មី: ${footerPageBreak ? 'បើក' : 'បិទ'}`;
+                pbBtn.style.background = footerPageBreak ? '#0284c7' : '#ffffff';
+                pbBtn.style.color = footerPageBreak ? '#ffffff' : '#0f172a';
+            }
+
+            const topPbText = document.getElementById('topPageBreakText');
+            if (topPbText) {
+                topPbText.textContent = `ទំព័រថ្មី: ${footerPageBreak ? 'បើក' : 'បិទ'}`;
+            }
+        }
+
+        function shiftFooterY(delta) {
+            footerOffsetY += delta;
+            applyFooterPosition();
+            savePreferences();
+        }
+
+        function shiftFooterX(delta) {
+            footerOffsetX += delta;
+            applyFooterPosition();
+            savePreferences();
+        }
+
+        function togglePageBreakFooter() {
+            footerPageBreak = !footerPageBreak;
+            applyFooterPosition();
+            savePreferences();
+        }
+
+        function resetFooterPosition() {
+            footerOffsetY = 0;
+            footerOffsetX = 0;
+            footerPageBreak = false;
+            applyFooterPosition();
+            savePreferences();
+        }
+
+        function initDraggableFooter() {
+            const handle = document.getElementById('footerDragHandle');
+            const footer = document.getElementById('movableFooter');
+            if (!handle || !footer) return;
+
+            let isDragging = false;
+            let startMouseX = 0;
+            let startMouseY = 0;
+            let initialX = 0;
+            let initialY = 0;
+
+            handle.addEventListener('mousedown', function(e) {
+                if (e.target.closest('button')) return;
+
+                isDragging = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                initialX = footerOffsetX;
+                initialY = footerOffsetY;
+
+                document.body.style.cursor = 'grabbing';
+                handle.style.cursor = 'grabbing';
+                footer.style.boxShadow = '0 0 0 2px #0284c7, 0 8px 24px rgba(2, 132, 199, 0.25)';
+                footer.style.borderRadius = '4px';
+                e.preventDefault();
+
+                function onMouseMove(me) {
+                    if (!isDragging) return;
+                    footerOffsetX = initialX + (me.clientX - startMouseX);
+                    footerOffsetY = initialY + (me.clientY - startMouseY);
+                    applyFooterPosition();
+                }
+
+                function onMouseUp() {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    document.body.style.cursor = '';
+                    handle.style.cursor = 'grab';
+                    footer.style.boxShadow = '';
+                    savePreferences();
+
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                }
+
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        // ==========================================================
+        // Mouse Drag-to-Resize Column Widths Engine (Pixel-Accurate)
+        // ==========================================================
+        function initDragToResizeColumns() {
+            const resizers = document.querySelectorAll('.col-resizer');
+            const guideLine = document.getElementById('resizingGuideLine');
+            const tooltip = document.getElementById('resizingTooltip');
+            const sheet = document.getElementById('printableSheet');
+            let startX = 0;
+            let startWidth = 0;
+            let currentColId = null;
+            let isDragging = false;
+            let currentTh = null;
+            let colEl = null;
+
+            resizers.forEach(resizer => {
+                resizer.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    currentColId = parseInt(this.dataset.col);
+                    const colDef = COLUMN_DEFS.find(c => c.id === currentColId);
+                    colEl = document.querySelector(`col[data-col="${currentColId}"]`);
+                    currentTh = this.parentElement;
+
+                    startX = e.pageX;
+                    startWidth = currentTh.offsetWidth || (colDef ? colDef.defaultWidth : 70);
+                    isDragging = true;
+
+                    document.body.classList.add('is-resizing');
+                    document.body.style.cursor = 'col-resize';
+
+                    const sheetRect = sheet.getBoundingClientRect();
+                    guideLine.style.display = 'block';
+                    tooltip.style.display = 'block';
+                    guideLine.style.left = (e.pageX - sheetRect.left) + 'px';
+                    tooltip.textContent = startWidth + 'px';
+
+                    function onMouseMove(me) {
+                        if (!isDragging) return;
+                        const delta = me.pageX - startX;
+                        const newWidth = Math.max(20, Math.round(startWidth + delta));
+                        customColWidths[currentColId] = newWidth;
+                        
+                        if (colEl) colEl.style.width = newWidth + 'px';
+                        if (currentTh) currentTh.style.width = newWidth + 'px';
+
+                        const curX = me.pageX - sheetRect.left;
+                        guideLine.style.left = curX + 'px';
+                        tooltip.textContent = newWidth + 'px';
+                    }
+
+                    function onMouseUp() {
+                        if (!isDragging) return;
+                        isDragging = false;
+                        guideLine.style.display = 'none';
+                        tooltip.style.display = 'none';
+                        document.body.classList.remove('is-resizing');
+                        document.body.style.cursor = '';
+                        savePreferences();
+
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    }
+
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                });
+
+                // Double click auto-fit to default
+                resizer.addEventListener('dblclick', function(e) {
+                    e.stopPropagation();
+                    const cId = parseInt(this.dataset.col);
+                    delete customColWidths[cId];
+                    applyStyles();
+                });
+            });
+        }
+
+        // Print Margin & Page Size Settings
+        function changePrintSettings() {
+            let el = document.getElementById('print-dynamic-style');
+            if (!el) {
+                el = document.createElement('style');
+                el.id = 'print-dynamic-style';
+                document.head.appendChild(el);
+            }
+            const marginVal = document.getElementById('marginSelector').value;
+            const sizeVal = document.getElementById('pageSizeSelector').value;
+            const forceInner = document.getElementById('chkForcePadding') ? document.getElementById('chkForcePadding').checked : false;
+
+            // When user leaves Margins: Default in Chrome, Chrome applies @page margin cleanly across all pages.
+            // If user selects Margins: None in Chrome, checking chkForcePadding forces container padding.
+            const containerPrintPadding = forceInner ? `.page-container { padding: ${marginVal} !important; }` : `.page-container { padding: 0 !important; }`;
+
+            el.innerHTML = `
+                @page { size: ${sizeVal} !important; margin: ${marginVal} !important; }
+                @media print {
+                    ${containerPrintPadding}
+                }
+            `;
+            if (sizeVal.includes('A4')) {
+                fontSize = 6.2;
+                colPadding = 1.8;
+                rowPadding = 1.8;
+            } else {
+                fontSize = 7.5;
+                colPadding = 3.0;
+                rowPadding = 2.5;
+            }
+            applyStyles();
+        }
+
+        // Initialize on DOM Ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedPreferences();
+            initColumnCheckboxes();
+            changePrintSettings();
+            applyStyles();
+            applyFooterPosition();
+            applyAllSubBlockPositions();
+            initDragToResizeColumns();
+            initDraggableFooter();
+            initDraggableSubBlocks();
+        });
+    </script>
+</body>
+</html>

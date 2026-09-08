@@ -44,6 +44,11 @@ urlpatterns = [
     path('standardized/<int:exam_id>/subjects/apply-preset/', views.api_apply_standardized_exam_preset, name='api_apply_standardized_exam_preset'),
     path('standardized/<int:exam_id>/subjects/<int:es_id>/delete/', views.api_delete_standardized_exam_subject, name='api_delete_standardized_exam_subject'),
 
+    # Standardized Exam Timetable Schedule (តារាងប្រព្រឹត្តទៅនៃវិញ្ញាសា)
+    path('standardized/<int:exam_id>/schedule/', views.standardized_exam_schedule_manage, name='standardized_exam_schedule_manage'),
+    path('standardized/<int:exam_id>/schedule/apply-photo-preset/', views.standardized_exam_schedule_apply_photo_preset, name='standardized_exam_schedule_apply_photo_preset'),
+    path('standardized/<int:exam_id>/schedule-print/', views.standardized_exam_schedule_print, name='standardized_exam_schedule_print'),
+
     # Standardized Exam Types Management (ប្រភេទសម័យប្រឡង)
     path('standardized/types/', views.standardized_exam_type_list, name='standardized_exam_type_list'),
     path('standardized/types/create/', views.standardized_exam_type_create, name='standardized_exam_type_create'),
