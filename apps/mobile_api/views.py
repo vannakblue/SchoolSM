@@ -747,10 +747,10 @@ class AssemblyAttendanceAPIView(APIView):
         selected_session = req_session if req_session in ['MORNING', 'AFTERNOON'] else 'MORNING'
 
         # Time Window
-        m_start = att_settings.assembly_morning_start or dtime(6, 30)
-        m_end = att_settings.assembly_morning_end or dtime(6, 50)
-        a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
-        a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+        m_start = att_settings.morning_start_time
+        m_end = att_settings.morning_end_time
+        a_start = att_settings.afternoon_start_time
+        a_end = att_settings.afternoon_end_time
 
         window_start = m_start if selected_session == 'MORNING' else a_start
         window_end = m_end if selected_session == 'MORNING' else a_end
@@ -854,10 +854,10 @@ class AssemblyAttendanceAPIView(APIView):
             return Response({'status': 'error', 'message': 'លោកអ្នកគ្មានសិទ្ធិស្រង់វត្តមានថ្នាក់នេះឡើយ!'}, status=status.HTTP_403_FORBIDDEN)
 
         # Time Window check
-        m_start = att_settings.assembly_morning_start or dtime(6, 30)
-        m_end = att_settings.assembly_morning_end or dtime(6, 50)
-        a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
-        a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+        m_start = att_settings.morning_start_time
+        m_end = att_settings.morning_end_time
+        a_start = att_settings.afternoon_start_time
+        a_end = att_settings.afternoon_end_time
         window_start = m_start if session_val == 'MORNING' else a_start
         window_end = m_end if session_val == 'MORNING' else a_end
         is_within_window = (window_start <= current_time <= window_end)

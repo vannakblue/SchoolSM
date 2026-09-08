@@ -1023,11 +1023,11 @@ def attendance_admin_hub(request):
             # Assembly / Flag Ceremony Configuration
             att_settings.enable_assembly_attendance = request.POST.get('enable_assembly_attendance') == 'on'
             att_settings.enable_assembly_morning = request.POST.get('enable_assembly_morning') == 'on'
-            att_settings.assembly_morning_start = request.POST.get('assembly_morning_start', '06:30').strip() or '06:30'
-            att_settings.assembly_morning_end = request.POST.get('assembly_morning_end', '06:50').strip() or '06:50'
+            att_settings.assembly_morning_start = AttendanceSetting._parse_time(request.POST.get('assembly_morning_start'), dtime(6, 30))
+            att_settings.assembly_morning_end = AttendanceSetting._parse_time(request.POST.get('assembly_morning_end'), dtime(6, 50))
             att_settings.enable_assembly_afternoon = request.POST.get('enable_assembly_afternoon') == 'on'
-            att_settings.assembly_afternoon_start = request.POST.get('assembly_afternoon_start', '12:30').strip() or '12:30'
-            att_settings.assembly_afternoon_end = request.POST.get('assembly_afternoon_end', '12:50').strip() or '12:50'
+            att_settings.assembly_afternoon_start = AttendanceSetting._parse_time(request.POST.get('assembly_afternoon_start'), dtime(12, 30))
+            att_settings.assembly_afternoon_end = AttendanceSetting._parse_time(request.POST.get('assembly_afternoon_end'), dtime(12, 50))
             att_settings.allow_all_teachers_assembly_recording = request.POST.get('allow_all_teachers_assembly_recording') == 'on'
             att_settings.allow_monitor_assembly_recording = request.POST.get('allow_monitor_assembly_recording') == 'on'
             att_settings.assembly_telegram_alert = request.POST.get('assembly_telegram_alert') == 'on'
@@ -1468,10 +1468,10 @@ def assembly_attendance_view(request):
         selected_session = 'MORNING'
 
     # Time Window Evaluation
-    m_start = att_settings.assembly_morning_start or dtime(6, 30)
-    m_end = att_settings.assembly_morning_end or dtime(6, 50)
-    a_start = att_settings.assembly_afternoon_start or dtime(12, 30)
-    a_end = att_settings.assembly_afternoon_end or dtime(12, 50)
+    m_start = att_settings.morning_start_time
+    m_end = att_settings.morning_end_time
+    a_start = att_settings.afternoon_start_time
+    a_end = att_settings.afternoon_end_time
 
     if selected_session == 'MORNING':
         window_start = m_start
@@ -1481,6 +1481,11 @@ def assembly_attendance_view(request):
         window_start = a_start
         window_end = a_end
         session_title = "ពេលរសៀល (Afternoon Pre-Class Assembly)"
+
+    if not isinstance(window_start, dtime):
+        window_start = AttendanceSetting._parse_time(window_start, dtime(6, 30))
+    if not isinstance(window_end, dtime):
+        window_end = AttendanceSetting._parse_time(window_end, dtime(6, 50))
 
     # Day of Week, Session Enablement & Emergency Cancellation Check
     today_weekday_str = str(today_date.isoweekday()) # 1=Monday ... 7=Sunday

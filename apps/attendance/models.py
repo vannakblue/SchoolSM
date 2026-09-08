@@ -1,3 +1,5 @@
+import datetime
+from datetime import time as dtime
 from django.db import models
 from django.conf import settings
 
@@ -173,11 +175,11 @@ class AttendanceSetting(models.Model):
         verbose_name="បើកដំណើរការស្រង់វត្តមានពេលព្រឹក / Enable Morning Assembly Attendance"
     )
     assembly_morning_start = models.TimeField(
-        default='06:30',
+        default=dtime(6, 30),
         verbose_name="ម៉ោងចាប់ផ្តើមស្រង់វត្តមានពេលព្រឹក (ឧ. 06:30)"
     )
     assembly_morning_end = models.TimeField(
-        default='06:50',
+        default=dtime(6, 50),
         verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលព្រឹក (ឧ. 06:50)"
     )
     enable_assembly_afternoon = models.BooleanField(
@@ -185,11 +187,11 @@ class AttendanceSetting(models.Model):
         verbose_name="បើកដំណើរការស្រង់វត្តមានពេលរសៀល / Enable Afternoon Assembly Attendance"
     )
     assembly_afternoon_start = models.TimeField(
-        default='12:30',
+        default=dtime(12, 30),
         verbose_name="ម៉ោងចាប់ផ្តើមស្រង់វត្តមានពេលរសៀល (ឧ. 12:30)"
     )
     assembly_afternoon_end = models.TimeField(
-        default='12:50',
+        default=dtime(12, 50),
         verbose_name="ម៉ោងបញ្ចប់ស្រង់វត្តមានពេលរសៀល (ឧ. 12:50)"
     )
     allow_all_teachers_assembly_recording = models.BooleanField(
@@ -255,6 +257,46 @@ class AttendanceSetting(models.Model):
         if not setting:
             setting = cls.objects.create()
         return setting
+
+    @staticmethod
+    def _parse_time(val, default_time):
+        if isinstance(val, dtime):
+            return val
+        if isinstance(val, str) and val.strip():
+            val = val.strip()
+            for fmt in ('%H:%M:%S', '%H:%M'):
+                try:
+                    return datetime.datetime.strptime(val, fmt).time()
+                except ValueError:
+                    pass
+        return default_time
+
+    @property
+    def morning_start_time(self):
+        return self._parse_time(self.assembly_morning_start, dtime(6, 30))
+
+    @property
+    def morning_end_time(self):
+        return self._parse_time(self.assembly_morning_end, dtime(6, 50))
+
+    @property
+    def afternoon_start_time(self):
+        return self._parse_time(self.assembly_afternoon_start, dtime(12, 30))
+
+    @property
+    def afternoon_end_time(self):
+        return self._parse_time(self.assembly_afternoon_end, dtime(12, 50))
+
+    def clean(self):
+        super().clean()
+        self.assembly_morning_start = self.morning_start_time
+        self.assembly_morning_end = self.morning_end_time
+        self.assembly_afternoon_start = self.afternoon_start_time
+        self.assembly_afternoon_end = self.afternoon_end_time
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     def get_grace_minutes_for_period(self, period_number):
         """
