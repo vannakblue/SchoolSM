@@ -11,6 +11,7 @@ urlpatterns = [
     path('import/template/csv/', views.teacher_import_template_csv, name='teacher_import_template_csv'),
     path('seed-moeys/', views.teacher_seed_moeys_view, name='teacher_seed_moeys'),
     path('moeys-staff-roster/', views.moeys_staff_roster, name='moeys_staff_roster'),
+    path('moeys-staff-roster/upload/', views.moeys_staff_roster_upload, name='moeys_staff_roster_upload'),
     path('moeys-staff-roster/export-excel/', views.moeys_staff_roster_export_excel, name='moeys_staff_roster_export_excel'),
     path('moeys-staff-roster/print/', views.moeys_staff_roster_print, name='moeys_staff_roster_print'),
     path('attendance/', views.teacher_attendance_view, name='teacher_attendance'),

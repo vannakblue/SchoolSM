@@ -1657,4 +1657,138 @@ def moeys_staff_roster_print(request):
     return render(request, 'teachers/moeys_staff_roster_print.html', context)
 
 
+@login_required
+@role_required(['ADMIN'])
+def moeys_staff_roster_upload(request):
+    """
+    Web UI endpoint to upload and replace 2026.xlsx and synchronize educational staff.
+    Saves the uploaded file to project root as 2026.xlsx and updates Teacher records.
+    """
+    import os
+    import openpyxl
+    from django.conf import settings
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    from apps.teachers.models import Teacher
+    from apps.accounts.models import User
+    from datetime import datetime, date
+
+    if request.method != 'POST':
+        return redirect('moeys_staff_roster')
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        messages.error(request, "⚠️ សូមជ្រើសរើសឯកសារ Excel (.xlsx) មុននឹងចុច Upload!")
+        return redirect('moeys_staff_roster')
+
+    file_name = uploaded_file.name.lower()
+    if not file_name.endswith('.xlsx'):
+        messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ Excel (.xlsx) 2026.xlsx ប៉ុណ្ណោះ។")
+        return redirect('moeys_staff_roster')
+
+    try:
+        # Save/overwrite 2026.xlsx in BASE_DIR
+        target_path = os.path.join(settings.BASE_DIR, '2026.xlsx')
+        with open(target_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+
+        # Now parse sheet and sync to Teacher models & User accounts
+        wb = openpyxl.load_workbook(target_path, data_only=True)
+        ws = wb['2026-2027'] if '2026-2027' in wb.sheetnames else wb.active
+
+        success_count = 0
+        updated_count = 0
+
+        from django.contrib.auth.hashers import make_password
+        default_pwd_hash = make_password('p123456')
+
+        for r in range(8, ws.max_row + 1):
+            tid = str(ws.cell(r, 2).value or '').strip()
+            name = str(ws.cell(r, 3).value or '').strip()
+            if not name or not tid:
+                continue
+
+            gender_raw = str(ws.cell(r, 4).value or '').strip()
+            gender = Teacher.Gender.FEMALE if gender_raw in ['F', 'ស្រី', 'FEMALE', 'ស'] else Teacher.Gender.MALE
+
+            dob_val = ws.cell(r, 5).value
+            dob = dob_val if isinstance(dob_val, (date, datetime)) else None
+
+            qual = str(ws.cell(r, 6).value or '').strip()
+            spec = str(ws.cell(r, 7).value or '').strip()
+            train = str(ws.cell(r, 8).value or '').strip()
+
+            hire_val = ws.cell(r, 9).value
+            hire_d = hire_val if isinstance(hire_val, (date, datetime)) else None
+
+            perm_val = ws.cell(r, 10).value
+            perm_d = perm_val if isinstance(perm_val, (date, datetime)) else None
+
+            sub1 = str(ws.cell(r, 11).value or '').strip()
+            sub2 = str(ws.cell(r, 12).value or '').strip()
+            duty = str(ws.cell(r, 13).value or '').strip()
+            sal_cat = str(ws.cell(r, 14).value or '').strip()
+            prakas_no = str(ws.cell(r, 18).value or '').strip()
+
+            phone_val = ws.cell(r, 20).value
+            phone_str = ''
+            if phone_val is not None:
+                p_raw = str(phone_val).strip()
+                if p_raw:
+                    phone_str = f"0{p_raw}" if not p_raw.startswith('0') else p_raw
+
+            teacher, created = Teacher.objects.update_or_create(
+                teacher_id=tid,
+                defaults={
+                    'khmer_name': name,
+                    'latin_name': name,
+                    'gender': gender,
+                    'date_of_birth': dob,
+                    'phone': phone_str,
+                    'qualification': qual,
+                    'specialization': spec,
+                    'training_level': train,
+                    'state_hire_date': hire_d,
+                    'permanent_date': perm_d,
+                    'primary_subject': sub1,
+                    'secondary_subject': sub2,
+                    'current_duty': duty or 'គ្រូបង្រៀន',
+                    'prakas_category': sal_cat,
+                    'prakas_number': prakas_no,
+                    'status': 'ACTIVE',
+                }
+            )
+
+            user = User.objects.filter(username=tid).first()
+            if not user:
+                user = User.objects.create(
+                    username=tid,
+                    password=default_pwd_hash,
+                    role=User.Role.TEACHER,
+                    khmer_name=name,
+                    phone=phone_str,
+                    is_active=True
+                )
+            else:
+                user.khmer_name = name
+                user.phone = phone_str
+                user.save(update_fields=['khmer_name', 'phone'])
+
+            if not teacher.user:
+                teacher.user = user
+                teacher.save(update_fields=['user'])
+
+            if created:
+                success_count += 1
+            else:
+                updated_count += 1
+
+        messages.success(request, f"🎉 បាន Upload និងធ្វើបច្ចុប្បន្នភាពតារាងបុគ្គលិក ២០២៦-២០២៧ ជោគជ័យ! (បញ្ចូលថ្មី {success_count} នាក់, កែប្រែ {updated_count} នាក់)។")
+    except Exception as e:
+        messages.error(request, f"⚠️ មានបញ្ហាក្នុងការ Upload ឬ Sync ឯកសារ 2026.xlsx៖ {str(e)}")
+
+    return redirect('moeys_staff_roster')
+
+
 

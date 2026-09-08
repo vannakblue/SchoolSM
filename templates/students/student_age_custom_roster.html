@@ -119,6 +119,9 @@
 
             <!-- Quick Export & Print Actions -->
             <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'moeys_individual_student_roster' %}" class="btn btn-warning fw-bold text-dark shadow-sm">
+                    <i class="fa-solid fa-file-invoice me-1 text-dark"></i> សម្រង់ MoEYS & Sync
+                </a>
                 <a href="{% url 'student_age_custom_roster_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success fw-bold">
                     <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (.xlsx)
                 </a>

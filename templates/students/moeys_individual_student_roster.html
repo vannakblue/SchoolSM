@@ -181,6 +181,11 @@
                 <i class="fas fa-print me-1"></i> បោះពុម្ព / រក្សាទុកជា PDF
             </a>
 
+            <!-- Upload / Sync MoEYS Census Excel Button -->
+            <button type="button" class="btn btn-warning btn-sm fw-bold text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadMoEYSStudentModal">
+                <i class="fas fa-file-upload me-1 text-dark"></i> 📤 Upload & Sync Excel
+            </button>
+
             <!-- Quick Add Student -->
             <a href="{% url 'student_enroll' %}" class="btn btn-outline-primary btn-sm">
                 <i class="fas fa-user-plus me-1"></i> បញ្ចូលសិស្សថ្មី
@@ -525,4 +530,86 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Upload & Sync MoEYS Individual Student Extract Excel -->
+<div class="modal fade" id="uploadMoEYSStudentModal" tabindex="-1" aria-labelledby="uploadMoEYSStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title font-muol fs-6" id="uploadMoEYSStudentModalLabel">
+                    <i class="fas fa-file-excel me-2"></i>ធ្វើសមកាលកម្មសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'moeys_individual_student_roster_upload' %}" enctype="multipart/form-data" id="moeysSyncForm">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+                        <i class="fas fa-info-circle fa-lg mt-1 text-primary"></i>
+                        <div class="small">
+                            <strong>ស្តង់ដារក្រសួង MoEYS (៣៥ ជួរឈរ)៖</strong><br>
+                            ឯកសារ Excel ត្រូវមានទម្រង់ដូចទៅនឹងឯកសារគំរូផ្លូវការ (ចាប់ពីជួរទី ៦ ឡើងទៅ)។ ប្រព័ន្ធនឹងផ្ទៀងផ្ទាត់ <strong>«អត្តលេខសិស្ស»</strong> ដោយស្វ័យប្រវត្តិ៖
+                            <ul class="mb-0 mt-1 ps-3">
+                                <li>បើសិស្សមានក្នុងប្រព័ន្ធរួចហើយ នឹងធ្វើបច្ចុប្បន្នភាព (Update) ព័ត៌មានលម្អិត, អាសយដ្ឋាន, ឪពុកម្តាយ, និងប័ណ្ណក្រីក្រ។</li>
+                                <li>បើសិស្សមិនទាន់មាន នឹងបង្កើតថ្មី (Create) ភ្លាមៗ។</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ជ្រើសរើសឆ្នាំសិក្សាគោលដៅ <span class="text-danger">*</span></label>
+                        <select name="academic_year" class="form-select" required>
+                            {% for y in all_years %}
+                            <option value="{{ y.id }}" {% if y.id == active_year.id %}selected{% endif %}>
+                                {{ y.name }} {% if y.is_current %}(ឆ្នាំសិក្សាបច្ចុប្បន្ន){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ជ្រើសរើសឯកសារ Excel (.xlsx, .xlsm) <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xlsm,.xls" required>
+                        <div class="form-text small text-muted">
+                            ឯកសារគំរូទូទៅ៖ <code>សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ.xlsx</code> (ទំហំអតិបរមា 50MB)
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold small text-dark"><i class="fas fa-download me-1 text-success"></i>ឯកសារទម្រង់គំរូ (Template)</span>
+                                <div class="text-muted" style="font-size: 0.78rem;">ទាញយកឯកសារគំរូទទេ ឬទម្រង់បច្ចុប្បន្ន ដើម្បីបំពេញទិន្នន័យ</div>
+                            </div>
+                            <a href="{% url 'moeys_individual_student_roster_export_excel' %}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-file-download me-1"></i> ទាញយកគំរូ .xlsx
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitSync">
+                        <i class="fas fa-cloud-upload-alt me-1"></i> 🚀 ចាប់ផ្តើម Sync ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const syncForm = document.getElementById('moeysSyncForm');
+    if (syncForm) {
+        syncForm.addEventListener('submit', function() {
+            const btn = document.getElementById('btnSubmitSync');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>កំពុង Sync ទិន្នន័យ សូមរង់ចាំ...';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

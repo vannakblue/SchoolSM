@@ -200,6 +200,9 @@
             <a href="{% url 'student_list' %}" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសិស្ស
             </a>
+            <a href="{% url 'moeys_individual_student_roster' %}?academic_year={{ active_year.id }}" class="btn btn-warning fw-semibold text-dark shadow-sm">
+                <i class="fa-solid fa-file-invoice me-1 text-dark"></i> សម្រង់ MoEYS (៣៥ ជួរឈរ)
+            </a>
             <a href="{% url 'student_age_custom_roster' %}?academic_year={{ active_year.id }}" class="btn btn-primary fw-semibold shadow-sm">
                 <i class="fa-solid fa-users-rectangle me-1"></i> បញ្ជីសម្រង់តាមអាយុ (កែតម្រូវបាន)
             </a>

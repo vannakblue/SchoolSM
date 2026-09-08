@@ -125,6 +125,9 @@
             <a href="{% url 'moeys_staff_roster_export_excel' %}" class="btn btn-success fw-semibold shadow-sm">
                 <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel (.xlsx)
             </a>
+            <button type="button" class="btn btn-warning fw-semibold text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadMoEYSStaffModal">
+                <i class="fa-solid fa-file-upload me-1 text-dark"></i> 📤 Update បញ្ជីបុគ្គលិក (Excel)
+            </button>
             <a href="{% url 'moeys_staff_roster_print' %}" target="_blank" class="btn btn-outline-primary fw-semibold shadow-sm">
                 <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> ទំព័របោះពុម្ព A3/A4
             </a>
@@ -396,4 +399,75 @@
 
     </div>
 </div>
+
+<!-- Modal: Upload & Replace MoEYS Staff Roster (2026.xlsx) -->
+<div class="modal fade no-print" id="uploadMoEYSStaffModal" tabindex="-1" aria-labelledby="uploadMoEYSStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title font-muol fs-6" id="uploadMoEYSStaffModalLabel">
+                    <i class="fa-solid fa-file-excel me-2"></i>ធ្វើបច្ចុប្បន្នភាពតារាងគ្រប់គ្រងបុគ្គលិក (2026.xlsx)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'moeys_staff_roster_upload' %}" enctype="multipart/form-data" id="staffSyncForm">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+                        <i class="fa-solid fa-circle-info fa-lg mt-1 text-primary"></i>
+                        <div class="small">
+                            <strong>ស្តង់ដារក្រសួងអប់រំ យុវជន និងកីឡា (២០២៦-២០២៧)៖</strong><br>
+                            ឯកសារត្រូវមាន Sheet ឈ្មោះ <code>2026-2027</code> ដែលមានទម្រង់ដូចទៅនឹងឯកសារគំរូ <code>2026.xlsx</code> (ចាប់ពីជួរទី ៨ ឡើងទៅ)។
+                            <ul class="mb-0 mt-1 ps-3">
+                                <li>ប្រព័ន្ធនឹងធ្វើការស្វែងរកតាម <strong>អត្តលេខមន្ត្រីរាជការ</strong> ដើម្បី Update ព័ត៌មានបុគ្គលិក។</li>
+                                <li>បង្កើតគណនី Login ស្វ័យប្រវត្តិជូនគ្រូ (Username: អត្តលេខ, Password: p123456) ប្រសិនបើមិនទាន់មាន។</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">ជ្រើសរើសឯកសារ Excel (.xlsx) <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                        <div class="form-text small text-muted">
+                            ឯកសារគំរូផ្លូវការ៖ <code>2026.xlsx</code>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold small text-dark"><i class="fa-solid fa-download me-1 text-success"></i>ឯកសារទម្រង់គំរូ (Template)</span>
+                                <div class="text-muted" style="font-size: 0.78rem;">ទាញយកឯកសារគំរូបច្ចុប្បន្ន ដើម្បីបំពេញទិន្នន័យបន្ថែម</div>
+                            </div>
+                            <a href="{% url 'moeys_staff_roster_export_excel' %}" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-file-download me-1"></i> ទាញយក 2026.xlsx
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4" id="btnSubmitStaffSync">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> 🚀 ចាប់ផ្តើម Update ឥឡូវនេះ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const staffForm = document.getElementById('staffSyncForm');
+    if (staffForm) {
+        staffForm.addEventListener('submit', function() {
+            const btn = document.getElementById('btnSubmitStaffSync');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>កំពុង Upload & Sync ទិន្នន័យ...';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

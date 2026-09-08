@@ -42,6 +42,7 @@ urlpatterns = [
 
     # MoEYS Official Individual Student Information Extract (សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ - 35 Columns)
     path('reports/moeys-individual-roster/', views.moeys_individual_student_roster, name='moeys_individual_student_roster'),
+    path('reports/moeys-individual-roster/upload/', views.moeys_individual_student_roster_upload, name='moeys_individual_student_roster_upload'),
     path('reports/moeys-individual-roster/export-excel/', views.moeys_individual_student_roster_export_excel, name='moeys_individual_student_roster_export_excel'),
     path('reports/moeys-individual-roster/print/', views.moeys_individual_student_roster_print, name='moeys_individual_student_roster_print'),
 

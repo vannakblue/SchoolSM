@@ -2746,7 +2746,14 @@ def student_age_grade_statistics(request):
     if selected_year_id and selected_year_id.isdigit():
         active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
     if not active_year:
-        active_year = AcademicYear.objects.filter(is_current=True).first() or all_years.first()
+        active_year = AcademicYear.objects.filter(is_current=True).first()
+        if not active_year or active_year.enrolled_students.count() == 0:
+            from django.db.models import Count
+            populated_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+            if populated_year:
+                active_year = populated_year
+        if not active_year:
+            active_year = all_years.first()
 
     calc_method = request.GET.get('calc_method', 'calendar').strip()
     if calc_method not in ['calendar', 'exact']:
@@ -2868,7 +2875,14 @@ def export_student_age_grade_excel(request):
     if selected_year_id and selected_year_id.isdigit():
         active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
     if not active_year:
-        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+        active_year = AcademicYear.objects.filter(is_current=True).first()
+        if not active_year or active_year.enrolled_students.count() == 0:
+            from django.db.models import Count
+            populated_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+            if populated_year:
+                active_year = populated_year
+        if not active_year:
+            active_year = AcademicYear.objects.first()
 
     calc_method = request.GET.get('calc_method', 'calendar').strip()
     status_filter = request.GET.get('status', 'ACTIVE').strip()
@@ -3516,10 +3530,13 @@ def _get_student_age_roster_data(request):
     if selected_year_id and selected_year_id.isdigit():
         active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
     if not active_year:
-        # Default to year with students enrolled or current active year
-        active_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+        active_year = AcademicYear.objects.filter(is_current=True).first()
+        if not active_year or active_year.enrolled_students.count() == 0:
+            populated_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+            if populated_year:
+                active_year = populated_year
         if not active_year:
-            active_year = AcademicYear.objects.filter(is_current=True).first() or all_years.first()
+            active_year = all_years.first()
 
     # 2. Parse Template Format & Mode
     template_format = request.GET.get('format', '').strip().lower()
@@ -4030,9 +4047,13 @@ def _get_moeys_individual_student_roster_data(request):
     if selected_year_id and selected_year_id.isdigit():
         active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
     if not active_year:
-        active_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+        active_year = AcademicYear.objects.filter(is_current=True).first()
+        if not active_year or active_year.enrolled_students.count() == 0:
+            populated_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first()
+            if populated_year:
+                active_year = populated_year
         if not active_year:
-            active_year = AcademicYear.objects.filter(is_current=True).first() or all_years.first()
+            active_year = all_years.first()
 
     grade_filter = request.GET.get('grade_level', '').strip()
     class_id = request.GET.get('classroom', 'ALL').strip()
@@ -4270,6 +4291,229 @@ def moeys_individual_student_roster(request):
     """
     data = _get_moeys_individual_student_roster_data(request)
     return render(request, 'students/moeys_individual_student_roster.html', data)
+
+
+@login_required
+@role_required(['ADMIN'])
+def moeys_individual_student_roster_upload(request):
+    """
+    Web UI endpoint for uploading and synchronizing MoEYS Individual Student Census Excel file
+    (35 columns from សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ.xlsx).
+    """
+    from datetime import date
+    import openpyxl
+    from apps.academics.models import AcademicYear, Classroom
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    from django.db.models import Count
+
+    if request.method != 'POST':
+        return redirect('moeys_individual_student_roster')
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        messages.error(request, "⚠️ សូមជ្រើសរើសឯកសារ Excel (.xlsx) មុននឹងចុច Upload!")
+        return redirect('moeys_individual_student_roster')
+
+    file_name = uploaded_file.name.lower()
+    if not (file_name.endswith('.xlsx') or file_name.endswith('.xlsm') or file_name.endswith('.xls')):
+        messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ Excel (.xlsx) ប៉ុណ្ណោះ។")
+        return redirect('moeys_individual_student_roster')
+
+    selected_year_id = request.POST.get('academic_year', '').strip()
+    target_year = None
+    if selected_year_id and selected_year_id.isdigit():
+        target_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
+    if not target_year:
+        target_year = AcademicYear.objects.filter(is_current=True).first()
+    if not target_year:
+        target_year = AcademicYear.objects.annotate(s_count=Count('enrolled_students')).filter(s_count__gt=0).order_by('-s_count').first() or AcademicYear.objects.first()
+
+    try:
+        wb = openpyxl.load_workbook(uploaded_file, data_only=True)
+        ws = wb.active
+
+        updated_count = 0
+        created_count = 0
+
+        # Cache classrooms for speed
+        classrooms_map = {c.code.upper().strip(): c for c in Classroom.objects.filter(academic_year=target_year)}
+
+        for r in range(6, ws.max_row + 1):
+            student_id_val = ws.cell(r, 2).value
+            if not student_id_val:
+                continue
+
+            student_id = str(student_id_val).strip()
+            last_name = str(ws.cell(r, 3).value or '').strip()
+            first_name = str(ws.cell(r, 4).value or '').strip()
+            full_khmer_name = f"{last_name} {first_name}".strip() if (last_name or first_name) else ''
+            
+            gender_val = str(ws.cell(r, 5).value or '').strip()
+            gender_code = 'F' if ('ស្រី' in gender_val or gender_val.upper() == 'F') else 'M'
+
+            # DOB
+            dob_day = ws.cell(r, 6).value
+            dob_month = ws.cell(r, 7).value
+            dob_year = ws.cell(r, 8).value
+            dob_obj = None
+            if dob_day and dob_month and dob_year:
+                try:
+                    dob_obj = date(int(dob_year), int(dob_month), int(dob_day))
+                except Exception:
+                    pass
+
+            # POB
+            pob_commune = str(ws.cell(r, 9).value or '').strip()
+            pob_district = str(ws.cell(r, 10).value or '').strip()
+            pob_province = str(ws.cell(r, 11).value or '').strip()
+            pob_parts = [p for p in [pob_commune, pob_district, pob_province] if p]
+            place_of_birth = ", ".join(pob_parts) if pob_parts else None
+
+            # Classroom
+            grade_num = ws.cell(r, 12).value
+            class_letter = str(ws.cell(r, 13).value or '').strip().upper()
+            classroom = None
+            if grade_num and class_letter:
+                c_code = f"{grade_num}{class_letter}".strip()
+                classroom = classrooms_map.get(c_code.upper())
+                if not classroom and target_year:
+                    g_int = int(grade_num) if str(grade_num).isdigit() else (12 if '12' in str(grade_num) else 10)
+                    classroom, _ = Classroom.objects.get_or_create(
+                        academic_year=target_year,
+                        code=c_code.upper(),
+                        defaults={
+                            'name': f"ថ្នាក់ទី {c_code}".strip(),
+                            'grade_level': g_int,
+                            'track': 'GENERAL',
+                            'capacity': 50
+                        }
+                    )
+                    classrooms_map[c_code.upper()] = classroom
+
+            # Parents
+            father_name = str(ws.cell(r, 14).value or '').strip() or None
+            father_job = str(ws.cell(r, 15).value or '').strip() or None
+            mother_name = str(ws.cell(r, 16).value or '').strip() or None
+            mother_job = str(ws.cell(r, 17).value or '').strip() or None
+            guardian_name = str(ws.cell(r, 18).value or '').strip() or None
+            guardian_job = str(ws.cell(r, 19).value or '').strip() or None
+
+            # Extended Profile Fields (stored in enrollment_data)
+            orphan_status = str(ws.cell(r, 20).value or '').strip()
+            primary_school = str(ws.cell(r, 21).value or '').strip()
+            secondary_school = str(ws.cell(r, 22).value or '').strip()
+            ethnic_minority = str(ws.cell(r, 23).value or '').strip()
+            disability_physical = str(ws.cell(r, 24).value or '').strip()
+            disability_sight = str(ws.cell(r, 25).value or '').strip()
+            disability_hearing = str(ws.cell(r, 26).value or '').strip()
+            equity_card_1 = str(ws.cell(r, 27).value or '').strip()
+            equity_card_2 = str(ws.cell(r, 28).value or '').strip()
+            risk_card = str(ws.cell(r, 29).value or '').strip()
+            scholarship = str(ws.cell(r, 30).value or '').strip()
+            
+            # Phone
+            phone_val = ws.cell(r, 31).value
+            phone_str = ''
+            if phone_val is not None:
+                phone_raw = str(phone_val).strip()
+                if phone_raw:
+                    phone_str = f"0{phone_raw}" if not phone_raw.startswith('0') else phone_raw
+
+            status_str = str(ws.cell(r, 32).value or '').strip() or 'ACTIVE'
+
+            # Tracks
+            is_sc = bool(ws.cell(r, 33).value)
+            is_ss = bool(ws.cell(r, 34).value)
+            is_voc = bool(ws.cell(r, 35).value)
+            track_name = 'វិទ្យាសាស្ត្រ' if is_sc else ('វិទ្យាសាស្ត្រសង្គម' if is_ss else ('វិជ្ជាជីវៈ' if is_voc else 'ទូទៅ'))
+
+            # Build enrollment_data dictionary
+            moeys_profile = {
+                'surname': last_name,
+                'given_name': first_name,
+                'pob_commune': pob_commune,
+                'pob_district': pob_district,
+                'pob_province': pob_province,
+                'father_job': father_job,
+                'mother_job': mother_job,
+                'guardian_name': guardian_name,
+                'guardian_job': guardian_job,
+                'orphan_status': orphan_status,
+                'primary_school': primary_school,
+                'secondary_school': secondary_school,
+                'ethnic_minority': ethnic_minority,
+                'disability_physical': disability_physical,
+                'disability_sight': disability_sight,
+                'disability_hearing': disability_hearing,
+                'equity_card_1': equity_card_1,
+                'equity_card_2': equity_card_2,
+                'risk_card': risk_card,
+                'scholarship': scholarship,
+                'track': track_name,
+                'is_sc': is_sc,
+                'is_ss': is_ss,
+                'is_voc': is_voc,
+            }
+
+            student = Student.objects.filter(student_id=student_id).first()
+            if student:
+                if full_khmer_name and not student.khmer_name:
+                    student.khmer_name = full_khmer_name
+                if dob_obj and not student.date_of_birth:
+                    student.date_of_birth = dob_obj
+                if gender_code and not student.gender:
+                    student.gender = gender_code
+                if place_of_birth and not student.place_of_birth:
+                    student.place_of_birth = place_of_birth
+                if father_name and not student.father_name:
+                    student.father_name = father_name
+                if father_job and not student.father_job:
+                    student.father_job = father_job
+                if mother_name and not student.mother_name:
+                    student.mother_name = mother_name
+                if mother_job and not student.mother_job:
+                    student.mother_job = mother_job
+                if guardian_name and not student.guardian_name:
+                    student.guardian_name = guardian_name
+                if phone_str and not student.phone:
+                    student.phone = phone_str
+                if classroom and not student.classroom:
+                    student.classroom = classroom
+                if target_year and not student.academic_year:
+                    student.academic_year = target_year
+
+                existing_ed = dict(student.enrollment_data or {})
+                existing_ed.update(moeys_profile)
+                student.enrollment_data = existing_ed
+                student.save()
+                updated_count += 1
+            else:
+                ed = dict(moeys_profile)
+                Student.objects.create(
+                    student_id=student_id,
+                    khmer_name=full_khmer_name or f"សិស្ស {student_id}",
+                    gender=gender_code,
+                    date_of_birth=dob_obj or date(2008, 1, 1),
+                    place_of_birth=place_of_birth,
+                    classroom=classroom,
+                    academic_year=target_year,
+                    father_name=father_name,
+                    father_job=father_job,
+                    mother_name=mother_name,
+                    mother_job=mother_job,
+                    guardian_name=guardian_name,
+                    phone=phone_str or None,
+                    status='ACTIVE',
+                    enrollment_data=ed
+                )
+                created_count += 1
+
+        messages.success(request, f"🎉 បានធ្វើសមកាលកម្មសម្រង់ព័ត៌មាន MoEYS ៣៥ជួរឈរជោគជ័យ! បញ្ចូលថ្មី {created_count} នាក់ និងកែប្រែទិន្នន័យ {updated_count} នាក់ (ឆ្នាំសិក្សា៖ {target_year.name if target_year else 'បច្ចុប្បន្ន'})។")
+    except Exception as e:
+        messages.error(request, f"⚠️ មានបញ្ហាក្នុងការអាន ឬ Sync ឯកសារ Excel៖ {str(e)}")
+
+    return redirect(f"/students/reports/moeys-individual-roster/?academic_year={target_year.id if target_year else ''}")
 
 
 @login_required
