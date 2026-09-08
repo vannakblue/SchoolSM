@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/services/auth_service.dart';
+import '../../examinations/screens/student_online_exam_list_screen.dart';
 
 class StudentPortalScreen extends StatefulWidget {
   const StudentPortalScreen({super.key});
@@ -232,6 +233,59 @@ class _StudentPortalScreenState extends State<StudentPortalScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // ---------------------------------------------------------
+                    // 1.5 ONLINE EXAM QUICK ACCESS BANNER
+                    // ---------------------------------------------------------
+                    InkWell(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const StudentOnlineExamListScreen()),
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.quiz_rounded, color: Colors.white, size: 28),
+                            SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "វិញ្ញាសា & ប្រឡងអនឡាញ",
+                                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    "ចូលប្រឡងតេស្តតាមមុខវិជ្ជា និងមើលលទ្ធផលភ្លាមៗ",
+                                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),

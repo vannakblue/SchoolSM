@@ -13,6 +13,7 @@ import '../../academics/screens/timetable_screen.dart';
 import '../../examinations/screens/exam_grades_screen.dart';
 import '../../examinations/screens/teacher_grade_entry_screen.dart';
 import '../../examinations/screens/exam_invigilator_screen.dart';
+import '../../examinations/screens/student_online_exam_list_screen.dart';
 import '../../students/screens/student_enrollment_screen.dart';
 import '../../students/screens/student_list_screen.dart';
 import '../../students/screens/student_portal_screen.dart';
@@ -439,6 +440,13 @@ class _HomeScreenState extends State<_HomeScreen> {
           'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamGradesScreen())),
         },
         {
+          'title': 'វិញ្ញាសាប្រឡងអនឡាញ',
+          'subtitle': 'Online Exams',
+          'icon': Icons.quiz_rounded,
+          'color': const Color(0xFF6366F1),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentOnlineExamListScreen())),
+        },
+        {
           'title': 'ការជូនដំណឹង',
           'subtitle': 'Notifications',
           'icon': Icons.notifications_active_rounded,
@@ -461,6 +469,13 @@ class _HomeScreenState extends State<_HomeScreen> {
           'icon': Icons.edit_note_rounded,
           'color': const Color(0xFF10B981),
           'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherGradeEntryScreen())),
+        },
+        {
+          'title': 'វិញ្ញាសាប្រឡងអនឡាញ',
+          'subtitle': 'Online Exams',
+          'icon': Icons.quiz_rounded,
+          'color': const Color(0xFF6366F1),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentOnlineExamListScreen())),
         },
         {
           'title': 'វេនអនុរក្សប្រឡង',
@@ -507,6 +522,13 @@ class _HomeScreenState extends State<_HomeScreen> {
       ];
     } else if (auth.isStudent) {
       features = [
+        {
+          'title': 'ប្រឡងតេស្តអនឡាញ',
+          'subtitle': 'Online Exams & Quiz',
+          'icon': Icons.quiz_rounded,
+          'color': const Color(0xFF6366F1),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentOnlineExamListScreen())),
+        },
         {
           'title': 'កាតសិស្ស & កន្លែងប្រឡង',
           'subtitle': 'ID Card & Desk No',

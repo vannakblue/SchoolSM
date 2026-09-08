@@ -66,4 +66,10 @@ class ApiConstants {
   static String get invigilatorSlots => "$baseUrl/api/v1/exam-invigilator/slots/";
   static String get invigilatorToggle => "$baseUrl/api/v1/exam-invigilator/toggle/";
   static String get invigilatorFinalize => "$baseUrl/api/v1/exam-invigilator/finalize/";
+
+  // Online Examination (វិញ្ញាសា & ការប្រឡងអនឡាញ)
+  static String get onlineExamsList => "$baseUrl/api/v1/online-exams/";
+  static String onlineExamTake(int id) => "$baseUrl/api/v1/online-exams/$id/take/";
+  static String onlineExamSubmit(int id) => "$baseUrl/api/v1/online-exams/$id/submit/";
+  static String onlineExamResult(int subId) => "$baseUrl/api/v1/online-exams/submissions/$subId/result/";
 }

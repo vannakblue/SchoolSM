@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
+from . import online_exam_views
 
 urlpatterns = [
     # 1. Authentication & Tokens
@@ -57,5 +58,11 @@ urlpatterns = [
     path('exam-invigilator/toggle/', views.MobileExamInvigilatorToggleAPIView.as_view(), name='mobile_api_invigilator_toggle'),
     path('exam-invigilator/finalize/', views.MobileExamInvigilatorFinalizeAPIView.as_view(), name='mobile_api_invigilator_finalize'),
     path('exam-invigilator/unlock/', views.MobileExamInvigilatorUnlockAPIView.as_view(), name='mobile_api_invigilator_unlock'),
+
+    # 11. Mobile Online Examination (វិញ្ញាសា & ការប្រឡងអនឡាញ)
+    path('online-exams/', online_exam_views.MobileOnlineExamListView.as_view(), name='mobile_api_online_exams_list'),
+    path('online-exams/<int:exam_id>/take/', online_exam_views.MobileOnlineExamTakeView.as_view(), name='mobile_api_online_exam_take'),
+    path('online-exams/<int:exam_id>/submit/', online_exam_views.MobileOnlineExamSubmitView.as_view(), name='mobile_api_online_exam_submit'),
+    path('online-exams/submissions/<int:submission_id>/result/', online_exam_views.MobileOnlineExamResultView.as_view(), name='mobile_api_online_exam_result'),
 ]
 
