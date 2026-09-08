@@ -1461,7 +1461,14 @@ def api_ai_chat(request):
 
     api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
     model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
-    thinking_level = (getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium')).lower()
+    
+    # Check if thinking_level is explicitly requested by client/admin in the chat widget
+    req_thinking_level = (data.get('thinking_level') if isinstance(data, dict) else '') or request.POST.get('thinking_level', '')
+    req_thinking_level = str(req_thinking_level).strip().lower()
+    if req_thinking_level in ['low', 'medium', 'high']:
+        thinking_level = req_thinking_level
+    else:
+        thinking_level = (getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium')).lower()
 
     if api_key:
         try:
