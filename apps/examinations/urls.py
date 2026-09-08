@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, online_exam_views
 
 urlpatterns = [
     # Monthly/Semester Terms & Classroom Grades
@@ -120,7 +120,25 @@ urlpatterns = [
     path('student/admission-slip/<int:candidate_id>/', views.student_exam_admission_slip, name='student_exam_admission_slip'),
     path('student/provisional-slip/<int:candidate_id>/', views.student_exam_provisional_slip, name='student_exam_provisional_slip'),
     path('standardized/<int:exam_id>/send-seating-telegram/', views.api_send_exam_seating_telegram, name='api_send_exam_seating_telegram'),
+
+    # Subject Teacher Online Examination & Quizzes (ប្រព័ន្ធវិញ្ញាសា និងប្រឡងអនឡាញ)
+    path('online-exams/', online_exam_views.online_exam_list, name='online_exam_list'),
+    path('online-exams/create/', online_exam_views.online_exam_create, name='online_exam_create'),
+    path('online-exams/<int:exam_id>/edit/', online_exam_views.online_exam_edit, name='online_exam_edit'),
+    path('online-exams/<int:exam_id>/delete/', online_exam_views.online_exam_delete, name='online_exam_delete'),
+    path('online-exams/<int:exam_id>/toggle-publish/', online_exam_views.api_toggle_online_exam_publish, name='api_toggle_online_exam_publish'),
+    path('online-exams/<int:exam_id>/questions/', online_exam_views.online_exam_questions_manage, name='online_exam_questions_manage'),
+    path('online-exams/<int:exam_id>/submissions/', online_exam_views.online_exam_submissions_list, name='online_exam_submissions_list'),
+    path('online-exams/submissions/<int:submission_id>/', online_exam_views.online_exam_submission_detail, name='online_exam_submission_detail'),
+    path('online-exams/<int:exam_id>/sync-to-grades/', online_exam_views.api_sync_online_exam_to_grades, name='api_sync_online_exam_to_grades'),
+    path('online-exams/<int:exam_id>/export-excel/', online_exam_views.online_exam_export_excel, name='online_exam_export_excel'),
+
+    # Student Online Exam Experience & Instant Results
+    path('student/online-exams/', online_exam_views.student_online_exams_list, name='student_online_exams_list'),
+    path('student/online-exams/<int:exam_id>/take/', online_exam_views.student_take_online_exam, name='student_take_online_exam'),
+    path('student/online-exams/results/<int:submission_id>/', online_exam_views.student_exam_result_view, name='student_exam_result_view'),
 ]
+
 
 
 

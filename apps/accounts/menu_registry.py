@@ -59,6 +59,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'student_dashboard',
             },
             {
+                'key': 'student_online_exams_list',
+                'name_kh': 'ការប្រឡងអនឡាញ',
+                'name_en': 'Online Exams',
+                'icon': 'fa-solid fa-laptop-file text-success',
+                'default_roles': ['ADMIN', 'STUDENT'],
+                'url_name': 'student_online_exams_list',
+            },
+            {
                 'key': 'announcement_list',
                 'name_kh': 'សេចក្តីជូនដំណឹង',
                 'name_en': 'Announcements & Notices',
@@ -289,6 +297,14 @@ MENU_SECTIONS_CATALOG = [
                 'icon': 'fa-solid fa-award text-success',
                 'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'annual_results',
+            },
+            {
+                'key': 'online_exam_list',
+                'name_kh': 'វិញ្ញាសាប្រឡងអនឡាញ',
+                'name_en': 'Online Exams & Quizzes',
+                'icon': 'fa-solid fa-laptop-file text-primary',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'online_exam_list',
             },
             {
                 'key': 'standardized_exam_list',

@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+
+{% block title %}គ្រប់គ្រងសំណួរ៖ {{ exam.title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <a href="{% url 'online_exam_list' %}" class="btn btn-sm btn-outline-secondary mb-2">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីវិញ្ញាសា
+        </a>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-file-circle-question me-2"></i>គ្រប់គ្រងសំណួរ (Manage Questions)
+        </h2>
+        <div class="text-muted small">
+            វិញ្ញាសា៖ <strong class="text-dark">{{ exam.title }}</strong> | 
+            សម័យប្រឡង៖ <span class="badge bg-primary-subtle text-primary">{{ exam.exam_term.name }}</span> | 
+            មុខវិជ្ជា៖ <span class="badge bg-info-subtle text-info">{{ exam.subject.name_kh }}</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
+            <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែមសំណួរមួយៗ
+        </button>
+        <button type="button" class="btn btn-outline-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+            <i class="fa-solid fa-file-import me-1"></i> នាំចូលសំណួរជាក្រុម (Bulk Import)
+        </button>
+        <a href="{% url 'online_exam_submissions_list' exam.id %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-chart-simple me-1"></i> មើលលទ្ធផល
+        </a>
+    </div>
+</div>
+
+<!-- Exam Summary Metrics Bar -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-primary shadow-xs">
+            <div class="text-muted small fw-bold">ចំនួនសំណួរសរុប</div>
+            <div class="fs-3 fw-bold text-dark">{{ questions.count }} <small class="fs-6 text-muted">សំណួរ</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-success shadow-xs">
+            <div class="text-muted small fw-bold">ពិន្ទុសំណួរសរុប (Raw Points)</div>
+            <div class="fs-3 fw-bold text-success">{{ total_points }} <small class="fs-6 text-muted">ពិន្ទុ</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-info shadow-xs">
+            <div class="text-muted small fw-bold">ពិន្ទុពេញនៃវិញ្ញាសា (Scaled Max)</div>
+            <div class="fs-3 fw-bold text-info">{{ exam.total_score }} <small class="fs-6 text-muted">ពិន្ទុ</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-warning shadow-xs">
+            <div class="text-muted small fw-bold">រយៈពេលប្រឡង</div>
+            <div class="fs-3 fw-bold text-warning">{{ exam.duration_minutes }} <small class="fs-6 text-muted">នាទី</small></div>
+        </div>
+    </div>
+</div>
+
+<!-- Questions List -->
+<div class="d-flex flex-column gap-3">
+    {% for q in questions %}
+    <div class="custom-card shadow-sm border p-4 bg-white position-relative" id="q-card-{{ q.id }}">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                    សំណួរទី {{ q.order|default:forloop.counter }}
+                </span>
+                <span class="badge bg-light text-dark border px-2 py-1">
+                    <i class="fa-solid fa-star text-warning me-1"></i> {{ q.points }} ពិន្ទុ
+                </span>
+            </div>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary" onclick="openEditModal({{ q.id }})" title="កែប្រែ">
+                    <i class="fa-solid fa-pen me-1"></i> កែប្រែ
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="confirmDeleteQuestion({{ q.id }})" title="លុប">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Question Text -->
+        <h5 class="fw-bold text-dark mb-3 lh-base">{{ q.question_text }}</h5>
+
+        {% if q.image %}
+        <div class="mb-3">
+            <img src="{{ q.image.url }}" alt="Question Image" class="img-fluid rounded border shadow-xs" style="max-height: 250px;">
+        </div>
+        {% endif %}
+
+        <!-- Options Grid -->
+        <div class="row g-2 mb-3">
+            {% for opt in q.options.all %}
+            <div class="col-md-6">
+                <div class="p-3 rounded border {% if opt.is_correct %}bg-success-subtle border-success text-success-emphasis fw-bold shadow-xs{% else %}bg-light text-dark{% endif %} d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge {% if opt.is_correct %}bg-success text-white{% else %}bg-secondary-subtle text-secondary border{% endif %} rounded-circle" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                            {{ forloop.counter|stringformat:"d" }}
+                        </span>
+                        <span>{{ opt.option_text }}</span>
+                    </div>
+                    {% if opt.is_correct %}
+                    <span class="badge bg-success text-white"><i class="fa-solid fa-check me-1"></i> ត្រូវ</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-muted small fst-italic">មិនទាន់មានជម្រើសចម្លើយនៅឡើយទេ។</div>
+            {% endfor %}
+        </div>
+
+        {% if q.explanation %}
+        <div class="p-2 px-3 bg-info-subtle text-info-emphasis rounded border border-info small">
+            <i class="fa-solid fa-lightbulb me-1"></i> <strong>ការពន្យល់៖</strong> {{ q.explanation }}
+        </div>
+        {% endif %}
+
+        <!-- Hidden Data for Edit -->
+        <div id="q-data-{{ q.id }}" style="display: none;" 
+             data-text="{{ q.question_text|escapejs }}" 
+             data-points="{{ q.points }}"
+             data-order="{{ q.order }}"
+             data-explanation="{{ q.explanation|default:''|escapejs }}"
+             data-options='[{% for opt in q.options.all %}{"id": {{ opt.id }}, "text": "{{ opt.option_text|escapejs }}", "is_correct": {% if opt.is_correct %}true{% else %}false{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+        </div>
+    </div>
+    {% empty %}
+    <div class="custom-card text-center py-5 bg-light border">
+        <i class="fa-solid fa-clipboard-question fa-3x text-muted mb-3 opacity-50"></i>
+        <h5 class="fw-bold text-dark">មិនទាន់មានសំណួរនៅក្នុងវិញ្ញាសានេះនៅឡើយទេ</h5>
+        <p class="text-muted small">សូមចុច "បន្ថែមសំណួរមួយៗ" ឬ "នាំចូលសំណួរជាក្រុម" ដើម្បីចាប់ផ្តើមដាក់សំណួរ</p>
+        <div class="d-flex justify-content-center gap-2 mt-3">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
+                <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែមសំណួរ
+            </button>
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+                <i class="fa-solid fa-file-import me-1"></i> នាំចូលជាក្រុម (Bulk Import)
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: ADD QUESTION -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="addQuestionModal" tabindex="-1" aria-labelledby="addQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form method="POST" enctype="multipart/form-data" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_question">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="addQuestionModalLabel">
+                    <i class="fa-solid fa-plus-circle me-2"></i>បន្ថែមសំណួរថ្មី
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-9">
+                        <label class="form-label fw-bold">ខ្លឹមសារសំណួរ <span class="text-danger">*</span></label>
+                        <textarea name="question_text" class="form-control" rows="3" required placeholder="បញ្ចូលខ្លឹមសារសំណួរនៅទីនេះ..."></textarea>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">ពិន្ទុ (Points)</label>
+                        <input type="number" name="points" class="form-control" value="1.0" step="0.5" min="0.5" required>
+                        <label class="form-label fw-bold mt-2">លំដាប់សំណួរ</label>
+                        <input type="number" name="order" class="form-control" value="{{ questions.count|add:1 }}" min="1">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold small text-muted">រូបភាពភ្ជាប់ក្នុងសំណួរ (ប្រសិនបើមាន)</label>
+                        <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
+                    </div>
+                </div>
+
+                <h6 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-list-ol me-2 text-primary"></i>ជម្រើសចម្លើយ (ជ្រើសរើសចម្លើយត្រឹមត្រូវដោយចុច Radio Button)
+                </h6>
+
+                <div class="row g-2 mb-3">
+                    {% for i in "1,2,3,4"|make_list %}
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <div class="input-group-text bg-light">
+                                <input class="form-check-input mt-0" type="radio" name="correct_option" value="{{ i }}" {% if i == '1' %}checked{% endif %} title="ជ្រើសជម្រើសនេះជាចម្លើយត្រូវ">
+                            </div>
+                            <span class="input-group-text fw-bold">ជម្រើស {{ i }}</span>
+                            <input type="text" name="option_{{ i }}" class="form-control" placeholder="ខ្លឹមសារចម្លើយ {{ i }}..." {% if i == '1' or i == '2' %}required{% endif %}>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold small text-muted">ការពន្យល់ចម្លើយ (Explanation - បង្ហាញជូនសិស្សពេល Review លទ្ធផល)</label>
+                    <textarea name="explanation" class="form-control" rows="2" placeholder="ការពន្យល់បន្ថែមហេតុអ្វីបានជាចម្លើយនោះត្រឹមត្រូវ..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="submit" class="btn btn-primary fw-bold px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកសំណួរ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT QUESTION -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form method="POST" enctype="multipart/form-data" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_question">
+            <input type="hidden" name="question_id" id="edit_question_id">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-pen me-2"></i>កែប្រែសំណួរ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-9">
+                        <label class="form-label fw-bold">ខ្លឹមសារសំណួរ <span class="text-danger">*</span></label>
+                        <textarea name="question_text" id="edit_question_text" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">ពិន្ទុ (Points)</label>
+                        <input type="number" name="points" id="edit_points" class="form-control" step="0.5" min="0.5" required>
+                        <label class="form-label fw-bold mt-2">លំដាប់</label>
+                        <input type="number" name="order" id="edit_order" class="form-control" min="1">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold small text-muted">ផ្លាស់ប្តូររូបភាពភ្ជាប់ (ប្រសិនបើមាន)</label>
+                        <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
+                    </div>
+                </div>
+
+                <h6 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-list-ol me-2 text-primary"></i>ជម្រើសចម្លើយ
+                </h6>
+
+                <div class="row g-2 mb-3">
+                    {% for i in "1,2,3,4"|make_list %}
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <div class="input-group-text bg-light">
+                                <input class="form-check-input mt-0" type="radio" name="correct_option" value="{{ i }}" id="edit_radio_{{ i }}">
+                            </div>
+                            <span class="input-group-text fw-bold">ជម្រើស {{ i }}</span>
+                            <input type="text" name="option_{{ i }}" id="edit_option_{{ i }}" class="form-control" placeholder="ខ្លឹមសារចម្លើយ {{ i }}...">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold small text-muted">ការពន្យល់ចម្លើយ (Explanation)</label>
+                    <textarea name="explanation" id="edit_explanation" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="submit" class="btn btn-primary fw-bold px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> ធ្វើបច្ចុប្បន្នភាព
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: BULK IMPORT QUESTIONS -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="bulkImportModal" tabindex="-1" aria-labelledby="bulkImportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form method="POST" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="bulk_import">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold" id="bulkImportModalLabel">
+                    <i class="fa-solid fa-file-import me-2"></i>នាំចូលសំណួរជាក្រុម (Bulk Import)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-2">
+                    លោកគ្រូ-អ្នកគ្រូអាចចម្លង (Copy) សំណួរពីឯកសារ Word ឬ Notepad មកបិទភ្ជាប់ (Paste) ក្នុងប្រអប់ខាងក្រោម។ ប្រព័ន្ធនឹងធ្វើការបំប្លែងទៅជាសំណួរ និងជម្រើស A, B, C, D ដោយស្វ័យប្រវត្តិ!
+                </p>
+
+                <div class="alert alert-secondary small p-2 mb-3">
+                    <strong>ទម្រង់គំរូ (Format Example):</strong><br>
+                    1. តើព្រះរាជាណាចក្រកម្ពុជាមានប៉ុន្មានខេត្ត-រាជធានី?<br>
+                    A. 24<br>
+                    B. 25* <em>(ដាក់សញ្ញាផ្កាយ * នៅចុងចម្លើយត្រូវ ឬសរសេរ Answer: B)</em><br>
+                    C. 26<br>
+                    D. 23<br>
+                    <br>
+                    2. តើរាជធានីនៃប្រទេសកម្ពុជាឈ្មោះអ្វី?<br>
+                    A. សៀមរាប<br>
+                    B. ភ្នំពេញ<br>
+                    C. បាត់ដំបង<br>
+                    Answer: B
+                </div>
+
+                <label class="form-label fw-bold">បិទភ្ជាប់អត្ថបទសំណួរនៅទីនេះ (Paste Text Below):</label>
+                <textarea name="raw_import_text" class="form-control font-monospace" rows="10" required placeholder="1. សំណួរទី១...
+A. ជម្រើស ក
+B. ជម្រើស ខ*
+C. ជម្រើស គ
+D. ជម្រើស ឃ"></textarea>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="submit" class="btn btn-success fw-bold px-4">
+                    <i class="fa-solid fa-bolt me-1"></i> ចាប់ផ្តើមនាំចូលស្វ័យប្រវត្តិ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hidden Delete Form -->
+<form id="delete-q-form" method="POST" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="delete_question">
+    <input type="hidden" name="question_id" id="delete_question_id">
+</form>
+
+<script>
+function openEditModal(qId) {
+    const dataEl = document.getElementById(`q-data-${qId}`);
+    if (!dataEl) return;
+
+    document.getElementById('edit_question_id').value = qId;
+    document.getElementById('edit_question_text').value = dataEl.dataset.text;
+    document.getElementById('edit_points').value = dataEl.dataset.points;
+    document.getElementById('edit_order').value = dataEl.dataset.order;
+    document.getElementById('edit_explanation').value = dataEl.dataset.explanation || '';
+
+    // Options
+    const options = JSON.parse(dataEl.dataset.options || '[]');
+    for (let i = 1; i <= 4; i++) {
+        const optInput = document.getElementById(`edit_option_${i}`);
+        const radioInput = document.getElementById(`edit_radio_${i}`);
+        if (options[i - 1]) {
+            optInput.value = options[i - 1].text;
+            if (options[i - 1].is_correct) {
+                radioInput.checked = true;
+            }
+        } else {
+            optInput.value = '';
+            if (i === 1) radioInput.checked = true;
+        }
+    }
+
+    new bootstrap.Modal(document.getElementById('editQuestionModal')).show();
+}
+
+function confirmDeleteQuestion(qId) {
+    Swal.fire({
+        title: 'តើអ្នកប្រាកដជាចង់លុបសំណួរនេះ?',
+        text: 'សំណួរ និងជម្រើសទាំងអស់នឹងត្រូវលុបជាអចិន្ត្រៃយ៍!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'បាទ/ចាស លុបចេញ',
+        cancelButtonText: 'បោះបង់'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('delete_question_id').value = qId;
+            document.getElementById('delete-q-form').submit();
+        }
+    });
+}
+</script>
+{% endblock %}

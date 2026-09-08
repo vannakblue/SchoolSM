@@ -1016,3 +1016,280 @@ class TeacherShiftRegistration(models.Model):
         return f"{self.teacher.khmer_name} ({self.get_role_display()}) -> {self.slot.session_name} ({self.slot.date})"
 
 
+# ==============================================================================
+# ONLINE EXAMINATION SYSTEM (ប្រព័ន្ធប្រឡងអនឡាញតាមមុខវិជ្ជា)
+# ==============================================================================
+
+class OnlineExam(models.Model):
+    """
+    Online examination or quiz paper created by subject teachers or admins.
+    Organized by ExamTerm (សម័យប្រឡង), Subject (មុខវិជ្ជា), and target Classrooms/Grade Level.
+    """
+    class ExamStatus(models.TextChoices):
+        DRAFT = 'DRAFT', 'ព្រាង / Draft'
+        PUBLISHED = 'PUBLISHED', 'ផ្សព្វផ្សាយ / Published'
+        CLOSED = 'CLOSED', 'បិទបញ្ចប់ / Closed'
+
+    title = models.CharField(max_length=255, verbose_name="ចំណងជើងវិញ្ញាសា / Exam Title")
+    description = models.TextField(blank=True, null=True, verbose_name="សេចក្តីណែនាំ / Instructions")
+    
+    exam_term = models.ForeignKey(ExamTerm, on_delete=models.CASCADE, related_name='online_exams', verbose_name="សម័យប្រឡង / Exam Term")
+    subject = models.ForeignKey('academics.Subject', on_delete=models.CASCADE, related_name='online_exams', verbose_name="មុខវិជ្ជា / Subject")
+    
+    # Creator and Teacher
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="បង្កើតដោយ / Created By")
+    teacher = models.ForeignKey('teachers.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='online_exams', verbose_name="គ្រូទទួលបន្ទុក / Teacher")
+
+    # Scope & Audience
+    grade_level = models.IntegerField(null=True, blank=True, verbose_name="កម្រិតថ្នាក់ / Grade Level", help_text="កំណត់កម្រិតថ្នាក់ (ឧ. 7, 8, 9, 10, 11, 12) ឬទុកទទេ")
+    target_classrooms = models.ManyToManyField('academics.Classroom', blank=True, related_name='online_exams', verbose_name="ថ្នាក់រៀនគោលដៅ / Target Classrooms")
+
+    # Timing & Grading Parameters
+    duration_minutes = models.PositiveIntegerField(default=45, verbose_name="រយៈពេលប្រឡង (នាទី) / Duration (Mins)")
+    total_score = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('100.00'), verbose_name="ពិន្ទុពេញ / Max Score")
+    pass_score = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('50.00'), verbose_name="ពិន្ទុជាប់ / Pass Score")
+    max_attempts = models.PositiveIntegerField(default=1, verbose_name="ចំនួនដងអនុញ្ញាត / Max Attempts")
+
+    start_time = models.DateTimeField(null=True, blank=True, verbose_name="ម៉ោងចាប់ផ្តើមប្រឡង / Start Time")
+    end_time = models.DateTimeField(null=True, blank=True, verbose_name="ម៉ោងបញ្ចប់ប្រឡង / End Time")
+
+    # Exam Behavior & Configuration
+    status = models.CharField(max_length=20, choices=ExamStatus.choices, default=ExamStatus.DRAFT, verbose_name="ស្ថានភាព / Status")
+    is_published = models.BooleanField(default=False, verbose_name="ផ្សព្វផ្សាយ / Published")
+    shuffle_questions = models.BooleanField(default=True, verbose_name="ច្របល់លំដាប់សំណួរ / Shuffle Questions")
+    shuffle_options = models.BooleanField(default=True, verbose_name="ច្របល់លំដាប់ជម្រើស / Shuffle Options")
+    show_result_immediately = models.BooleanField(default=True, verbose_name="បង្ហាញលទ្ធផលភ្លាមៗ / Show Result Immediately")
+    show_correct_answers = models.BooleanField(default=True, verbose_name="បង្ហាញចម្លើយត្រូវពេល Review / Show Correct Answers")
+    access_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="លេខកូដសម្ងាត់ / Access Code (PIN)")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "វិញ្ញាសាប្រឡងអនឡាញ / Online Exam"
+        verbose_name_plural = "វិញ្ញាសាប្រឡងអនឡាញទាំងអស់ / Online Exams"
+
+    def __str__(self):
+        return f"{self.title} - {self.subject.name_kh} ({self.exam_term.name})"
+
+    @property
+    def questions_count(self):
+        return self.questions.count()
+
+    @property
+    def total_question_points(self):
+        agg = self.questions.aggregate(total=models.Sum('points'))
+        return agg['total'] or Decimal('0.00')
+
+    @property
+    def is_active_now(self):
+        if not self.is_published or self.status == self.ExamStatus.CLOSED:
+            return False
+        from django.utils import timezone
+        now = timezone.now()
+        if self.start_time and now < self.start_time:
+            return False
+        if self.end_time and now > self.end_time:
+            return False
+        return True
+
+    def get_time_status(self):
+        """Returns tuple (status_code, badge_color, label_khmer)"""
+        if not self.is_published or self.status == self.ExamStatus.DRAFT:
+            return ('DRAFT', 'secondary', 'ព្រាង (មិនទាន់ផ្សាយ)')
+        if self.status == self.ExamStatus.CLOSED:
+            return ('CLOSED', 'dark', 'បានបិទបញ្ចប់')
+        from django.utils import timezone
+        now = timezone.now()
+        if self.start_time and now < self.start_time:
+            return ('UPCOMING', 'warning', f'ចាប់ផ្តើមនៅ {self.start_time.strftime("%d/%m/%Y %H:%M")}')
+        if self.end_time and now > self.end_time:
+            return ('EXPIRED', 'danger', 'ផុតកំណត់')
+        return ('OPEN', 'success', 'កំពុងបើកដំណើរការ')
+
+
+class OnlineExamQuestion(models.Model):
+    """
+    Multiple-Choice Question (MCQ) for an Online Exam.
+    """
+    exam = models.ForeignKey(OnlineExam, on_delete=models.CASCADE, related_name='questions', verbose_name="វិញ្ញាសា / Exam")
+    question_text = models.TextField(verbose_name="ខ្លឹមសារសំណួរ / Question Text")
+    image = models.ImageField(upload_to='online_exams/questions/', null=True, blank=True, verbose_name="រូបភាពភ្ជាប់ / Question Image")
+    points = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('1.00'), verbose_name="ពិន្ទុ / Points")
+    order = models.PositiveIntegerField(default=0, verbose_name="លំដាប់ / Order")
+    explanation = models.TextField(blank=True, null=True, verbose_name="ការពន្យល់ចម្លើយ / Explanation", help_text="ការពន្យល់ដែលត្រូវបង្ហាញឱ្យសិស្សមើលពេល Review លទ្ធផល")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "សំណួរប្រឡង / Exam Question"
+        verbose_name_plural = "សំណួរប្រឡងទាំងអស់ / Exam Questions"
+
+    def __str__(self):
+        return f"Q{self.order}: {self.question_text[:50]} ({self.points} pts)"
+
+    @property
+    def correct_option(self):
+        return self.options.filter(is_correct=True).first()
+
+
+class OnlineExamOption(models.Model):
+    """
+    Answer choice (e.g. A, B, C, D) for a multiple-choice question.
+    """
+    question = models.ForeignKey(OnlineExamQuestion, on_delete=models.CASCADE, related_name='options', verbose_name="សំណួរ / Question")
+    option_text = models.CharField(max_length=500, verbose_name="ខ្លឹមសារជម្រើស / Option Text")
+    is_correct = models.BooleanField(default=False, verbose_name="ចម្លើយត្រឹមត្រូវ / Is Correct")
+    order = models.PositiveIntegerField(default=0, verbose_name="លំដាប់ / Order")
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "ជម្រើសចម្លើយ / Option"
+        verbose_name_plural = "ជម្រើសចម្លើយទាំងអស់ / Options"
+
+    def __str__(self):
+        marker = "✓" if self.is_correct else "✗"
+        return f"[{marker}] {self.option_text}"
+
+
+class OnlineExamSubmission(models.Model):
+    """
+    A student's exam sitting / submission.
+    """
+    class SubmissionStatus(models.TextChoices):
+        IN_PROGRESS = 'IN_PROGRESS', 'កំពុងប្រឡង / In Progress'
+        SUBMITTED = 'SUBMITTED', 'បានប្រគល់ / Submitted'
+        EXPIRED = 'EXPIRED', 'ផុតម៉ោង / Time Expired'
+
+    exam = models.ForeignKey(OnlineExam, on_delete=models.CASCADE, related_name='submissions', verbose_name="វិញ្ញាសា / Exam")
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='online_exam_submissions', verbose_name="សិស្ស / Student")
+    classroom = models.ForeignKey('academics.Classroom', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ថ្នាក់រៀន / Classroom")
+    attempt_number = models.PositiveIntegerField(default=1, verbose_name="លើកទី / Attempt #")
+
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name="ចាប់ផ្តើមនៅ / Started At")
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name="ប្រគល់នៅ / Submitted At")
+    time_spent_seconds = models.PositiveIntegerField(default=0, verbose_name="រយៈពេលចំណាយ (វិនាទី) / Time Spent (s)")
+
+    score_obtained = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'), verbose_name="ពិន្ទុទទួលបាន / Score Obtained")
+    total_possible_score = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'), verbose_name="ពិន្ទុពេញ / Total Possible")
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), verbose_name="ភាគរយ / Percentage")
+    letter_grade = models.CharField(max_length=5, blank=True, null=True, verbose_name="និទ្ទេស / Letter Grade")
+    is_passed = models.BooleanField(default=False, verbose_name="ជាប់/ធ្លាក់ / Is Passed")
+    
+    status = models.CharField(max_length=20, choices=SubmissionStatus.choices, default=SubmissionStatus.IN_PROGRESS, verbose_name="ស្ថានភាព / Status")
+    synced_to_grade = models.BooleanField(default=False, verbose_name="បាន Sync ទៅតារាងពិន្ទុ / Synced to Grade Matrix")
+
+    class Meta:
+        ordering = ['-submitted_at', '-started_at']
+        verbose_name = "លទ្ធផលប្រឡងអនឡាញ / Exam Submission"
+        verbose_name_plural = "លទ្ធផលប្រឡងអនឡាញទាំងអស់ / Exam Submissions"
+
+    def __str__(self):
+        return f"{self.student.khmer_name} - {self.exam.title}: {self.score_obtained}/{self.total_possible_score} ({self.percentage}%)"
+
+    @property
+    def formatted_time_spent(self):
+        mins = self.time_spent_seconds // 60
+        secs = self.time_spent_seconds % 60
+        if mins > 0:
+            return f"{mins} នាទី {secs} វិនាទី"
+        return f"{secs} វិនាទី"
+
+    @property
+    def mention_khmer(self):
+        p = float(self.percentage)
+        if p >= 90:
+            return "ល្អប្រសើរ (Grade A)"
+        elif p >= 80:
+            return "ល្អណាស់ (Grade B)"
+        elif p >= 70:
+            return "ល្អ (Grade C)"
+        elif p >= 60:
+            return "ល្អបង្គួរ (Grade D)"
+        elif p >= 50:
+            return "មធ្យម (Grade E)"
+        else:
+            return "ខ្សោយ (Grade F)"
+
+    def calculate_results(self, save=True):
+        """
+        Calculates and commits the score based on student answers.
+        """
+        from django.utils import timezone
+        total_raw = Decimal('0.00')
+        earned_raw = Decimal('0.00')
+
+        answers = self.answers.select_related('question', 'selected_option').all()
+        for ans in answers:
+            q_points = ans.question.points
+            total_raw += q_points
+            if ans.selected_option and ans.selected_option.is_correct:
+                ans.is_correct = True
+                ans.points_awarded = q_points
+                earned_raw += q_points
+            else:
+                ans.is_correct = False
+                ans.points_awarded = Decimal('0.00')
+            ans.save()
+
+        # If question points exist, calculate scaled score relative to exam.total_score
+        exam_total = self.exam.total_score or Decimal('100.00')
+        if total_raw > Decimal('0.00'):
+            pct = (earned_raw / total_raw) * Decimal('100.00')
+            scaled_score = (pct / Decimal('100.00')) * exam_total
+        else:
+            pct = Decimal('0.00')
+            scaled_score = Decimal('0.00')
+
+        self.score_obtained = round(scaled_score, 2)
+        self.total_possible_score = round(exam_total, 2)
+        self.percentage = round(pct, 2)
+
+        p_score = self.exam.pass_score or Decimal('50.00')
+        self.is_passed = (self.score_obtained >= p_score)
+
+        p = float(self.percentage)
+        if p >= 90:
+            self.letter_grade = 'A'
+        elif p >= 80:
+            self.letter_grade = 'B'
+        elif p >= 70:
+            self.letter_grade = 'C'
+        elif p >= 60:
+            self.letter_grade = 'D'
+        elif p >= 50:
+            self.letter_grade = 'E'
+        else:
+            self.letter_grade = 'F'
+
+        if not self.submitted_at:
+            self.submitted_at = timezone.now()
+        self.status = self.SubmissionStatus.SUBMITTED
+
+        if save:
+            self.save()
+
+        return self
+
+
+class OnlineExamAnswer(models.Model):
+    """
+    An individual answer submitted by a student for a specific question.
+    """
+    submission = models.ForeignKey(OnlineExamSubmission, on_delete=models.CASCADE, related_name='answers', verbose_name="ការប្រឡង / Submission")
+    question = models.ForeignKey(OnlineExamQuestion, on_delete=models.CASCADE, verbose_name="សំណួរ / Question")
+    selected_option = models.ForeignKey(OnlineExamOption, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ជម្រើសដែលបានរើស / Selected Option")
+    is_correct = models.BooleanField(default=False, verbose_name="ត្រឹមត្រូវ / Correct")
+    points_awarded = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), verbose_name="ពិន្ទុដែលទទួលបាន / Points Awarded")
+
+    class Meta:
+        unique_together = ('submission', 'question')
+        verbose_name = "ចម្លើយរបស់សិស្ស / Student Answer"
+        verbose_name_plural = "ចម្លើយរបស់សិស្សទាំងអស់ / Student Answers"
+
+    def __str__(self):
+        return f"Ans Q{self.question.order}: {self.selected_option}"
+
+
+

@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <a href="{% url 'online_exam_list' %}" class="btn btn-sm btn-outline-secondary mb-2">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីវិញ្ញាសា
+                </a>
+                <h2 class="fw-bold mb-0 text-primary">
+                    <i class="fa-solid fa-file-pen me-2"></i>{{ title }}
+                </h2>
+            </div>
+            {% if not is_create and exam %}
+            <div>
+                <a href="{% url 'online_exam_questions_manage' exam.id %}" class="btn btn-outline-primary">
+                    <i class="fa-solid fa-list-check me-1"></i> គ្រប់គ្រងសំណួរ ({{ exam.questions.count }})
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="custom-card shadow-sm border-0 p-4">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>មានបញ្ហាក្នុងការបញ្ចូលទិន្នន័យ៖</strong>
+                <ul class="mb-0 mt-2">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+
+            <!-- General Information -->
+            <div class="mb-4">
+                <h5 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-circle-info me-2 text-primary"></i>១. ព័ត៌មានទូទៅនៃវិញ្ញាសា (Exam Information)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">ចំណងជើងវិញ្ញាសា <span class="text-danger">*</span></label>
+                        {{ form.title }}
+                        <div class="form-text">ឧ. វិញ្ញាសាតេស្តប្រចាំខែមករា គណិតវិទ្យា ថ្នាក់ទី១០ (A, B, C)</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">សម័យប្រឡង (Exam Term) <span class="text-danger">*</span></label>
+                        {{ form.exam_term }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">មុខវិជ្ជា (Subject) <span class="text-danger">*</span></label>
+                        {{ form.subject }}
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">សេចក្តីណែនាំសម្រាប់ការប្រឡង (Instructions)</label>
+                        {{ form.description }}
+                        <div class="form-text">សេចក្តីណែនាំដែលត្រូវបង្ហាញដល់សិស្សមុនពេលចាប់ផ្តើមធ្វើតេស្ត</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Scope & Eligibility -->
+            <div class="mb-4">
+                <h5 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-users-viewfinder me-2 text-info"></i>២. កម្រិតថ្នាក់ & ថ្នាក់រៀនគោលដៅ (Target Classes)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">កម្រិតថ្នាក់ (Grade Level)</label>
+                        {{ form.grade_level }}
+                        <div class="form-text">ជ្រើសរើសកម្រិតថ្នាក់ដើម្បីបើកឱ្យគ្រប់ថ្នាក់ក្នុងកម្រិតនោះអាចប្រឡងបាន</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">ថ្នាក់រៀនជាក់លាក់ (Specific Classrooms)</label>
+                        {{ form.target_classrooms }}
+                        <div class="form-text">ចុច Ctrl (ឬ Cmd) ដើម្បីជ្រើសរើសច្រើនថ្នាក់ (ទុកទទេបើកំណត់តាមកម្រិតថ្នាក់រួចហើយ)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameters & Timing -->
+            <div class="mb-4">
+                <h5 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-stopwatch me-2 text-warning"></i>៣. រយៈពេល & លក្ខខណ្ឌពិន្ទុ (Duration & Grading)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">រយៈពេលប្រឡង (នាទី) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            {{ form.duration_minutes }}
+                            <span class="input-group-text">នាទី</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">ពិន្ទុពេញ (Max Score) <span class="text-danger">*</span></label>
+                        {{ form.total_score }}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">ពិន្ទុជាប់ (Passing Score) <span class="text-danger">*</span></label>
+                        {{ form.pass_score }}
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">ចំនួនដងប្រឡង (Max Attempts) <span class="text-danger">*</span></label>
+                        {{ form.max_attempts }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">ម៉ោងចាប់ផ្តើមប្រឡង (Start Time)</label>
+                        {{ form.start_time }}
+                        <div class="form-text">សិស្សមិនអាចចូលប្រឡងបានទេប្រសិនបើមិនទាន់ដល់ម៉ោងនេះ</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">ម៉ោងបញ្ចប់ប្រឡង (Deadline / End Time)</label>
+                        {{ form.end_time }}
+                        <div class="form-text">វិញ្ញាសានឹងត្រូវបិទដោយស្វ័យប្រវត្តិនៅពេលដល់ម៉ោងនេះ</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options & Behaviors -->
+            <div class="mb-4">
+                <h5 class="fw-bold border-bottom pb-2 text-secondary mb-3">
+                    <i class="fa-solid fa-sliders me-2 text-success"></i>៤. ការកំណត់ប្រព័ន្ធប្រឡង (Exam Settings & Anti-Cheat)
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">ស្ថានភាពវិញ្ញាសា (Status)</label>
+                        {{ form.status }}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">លេខកូដសម្ងាត់ចូលប្រឡង (Access PIN)</label>
+                        {{ form.access_code }}
+                        <div class="form-text">ទុកទទេ ប្រសិនបើមិនត្រូវការលេខកូដ PIN</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card p-3 bg-light border-0">
+                            <div class="form-check form-switch mb-2">
+                                {{ form.is_published }}
+                                <label class="form-check-label fw-bold text-success" for="{{ form.is_published.id_for_label }}">
+                                    ផ្សព្វផ្សាយជាសាធារណៈ (Published)
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                {{ form.show_result_immediately }}
+                                <label class="form-check-label fw-bold text-primary" for="{{ form.show_result_immediately.id_for_label }}">
+                                    បង្ហាញលទ្ធផលភ្លាមៗពេល Submit
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                {{ form.show_correct_answers }}
+                                <label class="form-check-label fw-bold text-info" for="{{ form.show_correct_answers.id_for_label }}">
+                                    បង្ហាញចម្លើយត្រូវពេល Review
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                {{ form.shuffle_questions }}
+                                <label class="form-check-label fw-bold" for="{{ form.shuffle_questions.id_for_label }}">
+                                    ច្របល់លំដាប់សំណួរ (Shuffle)
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                {{ form.shuffle_options }}
+                                <label class="form-check-label fw-bold" for="{{ form.shuffle_options.id_for_label }}">
+                                    ច្របល់លំដាប់ជម្រើស A/B/C/D
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-flex justify-content-between align-items-center border-top pt-4">
+                <a href="{% url 'online_exam_list' %}" class="btn btn-outline-secondary px-4">
+                    <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                </a>
+                <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកវិញ្ញាសា
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

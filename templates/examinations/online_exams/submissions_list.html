@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}លទ្ធផលសិស្សប្រឡង៖ {{ exam.title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <a href="{% url 'online_exam_list' %}" class="btn btn-sm btn-outline-secondary mb-2">
+            <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីវិញ្ញាសា
+        </a>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-square-poll-vertical me-2"></i>លទ្ធផលសិស្សប្រឡងអនឡាញ (Exam Submissions & Results)
+        </h2>
+        <div class="text-muted small">
+            វិញ្ញាសា៖ <strong class="text-dark">{{ exam.title }}</strong> | 
+            សម័យប្រឡង៖ <span class="badge bg-primary-subtle text-primary">{{ exam.exam_term.name }}</span> | 
+            មុខវិជ្ជា៖ <span class="badge bg-info-subtle text-info">{{ exam.subject.name_kh }}</span>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-success fw-bold shadow-sm" onclick="syncToGrades({{ exam.id }})" id="btnSyncGrades">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> បញ្ចូលទៅក្នុងបញ្ជីពិន្ទុ (Sync to Grades)
+        </button>
+        <a href="{% url 'online_exam_export_excel' exam.id %}" class="btn btn-outline-success fw-bold shadow-xs">
+            <i class="fa-solid fa-file-excel me-1"></i> ទាញយកជា Excel
+        </a>
+        <a href="{% url 'online_exam_questions_manage' exam.id %}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-file-circle-question me-1"></i> សំណួរ ({{ exam.questions.count }})
+        </a>
+    </div>
+</div>
+
+<!-- Performance Metrics Bar -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-primary shadow-xs">
+            <div class="text-muted small fw-bold">ចំនួនសិស្សបានប្រឡង</div>
+            <div class="fs-3 fw-bold text-dark">{{ total_subs }} <small class="fs-6 text-muted">នាក់</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-success shadow-xs">
+            <div class="text-muted small fw-bold">អត្រាជាប់ (Pass Rate)</div>
+            <div class="fs-3 fw-bold text-success">{{ pass_rate }}% <small class="fs-6 text-muted">({{ pass_subs }}/{{ total_subs }} នាក់)</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-info shadow-xs">
+            <div class="text-muted small fw-bold">ពិន្ទុមធ្យម (Average Score)</div>
+            <div class="fs-3 fw-bold text-info">{{ avg_score }} <small class="fs-6 text-muted">/ {{ exam.total_score }}</small></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="custom-card p-3 bg-white border-start border-4 border-warning shadow-xs">
+            <div class="text-muted small fw-bold">ពិន្ទុខ្ពស់ / ទាបបំផុត</div>
+            <div class="fs-3 fw-bold text-dark">{{ max_score }} <span class="fs-6 text-muted">/ {{ min_score }}</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Submissions Table -->
+<div class="custom-card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-secondary small fw-bold text-uppercase">
+                    <th class="ps-3">ល.រ</th>
+                    <th>អត្តលេខ</th>
+                    <th>គោត្តនាម-នាមសិស្ស</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th class="text-center">ពិន្ទុទទួលបាន</th>
+                    <th class="text-center">ភាគរយ</th>
+                    <th class="text-center">និទ្ទេស</th>
+                    <th class="text-center">ស្ថានភាព</th>
+                    <th class="text-center">រយៈពេលចំណាយ</th>
+                    <th class="text-center">Sync Grade</th>
+                    <th class="text-end pe-3">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in submissions %}
+                <tr>
+                    <td class="ps-3 text-muted small fw-bold">{{ forloop.counter }}</td>
+                    <td class="font-monospace small fw-bold text-primary">{{ sub.student.student_id|default:"-" }}</td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ sub.student.khmer_name }}</div>
+                        <div class="small text-muted">{{ sub.student.latin_name|default:"" }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ sub.classroom.name|default:sub.student.classroom.name|default:"-" }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="fs-6 fw-bold {% if sub.is_passed %}text-success{% else %}text-danger{% endif %}">
+                            {{ sub.score_obtained }}
+                        </span>
+                        <span class="text-muted small">/ {{ sub.total_possible_score }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge {% if sub.percentage >= 80 %}bg-success{% elif sub.percentage >= 50 %}bg-primary{% else %}bg-danger{% endif %} px-2 py-1">
+                            {{ sub.percentage }}%
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary-subtle text-dark fw-bold px-2 py-1">
+                            {{ sub.letter_grade|default:"-" }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if sub.is_passed %}
+                            <span class="badge bg-success-subtle text-success fw-bold px-2 py-1">
+                                <i class="fa-solid fa-circle-check me-1"></i> ជាប់
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger-subtle text-danger fw-bold px-2 py-1">
+                                <i class="fa-solid fa-circle-xmark me-1"></i> ធ្លាក់
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center small text-muted">
+                        <i class="fa-regular fa-clock me-1"></i> {{ sub.formatted_time_spent }}
+                    </td>
+                    <td class="text-center">
+                        {% if sub.synced_to_grade %}
+                            <span class="badge bg-success text-white" title="បានបញ្ចូលពិន្ទុទៅក្នុង Grade Matrix ផ្លូវការ"><i class="fa-solid fa-check-double"></i> Synced</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-muted" title="មិនទាន់ Sync"><i class="fa-solid fa-hourglass-half"></i> មិនទាន់ Sync</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <a href="{% url 'online_exam_submission_detail' sub.id %}" class="btn btn-sm btn-outline-primary" title="មើលក្រដាសកិច្ចការលម្អិត">
+                            <i class="fa-solid fa-eye me-1"></i> មើលលម្អិត
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-user-clock fa-3x mb-3 text-secondary opacity-50"></i>
+                        <h5 class="fw-bold">មិនទាន់មានសិស្សចូលប្រឡងនៅឡើយទេ</h5>
+                        <p class="small text-muted">នៅពេលសិស្សធ្វើតេស្ត និង Submit រួច លទ្ធផលនឹងបង្ហាញនៅទីនេះភ្លាមៗ</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function syncToGrades(examId) {
+    Swal.fire({
+        title: 'បញ្ចូលពិន្ទុទៅក្នុងបញ្ជីផ្លូវការ?',
+        text: 'ពិន្ទុរបស់សិស្សទាំងអស់ដែលបានប្រឡងនឹងត្រូវបញ្ចូលទៅក្នុងតារាងពិន្ទុ Grade Matrix នៃសម័យប្រឡង និងមុខវិជ្ជានេះដោយស្វ័យប្រវត្តិ!',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'បាទ/ចាស ចាប់ផ្តើម Sync',
+        cancelButtonText: 'បោះបង់'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const btn = document.getElementById('btnSyncGrades');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុង Sync...';
+
+            fetch(`/examinations/online-exams/${examId}/sync-to-grades/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'ជោគជ័យ!',
+                        text: data.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('បរាជ័យ', data.message || 'មានបញ្ហាក្នុងការ Sync ពិន្ទុ', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i> បញ្ចូលទៅក្នុងបញ្ជីពិន្ទុ (Sync to Grades)';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i> បញ្ចូលទៅក្នុងបញ្ជីពិន្ទុ (Sync to Grades)';
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

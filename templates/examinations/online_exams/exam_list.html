@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}វិញ្ញាសាប្រឡងអនឡាញ (Online Exams) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-laptop-file me-2"></i>វិញ្ញាសាប្រឡងអនឡាញ (Online Exams & Quizzes)
+        </h2>
+        <p class="text-muted small mb-0">បង្កើត និងគ្រប់គ្រងវិញ្ញាសាប្រឡងតេស្តពហុជ្រើសរើសតាមមុខវិជ្ជា និងសម័យប្រឡងនីមួយៗ</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'online_exam_create' %}" class="btn btn-primary px-3 shadow-sm fw-bold">
+            <i class="fa-solid fa-plus-circle me-1"></i> បង្កើតវិញ្ញាសាថ្មី
+        </a>
+        <a href="{% url 'grade_entry_matrix' %}" class="btn btn-outline-secondary px-3">
+            <i class="fa-solid fa-table-cells me-1"></i> តារាងពិន្ទុរួម
+        </a>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="custom-card mb-4 p-3 bg-light border">
+    <form method="GET" class="row g-2 align-items-center">
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">សម័យប្រឡង (Exam Term)</label>
+            <select name="term" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- សម័យប្រឡងទាំងអស់ --</option>
+                {% for t in terms %}
+                <option value="{{ t.id }}" {% if selected_term == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">មុខវិជ្ជា (Subject)</label>
+            <select name="subject" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- មុខវិជ្ជាទាំងអស់ --</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name_kh }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">កម្រិតថ្នាក់ (Grade)</label>
+            <select name="grade" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់កម្រិតថ្នាក់ --</option>
+                {% for g in "7,8,9,10,11,12"|make_list %}
+                {% endfor %}
+                <option value="7" {% if selected_grade == '7' %}selected{% endif %}>ថ្នាក់ទី ៧</option>
+                <option value="8" {% if selected_grade == '8' %}selected{% endif %}>ថ្នាក់ទី ៨</option>
+                <option value="9" {% if selected_grade == '9' %}selected{% endif %}>ថ្នាក់ទី ៩</option>
+                <option value="10" {% if selected_grade == '10' %}selected{% endif %}>ថ្នាក់ទី ១០</option>
+                <option value="11" {% if selected_grade == '11' %}selected{% endif %}>ថ្នាក់ទី ១១</option>
+                <option value="12" {% if selected_grade == '12' %}selected{% endif %}>ថ្នាក់ទី ១២</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">ស្ថានភាព (Status)</label>
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ស្ថានភាព --</option>
+                <option value="PUBLISHED" {% if selected_status == 'PUBLISHED' %}selected{% endif %}>ផ្សព្វផ្សាយ (Published)</option>
+                <option value="DRAFT" {% if selected_status == 'DRAFT' %}selected{% endif %}>ព្រាង (Draft)</option>
+                <option value="CLOSED" {% if selected_status == 'CLOSED' %}selected{% endif %}>បិទបញ្ចប់ (Closed)</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end gap-1">
+            <a href="{% url 'online_exam_list' %}" class="btn btn-sm btn-outline-secondary w-100" style="margin-top: 24px;">
+                <i class="fa-solid fa-rotate-left me-1"></i> កំណត់ឡើងវិញ
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Exam Cards Table -->
+<div class="custom-card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-secondary small fw-bold text-uppercase">
+                    <th class="ps-3" style="min-width: 250px;">ចំណងជើងវិញ្ញាសា</th>
+                    <th>សម័យប្រឡង & មុខវិជ្ជា</th>
+                    <th>ថ្នាក់គោលដៅ</th>
+                    <th>រយៈពេល & ពិន្ទុ</th>
+                    <th class="text-center">សំណួរ & សិស្សប្រឡង</th>
+                    <th>ស្ថានភាព</th>
+                    <th class="text-end pe-3" style="min-width: 220px;">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exam in exams %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-bold text-dark fs-6">{{ exam.title }}</div>
+                        <div class="text-muted small">
+                            <i class="fa-solid fa-chalkboard-user me-1 text-primary"></i> 
+                            គ្រូ៖ {{ exam.teacher.khmer_name|default:exam.created_by.get_full_name|default:"គ្រូប្រចាំមុខវិជ្ជា" }}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="badge bg-primary-subtle text-primary fw-bold mb-1">{{ exam.exam_term.name }}</div>
+                        <div class="fw-semibold text-secondary small"><i class="fa-solid fa-book-open me-1"></i> {{ exam.subject.name_kh }}</div>
+                    </td>
+                    <td>
+                        {% if exam.grade_level %}
+                            <span class="badge bg-info-subtle text-info fw-bold">ថ្នាក់ទី {{ exam.grade_level }}</span>
+                        {% endif %}
+                        {% if exam.target_classrooms.exists %}
+                            <div class="small text-muted mt-1">
+                                {% for cls in exam.target_classrooms.all %}
+                                    <span class="badge bg-light text-dark border me-1">{{ cls.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% elif not exam.grade_level %}
+                            <span class="badge bg-light text-muted border">គ្រប់ថ្នាក់</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small fw-semibold text-dark"><i class="fa-regular fa-clock me-1 text-warning"></i> {{ exam.duration_minutes }} នាទី</div>
+                        <div class="small text-muted">ពិន្ទុពេញ៖ <strong class="text-success">{{ exam.total_score }}</strong> | ជាប់៖ {{ exam.pass_score }}</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary-subtle text-secondary px-2 py-1">
+                            <i class="fa-solid fa-list-check me-1"></i> {{ exam.questions.count }} សំណួរ
+                        </span>
+                        <div class="small mt-1">
+                            <a href="{% url 'online_exam_submissions_list' exam.id %}" class="text-decoration-none fw-bold text-primary">
+                                <i class="fa-solid fa-users me-1"></i> {{ exam.submissions.count }} សិស្ស
+                            </a>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" role="switch" id="togglePublish{{ exam.id }}" 
+                                   {% if exam.is_published %}checked{% endif %}
+                                   onchange="togglePublish({{ exam.id }})">
+                            <label class="form-check-label small fw-bold" id="labelPublish{{ exam.id }}">
+                                {% if exam.is_published %}
+                                    <span class="text-success">ផ្សព្វផ្សាយ</span>
+                                {% else %}
+                                    <span class="text-muted">ព្រាង</span>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% if exam.start_time or exam.end_time %}
+                        <div class="small text-muted" style="font-size: 0.75rem;">
+                            {{ exam.start_time|date:"d/m H:i" }} - {{ exam.end_time|date:"d/m H:i" }}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'online_exam_questions_manage' exam.id %}" class="btn btn-outline-primary" title="គ្រប់គ្រងសំណួរ">
+                                <i class="fa-solid fa-file-circle-question me-1"></i> សំណួរ
+                            </a>
+                            <a href="{% url 'online_exam_submissions_list' exam.id %}" class="btn btn-outline-success" title="លទ្ធផលសិស្ស">
+                                <i class="fa-solid fa-square-poll-vertical me-1"></i> លទ្ធផល
+                            </a>
+                            <a href="{% url 'online_exam_edit' exam.id %}" class="btn btn-outline-secondary" title="កែប្រែ">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" onclick="confirmDelete({{ exam.id }}, '{{ exam.title|escapejs }}')" title="លុប">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                        <form id="delete-form-{{ exam.id }}" action="{% url 'online_exam_delete' exam.id %}" method="POST" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <div class="text-muted">
+                            <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50"></i>
+                            <h5 class="fw-bold">មិនទាន់មានវិញ្ញាសាប្រឡងអនឡាញនៅឡើយទេ</h5>
+                            <p class="small text-muted">ចុចប៊ូតុងខាងក្រោមដើម្បីបង្កើតវិញ្ញាសាដំបូងរបស់អ្នក</p>
+                            <a href="{% url 'online_exam_create' %}" class="btn btn-primary btn-sm px-3">
+                                <i class="fa-solid fa-plus-circle me-1"></i> បង្កើតវិញ្ញាសាថ្មី
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function togglePublish(examId) {
+    fetch(`/examinations/online-exams/${examId}/toggle-publish/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const label = document.getElementById(`labelPublish${examId}`);
+            if (data.is_published) {
+                label.innerHTML = '<span class="text-success">ផ្សព្វផ្សាយ</span>';
+            } else {
+                label.innerHTML = '<span class="text-muted">ព្រាង</span>';
+            }
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function confirmDelete(examId, title) {
+    Swal.fire({
+        title: 'តើអ្នកប្រាកដជាចង់លុបវិញ្ញាសានេះ?',
+        text: `វិញ្ញាសា "${title}" ព្រមទាំងសំណួរ និងលទ្ធផលសិស្សទាំងអស់នឹងត្រូវលុបចេញ!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'បាទ/ចាស លុបចេញ',
+        cancelButtonText: 'បោះបង់'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById(`delete-form-${examId}`).submit();
+        }
+    });
+}
+</script>
+{% endblock %}

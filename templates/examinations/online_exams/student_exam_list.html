@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}វិញ្ញាសាប្រឡងអនឡាញ (Online Exams) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1 text-primary">
+            <i class="fa-solid fa-laptop-file me-2"></i>វិញ្ញាសាប្រឡងអនឡាញ (Online Examination Portal)
+        </h2>
+        <p class="text-muted small mb-0">
+            សិស្ស៖ <strong class="text-dark">{{ student.khmer_name }}</strong> (អត្តលេខ៖ {{ student.student_id|default:"-" }}) | 
+            ថ្នាក់៖ <span class="badge bg-primary-subtle text-primary">{{ classroom.name|default:"មិនទាន់កំណត់" }}</span>
+        </p>
+    </div>
+    <div>
+        <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> ផ្ទាំងគ្រប់គ្រងសិស្ស
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for item in exam_cards %}
+    <div class="col-md-6 col-lg-4">
+        <div class="custom-card shadow-sm border h-100 d-flex flex-column justify-content-between p-4 bg-white">
+            <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-primary-subtle text-primary fw-bold">
+                        {{ item.exam.exam_term.name }}
+                    </span>
+                    <span class="badge bg-{{ item.status_info.1 }} text-white">
+                        {{ item.status_info.2 }}
+                    </span>
+                </div>
+
+                <h5 class="fw-bold text-dark mb-2 lh-base">{{ item.exam.title }}</h5>
+
+                <div class="text-muted small mb-3">
+                    <div><i class="fa-solid fa-book me-1 text-info"></i> មុខវិជ្ជា៖ <strong class="text-dark">{{ item.exam.subject.name_kh }}</strong></div>
+                    <div><i class="fa-regular fa-clock me-1 text-warning"></i> រយៈពេល៖ <strong class="text-dark">{{ item.exam.duration_minutes }} នាទី</strong></div>
+                    <div><i class="fa-solid fa-star me-1 text-success"></i> ពិន្ទុពេញ៖ <strong class="text-dark">{{ item.exam.total_score }}</strong> (ជាប់៖ {{ item.exam.pass_score }})</div>
+                    <div><i class="fa-solid fa-list-check me-1 text-secondary"></i> ចំនួនសំណួរ៖ <strong class="text-dark">{{ item.exam.questions.count }} សំណួរ</strong></div>
+                </div>
+
+                {% if item.exam.description %}
+                <div class="p-2 px-3 bg-light rounded text-muted small mb-3 text-truncate-2">
+                    {{ item.exam.description }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="border-top pt-3 mt-2">
+                {% if item.submission and item.submission.status == 'SUBMITTED' %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted">លទ្ធផលរបស់អ្នក៖</span>
+                        <div>
+                            <span class="fw-bold fs-6 {% if item.submission.is_passed %}text-success{% else %}text-danger{% endif %}">
+                                {{ item.submission.score_obtained }} / {{ item.submission.total_possible_score }}
+                            </span>
+                            <span class="badge {% if item.submission.is_passed %}bg-success{% else %}bg-danger{% endif %} ms-1">
+                                {% if item.submission.is_passed %}ជាប់{% else %}ធ្លាក់{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <a href="{% url 'student_exam_result_view' item.submission.id %}" class="btn btn-outline-primary w-100 fw-bold">
+                        <i class="fa-solid fa-square-poll-vertical me-1"></i> មើលលទ្ធផល & Review
+                    </a>
+                {% elif item.can_take %}
+                    <a href="{% url 'student_take_online_exam' item.exam.id %}" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> ចូលធ្វើតេស្តប្រឡង
+                    </a>
+                {% else %}
+                    <button class="btn btn-secondary w-100" disabled>
+                        <i class="fa-solid fa-lock me-1"></i> មិនទាន់បើក ឬផុតកំណត់
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="custom-card p-5 bg-light border">
+            <i class="fa-solid fa-laptop-code fa-3x text-muted mb-3 opacity-50"></i>
+            <h4 class="fw-bold text-dark">មិនទាន់មានវិញ្ញាសាប្រឡងសម្រាប់ថ្នាក់របស់អ្នកទេ</h4>
+            <p class="text-muted small">នៅពេលលោកគ្រូ-អ្នកគ្រូដាក់វិញ្ញាសាប្រឡង វានឹងបង្ហាញនៅទីនេះ។</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

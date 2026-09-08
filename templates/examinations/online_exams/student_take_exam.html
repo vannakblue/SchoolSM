@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block title %}កំពុងប្រឡង៖ {{ exam.title }} | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Focus Mode - Clean layout */
+    .exam-sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .timer-badge {
+        font-family: 'Inter', monospace;
+        font-size: 1.25rem;
+        letter-spacing: 1px;
+    }
+    .option-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+    }
+    .option-card:hover {
+        border-color: #3b82f6;
+        background-color: #f8fafc;
+        transform: translateY(-1px);
+    }
+    .option-card.selected {
+        border-color: #2563eb !important;
+        background-color: #eff6ff !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    }
+    .q-nav-btn {
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        border: 2px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .q-nav-btn.answered {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: white;
+    }
+    .q-nav-btn.current {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Sticky Exam Bar -->
+<div class="exam-sticky-header py-3 px-4 mb-4 rounded-3 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+        <h4 class="fw-bold mb-0 text-primary">{{ exam.title }}</h4>
+        <div class="text-muted small">
+            មុខវិជ្ជា៖ <strong>{{ exam.subject.name_kh }}</strong> | 
+            សិស្ស៖ <strong>{{ student.khmer_name }}</strong> ({{ student.student_id|default:"-" }})
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+        <!-- Live Countdown Timer -->
+        <div class="d-flex align-items-center bg-dark text-white px-3 py-2 rounded-3 shadow-xs" id="timerContainer">
+            <i class="fa-solid fa-clock me-2 text-warning fs-5"></i>
+            <span class="timer-badge fw-bold" id="examTimer">--:--</span>
+        </div>
+
+        <button type="button" class="btn btn-success fw-bold px-4 py-2 shadow-sm" onclick="triggerSubmitConfirmation()">
+            <i class="fa-solid fa-paper-plane me-1"></i> ប្រគល់កិច្ចការ (Submit)
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Main Questions Column -->
+    <div class="col-lg-8 col-xl-9">
+        <form id="examForm" method="POST" action="{% url 'student_take_online_exam' exam.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="time_spent_seconds" id="timeSpentInput" value="0">
+
+            <div class="d-flex flex-column gap-4">
+                {% for item in questions_data %}
+                {% with q=item.question %}
+                <div class="custom-card p-4 border bg-white shadow-sm" id="question-block-{{ forloop.counter }}">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                                សំណួរទី {{ forloop.counter }}
+                            </span>
+                            <span class="badge bg-light text-muted border px-2 py-1">
+                                {{ q.points }} ពិន្ទុ
+                            </span>
+                        </div>
+                        <span class="small text-muted" id="status-q-{{ forloop.counter }}">
+                            <i class="fa-regular fa-circle text-secondary me-1"></i> មិនទាន់ឆ្លើយ
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-3 lh-base">{{ q.question_text }}</h5>
+
+                    {% if q.image %}
+                    <div class="mb-3 text-center">
+                        <img src="{{ q.image.url }}" alt="Question Image" class="img-fluid rounded border" style="max-height: 250px;">
+                    </div>
+                    {% endif %}
+
+                    <!-- Options -->
+                    <div class="row g-3 mt-1">
+                        {% for opt in item.options %}
+                        <div class="col-md-6">
+                            <label class="option-card p-3 d-flex align-items-center gap-3 w-100" id="opt-label-{{ opt.id }}">
+                                <input class="form-check-input mt-0 fs-5 flex-shrink-0" type="radio" 
+                                       name="question_{{ q.id }}" 
+                                       value="{{ opt.id }}" 
+                                       id="opt_{{ opt.id }}"
+                                       onchange="selectOption({{ forloop.parentloop.counter }}, {{ opt.id }})">
+                                <span class="fs-6 text-dark flex-grow-1">{{ opt.option_text }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+
+            <!-- Bottom Submit Button Bar -->
+            <div class="custom-card p-4 bg-white border mt-4 text-center">
+                <button type="button" class="btn btn-success btn-lg fw-bold px-5 py-3 shadow" onclick="triggerSubmitConfirmation()">
+                    <i class="fa-solid fa-paper-plane me-2"></i> ប្រគល់កិច្ចការប្រឡង (Submit Exam)
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Question Palette Sticky Sidebar -->
+    <div class="col-lg-4 col-xl-3">
+        <div class="custom-card p-3 bg-white border shadow-sm sticky-top" style="top: 90px;">
+            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                <i class="fa-solid fa-grip me-2 text-primary"></i>ផ្ទាំងរុករកសំណួរ (Question Palette)
+            </h6>
+            
+            <div class="d-flex flex-wrap gap-2 mb-3" style="max-height: 320px; overflow-y: auto;">
+                {% for item in questions_data %}
+                <button type="button" class="q-nav-btn" id="nav-btn-{{ forloop.counter }}" onclick="scrollToQuestion({{ forloop.counter }})">
+                    {{ forloop.counter }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="border-top pt-2 small text-muted">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-primary" style="width: 16px; height: 16px; display: inline-block;"></span>
+                    <span>បានឆ្លើយរួច</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light border" style="width: 16px; height: 16px; display: inline-block;"></span>
+                    <span>មិនទាន់បានឆ្លើយ</span>
+                </div>
+            </div>
+
+            <div class="mt-3 p-2 bg-light rounded text-center small">
+                ឆ្លើយបាន៖ <strong class="text-primary" id="answeredCount">0</strong> / {{ questions_data|length }} សំណួរ
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const TOTAL_QUESTIONS = {{ questions_data|length }};
+const EXAM_ID = {{ exam.id }};
+const STUDENT_ID = {{ student.id }};
+let remainingSeconds = {{ remaining_seconds }};
+let timeSpentSeconds = 0;
+const STORAGE_KEY = `exam_${EXAM_ID}_student_${STUDENT_ID}_answers`;
+
+// Initialize Timer
+function updateTimerDisplay() {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const timerEl = document.getElementById('examTimer');
+    const container = document.getElementById('timerContainer');
+    
+    if (timerEl) {
+        timerEl.innerText = formatted;
+    }
+
+    if (remainingSeconds <= 300) { // Under 5 mins: flash red
+        container.classList.remove('bg-dark');
+        container.classList.add('bg-danger');
+    }
+
+    if (remainingSeconds <= 0) {
+        clearInterval(timerInterval);
+        Swal.fire({
+            title: 'ផុតម៉ោងប្រឡង!',
+            text: 'ពេលវេលាប្រឡងបានបញ្ចប់ ប្រព័ន្ធនឹងប្រគល់កិច្ចការរបស់អ្នកដោយស្វ័យប្រវត្តិ។',
+            icon: 'info',
+            showConfirmButton: false,
+            timer: 2000
+        }).then(() => {
+            submitExamForm();
+        });
+    } else {
+        remainingSeconds--;
+        timeSpentSeconds++;
+        document.getElementById('timeSpentInput').value = timeSpentSeconds;
+    }
+}
+
+const timerInterval = setInterval(updateTimerDisplay, 1000);
+updateTimerDisplay();
+
+// Scroll helper
+function scrollToQuestion(num) {
+    const el = document.getElementById(`question-block-${num}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+// Option selection & style toggle
+function selectOption(qNum, optId) {
+    // Highlight selected card and uncheck siblings
+    const qBlock = document.getElementById(`question-block-${qNum}`);
+    const cards = qBlock.querySelectorAll('.option-card');
+    cards.forEach(c => c.classList.remove('selected'));
+    
+    const selectedCard = document.getElementById(`opt-label-${optId}`);
+    if (selectedCard) {
+        selectedCard.classList.add('selected');
+    }
+
+    // Update Question Palette button
+    const navBtn = document.getElementById(`nav-btn-${qNum}`);
+    if (navBtn) {
+        navBtn.classList.add('answered');
+    }
+
+    const statusEl = document.getElementById(`status-q-${qNum}`);
+    if (statusEl) {
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> បានឆ្លើយ';
+    }
+
+    updateAnsweredCount();
+    saveToLocalStorage();
+}
+
+function updateAnsweredCount() {
+    const checked = document.querySelectorAll('input[type="radio"]:checked').length;
+    const el = document.getElementById('answeredCount');
+    if (el) el.innerText = checked;
+}
+
+// LocalStorage Persistence
+function saveToLocalStorage() {
+    const answers = {};
+    const radios = document.querySelectorAll('input[type="radio"]:checked');
+    radios.forEach(r => {
+        answers[r.name] = r.value;
+    });
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+    } catch(e) {}
+}
+
+function restoreFromLocalStorage() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        for (const [name, val] of Object.entries(saved)) {
+            const radio = document.querySelector(`input[name="${name}"][value="${val}"]`);
+            if (radio) {
+                radio.checked = true;
+                const label = document.getElementById(`opt-label-${val}`);
+                if (label) label.classList.add('selected');
+            }
+        }
+        // Update palette
+        for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+            const qBlock = document.getElementById(`question-block-${i}`);
+            if (qBlock && qBlock.querySelector('input[type="radio"]:checked')) {
+                const navBtn = document.getElementById(`nav-btn-${i}`);
+                if (navBtn) navBtn.classList.add('answered');
+                const statusEl = document.getElementById(`status-q-${i}`);
+                if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> បានឆ្លើយ';
+            }
+        }
+        updateAnsweredCount();
+    } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    restoreFromLocalStorage();
+});
+
+// Submit Confirmation
+function triggerSubmitConfirmation() {
+    const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+    const unanswered = TOTAL_QUESTIONS - answered;
+
+    let warningText = `អ្នកបានឆ្លើយចំនួន ${answered} នៃសំណួរសរុប ${TOTAL_QUESTIONS} សំណួរ។`;
+    if (unanswered > 0) {
+        warningText += `\n⚠️ នៅសល់ ${unanswered} សំណួរទៀតមិនទាន់បានឆ្លើយ!`;
+    }
+
+    Swal.fire({
+        title: 'តើអ្នកប្រាកដជាចង់ប្រគល់កិច្ចការ?',
+        text: warningText,
+        icon: unanswered > 0 ? 'warning' : 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'បាទ/ចាស ប្រគល់កិច្ចការ',
+        cancelButtonText: 'ពិនិត្យឡើងវិញ'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            submitExamForm();
+        }
+    });
+}
+
+function submitExamForm() {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch(e) {}
+    document.getElementById('examForm').submit();
+}
+</script>
+{% endblock %}
