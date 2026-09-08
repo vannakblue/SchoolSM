@@ -21,6 +21,16 @@ def lang_switch(context, kh_text, en_text):
         return en_text
     return kh_text
 
+@register.filter(name='dict_key')
+def dict_key(d, k):
+    """
+    Template filter: {{ my_dict|dict_key:key }}
+    """
+    if isinstance(d, dict):
+        return d.get(k)
+    return None
+
+
 @register.simple_tag(takes_context=True)
 def trans_key(context, key, default=None):
     """

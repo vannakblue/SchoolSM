@@ -148,6 +148,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN'],
                 'url_name': 'student_status_list',
             },
+            {
+                'key': 'student_age_grade_statistics',
+                'name_kh': 'ស្ថិតិតាមអាយុ & ថ្នាក់',
+                'name_en': 'Students by Age & Grade',
+                'icon': 'fa-solid fa-chart-column text-info',
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'url_name': 'student_age_grade_statistics',
+            },
         ]
     },
     {

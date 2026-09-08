@@ -30,6 +30,11 @@ urlpatterns = [
     path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),
     path('api/preview-student-id/', views.api_preview_student_id_pattern, name='api_preview_student_id_pattern'),
 
+    # MoEYS Student Age & Grade Level Statistics Matrix
+    path('statistics/age-grade/', views.student_age_grade_statistics, name='student_age_grade_statistics'),
+    path('statistics/age-grade/export-excel/', views.export_student_age_grade_excel, name='export_student_age_grade_excel'),
+    path('api/age-grade-drilldown/', views.api_student_age_grade_drilldown, name='api_student_age_grade_drilldown'),
+
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),
     path('<int:pk>/id-card/', views.student_id_card, name='student_id_card'),

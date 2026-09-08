@@ -2489,4 +2489,705 @@ def api_romanize_khmer_name(request):
     })
 
 
+# ==============================================================================
+# MoEYS STUDENT AGE & GRADE LEVEL STATISTICS MATRIX (ស្ថិតិសិស្សតាមអាយុ-កម្រិតថ្នាក់)
+# ==============================================================================
+
+KHMER_DIGITS_MAP = {'0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤', '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'}
+
+def _to_khmer_num(num):
+    return ''.join(KHMER_DIGITS_MAP.get(ch, ch) for ch in str(num))
+
+
+def _calculate_age_grade_matrix(academic_year, calc_method='calendar', status_filter='ACTIVE', custom_ref_year=None):
+    """
+    Core calculation engine for MoEYS Educational Statistics: Student Age by Grade Level.
+    Returns complete structured dataset for templates, JSON APIs, and Excel exports.
+    """
+    from apps.students.models import Student
+    from datetime import date
+    from collections import defaultdict
+    import re
+
+    # Determine reference year & reference date
+    ref_year = None
+    if custom_ref_year and str(custom_ref_year).strip().isdigit():
+        ref_year = int(custom_ref_year)
+    elif academic_year and academic_year.start_date:
+        ref_year = academic_year.start_date.year
+    elif academic_year and academic_year.name:
+        match = re.search(r'(\d{4})', academic_year.name)
+        if match:
+            ref_year = int(match.group(1))
+    if not ref_year:
+        ref_year = date.today().year
+
+    ref_date = date(ref_year, 10, 31)
+
+    # Filter students
+    students_qs = Student.objects.select_related('classroom', 'academic_year')
+    if academic_year:
+        students_qs = students_qs.filter(
+            Q(academic_year=academic_year) | Q(classroom__academic_year=academic_year)
+        )
+    if status_filter != 'ALL':
+        students_qs = students_qs.filter(status='ACTIVE')
+
+    # Categories definitions
+    raw_counts = defaultdict(lambda: defaultdict(lambda: {'new_total': 0, 'new_female': 0, 'rep_total': 0, 'rep_female': 0}))
+    
+    all_ages_found = set()
+    total_students_count = 0
+    total_female_count = 0
+    total_repeaters_count = 0
+    total_new_count = 0
+
+    for s in students_qs:
+        if not s.classroom or not s.date_of_birth:
+            continue
+        gl = s.classroom.grade_level
+        trk = (s.classroom.track or 'GENERAL').upper()
+        is_rep = bool(s.is_repeating_grade)
+        is_f = (s.gender == 'F')
+
+        # Calculate age
+        if calc_method == 'exact':
+            dob = s.date_of_birth
+            age = ref_date.year - dob.year - ((ref_date.month, ref_date.day) < (dob.month, dob.day))
+        else:
+            age = ref_year - s.date_of_birth.year
+
+        if age < 0:
+            age = 0
+
+        all_ages_found.add(age)
+        total_students_count += 1
+        if is_f: total_female_count += 1
+        if is_rep: total_repeaters_count += 1
+        else: total_new_count += 1
+
+        cat_keys = []
+        if gl == 7:
+            cat_keys.extend(['g7', 'lower_sec', 'grand_total'])
+        elif gl == 8:
+            cat_keys.extend(['g8', 'lower_sec', 'grand_total'])
+        elif gl == 9:
+            cat_keys.extend(['g9', 'lower_sec', 'grand_total'])
+        elif gl == 10:
+            cat_keys.extend(['g10', 'upper_sec', 'grand_total'])
+        elif gl == 11:
+            if trk == 'SCIENCE':
+                cat_keys.extend(['g11_sc', 'upper_sec', 'grand_total'])
+            else:
+                cat_keys.extend(['g11_ss', 'upper_sec', 'grand_total'])
+        elif gl == 12:
+            if trk == 'SCIENCE':
+                cat_keys.extend(['g12_sc', 'upper_sec', 'grand_total'])
+            else:
+                cat_keys.extend(['g12_ss', 'upper_sec', 'grand_total'])
+        else:
+            cat_keys.extend(['grand_total'])
+
+        for k in cat_keys:
+            d = raw_counts[k][age]
+            if is_rep:
+                d['rep_total'] += 1
+                if is_f: d['rep_female'] += 1
+            else:
+                d['new_total'] += 1
+                if is_f: d['new_female'] += 1
+
+    # Define standard MoEYS age lists
+    lower_sec_ages = [12, 13, 14, 15, 16, 17]
+    for a in sorted(all_ages_found):
+        if a < 12 and a not in lower_sec_ages:
+            lower_sec_ages.insert(0, a)
+        elif a > 17 and a not in lower_sec_ages:
+            lower_sec_ages.append(a)
+    lower_sec_ages = sorted(list(set(lower_sec_ages)))
+
+    upper_sec_ages = [15, 16, 17, 18, 19, 20]
+    for a in sorted(all_ages_found):
+        if a < 15 and a not in upper_sec_ages:
+            upper_sec_ages.insert(0, a)
+        elif a > 20 and a not in upper_sec_ages:
+            upper_sec_ages.append(a)
+    upper_sec_ages = sorted(list(set(upper_sec_ages)))
+
+    master_ages = sorted(list(set(lower_sec_ages + upper_sec_ages + list(all_ages_found))))
+    if not master_ages:
+        master_ages = list(range(11, 21))
+
+    # Helper to calculate column totals
+    def _col_total(cat_key):
+        res = {'new_total': 0, 'new_female': 0, 'rep_total': 0, 'rep_female': 0, 'all_total': 0, 'all_female': 0}
+        for a in raw_counts[cat_key]:
+            c = raw_counts[cat_key][a]
+            res['new_total'] += c['new_total']
+            res['new_female'] += c['new_female']
+            res['rep_total'] += c['rep_total']
+            res['rep_female'] += c['rep_female']
+        res['all_total'] = res['new_total'] + res['rep_total']
+        res['all_female'] = res['new_female'] + res['rep_female']
+        return res
+
+    column_totals = {
+        'g7': _col_total('g7'),
+        'g8': _col_total('g8'),
+        'g9': _col_total('g9'),
+        'lower_sec': _col_total('lower_sec'),
+        'g10': _col_total('g10'),
+        'g11_sc': _col_total('g11_sc'),
+        'g11_ss': _col_total('g11_ss'),
+        'g12_sc': _col_total('g12_sc'),
+        'g12_ss': _col_total('g12_ss'),
+        'upper_sec': _col_total('upper_sec'),
+        'grand_total': _col_total('grand_total'),
+    }
+
+    # Shaded cells logic based on official MoEYS standard
+    def _is_shaded(cat, age, is_rep=False):
+        if cat == 'g7':
+            if is_rep and age <= 12: return True
+            return age >= 16 or age < 12
+        elif cat == 'g8':
+            if is_rep and age <= 13: return True
+            return age < 13 or age >= 17
+        elif cat == 'g9':
+            if is_rep and age <= 14: return True
+            return age < 14 or age >= 18
+        elif cat == 'g10':
+            if is_rep and age <= 15: return True
+            return age < 15 or age >= 19
+        elif cat in ['g11_sc', 'g11_ss']:
+            if is_rep and age <= 16: return True
+            return age < 16 or age > 20
+        elif cat in ['g12_sc', 'g12_ss']:
+            if is_rep and age <= 17: return True
+            return age < 17 or age > 20
+        return False
+
+    return {
+        'ref_year': ref_year,
+        'calc_method': calc_method,
+        'status_filter': status_filter,
+        'raw_counts': raw_counts,
+        'column_totals': column_totals,
+        'lower_sec_ages': lower_sec_ages,
+        'upper_sec_ages': upper_sec_ages,
+        'master_ages': master_ages,
+        'is_shaded_func': _is_shaded,
+        'total_students_count': total_students_count,
+        'total_female_count': total_female_count,
+        'total_repeaters_count': total_repeaters_count,
+        'total_new_count': total_new_count,
+        'female_percent': round((total_female_count / total_students_count * 100), 1) if total_students_count > 0 else 0.0,
+    }
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def student_age_grade_statistics(request):
+    """
+    View to display the MoEYS Educational Statistics Matrix: Students by Age and Grade Level.
+    Provides Master View, Lower Secondary View (Image 1), Upper Secondary Part 1 (Image 2),
+    and Upper Secondary Part 2 (Image 3).
+    """
+    from apps.academics.models import AcademicYear
+    from apps.accounts.models import SchoolProfile
+
+    # 1. Resolve Academic Year
+    all_years = AcademicYear.objects.all().order_by('-start_date')
+    selected_year_id = request.GET.get('academic_year', '').strip()
+    active_year = None
+    if selected_year_id and selected_year_id.isdigit():
+        active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
+    if not active_year:
+        active_year = AcademicYear.objects.filter(is_current=True).first() or all_years.first()
+
+    calc_method = request.GET.get('calc_method', 'calendar').strip()
+    if calc_method not in ['calendar', 'exact']:
+        calc_method = 'calendar'
+
+    status_filter = request.GET.get('status', 'ACTIVE').strip()
+    custom_ref_year = request.GET.get('ref_year', '').strip()
+
+    # 2. Run calculation engine
+    data = _calculate_age_grade_matrix(
+        academic_year=active_year,
+        calc_method=calc_method,
+        status_filter=status_filter,
+        custom_ref_year=custom_ref_year
+    )
+
+    raw_counts = data['raw_counts']
+    column_totals = data['column_totals']
+    is_shaded = data['is_shaded_func']
+
+    def _build_row_dict(age, cats):
+        row = {
+            'age': age,
+            'label_kh': f"{_to_khmer_num(age)} ឆ្នាំ",
+            'cats': {}
+        }
+        for cat in cats:
+            vals = raw_counts[cat][age]
+            row['cats'][cat] = {
+                'new_total': vals['new_total'],
+                'new_female': vals['new_female'],
+                'rep_total': vals['rep_total'],
+                'rep_female': vals['rep_female'],
+                'is_shaded_new': is_shaded(cat, age, False),
+                'is_shaded_rep': is_shaded(cat, age, True),
+            }
+        return row
+
+    # Build rows for Lower Secondary (Image 1): g7, g8, g9, lower_sec
+    lower_sec_cats = ['g7', 'g8', 'g9', 'lower_sec']
+    lower_sec_rows = [_build_row_dict(a, lower_sec_cats) for a in data['lower_sec_ages']]
+
+    # Build rows for Upper Secondary Part 1 (Image 2): g10, g11_sc, g11_ss
+    upper_sec_p1_cats = ['g10', 'g11_sc', 'g11_ss']
+    upper_sec_p1_rows = [_build_row_dict(a, upper_sec_p1_cats) for a in data['upper_sec_ages']]
+
+    # Build rows for Upper Secondary Part 2 (Image 3): g12_sc, g12_ss, upper_sec
+    upper_sec_p2_cats = ['g12_sc', 'g12_ss', 'upper_sec']
+    upper_sec_p2_rows = [_build_row_dict(a, upper_sec_p2_cats) for a in data['upper_sec_ages']]
+
+    # Build rows for Master Table: all categories
+    all_cats = ['g7', 'g8', 'g9', 'lower_sec', 'g10', 'g11_sc', 'g11_ss', 'g12_sc', 'g12_ss', 'upper_sec', 'grand_total']
+    master_rows = [_build_row_dict(a, all_cats) for a in data['master_ages']]
+
+    # KPI counts for summary cards
+    lower_sec_total = column_totals['lower_sec']['all_total']
+    lower_sec_female = column_totals['lower_sec']['all_female']
+    upper_sec_total = column_totals['upper_sec']['all_total']
+    upper_sec_female = column_totals['upper_sec']['all_female']
+
+    school_info = SchoolProfile.get_settings()
+
+    context = {
+        'all_years': all_years,
+        'active_year': active_year,
+        'selected_year_id': str(active_year.id) if active_year else '',
+        'ref_year': data['ref_year'],
+        'calc_method': calc_method,
+        'status_filter': status_filter,
+        'total_students_count': data['total_students_count'],
+        'total_female_count': data['total_female_count'],
+        'total_repeaters_count': data['total_repeaters_count'],
+        'total_new_count': data['total_new_count'],
+        'female_percent': data['female_percent'],
+        'lower_sec_total': lower_sec_total,
+        'lower_sec_female': lower_sec_female,
+        'upper_sec_total': upper_sec_total,
+        'upper_sec_female': upper_sec_female,
+        'column_totals': column_totals,
+        'lower_sec_rows': lower_sec_rows,
+        'upper_sec_p1_rows': upper_sec_p1_rows,
+        'upper_sec_p2_rows': upper_sec_p2_rows,
+        'master_rows': master_rows,
+        'master_cats': all_cats,
+        'lower_sec_cats': lower_sec_cats,
+        'upper_sec_p1_cats': upper_sec_p1_cats,
+        'upper_sec_p2_cats': upper_sec_p2_cats,
+        'school_info': school_info,
+    }
+    return render(request, 'students/student_age_grade_statistics.html', context)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def export_student_age_grade_excel(request):
+    """
+    Exports full MoEYS Age-Grade Statistics in multi-sheet Excel format (.xlsx)
+    Includes 4 sheets:
+      1. Master School Matrix
+      2. Lower Secondary (Image 1 replica)
+      3. Upper Secondary Part 1 (Image 2 replica)
+      4. Upper Secondary Part 2 & Total (Image 3 replica)
+    """
+    import io
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from apps.academics.models import AcademicYear
+    from apps.accounts.models import SchoolProfile
+
+    selected_year_id = request.GET.get('academic_year', '').strip()
+    active_year = None
+    if selected_year_id and selected_year_id.isdigit():
+        active_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
+    if not active_year:
+        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    calc_method = request.GET.get('calc_method', 'calendar').strip()
+    status_filter = request.GET.get('status', 'ACTIVE').strip()
+    custom_ref_year = request.GET.get('ref_year', '').strip()
+
+    data = _calculate_age_grade_matrix(
+        academic_year=active_year,
+        calc_method=calc_method,
+        status_filter=status_filter,
+        custom_ref_year=custom_ref_year
+    )
+
+    raw_counts = data['raw_counts']
+    column_totals = data['column_totals']
+    is_shaded = data['is_shaded_func']
+    ref_year = data['ref_year']
+    year_title = active_year.name if active_year else str(ref_year)
+
+    school_info = SchoolProfile.get_settings()
+    school_name = getattr(school_info, 'name_kh', 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត') or 'វិទ្យាល័យ'
+
+    wb = openpyxl.Workbook()
+
+    thin_border = Border(
+        left=Side(style='thin', color='94A3B8'),
+        right=Side(style='thin', color='94A3B8'),
+        top=Side(style='thin', color='94A3B8'),
+        bottom=Side(style='thin', color='94A3B8')
+    )
+    header_font_title = Font(name='Khmer OS Battambang', size=11, bold=True, color='0F172A')
+    header_fill_blue = PatternFill(start_color='1E40AF', end_color='1E40AF', fill_type='solid')
+    header_font_white = Font(name='Khmer OS Battambang', size=10, bold=True, color='FFFFFF')
+    sub_fill = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+    sub_font = Font(name='Khmer OS Battambang', size=9, bold=True, color='1E293B')
+    age_font_red = Font(name='Khmer OS Battambang', size=10, bold=True, color='DC2626')
+    shaded_fill = PatternFill(start_color='CBD5E1', end_color='CBD5E1', fill_type='solid')
+    total_fill = PatternFill(start_color='FEF08A', end_color='FEF08A', fill_type='solid')
+    total_font = Font(name='Khmer OS Battambang', size=10, bold=True, color='991B1B')
+    data_font = Font(name='Khmer OS Battambang', size=10)
+
+    def _write_official_header(ws, title_text, col_end_letter):
+        ws.merge_cells(f'A1:{col_end_letter}1')
+        ws['A1'] = "ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ"
+        ws['A1'].font = Font(name='Khmer OS Muol Light', size=12, bold=True, color='0F172A')
+        ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+        ws.merge_cells(f'A2:{col_end_letter}2')
+        ws['A2'] = f"ក្រសួងអប់រំ យុវជន និងកីឡា | {school_name}"
+        ws['A2'].font = Font(name='Khmer OS Battambang', size=11, bold=True, color='1E40AF')
+        ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+        ws.merge_cells(f'A3:{col_end_letter}3')
+        ws['A3'] = f"{title_text} - ឆ្នាំសិក្សា {year_title}"
+        ws['A3'].font = Font(name='Khmer OS Battambang', size=11, bold=True, color='DC2626')
+        ws['A3'].alignment = Alignment(horizontal='center', vertical='center')
+
+    def _build_sheet(ws, sheet_title, grade_groups, age_list):
+        # grade_groups: list of dicts: {'key': 'g7', 'name': 'ថ្នាក់ទី ៧'}
+        num_groups = len(grade_groups)
+        total_cols = 1 + num_groups * 4
+        col_end_letter = openpyxl.utils.get_column_letter(total_cols)
+
+        _write_official_header(ws, sheet_title, col_end_letter)
+
+        # Row 5: Group Headers (e.g. ថ្នាក់ទី ៧, ថ្នាក់ទី ៨...)
+        # Row 6: Sub-headers 1 (សិស្សថ្មី, ត្រួត)
+        # Row 7: Sub-headers 2 (សរុប, ស្រី)
+        ws.cell(row=5, column=1, value="អាយុ").font = header_font_white
+        ws.cell(row=5, column=1).fill = header_fill_blue
+        ws.cell(row=5, column=1).alignment = Alignment(horizontal='center', vertical='center')
+        ws.merge_cells('A5:A7')
+        ws['A5'].border = thin_border
+
+        curr_col = 2
+        for grp in grade_groups:
+            # Top group cell
+            c1_let = openpyxl.utils.get_column_letter(curr_col)
+            c2_let = openpyxl.utils.get_column_letter(curr_col + 3)
+            ws.merge_cells(f'{c1_let}5:{c2_let}5')
+            top_cell = ws.cell(row=5, column=curr_col, value=grp['name'])
+            top_cell.font = header_font_white
+            top_cell.fill = header_fill_blue
+            top_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+            # Row 6: 'សិស្សថ្មី' (2 cols), 'ត្រួត' (2 cols)
+            c_new_let1 = openpyxl.utils.get_column_letter(curr_col)
+            c_new_let2 = openpyxl.utils.get_column_letter(curr_col + 1)
+            ws.merge_cells(f'{c_new_let1}6:{c_new_let2}6')
+            cell_new = ws.cell(row=6, column=curr_col, value="សិស្សថ្មី")
+            cell_new.font = sub_font
+            cell_new.fill = sub_fill
+            cell_new.alignment = Alignment(horizontal='center', vertical='center')
+
+            c_rep_let1 = openpyxl.utils.get_column_letter(curr_col + 2)
+            c_rep_let2 = openpyxl.utils.get_column_letter(curr_col + 3)
+            ws.merge_cells(f'{c_rep_let1}6:{c_rep_let2}6')
+            cell_rep = ws.cell(row=6, column=curr_col + 2, value="ត្រួត")
+            cell_rep.font = sub_font
+            cell_rep.fill = sub_fill
+            cell_rep.alignment = Alignment(horizontal='center', vertical='center')
+
+            # Row 7: 'សរុប', 'ស្រី', 'សរុប', 'ស្រី'
+            for idx, label in enumerate(["សរុប", "ស្រី", "សរុប", "ស្រី"]):
+                c_lbl = ws.cell(row=7, column=curr_col + idx, value=label)
+                c_lbl.font = sub_font
+                c_lbl.fill = sub_fill
+                c_lbl.alignment = Alignment(horizontal='center', vertical='center')
+
+            curr_col += 4
+
+        # Apply borders to header rows 5, 6, 7
+        for r in range(5, 8):
+            for c in range(1, total_cols + 1):
+                ws.cell(row=r, column=c).border = thin_border
+
+        # Data rows (Ages)
+        curr_row = 8
+        for age in age_list:
+            age_label = f"{_to_khmer_num(age)} ឆ្នាំ"
+            c_age = ws.cell(row=curr_row, column=1, value=age_label)
+            c_age.font = age_font_red
+            c_age.alignment = Alignment(horizontal='center', vertical='center')
+            c_age.border = thin_border
+
+            col_idx = 2
+            for grp in grade_groups:
+                cat = grp['key']
+                counts = raw_counts[cat][age]
+                vals = [counts['new_total'], counts['new_female'], counts['rep_total'], counts['rep_female']]
+
+                is_sh_new = is_shaded(cat, age, False)
+                is_sh_rep = is_shaded(cat, age, True)
+
+                for sub_idx, val in enumerate(vals):
+                    c_data = ws.cell(row=curr_row, column=col_idx + sub_idx)
+                    val_to_show = val if val > 0 else ""
+                    sh = is_sh_new if sub_idx < 2 else is_sh_rep
+                    if sh and val == 0:
+                        c_data.fill = shaded_fill
+                    c_data.value = val_to_show
+                    c_data.font = data_font
+                    c_data.alignment = Alignment(horizontal='center', vertical='center')
+                    c_data.border = thin_border
+
+                col_idx += 4
+            curr_row += 1
+
+        # Total Row
+        ws.cell(row=curr_row, column=1, value="សរុប").font = total_font
+        ws.cell(row=curr_row, column=1).fill = total_fill
+        ws.cell(row=curr_row, column=1).alignment = Alignment(horizontal='center', vertical='center')
+        ws.cell(row=curr_row, column=1).border = thin_border
+
+        col_idx = 2
+        for grp in grade_groups:
+            cat = grp['key']
+            tot = column_totals[cat]
+            t_vals = [tot['new_total'], tot['new_female'], tot['rep_total'], tot['rep_female']]
+            for sub_idx, tval in enumerate(t_vals):
+                c_tot = ws.cell(row=curr_row, column=col_idx + sub_idx, value=tval)
+                c_tot.font = total_font
+                c_tot.fill = total_fill
+                c_tot.alignment = Alignment(horizontal='center', vertical='center')
+                c_tot.border = thin_border
+            col_idx += 4
+
+        # Set column widths
+        ws.column_dimensions['A'].width = 14
+        for c in range(2, total_cols + 1):
+            c_let = openpyxl.utils.get_column_letter(c)
+            ws.column_dimensions[c_let].width = 9
+
+    # Sheet 1: Master
+    ws_master = wb.active
+    ws_master.title = "តារាងរួមទូទាំងសាលា"
+    master_groups = [
+        {'key': 'g7', 'name': 'ថ្នាក់ទី ៧'},
+        {'key': 'g8', 'name': 'ថ្នាក់ទី ៨'},
+        {'key': 'g9', 'name': 'ថ្នាក់ទី ៩'},
+        {'key': 'lower_sec', 'name': 'សរុបអនុវិទ្យាល័យ'},
+        {'key': 'g10', 'name': 'ថ្នាក់ទី ១០'},
+        {'key': 'g11_sc', 'name': '១១ SC'},
+        {'key': 'g11_ss', 'name': '១១ SS'},
+        {'key': 'g12_sc', 'name': '១២ SC'},
+        {'key': 'g12_ss', 'name': '១២ SS'},
+        {'key': 'upper_sec', 'name': 'សិស្សទុតិយភូមិ'},
+        {'key': 'grand_total', 'name': 'សរុបរួមសាលា'},
+    ]
+    _build_sheet(ws_master, "តារាងស្ថិតិសិស្សតាមអាយុ និងកម្រិតថ្នាក់ (ទូទាំងសាលា)", master_groups, data['master_ages'])
+
+    # Sheet 2: Lower Secondary (Image 1 replica)
+    ws_low = wb.create_sheet(title="អនុវិទ្យាល័យ (ទី៧-៩)")
+    low_groups = [
+        {'key': 'g7', 'name': 'ថ្នាក់ទី ៧'},
+        {'key': 'g8', 'name': 'ថ្នាក់ទី ៨'},
+        {'key': 'g9', 'name': 'ថ្នាក់ទី ៩'},
+        {'key': 'lower_sec', 'name': 'សរុបអនុវិទ្យាល័យ'},
+    ]
+    _build_sheet(ws_low, "ស្ថិតិសិស្សតាមអាយុ និងកម្រិតថ្នាក់ - កម្រិតអនុវិទ្យាល័យ", low_groups, data['lower_sec_ages'])
+
+    # Sheet 3: Upper Secondary Part 1 (Image 2 replica)
+    ws_up1 = wb.create_sheet(title="វិទ្យាល័យ (ទី១០-១១)")
+    up1_groups = [
+        {'key': 'g10', 'name': 'ថ្នាក់ទី ១០'},
+        {'key': 'g11_sc', 'name': '១១ SC'},
+        {'key': 'g11_ss', 'name': '១១ SS'},
+    ]
+    _build_sheet(ws_up1, "ស្ថិតិសិស្សតាមអាយុ និងកម្រិតថ្នាក់ - កម្រិតវិទ្យាល័យ ទី១០ និង ទី១១", up1_groups, data['upper_sec_ages'])
+
+    # Sheet 4: Upper Secondary Part 2 (Image 3 replica)
+    ws_up2 = wb.create_sheet(title="វិទ្យាល័យ (ទី១២-ទុតិយភូមិ)")
+    up2_groups = [
+        {'key': 'g12_sc', 'name': '១២ SC'},
+        {'key': 'g12_ss', 'name': '១២ SS'},
+        {'key': 'upper_sec', 'name': 'សិស្សទុតិយភូមិ'},
+    ]
+    _build_sheet(ws_up2, "ស្ថិតិសិស្សតាមអាយុ និងកម្រិតថ្នាក់ - ថ្នាក់ទី១២ និង សរុបទុតិយភូមិ", up2_groups, data['upper_sec_ages'])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    clean_yr = str(year_title).replace('/', '-').replace(' ', '_')
+    response['Content-Disposition'] = f'attachment; filename="moeys_student_age_grade_stats_{clean_yr}.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def api_student_age_grade_drilldown(request):
+    """
+    AJAX endpoint that returns the list of students matching a clicked matrix cell.
+    Parameters:
+      year_id: Academic year ID
+      cat: 'g7', 'g8', 'g9', 'lower_sec', 'g10', 'g11_sc', 'g11_ss', 'g12_sc', 'g12_ss', 'upper_sec', 'grand_total'
+      age: int (e.g. 12) or 'total'
+      col_type: 'new_total', 'new_female', 'rep_total', 'rep_female', 'all'
+      calc_method: 'calendar' or 'exact'
+    """
+    from apps.students.models import Student
+    from apps.academics.models import AcademicYear
+    from datetime import date
+    import re
+
+    year_id = request.GET.get('year_id')
+    cat = request.GET.get('cat', 'grand_total').strip()
+    age_str = request.GET.get('age', '').strip()
+    col_type = request.GET.get('col_type', 'all').strip()
+    calc_method = request.GET.get('calc_method', 'calendar').strip()
+
+    academic_year = None
+    if year_id and year_id.isdigit():
+        academic_year = AcademicYear.objects.filter(id=int(year_id)).first()
+    if not academic_year:
+        academic_year = AcademicYear.objects.filter(is_current=True).first()
+
+    ref_year = None
+    if academic_year and academic_year.start_date:
+        ref_year = academic_year.start_date.year
+    elif academic_year and academic_year.name:
+        m = re.search(r'(\d{4})', academic_year.name)
+        if m: ref_year = int(m.group(1))
+    if not ref_year:
+        ref_year = date.today().year
+
+    ref_date = date(ref_year, 10, 31)
+
+    qs = Student.objects.select_related('classroom', 'academic_year')
+    if academic_year:
+        qs = qs.filter(Q(academic_year=academic_year) | Q(classroom__academic_year=academic_year))
+    qs = qs.filter(status='ACTIVE')
+
+    # Filter by category
+    if cat == 'g7':
+        qs = qs.filter(classroom__grade_level=7)
+    elif cat == 'g8':
+        qs = qs.filter(classroom__grade_level=8)
+    elif cat == 'g9':
+        qs = qs.filter(classroom__grade_level=9)
+    elif cat == 'lower_sec':
+        qs = qs.filter(classroom__grade_level__in=[7, 8, 9])
+    elif cat == 'g10':
+        qs = qs.filter(classroom__grade_level=10)
+    elif cat == 'g11_sc':
+        qs = qs.filter(classroom__grade_level=11, classroom__track='SCIENCE')
+    elif cat == 'g11_ss':
+        qs = qs.filter(classroom__grade_level=11).exclude(classroom__track='SCIENCE')
+    elif cat == 'g12_sc':
+        qs = qs.filter(classroom__grade_level=12, classroom__track='SCIENCE')
+    elif cat == 'g12_ss':
+        qs = qs.filter(classroom__grade_level=12).exclude(classroom__track='SCIENCE')
+    elif cat == 'upper_sec':
+        qs = qs.filter(classroom__grade_level__in=[10, 11, 12])
+
+    # Filter by repeater and gender
+    if col_type == 'new_total':
+        qs = qs.filter(is_repeating_grade=False)
+    elif col_type == 'new_female':
+        qs = qs.filter(is_repeating_grade=False, gender='F')
+    elif col_type == 'rep_total':
+        qs = qs.filter(is_repeating_grade=True)
+    elif col_type == 'rep_female':
+        qs = qs.filter(is_repeating_grade=True, gender='F')
+    elif col_type == 'female':
+        qs = qs.filter(gender='F')
+
+    # Filter by age
+    matched_students = []
+    target_age = int(age_str) if age_str.isdigit() else None
+
+    cat_names_kh = {
+        'g7': 'ថ្នាក់ទី ៧',
+        'g8': 'ថ្នាក់ទី ៨',
+        'g9': 'ថ្នាក់ទី ៩',
+        'lower_sec': 'សរុបអនុវិទ្យាល័យ (៧-៩)',
+        'g10': 'ថ្នាក់ទី ១០',
+        'g11_sc': 'ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ (១១ SC)',
+        'g11_ss': 'ថ្នាក់ទី ១១ សង្គម (១១ SS)',
+        'g12_sc': 'ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ (១២ SC)',
+        'g12_ss': 'ថ្នាក់ទី ១២ សង្គម (១២ SS)',
+        'upper_sec': 'សរុបទុតិយភូមិ (១០-១២)',
+        'grand_total': 'សរុបរួមទូទាំងសាលា',
+    }
+    type_names_kh = {
+        'new_total': 'សិស្សថ្មី (សរុប)',
+        'new_female': 'សិស្សថ្មី (ស្រី)',
+        'rep_total': 'សិស្សត្រួតថ្នាក់ (សរុប)',
+        'rep_female': 'សិស្សត្រួតថ្នាក់ (ស្រី)',
+        'all': 'សិស្សទាំងអស់',
+    }
+
+    for s in qs:
+        if not s.date_of_birth:
+            continue
+        if calc_method == 'exact':
+            dob = s.date_of_birth
+            s_age = ref_date.year - dob.year - ((ref_date.month, ref_date.day) < (dob.month, dob.day))
+        else:
+            s_age = ref_year - s.date_of_birth.year
+
+        if target_age is not None and s_age != target_age:
+            continue
+
+        matched_students.append({
+            'id': s.id,
+            'student_id': s.student_id or '',
+            'khmer_name': s.khmer_name,
+            'latin_name': s.latin_name or '',
+            'gender': 'ស្រី' if s.gender == 'F' else 'ប្រុស',
+            'gender_code': s.gender,
+            'date_of_birth': s.date_of_birth.strftime('%d/%m/%Y') if s.date_of_birth else '',
+            'age': s_age,
+            'classroom': s.classroom.name if s.classroom else '',
+            'is_repeater': s.is_repeating_grade,
+            'photo_url': s.photo.url if s.photo else None,
+        })
+
+    title = f"{cat_names_kh.get(cat, cat)}"
+    if target_age is not None:
+        title += f" • អាយុ {_to_khmer_num(target_age)} ឆ្នាំ"
+    else:
+        title += f" • គ្រប់អាយុ (សរុប)"
+    title += f" • {type_names_kh.get(col_type, col_type)}"
+
+    return JsonResponse({
+        'status': 'success',
+        'count': len(matched_students),
+        'title': title,
+        'students': matched_students,
+    })
+
+
+
 
