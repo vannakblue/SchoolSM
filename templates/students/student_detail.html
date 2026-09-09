@@ -64,6 +64,15 @@
                     <p class="text-muted mb-2">{{ student.latin_name }}</p>
                     <div class="d-flex justify-content-center gap-1 flex-wrap mb-2">
                         <span class="badge bg-primary px-3 py-2 rounded-pill">{{ student.get_status_display }}</span>
+                        {% if student.is_repeating_grade %}
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">
+                            <i class="fa-solid fa-repeat me-1"></i> សិស្សត្រួតថ្នាក់
+                        </span>
+                        {% else %}
+                        <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">
+                            <i class="fa-solid fa-user-plus me-1"></i> សិស្សថ្មី
+                        </span>
+                        {% endif %}
                         {% if student.is_exam_suspended %}
                         <span class="badge bg-danger px-3 py-2 rounded-pill" title="{{ student.exam_suspension_notes }}">
                             <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡង
@@ -77,6 +86,14 @@
                         <div class="mb-2"><strong>ថ្ងៃកំណើត៖</strong> {{ student.date_of_birth|date:"d/m/Y" }}</div>
                         <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ student.phone|default:"-" }}</div>
                         <div class="mb-2"><strong>កម្រៃសិក្សា៖</strong> {{ student.get_scholarship_type_display }}</div>
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <div><strong>ប្រភេទសិស្ស៖</strong> {% if student.is_repeating_grade %}<span class="badge bg-warning text-dark">ត្រួតថ្នាក់ (Repeater)</span>{% else %}<span class="badge bg-success-subtle text-success">សិស្សថ្មី (New)</span>{% endif %}</div>
+                            {% if request.user.role == 'ADMIN' %}
+                            <button type="button" class="btn btn-sm {% if student.is_repeating_grade %}btn-outline-secondary{% else %}btn-warning text-dark fw-bold{% endif %} py-0 px-2 shadow-xs" onclick="toggleStudentDetailRepeater()">
+                                {% if student.is_repeating_grade %}<i class="fa-solid fa-user-check me-1"></i>ប្តូរជាថ្មី{% else %}<i class="fa-solid fa-repeat me-1"></i>ដាក់ត្រួតថ្នាក់{% endif %}
+                            </button>
+                            {% endif %}
+                        </div>
                         <div>
                             <strong>សិទ្ធិប្រឡង៖</strong> 
                             {% if student.is_exam_suspended %}
@@ -325,4 +342,32 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+    function toggleStudentDetailRepeater() {
+        if (!confirm('តើអ្នកពិតជាចង់ប្តូរស្ថានភាពសិស្សនេះ (ត្រួតថ្នាក់ ⮂ សិស្សថ្មី) មែនទេ?')) return;
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch(`/students/api/set-repeater-status/{{ student.id }}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                window.location.reload();
+            } else {
+                alert(res.message || 'មានបញ្ហាក្នុងការកែប្រែស្ថានភាពសិស្ស');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('ការតភ្ជាប់មានបញ្ហា');
+        });
+    }
+</script>
+{% endblock %}
 {% endblock %}

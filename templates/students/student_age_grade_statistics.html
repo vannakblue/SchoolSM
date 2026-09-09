@@ -200,6 +200,11 @@
             <a href="{% url 'student_list' %}" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅបញ្ជីសិស្ស
             </a>
+            {% if request.user.role == 'ADMIN' %}
+            <button type="button" class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#manageRepeatersModal" onclick="openRepeaterManagerModal()">
+                <i class="fa-solid fa-user-gear me-1"></i> កំណត់សិស្សត្រួតថ្នាក់ (Manage Repeaters)
+            </button>
+            {% endif %}
             <a href="{% url 'moeys_individual_student_roster' %}?academic_year={{ active_year.id }}" class="btn btn-warning fw-semibold text-dark shadow-sm">
                 <i class="fa-solid fa-file-invoice me-1 text-dark"></i> សម្រង់ MoEYS (៣៥ ជួរឈរ)
             </a>
@@ -798,6 +803,13 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
+                <div id="drilldownNotice" class="alert alert-warning py-2 px-3 mb-0 small border-0 border-bottom rounded-0 d-none d-flex align-items-center justify-content-between">
+                    <div>
+                        <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>
+                        <strong>មានការកែប្រែស្ថានភាពសិស្សត្រួតថ្នាក់៖</strong> នៅពេលបិទផ្ទាំងនេះ តារាងស្ថិតិនឹងត្រូវ Refresh ដោយស្វ័យប្រវត្តិដើម្បីឆ្លុះបញ្ចាំងតួលេខថ្មី។
+                    </div>
+                    <button type="button" class="btn btn-warning btn-sm py-0 px-2 fw-bold" onclick="window.location.reload()">Refresh ឥឡូវ</button>
+                </div>
                 <div id="drilldownLoading" class="p-5 text-center">
                     <div class="spinner-border text-primary mb-3" role="status"></div>
                     <p class="text-muted">កំពុងស្រង់ទិន្នន័យសិស្សពីប្រព័ន្ធ...</p>
@@ -824,7 +836,7 @@
                                     <th style="width: 110px;" class="text-center">ថ្ងៃខែឆ្នាំកំណើត</th>
                                     <th style="width: 170px;" class="text-center">អាយុ (ពិត / តារាង)</th>
                                     <th style="width: 110px;">ថ្នាក់រៀន</th>
-                                    <th style="width: 90px;" class="text-center">ស្ថានភាព</th>
+                                    <th style="width: 140px;" class="text-center">ស្ថានភាព (ត្រួតថ្នាក់)</th>
                                 </tr>
                             </thead>
                             <tbody id="drilldownTableBody">
@@ -845,13 +857,155 @@
     </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- MODAL: DEDICATED REPEATER STUDENT MANAGEMENT (ADMIN ONLY)     -->
+<!-- ============================================================ -->
+{% if request.user.role == 'ADMIN' %}
+<div class="modal fade" id="manageRepeatersModal" tabindex="-1" aria-labelledby="manageRepeatersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white py-3">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="manageRepeatersModalLabel">
+                        <i class="fa-solid fa-user-gear me-2"></i>កំណត់ និងគ្រប់គ្រងសិស្សត្រួតថ្នាក់ (Manage Repeating Students)
+                    </h5>
+                    <small class="text-white-50">ជ្រើសរើសសិស្សដើម្បីកំណត់ជា «សិស្សត្រួតថ្នាក់» ឬ «សិស្សថ្មី» សម្រាប់ឆ្លុះបញ្ចាំងក្នុងតារាងស្ថិតិ MoEYS</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Filters & Control Bar -->
+                <div class="p-3 bg-light border-bottom">
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small fw-bold text-muted mb-1">កម្រិតថ្នាក់ (Grade Level)</label>
+                            <select id="mgrGradeLevel" class="form-select form-select-sm" onchange="onMgrGradeChanged()">
+                                <option value="ALL">គ្រប់កម្រិត (៧ ដល់ ១២)</option>
+                                <option value="7">ថ្នាក់ទី ៧</option>
+                                <option value="8">ថ្នាក់ទី ៨</option>
+                                <option value="9">ថ្នាក់ទី ៩</option>
+                                <option value="10">ថ្នាក់ទី ១០</option>
+                                <option value="11">ថ្នាក់ទី ១១</option>
+                                <option value="12">ថ្នាក់ទី ១២</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small fw-bold text-muted mb-1">បន្ទប់ថ្នាក់រៀន (Classroom)</label>
+                            <select id="mgrClassroom" class="form-select form-select-sm" onchange="fetchManagerStudents()">
+                                <option value="ALL">គ្រប់បន្ទប់ថ្នាក់</option>
+                                {% for c in all_classrooms %}
+                                <option value="{{ c.id }}" data-grade="{{ c.grade_level }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small fw-bold text-muted mb-1">ស្ថានភាពបច្ចុប្បន្ន (Status)</label>
+                            <select id="mgrStatusFilter" class="form-select form-select-sm" onchange="fetchManagerStudents()">
+                                <option value="ALL">សិស្សទាំងអស់</option>
+                                <option value="REPEATER">តែសិស្សត្រួត (Repeaters Only)</option>
+                                <option value="NEW">តែសិស្សថ្មី (New Only)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <label class="form-label small fw-bold text-muted mb-1">ស្វែងរក (Search)</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="fa-solid fa-search text-muted"></i></span>
+                                <input type="text" id="mgrSearchInput" class="form-control" placeholder="ឈ្មោះ ឬអត្តលេខ..." oninput="debounceFetchManagerStudents()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Counter & Batch Actions -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary fs-6" id="mgrKpiTotal">សរុប 0 នាក់</span>
+                            <span class="badge bg-warning text-dark fs-6" id="mgrKpiRepeaters"><i class="fa-solid fa-repeat me-1"></i>សិស្សត្រួត 0 នាក់</span>
+                            <span class="badge bg-danger fs-6" id="mgrKpiFemalesRep"><i class="fa-solid fa-venus me-1"></i>ស្រីត្រួត 0 នាក់</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-warning btn-sm fw-bold text-dark shadow-xs" onclick="executeBatchRepeater(true)">
+                                <i class="fa-solid fa-check-double me-1"></i> កំណត់ជាសិស្សត្រួត (<span id="mgrSelectedCount">0</span> នាក់)
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm fw-bold shadow-xs" onclick="executeBatchRepeater(false)">
+                                <i class="fa-solid fa-user-check me-1"></i> កំណត់ជាសិស្សថ្មីវិញ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manager Students Table -->
+                <div id="mgrLoading" class="p-5 text-center d-none">
+                    <div class="spinner-border text-danger mb-3" role="status"></div>
+                    <p class="text-muted">កំពុងទាញទិន្នន័យសិស្ស...</p>
+                </div>
+                <div class="table-responsive" style="max-height: 460px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="mgrTable">
+                        <thead class="table-light sticky-top">
+                            <tr class="text-muted small">
+                                <th style="width: 40px;" class="text-center">
+                                    <input type="checkbox" class="form-check-input" id="mgrSelectAll" onchange="toggleMgrSelectAll(this)">
+                                </th>
+                                <th style="width: 45px;" class="text-center">ល.រ</th>
+                                <th style="width: 105px;">អត្តលេខ</th>
+                                <th>ឈ្មោះសិស្ស (ខ្មែរ-ឡាតាំង)</th>
+                                <th style="width: 65px;" class="text-center">ភេទ</th>
+                                <th style="width: 90px;" class="text-center">ថ្នាក់រៀន</th>
+                                <th style="width: 80px;" class="text-center">អាយុ</th>
+                                <th style="width: 120px;" class="text-center">ស្ថានភាពបច្ចុប្បន្ន</th>
+                                <th style="width: 130px;" class="text-center">សកម្មភាព (Toggle)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mgrTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="mgrEmpty" class="p-5 text-center d-none">
+                    <i class="fa-solid fa-folder-open fs-1 text-muted mb-2"></i>
+                    <p class="text-muted mb-0">មិនមានទិន្នន័យសិស្សត្រូវនឹងលក្ខខណ្ឌចម្រាញ់នេះទេ</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                <div class="text-muted small">
+                    <i class="fa-solid fa-info-circle text-primary me-1"></i> រាល់ការកំណត់ស្ថានភាពសិស្សត្រួតថ្នាក់ នឹងធ្វើបច្ចុប្បន្នភាពភ្លាមៗក្នុងមូលដ្ឋានទិន្នន័យ និងតារាងស្ថិតិអាយុ MoEYS។
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បិទ</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="window.location.reload()">
+                        <i class="fa-solid fa-rotate me-1"></i> ធ្វើបច្ចុប្បន្នភាពតារាងស្ថិតិ (Refresh Matrix)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
     let drilldownModalInstance = null;
+    let manageRepeatersModalInstance = null;
+    let matrixNeedsRefresh = false;
+    const isAdmin = {% if request.user.role == 'ADMIN' %}true{% else %}false{% endif %};
 
     document.addEventListener('DOMContentLoaded', function() {
         const modalEl = document.getElementById('studentDrilldownModal');
         if (modalEl && typeof bootstrap !== 'undefined') {
             drilldownModalInstance = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (matrixNeedsRefresh) {
+                    window.location.reload();
+                }
+            });
+        }
+
+        const mgrModalEl = document.getElementById('manageRepeatersModal');
+        if (mgrModalEl && typeof bootstrap !== 'undefined') {
+            manageRepeatersModalInstance = new bootstrap.Modal(mgrModalEl);
+            mgrModalEl.addEventListener('hidden.bs.modal', function() {
+                if (matrixNeedsRefresh) {
+                    window.location.reload();
+                }
+            });
         }
     });
 
@@ -900,7 +1054,17 @@
                         }
                         const isFemale = s.gender_code === 'F';
                         const genderBadge = isFemale ? '<span class="badge bg-danger-subtle text-danger">ស្រី</span>' : '<span class="badge bg-primary-subtle text-primary">ប្រុស</span>';
-                        const repBadge = s.is_repeater ? '<span class="badge bg-warning text-dark">ត្រួត</span>' : '<span class="badge bg-success-subtle text-success">ថ្មី</span>';
+
+                        let repBadge = '';
+                        if (isAdmin) {
+                            if (s.is_repeater) {
+                                repBadge = `<button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2 border shadow-xs" id="drill-rep-btn-${s.id}" onclick="quickToggleRepeaterInDrilldown(event, ${s.id})" title="ចុចដើម្បីកំណត់មកជាសិស្សថ្មីវិញ"><i class="fa-solid fa-repeat me-1"></i>ត្រួតថ្នាក់</button>`;
+                            } else {
+                                repBadge = `<button type="button" class="btn btn-sm btn-outline-success fw-bold py-1 px-2 shadow-xs" id="drill-rep-btn-${s.id}" onclick="quickToggleRepeaterInDrilldown(event, ${s.id})" title="ចុចដើម្បីកំណត់ជាសិស្សត្រួតថ្នាក់"><i class="fa-solid fa-user-plus me-1"></i>សិស្សថ្មី</button>`;
+                            }
+                        } else {
+                            repBadge = s.is_repeater ? '<span class="badge bg-warning text-dark">ត្រួត</span>' : '<span class="badge bg-success-subtle text-success">ថ្មី</span>';
+                        }
 
                         let ageHtml = '';
                         if (s.is_clamped) {
@@ -944,12 +1108,257 @@
             });
     }
 
+    function quickToggleRepeaterInDrilldown(event, studentId) {
+        event.stopPropagation();
+        const btn = document.getElementById(`drill-rep-btn-${studentId}`);
+        if (!btn) return;
+
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch(`/students/api/set-repeater-status/${studentId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            if (res.status === 'success') {
+                matrixNeedsRefresh = true;
+                if (res.is_repeater) {
+                    btn.className = 'btn btn-sm btn-warning text-dark fw-bold py-1 px-2 border shadow-xs';
+                    btn.innerHTML = '<i class="fa-solid fa-repeat me-1"></i>ត្រួតថ្នាក់';
+                    btn.title = 'ចុចដើម្បីកំណត់មកជាសិស្សថ្មីវិញ';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline-success fw-bold py-1 px-2 shadow-xs';
+                    btn.innerHTML = '<i class="fa-solid fa-user-plus me-1"></i>សិស្សថ្មី';
+                    btn.title = 'ចុចដើម្បីកំណត់ជាសិស្សត្រួតថ្នាក់';
+                }
+                const notice = document.getElementById('drilldownNotice');
+                if (notice) notice.classList.remove('d-none');
+            } else {
+                btn.innerHTML = origHtml;
+                alert(res.message || 'មានបញ្ហាក្នុងការកែប្រែស្ថានភាពសិស្ស');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            console.error(err);
+            alert('ការតភ្ជាប់មានបញ្ហា សូមព្យាយាមម្តងទៀត');
+        });
+    }
+
     function filterDrilldownTable() {
         const query = document.getElementById('drilldownFilterInput').value.toLowerCase();
         const rows = document.querySelectorAll('#drilldownTableBody tr');
         rows.forEach(r => {
             const text = r.textContent.toLowerCase();
             r.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    // ================================================================
+    // DEDICATED REPEATER MANAGER MODAL FUNCTIONS
+    // ================================================================
+    let debounceTimer = null;
+    let cachedManagerStudents = [];
+
+    function openRepeaterManagerModal() {
+        fetchManagerStudents();
+    }
+
+    function onMgrGradeChanged() {
+        const selectedGrade = document.getElementById('mgrGradeLevel').value;
+        const classSelect = document.getElementById('mgrClassroom');
+        const options = classSelect.querySelectorAll('option');
+
+        options.forEach(opt => {
+            if (opt.value === 'ALL') {
+                opt.style.display = '';
+            } else {
+                const optGrade = opt.getAttribute('data-grade');
+                if (selectedGrade === 'ALL' || optGrade === selectedGrade) {
+                    opt.style.display = '';
+                } else {
+                    opt.style.display = 'none';
+                }
+            }
+        });
+        classSelect.value = 'ALL';
+        fetchManagerStudents();
+    }
+
+    function debounceFetchManagerStudents() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchManagerStudents, 300);
+    }
+
+    function fetchManagerStudents() {
+        const gradeLevel = document.getElementById('mgrGradeLevel') ? document.getElementById('mgrGradeLevel').value : 'ALL';
+        const classroomId = document.getElementById('mgrClassroom') ? document.getElementById('mgrClassroom').value : 'ALL';
+        const statusFilter = document.getElementById('mgrStatusFilter') ? document.getElementById('mgrStatusFilter').value : 'ALL';
+        const query = document.getElementById('mgrSearchInput') ? document.getElementById('mgrSearchInput').value.trim() : '';
+
+        const loading = document.getElementById('mgrLoading');
+        const empty = document.getElementById('mgrEmpty');
+        const tbody = document.getElementById('mgrTableBody');
+
+        if (loading) loading.classList.remove('d-none');
+        if (empty) empty.classList.add('d-none');
+        if (tbody) tbody.innerHTML = '';
+
+        const params = new URLSearchParams({
+            academic_year_id: '{{ active_year.id }}',
+            grade_level: gradeLevel,
+            classroom_id: classroomId,
+            status_filter: statusFilter,
+            q: query,
+            calc_method: '{{ calc_method }}'
+        });
+
+        fetch(`{% url 'api_classroom_repeater_list' %}?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                if (loading) loading.classList.add('d-none');
+                if (data.status === 'success' && data.students && data.students.length > 0) {
+                    cachedManagerStudents = data.students;
+                    document.getElementById('mgrKpiTotal').textContent = `សរុប ${data.count} នាក់`;
+                    document.getElementById('mgrKpiRepeaters').innerHTML = `<i class="fa-solid fa-repeat me-1"></i>សិស្សត្រួត ${data.total_repeaters} នាក់`;
+                    document.getElementById('mgrKpiFemalesRep').innerHTML = `<i class="fa-solid fa-venus me-1"></i>ស្រីត្រួត ${data.total_females_repeater} នាក់`;
+
+                    renderManagerTable(data.students);
+                } else {
+                    cachedManagerStudents = [];
+                    document.getElementById('mgrKpiTotal').textContent = `សរុប 0 នាក់`;
+                    document.getElementById('mgrKpiRepeaters').innerHTML = `<i class="fa-solid fa-repeat me-1"></i>សិស្សត្រួត 0 នាក់`;
+                    document.getElementById('mgrKpiFemalesRep').innerHTML = `<i class="fa-solid fa-venus me-1"></i>ស្រីត្រួត 0 នាក់`;
+                    if (empty) empty.classList.remove('d-none');
+                }
+                updateMgrSelectedCount();
+            })
+            .catch(err => {
+                if (loading) loading.classList.add('d-none');
+                if (empty) empty.classList.remove('d-none');
+                console.error(err);
+            });
+    }
+
+    function renderManagerTable(students) {
+        const tbody = document.getElementById('mgrTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        students.forEach((s, idx) => {
+            const tr = document.createElement('tr');
+            const isFemale = s.gender_code === 'F';
+            const genderBadge = isFemale ? '<span class="badge bg-danger-subtle text-danger">ស្រី</span>' : '<span class="badge bg-primary-subtle text-primary">ប្រុស</span>';
+            const statusBadge = s.is_repeater ? '<span class="badge bg-warning text-dark"><i class="fa-solid fa-repeat me-1"></i>ត្រួតថ្នាក់</span>' : '<span class="badge bg-success-subtle text-success"><i class="fa-solid fa-user-plus me-1"></i>សិស្សថ្មី</span>';
+
+            const toggleBtn = s.is_repeater 
+                ? `<button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="toggleSingleRepeaterInManager(${s.id}, false)"><i class="fa-solid fa-user-check me-1"></i>ប្តូរជាថ្មី</button>`
+                : `<button type="button" class="btn btn-sm btn-warning text-dark fw-bold py-1 px-2" onclick="toggleSingleRepeaterInManager(${s.id}, true)"><i class="fa-solid fa-repeat me-1"></i>ដាក់ត្រួត</button>`;
+
+            tr.innerHTML = `
+                <td class="text-center">
+                    <input type="checkbox" class="form-check-input mgr-row-checkbox" value="${s.id}" onchange="updateMgrSelectedCount()">
+                </td>
+                <td class="text-center text-muted small">${idx + 1}</td>
+                <td><span class="badge bg-light text-dark border font-monospace">${s.student_id || '-'}</span></td>
+                <td>
+                    <div class="fw-semibold text-dark">${s.khmer_name}</div>
+                    <small class="text-muted font-monospace">${s.latin_name || ''}</small>
+                </td>
+                <td class="text-center">${genderBadge}</td>
+                <td class="text-center"><span class="badge bg-info-subtle text-info fw-semibold">${s.classroom}</span></td>
+                <td class="text-center fw-bold text-danger">${s.age} ឆ្នាំ</td>
+                <td class="text-center" id="mgr-status-badge-${s.id}">${statusBadge}</td>
+                <td class="text-center" id="mgr-action-btn-${s.id}">${toggleBtn}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function toggleMgrSelectAll(masterChk) {
+        const checkboxes = document.querySelectorAll('.mgr-row-checkbox');
+        checkboxes.forEach(c => c.checked = masterChk.checked);
+        updateMgrSelectedCount();
+    }
+
+    function updateMgrSelectedCount() {
+        const checked = document.querySelectorAll('.mgr-row-checkbox:checked');
+        const countSpan = document.getElementById('mgrSelectedCount');
+        if (countSpan) countSpan.textContent = checked.length;
+    }
+
+    function toggleSingleRepeaterInManager(studentId, isRepeater) {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        formData.append('is_repeating_grade', isRepeater ? 'true' : 'false');
+
+        fetch(`/students/api/set-repeater-status/${studentId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                matrixNeedsRefresh = true;
+                fetchManagerStudents();
+            } else {
+                alert(res.message || 'មានបញ្ហាក្នុងការកែប្រែ');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('ការតភ្ជាប់មានបញ្ហា');
+        });
+    }
+
+    function executeBatchRepeater(isRepeater) {
+        const checked = document.querySelectorAll('.mgr-row-checkbox:checked');
+        if (checked.length === 0) {
+            alert('សូមជ្រើសរើសសិស្សយ៉ាងហោចណាស់ម្នាក់!');
+            return;
+        }
+
+        const ids = Array.from(checked).map(c => c.value);
+        const confirmMsg = isRepeater 
+            ? `តើលោកអ្នកពិតជាចង់កំណត់សិស្សទាំង ${ids.length} នាក់ជា «សិស្សត្រួតថ្នាក់» មែនទេ?`
+            : `តើលោកអ្នកពិតជាចង់កំណត់សិស្សទាំង ${ids.length} នាក់ជា «សិស្សថ្មី» វិញមែនទេ?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        ids.forEach(id => formData.append('student_ids[]', id));
+        formData.append('is_repeating_grade', isRepeater ? 'true' : 'false');
+
+        fetch(`{% url 'api_batch_set_student_repeater_status' %}`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success') {
+                matrixNeedsRefresh = true;
+                const selectAll = document.getElementById('mgrSelectAll');
+                if (selectAll) selectAll.checked = false;
+                fetchManagerStudents();
+            } else {
+                alert(res.message || 'មានបញ្ហា');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('ការតភ្ជាប់មានបញ្ហា');
         });
     }
 </script>

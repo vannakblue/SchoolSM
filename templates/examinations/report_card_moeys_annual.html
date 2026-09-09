@@ -1,0 +1,577 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ព្រឹត្តិបត្រពិន្ទុប្រចាំឆ្នាំ (គំរូសាលារដ្ឋ) - {% if is_batch %}ថ្នាក់ {{ classroom.name }}{% else %}{{ reports.0.student.khmer_name }} ({{ reports.0.classroom.name }}){% endif %}</title>
+
+    <!-- Google Fonts for Authentic Khmer Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Siemreap', 'Khmer OS Siemreap', 'Kantumruy Pro', Arial, sans-serif;
+            font-size: 8.8pt;
+            color: #000000;
+            margin: 0;
+            padding: 20px 10px;
+            line-height: 1.3;
+        }
+
+        .font-moul {
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', serif;
+        }
+
+        .font-siemreap {
+            font-family: 'Siemreap', 'Khmer OS Siemreap', sans-serif;
+        }
+
+        /* Screen Toolbar */
+        .no-print-toolbar {
+            max-width: 210mm;
+            margin: 0 auto 16px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 10px 18px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Page Container (A4 Portrait format - Exactly 1 Sheet per Student) */
+        .report-card-sheet {
+            width: 210mm;
+            max-width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 25px auto;
+            background: #ffffff;
+            padding: 10mm 12mm 8mm 12mm;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+            position: relative;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Header Layout */
+        .header-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .school-name-box {
+            text-align: left;
+            padding-top: 14px;
+        }
+
+        .school-name-text {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+            font-size: 9.6pt;
+            color: #000000;
+            line-height: 1.4;
+        }
+
+        .kingdom-header-box {
+            text-align: center;
+            padding-right: 15px;
+        }
+
+        .kingdom-motto-main {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+            font-size: 10.8pt;
+            color: #000000;
+            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        .kingdom-motto-sub {
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+            font-size: 9.8pt;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .kingdom-wave-svg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .report-main-title {
+            text-align: center;
+            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+            font-size: 11.5pt;
+            color: #000000;
+            margin-top: 2px;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .student-metadata-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9pt;
+            margin-bottom: 6px;
+            padding: 0 2px;
+            color: #000000;
+            white-space: nowrap;
+        }
+
+        .student-metadata-line strong {
+            font-weight: 700;
+        }
+
+        /* Main Score Table */
+        .report-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.2px solid #000000;
+            font-size: 8.5pt;
+            line-height: 1.2;
+            table-layout: fixed;
+        }
+
+        .report-score-table th,
+        .report-score-table td {
+            border: 1px solid #000000;
+            padding: 3px 2px;
+            vertical-align: middle;
+            text-align: center;
+            color: #000000;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+
+        .report-score-table thead th {
+            font-weight: 700;
+            background-color: #ffffff;
+            font-size: 8.5pt;
+        }
+
+        .report-score-table thead tr:first-child th {
+            padding: 4px 2px;
+        }
+
+        .report-score-table thead tr.sub-header-row th {
+            padding: 3px 2px;
+            font-size: 8pt;
+        }
+
+        /* Column widths */
+        .col-subject {
+            width: 25.5%;
+        }
+        .col-score {
+            width: 8.8%;
+        }
+        .col-rank {
+            width: 7.8%;
+        }
+        .col-teacher {
+            width: 24.5%;
+        }
+
+        .subject-name-cell {
+            text-align: left !important;
+            padding-left: 6px !important;
+            font-size: 8.5pt;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .score-val {
+            font-size: 8.5pt;
+        }
+
+        .rank-red {
+            color: #d90429 !important;
+            font-weight: 700 !important;
+            font-size: 8.5pt;
+        }
+
+        .teacher-name-cell {
+            text-align: right !important;
+            padding-right: 8px !important;
+            font-weight: 700;
+            font-size: 8.2pt;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Summary Section Rows */
+        .summary-label-cell {
+            text-align: left !important;
+            padding-left: 6px !important;
+            font-weight: 700;
+            font-size: 8.1pt;
+            white-space: nowrap;
+        }
+
+        .conduct-val {
+            font-size: 8.2pt;
+        }
+
+        /* Right-side Merged Awards & Results Box */
+        .awards-summary-box {
+            vertical-align: top !important;
+            text-align: left !important;
+            padding: 5px 6px !important;
+            font-size: 8pt;
+            line-height: 1.35;
+        }
+
+        .awards-summary-box .award-item {
+            margin-bottom: 2px;
+            white-space: nowrap;
+        }
+
+        .awards-summary-box .exam-cert-title {
+            margin-top: 6px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .awards-summary-box .exam-cert-status {
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+
+        /* Signatures Section */
+        .signatures-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 10px;
+            padding: 0 10px 4px 10px;
+            font-size: 8.8pt;
+            line-height: 1.35;
+        }
+
+        .sig-box {
+            text-align: center;
+        }
+
+        .sig-box-left {
+            min-width: 190px;
+        }
+
+        .sig-box-right {
+            min-width: 210px;
+        }
+
+        .sig-title-seen {
+            margin-bottom: 2px;
+        }
+
+        .sig-role-title {
+            font-weight: 700;
+        }
+
+        .sig-date-line {
+            margin-bottom: 2px;
+        }
+
+        .sig-space-area {
+            height: 46px;
+        }
+
+        .sig-person-name {
+            font-weight: 700;
+            font-size: 9pt;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            html, body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print-toolbar {
+                display: none !important;
+            }
+            .report-card-sheet {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 297mm !important;
+                min-height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 !important;
+                padding: 8mm 12mm 6mm 12mm !important;
+                border: none !important;
+                box-shadow: none !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                overflow: hidden !important;
+            }
+            .report-card-sheet:last-child {
+                page-break-after: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Screen Toolbar -->
+    <div class="no-print-toolbar">
+        <div class="d-flex align-items-center gap-3">
+            <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
+            </button>
+            <div class="fw-bold text-primary">
+                {% if is_batch %}
+                    <i class="fas fa-print me-1"></i>បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋ៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
+                {% else %}
+                    <i class="fas fa-file-alt me-1"></i>ព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋ៖ {{ reports.0.student.khmer_name }} ({{ reports.0.classroom.name }})
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Format / Model Switcher Toggle -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group btn-group-sm" role="group">
+                <span class="btn btn-primary btn-sm fw-bold">
+                    <i class="fas fa-landmark me-1"></i> គំរូសាលារដ្ឋ (៨ ជួរ)
+                </span>
+                <a href="?model=tr{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-success btn-sm fw-bold" title="ប្តូរទៅទម្រង់សាលារដ្ឋតាម tr.pdf (MoEYS TR)">
+                    <i class="fas fa-file-invoice me-1"></i> គំរូសាលារដ្ឋ (តាម tr.pdf)
+                </a>
+                <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="ប្តូរទៅទម្រង់អន្តរជាតិ/ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
+                    <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
+                </a>
+            </div>
+
+            <button onclick="window.print()" class="btn btn-sm btn-success px-4 fw-bold shadow-xs">
+                <i class="fas fa-print me-1"></i>បោះពុម្ព (Print)
+            </button>
+        </div>
+    </div>
+
+    <!-- Report Card Sheets (One Single A4 Portrait Page per Student) -->
+    {% for r in reports %}
+    <div class="report-card-sheet">
+        <!-- Content Area -->
+        <div class="report-content-top">
+            <!-- Top Row: School Name (Left) & Kingdom Motto (Center/Right) -->
+            <div class="header-top-row">
+                <div class="school-name-box">
+                    <div class="school-name-text">{{ r.school_name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</div>
+                </div>
+                <div class="kingdom-header-box">
+                    <div class="kingdom-motto-main">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="kingdom-motto-sub">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <svg class="kingdom-wave-svg" width="115" height="10" viewBox="0 0 115 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 5C15 1 25 9 35 5C45 1 55 9 65 5C75 1 85 9 95 5C102 2 107 4 110 5" stroke="#000000" stroke-width="1.1" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Main Title -->
+            <div class="report-main-title">{{ r.report_title_kh|default:"ព្រឹត្តិបត្រពិន្ទុប្រចាំឆ្នាំ" }}</div>
+
+            <!-- Student Metadata Line -->
+            <div class="student-metadata-line">
+                <span>សិស្សឈ្មោះ៖ <strong>{{ r.student.khmer_name }}</strong></span>
+                <span>ភេទ <strong>{{ r.student_gender_kh }}</strong></span>
+                <span>ថ្នាក់ទី <strong>{{ r.classroom.clean_code|default:r.classroom.name }}</strong></span>
+                <span>ចំនួនសិស្សសរុប <strong>{{ r.total_students_kh }}</strong> នាក់ ស្រី <strong>{{ r.total_females_kh }}</strong> នាក់</span>
+            </div>
+
+            <!-- Main Report Card Table -->
+            <table class="report-score-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="col-subject">មុខវិជ្ជា</th>
+                        <th colspan="2">ឆមាសទី១</th>
+                        <th colspan="2">ឆមាសទី២</th>
+                        <th colspan="2">ប្រចាំឆ្នាំ</th>
+                        <th rowspan="2" class="col-teacher">មូលវិចារណ៍ និងហត្ថលេខាគ្រូបង្រៀន</th>
+                    </tr>
+                    <tr class="sub-header-row">
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Subject Rows -->
+                    {% for row in r.subjects %}
+                    <tr>
+                        <td class="subject-name-cell">{{ row.name_kh }}</td>
+                        <td class="score-val">{{ row.s1_score }}</td>
+                        <td class="rank-red">{{ row.s1_rank }}</td>
+                        <td class="score-val">{{ row.s2_score }}</td>
+                        <td class="rank-red">{{ row.s2_rank }}</td>
+                        <td class="score-val">{{ row.ann_score }}</td>
+                        <td class="rank-red">{{ row.ann_rank }}</td>
+                        <td class="teacher-name-cell">{{ row.teacher_name }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Summary Row 1: Total Semester Exam Score -->
+                    <tr>
+                        <td class="summary-label-cell">សរុបពិន្ទុប្រឡងឆមាស</td>
+                        <td class="score-val fw-bold">{{ r.s1_exam_total }}</td>
+                        <td></td>
+                        <td class="score-val fw-bold">{{ r.s2_exam_total }}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <!-- Right-side Merged Awards and Results Block (Rowspan 10) -->
+                        <td rowspan="10" class="awards-summary-box">
+                            <div class="award-item">-ប័ណ្ណសរសើរ ចំនួន........................</div>
+                            <div class="award-item">-លិខិតសរសើរ ចំនួន........................</div>
+                            <div class="award-item">-សក្ខីប័ណ្ណលើកទឹកចិត្ត ចំនួន............</div>
+                            <div class="exam-cert-title">លទ្ធផលប្រឡងបញ្ចប់ភូមិសិក្សា(ជាប់.ធ្លាក់)</div>
+                            <div class="exam-cert-status">ត្រូវបាន៖..................................................</div>
+                        </td>
+                    </tr>
+
+                    <!-- Summary Row 2: Exam Score Average -->
+                    <tr>
+                        <td class="summary-label-cell">មធ្យមភាគពិន្ទុប្រឡងឆមាស</td>
+                        <td class="score-val fw-bold">{{ r.s1_exam_avg }}</td>
+                        <td></td>
+                        <td class="score-val fw-bold">{{ r.s2_exam_avg }}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 3: Monthly Score Average -->
+                    <tr>
+                        <td class="summary-label-cell">មធ្យមភាគពិន្ទុខែប្រចាំឆមាស</td>
+                        <td class="score-val fw-bold">{{ r.s1_monthly_avg }}</td>
+                        <td></td>
+                        <td class="score-val fw-bold">{{ r.s2_monthly_avg }}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 4: Overall Semester and Annual Average -->
+                    <tr>
+                        <td class="summary-label-cell">មធ្យមភាគពិន្ទុប្រចាំឆមាស</td>
+                        <td class="score-val fw-bold">{{ r.s1_overall_avg }}</td>
+                        <td class="rank-red">{{ r.s1_overall_rank }}</td>
+                        <td class="score-val fw-bold">{{ r.s2_overall_avg }}</td>
+                        <td class="rank-red">{{ r.s2_overall_rank }}</td>
+                        <td class="score-val fw-bold">{{ r.ann_overall_avg }}</td>
+                        <td class="rank-red">{{ r.ann_overall_rank }}</td>
+                    </tr>
+
+                    <!-- Summary Row 5: Excused Absences -->
+                    <tr>
+                        <td class="summary-label-cell">អវត្តមានមានច្បាប់</td>
+                        <td class="score-val">{{ r.s1_excused|default:"00" }}</td>
+                        <td></td>
+                        <td class="score-val">{{ r.s2_excused|default:"00" }}</td>
+                        <td></td>
+                        <td class="score-val">{{ r.ann_excused|default:"00" }}</td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 6: Unexcused Absences -->
+                    <tr>
+                        <td class="summary-label-cell">អវត្តមានឥតច្បាប់</td>
+                        <td class="score-val">{{ r.s1_unexcused|default:"00" }}</td>
+                        <td></td>
+                        <td class="score-val">{{ r.s2_unexcused|default:"00" }}</td>
+                        <td></td>
+                        <td class="score-val">{{ r.ann_unexcused|default:"00" }}</td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 7: Conduct - Academic Study -->
+                    <tr>
+                        <td class="summary-label-cell">ការសិក្សា</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_study|default:"ល្អ" }}</td>
+                    </tr>
+
+                    <!-- Summary Row 8: Conduct - Living Ethics -->
+                    <tr>
+                        <td class="summary-label-cell">សីលធម៌រស់នៅ</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_living|default:"ល្អ" }}</td>
+                    </tr>
+
+                    <!-- Summary Row 9: Conduct - Technical Labor -->
+                    <tr>
+                        <td class="summary-label-cell">ពលកម្មបច្ចេកទេស</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_labor|default:"ល្អ" }}</td>
+                    </tr>
+
+                    <!-- Summary Row 10: Conduct - Health & Hygiene -->
+                    <tr>
+                        <td class="summary-label-cell">សុខភាព.អនាម័យ</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                        <td class="conduct-val">{{ r.conduct_hygiene|default:"ល្អ" }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer Signatures Section -->
+        <div class="signatures-container">
+            <div class="sig-box sig-box-left">
+                <div class="sig-title-seen">បានឃើញ និងឯកភាព</div>
+                <div class="sig-role-title">{{ r.principal_title|default:"នាយកស្តីទីវិទ្យាល័យ" }}</div>
+                <div class="sig-space-area"></div>
+                <div class="sig-person-name">{{ r.principal_name }}</div>
+            </div>
+            <div class="sig-box sig-box-right">
+                <div class="sig-date-line">ធ្វើនៅថ្ងៃទី......ខែ............ឆ្នាំ{{ r.year_kh|default:"២០២៦" }}</div>
+                <div class="sig-role-title">គ្រូបន្ទុកថ្នាក់</div>
+                <div class="sig-space-area"></div>
+                <div class="sig-person-name">{{ r.homeroom_teacher }}</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>

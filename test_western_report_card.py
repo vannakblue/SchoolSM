@@ -114,19 +114,18 @@ def run_tests():
     resp_direct = client.get(url_direct)
     assert resp_direct.status_code == 200, f"Direct view failed with HTTP {resp_direct.status_code}"
     content_direct = resp_direct.content.decode('utf-8')
-    assert 'ព្រឹត្តិបត្រពិន្ទុប្រចាំឆមាស' in content_direct
-    assert 'WESTERN' in content_direct.upper() or 'HUN SEN' in content_direct.upper()
-    assert 'Page 1 of 2' in content_direct
-    assert 'Page 2 of 2' in content_direct
-    assert 'លទ្ធផលសរុប / Result' in content_direct
-    assert 'Overall Result' in content_direct
-    assert 'Pass - Promoted to Grade' in content_direct
-    assert 'Evaluation of Behavior in Class and School' in content_direct
-    assert 'Class Attendance' in content_direct
-    assert 'Grading Scale' in content_direct
-    assert 'Registrar\' Officer' in content_direct
-    assert 'School Principal' in content_direct
-    print("  ✓ HTTP 200 OK: Complete Western Report Card template rendered with both pages")
+    assert 'ព្រះរាជាណាចក្រកម្ពុជា' in content_direct
+    assert 'ជាតិ សាសនា ព្រះមហាក្សត្រ' in content_direct
+    assert 'ព្រឹត្តិបត្រពិន្ទុប្រចាំឆ្នាំ' in content_direct
+    assert 'វិទ្យាល័យ' in content_direct
+    assert 'សរុបពិន្ទុប្រឡងឆមាស' in content_direct
+    assert 'មធ្យមភាគពិន្ទុប្រឡងឆមាស' in content_direct
+    assert 'មធ្យមភាគពិន្ទុប្រចាំឆមាស' in content_direct
+    assert 'ប័ណ្ណសរសើរ' in content_direct
+    assert 'បានឃើញ និងឯកភាព' in content_direct
+    assert 'គ្រូបន្ទុកថ្នាក់' in content_direct
+    assert 'rank-red' in content_direct
+    print("  ✓ HTTP 200 OK: Complete Official MoEYS Report Card template rendered")
 
     # 4. Test Template Switcher on Standard View (?template=western)
     print("\n[Phase 4] Testing Template Switcher (?template=western)...")
@@ -134,8 +133,8 @@ def run_tests():
     resp_switch = client.get(url_switch)
     assert resp_switch.status_code == 200
     content_switch = resp_switch.content.decode('utf-8')
-    assert 'Western / Bilingual EOY Report Card' in content_switch
-    print("  ✓ HTTP 200 OK: Standard report-card URL properly routed to Western template with ?template=western")
+    assert 'ព្រឹត្តិបត្រពិន្ទុ' in content_switch
+    print("  ✓ HTTP 200 OK: Standard report-card URL properly routed to MoEYS template with ?template=western")
 
     # 5. Test Default Term Fallback URL (/examinations/report-card/<id>/western/)
     print("\n[Phase 5] Testing Default Term Western URL...")
@@ -150,31 +149,20 @@ def run_tests():
     resp_batch = client.get(url_batch)
     assert resp_batch.status_code == 200
     content_batch = resp_batch.content.decode('utf-8')
-    assert 'ថ្នាក់៖ 4B' in content_batch
-    assert 'Page 1 of 2' in content_batch
-    assert 'Page 2 of 2' in content_batch
+    assert '4B' in content_batch
+    assert 'report-card-sheet' in content_batch
     assert student.khmer_name in content_batch
-    print(f"  ✓ HTTP 200 OK: Whole classroom batch Western report cards rendered with page-breaks")
+    print(f"  ✓ HTTP 200 OK: Whole classroom batch report cards rendered cleanly")
 
-    # 7. Test Behavior & Registrar Customizer GET parameters
-    print("\n[Phase 7] Testing Behavior & Registrar Name Customizer...")
-    url_custom = f'/examinations/report-card/{student.id}/{term_s2.id}/western/?conduct=A&attitude=A&registrar_name=Dr.+Sok+Piseth'
-    resp_custom = client.get(url_custom)
-    assert resp_custom.status_code == 200
-    content_custom = resp_custom.content.decode('utf-8')
-    assert 'Dr. Sok Piseth' in content_custom
-    assert 'id="customizeModal"' in content_custom
-    print("  ✓ HTTP 200 OK: Customizer GET params and modal operational")
-
-    # 8. Test Grade Summary Page Integration
-    print("\n[Phase 8] Testing Grade Summary Page Western Buttons...")
+    # 7. Test Grade Summary Page Integration
+    print("\n[Phase 7] Testing Grade Summary Page Report Card Buttons...")
     url_summary = f'/examinations/summary/?term_id={term_s2.id}&classroom_id={cls_4b.id}'
     resp_summary = client.get(url_summary)
     assert resp_summary.status_code == 200
     content_summary = resp_summary.content.decode('utf-8')
     assert f'/examinations/classroom/{cls_4b.id}/report-cards/western/' in content_summary
-    assert 'Western' in content_summary
-    print("  ✓ HTTP 200 OK: Grade summary page displays 1-click Western batch and student buttons")
+    assert 'ព្រឹត្តិបត្រពិន្ទុ' in content_summary
+    print("  ✓ HTTP 200 OK: Grade summary page displays 1-click report card buttons")
 
     print("\n" + "=" * 75)
     print("🎉 ALL 8 PHASES OF WESTERN REPORT CARD SUITE PASSED 100% SUCCESSFULLY!")

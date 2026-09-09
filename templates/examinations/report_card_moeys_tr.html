@@ -1,0 +1,573 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ព្រឹត្តិបត្រពិន្ទុ ឆ្នាំសិក្សា {{ academic_year_kh }} - {% if is_batch %}ថ្នាក់ {{ classroom.name }}{% else %}{{ reports.0.student.khmer_name }}{% endif %}</title>
+
+    <!-- Google Fonts for Authentic Cambodian MoEYS Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --khmer-font-body: 'Siemreap', 'Battambang', Arial, sans-serif;
+            --khmer-font-muol: 'Moul', 'Khmer OS Muol Light', serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: var(--khmer-font-body);
+            font-size: 8pt;
+            color: #000000;
+            margin: 0;
+            padding: 20px 10px;
+        }
+
+        .font-muol {
+            font-family: var(--khmer-font-muol);
+        }
+
+        .font-bold-kh {
+            font-weight: 700;
+        }
+
+        /* Top Action Toolbar (Screen Only) */
+        .no-print-toolbar {
+            max-width: 210mm;
+            margin: 0 auto 16px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 10px 16px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Report Sheet Container (Exact A4 Portrait per student) */
+        .tr-report-sheet {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto 20px auto;
+            background: #ffffff;
+            padding: 12mm 14mm 10mm 14mm;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Top Header Row */
+        .header-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .header-left {
+            text-align: left;
+            line-height: 1.45;
+        }
+
+        .text-dept {
+            font-size: 8.2pt;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .text-school {
+            font-size: 9pt;
+            color: #000000;
+        }
+
+        .header-center {
+            text-align: center;
+            line-height: 1.35;
+            margin-right: 40px;
+        }
+
+        .text-kingdom {
+            font-size: 9.5pt;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .text-nation {
+            font-size: 8.5pt;
+            color: #000000;
+            margin-bottom: 2px;
+        }
+
+        .kingdom-wave-svg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Main Title */
+        .text-main-title {
+            text-align: center;
+            font-size: 11pt;
+            color: #000000;
+            margin: 6px 0 10px 0;
+            letter-spacing: 0.3px;
+        }
+
+        /* Student Metadata Container (3 blocks) */
+        .student-meta-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 8px;
+            font-size: 8.5pt;
+            padding: 0 4px;
+        }
+
+        .meta-col-left {
+            text-align: center;
+            width: 20%;
+        }
+
+        .meta-col-mid {
+            text-align: center;
+            width: 58%;
+        }
+
+        .meta-labels-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            margin-bottom: 2px;
+        }
+
+        .meta-values-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-weight: bold;
+        }
+
+        .meta-col-right {
+            text-align: center;
+            width: 22%;
+        }
+
+        .meta-val-bold {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        /* Table Structure (10 Columns matching tr.pdf) */
+        .tr-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000000;
+            font-size: 7.8pt;
+            margin-bottom: 8px;
+        }
+
+        .tr-score-table th, 
+        .tr-score-table td {
+            border: 1px solid #000000;
+            padding: 2.2px 2px;
+            vertical-align: middle;
+            line-height: 1.15;
+            color: #000000;
+        }
+
+        .tr-score-table thead th {
+            text-align: center;
+            font-weight: 700;
+            background: #ffffff;
+        }
+
+        .sub-hdr th {
+            font-size: 7.2pt;
+            padding: 2px 1px;
+        }
+
+        /* Column Widths */
+        .col-no { width: 4.5%; }
+        .col-sub { width: 19%; text-align: left !important; padding-left: 5px !important; }
+        .col-s1 { width: 16%; }
+        .col-s2 { width: 16%; }
+        .col-ann { width: 23%; }
+        .col-teacher { width: 21.5%; }
+
+        .col-score { width: 8.5%; }
+        .col-rank { width: 7.5%; }
+        .col-mention { width: 7.5%; }
+
+        /* Row Specific Styles */
+        .cell-sub-name {
+            text-align: left !important;
+            padding-left: 5px !important;
+            white-space: nowrap;
+        }
+
+        /* Awards Box (Merged Rowspan 3 on right of conduct rows) */
+        .awards-box {
+            text-align: left !important;
+            vertical-align: middle !important;
+            padding: 3px 6px !important;
+            font-size: 7.2pt;
+            line-height: 1.4;
+        }
+
+        .award-stars {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .award-line {
+            white-space: nowrap;
+        }
+
+        /* Signatures and Remarks Section (Footer) */
+        .signatures-footer-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        .sig-column {
+            width: 47%;
+            text-align: center;
+        }
+
+        .sig-title {
+            font-size: 8.5pt;
+            margin-bottom: 6px;
+        }
+
+        .dotted-lines {
+            color: #000000;
+            font-size: 7.5pt;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .date-buddhist-line {
+            font-size: 7.5pt;
+            margin-bottom: 3px;
+        }
+
+        .date-solar-line {
+            font-size: 7.5pt;
+        }
+
+        /* Print Media Styles (Exact 1 A4 Page per Student) */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print-toolbar {
+                display: none !important;
+            }
+            .tr-report-sheet {
+                width: 100% !important;
+                height: 100% !important;
+                min-height: 285mm !important;
+                max-height: 295mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 10mm 12mm 8mm 12mm !important;
+                margin: 0 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 8mm 10mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Screen Toolbar (3-Model Switcher + Print Actions) -->
+    <div class="no-print-toolbar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
+            </button>
+
+            <!-- 3-Model Switcher Button Group -->
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="ប្តូរទៅទម្រង់សាលារដ្ឋ ៨ ជួរ (MoEYS Annual 8-Cols)">
+                    <i class="fas fa-landmark me-1"></i> គំរូសាលារដ្ឋ (៨ ជួរ)
+                </a>
+                <span class="btn btn-success btn-sm fw-bold shadow-xs">
+                    <i class="fas fa-file-invoice me-1"></i> គំរូសាលារដ្ឋ (តាម tr.pdf)
+                </span>
+                <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="ប្តូរទៅទម្រង់អន្តរជាតិ/ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
+                    <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
+                </a>
+            </div>
+
+            {% if is_batch %}
+            <span class="badge bg-primary fs-6 px-3 py-1">
+                <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
+            </span>
+            {% else %}
+            <span class="text-muted small">
+                សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id }})
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
+                <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
+            </button>
+            <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
+                បិទ
+            </button>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- REPORT CARDS ITERATION (SUPPORTS SINGLE STUDENT OR ENTIRE CLASSROOM)-->
+    <!-- =================================================================== -->
+    {% for r in reports %}
+    <div class="tr-report-sheet">
+        <div>
+            <!-- Top Row: Department & School (Left) and Kingdom Motto (Center) -->
+            <div class="header-top-row">
+                <div class="header-left">
+                    <div class="font-muol text-dept">{{ r.school_department_kh|default:"មន្ទីរអប់រំ យុវជន និងកីឡាខេត្តកណ្តាល" }}</div>
+                    <div class="font-muol text-school">{{ r.school_name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</div>
+                </div>
+                <div class="header-center">
+                    <div class="font-muol text-kingdom">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="font-muol text-nation">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <svg class="kingdom-wave-svg" width="115" height="10" viewBox="0 0 115 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 5C15 1 25 9 35 5C45 1 55 9 65 5C75 1 85 9 95 5C102 2 107 4 110 5" stroke="#000000" stroke-width="1.1" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Main Title -->
+            <div class="font-muol text-main-title">
+                ព្រឹត្តិបត្រពិន្ទុ ឆ្នាំសិក្សា {{ r.academic_year_kh|default:"២០២៥ - ២០២៦" }}
+            </div>
+
+            <!-- Student Metadata (3 Columns: ID, Name/Gender/DOB, Total in Class) -->
+            <div class="student-meta-container">
+                <div class="meta-col-left">
+                    <div>អត្តលេខ</div>
+                    <div class="meta-val-bold">{{ r.student_id_kh|default:r.student.student_id }}</div>
+                </div>
+                <div class="meta-col-mid">
+                    <div class="meta-labels-row">
+                        <span>ឈ្មោះសិស្ស</span>
+                        <span>ភេទ</span>
+                        <span>ថ្ងៃ ខែ ឆ្នាំ កំណើត</span>
+                    </div>
+                    <div class="meta-values-row">
+                        <span class="meta-val-bold">{{ r.student.khmer_name }}</span>
+                        <span class="meta-val-bold">{{ r.student_gender_short|default:"ប" }}</span>
+                        <span class="meta-val-bold">{{ r.student_dob_kh|default:"-" }}</span>
+                    </div>
+                </div>
+                <div class="meta-col-right">
+                    <div>ចំនួនសិស្សសរុប</div>
+                    <div class="meta-val-bold">{{ r.total_students_tr_kh|default:r.total_students_kh }}</div>
+                </div>
+            </div>
+
+            <!-- Main Score Table (10 Columns: No, Subject, S1(2), S2(2), Ann(3), Remarks/Teacher) -->
+            <table class="tr-score-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="col-no">ល.រ</th>
+                        <th rowspan="2" class="col-sub">មុខវិជ្ជា</th>
+                        <th colspan="2" class="col-s1">ឆមាសទី១</th>
+                        <th colspan="2" class="col-s2">ឆមាសទី២</th>
+                        <th colspan="3" class="col-ann">ប្រចាំឆ្នាំ</th>
+                        <th rowspan="2" class="col-teacher">មូលវិចារ-ហត្ថលេខា<br>និងឈ្មោះគ្រូ</th>
+                    </tr>
+                    <tr class="sub-hdr">
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                        <th class="col-score">ពិន្ទុ</th>
+                        <th class="col-rank">ចំ.ថ្នាក់</th>
+                        <th class="col-mention">និទ្ទេស</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Canonical 17 Subject Rows -->
+                    {% for sub in r.tr_subjects %}
+                    <tr>
+                        <td class="text-center">{{ sub.no_kh }}</td>
+                        <td class="cell-sub-name">{{ sub.name_kh }}</td>
+                        <td class="text-center">{{ sub.s1_score }}</td>
+                        <td class="text-center">{{ sub.s1_rank }}</td>
+                        <td class="text-center">{{ sub.s2_score }}</td>
+                        <td class="text-center">{{ sub.s2_rank }}</td>
+                        <td class="text-center">{{ sub.ann_score }}</td>
+                        <td class="text-center">{{ sub.ann_rank }}</td>
+                        <td class="text-center">{{ sub.ann_mention }}</td>
+                        <td class="text-center">{{ sub.teacher_name }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Summary Row 1: Total Semester Exam Score -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">សរុបពិន្ទុប្រឡងឆមាស</td>
+                        <td class="text-center">{{ r.s1_exam_total|default:"០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">{{ r.s2_exam_total|default:"០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">{{ r.ann_exam_total|default:"០.០០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">០</td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 2: Monthly Average Score -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">មធ្យមភាគពិន្ទុខែប្រចាំឆមាស</td>
+                        <td class="text-center">{{ r.s1_monthly_avg|default:"០.០០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">{{ r.s2_monthly_avg|default:"០.០០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">{{ r.ann_monthly_avg|default:"០.០០" }}</td>
+                        <td class="text-center">០</td>
+                        <td class="text-center">០</td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 3: Semester & Annual Overall Average -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">មធ្យមភាគពិន្ទុប្រចាំឆមាស</td>
+                        <td class="text-center">{{ r.s1_overall_avg|default:"០.០០" }}</td>
+                        <td class="text-center">{{ r.s1_overall_rank|default:"០" }}</td>
+                        <td class="text-center">{{ r.s2_overall_avg|default:"០.០០" }}</td>
+                        <td class="text-center">{{ r.s2_overall_rank|default:"០" }}</td>
+                        <td class="text-center">{{ r.ann_overall_avg|default:"០.០០" }}</td>
+                        <td class="text-center">{{ r.ann_overall_rank|default:"០" }}</td>
+                        <td class="text-center">{{ r.ann_overall_mention|default:"០" }}</td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 4: Living Conduct (with Rowspan 3 Awards Box on the right) -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">សីលធម៌រស់នៅ</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td colspan="2" rowspan="3" class="awards-box">
+                            <div class="award-stars">★★★ការសរសើរ៖</div>
+                            <div class="award-line"> -ប័ណ្ណសរសើរ..............................</div>
+                            <div class="award-line"> -លិខិតសរសើរ............................</div>
+                            <div class="award-line"> -សក្ខីប័ណ្ណលើកទឹកចិត្ត................</div>
+                        </td>
+                    </tr>
+
+                    <!-- Summary Row 5: Productive Labor -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">ពលកម្ម បង្កបង្កើនផល</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Summary Row 6: Health and Hygiene -->
+                    <tr>
+                        <td colspan="2" class="cell-sub-name font-bold-kh">សុខភាព អនាម័យ</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
+                    <!-- Attendance Row 1: Excused (មានច្បាប់) -->
+                    <tr>
+                        <td colspan="2" rowspan="2" class="text-center font-bold-kh">ចំនួនអវត្តមាន</td>
+                        <td colspan="2" class="text-center">មានច្បាប់</td>
+                        <td colspan="2" class="text-center">មានច្បាប់</td>
+                        <td colspan="2" class="text-center">មានច្បាប់</td>
+                        <td colspan="2" rowspan="2"></td>
+                    </tr>
+
+                    <!-- Attendance Row 2: Unexcused (ឥតច្បាប់) -->
+                    <tr>
+                        <td colspan="2" class="text-center">ឥតច្បាប់</td>
+                        <td colspan="2" class="text-center">ឥតច្បាប់</td>
+                        <td colspan="2" class="text-center">ឥតច្បាប់</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Remarks & Signatures Section (Principal on Left, Homeroom on Right) -->
+        <div class="signatures-footer-container">
+            <!-- Left Column: School Principal -->
+            <div class="sig-column">
+                <div class="font-muol sig-title">មូលវិចារនាយកសាលា</div>
+                <div class="dotted-lines">
+                    <div>......................................................................................</div>
+                    <div>......................................................................................</div>
+                    <div>......................................................................................</div>
+                </div>
+                <div class="date-buddhist-line">
+                    ថ្ងៃ..........................ខែ....................ឆ្នាំ........................ ព.ស. ២៥.......
+                </div>
+                <div class="date-solar-line">
+                    {{ r.school_location|default:"កំពង់កន្ទួត" }} ថ្ងៃទី............... ខែ ................... ឆ្នាំ..................
+                </div>
+            </div>
+
+            <!-- Right Column: Homeroom Teacher -->
+            <div class="sig-column">
+                <div class="font-muol sig-title">មូលវិចារគ្រូបន្ទុកថ្នាក់</div>
+                <div class="dotted-lines">
+                    <div>......................................................................................</div>
+                    <div>......................................................................................</div>
+                    <div>......................................................................................</div>
+                </div>
+                <div class="date-buddhist-line">
+                    ថ្ងៃ..........................ខែ....................ឆ្នាំ........................ ព.ស. ២៥.......
+                </div>
+                <div class="date-solar-line">
+                    {{ r.school_location|default:"កំពង់កន្ទួត" }} ថ្ងៃទី............... ខែ ................... ឆ្នាំ..................
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>

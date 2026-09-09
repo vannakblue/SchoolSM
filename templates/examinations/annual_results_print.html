@@ -58,7 +58,7 @@
             min-height: 297mm;
             max-height: 297mm;
             margin: 0 auto 25px auto;
-            padding: 10mm 12mm 10mm 12mm;
+            padding: 10mm 12mm 12mm 12mm;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
             color: #000000;
             position: relative;
@@ -86,8 +86,10 @@
         .school-block {
             text-align: left;
             width: 48%;
-            line-height: 1.35;
+            line-height: 1.4;
             font-size: 8.5pt;
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
         }
 
         .kingdom-block {
@@ -122,6 +124,8 @@
         .sub-title {
             font-size: 10pt;
             letter-spacing: 0.2px;
+            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-weight: normal;
         }
 
         /* The Main Table */
@@ -130,36 +134,42 @@
             border-collapse: collapse;
             table-layout: fixed;
             margin-bottom: 0;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
         }
 
         .year-table th, .year-table td {
             border: 1px solid #000000;
-            padding: 1px 2px;
+            padding: 1px 1px;
             font-size: 8pt;
-            line-height: 1.2;
-            height: 19.2px;
+            line-height: 1.25;
+            height: 19.8px;
             text-align: center;
             vertical-align: middle;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
         }
 
         .year-table thead th {
             font-weight: 600;
             background-color: #ffffff;
             vertical-align: middle;
+            white-space: nowrap;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
         }
 
         .year-table td.cell-name {
             text-align: left;
-            padding-left: 5px;
+            padding-left: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
         }
 
         /* Rank in Red matching year.pdf */
         .val-rank-red {
             color: #dc2626 !important;
             font-weight: 600;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
         }
 
         /* Last Page Summary Block */
@@ -191,7 +201,7 @@
         /* Sheet Footer Page Number for Print & Screen */
         .sheet-page-footer {
             position: absolute;
-            bottom: 4mm;
+            bottom: 3.5mm;
             right: 12mm;
             font-size: 7.5pt;
             color: #374151;
@@ -216,7 +226,7 @@
                 min-height: 297mm !important;
                 max-height: 297mm !important;
                 margin: 0 !important;
-                padding: 10mm 12mm 10mm 12mm !important;
+                padding: 10mm 12mm 12mm 12mm !important;
                 box-shadow: none !important;
                 page-break-after: always !important;
                 break-after: page !important;
@@ -314,9 +324,9 @@
             <!-- Page 1 Only: Top Ministry, Kingdom Header, and Title -->
             {% if sheet.is_first_page %}
             <div class="header-top">
-                <div class="school-block">
-                    <div class="fw-bold">{{ ministry_name }}</div>
-                    <div class="fw-bold">{{ school_name }}</div>
+                <div class="school-block moul-font">
+                    <div>{{ ministry_name }}</div>
+                    <div>{{ school_name }}</div>
                 </div>
                 <div class="kingdom-block">
                     <div class="moul-font kingdom-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
@@ -326,13 +336,13 @@
 
             <div class="doc-title-box">
                 <div class="moul-font main-title">លទ្ធផលប្រចាំឆ្នាំ សិក្សា {{ academic_year_kh }}</div>
-                <div class="fw-bold sub-title">{{ grade_title }}</div>
+                <div class="moul-font sub-title">{{ grade_title }}</div>
             </div>
             {% else %}
             <!-- Continuation Pages: Compact Header Banner -->
             <div class="continuation-header d-flex justify-content-between align-items-center mb-1 pb-0.5 border-bottom">
-                <span class="fw-bold">{{ grade_title }} - លទ្ធផលប្រចាំឆ្នាំ សិក្សា {{ academic_year_kh }} (ត)</span>
-                <span class="text-muted" style="font-size: 8pt;">ទំព័រទី {{ sheet.page_number_kh }} / {{ sheet.total_pages_kh }}</span>
+                <span class="moul-font" style="font-size: 8.5pt;">{{ grade_title }} - លទ្ធផលប្រចាំឆ្នាំ សិក្សា {{ academic_year_kh }} (ត)</span>
+                <span class="text-muted" style="font-size: 8pt; font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif;">ទំព័រទី {{ sheet.page_number_kh }} / {{ sheet.total_pages_kh }}</span>
             </div>
             {% endif %}
 
@@ -341,22 +351,22 @@
                 <colgroup>
                     <col style="width: 4.5%;">   <!-- ល.រ -->
                     <col style="width: 7.5%;">   <!-- អត្តលេខ -->
-                    <col style="width: 21%;">    <!-- គោត្តនាម និងនាម -->
-                    <col style="width: 4%;">     <!-- ភេទ -->
-                    <col style="width: 11%;">    <!-- ថ្ងៃខែឆ្នាំកំណើត -->
-                    <col style="width: 4%;">     <!-- ថ្នាក់ -->
-                    <!-- S1 -->
-                    <col style="width: 7.5%;">   <!-- មធ្យមភាគ -->
-                    <col style="width: 5%;">     <!-- ចំ.ថ្នាក់ -->
-                    <col style="width: 3.5%;">   <!-- និទ្ទេស -->
-                    <!-- S2 -->
-                    <col style="width: 7.5%;">   <!-- មធ្យមភាគ -->
-                    <col style="width: 5%;">     <!-- ចំ.ថ្នាក់ -->
-                    <col style="width: 3.5%;">   <!-- និទ្ទេស -->
-                    <!-- Annual -->
-                    <col style="width: 7.5%;">   <!-- មធ្យមភាគ -->
-                    <col style="width: 5%;">     <!-- ចំ.ថ្នាក់ -->
-                    <col style="width: 3.5%;">   <!-- និទ្ទេស -->
+                    <col style="width: 20.5%;">  <!-- គោត្តនាម និងនាម -->
+                    <col style="width: 3.8%;">   <!-- ភេទ -->
+                    <col style="width: 10.5%;">  <!-- ថ្ងៃខែឆ្នាំកំណើត -->
+                    <col style="width: 3.7%;">   <!-- ថ្នាក់ -->
+                    <!-- S1: និទ្ទេស and ចំ.ថ្នាក់ have equal space (4.8% each) -->
+                    <col style="width: 6.9%;">   <!-- មធ្យមភាគ -->
+                    <col style="width: 4.8%;">   <!-- ចំ.ថ្នាក់ -->
+                    <col style="width: 4.8%;">   <!-- និទ្ទេស -->
+                    <!-- S2: និទ្ទេស and ចំ.ថ្នាក់ have equal space (4.8% each) -->
+                    <col style="width: 6.9%;">   <!-- មធ្យមភាគ -->
+                    <col style="width: 4.8%;">   <!-- ចំ.ថ្នាក់ -->
+                    <col style="width: 4.8%;">   <!-- និទ្ទេស -->
+                    <!-- Annual: និទ្ទេស and ចំ.ថ្នាក់ have equal space (4.8% each) -->
+                    <col style="width: 6.9%;">   <!-- មធ្យមភាគ -->
+                    <col style="width: 4.8%;">   <!-- ចំ.ថ្នាក់ -->
+                    <col style="width: 4.8%;">   <!-- និទ្ទេស -->
                 </colgroup>
                 <thead>
                     <tr>

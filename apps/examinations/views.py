@@ -447,32 +447,294 @@ def grade_summary_view(request):
     })
 
 
-def _calculate_bilingual_report_card_data(student, term=None, academic_year=None, request=None):
-    """
-    Calculates the complete 2-Semester and Overall Annual Result data matching
-    Western International School / Bilingual School report card template.
-    Returns data for:
-      - Subject breakdown with 1st Semester, 2nd Semester, and Overall Result
-      - Total Overall Average, GPA (4.0 scale), Grade Rank (X of Y)
-      - Promotion box (Pass - Promoted to Grade X)
-      - Evaluation of Behavior (Conduct, Integrity, Participation, Attitude, Diligence, Grooming)
-      - Class Attendance (Total days, Excused, Unexcused, Total, Tardy, Presence %)
-      - Grading Scale table
-      - Signatures & Seals
-    """
+def to_khmer_num(val):
+    if val is None or val == '':
+        return ''
+    mapping = {'0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤', '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'}
+    return ''.join(mapping.get(ch, ch) for ch in str(val))
+
+
+def _rank_dict(scores_dict):
+    valid = [(sid, score) for sid, score in scores_dict.items() if score is not None]
+    if not valid:
+        return {sid: '' for sid in scores_dict}
+    valid.sort(key=lambda x: x[1], reverse=True)
+    ranks = {}
+    current_rank = 1
+    for i, (sid, score) in enumerate(valid):
+        if i > 0 and score < valid[i - 1][1]:
+            current_rank = i + 1
+        ranks[sid] = current_rank
+    return {sid: ranks.get(sid, '') for sid in scores_dict}
+
+
+def _fmt_score(val, decimals=2):
+    if val is None or val == '':
+        return ''
+    try:
+        f = float(val)
+        if decimals == 0 or f.is_integer():
+            return f"{int(f)}"
+        return f"{f:.{decimals}f}".rstrip('0').rstrip('.')
+    except (ValueError, TypeError):
+        return str(val)
+
+
+def _preload_classroom_report_card_data(classroom, ay):
     from apps.accounts.models import SchoolProfile
-    from apps.academics.models import Subject, Classroom, AcademicYear
+    from apps.academics.models import Subject, ClassSubject, Timetable
     from apps.attendance.models import StudentAttendance
     from apps.examinations.models import ExamTerm, Grade
-    from decimal import Decimal
+    from apps.students.models import Student
+    from collections import defaultdict
+    import datetime
 
     school_info = SchoolProfile.get_settings()
+    school_name_kh = school_info.name_kh if (school_info and school_info.name_kh) else 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត'
+    principal_title = getattr(school_info, 'principal_title', None) or 'នាយកស្តីទីវិទ្យាល័យ'
+    principal_name = school_info.principal_name if (school_info and school_info.principal_name) else ''
+    homeroom_teacher = classroom.homeroom_teacher.khmer_name if (classroom and classroom.homeroom_teacher) else ''
+
+    ay_name = ay.name if ay else ''
+    academic_year_kh = to_khmer_num(ay_name)
+
+    class_students = list(Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('khmer_name', 'id')) if classroom else []
+    total_students = len(class_students)
+    total_females = sum(1 for s in class_students if str(s.gender).upper() in ['F', 'FEMALE', 'ស្រី'])
+    total_students_kh = to_khmer_num(total_students)
+    total_females_kh = to_khmer_num(total_females)
+
+    # Subjects
+    subjects = []
+    if classroom:
+        rules = list(classroom.get_subject_rules())
+        subjects = [r.subject for r in rules if r.subject]
+    if not subjects and classroom:
+        subjects = list(Subject.objects.filter(subject_grades__student__classroom=classroom).distinct())
+    if not subjects:
+        subjects = list(Subject.objects.all().order_by('order', 'id')[:12])
+
+    # Teachers map from ClassSubject and Timetable
+    teacher_map = {}
+    if classroom:
+        for cs in ClassSubject.objects.filter(classroom=classroom).select_related('teacher'):
+            if cs.teacher:
+                teacher_map[cs.subject_id] = cs.teacher.khmer_name
+        for tt in Timetable.objects.filter(classroom=classroom).select_related('teacher'):
+            if tt.teacher and tt.subject_id not in teacher_map:
+                teacher_map[tt.subject_id] = tt.teacher.khmer_name
+
+    # Terms
+    terms_s1 = list(ExamTerm.objects.filter(academic_year=ay, semester=1, is_counted_in_semester=True))
+    terms_s2 = list(ExamTerm.objects.filter(academic_year=ay, semester=2, is_counted_in_semester=True))
+    if not terms_s1 and not terms_s2:
+        all_terms = list(ExamTerm.objects.filter(academic_year=ay).order_by('start_date'))
+        mid = max(1, len(all_terms) // 2)
+        terms_s1 = all_terms[:mid]
+        terms_s2 = all_terms[mid:]
+
+    sem1_final_term = next((t for t in terms_s1 if t.term_type == ExamTerm.TermType.SEMESTER_1), None) or (terms_s1[-1] if terms_s1 else None)
+    sem2_final_term = next((t for t in terms_s2 if t.term_type == ExamTerm.TermType.SEMESTER_2), None) or (terms_s2[-1] if terms_s2 else None)
+    monthly_terms_s1 = [t for t in terms_s1 if t.term_type == ExamTerm.TermType.MONTHLY]
+    monthly_terms_s2 = [t for t in terms_s2 if t.term_type == ExamTerm.TermType.MONTHLY]
+
+    grades_qs = Grade.objects.filter(
+        student__in=class_students,
+        exam_term__academic_year=ay
+    ).select_related('subject', 'exam_term')
+
+    grades_by_student_term = defaultdict(dict)
+    for g in grades_qs:
+        grades_by_student_term[g.student_id][(g.subject_id, g.exam_term_id)] = float(g.score)
+
+    s1_end = max([t.end_date for t in terms_s1 if t.end_date], default=None)
+    att_qs = StudentAttendance.objects.filter(student__in=class_students)
+    if ay and ay.start_date and ay.end_date:
+        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+
+    attendance_by_student = defaultdict(lambda: {'s1_excused': 0, 's1_unexcused': 0, 's2_excused': 0, 's2_unexcused': 0})
+    for att in att_qs:
+        sid = att.student_id
+        is_s1 = (s1_end is None) or (att.date <= s1_end)
+        if att.status == StudentAttendance.Status.PERMISSION:
+            if is_s1:
+                attendance_by_student[sid]['s1_excused'] += 1
+            else:
+                attendance_by_student[sid]['s2_excused'] += 1
+        elif att.status == StudentAttendance.Status.ABSENT:
+            if is_s1:
+                attendance_by_student[sid]['s1_unexcused'] += 1
+            else:
+                attendance_by_student[sid]['s2_unexcused'] += 1
+
+    sub_s1_scores = defaultdict(dict)
+    sub_s2_scores = defaultdict(dict)
+    sub_ann_scores = defaultdict(dict)
+
+    student_summary = {}
+
+    for stu in class_students:
+        sid = stu.id
+        stu_grades = grades_by_student_term[sid]
+
+        s1_sub_scores_list = []
+        s2_sub_scores_list = []
+        ann_sub_scores_list = []
+
+        for sub in subjects:
+            s1_val = None
+            if sem1_final_term and (sub.id, sem1_final_term.id) in stu_grades:
+                s1_val = stu_grades[(sub.id, sem1_final_term.id)]
+            elif terms_s1:
+                vals = [stu_grades[(sub.id, t.id)] for t in terms_s1 if (sub.id, t.id) in stu_grades]
+                if vals:
+                    s1_val = round(sum(vals) / len(vals), 2)
+
+            s2_val = None
+            if sem2_final_term and (sub.id, sem2_final_term.id) in stu_grades:
+                s2_val = stu_grades[(sub.id, sem2_final_term.id)]
+            elif terms_s2:
+                vals = [stu_grades[(sub.id, t.id)] for t in terms_s2 if (sub.id, t.id) in stu_grades]
+                if vals:
+                    s2_val = round(sum(vals) / len(vals), 2)
+
+            ann_val = None
+            if s1_val is not None and s2_val is not None:
+                ann_val = round((s1_val + s2_val) / 2.0, 2)
+            elif s1_val is not None:
+                ann_val = s1_val
+            elif s2_val is not None:
+                ann_val = s2_val
+
+            sub_s1_scores[sub.id][sid] = s1_val
+            sub_s2_scores[sub.id][sid] = s2_val
+            sub_ann_scores[sub.id][sid] = ann_val
+
+            if s1_val is not None:
+                s1_sub_scores_list.append(s1_val)
+            if s2_val is not None:
+                s2_sub_scores_list.append(s2_val)
+            if ann_val is not None:
+                ann_sub_scores_list.append(ann_val)
+
+        # Monthly averages
+        s1_m_scores = []
+        for mt in monthly_terms_s1:
+            vals = [stu_grades[(sub.id, mt.id)] for sub in subjects if (sub.id, mt.id) in stu_grades]
+            if vals:
+                s1_m_scores.append(sum(vals) / len(vals))
+        s1_monthly_avg = round(sum(s1_m_scores) / len(s1_m_scores), 2) if s1_m_scores else None
+
+        s2_m_scores = []
+        for mt in monthly_terms_s2:
+            vals = [stu_grades[(sub.id, mt.id)] for sub in subjects if (sub.id, mt.id) in stu_grades]
+            if vals:
+                s2_m_scores.append(sum(vals) / len(vals))
+        s2_monthly_avg = round(sum(s2_m_scores) / len(s2_m_scores), 2) if s2_m_scores else None
+
+        s1_exam_total = round(sum(s1_sub_scores_list), 2) if s1_sub_scores_list else None
+        s2_exam_total = round(sum(s2_sub_scores_list), 2) if s2_sub_scores_list else None
+        s1_exam_avg = round(s1_exam_total / len(s1_sub_scores_list), 2) if s1_sub_scores_list else None
+        s2_exam_avg = round(s2_exam_total / len(s2_sub_scores_list), 2) if s2_sub_scores_list else None
+
+        if s1_monthly_avg is not None and s1_exam_avg is not None:
+            s1_ov_avg = round((s1_monthly_avg + s1_exam_avg) / 2.0, 2)
+        elif s1_exam_avg is not None:
+            s1_ov_avg = s1_exam_avg
+        elif s1_monthly_avg is not None:
+            s1_ov_avg = s1_monthly_avg
+        else:
+            s1_ov_avg = None
+
+        if s2_monthly_avg is not None and s2_exam_avg is not None:
+            s2_ov_avg = round((s2_monthly_avg + s2_exam_avg) / 2.0, 2)
+        elif s2_exam_avg is not None:
+            s2_ov_avg = s2_exam_avg
+        elif s2_monthly_avg is not None:
+            s2_ov_avg = s2_monthly_avg
+        else:
+            s2_ov_avg = None
+
+        if s1_ov_avg is not None and s2_ov_avg is not None:
+            ann_ov_avg = round((s1_ov_avg + s2_ov_avg) / 2.0, 2)
+        elif s1_ov_avg is not None:
+            ann_ov_avg = s1_ov_avg
+        elif s2_ov_avg is not None:
+            ann_ov_avg = s2_ov_avg
+        else:
+            ann_ov_avg = None
+
+        student_summary[sid] = {
+            's1_exam_total': s1_exam_total,
+            's2_exam_total': s2_exam_total,
+            's1_exam_avg': s1_exam_avg,
+            's2_exam_avg': s2_exam_avg,
+            's1_monthly_avg': s1_monthly_avg,
+            's2_monthly_avg': s2_monthly_avg,
+            's1_ov_avg': s1_ov_avg,
+            's2_ov_avg': s2_ov_avg,
+            'ann_ov_avg': ann_ov_avg,
+        }
+
+    sub_s1_ranks = {sub.id: _rank_dict(sub_s1_scores[sub.id]) for sub in subjects}
+    sub_s2_ranks = {sub.id: _rank_dict(sub_s2_scores[sub.id]) for sub in subjects}
+    sub_ann_ranks = {sub.id: _rank_dict(sub_ann_scores[sub.id]) for sub in subjects}
+
+    s1_ov_ranks = _rank_dict({sid: data['s1_ov_avg'] for sid, data in student_summary.items()})
+    s2_ov_ranks = _rank_dict({sid: data['s2_ov_avg'] for sid, data in student_summary.items()})
+    ann_ov_ranks = _rank_dict({sid: data['ann_ov_avg'] for sid, data in student_summary.items()})
+
+    year_kh = to_khmer_num(ay.start_date.year + 1) if (ay and ay.start_date) else to_khmer_num(datetime.date.today().year)
+
+    return {
+        'classroom': classroom,
+        'academic_year': ay,
+        'academic_year_kh': academic_year_kh,
+        'school_info': school_info,
+        'school_name_kh': school_name_kh,
+        'principal_title': principal_title,
+        'principal_name': principal_name,
+        'homeroom_teacher': homeroom_teacher,
+        'year_kh': year_kh,
+        'total_students_kh': total_students_kh,
+        'total_females_kh': total_females_kh,
+        'total_in_class': total_students,
+        'subjects': subjects,
+        'teacher_map': teacher_map,
+        'sub_s1_scores': sub_s1_scores,
+        'sub_s2_scores': sub_s2_scores,
+        'sub_ann_scores': sub_ann_scores,
+        'sub_s1_ranks': sub_s1_ranks,
+        'sub_s2_ranks': sub_s2_ranks,
+        'sub_ann_ranks': sub_ann_ranks,
+        'student_summary': student_summary,
+        's1_ov_ranks': s1_ov_ranks,
+        's2_ov_ranks': s2_ov_ranks,
+        'ann_ov_ranks': ann_ov_ranks,
+        'attendance_by_student': attendance_by_student,
+    }
+
+
+def _calculate_bilingual_report_card_data(student, term=None, academic_year=None, request=None, preloaded_data=None):
+    """
+    Calculates the complete Official MoEYS Annual Report Card (ព្រឹត្តិបត្រពិន្ទុប្រចាំឆ្នាំ)
+    matching authentic Cambodian public school layout.
+    """
+    from apps.academics.models import AcademicYear
+    from apps.attendance.models import StudentAttendance
+    import datetime
+
     classroom = student.classroom
     ay = academic_year or (term.academic_year if term else student.academic_year)
     if not ay:
         ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
 
-    # Grading Scale mapping: Letter Grade & Grade Point (GP) on 4.0 scale
+    if preloaded_data is None:
+        preloaded_data = _preload_classroom_report_card_data(classroom, ay)
+
+    sid = student.id
+    student_gender_kh = 'ស្រី' if str(student.gender).upper() in ['F', 'FEMALE', 'ស្រី'] else 'ប្រុស'
+
     def get_letter_and_gp(pct):
         if pct is None:
             return '-', 0.0
@@ -489,240 +751,102 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
             return 'E', 1.0
         return 'F', 0.0
 
-    # Get exam terms for Semester 1 and Semester 2
-    terms_s1 = list(ExamTerm.objects.filter(academic_year=ay, semester=1, is_counted_in_semester=True))
-    terms_s2 = list(ExamTerm.objects.filter(academic_year=ay, semester=2, is_counted_in_semester=True))
-
-    # Fallback if no specific semester field set
-    if not terms_s1 and not terms_s2:
-        all_terms = list(ExamTerm.objects.filter(academic_year=ay).order_by('start_date'))
-        mid = max(1, len(all_terms) // 2)
-        terms_s1 = all_terms[:mid]
-        terms_s2 = all_terms[mid:]
-
-    # Get all subjects for student's classroom
-    subjects = []
-    if classroom:
-        rules = classroom.get_subject_rules()
-        subjects = [r.subject for r in rules if r.subject]
-    if not subjects:
-        subjects = list(Subject.objects.filter(subject_grades__student=student).distinct())
-    if not subjects:
-        subjects = list(Subject.objects.all().order_by('order', 'id')[:8])
-
-    # Fetch all grades for this student in this academic year
-    grades_qs = Grade.objects.filter(student=student, exam_term__academic_year=ay).select_related('subject', 'exam_term')
-    grades_map = {}
-    for g in grades_qs:
-        grades_map[(g.subject_id, g.exam_term_id)] = g
-
-    # Build subject rows
     subject_rows = []
+    failed_core_count = 0
     s1_total_weighted_pct = 0.0
     s1_total_credits = 0
     s1_total_gp_points = 0.0
-
     s2_total_weighted_pct = 0.0
     s2_total_credits = 0
     s2_total_gp_points = 0.0
 
-    failed_core_count = 0
-
-    for idx, sub in enumerate(subjects, 1):
+    for idx, sub in enumerate(preloaded_data['subjects'], 1):
         credits = sub.credit if (sub.credit and sub.credit > 0) else 3
+        s1_sc = preloaded_data['sub_s1_scores'][sub.id].get(sid)
+        s1_rk = preloaded_data['sub_s1_ranks'][sub.id].get(sid, '')
+        s2_sc = preloaded_data['sub_s2_scores'][sub.id].get(sid)
+        s2_rk = preloaded_data['sub_s2_ranks'][sub.id].get(sid, '')
+        ann_sc = preloaded_data['sub_ann_scores'][sub.id].get(sid)
+        ann_rk = preloaded_data['sub_ann_ranks'][sub.id].get(sid, '')
+        t_name = preloaded_data['teacher_map'].get(sub.id, '')
 
-        # Sem 1 Scores
-        s1_scores = []
-        for t in terms_s1:
-            if (sub.id, t.id) in grades_map:
-                g = grades_map[(sub.id, t.id)]
-                if g.max_score and g.max_score > 0:
-                    s1_scores.append((float(g.score) / float(g.max_score)) * 100)
+        s1_let, s1_gp = get_letter_and_gp(s1_sc)
+        s2_let, s2_gp = get_letter_and_gp(s2_sc)
+        ann_let, ann_gp = get_letter_and_gp(ann_sc)
 
-        # Sem 2 Scores
-        s2_scores = []
-        for t in terms_s2:
-            if (sub.id, t.id) in grades_map:
-                g = grades_map[(sub.id, t.id)]
-                if g.max_score and g.max_score > 0:
-                    s2_scores.append((float(g.score) / float(g.max_score)) * 100)
-
-        # If term is specifically given and belongs to S1 or S2, populate actively
-        if not s1_scores and term and term in terms_s1 and (sub.id, term.id) in grades_map:
-            g = grades_map[(sub.id, term.id)]
-            if g.max_score and g.max_score > 0:
-                s1_scores.append((float(g.score) / float(g.max_score)) * 100)
-        if not s2_scores and term and term in terms_s2 and (sub.id, term.id) in grades_map:
-            g = grades_map[(sub.id, term.id)]
-            if g.max_score and g.max_score > 0:
-                s2_scores.append((float(g.score) / float(g.max_score)) * 100)
-
-        # Calculate Sem 1 subject values
-        if s1_scores:
-            s1_pct = round(sum(s1_scores) / len(s1_scores), 2)
-            s1_let, s1_gp = get_letter_and_gp(s1_pct)
-            s1_cred = credits
-            s1_total_weighted_pct += s1_pct * credits
+        if s1_sc is not None:
+            s1_total_weighted_pct += float(s1_sc) * credits
             s1_total_credits += credits
             s1_total_gp_points += s1_gp * credits
-        else:
-            s1_pct = None
-            s1_let, s1_gp = '-', 0.0
-            s1_cred = credits
-
-        # Calculate Sem 2 subject values
-        if s2_scores:
-            s2_pct = round(sum(s2_scores) / len(s2_scores), 2)
-            s2_let, s2_gp = get_letter_and_gp(s2_pct)
-            s2_cred = credits
-            s2_total_weighted_pct += s2_pct * credits
+        if s2_sc is not None:
+            s2_total_weighted_pct += float(s2_sc) * credits
             s2_total_credits += credits
             s2_total_gp_points += s2_gp * credits
-        else:
-            s2_pct = None
-            s2_let, s2_gp = '-', 0.0
-            s2_cred = credits
-
-        # Calculate Overall subject values
-        if s1_pct is not None and s2_pct is not None:
-            ov_pct = round((s1_pct * 0.5) + (s2_pct * 0.5), 2)
-            ov_cred = s1_cred + s2_cred
-        elif s1_pct is not None:
-            ov_pct = s1_pct
-            ov_cred = s1_cred
-        elif s2_pct is not None:
-            ov_pct = s2_pct
-            ov_cred = s2_cred
-        else:
-            ov_pct = None
-            ov_cred = credits
-
-        if ov_pct is not None:
-            ov_let, ov_gp = get_letter_and_gp(ov_pct)
-            if ov_pct < 50:
-                failed_core_count += 1
-        else:
-            ov_let, ov_gp = '-', 0.0
+        if ann_sc is not None and float(ann_sc) < 50:
+            failed_core_count += 1
 
         subject_rows.append({
             'no': idx,
             'subject': sub,
             'name_kh': sub.name_kh,
             'name_en': sub.name_en or sub.name_kh,
-            's1_pct': f"{s1_pct:.2f}" if s1_pct is not None else '-',
+            's1_score': _fmt_score(s1_sc),
+            's1_rank': s1_rk if s1_sc is not None else '',
+            's2_score': _fmt_score(s2_sc),
+            's2_rank': s2_rk if s2_sc is not None else '',
+            'ann_score': _fmt_score(ann_sc),
+            'ann_rank': ann_rk if ann_sc is not None else '',
+            'teacher_name': t_name,
+            's1_pct': _fmt_score(s1_sc) or '-',
             's1_letter': s1_let,
-            's1_credits': s1_cred if s1_pct is not None else '-',
-            's2_pct': f"{s2_pct:.2f}" if s2_pct is not None else '-',
+            's1_credits': credits if s1_sc is not None else '-',
+            's2_pct': _fmt_score(s2_sc) or '-',
             's2_letter': s2_let,
-            's2_credits': s2_cred if s2_pct is not None else '-',
-            'ov_pct': f"{ov_pct:.2f}" if ov_pct is not None else '-',
-            'ov_letter': ov_let,
-            'ov_credits': ov_cred if ov_pct is not None else '-',
+            's2_credits': credits if s2_sc is not None else '-',
+            'ov_pct': _fmt_score(ann_sc) or '-',
+            'ov_letter': ann_let,
+            'ov_credits': credits * 2 if ann_sc is not None else '-',
         })
 
-    # Overall summary averages
-    s1_avg = round(s1_total_weighted_pct / s1_total_credits, 2) if s1_total_credits > 0 else None
-    s1_gpa = round(s1_total_gp_points / s1_total_credits, 2) if s1_total_credits > 0 else None
-    s1_letter = get_letter_and_gp(s1_avg)[0] if s1_avg is not None else '-'
+    summ = preloaded_data['student_summary'].get(sid, {})
+    s1_ov_val = summ.get('s1_ov_avg')
+    s2_ov_val = summ.get('s2_ov_avg')
+    ann_ov_val = summ.get('ann_ov_avg')
 
-    s2_avg = round(s2_total_weighted_pct / s2_total_credits, 2) if s2_total_credits > 0 else None
-    s2_gpa = round(s2_total_gp_points / s2_total_credits, 2) if s2_total_credits > 0 else None
-    s2_letter = get_letter_and_gp(s2_avg)[0] if s2_avg is not None else '-'
+    s1_gpa = round(s1_total_gp_points / s1_total_credits, 2) if s1_total_credits > 0 else 0.0
+    s2_gpa = round(s2_total_gp_points / s2_total_credits, 2) if s2_total_credits > 0 else 0.0
+    ov_gpa = round((s1_gpa + s2_gpa) / 2.0, 2) if (s1_total_credits > 0 and s2_total_credits > 0) else (s1_gpa or s2_gpa)
 
-    if s1_avg is not None and s2_avg is not None:
-        ov_avg = round((s1_avg * 0.5) + (s2_avg * 0.5), 2)
-        ov_gpa = round(((s1_gpa or 0.0) * 0.5) + ((s2_gpa or 0.0) * 0.5), 2)
-        ov_credits = s1_total_credits + s2_total_credits
-    elif s1_avg is not None:
-        ov_avg = s1_avg
-        ov_gpa = s1_gpa
-        ov_credits = s1_total_credits
-    elif s2_avg is not None:
-        ov_avg = s2_avg
-        ov_gpa = s2_gpa
-        ov_credits = s2_total_credits
-    else:
-        ov_avg = None
-        ov_gpa = None
-        ov_credits = 0
+    s1_letter = get_letter_and_gp(s1_ov_val)[0]
+    s2_letter = get_letter_and_gp(s2_ov_val)[0]
+    ov_letter = get_letter_and_gp(ann_ov_val)[0]
 
-    ov_letter = get_letter_and_gp(ov_avg)[0] if ov_avg is not None else '-'
-
-    # Calculate class ranks
-    class_students = list(Student.objects.filter(classroom=classroom, status='ACTIVE')) if classroom else [student]
-    total_in_class = len(class_students) if class_students else 1
-
-    s1_ranks, s2_ranks, ov_ranks = [], [], []
-    for cs in class_students:
-        cs_s1_pts, cs_s1_cr = 0.0, 0
-        cs_s2_pts, cs_s2_cr = 0.0, 0
-        cs_grades = list(Grade.objects.filter(student=cs, exam_term__academic_year=ay).select_related('subject', 'exam_term'))
-        for g in cs_grades:
-            cr = g.subject.credit or 3
-            if g.max_score and g.max_score > 0:
-                pct = (float(g.score) / float(g.max_score)) * 100
-                if g.exam_term in terms_s1:
-                    cs_s1_pts += pct * cr
-                    cs_s1_cr += cr
-                elif g.exam_term in terms_s2:
-                    cs_s2_pts += pct * cr
-                    cs_s2_cr += cr
-        cs_s1_a = cs_s1_pts / cs_s1_cr if cs_s1_cr > 0 else 0.0
-        cs_s2_a = cs_s2_pts / cs_s2_cr if cs_s2_cr > 0 else 0.0
-        cs_ov_a = (cs_s1_a * 0.5 + cs_s2_a * 0.5) if (cs_s1_cr and cs_s2_cr) else (cs_s1_a or cs_s2_a)
-        s1_ranks.append((cs.id, cs_s1_a))
-        s2_ranks.append((cs.id, cs_s2_a))
-        ov_ranks.append((cs.id, cs_ov_a))
-
-    s1_ranks.sort(key=lambda x: x[1], reverse=True)
-    s2_ranks.sort(key=lambda x: x[1], reverse=True)
-    ov_ranks.sort(key=lambda x: x[1], reverse=True)
-
-    def find_rank(rank_list, target_id):
-        for i, (sid, _) in enumerate(rank_list, 1):
-            if sid == target_id:
-                return i
-        return 1
-
-    s1_rank = find_rank(s1_ranks, student.id)
-    s2_rank = find_rank(s2_ranks, student.id)
-    ov_rank = find_rank(ov_ranks, student.id)
-
-    # Promotion Status: Promoted to Grade X
     current_grade_num = classroom.grade_level if classroom else 4
-    is_promoted = (ov_avg is not None and ov_avg >= 50.0) and (failed_core_count <= 2)
+    is_promoted = (ann_ov_val is not None and float(ann_ov_val) >= 50.0) and (failed_core_count <= 2)
     promoted_grade = current_grade_num + 1 if is_promoted else current_grade_num
     promotion_status_kh = "ជាប់/ត្រូវបានឡើងថ្នាក់ទី" if is_promoted else "នៅរៀនថ្នាក់ដដែល"
     promotion_status_en = "Pass - Promoted to Grade" if is_promoted else "Retained in Grade"
 
-    # Attendance Data
-    att_qs = StudentAttendance.objects.filter(student=student)
-    if ay and ay.start_date and ay.end_date:
-        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
-    
-    excused_absences = att_qs.filter(status=StudentAttendance.Status.PERMISSION).count()
-    unexcused_absences = att_qs.filter(status=StudentAttendance.Status.ABSENT).count()
-    total_absences = excused_absences + unexcused_absences
-    times_tardy = att_qs.filter(status=StudentAttendance.Status.LATE).count()
-    
-    total_school_days = 179
-    if classroom and ay and ay.start_date and ay.end_date:
-        actual_days = StudentAttendance.objects.filter(classroom=classroom, date__gte=ay.start_date, date__lte=ay.end_date).values('date').distinct().count()
-        if actual_days > 0:
-            total_school_days = actual_days
+    att = preloaded_data['attendance_by_student'].get(sid, {'s1_excused': 0, 's1_unexcused': 0, 's2_excused': 0, 's2_unexcused': 0})
+    s1_ex = att['s1_excused']
+    s1_un = att['s1_unexcused']
+    s2_ex = att['s2_excused']
+    s2_un = att['s2_unexcused']
+    total_absences = s1_ex + s1_un + s2_ex + s2_un
 
+    total_school_days = 179
+    times_tardy = 0
     overall_presence = round(((total_school_days - total_absences) / total_school_days) * 100) if total_school_days > 0 else 100
     if overall_presence < 0:
         overall_presence = 0
 
-    # Behavior Evaluation (6 categories)
     def _b_val(param_name, default_val):
         if request and request.GET.get(param_name):
             return request.GET.get(param_name).strip().upper()
         return default_val
 
-    def_conduct = 'A' if ov_avg and ov_avg >= 90 else ('B' if ov_avg and ov_avg >= 70 else 'C')
-    def_diligence = 'A' if ov_avg and ov_avg >= 85 else 'B'
+    def_conduct = 'A' if ann_ov_val and float(ann_ov_val) >= 90 else ('B' if ann_ov_val and float(ann_ov_val) >= 70 else 'C')
+    def_diligence = 'A' if ann_ov_val and float(ann_ov_val) >= 85 else 'B'
 
     behavior_ratings = [
         {'title_kh': 'វិន័យសាលា', 'title_en': 'Conduct', 'rating': _b_val('conduct', def_conduct)},
@@ -733,57 +857,251 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
         {'title_kh': 'អនាម័យនិងការស្លៀកពាក់', 'title_en': 'Hygiene & Grooming', 'rating': _b_val('grooming', 'A')},
     ]
 
-    from datetime import date
-    default_date_str = term.end_date.strftime('%B %d, %Y') if (term and term.end_date) else date.today().strftime('%B %d, %Y')
+    report_title_kh = f"ព្រឹត្តិបត្រពិន្ទុប្រចាំឆ្នាំ{preloaded_data['academic_year_kh']}"
+    report_title_en = f"ANNUAL ACADEMIC REPORT ({ay.name if ay else ''})"
+
+    CANONICAL_17_SUBJECTS = [
+        (1, 'ភាសាខ្មែរ', ['ភាសាខ្មែរ', 'ខ្មែរ', 'khmer']),
+        (2, 'សីលធម៌', ['សីលធម៌', 'សីលធម៌-ពលរដ្ឋ', 'ពលរដ្ឋ', 'civics', 'moral', 'ethics']),
+        (3, 'ភូមិវិទ្យា', ['ភូមិវិទ្យា', 'ភូមិ', 'geography', 'geo']),
+        (4, 'ប្រវត្តិវិទ្យា', ['ប្រវត្តិវិទ្យា', 'ប្រវត្តិ', 'history', 'hist']),
+        (5, 'គណិតវិទ្យា', ['គណិតវិទ្យា', 'គណិត', 'mathematics', 'math']),
+        (6, 'ផែនដីវិទ្យា', ['ផែនដីវិទ្យា', 'ផែនដី', 'earth science', 'earth']),
+        (7, 'រូបវិទ្យា', ['រូបវិទ្យា', 'រូប', 'physics', 'phys']),
+        (8, 'គីមីវិទ្យា', ['គីមីវិទ្យា', 'គីមី', 'chemistry', 'chem']),
+        (9, 'ជីវវិទ្យា', ['ជីវវិទ្យា', 'ជីវ', 'biology', 'bio']),
+        (10, 'គេហវិទ្យា', ['គេហវិទ្យា', 'គេហ', 'home economics']),
+        (11, 'សេដ្ឋកិច្ច', ['សេដ្ឋកិច្ច', 'economics', 'econ']),
+        (12, 'អង់គ្លេស', ['អង់គ្លេស', 'ភាសាអង់គ្លេស', 'english']),
+        (13, 'បារាំង', ['បារាំង', 'ភាសាបារាំង', 'french']),
+        (14, 'ព័ត៌មានវិទ្យា', ['ព័ត៌មានវិទ្យា', 'កុំព្យូទ័រ', 'ict', 'computer', 'information technology']),
+        (15, 'បំណិនជីវិត', ['បំណិនជីវិត', 'បំណិន', 'life skills', 'life skill']),
+        (16, 'កសិកម្ម', ['កសិកម្ម', 'agriculture']),
+        (17, 'កីឡា', ['កីឡា', 'អប់រំកាយ', 'pe', 'physical education', 'sport']),
+    ]
+
+    def get_khmer_mention(sc):
+        if sc is None:
+            return ''
+        try:
+            val = float(sc)
+            if val >= 89.5:
+                return 'ល្អប្រសើរ'
+            if val >= 79.5:
+                return 'ល្អ'
+            if val >= 64.5:
+                return 'ល្អបង្គួរ'
+            if val >= 49.5:
+                return 'មធ្យម'
+            return 'ខ្សោយ'
+        except (ValueError, TypeError):
+            return ''
+
+    tr_subject_rows = []
+    used_sub_ids = set()
+    for c_idx, c_name, c_aliases in CANONICAL_17_SUBJECTS:
+        matched = None
+        for sub in preloaded_data['subjects']:
+            s_name = (sub.name_kh or '').strip().lower()
+            s_code = (sub.code or '').strip().lower()
+            s_en = (sub.name_en or '').strip().lower()
+            if any(alias in s_name or alias in s_code or alias in s_en for alias in c_aliases):
+                matched = sub
+                used_sub_ids.add(sub.id)
+                break
+        
+        if matched:
+            s1_sc = preloaded_data['sub_s1_scores'][matched.id].get(sid)
+            s1_rk = preloaded_data['sub_s1_ranks'][matched.id].get(sid, '')
+            s2_sc = preloaded_data['sub_s2_scores'][matched.id].get(sid)
+            s2_rk = preloaded_data['sub_s2_ranks'][matched.id].get(sid, '')
+            ann_sc = preloaded_data['sub_ann_scores'][matched.id].get(sid)
+            ann_rk = preloaded_data['sub_ann_ranks'][matched.id].get(sid, '')
+            t_name = preloaded_data['teacher_map'].get(matched.id, '')
+            ann_m = get_khmer_mention(ann_sc) if ann_sc is not None else ''
+
+            tr_subject_rows.append({
+                'no': c_idx,
+                'no_kh': to_khmer_num(c_idx),
+                'name_kh': c_name,
+                's1_score': _fmt_score(s1_sc) if s1_sc is not None else '',
+                's1_rank': s1_rk if s1_sc is not None else '',
+                's2_score': _fmt_score(s2_sc) if s2_sc is not None else '',
+                's2_rank': s2_rk if s2_sc is not None else '',
+                'ann_score': f"{float(ann_sc):.2f}" if ann_sc is not None else '',
+                'ann_rank': ann_rk if ann_sc is not None else '',
+                'ann_mention': ann_m,
+                'teacher_name': t_name,
+                'has_data': (s1_sc is not None or s2_sc is not None or ann_sc is not None),
+            })
+        else:
+            tr_subject_rows.append({
+                'no': c_idx,
+                'no_kh': to_khmer_num(c_idx),
+                'name_kh': c_name,
+                's1_score': '',
+                's1_rank': '',
+                's2_score': '',
+                's2_rank': '',
+                'ann_score': '',
+                'ann_rank': '',
+                'ann_mention': '',
+                'teacher_name': '',
+                'has_data': False,
+            })
+
+    next_idx = 18
+    for sub in preloaded_data['subjects']:
+        if sub.id not in used_sub_ids:
+            s1_sc = preloaded_data['sub_s1_scores'][sub.id].get(sid)
+            s1_rk = preloaded_data['sub_s1_ranks'][sub.id].get(sid, '')
+            s2_sc = preloaded_data['sub_s2_scores'][sub.id].get(sid)
+            s2_rk = preloaded_data['sub_s2_ranks'][sub.id].get(sid, '')
+            ann_sc = preloaded_data['sub_ann_scores'][sub.id].get(sid)
+            ann_rk = preloaded_data['sub_ann_ranks'][sub.id].get(sid, '')
+            t_name = preloaded_data['teacher_map'].get(sub.id, '')
+            ann_m = get_khmer_mention(ann_sc) if ann_sc is not None else ''
+            tr_subject_rows.append({
+                'no': next_idx,
+                'no_kh': to_khmer_num(next_idx),
+                'name_kh': sub.name_kh or sub.name_en,
+                's1_score': _fmt_score(s1_sc) if s1_sc is not None else '',
+                's1_rank': s1_rk if s1_sc is not None else '',
+                's2_score': _fmt_score(s2_sc) if s2_sc is not None else '',
+                's2_rank': s2_rk if s2_sc is not None else '',
+                'ann_score': f"{float(ann_sc):.2f}" if ann_sc is not None else '',
+                'ann_rank': ann_rk if ann_sc is not None else '',
+                'ann_mention': ann_m,
+                'teacher_name': t_name,
+                'has_data': (s1_sc is not None or s2_sc is not None or ann_sc is not None),
+            })
+            next_idx += 1
+
+    KHMER_MONTH_NAMES = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ']
+    if student.date_of_birth:
+        d = student.date_of_birth
+        m_name = KHMER_MONTH_NAMES[d.month - 1] if 1 <= d.month <= 12 else str(d.month)
+        student_dob_kh = f"{to_khmer_num(d.day)} {m_name} {to_khmer_num(d.year)}"
+    else:
+        student_dob_kh = '-'
+
+    student_gender_short = 'ស' if str(student.gender).upper() in ['F', 'FEMALE', 'ស្រី'] else 'ប'
+    student_id_kh = to_khmer_num(student.student_id or student.id)
+    tot_stus = preloaded_data['total_in_class']
+    total_students_tr_kh = f"{to_khmer_num(tot_stus):>02} នាក់" if tot_stus < 10 else f"{to_khmer_num(tot_stus)} នាក់"
+
+    school_info = preloaded_data['school_info']
+    school_province = 'កណ្តាល'
+    if school_info and getattr(school_info, 'province', None):
+        school_province = str(school_info.province).replace('ខេត្ត', '').strip()
+    school_department_kh = f"មន្ទីរអប់រំ យុវជន និងកីឡាខេត្ត{school_province}"
+    school_location = (school_info and (getattr(school_info, 'district', None) or getattr(school_info, 'commune', None))) or 'កំពង់កន្ទួត'
+    ann_overall_mention = get_khmer_mention(ann_ov_val)
+
+    school_address = 'ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល'
+
+    if school_info:
+        if getattr(school_info, 'address', None):
+            school_address = school_info.address
+        else:
+            loc_parts = [p for p in [getattr(school_info, 'commune', None), getattr(school_info, 'district', None), getattr(school_info, 'province', None)] if p]
+            if loc_parts:
+                school_address = ' '.join(loc_parts)
+
+    default_date_str = (term.end_date.strftime('%B %d, %Y') if (term and term.end_date) else datetime.date.today().strftime('%B %d, %Y'))
     report_date = request.GET.get('report_date', default_date_str) if request else default_date_str
-    registrar_name = request.GET.get('registrar_name', 'Mr. BAN Dara') if request else 'Mr. BAN Dara'
-    principal_name = school_info.principal_name if (school_info and school_info.principal_name) else 'Mr. PRAK Boreth'
+    registrar_name = preloaded_data['homeroom_teacher'] or 'ការិយាល័យសិក្សា'
 
     return {
         'student': student,
-        'term': term,
+        'student_gender_kh': student_gender_kh,
         'classroom': classroom,
         'academic_year': ay,
-        'school_info': school_info,
+        'academic_year_kh': preloaded_data['academic_year_kh'],
+        'school_info': preloaded_data['school_info'],
+        'school_name_kh': preloaded_data['school_name_kh'],
+        'school_address': school_address,
+        'principal_title': preloaded_data['principal_title'],
+        'principal_name': preloaded_data['principal_name'],
+        'homeroom_teacher': preloaded_data['homeroom_teacher'],
+        'registrar_name': registrar_name,
+        'year_kh': preloaded_data['year_kh'],
+        'total_students_kh': preloaded_data['total_students_kh'],
+        'total_females_kh': preloaded_data['total_females_kh'],
+        'total_in_class': preloaded_data['total_in_class'],
+        'report_title_kh': report_title_kh,
+        'report_title_en': report_title_en,
+        'current_period': 'annual',
         'subjects': subject_rows,
-        's1_avg': f"{s1_avg:.2f}" if s1_avg is not None else '-',
+        'tr_subjects': tr_subject_rows,
+        'student_id_kh': student_id_kh,
+        'student_gender_short': student_gender_short,
+        'student_dob_kh': student_dob_kh,
+        'total_students_tr_kh': total_students_tr_kh,
+        'school_department_kh': school_department_kh,
+        'school_location': school_location,
+        'ann_overall_mention': ann_overall_mention,
+        # MoEYS Summary Rows values
+        's1_exam_total': _fmt_score(summ.get('s1_exam_total')),
+        's2_exam_total': _fmt_score(summ.get('s2_exam_total')),
+        's1_exam_avg': _fmt_score(summ.get('s1_exam_avg')),
+        's2_exam_avg': _fmt_score(summ.get('s2_exam_avg')),
+        's1_monthly_avg': _fmt_score(summ.get('s1_monthly_avg')),
+        's2_monthly_avg': _fmt_score(summ.get('s2_monthly_avg')),
+        's1_overall_avg': _fmt_score(s1_ov_val),
+        's1_overall_rank': preloaded_data['s1_ov_ranks'].get(sid, ''),
+        's2_overall_avg': _fmt_score(s2_ov_val),
+        's2_overall_rank': preloaded_data['s2_ov_ranks'].get(sid, ''),
+        'ann_overall_avg': _fmt_score(ann_ov_val),
+        'ann_overall_rank': preloaded_data['ann_ov_ranks'].get(sid, ''),
+        's1_excused': f"{s1_ex:02d}",
+        's1_unexcused': f"{s1_un:02d}",
+        's2_excused': f"{s2_ex:02d}",
+        's2_unexcused': f"{s2_un:02d}",
+        'ann_excused': f"{(s1_ex + s2_ex):02d}",
+        'ann_unexcused': f"{(s1_un + s2_un):02d}",
+        'conduct_study': 'ល្អ',
+        'conduct_living': 'ល្អ',
+        'conduct_labor': 'ល្អ',
+        'conduct_hygiene': 'ល្អ',
+        # Backward compatibility values
+        's1_avg': _fmt_score(s1_ov_val) or '-',
         's1_letter': s1_letter,
-        's1_credits': s1_total_credits if s1_avg is not None else '-',
-        's1_gpa': f"{s1_gpa:.2f}" if s1_gpa is not None else '-',
-        's1_rank': s1_rank,
-        's2_avg': f"{s2_avg:.2f}" if s2_avg is not None else '-',
+        's1_credits': s1_total_credits if s1_ov_val is not None else '-',
+        's1_gpa': f"{s1_gpa:.2f}",
+        's1_rank': preloaded_data['s1_ov_ranks'].get(sid, 1),
+        's2_avg': _fmt_score(s2_ov_val) or '-',
         's2_letter': s2_letter,
-        's2_credits': s2_total_credits if s2_avg is not None else '-',
-        's2_gpa': f"{s2_gpa:.2f}" if s2_gpa is not None else '-',
-        's2_rank': s2_rank,
-        'ov_avg': f"{ov_avg:.2f}" if ov_avg is not None else '-',
+        's2_credits': s2_total_credits if s2_ov_val is not None else '-',
+        's2_gpa': f"{s2_gpa:.2f}",
+        's2_rank': preloaded_data['s2_ov_ranks'].get(sid, 1),
+        'ov_avg': _fmt_score(ann_ov_val) or '-',
         'ov_letter': ov_letter,
-        'ov_credits': ov_credits if ov_avg is not None else '-',
-        'ov_gpa': f"{ov_gpa:.2f}" if ov_gpa is not None else '-',
-        'ov_rank': ov_rank,
-        'total_in_class': total_in_class,
+        'ov_credits': s1_total_credits + s2_total_credits if ann_ov_val is not None else '-',
+        'ov_gpa': f"{ov_gpa:.2f}",
+        'ov_rank': preloaded_data['ann_ov_ranks'].get(sid, 1),
         'is_promoted': is_promoted,
         'promoted_grade': promoted_grade,
         'promotion_status_kh': promotion_status_kh,
         'promotion_status_en': promotion_status_en,
         'total_school_days': total_school_days,
-        'excused_absences': excused_absences,
-        'unexcused_absences': unexcused_absences,
+        'excused_absences': s1_ex + s2_ex,
+        'unexcused_absences': s1_un + s2_un,
         'total_absences': total_absences,
         'times_tardy': times_tardy,
         'overall_presence': overall_presence,
         'behavior_ratings': behavior_ratings,
         'report_date': report_date,
-        'registrar_name': registrar_name,
-        'principal_name': principal_name,
     }
 
 
 @login_required
 def report_card_western_view(request, student_id, term_id=None):
     """
-    Renders the Western International School / Bilingual Academic Report Card
-    (Page 1: Student info & semester details, Page 2: Cumulative results, Promotion, Behavior, Attendance, Signatures).
+    Renders the Official Academic Report Card (ព្រឹត្តិបត្រពិន្ទុ)
+    Supports both:
+      - 'moeys': Authentic Cambodian Public School 1-Page Model
+      - 'western': Western / Bilingual 2-Page Model
     """
     from apps.students.models import Student
     from apps.examinations.models import ExamTerm
@@ -795,15 +1113,54 @@ def report_card_western_view(request, student_id, term_id=None):
     data = _calculate_bilingual_report_card_data(student, term=term, request=request)
     data['reports'] = [data]
     data['is_batch'] = False
-    return render(request, 'examinations/report_card_western.html', data)
+    data['current_period'] = data.get('current_period', 'annual')
+    
+    model = (request.GET.get('model') or request.GET.get('format') or '').strip().lower()
+    if model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
+        template_name = 'examinations/report_card_moeys_tr.html'
+        data['current_model'] = 'tr'
+    elif model in ['western', 'bilingual', 'international']:
+        template_name = 'examinations/report_card_western.html'
+        data['current_model'] = 'western'
+    else:
+        template_name = 'examinations/report_card_moeys_annual.html'
+        data['current_model'] = 'moeys'
+
+    return render(request, template_name, data)
+
+
+@login_required
+def report_card_moeys_view(request, student_id, term_id=None):
+    """
+    Direct endpoint for Authentic Cambodian Public School 1-Page Report Card (Model 1)
+    """
+    q = request.GET.copy()
+    q['model'] = 'moeys'
+    request.GET = q
+    return report_card_western_view(request, student_id, term_id)
+
+
+@login_required
+def report_card_tr_view(request, student_id, term_id=None):
+    """
+    Direct endpoint for MoEYS High School / Secondary Report Card (matching tr.pdf)
+    """
+    q = request.GET.copy()
+    q['model'] = 'tr'
+    request.GET = q
+    return report_card_western_view(request, student_id, term_id)
 
 
 @login_required
 @role_required(['ADMIN', 'TEACHER'])
 def classroom_report_cards_western_view(request, classroom_id: int):
     """
-    Batch generation & printing of Western International Bilingual EOY Report Cards
+    Batch generation & printing of Official Academic Report Cards (ព្រឹត្តិបត្រពិន្ទុ)
     for all active students in a classroom.
+    Supports all three models:
+      - 'moeys': Authentic Cambodian Public School 1-Page Model
+      - 'tr': MoEYS Secondary / High School Model (matching tr.pdf)
+      - 'western': Western / Bilingual 2-Page Model
     """
     from apps.academics.models import Classroom
     from apps.students.models import Student
@@ -815,12 +1172,25 @@ def classroom_report_cards_western_view(request, classroom_id: int):
     term = ExamTerm.objects.filter(pk=term_id).first() if term_id else ExamTerm.objects.filter(academic_year=classroom.academic_year).first()
 
     students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('khmer_name', 'id')
+    ay = classroom.academic_year
+    preloaded_data = _preload_classroom_report_card_data(classroom, ay)
     reports = []
     for stu in students:
-        r_data = _calculate_bilingual_report_card_data(stu, term=term, academic_year=classroom.academic_year, request=request)
+        r_data = _calculate_bilingual_report_card_data(stu, term=term, academic_year=ay, request=request, preloaded_data=preloaded_data)
         reports.append(r_data)
 
     first_rep = reports[0] if reports else {}
+    model = (request.GET.get('model') or request.GET.get('format') or '').strip().lower()
+    if model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
+        template_name = 'examinations/report_card_moeys_tr.html'
+        current_model = 'tr'
+    elif model in ['western', 'bilingual', 'international']:
+        template_name = 'examinations/report_card_western.html'
+        current_model = 'western'
+    else:
+        template_name = 'examinations/report_card_moeys_annual.html'
+        current_model = 'moeys'
+
     context = {
         'classroom': classroom,
         'term': term,
@@ -829,8 +1199,35 @@ def classroom_report_cards_western_view(request, classroom_id: int):
         'is_batch': True,
         'school_info': first_rep.get('school_info'),
         'student': first_rep.get('student'),
+        'current_period': first_rep.get('current_period', 'annual'),
+        'current_model': current_model,
     }
-    return render(request, 'examinations/report_card_western.html', context)
+    return render(request, template_name, context)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def classroom_report_cards_moeys_view(request, classroom_id: int):
+    """
+    Direct batch endpoint for Authentic Cambodian Public School 1-Page Report Card (Model 1)
+    """
+    q = request.GET.copy()
+    q['model'] = 'moeys'
+    request.GET = q
+    return classroom_report_cards_western_view(request, classroom_id)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def classroom_report_cards_tr_view(request, classroom_id: int):
+    """
+    Direct batch endpoint for MoEYS High School / Secondary Report Card (matching tr.pdf)
+    """
+    q = request.GET.copy()
+    q['model'] = 'tr'
+    request.GET = q
+    return classroom_report_cards_western_view(request, classroom_id)
+
 
 
 @login_required
@@ -6270,30 +6667,48 @@ def annual_results_print_view(request):
         }
 
     # Pagination:
-    # Page 1: 38 rows
-    # Page 2..N-1: 45 rows
-    # Final Page: <= 37 rows + Footer
+    # Page 1: Up to 45 rows (leaves ~1.5 - 2 cm space at bottom matching user request)
+    # Intermediate Pages: Up to 48 rows
+    # Final Page (with summary footer): Up to 36 rows
     sheets = []
-    if total_students <= 25:
+    if total_students <= 32:
         sheets.append({
             'page_number': 1,
             'is_first_page': True,
             'is_last_page': True,
             'rows': students_list,
         })
-    else:
-        # Page 1
-        p1_rows = students_list[:38]
+    elif total_students <= 45:
+        # Split between Page 1 and Page 2 so both pages look balanced
+        p1_count = min(32, total_students - 6)
         sheets.append({
             'page_number': 1,
             'is_first_page': True,
             'is_last_page': False,
-            'rows': p1_rows,
+            'rows': students_list[:p1_count],
         })
-        rem_students = students_list[38:]
+        sheets.append({
+            'page_number': 2,
+            'is_first_page': False,
+            'is_last_page': True,
+            'rows': students_list[p1_count:],
+        })
+    else:
+        # Total > 45: Page 1 holds 45 rows to leave 1-2 cm space at bottom
+        p1_count = 45
+        if total_students == 46:
+            p1_count = 44  # avoid single orphan row on last page
+
+        sheets.append({
+            'page_number': 1,
+            'is_first_page': True,
+            'is_last_page': False,
+            'rows': students_list[:p1_count],
+        })
+        rem_students = students_list[p1_count:]
         cur_page = 2
         while rem_students:
-            if len(rem_students) <= 37:
+            if len(rem_students) <= 36:
                 sheets.append({
                     'page_number': cur_page,
                     'is_first_page': False,
@@ -6302,8 +6717,8 @@ def annual_results_print_view(request):
                 })
                 break
             else:
-                chunk = rem_students[:45]
-                rem_students = rem_students[45:]
+                chunk = rem_students[:48]
+                rem_students = rem_students[48:]
                 is_last = (len(rem_students) == 0)
                 sheets.append({
                     'page_number': cur_page,

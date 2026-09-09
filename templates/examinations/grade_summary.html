@@ -60,10 +60,16 @@
         </div>
         
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{% url 'classroom_report_cards_western' selected_class.id %}?term_id={{ selected_term.id }}" target="_blank" class="btn btn-warning btn-sm fw-bold rounded-pill px-3 shadow-xs text-dark">
-                <i class="fa-solid fa-graduation-cap me-1"></i> បោះពុម្ពព្រឹត្តិបត្រ Western ទាំងថ្នាក់
+            <a href="{% url 'classroom_report_cards_moeys' selected_class.id %}?term_id={{ selected_term.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-xs" title="បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋ ៨ ជួរ (១ ទំព័រ) សម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់">
+                <i class="fa-solid fa-landmark me-1"></i> ព្រឹត្តិបត្រសាលារដ្ឋ (គំរូ ១)
             </a>
-            <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-xs" onclick="openClassTelegramModal('{{ selected_class.id }}', '{{ selected_term.id }}', '{{ selected_class.name }}', '{{ selected_term.name }}')">
+            <a href="{% url 'classroom_report_cards_tr' selected_class.id %}?term_id={{ selected_term.id }}" target="_blank" class="btn btn-success btn-sm fw-bold rounded-pill px-3 shadow-xs" title="បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋតាម tr.pdf (១ ទំព័រ) សម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់">
+                <i class="fa-solid fa-file-invoice me-1"></i> ព្រឹត្តិបត្រសាលារដ្ឋ (គំរូ tr)
+            </a>
+            <a href="{% url 'classroom_report_cards_western' selected_class.id %}?model=western&term_id={{ selected_term.id }}" target="_blank" class="btn btn-warning btn-sm fw-bold rounded-pill px-3 shadow-xs text-dark" title="បោះពុម្ពព្រឹត្តិបត្រពិន្ទុអន្តរជាតិ/ទ្វេភាសា (២ ទំព័រ) សម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់">
+                <i class="fa-solid fa-graduation-cap me-1"></i> ព្រឹត្តិបត្រអន្តរជាតិ (ទាំងថ្នាក់)
+            </a>
+            <button type="button" class="btn btn-info text-white btn-sm fw-bold rounded-pill px-3 shadow-xs" onclick="openClassTelegramModal('{{ selected_class.id }}', '{{ selected_term.id }}', '{{ selected_class.name }}', '{{ selected_term.name }}')">
                 <i class="fa-brands fa-telegram me-1"></i> ផ្ញើប័ណ្ណពិន្ទុទាំងមូល (PDF & Message)
             </button>
         </div>
@@ -85,7 +91,7 @@
                     <th class="text-center">ភាគរយ (%)</th>
                     <th class="text-center">និទ្ទេស</th>
                     <th class="text-center">លទ្ធផល</th>
-                    <th class="text-end" width="220">ប័ណ្ណពិន្ទុ & Telegram</th>
+                    <th class="text-end" width="280">ប័ណ្ណពិន្ទុ & Telegram</th>
                 </tr>
             </thead>
             <tbody>
@@ -131,11 +137,17 @@
                     </td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            <a href="{% url 'report_card' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-primary" title="មើល & បោះពុម្ពប័ណ្ណពិន្ទុ MoEYS">
-                                <i class="fa-solid fa-file-pdf"></i> MoEYS
+                            <a href="{% url 'report_card_moeys' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-primary fw-bold" title="មើល & បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋ ៨ ជួរ (១ ទំព័រ)">
+                                <i class="fa-solid fa-landmark"></i> សាលារដ្ឋ
                             </a>
-                            <a href="{% url 'report_card_western' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-warning text-dark fw-bold" title="មើល & បោះពុម្ពគំរូ Western EOY">
-                                <i class="fa-solid fa-graduation-cap"></i> Western
+                            <a href="{% url 'report_card_tr' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-success fw-bold" title="មើល & បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋតាម tr.pdf (១ ទំព័រ)">
+                                <i class="fa-solid fa-file-invoice"></i> គំរូ tr
+                            </a>
+                            <a href="{% url 'report_card_western' row.student.id selected_term.id %}?model=western" target="_blank" class="btn btn-outline-warning text-dark fw-bold" title="មើល & បោះពុម្ពព្រឹត្តិបត្រពិន្ទុអន្តរជាតិ/ទ្វេភាសា (២ ទំព័រ)">
+                                <i class="fa-solid fa-graduation-cap"></i> អន្តរជាតិ
+                            </a>
+                            <a href="{% url 'report_card' row.student.id selected_term.id %}" target="_blank" class="btn btn-outline-secondary" title="មើល & បោះពុម្ពសន្លឹកពិន្ទុទូទៅ (Transcript)">
+                                <i class="fa-solid fa-file-pdf"></i> MoEYS
                             </a>
                             <button type="button" class="btn btn-outline-info" title="ផ្ញើប័ណ្ណពិន្ទុទៅ Telegram អាណាព្យាបាល" onclick="openSingleTelegramModal('{{ row.student.id }}', '{{ selected_term.id }}', '{{ row.student.khmer_name|escapejs }}', '{{ selected_term.name|escapejs }}')">
                                 <i class="fa-brands fa-telegram"></i> ផ្ញើ

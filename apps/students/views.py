@@ -2823,9 +2823,12 @@ def student_age_grade_statistics(request):
 
     school_info = SchoolProfile.get_settings()
 
+    all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'name') if active_year else Classroom.objects.all().order_by('grade_level', 'name')
+
     context = {
         'all_years': all_years,
         'active_year': active_year,
+        'all_classrooms': all_classrooms,
         'selected_year_id': str(active_year.id) if active_year else '',
         'ref_year': data['ref_year'],
         'calc_method': calc_method,
@@ -3380,6 +3383,192 @@ def api_student_age_grade_drilldown(request):
     })
 
 
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_set_student_repeater_status(request, student_id: int):
+    """
+    1-Click API for Admin to designate or toggle a student's repeater/retained status (សិស្សត្រួតថ្នាក់)
+    for the MoEYS Age-Grade Statistics Matrix and Roster reports.
+    """
+    student = get_object_or_404(Student, pk=student_id)
+
+    param_val = request.POST.get('is_repeating_grade')
+    if param_val is not None:
+        new_val = param_val.strip().lower() in ['true', '1', 'yes']
+    else:
+        new_val = not bool(student.is_repeating_grade)
+
+    reason = request.POST.get('reason', '').strip()
+    student.is_repeating_grade = new_val
+    student.last_promotion_status = 'RETAINED' if new_val else 'NORMAL'
+    if reason:
+        student.last_promotion_reason = reason
+    elif new_val:
+        student.last_promotion_reason = 'រៀនត្រួតថ្នាក់'
+    else:
+        student.last_promotion_reason = 'សិស្សថ្មី/ឡើងថ្នាក់'
+
+    student.save(update_fields=['is_repeating_grade', 'last_promotion_status', 'last_promotion_reason', 'updated_at'])
+
+    status_kh = "សិស្សត្រួតថ្នាក់" if new_val else "សិស្សថ្មី"
+    msg = f"🎉 បានកំណត់សិស្ស «{student.khmer_name}» ជា៖ {status_kh} ដោយជោគជ័យ!"
+
+    return JsonResponse({
+        'status': 'success',
+        'student_id': student.id,
+        'student_code': student.student_id or '',
+        'khmer_name': student.khmer_name,
+        'is_repeater': student.is_repeating_grade,
+        'admission_type': status_kh,
+        'message': msg,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_POST
+def api_batch_set_student_repeater_status(request):
+    """
+    Batch API for Admin to set repeater status for multiple selected students.
+    """
+    import json
+    student_ids = []
+    if request.content_type == 'application/json':
+        try:
+            body = json.loads(request.body)
+            student_ids = body.get('student_ids', [])
+            is_rep_val = body.get('is_repeating_grade', True)
+        except Exception:
+            student_ids = []
+            is_rep_val = True
+    else:
+        student_ids = request.POST.getlist('student_ids[]') or request.POST.getlist('student_ids')
+        if not student_ids and request.POST.get('student_ids'):
+            raw = request.POST.get('student_ids').split(',')
+            student_ids = [s.strip() for s in raw if s.strip().isdigit()]
+        param_val = request.POST.get('is_repeating_grade', 'true')
+        is_rep_val = param_val.strip().lower() in ['true', '1', 'yes']
+
+    clean_ids = [int(i) for i in student_ids if str(i).isdigit()]
+    if not clean_ids:
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសសិស្សយ៉ាងហោចណាស់ម្នាក់!'}, status=400)
+
+    reason = request.POST.get('reason', 'កំណត់ជាក្រុមដោយ Admin').strip()
+    status_str = 'RETAINED' if is_rep_val else 'NORMAL'
+    default_reason = 'រៀនត្រួតថ្នាក់' if is_rep_val else 'សិស្សថ្មី/ឡើងថ្នាក់'
+
+    with transaction.atomic():
+        updated_count = Student.objects.filter(id__in=clean_ids).update(
+            is_repeating_grade=is_rep_val,
+            last_promotion_status=status_str,
+            last_promotion_reason=reason or default_reason
+        )
+
+    status_kh = "សិស្សត្រួតថ្នាក់" if is_rep_val else "សិស្សថ្មី"
+    msg = f"🎉 បានកំណត់សិស្សចំនួន {updated_count} នាក់ជា៖ {status_kh} ដោយជោគជ័យ!"
+
+    return JsonResponse({
+        'status': 'success',
+        'updated_count': updated_count,
+        'is_repeater': is_rep_val,
+        'admission_type': status_kh,
+        'message': msg,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+@require_GET
+def api_classroom_repeater_list(request):
+    """
+    API for Admin to search and list classroom students with their current repeater status
+    for the interactive repeater management modal.
+    """
+    classroom_id = request.GET.get('classroom_id')
+    grade_level = request.GET.get('grade_level')
+    academic_year_id = request.GET.get('academic_year_id')
+    query = request.GET.get('q', '').strip()
+    calc_method = request.GET.get('calc_method', 'exact')
+    status_filter = request.GET.get('status_filter', 'ALL')
+
+    qs = Student.objects.select_related('classroom', 'academic_year').filter(status='ACTIVE')
+    if academic_year_id and str(academic_year_id).isdigit():
+        qs = qs.filter(Q(academic_year_id=academic_year_id) | Q(classroom__academic_year_id=academic_year_id))
+
+    if classroom_id and str(classroom_id).isdigit() and int(classroom_id) > 0:
+        qs = qs.filter(classroom_id=classroom_id)
+    elif grade_level and str(grade_level).isdigit() and int(grade_level) > 0:
+        qs = qs.filter(classroom__grade_level=int(grade_level))
+
+    if query:
+        qs = qs.filter(
+            Q(khmer_name__icontains=query) |
+            Q(latin_name__icontains=query) |
+            Q(student_id__icontains=query)
+        )
+
+    if status_filter == 'REPEATER':
+        qs = qs.filter(is_repeating_grade=True)
+    elif status_filter == 'NEW':
+        qs = qs.filter(is_repeating_grade=False)
+
+    qs = qs.order_by('classroom__grade_level', 'classroom__name', 'khmer_name')[:400]
+
+    ref_date = date(2026, 10, 31)
+    ref_year = 2026
+
+    students_data = []
+    total_repeaters = 0
+    total_females = 0
+    total_females_repeater = 0
+
+    for idx, s in enumerate(qs, 1):
+        s_age = 0
+        if s.date_of_birth:
+            if calc_method == 'exact':
+                dob = s.date_of_birth
+                s_age = ref_date.year - dob.year - ((ref_date.month, ref_date.day) < (dob.month, dob.day))
+            else:
+                s_age = ref_year - s.date_of_birth.year
+            if s_age < 0:
+                s_age = 0
+
+        is_rep = bool(s.is_repeating_grade)
+        is_f = (s.gender == 'F')
+        if is_rep:
+            total_repeaters += 1
+            if is_f:
+                total_females_repeater += 1
+        if is_f:
+            total_females += 1
+
+        students_data.append({
+            'no': idx,
+            'id': s.id,
+            'student_id': s.student_id or '',
+            'khmer_name': s.khmer_name,
+            'latin_name': s.latin_name or '',
+            'gender': 'ស្រី' if is_f else 'ប្រុស',
+            'gender_code': s.gender,
+            'date_of_birth': s.date_of_birth.strftime('%d/%m/%Y') if s.date_of_birth else '-',
+            'age': s_age,
+            'classroom': s.classroom.name if s.classroom else '-',
+            'grade_level': s.classroom.grade_level if s.classroom else None,
+            'is_repeater': is_rep,
+            'admission_type': 'ត្រួតថ្នាក់' if is_rep else 'សិស្សថ្មី',
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'count': len(students_data),
+        'total_repeaters': total_repeaters,
+        'total_females': total_females,
+        'total_females_repeater': total_females_repeater,
+        'students': students_data,
+    })
+
+
 # ==============================================================================
 # MoEYS Customizable Student Age Roster Reports (Format A & Format B)
 # Replica of Image 1 (Grade split + Age) and Image 2 (Class + 4-part Address)
@@ -3585,6 +3774,7 @@ def _get_student_age_roster_data(request):
     grade_level = request.GET.get('grade_level', 'ALL').strip()
     classroom_id = request.GET.get('classroom', 'ALL').strip()
     gender_filter = request.GET.get('gender', 'ALL').strip().upper()
+    repeater_filter = request.GET.get('repeater', 'ALL').strip().upper()
     status_filter = request.GET.get('status', 'ACTIVE').strip()
     search_q = request.GET.get('q', '').strip()
 
@@ -3605,6 +3795,11 @@ def _get_student_age_roster_data(request):
     if gender_filter in ['F', 'M']:
         qs = qs.filter(gender=gender_filter)
 
+    if repeater_filter == 'REPEATER':
+        qs = qs.filter(is_repeating_grade=True)
+    elif repeater_filter == 'NEW':
+        qs = qs.filter(is_repeating_grade=False)
+
     if search_q:
         qs = qs.filter(
             Q(student_id__icontains=search_q) |
@@ -3619,6 +3814,7 @@ def _get_student_age_roster_data(request):
     students_list = []
     female_count = 0
     male_count = 0
+    repeater_count = 0
 
     for s in qs:
         dob = s.date_of_birth
@@ -3648,6 +3844,10 @@ def _get_student_age_roster_data(request):
             female_count += 1
         else:
             male_count += 1
+
+        is_rep = bool(s.is_repeating_grade)
+        if is_rep:
+            repeater_count += 1
 
         no = len(students_list) + 1
         no_kh = _to_khmer_num(no)
@@ -3682,7 +3882,8 @@ def _get_student_age_roster_data(request):
             'commune': c,
             'district': d,
             'province': p,
-            'remarks': '',
+            'is_repeater': is_rep,
+            'remarks': 'ត្រួតថ្នាក់' if is_rep else '',
         })
 
     total_count = len(students_list)
@@ -3720,6 +3921,8 @@ def _get_student_age_roster_data(request):
         'female_count_kh': _to_khmer_num(female_count),
         'male_count': male_count,
         'male_count_kh': _to_khmer_num(male_count),
+        'repeater_count': repeater_count,
+        'repeater_count_kh': _to_khmer_num(repeater_count),
         'female_pct': female_pct,
         'title': title,
         'school_name': school_name,
@@ -3734,6 +3937,7 @@ def _get_student_age_roster_data(request):
         'grade_level': grade_level,
         'classroom_id': classroom_id,
         'gender_filter': gender_filter,
+        'repeater_filter': repeater_filter,
         'status_filter': status_filter,
         'search_q': search_q,
         'all_classrooms': all_classrooms,

@@ -16,6 +16,7 @@ urlpatterns = [
 
     path('summary/', views.grade_summary_view, name='grade_summary'),
     path('results/semester/', views.semester_results_view, name='semester_results'),
+    path('results/semester/export-excel/', views.export_semester_results_excel, name='export_semester_results_excel'),
     path('results/semester/subject-ranks/print/', views.semester_subject_ranks_print_view, name='semester_subject_ranks_print_view'),
     path('results/semester/subject-ranks/export-excel/', views.export_semester_subject_ranks_excel, name='export_semester_subject_ranks_excel'),
     path('results/monthly/print/', views.monthly_results_print_view, name='monthly_results_print_view'),
@@ -32,6 +33,12 @@ urlpatterns = [
     path('report-card/<int:student_id>/western/', views.report_card_western_view, name='report_card_western_default'),
     path('report-card/<int:student_id>/<int:term_id>/western/', views.report_card_western_view, name='report_card_western'),
     path('classroom/<int:classroom_id>/report-cards/western/', views.classroom_report_cards_western_view, name='classroom_report_cards_western'),
+    path('report-card/<int:student_id>/moeys/', views.report_card_moeys_view, name='report_card_moeys_default'),
+    path('report-card/<int:student_id>/<int:term_id>/moeys/', views.report_card_moeys_view, name='report_card_moeys'),
+    path('classroom/<int:classroom_id>/report-cards/moeys/', views.classroom_report_cards_moeys_view, name='classroom_report_cards_moeys'),
+    path('report-card/<int:student_id>/tr/', views.report_card_tr_view, name='report_card_tr_default'),
+    path('report-card/<int:student_id>/<int:term_id>/tr/', views.report_card_tr_view, name='report_card_tr'),
+    path('classroom/<int:classroom_id>/report-cards/tr/', views.classroom_report_cards_tr_view, name='classroom_report_cards_tr'),
     path('api/report-card/send-telegram/', views.api_send_report_card_telegram, name='api_send_report_card_telegram'),
     path('api/report-card/send-class-telegram/', views.api_send_class_report_cards_telegram, name='api_send_class_report_cards_telegram'),
 

@@ -34,6 +34,9 @@ urlpatterns = [
     path('statistics/age-grade/', views.student_age_grade_statistics, name='student_age_grade_statistics'),
     path('statistics/age-grade/export-excel/', views.export_student_age_grade_excel, name='export_student_age_grade_excel'),
     path('api/age-grade-drilldown/', views.api_student_age_grade_drilldown, name='api_student_age_grade_drilldown'),
+    path('api/set-repeater-status/<int:student_id>/', views.api_set_student_repeater_status, name='api_set_student_repeater_status'),
+    path('api/batch-set-repeater-status/', views.api_batch_set_student_repeater_status, name='api_batch_set_student_repeater_status'),
+    path('api/classroom-repeater-list/', views.api_classroom_repeater_list, name='api_classroom_repeater_list'),
 
     # MoEYS Customizable Student Age Roster Reports (Format A & B)
     path('reports/age-roster/', views.student_age_custom_roster, name='student_age_custom_roster'),

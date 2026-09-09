@@ -156,6 +156,7 @@ class StudentEnrollmentForm(forms.ModelForm):
             'student_id', 'khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
             'current_address', 'phone', 'photo', 'birth_certificate',
             'classroom', 'academic_year', 'status', 'scholarship_type', 'fee_start_month', 'fee_end_month',
+            'is_repeating_grade',
             'is_exam_suspended', 'exam_suspension_reason', 'exam_suspension_notes',
             'father_name', 'father_phone', 'father_job',
             'mother_name', 'mother_phone', 'mother_job',
@@ -180,6 +181,7 @@ class StudentEnrollmentForm(forms.ModelForm):
             'fee_start_month': forms.Select(attrs={'class': 'form-select'}),
             'fee_end_month': forms.Select(attrs={'class': 'form-select'}),
             
+            'is_repeating_grade': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_is_repeating_grade'}),
             'is_exam_suspended': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_is_exam_suspended'}),
             'exam_suspension_reason': forms.Select(attrs={'class': 'form-select'}),
             'exam_suspension_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'មូលហេតុ ឬកំណត់សម្គាល់ដកសិទ្ធិប្រឡង...'}),
