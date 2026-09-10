@@ -89,13 +89,23 @@ goto menu
 :migrate
 cls
 echo ================================================================
-echo   DATABASE MIGRATION (makemigrations + migrate)
+echo   SAFE DATABASE UPDATE / MIGRATION (Preserve Local Data)
 echo ================================================================
 echo.
+echo [1/3] Creating automatic safety backup of local database...
+python manage.py backup_db --label "Pre_Update_Auto_Backup"
+echo.
+echo [2/3] Checking and applying database schema migrations...
 python manage.py makemigrations
 python manage.py migrate
 echo.
-echo [DONE] Database updated successfully!
+echo [3/3] Enforcing system defaults (Admin password '123' and Academic Years)...
+python manage.py ensure_system_defaults
+echo.
+echo ================================================================
+echo   [SUCCESS] Local database preserved and safely updated!
+echo   * An automatic safety snapshot is stored in backups/ folder.
+echo ================================================================
 echo.
 pause
 goto menu

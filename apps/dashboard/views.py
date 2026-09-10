@@ -192,6 +192,10 @@ def teacher_dashboard(request):
     today_schedule = []
     my_classes = []
     my_students_count = 0
+    my_female_count = 0
+    my_male_count = 0
+    homeroom_slow_learners_count = 0
+    teaching_classes_with_subjects = []
     my_homeroom = None
 
     if teacher:
@@ -208,9 +212,6 @@ def teacher_dashboard(request):
             cls_qs = cls_qs.filter(academic_year=current_year)
         my_homeroom = cls_qs.first()
 
-        my_female_count = 0
-        my_male_count = 0
-        homeroom_slow_learners_count = 0
         if my_homeroom:
             my_students_count = my_homeroom.students.filter(status='ACTIVE').count()
             my_female_count = my_homeroom.students.filter(status='ACTIVE', gender='F').count()

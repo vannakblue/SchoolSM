@@ -148,8 +148,8 @@ def student_list(request):
     })
 
 
-def _extract_grade_options(request, classroom, existing_data=None):
-    """Helper to extract and validate dynamic grade-level custom fields from request"""
+def _extract_grade_options(request, classroom, existing_data=None, form_category=None):
+    """Helper to extract and validate dynamic grade-level custom fields from request, optionally scoped by form_category"""
     from apps.academics.models import GradeLevel, GradeEnrollmentOption
     from django.core.files.storage import default_storage
 
@@ -163,6 +163,9 @@ def _extract_grade_options(request, classroom, existing_data=None):
 
     if gl:
         options = gl.enrollment_options.filter(is_active=True)
+        if form_category in [GradeEnrollmentOption.FormCategory.GENERAL, GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL]:
+            options = options.filter(form_category=form_category)
+
         for opt in options:
             if opt.field_type == GradeEnrollmentOption.FieldType.SECTION:
                 continue
@@ -189,7 +192,7 @@ def _extract_grade_options(request, classroom, existing_data=None):
                         'value': ", ".join(vals),
                         'list': vals
                     }
-                elif opt.field_name in enrollment_data:
+                elif opt.field_name in enrollment_data and post_key in request.POST:
                     enrollment_data.pop(opt.field_name, None)
             elif post_key in request.POST:
                 val = request.POST.get(post_key, '').strip()
@@ -209,43 +212,104 @@ def _extract_grade_options(request, classroom, existing_data=None):
 @role_required(['ADMIN'])
 def student_enroll(request):
     from apps.academics.utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import GradeEnrollmentOption
+    from .forms import MoeysIndividualStudentForm
+
     current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+    school_profile = SchoolProfile.get_settings()
+    configured_mode = school_profile.registration_mode or SchoolProfile.RegistrationMode.BOTH
+
+    # Active mode
+    requested_mode = request.GET.get('mode') or request.POST.get('enrollment_mode')
+    if requested_mode in [SchoolProfile.RegistrationMode.ADMIN_CUSTOM, SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL]:
+        active_mode = requested_mode
+    elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+        active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+    else:
+        active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
     
     if request.method == 'POST':
-        form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year)
-        if form.is_valid():
-            with transaction.atomic():
-                student = form.save(commit=False)
-                if not student.academic_year:
-                    student.academic_year = current_year
-                student.enrollment_data = _extract_grade_options(request, student.classroom)
-                student.save()
-                
-                # Create user account for student/parent login if username doesn't exist
-                username = student.student_id.lower().replace('-', '_')
-                user = User.objects.filter(username=username).first()
-                if not user:
-                    user = User.objects.create_user(
-                        username=username,
-                        password='p123456',
-                        role=User.Role.STUDENT,
-                        khmer_name=student.khmer_name,
-                        latin_name=student.latin_name,
-                        phone=student.phone or student.father_phone or ''
-                    )
-                student.user = user
-                student.save(update_fields=['user'])
+        submitted_mode = request.POST.get('enrollment_mode') or active_mode
+        active_mode = submitted_mode
 
-            messages.success(request, f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) ក្នុងឆ្នាំសិក្សា {current_year.name if current_year else ''} ដោយជោគជ័យ! ពាក្យសម្ងាត់ដំបូងគឺ 'p123456'")
-            return redirect('student_detail', pk=student.pk)
+        if submitted_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+            moeys_form = MoeysIndividualStudentForm(request.POST, request.FILES, academic_year=current_year)
+            form = StudentEnrollmentForm(initial={'academic_year': current_year}, academic_year=current_year)
+            if moeys_form.is_valid():
+                with transaction.atomic():
+                    student = moeys_form.save(commit=False)
+                    if not student.academic_year:
+                        student.academic_year = current_year
+                    student.enrollment_data = _extract_grade_options(
+                        request, student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
+                    )
+                    student.save()
+
+                    username = student.student_id.lower().replace('-', '_')
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        user = User.objects.create_user(
+                            username=username,
+                            password='p123456',
+                            role=User.Role.STUDENT,
+                            khmer_name=student.khmer_name,
+                            latin_name=student.latin_name,
+                            phone=student.phone or student.father_phone or ''
+                        )
+                    student.user = user
+                    student.save(update_fields=['user'])
+
+                messages.success(request, f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) តាមសម្រង់ព័ត៌មាន MoEYS ៣៥ជួរឈរ ក្នុងឆ្នាំសិក្សា {current_year.name if current_year else ''} ដោយជោគជ័យ! ពាក្យសម្ងាត់ដំបូងគឺ 'p123456'")
+                return redirect('student_detail', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យទម្រង់សម្រង់ព័ត៌មានដែលបានបំពេញឡើងវិញ!")
         else:
-            messages.error(request, "សូមពិនិត្យទម្រង់ដែលបានបំពេញឡើងវិញ!")
+            form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year)
+            moeys_form = MoeysIndividualStudentForm(initial={'academic_year': current_year}, academic_year=current_year)
+            if form.is_valid():
+                with transaction.atomic():
+                    student = form.save(commit=False)
+                    if not student.academic_year:
+                        student.academic_year = current_year
+                    student.enrollment_data = _extract_grade_options(
+                        request, student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.GENERAL
+                    )
+                    student.save()
+                    
+                    username = student.student_id.lower().replace('-', '_')
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        user = User.objects.create_user(
+                            username=username,
+                            password='p123456',
+                            role=User.Role.STUDENT,
+                            khmer_name=student.khmer_name,
+                            latin_name=student.latin_name,
+                            phone=student.phone or student.father_phone or ''
+                        )
+                    student.user = user
+                    student.save(update_fields=['user'])
+
+                messages.success(request, f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) តាមទម្រង់ Admin កំណត់ ក្នុងឆ្នាំសិក្សា {current_year.name if current_year else ''} ដោយជោគជ័យ! ពាក្យសម្ងាត់ដំបូងគឺ 'p123456'")
+                return redirect('student_detail', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យទម្រង់ដែលបានបំពេញឡើងវិញ!")
     else:
         form = StudentEnrollmentForm(initial={'academic_year': current_year}, academic_year=current_year)
+        moeys_form = MoeysIndividualStudentForm(initial={'academic_year': current_year}, academic_year=current_year)
 
     return render(request, 'students/student_form.html', {
         'form': form,
+        'moeys_form': moeys_form,
         'current_year': current_year,
+        'school_profile': school_profile,
+        'configured_mode': configured_mode,
+        'active_mode': active_mode,
         'title': 'ចុះឈ្មោះសិស្សថ្មី / Student Enrollment'
     })
 
@@ -254,9 +318,17 @@ def public_student_enroll(request):
     """
     Public online self-registration for students & parents via smartphone or computer.
     Supports pre-selecting target classroom or filtering by grade level via query params (?classroom=<id> or ?grade=<grade>&track=<track>).
+    Strictly conforms to Admin's configured registration mode (Admin Custom, MoEYS Individual, or Both).
     No login required.
     """
     from apps.academics.utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import GradeEnrollmentOption
+    from .forms import MoeysIndividualStudentForm
+
+    school_profile = SchoolProfile.get_settings()
+    configured_mode = school_profile.registration_mode or SchoolProfile.RegistrationMode.BOTH
+
     current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
     classrooms = Classroom.objects.filter(academic_year=current_year).select_related('academic_year').order_by('grade_level', 'code') if current_year else Classroom.objects.select_related('academic_year').order_by('grade_level', 'code')
 
@@ -284,62 +356,125 @@ def public_student_enroll(request):
         except (ValueError, TypeError):
             pass
 
-    if request.method == 'POST':
-        form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year)
-        if form.is_valid():
-            with transaction.atomic():
-                student = form.save(commit=False)
-                if not student.academic_year:
-                    student.academic_year = current_year
-                student.status = Student.Status.ACTIVE
-                student.enrollment_data = _extract_grade_options(request, student.classroom)
-                student.save()
-
-                # Create user account for student login
-                username = student.student_id.lower().replace('-', '_')
-                user = User.objects.filter(username=username).first()
-                if not user:
-                    user = User.objects.create_user(
-                        username=username,
-                        password='p123456',
-                        role=User.Role.STUDENT,
-                        khmer_name=student.khmer_name,
-                        latin_name=student.latin_name,
-                        phone=student.phone or student.father_phone or ''
-                    )
-                student.user = user
-                student.save(update_fields=['user'])
-
-            messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} បានជោគជ័យ!")
-            return redirect('public_enroll_success', pk=student.pk)
-        else:
-            messages.error(request, "សូមពិនិត្យព័ត៌មានដែលបានបំពេញឡើងវិញ!")
+    # Active mode
+    requested_mode = request.GET.get('mode') or request.POST.get('enrollment_mode')
+    if configured_mode == SchoolProfile.RegistrationMode.ADMIN_CUSTOM:
+        active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+    elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+        active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+    elif requested_mode in [SchoolProfile.RegistrationMode.ADMIN_CUSTOM, SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL]:
+        active_mode = requested_mode
     else:
-        initial_data = {'academic_year': current_year}
-        if target_classroom:
-            initial_data['classroom'] = target_classroom
-            if target_classroom.academic_year:
-                initial_data['academic_year'] = target_classroom.academic_year
+        active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+
+    initial_data = {'academic_year': current_year}
+    if target_classroom:
+        initial_data['classroom'] = target_classroom
+        if target_classroom.academic_year:
+            initial_data['academic_year'] = target_classroom.academic_year
+
+    if request.method == 'POST':
+        submitted_mode = request.POST.get('enrollment_mode') or active_mode
+        active_mode = submitted_mode
+
+        if submitted_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+            moeys_form = MoeysIndividualStudentForm(request.POST, request.FILES, academic_year=current_year)
+            form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year)
+            if moeys_form.is_valid():
+                with transaction.atomic():
+                    student = moeys_form.save(commit=False)
+                    if not student.academic_year:
+                        student.academic_year = current_year
+                    student.status = Student.Status.ACTIVE
+                    student.enrollment_data = _extract_grade_options(
+                        request, student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
+                    )
+                    student.save()
+
+                    # Create user account for student login
+                    username = student.student_id.lower().replace('-', '_')
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        user = User.objects.create_user(
+                            username=username,
+                            password='p123456',
+                            role=User.Role.STUDENT,
+                            khmer_name=student.khmer_name,
+                            latin_name=student.latin_name,
+                            phone=student.phone or student.father_phone or ''
+                        )
+                    student.user = user
+                    student.save(update_fields=['user'])
+
+                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} តាមសម្រង់ព័ត៌មាន MoEYS បានជោគជ័យ!")
+                return redirect('public_enroll_success', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យព័ត៌មានសម្រង់ព័ត៌មានដែលបានបំពេញឡើងវិញ!")
+        else:
+            form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year)
+            moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year)
+            if form.is_valid():
+                with transaction.atomic():
+                    student = form.save(commit=False)
+                    if not student.academic_year:
+                        student.academic_year = current_year
+                    student.status = Student.Status.ACTIVE
+                    student.enrollment_data = _extract_grade_options(
+                        request, student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.GENERAL
+                    )
+                    student.save()
+
+                    # Create user account for student login
+                    username = student.student_id.lower().replace('-', '_')
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        user = User.objects.create_user(
+                            username=username,
+                            password='p123456',
+                            role=User.Role.STUDENT,
+                            khmer_name=student.khmer_name,
+                            latin_name=student.latin_name,
+                            phone=student.phone or student.father_phone or ''
+                        )
+                    student.user = user
+                    student.save(update_fields=['user'])
+
+                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} បានជោគជ័យ!")
+                return redirect('public_enroll_success', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យព័ត៌មានដែលបានបំពេញឡើងវិញ!")
+    else:
         form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year)
+        moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year)
         if grade_param:
             form.fields['classroom'].queryset = classrooms
+            moeys_form.fields['classroom'].queryset = classrooms
 
     return render(request, 'students/public_enroll.html', {
         'form': form,
+        'moeys_form': moeys_form,
         'current_year': current_year,
         'classrooms': classrooms,
         'target_classroom': target_classroom,
         'target_grade_name': target_grade_name,
+        'school_profile': school_profile,
+        'configured_mode': configured_mode,
+        'active_mode': active_mode,
     })
 
 
 def api_get_grade_options(request):
-    """AJAX API to return custom enrollment options for a classroom or grade level"""
-    from apps.academics.models import GradeLevel
+    """AJAX API to return custom enrollment options for a classroom or grade level, filterable by form_category"""
+    from apps.academics.models import GradeLevel, GradeEnrollmentOption
     from django.http import JsonResponse
 
     classroom_id = request.GET.get('classroom_id')
     grade_level_id = request.GET.get('grade_level_id')
+    form_category = request.GET.get('form_category', '').strip().upper()
     
     gl = None
     if classroom_id:
@@ -352,9 +487,13 @@ def api_get_grade_options(request):
         gl = GradeLevel.objects.filter(id=grade_level_id).first()
         
     if not gl:
-        return JsonResponse({'status': 'success', 'data': [], 'grade_name': ''})
+        return JsonResponse({'status': 'success', 'data': [], 'grade_name': '', 'form_category': form_category})
         
-    options = gl.enrollment_options.filter(is_active=True).order_by('order', 'id')
+    options = gl.enrollment_options.filter(is_active=True)
+    if form_category in [GradeEnrollmentOption.FormCategory.GENERAL, GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL]:
+        options = options.filter(form_category=form_category)
+
+    options = options.order_by('order', 'id')
     data = []
     for opt in options:
         data.append({
@@ -362,6 +501,7 @@ def api_get_grade_options(request):
             'label': opt.label,
             'field_name': opt.field_name,
             'field_type': opt.field_type,
+            'form_category': opt.form_category,
             'col_width': opt.col_width or 6,
             'choices': opt.get_choices_list(),
             'placeholder': opt.placeholder or '',
@@ -374,8 +514,43 @@ def api_get_grade_options(request):
         'grade_name': gl.name,
         'grade_number': gl.grade_number,
         'track': gl.track,
+        'form_category': form_category or 'ALL',
         'data': data
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_set_registration_mode(request):
+    """Admin AJAX endpoint to instantly switch active student registration mode"""
+    from apps.accounts.models import SchoolProfile
+    from django.http import JsonResponse
+    import json
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mode = str(data.get('mode', '')).strip().upper()
+            valid_modes = [
+                SchoolProfile.RegistrationMode.ADMIN_CUSTOM,
+                SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL,
+                SchoolProfile.RegistrationMode.BOTH
+            ]
+            if mode in valid_modes:
+                profile = SchoolProfile.get_settings()
+                profile.registration_mode = mode
+                profile.save(update_fields=['registration_mode'])
+                return JsonResponse({
+                    'status': 'success',
+                    'mode': mode,
+                    'mode_display': profile.get_registration_mode_display(),
+                    'message': f"🎉 បានកំណត់វិធីចុះឈ្មោះសិស្សជា៖ {profile.get_registration_mode_display()}"
+                })
+            else:
+                return JsonResponse({'status': 'error', 'message': f"Invalid mode: {mode}"}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
 
 def api_check_student_id(request):
@@ -1001,25 +1176,90 @@ def student_detail(request, pk):
 @login_required
 @role_required(['ADMIN'])
 def student_edit(request, pk):
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import GradeEnrollmentOption
+    from .forms import MoeysIndividualStudentForm
+
     student = get_object_or_404(Student, pk=pk)
+    school_profile = SchoolProfile.get_settings()
+    configured_mode = school_profile.registration_mode or SchoolProfile.RegistrationMode.BOTH
+
+    # Determine active edit mode
+    requested_mode = request.GET.get('mode') or request.POST.get('enrollment_mode')
+    if requested_mode in [SchoolProfile.RegistrationMode.ADMIN_CUSTOM, SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL]:
+        active_mode = requested_mode
+    elif student.enrollment_data and any(k in student.enrollment_data for k in ['surname', 'primary_school', 'secondary_school', 'orphan_status', 'pob_commune']):
+        active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+    else:
+        active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+
     if request.method == 'POST':
-        form = StudentEnrollmentForm(request.POST, request.FILES, instance=student, academic_year=student.academic_year)
-        if form.is_valid():
-            with transaction.atomic():
-                updated_student = form.save(commit=False)
-                updated_student.enrollment_data = _extract_grade_options(request, updated_student.classroom, existing_data=student.enrollment_data)
-                updated_student.save()
-            messages.success(request, f"បានកែប្រែព័ត៌មានសិស្ស {student.khmer_name} ជោគជ័យ!")
-            return redirect('student_detail', pk=student.pk)
+        submitted_mode = request.POST.get('enrollment_mode') or active_mode
+        active_mode = submitted_mode
+
+        if submitted_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+            moeys_form = MoeysIndividualStudentForm(request.POST, request.FILES, instance=student, academic_year=student.academic_year)
+            form = StudentEnrollmentForm(instance=student, academic_year=student.academic_year)
+            if moeys_form.is_valid():
+                with transaction.atomic():
+                    updated_student = moeys_form.save(commit=False)
+                    updated_student.enrollment_data = _extract_grade_options(
+                        request, updated_student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
+                    )
+                    updated_student.save()
+                messages.success(request, f"🎉 បានកែប្រែសម្រង់ព័ត៌មានសិស្ស {student.khmer_name} (MoEYS) ជោគជ័យ!")
+                return redirect('student_detail', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យទិន្នន័យសម្រង់ព័ត៌មានដែលបានកែប្រែឡើងវិញ!")
+        else:
+            form = StudentEnrollmentForm(request.POST, request.FILES, instance=student, academic_year=student.academic_year)
+            moeys_form = MoeysIndividualStudentForm(instance=student, academic_year=student.academic_year)
+            if form.is_valid():
+                with transaction.atomic():
+                    updated_student = form.save(commit=False)
+                    updated_student.enrollment_data = _extract_grade_options(
+                        request, updated_student.classroom,
+                        existing_data=student.enrollment_data,
+                        form_category=GradeEnrollmentOption.FormCategory.GENERAL
+                    )
+                    updated_student.save()
+                messages.success(request, f"🎉 បានកែប្រែព័ត៌មានសិស្ស {student.khmer_name} ជោគជ័យ!")
+                return redirect('student_detail', pk=student.pk)
+            else:
+                messages.error(request, "សូមពិនិត្យទម្រង់ដែលបានកែប្រែឡើងវិញ!")
     else:
         form = StudentEnrollmentForm(instance=student, academic_year=student.academic_year)
+        moeys_form = MoeysIndividualStudentForm(instance=student, academic_year=student.academic_year)
 
     return render(request, 'students/student_form.html', {
         'form': form,
+        'moeys_form': moeys_form,
         'current_year': student.academic_year,
+        'school_profile': school_profile,
+        'configured_mode': configured_mode,
+        'active_mode': active_mode,
         'title': f'កែប្រែព័ត៌មានសិស្ស {student.khmer_name}',
         'student': student
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def student_delete(request, pk):
+    """
+    Deletes a student record and their linked user account (if any).
+    """
+    student = get_object_or_404(Student, pk=pk)
+    if request.method == 'POST':
+        name = student.khmer_name
+        if student.user:
+            student.user.delete()
+        student.delete()
+        messages.success(request, f"បានលុបសិស្ស {name} ដោយជោគជ័យ!")
+        return redirect('student_list')
+    return redirect('student_detail', pk=pk)
 
 
 @login_required
@@ -1144,6 +1384,22 @@ def batch_student_id_cards(request):
         'province_name': province_name,
         'mode': 'batch',
     })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def api_student_upload_photo(request, pk):
+    """AJAX endpoint to upload or update a student's profile photo."""
+    student = get_object_or_404(Student, pk=pk)
+    if request.method == 'POST' and request.FILES.get('photo'):
+        student.photo = request.FILES['photo']
+        student.save(update_fields=['photo'])
+        return JsonResponse({
+            'status': 'success',
+            'message': 'រូបថតសិស្សត្រូវបានបញ្ចូលដោយជោគជ័យ!',
+            'photo_url': student.photo.url if student.photo else ''
+        })
+    return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសរូបថត!'}, status=400)
 
 
 # -------------------------------------------------------------
@@ -1784,6 +2040,45 @@ def download_student_template_csv(request):
     writer.writerow(['', 'យិន ច័ន្ទរិទ្ធ', 'YIN CHANRITH', 'ប្រុស', '11/03/2007', '10-SCI', '012 900 914', 'សៀមរាប', 'ភូមិមណ្ឌល១ សង្កាត់ស្វាយដង្គំ', 'យិន សំអាត', '012 900 914', 'វិស្វករ', 'ចាន់ ផល្លា', '012 900 915', 'មន្ត្រីរាជការ', '100%'])
     
     return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_student_excel_ai_preview(request):
+    """
+    AJAX endpoint: Analyzes an uploaded Excel/CSV student file with AI,
+    detects headers, recommends column mappings, and returns preview rows.
+    """
+    if request.method != 'POST' or not request.FILES.get('file'):
+        return JsonResponse({'success': False, 'error': 'មិនមានឯកសារត្រូវបាន Upload ទេ'}, status=400)
+
+    uploaded_file = request.FILES['file']
+    try:
+        from apps.tools.excel_ai_mapper import (
+            extract_sheet_rows_and_headers,
+            detect_column_mapping_with_ai,
+            STUDENT_TARGET_FIELDS
+        )
+        extracted = extract_sheet_rows_and_headers(uploaded_file, max_sample_rows=5)
+        headers = extracted['headers']
+        sample_rows = extracted['sample_rows']
+
+        if not headers:
+            return JsonResponse({'success': False, 'error': 'មិនអាចស្វែងរកក្បាលជួរឈរ (Header) ក្នុងឯកសារបានឡើយ'})
+
+        mapping_result = detect_column_mapping_with_ai(headers, sample_rows, target_type='student')
+
+        return JsonResponse({
+            'success': True,
+            'sheet_name': extracted['sheet_name'],
+            'total_rows': len(extracted['rows']),
+            'headers': headers,
+            'sample_rows': sample_rows,
+            'mapping': mapping_result,
+            'fields': STUDENT_TARGET_FIELDS
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ==========================================

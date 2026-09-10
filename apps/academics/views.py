@@ -301,48 +301,69 @@ def api_get_track_subjects(request):
 @login_required
 @role_required(['ADMIN'])
 def grade_options_manager(request):
-    """Admin Manager for Grade-Level Specific Enrollment Options"""
+    """Admin Manager for Grade-Level Specific Enrollment Options (Separated into General & MoEYS Individual categories)"""
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.get_settings()
+    
     grade_levels = GradeLevel.objects.prefetch_related('enrollment_options').all().order_by('order', 'grade_number', 'track')
     form = GradeEnrollmentOptionForm()
     
+    active_category = request.GET.get('category', 'GENERAL').strip().upper()
+    if active_category not in [GradeEnrollmentOption.FormCategory.GENERAL, GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL]:
+        active_category = GradeEnrollmentOption.FormCategory.GENERAL
+        
     selected_gl_id = request.GET.get('grade_level')
     selected_gl = None
     if selected_gl_id and str(selected_gl_id).isdigit():
         selected_gl = GradeLevel.objects.filter(id=int(selected_gl_id)).first()
 
+    total_general_options = GradeEnrollmentOption.objects.filter(form_category=GradeEnrollmentOption.FormCategory.GENERAL).count()
+    total_moeys_options = GradeEnrollmentOption.objects.filter(form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL).count()
+
     return render(request, 'academics/grade_options_manager.html', {
         'grade_levels': grade_levels,
         'selected_gl': selected_gl,
         'form': form,
+        'school_profile': school_profile,
+        'active_category': active_category,
+        'total_general_options': total_general_options,
+        'total_moeys_options': total_moeys_options,
     })
 
 
 @login_required
 @role_required(['ADMIN'])
 def grade_option_save(request, pk=None):
+    from django.urls import reverse
     opt = get_object_or_404(GradeEnrollmentOption, pk=pk) if pk else None
+    cat = 'GENERAL'
     if request.method == 'POST':
         form = GradeEnrollmentOptionForm(request.POST, instance=opt)
         if form.is_valid():
             saved_opt = form.save()
-            messages.success(request, f"🎉 បានរក្សាទុកជម្រើស '{saved_opt.label}' សម្រាប់ {saved_opt.grade_level.name} ជោគជ័យ!")
+            cat = saved_opt.form_category
+            cat_display = saved_opt.get_form_category_display()
+            messages.success(request, f"🎉 បានរក្សាទុកជម្រើស '{saved_opt.label}' សម្រាប់ {saved_opt.grade_level.name} ក្នុង[{cat_display}] ជោគជ័យ!")
         else:
+            cat = request.POST.get('form_category', 'GENERAL')
             for f, errs in form.errors.items():
                 for e in errs:
                     messages.error(request, f"កំហុស [{f}]: {e}")
-    return redirect('grade_options_manager')
+    return redirect(f"{reverse('grade_options_manager')}?category={cat}")
 
 
 @login_required
 @role_required(['ADMIN'])
 def grade_option_delete(request, pk):
+    from django.urls import reverse
     opt = get_object_or_404(GradeEnrollmentOption, pk=pk)
+    cat = opt.form_category
     if request.method == 'POST':
         label = opt.label
         gl_name = opt.grade_level.name
         opt.delete()
         messages.success(request, f"🗑️ បានលុបជម្រើស '{label}' ពី {gl_name} ជោគជ័យ!")
-    return redirect('grade_options_manager')
+    return redirect(f"{reverse('grade_options_manager')}?category={cat}")
 
 
 @login_required
@@ -1837,7 +1858,7 @@ def master_restore_defaults(request):
     Master 1-Click Restore:
     1. Purges obsolete subjects, keeps exactly 14 official subjects (R, D, K, I, G, H, M, Es, P, C, B, He, Ec, E)
     2. Restores standard 8 GradeLevel records & scoring rules matrix
-    3. Restores 8 default classrooms for active academic year
+    3. Syncs assigned subjects for all existing classrooms (DOES NOT create demo classrooms)
     """
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
@@ -1894,23 +1915,8 @@ def master_restore_defaults(request):
                         order=sub.order
                     )
 
-        # 4. Classrooms
-        teachers = list(Teacher.objects.filter(status='ACTIVE'))
-        for idx, (code, name, grade, track, room) in enumerate(DEFAULT_MOEYS_CLASSROOMS):
-            homeroom = teachers[idx % len(teachers)] if teachers else None
-            cls_obj, _ = Classroom.objects.update_or_create(
-                code=code,
-                academic_year=active_year,
-                defaults={
-                    'name': name,
-                    'grade_level': grade,
-                    'track': track,
-                    'room_number': room,
-                    'capacity': 40,
-                    'homeroom_teacher': homeroom
-                }
-            )
-            # Assign standard subjects from rules
+        # 4. Sync assigned subjects for all existing classrooms without creating any new/demo classrooms
+        for cls_obj in Classroom.objects.filter(academic_year=active_year):
             sub_ids = list(GradeLevelRule.objects.filter(
                 grade_level=cls_obj.grade_level,
                 track=cls_obj.track
@@ -1918,8 +1924,9 @@ def master_restore_defaults(request):
             if sub_ids:
                 cls_obj.sync_assigned_subjects(sub_ids)
 
-    messages.success(request, f"🎉 ជោគជ័យ! បានស្តារប្រព័ន្ធទាំងមូលឡើងវិញទៅតាមស្តង់ដារលំនាំដើម MoEYS សម្រាប់ឆ្នាំសិក្សា {active_year.name}!")
-    return redirect('classroom_list')
+    messages.success(request, "🎉 ជោគជ័យ! បានស្តារមុខវិជ្ជា និងច្បាប់ពិន្ទុអតិបរមាទាំង ៨ កម្រិតថ្នាក់ឡើងវិញទៅតាមស្តង់ដារ MoEYS (ដោយរក្សាទុកថ្នាក់រៀនជាក់ស្តែងទាំងអស់ដដែល)!")
+    return redirect('grade_level_list')
+
 
 
 # ----------------- MASTER TIMETABLE MATRIX & GENERATION -----------------

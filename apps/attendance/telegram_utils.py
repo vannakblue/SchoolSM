@@ -217,8 +217,10 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
         # --- (B) Send to Homeroom Teachers & Class Groups (គ្រូបន្ទុកថ្នាក់) ---
         if settings.dispatch_to_homeroom:
             homeroom_chat = cls.telegram_chat_id
-            if not homeroom_chat and cls.homeroom_teacher and cls.homeroom_teacher.user:
-                homeroom_chat = cls.homeroom_teacher.user.telegram_chat_id
+            if not homeroom_chat and cls.homeroom_teacher:
+                homeroom_chat = getattr(cls.homeroom_teacher, 'telegram_chat_id', None)
+                if not homeroom_chat and getattr(cls.homeroom_teacher, 'user', None):
+                    homeroom_chat = getattr(cls.homeroom_teacher.user, 'telegram_chat_id', None)
 
             if homeroom_chat:
                 first_rec = sorted_records[0] if sorted_records else None

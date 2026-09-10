@@ -3,10 +3,18 @@
 {% block title %}{{ title }} | SchoolSM{% endblock %}
 
 {% block content %}
+<!-- Page Header -->
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill small">
+                <i class="fa-solid fa-user-graduate me-1"></i> ការគ្រប់គ្រងសិស្ស
+            </span>
+            <span class="text-muted small">/</span>
+            <span class="text-muted small">ចុះឈ្មោះ & កែសម្រួលសិស្ស</span>
+        </div>
         <h2 class="fw-bold mb-1">{{ title }}</h2>
-        <p class="text-muted small mb-0">សូមបំពេញព័ត៌មានលម្អិតរបស់សិស្ស ព័ត៌មានអាណាព្យាបាល និងឯកសារភ្ជាប់</p>
+        <p class="text-muted small mb-0">ជ្រើសរើសចុះឈ្មោះតាម <strong>បែបបទ Admin បានកំណត់</strong> ឬ <strong>បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns)</strong></p>
     </div>
     <div class="d-flex align-items-center gap-2">
         {% if current_year %}
@@ -14,332 +22,662 @@
             <i class="fa-solid fa-calendar-check me-1"></i> ឆ្នាំសិក្សា៖ {{ current_year.name }}
         </span>
         {% endif %}
-        <button type="button" class="btn btn-light shadow-xs border text-secondary btn-sm" onclick="resetCardLayout()" title="កំណត់លំដាប់លំនាំដើមនៃស៊ុម">
-            <i class="fa-solid fa-rotate-left me-1"></i> Reset Layout
-        </button>
+        <a href="{% url 'grade_options_manager' %}" class="btn btn-light shadow-xs border text-secondary btn-sm" target="_blank" title="គ្រប់គ្រងបែបបទតាមកម្រិតថ្នាក់">
+            <i class="fa-solid fa-sliders me-1"></i> កំណត់បែបបទថ្នាក់
+        </a>
         <a href="{% url 'student_list' %}" class="btn btn-light shadow-xs border">
             <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
         </a>
     </div>
 </div>
 
-<!-- Drag & Drop Layout Notice -->
-<div class="alert alert-light border shadow-xs rounded-3 py-2 px-3 d-flex align-items-center justify-content-between mb-3 text-muted small">
-    <div>
-        <i class="fa-solid fa-hand-pointer text-primary me-2"></i>
-        <strong>ប្លង់ស៊ុមបែប Drag & Drop៖</strong> លោកអ្នកអាចចុចអូសរូបតំណាង <i class="fa-solid fa-grip-vertical text-secondary"></i> នៅលើក្បាលស៊ុមនីមួយៗ ដើម្បីរៀបចំទីតាំង លើ-ក្រោម ឬផ្លាស់ប្តូរជួរ តាមតម្រូវការបានដោយសេរី។
+<!-- Mode Selection Banner (Admin Controls which method to register/edit) -->
+<div class="card border shadow-xs rounded-3 mb-4 bg-white">
+    <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle {% if active_mode == 'MOEYS_INDIVIDUAL' %}bg-info-subtle text-info{% else %}bg-primary-subtle text-primary{% endif %} p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="fa-solid {% if active_mode == 'MOEYS_INDIVIDUAL' %}fa-id-card-clip{% else %}fa-clipboard-list{% endif %} fs-5"></i>
+            </div>
+            <div>
+                <div class="small text-muted fw-semibold">ទម្រង់បែបបទចុះឈ្មោះ/កែសម្រួលសិស្ស (Registration Mode)</div>
+                <div class="fw-bold fs-6 text-dark mt-0.5" id="activeModeTitle">
+                    {% if active_mode == 'MOEYS_INDIVIDUAL' %}
+                        <span class="text-info"><i class="fa-solid fa-id-card-clip me-1"></i> បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns)</span>
+                    {% else %}
+                        <span class="text-primary"><i class="fa-solid fa-clipboard-list me-1"></i> បែបបទ Admin បានកំណត់ (General Form)</span>
+                    {% endif %}
+                </div>
+                <div class="small text-muted">
+                    វិធីសាស្ត្រលំនាំដើមសាលា៖ <strong>{{ school_profile.get_registration_mode_display }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Switcher Buttons -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted fw-bold me-1">ប្តូរទម្រង់៖</span>
+            <div class="btn-group shadow-xs" role="group">
+                <button type="button" class="btn btn-sm {% if active_mode != 'MOEYS_INDIVIDUAL' %}btn-primary fw-bold active{% else %}btn-outline-primary{% endif %}" id="btnModeGeneral" onclick="switchFormMode('ADMIN_CUSTOM')">
+                    <i class="fa-solid fa-clipboard-list me-1"></i> ១. បែបបទ Admin កំណត់
+                </button>
+                <button type="button" class="btn btn-sm {% if active_mode == 'MOEYS_INDIVIDUAL' %}btn-info fw-bold text-dark active{% else %}btn-outline-info{% endif %}" id="btnModeMoeys" onclick="switchFormMode('MOEYS_INDIVIDUAL')">
+                    <i class="fa-solid fa-id-card-clip me-1"></i> ២. សម្រង់ព័ត៌មាន MoEYS (៣៥ ជួរឈរ)
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <form method="POST" enctype="multipart/form-data" id="studentEnrollForm">
     {% csrf_token %}
-    
-    <div class="row g-4">
-        <!-- Left Column Container -->
-        <div class="col-lg-8 form-card-column" id="leftFormCol">
-            <!-- Section 1: Student Information -->
-            <div class="custom-card mb-4 draggable-form-card" id="card-student-info" draggable="true">
-                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
-                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
-                    <i class="fa-solid fa-user-graduate me-2"></i>១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
-                </h5>
-                <div class="row g-3">
-                    <div class="col-md-12">
-                        <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1" style="background: #f8fafc;">
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="form-label fw-bold small mb-0 text-dark">
-                                    <i class="fa-solid fa-id-card text-primary me-1"></i> អត្តលេខសិស្ស / Student ID
-                                </label>
-                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small" id="badgeStudentIdStatus">
-                                    <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ
+    <input type="hidden" name="enrollment_mode" id="activeEnrollmentMode" value="{{ active_mode|default:'ADMIN_CUSTOM' }}">
+
+    <!-- ===================================================================== -->
+    <!-- OPTION 1: GENERAL / ADMIN-CONFIGURED FORM SECTION                      -->
+    <!-- ===================================================================== -->
+    <div id="generalFormSection" style="{% if active_mode == 'MOEYS_INDIVIDUAL' %}display: none;{% endif %}">
+        <div class="row g-4">
+            <!-- Left Column Container -->
+            <div class="col-lg-8 form-card-column" id="leftFormCol">
+                <!-- Section 1: Student Information -->
+                <div class="custom-card mb-4 draggable-form-card" id="card-student-info" draggable="true">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                        <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <i class="fa-solid fa-user-graduate me-2"></i>១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1" style="background: #f8fafc;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label fw-bold small mb-0 text-dark">
+                                        <i class="fa-solid fa-id-card text-primary me-1"></i> អត្តលេខសិស្ស / Student ID
+                                    </label>
+                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small" id="badgeStudentIdStatus">
+                                        <i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2.5 fw-semibold" id="btnAutoGenerateStudentId" onclick="fetchNextAvailableStudentId()">
+                                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white text-muted border-end-0"><i class="fa-solid fa-hashtag"></i></span>
+                                {{ form.student_id }}
+                            </div>
+                            <div class="small mt-1" id="studentIdFeedbackText"></div>
+                            {% if form.student_id.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for err in form.student_id.errors %}{{ err }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
+                            {{ form.khmer_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង *</label>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 small" id="latin_auto_status_badge" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto Live
                                 </span>
                             </div>
-                            <div class="d-flex align-items-center gap-1">
-                                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2.5 fw-semibold" id="btnAutoGenerateStudentId" onclick="fetchNextAvailableStudentId()">
-                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)
+                            <div class="input-group">
+                                {{ form.latin_name }}
+                                <button type="button" class="btn btn-outline-primary" id="btn_auto_latin" title="បង្កើតឈ្មោះឡាតាំងឡើងវិញ (Auto-Generate Latin Name)">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
                                 </button>
-                                {% if request.user.role == 'ADMIN' %}
-                                <a href="{% url 'school_profile_settings' %}#tab-student-id" target="_blank" class="btn btn-light border btn-sm py-1 px-2 text-muted" title="កំណត់ទម្រង់អត្តលេខសិស្ស (Student ID Format)">
-                                    <i class="fa-solid fa-gear"></i>
-                                </a>
-                                {% endif %}
                             </div>
                         </div>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white text-muted border-end-0"><i class="fa-solid fa-hashtag"></i></span>
-                            {{ form.student_id }}
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ភេទ *</label>
+                            {{ form.gender }}
                         </div>
-                        <div class="small mt-1" id="studentIdFeedbackText"></div>
-                        {% if form.student_id.errors %}
-                        <div class="text-danger small mt-1">
-                            {% for err in form.student_id.errors %}{{ err }}{% endfor %}
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត *</label>
+                            {{ form.date_of_birth }}
                         </div>
-                        {% endif %}
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស</label>
+                            {{ form.phone }}
+                        </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
-                        {{ form.khmer_name }}
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង *</label>
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 small" id="latin_auto_status_badge" style="font-size: 0.72rem;">
-                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto Live
-                            </span>
+                    <!-- 📍 ទីកន្លែងកំណើត (Place of Birth Dropdowns) -->
+                    <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-danger"></i>
+                                <span>ទីកន្លែងកំណើត (Place of Birth - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
+                            </h6>
+                            <span class="badge bg-light text-secondary border small fw-normal">ទាញចេញពី Database</span>
                         </div>
-                        <div class="input-group">
-                            {{ form.latin_name }}
-                            <button type="button" class="btn btn-outline-primary" id="btn_auto_latin" title="បង្កើតឈ្មោះឡាតាំងឡើងវិញ (Auto-Generate Latin Name)">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
+                                <select id="pob_province" class="form-select form-select-sm">
+                                    <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                                <select id="pob_district" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
+                                <select id="pob_commune" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
+                                <select id="pob_village" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសភូមិ --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                            <span class="fw-semibold">ទីកន្លែងកំណើតសរុប៖</span>
+                            <span id="pob_preview" class="fw-bold text-primary">{% if form.instance.place_of_birth %}{{ form.instance.place_of_birth }}{% else %}...{% endif %}</span>
+                        </div>
+
+                        <!-- Synced Real Input -->
+                        <div style="display: none;">
+                            {{ form.place_of_birth }}
+                        </div>
+                    </div>
+
+                    <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន (Current Address Dropdowns) -->
+                    <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-house-chimney-user text-success"></i>
+                                <span>អាសយដ្ឋានបច្ចុប្បន្ន (Current Address - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
+                            </h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold" id="btn_copy_pob">
+                                <i class="fa-solid fa-copy me-1"></i> ដូចទីកន្លែងកំណើត
                             </button>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ភេទ *</label>
-                        {{ form.gender }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត *</label>
-                        {{ form.date_of_birth }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស</label>
-                        {{ form.phone }}
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-12 mb-1">
+                                <label class="form-label small text-secondary fw-semibold mb-1">ផ្ទះលេខ / ផ្លូវ (ប្រសិនបើមាន)</label>
+                                <input type="text" id="cur_street" class="form-control form-control-sm" placeholder="ឧ. ផ្ទះលេខ 12, ផ្លូវ 2004...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
+                                <select id="cur_province" class="form-select form-select-sm">
+                                    <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
+                                <select id="cur_district" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
+                                <select id="cur_commune" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
+                                <select id="cur_village" class="form-select form-select-sm" disabled>
+                                    <option value="">-- ជ្រើសរើសភូមិ --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
+                            <span class="fw-semibold">អាសយដ្ឋានបច្ចុប្បន្នសរុប៖</span>
+                            <span id="cur_preview" class="fw-bold text-dark">{% if form.instance.current_address %}{{ form.instance.current_address }}{% else %}...{% endif %}</span>
+                        </div>
+
+                        <!-- Synced Real Input -->
+                        <div style="display: none;">
+                            {{ form.current_address }}
+                        </div>
                     </div>
                 </div>
 
-                <!-- 📍 ទីកន្លែងកំណើត (Place of Birth - ជ្រើសរើសតាមលំដាប់ថ្នាក់) -->
-                <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-location-dot text-danger"></i>
-                            <span>ទីកន្លែងកំណើត (Place of Birth - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
-                        </h6>
-                        <span class="badge bg-light text-secondary border small fw-normal">ទាញចេញពី Database</span>
-                    </div>
-
-                    <div class="row g-2 mb-2">
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
-                            <select id="pob_province" class="form-select form-select-sm">
-                                <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
-                            <select id="pob_district" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
-                            <select id="pob_commune" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
-                            <select id="pob_village" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសភូមិ --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
-                        <span class="fw-semibold">ទីកន្លែងកំណើតសរុប៖</span>
-                        <span id="pob_preview" class="fw-bold text-primary">{% if form.instance.place_of_birth %}{{ form.instance.place_of_birth }}{% else %}...{% endif %}</span>
-                    </div>
-
-                    <!-- Synced Real Input -->
-                    <div style="display: none;">
-                        {{ form.place_of_birth }}
-                    </div>
-                </div>
-
-                <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន (Current Address - ជ្រើសរើសតាមលំដាប់ថ្នាក់) -->
-                <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-house-chimney-user text-success"></i>
-                            <span>អាសយដ្ឋានបច្ចុប្បន្ន (Current Address - ជ្រើសរើសតាមលំដាប់ថ្នាក់)</span>
-                        </h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold" id="btn_copy_pob">
-                            <i class="fa-solid fa-copy me-1"></i> ដូចទីកន្លែងកំណើត
-                        </button>
-                    </div>
-
-                    <div class="row g-2 mb-2">
-                        <div class="col-md-12 mb-1">
-                            <label class="form-label small text-secondary fw-semibold mb-1">ផ្ទះលេខ / ផ្លូវ (ប្រសិនបើមាន)</label>
-                            <input type="text" id="cur_street" class="form-control form-control-sm" placeholder="ឧ. ផ្ទះលេខ 12, ផ្លូវ 2004...">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">១. ខេត្ត / រាជធានី</label>
-                            <select id="cur_province" class="form-select form-select-sm">
-                                <option value="">-- ជ្រើសរើសខេត្ត/រាជធានី --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">២. ស្រុក / ខណ្ឌ / ក្រុង</label>
-                            <select id="cur_district" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">៣. ឃុំ / សង្កាត់</label>
-                            <select id="cur_commune" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-secondary fw-semibold mb-1">៤. ឈ្មោះភូមិ</label>
-                            <select id="cur_village" class="form-select form-select-sm" disabled>
-                                <option value="">-- ជ្រើសរើសភូមិ --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="small text-muted d-flex align-items-center gap-2 mt-2 pt-2 border-top">
-                        <span class="fw-semibold">អាសយដ្ឋានបច្ចុប្បន្នសរុប៖</span>
-                        <span id="cur_preview" class="fw-bold text-dark">{% if form.instance.current_address %}{{ form.instance.current_address }}{% else %}...{% endif %}</span>
-                    </div>
-
-                    <!-- Synced Real Input -->
-                    <div style="display: none;">
-                        {{ form.current_address }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 2: Parent Information -->
-            <div class="custom-card mb-4 draggable-form-card" id="card-parent-info" draggable="true">
-                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
-                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
-                    <i class="fa-solid fa-people-roof me-2"></i>២. ព័ត៌មានអាណាព្យាបាល (Parent / Guardian Info)
-                </h5>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
-                        {{ form.father_name }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
-                        {{ form.father_phone }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">មុខរបរឪពុក</label>
-                        {{ form.father_job }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
-                        {{ form.mother_name }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
-                        {{ form.mother_phone }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold small">មុខរបរម្តាយ</label>
-                        {{ form.mother_job }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស (បើមាន)</label>
-                        {{ form.guardian_name }}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">លេខទាក់ទងបន្ទាន់</label>
-                        {{ form.emergency_phone }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 5: Dynamic Grade-Specific Information (បែបបទបំពេញតាមកម្រិតថ្នាក់) -->
-            <div class="custom-card mb-4 draggable-form-card" id="card-grade-specific" draggable="true" style="display: none;">
-                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center justify-content-between">
-                    <span class="d-flex align-items-center">
+                <!-- Section 2: Parent Information -->
+                <div class="custom-card mb-4 draggable-form-card" id="card-parent-info" draggable="true">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
                         <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
-                        <i class="fa-solid fa-clipboard-list me-2 text-warning"></i>៥. ព័ត៌មានបន្ថែមសម្រាប់កម្រិតថ្នាក់ (<span id="gradeNameBadge">...</span>)
-                    </span>
-                    <span class="badge bg-light text-primary border small fw-normal">កំណត់ដោយ Admin</span>
-                </h5>
-                <div class="row g-3" id="gradeOptionsContainer">
-                    <!-- Loaded dynamically via JavaScript based on classroom selection -->
+                        <i class="fa-solid fa-people-roof me-2"></i>២. ព័ត៌មានអាណាព្យាបាល (Parent / Guardian Info)
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
+                            {{ form.father_name }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
+                            {{ form.father_phone }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">មុខរបរឪពុក</label>
+                            {{ form.father_job }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
+                            {{ form.mother_name }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
+                            {{ form.mother_phone }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">មុខរបរម្តាយ</label>
+                            {{ form.mother_job }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស (បើមាន)</label>
+                            {{ form.guardian_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">លេខទាក់ទងបន្ទាន់</label>
+                            {{ form.emergency_phone }}
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Section 5: Dynamic Grade-Specific Information (បែបបទ Admin បានកំណត់) -->
+                <div class="custom-card mb-4 draggable-form-card" id="card-grade-specific" draggable="true" style="display: none;">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center justify-content-between">
+                        <span class="d-flex align-items-center">
+                            <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                            <i class="fa-solid fa-clipboard-list me-2 text-warning"></i>៥. ព័ត៌មានបន្ថែមសម្រាប់កម្រិតថ្នាក់ (<span id="gradeNameBadge">...</span>)
+                        </span>
+                        <span class="badge bg-primary-subtle text-primary border small fw-normal">បែបបទ Admin កំណត់</span>
+                    </h5>
+                    <div class="row g-3" id="gradeOptionsContainer">
+                        <!-- Loaded dynamically via JavaScript based on classroom selection -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column Container -->
+            <div class="col-lg-4 form-card-column" id="rightFormCol">
+                <!-- Section 3: Academic & Fee Tier -->
+                <div class="custom-card mb-4 draggable-form-card" id="card-academic-fee" draggable="true">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                        <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <i class="fa-solid fa-school me-2"></i>៣. ការសិក្សា & កម្រៃ
+                    </h5>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">ឆ្នាំសិក្សា *</label>
+                            {% if is_admin %}
+                            <a href="{% url 'academic_year_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រង ឬបន្ថែមឆ្នាំសិក្សាថ្មី">
+                                <i class="fa-solid fa-plus-circle me-1"></i>បន្ថែមឆ្នាំសិក្សា
+                            </a>
+                            {% endif %}
+                        </div>
+                        {{ form.academic_year }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
+                        {{ form.classroom }}
+                        <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បែបបទបន្ថែម</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍ *</label>
+                        {{ form.scholarship_type }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">
+                            <i class="fa-solid fa-calendar-day text-primary me-1"></i>ខែចាប់ផ្តើមបង់ប្រាក់
+                        </label>
+                        {{ form.fee_start_month }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Telegram Chat ID (សម្រាប់ទទួលដំណឹង)</label>
+                        {{ form.telegram_chat_id }}
+                    </div>
+                </div>
+
+                <!-- Section 4: Attachments -->
+                <div class="custom-card mb-4 draggable-form-card" id="card-documents" draggable="true">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
+                        <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
+                        <i class="fa-solid fa-paperclip me-2"></i>៤. ឯកសារ & រូបថត
+                    </h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
+                        {{ form.photo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">សំបុត្រកំណើត / ឯកសារ</label>
+                        {{ form.birth_certificate }}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" id="btnSubmitGeneralForm">
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកទិន្នន័យសិស្ស (Admin Form)
+                </button>
+
+                {% if student and student.id %}
+                <div class="mt-3 text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#deleteStudentModal">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបសិស្សនេះចេញពីប្រព័ន្ធ (Delete Student)
+                    </button>
+                </div>
+                {% endif %}
             </div>
         </div>
+    </div>
 
-        <!-- Right Column Container -->
-        <div class="col-lg-4 form-card-column" id="rightFormCol">
-            <!-- Section 3: Academic & Fee Tier -->
-            <div class="custom-card mb-4 draggable-form-card" id="card-academic-fee" draggable="true">
-                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
-                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
-                    <i class="fa-solid fa-school me-2"></i>៣. ការសិក្សា & កម្រៃ
-                </h5>
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <label class="form-label fw-bold small mb-0">ឆ្នាំសិក្សា *</label>
-                        {% if is_admin %}
-                        <a href="{% url 'academic_year_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រង ឬបន្ថែមឆ្នាំសិក្សាថ្មី">
-                            <i class="fa-solid fa-plus-circle me-1"></i>បន្ថែមឆ្នាំសិក្សា
-                        </a>
-                        {% endif %}
+    <!-- ===================================================================== -->
+    <!-- OPTION 2: MOEYS INDIVIDUAL STUDENT PROFILE (35 COLUMNS) SECTION         -->
+    <!-- ===================================================================== -->
+    <div id="moeysFormSection" style="{% if active_mode != 'MOEYS_INDIVIDUAL' %}display: none;{% endif %}">
+        <div class="row g-4">
+            <!-- Left Column Container -->
+            <div class="col-lg-8">
+                <!-- MoEYS Section 1: Identity -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center justify-content-between">
+                        <span><i class="fa-solid fa-id-card-clip me-2"></i>១. អត្តសញ្ញាណសិស្ស (MoEYS Student Identity)</span>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle small fw-bold">សម្រង់ព័ត៌មាន MoEYS</span>
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="form-label fw-bold small mb-0 text-dark">
+                                        <i class="fa-solid fa-hashtag text-info me-1"></i> អត្តលេខសិស្ស / Student ID
+                                    </label>
+                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-0.5 small" id="badgeMoeysStudentIdStatus">
+                                        ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា
+                                    </span>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm py-1 px-2.5 fw-semibold" onclick="fetchNextAvailableMoeysStudentId()">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់
+                                </button>
+                            </div>
+                            {{ moeys_form.student_id }}
+                            <div class="small mt-1" id="moeysStudentIdFeedbackText"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">គោត្តនាម / នាមត្រកូល (Surname) *</label>
+                            {{ moeys_form.surname }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">នាមខ្លួន (Given Name) *</label>
+                            {{ moeys_form.given_name }}
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង (Latin Name) *</label>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-1.5 py-0.5 small" id="moeys_latin_badge" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto Live Romanizer
+                                </span>
+                            </div>
+                            <div class="input-group">
+                                {{ moeys_form.latin_name }}
+                                <button type="button" class="btn btn-outline-info" id="btn_auto_latin_moeys" title="បំប្លែងឈ្មោះឡាតាំងឡើងវិញ">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ភេទ (Gender) *</label>
+                            {{ moeys_form.gender }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត (Date of Birth) *</label>
+                            {{ moeys_form.date_of_birth }}
+                        </div>
                     </div>
-                    {{ form.academic_year }}
-                    <div class="form-text small text-muted">ការចុះឈ្មោះត្រូវបានកំណត់ត្រឹមឆ្នាំសិក្សាដែលបានជ្រើសរើស</div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
-                    {{ form.classroom }}
-                    <div class="form-text small text-muted">បង្ហាញតែថ្នាក់រៀនក្នុងឆ្នាំសិក្សាបច្ចុប្បន្នប៉ុណ្ណោះ</div>
-                </div>
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <label class="form-label fw-bold small mb-0">ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍ *</label>
-                        {% if is_admin %}
-                        <a href="{% url 'scholarship_type_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រងប្រភេទកម្រៃសិក្សា">
-                            <i class="fa-solid fa-gear me-1"></i>កំណត់កម្រៃ
-                        </a>
-                        {% endif %}
+
+                <!-- MoEYS Section 2: Place of Birth (3 columns) -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
+                        <i class="fa-solid fa-location-dot text-danger me-2"></i>២. ទីកន្លែងកំណើតតាមទម្រង់ក្រសួង (POB - 3 Columns)
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ឃុំ / សង្កាត់កំណើត (Commune)</label>
+                            {{ moeys_form.pob_commune }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ក្រុង / ស្រុក / ខណ្ឌកំណើត (District)</label>
+                            {{ moeys_form.pob_district }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">រាជធានី / ខេត្តកំណើត (Province)</label>
+                            {{ moeys_form.pob_province }}
+                        </div>
                     </div>
-                    {{ form.scholarship_type }}
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">
-                        <i class="fa-solid fa-calendar-day text-primary me-1"></i>ខែចាប់ផ្តើមបង់ប្រាក់
-                    </label>
-                    {{ form.fee_start_month }}
-                    <div class="form-text small text-muted">ទុកទទេដើម្បីគិតចាប់ពីដើមឆ្នាំសិក្សា</div>
+
+                <!-- MoEYS Section 3: Parents and Guardian -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
+                        <i class="fa-solid fa-people-roof me-2"></i>៣. ព័ត៌មានឪពុកម្តាយ និងអាណាព្យាបាល (Parents & Guardian)
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
+                            {{ moeys_form.father_name }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">មុខរបរឪពុក</label>
+                            {{ moeys_form.father_job }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
+                            {{ moeys_form.father_phone }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
+                            {{ moeys_form.mother_name }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">មុខរបរម្តាយ</label>
+                            {{ moeys_form.mother_job }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
+                            {{ moeys_form.mother_phone }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស</label>
+                            {{ moeys_form.guardian_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">មុខរបរអាណាព្យាបាល</label>
+                            {{ moeys_form.guardian_job }}
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">Telegram Chat ID (សម្រាប់ទទួលដំណឹង)</label>
-                    {{ form.telegram_chat_id }}
+
+                <!-- MoEYS Section 4: Vulnerability & Social Protection -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
+                        <i class="fa-solid fa-hand-holding-heart me-2 text-danger"></i>៤. ស្ថានភាពងាយរងគ្រោះ & ការគាំពារសង្គម (Social Protection)
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ស្ថានភាពកុមារកំព្រា (Orphan)</label>
+                            {{ moeys_form.orphan_status }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ជនជាតិដើមភាគតិច (Minority)</label>
+                            {{ moeys_form.ethnic_minority }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ពិការភាពកាយសម្បទា</label>
+                            {{ moeys_form.disability_physical }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ពិការភាពគំហើញ</label>
+                            {{ moeys_form.disability_sight }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ពិការភាពការស្តាប់</label>
+                            {{ moeys_form.disability_hearing }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</label>
+                            {{ moeys_form.equity_card_1 }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ២ (IDPoor 2)</label>
+                            {{ moeys_form.equity_card_2 }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">ប័ណ្ណហានិភ័យ (Risk Card)</label>
+                            {{ moeys_form.risk_card }}
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small">អាហារូបករណ៍ (Scholarship)</label>
+                            {{ moeys_form.scholarship }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MoEYS Section 5: Dynamic Grade-Specific Information for MoEYS -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4" id="card-moeys-grade-specific" style="display: none;">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center justify-content-between">
+                        <span class="d-flex align-items-center">
+                            <i class="fa-solid fa-clipboard-list me-2 text-warning"></i>៥. ព័ត៌មានបន្ថែមសម្រាប់កម្រិតថ្នាក់ MoEYS (<span id="moeysGradeNameBadge">...</span>)
+                        </span>
+                        <span class="badge bg-info-subtle text-info border small fw-bold">បែបបទ MoEYS</span>
+                    </h5>
+                    <div class="row g-3" id="moeysGradeOptionsContainer">
+                        <!-- Loaded dynamically via JavaScript based on MoEYS classroom selection -->
+                    </div>
                 </div>
             </div>
 
-            <!-- Section 4: Attachments -->
-            <div class="custom-card mb-4 draggable-form-card" id="card-documents" draggable="true">
-                <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
-                    <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
-                    <i class="fa-solid fa-paperclip me-2"></i>៤. ឯកសារ & រូបថត
-                </h5>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
-                    {{ form.photo }}
+            <!-- Right Column Container -->
+            <div class="col-lg-4">
+                <!-- MoEYS Section 6: Academic & School History -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
+                        <i class="fa-solid fa-graduation-cap me-2"></i>៦. ការសិក្សា & ថ្នាក់រៀន
+                    </h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឆ្នាំសិក្សា *</label>
+                        {{ moeys_form.academic_year }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
+                        {{ moeys_form.classroom }}
+                        <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បន្ថែមរបស់ MoEYS</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
+                        {{ moeys_form.track }}
+                    </div>
+                    <div class="mb-3 pt-2">
+                        <div class="form-check">
+                            {{ moeys_form.is_repeating_grade }}
+                            <label class="form-check-label fw-bold small" for="moeys_is_repeating_grade">
+                                <i class="fa-solid fa-arrows-rotate text-warning me-1"></i> ជាសិស្សត្រួតថ្នាក់ (Repeating Grade)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">សាលាបឋមសិក្សាពីមុន</label>
+                        {{ moeys_form.primary_school }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">គ្រឹះស្ថានមធ្យមសិក្សាពីមុន</label>
+                        {{ moeys_form.secondary_school }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា</label>
+                        {{ moeys_form.scholarship_type }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">លេខទូរស័ព្ទទំនាក់ទំនង</label>
+                        {{ moeys_form.phone }}
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">សំបុត្រកំណើត / ឯកសារ</label>
-                    {{ form.birth_certificate }}
-                </div>
-            </div>
 
-            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" id="btnSubmitForm">
-                <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកទិន្នន័យសិស្ស
-            </button>
+                <!-- MoEYS Section 7: Documents -->
+                <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
+                        <i class="fa-solid fa-paperclip me-2"></i>៧. ឯកសារ & រូបថត
+                    </h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
+                        {{ moeys_form.photo }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">សំបុត្រកំណើត / សៀវភៅគ្រួសារ</label>
+                        {{ moeys_form.birth_certificate }}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-info w-100 py-3 fw-bold text-dark shadow-sm" id="btnSubmitMoeysForm">
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកសម្រង់ព័ត៌មាន (MoEYS Profile)
+                </button>
+
+                {% if student and student.id %}
+                <div class="mt-3 text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#deleteStudentModal">
+                        <i class="fa-solid fa-trash-can me-1"></i> លុបសិស្សនេះចេញពីប្រព័ន្ធ (Delete Student)
+                    </button>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </form>
+
+{% if student and student.id %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold" id="deleteStudentModalLabel">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបសិស្ស
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'student_delete' student.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="avatar-circle mx-auto mb-3 bg-danger-subtle text-danger" style="width: 70px; height: 70px; font-size: 1.8rem;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">{{ student.khmer_name }}</h5>
+                    <p class="text-muted small mb-3">កូដសិស្ស (ID)៖ <strong>{{ student.student_id }}</strong> | ថ្នាក់៖ <strong>{{ student.classroom.name|default:"គ្មានថ្នាក់" }}</strong></p>
+                    
+                    <div class="alert alert-warning text-start small mb-0">
+                        <div class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-1"></i> ការលុបទិន្នន័យ៖</div>
+                        <p class="mb-0">ប្រសិនបើចុច <strong>«យល់ព្រមលុប»</strong> ទិន្នន័យសិស្ស និងគណនីចូលប្រើប្រាស់ នឹងត្រូវលុបចេញពីប្រព័ន្ធទាំងស្រុង។</p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light justify-content-between">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                    </button>
+                    <button type="submit" class="btn btn-danger px-4 fw-bold">
+                        <i class="fa-solid fa-trash-can me-1"></i> យល់ព្រមលុបចេញពីប្រព័ន្ធ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {{ student.enrollment_data|default:None|json_script:"student_enrollment_json" }}
 
@@ -355,897 +693,582 @@ try {
     console.error('Error parsing enrollment data:', e);
 }
 
+// Global function to toggle between Admin Custom Form and MoEYS Individual Form
+function switchFormMode(mode) {
+    const generalSection = document.getElementById('generalFormSection');
+    const moeysSection = document.getElementById('moeysFormSection');
+    const modeInput = document.getElementById('activeEnrollmentMode');
+    const btnGeneral = document.getElementById('btnModeGeneral');
+    const btnMoeys = document.getElementById('btnModeMoeys');
+    const title = document.getElementById('activeModeTitle');
+
+    if (mode === 'MOEYS_INDIVIDUAL') {
+        modeInput.value = 'MOEYS_INDIVIDUAL';
+        generalSection.style.display = 'none';
+        moeysSection.style.display = 'block';
+
+        // Toggle disabled attribute so HTML5 validation does not block hidden section
+        generalSection.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+        moeysSection.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
+
+        btnGeneral.className = 'btn btn-sm btn-outline-primary';
+        btnMoeys.className = 'btn btn-sm btn-info fw-bold text-dark active';
+        title.innerHTML = '<span class="text-info"><i class="fa-solid fa-id-card-clip me-1"></i> បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS 35 Columns)</span>';
+
+        // Load grade options for MoEYS
+        const moeysCls = document.getElementById('moeys_classroom');
+        if (moeysCls && moeysCls.value) {
+            loadGradeOptions(moeysCls.value, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'card-moeys-grade-specific', 'moeysGradeNameBadge');
+        }
+    } else {
+        modeInput.value = 'ADMIN_CUSTOM';
+        moeysSection.style.display = 'none';
+        generalSection.style.display = 'block';
+
+        // Toggle disabled attribute
+        moeysSection.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+        generalSection.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
+
+        btnGeneral.className = 'btn btn-sm btn-primary fw-bold active';
+        btnMoeys.className = 'btn btn-sm btn-outline-info';
+        title.innerHTML = '<span class="text-primary"><i class="fa-solid fa-clipboard-list me-1"></i> បែបបទ Admin បានកំណត់ (General Form)</span>';
+
+        // Load grade options for General
+        const generalCls = document.getElementById('id_classroom') || document.querySelector('[name="classroom"]');
+        if (generalCls && generalCls.value) {
+            loadGradeOptions(generalCls.value, 'GENERAL', 'gradeOptionsContainer', 'card-grade-specific', 'gradeNameBadge');
+        }
+    }
+}
+
+// Reusable Grade Options Fetcher scoped strictly by form_category
+function loadGradeOptions(classroomId, category, containerId, cardId, badgeId) {
+    const gradeCard = document.getElementById(cardId);
+    const gradeContainer = document.getElementById(containerId);
+    const gradeNameBadge = document.getElementById(badgeId);
+
+    if (!classroomId) {
+        if (gradeCard) gradeCard.style.display = 'none';
+        if (gradeContainer) gradeContainer.innerHTML = '';
+        return;
+    }
+
+    fetch(`/students/api/grade-options/?classroom_id=${classroomId}&form_category=${category}`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success' && res.data && res.data.length > 0) {
+                if (gradeNameBadge) gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
+                if (gradeContainer) gradeContainer.innerHTML = '';
+
+                res.data.forEach(opt => {
+                    const col = document.createElement('div');
+                    const colW = opt.col_width || 6;
+                    col.className = `col-md-${colW}`;
+
+                    const inputName = `grade_opt_${opt.field_name}`;
+                    const isReq = opt.is_required ? 'required' : '';
+                    const reqBadge = opt.is_required ? '<span class="text-danger">*</span>' : '';
+                    
+                    if (opt.field_type === 'SECTION') {
+                        col.className = 'col-12 mt-3';
+                        col.innerHTML = `<h6 class="fw-bold text-dark border-bottom pb-2 mb-0"><i class="fa-solid fa-circle-chevron-right text-primary me-2"></i>${opt.label}</h6>`;
+                        if (gradeContainer) gradeContainer.appendChild(col);
+                        return;
+                    }
+
+                    let savedVal = '';
+                    if (initialEnrollmentData && initialEnrollmentData[opt.field_name]) {
+                        savedVal = initialEnrollmentData[opt.field_name].value || initialEnrollmentData[opt.field_name] || '';
+                    }
+
+                    let inputHtml = '';
+                    if (opt.field_type === 'TEXT') {
+                        inputHtml = `<input type="text" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'NUMBER') {
+                        inputHtml = `<input type="number" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'DATE') {
+                        inputHtml = `<input type="date" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'TIME') {
+                        inputHtml = `<input type="time" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'DATETIME') {
+                        inputHtml = `<input type="datetime-local" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'PHONE') {
+                        inputHtml = `<input type="tel" name="${inputName}" class="form-control" placeholder="${opt.placeholder || '012 345 678'}" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'EMAIL') {
+                        inputHtml = `<input type="email" name="${inputName}" class="form-control" placeholder="${opt.placeholder || 'example@email.com'}" value="${savedVal}" ${isReq}>`;
+                    } else if (opt.field_type === 'TEXTAREA') {
+                        inputHtml = `<textarea name="${inputName}" class="form-control" rows="2" placeholder="${opt.placeholder || ''}" ${isReq}>${savedVal}</textarea>`;
+                    } else if (opt.field_type === 'SELECT') {
+                        let optionsHtml = `<option value="">-- ជ្រើសរើស --</option>`;
+                        if (opt.choices && opt.choices.length > 0) {
+                            opt.choices.forEach(ch => {
+                                const selected = (savedVal === ch) ? 'selected' : '';
+                                optionsHtml += `<option value="${ch}" ${selected}>${ch}</option>`;
+                            });
+                        }
+                        inputHtml = `<select name="${inputName}" class="form-select" ${isReq}>${optionsHtml}</select>`;
+                    } else if (opt.field_type === 'RADIO') {
+                        inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
+                        if (opt.choices) {
+                            opt.choices.forEach((ch, idx) => {
+                                const checked = (savedVal === ch) ? 'checked' : '';
+                                inputHtml += `
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked} ${isReq}>
+                                        <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
+                                    </div>`;
+                            });
+                        }
+                        inputHtml += `</div>`;
+                    } else if (opt.field_type === 'MULTISELECT') {
+                        inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
+                        const savedList = (initialEnrollmentData && initialEnrollmentData[opt.field_name] && initialEnrollmentData[opt.field_name].list) ? initialEnrollmentData[opt.field_name].list : (savedVal ? savedVal.split(', ') : []);
+                        if (opt.choices) {
+                            opt.choices.forEach((ch, idx) => {
+                                const checked = savedList.includes(ch) ? 'checked' : '';
+                                inputHtml += `
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked}>
+                                        <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
+                                    </div>`;
+                            });
+                        }
+                        inputHtml += `</div>`;
+                    } else if (opt.field_type === 'CHECKBOX') {
+                        const checked = (savedVal === 'true' || savedVal === true || savedVal === 'on') ? 'checked' : '';
+                        inputHtml = `
+                            <div class="form-check mt-2">
+                                <input type="checkbox" name="${inputName}" id="${inputName}" class="form-check-input" value="true" ${checked}>
+                                <label class="form-check-label small" for="${inputName}">យល់ព្រម / បាទ / ចាស</label>
+                            </div>`;
+                    } else if (opt.field_type === 'FILE') {
+                        let previewLink = '';
+                        if (savedVal) {
+                            previewLink = `<div class="mt-1 small"><a href="${savedVal}" target="_blank" class="text-primary"><i class="fa-solid fa-file me-1"></i> មើលឯកសារចាស់</a></div>`;
+                        }
+                        inputHtml = `<input type="file" name="${inputName}" class="form-control"> ${previewLink}`;
+                    }
+
+                    col.innerHTML = `
+                        <label class="form-label fw-bold small">${opt.label} ${reqBadge}</label>
+                        ${inputHtml}
+                    `;
+                    if (gradeContainer) gradeContainer.appendChild(col);
+                });
+
+                if (gradeCard) gradeCard.style.display = 'block';
+            } else {
+                if (gradeCard) gradeCard.style.display = 'none';
+                if (gradeContainer) gradeContainer.innerHTML = '';
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching grade options:', err);
+            if (gradeCard) gradeCard.style.display = 'none';
+        });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    let globalProvinces = [];
+    // Initial Form Mode Setup
+    const initialMode = document.getElementById('activeEnrollmentMode').value || 'ADMIN_CUSTOM';
+    switchFormMode(initialMode);
 
-    // Initialize Student ID Live Uniqueness Checker
+    // General Classroom Change Listener
+    const generalClassroomSelect = document.getElementById('id_classroom') || document.querySelector('#generalFormSection [name="classroom"]');
+    if (generalClassroomSelect) {
+        generalClassroomSelect.addEventListener('change', function() {
+            loadGradeOptions(this.value, 'GENERAL', 'gradeOptionsContainer', 'card-grade-specific', 'gradeNameBadge');
+        });
+        if (generalClassroomSelect.value && initialMode === 'ADMIN_CUSTOM') {
+            loadGradeOptions(generalClassroomSelect.value, 'GENERAL', 'gradeOptionsContainer', 'card-grade-specific', 'gradeNameBadge');
+        }
+    }
+
+    // MoEYS Classroom Change Listener
+    const moeysClassroomSelect = document.getElementById('moeys_classroom');
+    if (moeysClassroomSelect) {
+        moeysClassroomSelect.addEventListener('change', function() {
+            loadGradeOptions(this.value, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'card-moeys-grade-specific', 'moeysGradeNameBadge');
+        });
+        if (moeysClassroomSelect.value && initialMode === 'MOEYS_INDIVIDUAL') {
+            loadGradeOptions(moeysClassroomSelect.value, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'card-moeys-grade-specific', 'moeysGradeNameBadge');
+        }
+    }
+
+    // Initialize Auto-Romanizers & Student ID Checkers
     initStudentIdLiveChecker();
+    initMoeysStudentIdLiveChecker();
+    initAutoRomanizer();
+    initMoeysAutoRomanizer();
+    initAddressCascade();
+});
 
-    // Elements for POB
+// Student ID Live Checker for General Mode
+function initStudentIdLiveChecker() {
+    const input = document.getElementById('id_student_id') || document.querySelector('#generalFormSection [name="student_id"]');
+    const feedback = document.getElementById('studentIdFeedbackText');
+    const badge = document.getElementById('badgeStudentIdStatus');
+    const studentPk = '{% if student and student.id %}{{ student.id }}{% else %}{% endif %}';
+
+    if (!input) return;
+    let debounce = null;
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounce);
+        const val = this.value.trim();
+        if (!val) {
+            if (badge) badge.className = 'badge bg-secondary-subtle text-secondary border px-2 py-0.5 small';
+            if (feedback) feedback.innerHTML = '';
+            return;
+        }
+
+        debounce = setTimeout(() => {
+            fetch(`/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${studentPk}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'available') {
+                        if (badge) {
+                            badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 small';
+                            badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> អត្តលេខទំនេរ';
+                        }
+                        if (feedback) feedback.innerHTML = `<span class="text-success">${d.message}</span>`;
+                    } else if (d.status === 'duplicate') {
+                        if (badge) {
+                            badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 small';
+                            badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> ស្ទួនអត្តលេខ';
+                        }
+                        if (feedback) feedback.innerHTML = `<span class="text-danger fw-bold">${d.message}</span>`;
+                    }
+                });
+        }, 300);
+    });
+}
+
+function fetchNextAvailableStudentId() {
+    const input = document.getElementById('id_student_id') || document.querySelector('#generalFormSection [name="student_id"]');
+    const btn = document.getElementById('btnAutoGenerateStudentId');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>...';
+
+    fetch('/students/api/generate-student-id/')
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success' && d.suggested_id) {
+                if (input) input.value = d.suggested_id;
+                input.dispatchEvent(new Event('input'));
+            }
+        })
+        .finally(() => {
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់';
+        });
+}
+
+// MoEYS Student ID Live Checker
+function initMoeysStudentIdLiveChecker() {
+    const input = document.getElementById('moeys_student_id');
+    const feedback = document.getElementById('moeysStudentIdFeedbackText');
+    const badge = document.getElementById('badgeMoeysStudentIdStatus');
+    const studentPk = '{% if student and student.id %}{{ student.id }}{% else %}{% endif %}';
+
+    if (!input) return;
+    let debounce = null;
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounce);
+        const val = this.value.trim();
+        if (!val) {
+            if (badge) badge.className = 'badge bg-secondary-subtle text-secondary border px-2 py-0.5 small';
+            if (feedback) feedback.innerHTML = '';
+            return;
+        }
+
+        debounce = setTimeout(() => {
+            fetch(`/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${studentPk}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'available') {
+                        if (badge) {
+                            badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 small';
+                            badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> អត្តលេខទំនេរ';
+                        }
+                        if (feedback) feedback.innerHTML = `<span class="text-success">${d.message}</span>`;
+                    } else if (d.status === 'duplicate') {
+                        if (badge) {
+                            badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 small';
+                            badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> ស្ទួនអត្តលេខ';
+                        }
+                        if (feedback) feedback.innerHTML = `<span class="text-danger fw-bold">${d.message}</span>`;
+                    }
+                });
+        }, 300);
+    });
+}
+
+function fetchNextAvailableMoeysStudentId() {
+    const input = document.getElementById('moeys_student_id');
+    fetch('/students/api/generate-student-id/')
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success' && d.suggested_id) {
+                if (input) input.value = d.suggested_id;
+                input.dispatchEvent(new Event('input'));
+            }
+        });
+}
+
+// Auto Romanizer for General Mode
+function initAutoRomanizer() {
+    const khmerInput = document.querySelector('#generalFormSection [name="khmer_name"]');
+    const latinInput = document.querySelector('#generalFormSection [name="latin_name"]');
+    const autoBtn = document.getElementById('btn_auto_latin');
+    if (!khmerInput || !latinInput) return;
+
+    let debounce = null;
+    khmerInput.addEventListener('input', function() {
+        clearTimeout(debounce);
+        const name = this.value.trim();
+        if (!name) return;
+        debounce = setTimeout(() => {
+            fetch(`/students/api/romanize/?name=${encodeURIComponent(name)}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success' && d.latin_name) {
+                        latinInput.value = d.latin_name;
+                    }
+                });
+        }, 300);
+    });
+
+    if (autoBtn) {
+        autoBtn.addEventListener('click', function() {
+            const name = khmerInput.value.trim();
+            if (name) {
+                fetch(`/students/api/romanize/?name=${encodeURIComponent(name)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.status === 'success' && d.latin_name) {
+                            latinInput.value = d.latin_name;
+                        }
+                    });
+            }
+        });
+    }
+}
+
+// Auto Romanizer for MoEYS Mode (Surname + Given Name)
+function initMoeysAutoRomanizer() {
+    const surnameInput = document.getElementById('moeys_surname');
+    const givenNameInput = document.getElementById('moeys_given_name');
+    const latinInput = document.getElementById('moeys_latin_name');
+    const autoBtn = document.getElementById('btn_auto_latin_moeys');
+    if (!surnameInput || !givenNameInput || !latinInput) return;
+
+    let debounce = null;
+    function syncMoeysName() {
+        clearTimeout(debounce);
+        const fullKhmer = `${surnameInput.value.trim()} ${givenNameInput.value.trim()}`.trim();
+        if (!fullKhmer) return;
+        debounce = setTimeout(() => {
+            fetch(`/students/api/romanize/?name=${encodeURIComponent(fullKhmer)}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success' && d.latin_name) {
+                        latinInput.value = d.latin_name;
+                    }
+                });
+        }, 300);
+    }
+
+    surnameInput.addEventListener('input', syncMoeysName);
+    givenNameInput.addEventListener('input', syncMoeysName);
+
+    if (autoBtn) {
+        autoBtn.addEventListener('click', function() {
+            const fullKhmer = `${surnameInput.value.trim()} ${givenNameInput.value.trim()}`.trim();
+            if (fullKhmer) {
+                fetch(`/students/api/romanize/?name=${encodeURIComponent(fullKhmer)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.status === 'success' && d.latin_name) {
+                            latinInput.value = d.latin_name;
+                        }
+                    });
+            }
+        });
+    }
+}
+
+// Address Cascade for General Form
+function initAddressCascade() {
     const pobProv = document.getElementById('pob_province');
     const pobDist = document.getElementById('pob_district');
     const pobComm = document.getElementById('pob_commune');
     const pobVill = document.getElementById('pob_village');
     const pobPreview = document.getElementById('pob_preview');
-    const pobHiddenInput = document.querySelector('[name="place_of_birth"]');
+    const pobHiddenInput = document.querySelector('#generalFormSection [name="place_of_birth"]');
 
-    // Elements for Current Address
     const curStreet = document.getElementById('cur_street');
     const curProv = document.getElementById('cur_province');
     const curDist = document.getElementById('cur_district');
     const curComm = document.getElementById('cur_commune');
     const curVill = document.getElementById('cur_village');
     const curPreview = document.getElementById('cur_preview');
-    const curHiddenInput = document.querySelector('[name="current_address"]');
+    const curHiddenInput = document.querySelector('#generalFormSection [name="current_address"]');
     const btnCopyPob = document.getElementById('btn_copy_pob');
 
-    // Elements for Classroom & Dynamic Grade Options
-    const classroomSelect = document.getElementById('id_classroom') || document.querySelector('[name="classroom"]');
-    const gradeCard = document.getElementById('card-grade-specific') || document.getElementById('gradeSpecificCard');
-    const gradeNameBadge = document.getElementById('gradeNameBadge');
-    const gradeContainer = document.getElementById('gradeOptionsContainer');
-
-    function loadGradeOptions(classroomId) {
-        if (!classroomId) {
-            if (gradeCard) gradeCard.style.display = 'none';
-            if (gradeContainer) gradeContainer.innerHTML = '';
-            return;
-        }
-
-        fetch(`/students/api/grade-options/?classroom_id=${classroomId}`)
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === 'success' && res.data && res.data.length > 0) {
-                    if (gradeNameBadge) gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
-                    if (gradeContainer) gradeContainer.innerHTML = '';
-
-                    res.data.forEach(opt => {
-                        const col = document.createElement('div');
-                        const colW = opt.col_width || 6;
-                        col.className = `col-md-${colW}`;
-
-                        const inputName = `grade_opt_${opt.field_name}`;
-                        const isReq = opt.is_required ? 'required' : '';
-                        const reqBadge = opt.is_required ? '<span class="text-danger">*</span>' : '';
-                        
-                        // Section Header / Frame Divider
-                        if (opt.field_type === 'SECTION') {
-                            col.className = 'col-12 mt-3';
-                            col.innerHTML = `<h6 class="fw-bold text-dark border-bottom pb-2 mb-0"><i class="fa-solid fa-circle-chevron-right text-primary me-2"></i>${opt.label}</h6>`;
-                            if (gradeContainer) gradeContainer.appendChild(col);
-                            return;
-                        }
-
-                        // Extract existing value if any
-                        let savedVal = '';
-                        if (initialEnrollmentData && initialEnrollmentData[opt.field_name]) {
-                            savedVal = initialEnrollmentData[opt.field_name].value || initialEnrollmentData[opt.field_name] || '';
-                        }
-
-                        let inputHtml = '';
-                        if (opt.field_type === 'TEXT') {
-                            inputHtml = `<input type="text" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'NUMBER') {
-                            inputHtml = `<input type="number" name="${inputName}" class="form-control" placeholder="${opt.placeholder || ''}" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'DATE') {
-                            inputHtml = `<input type="date" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'TIME') {
-                            inputHtml = `<input type="time" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'DATETIME') {
-                            inputHtml = `<input type="datetime-local" name="${inputName}" class="form-control" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'PHONE') {
-                            inputHtml = `<input type="tel" name="${inputName}" class="form-control" placeholder="${opt.placeholder || '012 345 678'}" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'EMAIL') {
-                            inputHtml = `<input type="email" name="${inputName}" class="form-control" placeholder="${opt.placeholder || 'example@email.com'}" value="${savedVal}" ${isReq}>`;
-                        } else if (opt.field_type === 'TEXTAREA') {
-                            inputHtml = `<textarea name="${inputName}" class="form-control" rows="2" placeholder="${opt.placeholder || ''}" ${isReq}>${savedVal}</textarea>`;
-                        } else if (opt.field_type === 'SELECT') {
-                            let optionsHtml = `<option value="">-- ជ្រើសរើស --</option>`;
-                            if (opt.choices && opt.choices.length > 0) {
-                                opt.choices.forEach(ch => {
-                                    const selected = (savedVal === ch) ? 'selected' : '';
-                                    optionsHtml += `<option value="${ch}" ${selected}>${ch}</option>`;
-                                });
-                            }
-                            inputHtml = `<select name="${inputName}" class="form-select" ${isReq}>${optionsHtml}</select>`;
-                        } else if (opt.field_type === 'RADIO') {
-                            inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
-                            if (opt.choices) {
-                                opt.choices.forEach((ch, idx) => {
-                                    const checked = (savedVal === ch) ? 'checked' : '';
-                                    inputHtml += `
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked} ${isReq}>
-                                            <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
-                                        </div>`;
-                                });
-                            }
-                            inputHtml += `</div>`;
-                        } else if (opt.field_type === 'MULTISELECT') {
-                            inputHtml = `<div class="d-flex flex-wrap gap-3 mt-1">`;
-                            const savedList = (initialEnrollmentData && initialEnrollmentData[opt.field_name] && initialEnrollmentData[opt.field_name].list) ? initialEnrollmentData[opt.field_name].list : (savedVal ? savedVal.split(', ') : []);
-                            if (opt.choices) {
-                                opt.choices.forEach((ch, idx) => {
-                                    const checked = savedList.includes(ch) ? 'checked' : '';
-                                    inputHtml += `
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="${inputName}" id="${inputName}_${idx}" value="${ch}" ${checked}>
-                                            <label class="form-check-label small" for="${inputName}_${idx}">${ch}</label>
-                                        </div>`;
-                                });
-                            }
-                            inputHtml += `</div>`;
-                        } else if (opt.field_type === 'CHECKBOX') {
-                            const checked = (savedVal === 'true' || savedVal === true || savedVal === 'on') ? 'checked' : '';
-                            inputHtml = `
-                                <div class="form-check mt-2">
-                                    <input type="checkbox" name="${inputName}" id="${inputName}" class="form-check-input" value="true" ${checked}>
-                                    <label class="form-check-label small" for="${inputName}">យល់ព្រម / បាទ / ចាស</label>
-                                </div>`;
-                        } else if (opt.field_type === 'FILE') {
-                            let previewLink = '';
-                            if (savedVal) {
-                                previewLink = `<div class="mt-1 small"><a href="${savedVal}" target="_blank" class="text-primary"><i class="fa-solid fa-file me-1"></i> មើលឯកសារចាស់</a></div>`;
-                            }
-                            inputHtml = `<input type="file" name="${inputName}" class="form-control"> ${previewLink}`;
-                        }
-
-                        col.innerHTML = `
-                            <label class="form-label fw-bold small">${opt.label} ${reqBadge}</label>
-                            ${inputHtml}
-                        `;
-                        if (gradeContainer) gradeContainer.appendChild(col);
-                    });
-
-                    if (gradeCard) gradeCard.style.display = 'block';
-                } else {
-                    if (gradeCard) gradeCard.style.display = 'none';
-                    if (gradeContainer) gradeContainer.innerHTML = '';
-                }
-            })
-            .catch(err => {
-                console.error('Error fetching grade options:', err);
-                if (gradeCard) gradeCard.style.display = 'none';
-            });
-    }
-
-    if (classroomSelect) {
-        classroomSelect.addEventListener('change', function() {
-            loadGradeOptions(this.value);
-        });
-
-        // Trigger on load if classroom already selected
-        if (classroomSelect.value) {
-            loadGradeOptions(classroomSelect.value);
-        }
-    }
-
-    // Load Provinces
     fetch('/academics/api/locations/provinces/')
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success' && data.data) {
-                globalProvinces = data.data;
-                populateSelect(pobProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
-                populateSelect(curProv, globalProvinces, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
-
-                // Auto restore existing addresses if available
-                const existingPob = (pobHiddenInput ? pobHiddenInput.value : '') || (pobPreview ? pobPreview.textContent : '');
-                const existingCur = (curHiddenInput ? curHiddenInput.value : '') || (curPreview ? curPreview.textContent : '');
-                if (existingPob && existingPob !== '...') restoreAddressCascade('pob', existingPob);
-                if (existingCur && existingCur !== '...') restoreAddressCascade('cur', existingCur);
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success' && d.data) {
+                populateDropdown(pobProv, d.data, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
+                populateDropdown(curProv, d.data, '-- ជ្រើសរើសខេត្ត/រាជធានី --');
             }
-        })
-        .catch(err => console.error('Error loading provinces:', err));
+        });
 
-    function populateSelect(selectEl, items, placeholder) {
-        if (!selectEl) return;
-        selectEl.innerHTML = `<option value="">${placeholder}</option>`;
-        if (!items || !Array.isArray(items)) return;
-        items.forEach(item => {
+    function populateDropdown(el, items, placeholder) {
+        if (!el) return;
+        el.innerHTML = `<option value="">${placeholder}</option>`;
+        items.forEach(i => {
             const opt = document.createElement('option');
-            opt.value = item.id;
-            const codePrefix = item.code ? `[${item.code}] ` : '';
-            const enSuffix = item.name_en ? ` (${item.name_en})` : '';
-            opt.textContent = `${codePrefix}${item.name_kh}${enSuffix}`;
-            opt.dataset.nameKh = item.name_kh;
-            opt.dataset.code = item.code || '';
-            selectEl.appendChild(opt);
+            opt.value = i.id;
+            opt.textContent = i.name_kh;
+            opt.dataset.nameKh = i.name_kh;
+            el.appendChild(opt);
         });
     }
 
-    function formatUnit(type, name) {
-        if (!name) return '';
-        name = name.trim();
-        if (type === 'village') {
-            return name.startsWith('ភូមិ') ? name : `ភូមិ${name}`;
-        }
-        if (type === 'commune') {
-            if (name.startsWith('ឃុំ') || name.startsWith('សង្កាត់')) return name;
-            return `ឃុំ/សង្កាត់${name}`;
-        }
-        if (type === 'district') {
-            if (name.startsWith('ស្រុក') || name.startsWith('ខណ្ឌ') || name.startsWith('ក្រុង')) return name;
-            return `ស្រុក/ខណ្ឌ${name}`;
-        }
-        if (type === 'province') {
-            if (name.startsWith('ខេត្ត') || name.startsWith('រាជធានី')) return name;
-            return name.includes('ភ្នំពេញ') ? `រាជធានី${name}` : `ខេត្ត${name}`;
-        }
-        return name;
-    }
-
-    // POB Chain
     if (pobProv) {
         pobProv.addEventListener('change', function() {
-            resetSelect(pobDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-            resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (pobDist) pobDist.innerHTML = '<option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>';
+            if (pobComm) pobComm.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+            if (pobVill) pobVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 pobDist.disabled = false;
                 fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(pobDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(pobDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --'));
             } else {
                 pobDist.disabled = true;
-                pobComm.disabled = true;
-                pobVill.disabled = true;
             }
-            updatePobString();
+            updatePob();
         });
     }
 
     if (pobDist) {
         pobDist.addEventListener('change', function() {
-            resetSelect(pobComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (pobComm) pobComm.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+            if (pobVill) pobVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 pobComm.disabled = false;
                 fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(pobComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(pobComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --'));
             } else {
                 pobComm.disabled = true;
-                pobVill.disabled = true;
             }
-            updatePobString();
+            updatePob();
         });
     }
 
     if (pobComm) {
         pobComm.addEventListener('change', function() {
-            resetSelect(pobVill, '-- ជ្រើសរើសភូមិ --');
+            if (pobVill) pobVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 pobVill.disabled = false;
                 fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(pobVill, d.data, '-- ជ្រើសរើសភូមិ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(pobVill, d.data, '-- ជ្រើសរើសភូមិ --'));
             } else {
                 pobVill.disabled = true;
             }
-            updatePobString();
+            updatePob();
         });
     }
 
-    if (pobVill) pobVill.addEventListener('change', updatePobString);
+    if (pobVill) pobVill.addEventListener('change', updatePob);
 
-    function resetSelect(selectEl, placeholder) {
-        if (!selectEl) return;
-        selectEl.innerHTML = `<option value="">${placeholder}</option>`;
-        selectEl.disabled = true;
-    }
-
-    function getSelectedText(selectEl) {
-        if (!selectEl || selectEl.selectedIndex <= 0) return '';
-        const opt = selectEl.options[selectEl.selectedIndex];
-        return opt.dataset.nameKh || opt.text.split(' (')[0];
-    }
-
-    function updatePobString() {
-        const p = getSelectedText(pobProv);
-        const d = getSelectedText(pobDist);
-        const c = getSelectedText(pobComm);
-        const v = getSelectedText(pobVill);
-
+    function updatePob() {
         const parts = [];
-        if (v) parts.push(formatUnit('village', v));
-        if (c) parts.push(formatUnit('commune', c));
-        if (d) parts.push(formatUnit('district', d));
-        if (p) parts.push(formatUnit('province', p));
-
-        const result = parts.join(', ');
-        if (pobPreview) pobPreview.textContent = result || '...';
-        if (pobHiddenInput && result) {
-            pobHiddenInput.value = result;
-        }
+        if (pobVill && pobVill.selectedIndex > 0) parts.push(`ភូមិ${pobVill.options[pobVill.selectedIndex].text}`);
+        if (pobComm && pobComm.selectedIndex > 0) parts.push(`ឃុំ/សង្កាត់${pobComm.options[pobComm.selectedIndex].text}`);
+        if (pobDist && pobDist.selectedIndex > 0) parts.push(`ស្រុក/ខណ្ឌ${pobDist.options[pobDist.selectedIndex].text}`);
+        if (pobProv && pobProv.selectedIndex > 0) parts.push(`ខេត្ត/រាជធានី${pobProv.options[pobProv.selectedIndex].text}`);
+        const text = parts.join(', ');
+        if (pobPreview) pobPreview.textContent = text || '...';
+        if (pobHiddenInput && text) pobHiddenInput.value = text;
     }
 
-    // Current Address Chain
+    // Current Address
     if (curProv) {
         curProv.addEventListener('change', function() {
-            resetSelect(curDist, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-            resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (curDist) curDist.innerHTML = '<option value="">-- ជ្រើសរើសស្រុក/ខណ្ឌ --</option>';
+            if (curComm) curComm.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+            if (curVill) curVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 curDist.disabled = false;
                 fetch(`/academics/api/locations/districts/?province_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --'));
             } else {
                 curDist.disabled = true;
-                curComm.disabled = true;
-                curVill.disabled = true;
             }
-            updateCurString();
+            updateCur();
         });
     }
 
     if (curDist) {
         curDist.addEventListener('change', function() {
-            resetSelect(curComm, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (curComm) curComm.innerHTML = '<option value="">-- ជ្រើសរើសឃុំ/សង្កាត់ --</option>';
+            if (curVill) curVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 curComm.disabled = false;
                 fetch(`/academics/api/locations/communes/?district_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(curComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(curComm, d.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --'));
             } else {
                 curComm.disabled = true;
-                curVill.disabled = true;
             }
-            updateCurString();
+            updateCur();
         });
     }
 
     if (curComm) {
         curComm.addEventListener('change', function() {
-            resetSelect(curVill, '-- ជ្រើសរើសភូមិ --');
+            if (curVill) curVill.innerHTML = '<option value="">-- ជ្រើសរើសភូមិ --</option>';
             if (this.value) {
                 curVill.disabled = false;
                 fetch(`/academics/api/locations/villages/?commune_id=${this.value}`)
-                    .then(res => res.json())
-                    .then(d => {
-                        populateSelect(curVill, d.data, '-- ជ្រើសរើសភូមិ --');
-                    });
+                    .then(r => r.json())
+                    .then(d => populateDropdown(curVill, d.data, '-- ជ្រើសរើសភូមិ --'));
             } else {
                 curVill.disabled = true;
             }
-            updateCurString();
+            updateCur();
         });
     }
 
-    if (curVill) curVill.addEventListener('change', updateCurString);
-    if (curStreet) curStreet.addEventListener('input', updateCurString);
+    if (curVill) curVill.addEventListener('change', updateCur);
+    if (curStreet) curStreet.addEventListener('input', updateCur);
 
-    function updateCurString() {
-        const street = curStreet ? curStreet.value.trim() : '';
-        const p = getSelectedText(curProv);
-        const d = getSelectedText(curDist);
-        const c = getSelectedText(curComm);
-        const v = getSelectedText(curVill);
-
+    function updateCur() {
         const parts = [];
-        if (street) parts.push(street);
-        if (v) parts.push(formatUnit('village', v));
-        if (c) parts.push(formatUnit('commune', c));
-        if (d) parts.push(formatUnit('district', d));
-        if (p) parts.push(formatUnit('province', p));
-
-        const result = parts.join(', ');
-        if (curPreview) curPreview.textContent = result || '...';
-        if (curHiddenInput && result) {
-            curHiddenInput.value = result;
-        }
+        if (curStreet && curStreet.value.trim()) parts.push(curStreet.value.trim());
+        if (curVill && curVill.selectedIndex > 0) parts.push(`ភូមិ${curVill.options[curVill.selectedIndex].text}`);
+        if (curComm && curComm.selectedIndex > 0) parts.push(`ឃុំ/សង្កាត់${curComm.options[curComm.selectedIndex].text}`);
+        if (curDist && curDist.selectedIndex > 0) parts.push(`ស្រុក/ខណ្ឌ${curDist.options[curDist.selectedIndex].text}`);
+        if (curProv && curProv.selectedIndex > 0) parts.push(`ខេត្ត/រាជធានី${curProv.options[curProv.selectedIndex].text}`);
+        const text = parts.join(', ');
+        if (curPreview) curPreview.textContent = text || '...';
+        if (curHiddenInput && text) curHiddenInput.value = text;
     }
 
-    // Auto-restore address cascade helper for editing
-    function restoreAddressCascade(type, text) {
-        if (!text || text === '...') return;
-        const isPob = (type === 'pob');
-        const provEl = isPob ? pobProv : curProv;
-        const distEl = isPob ? pobDist : curDist;
-        const commEl = isPob ? pobComm : curComm;
-        const villEl = isPob ? pobVill : curVill;
-        if (!provEl || !globalProvinces.length) return;
-
-        const rawParts = text.split(',').map(s => s.trim()).filter(Boolean);
-        if (!rawParts.length) return;
-
-        // Try to match Province
-        let matchedProv = null;
-        for (let i = rawParts.length - 1; i >= 0; i--) {
-            const clean = rawParts[i].replace(/^(ខេត្ត|រាជធានី)/, '').trim();
-            matchedProv = globalProvinces.find(p => p.name_kh === clean || p.name_kh.includes(clean) || clean.includes(p.name_kh));
-            if (matchedProv) break;
-        }
-
-        if (!matchedProv) return;
-        provEl.value = matchedProv.id;
-        distEl.disabled = false;
-
-        fetch(`/academics/api/locations/districts/?province_id=${matchedProv.id}`)
-            .then(res => res.json())
-            .then(dRes => {
-                if (dRes.status !== 'success' || !dRes.data) return;
-                populateSelect(distEl, dRes.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-
-                let matchedDist = null;
-                for (let i = rawParts.length - 1; i >= 0; i--) {
-                    const clean = rawParts[i].replace(/^(ស្រុក|ខណ្ឌ|ក្រុង)/, '').trim();
-                    matchedDist = dRes.data.find(d => d.name_kh === clean || d.name_kh.includes(clean) || clean.includes(d.name_kh));
-                    if (matchedDist) break;
-                }
-
-                if (!matchedDist) return;
-                distEl.value = matchedDist.id;
-                commEl.disabled = false;
-
-                fetch(`/academics/api/locations/communes/?district_id=${matchedDist.id}`)
-                    .then(res => res.json())
-                    .then(cRes => {
-                        if (cRes.status !== 'success' || !cRes.data) return;
-                        populateSelect(commEl, cRes.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-
-                        let matchedComm = null;
-                        for (let i = rawParts.length - 1; i >= 0; i--) {
-                            const clean = rawParts[i].replace(/^(ឃុំ|សង្កាត់)/, '').trim();
-                            matchedComm = cRes.data.find(c => c.name_kh === clean || c.name_kh.includes(clean) || clean.includes(c.name_kh));
-                            if (matchedComm) break;
-                        }
-
-                        if (!matchedComm) return;
-                        commEl.value = matchedComm.id;
-                        villEl.disabled = false;
-
-                        fetch(`/academics/api/locations/villages/?commune_id=${matchedComm.id}`)
-                            .then(res => res.json())
-                            .then(vRes => {
-                                if (vRes.status !== 'success' || !vRes.data) return;
-                                populateSelect(villEl, vRes.data, '-- ជ្រើសរើសភូមិ --');
-
-                                let matchedVill = null;
-                                for (let i = rawParts.length - 1; i >= 0; i--) {
-                                    const clean = rawParts[i].replace(/^ភូមិ/, '').trim();
-                                    matchedVill = vRes.data.find(v => v.name_kh === clean || v.name_kh.includes(clean) || clean.includes(v.name_kh));
-                                    if (matchedVill) break;
-                                }
-
-                                if (matchedVill) {
-                                    villEl.value = matchedVill.id;
-                                }
-                            });
-                    });
-            });
-    }
-
-    // Copy POB to Current Address
     if (btnCopyPob) {
         btnCopyPob.addEventListener('click', function() {
-            if (!pobProv || !pobProv.value) {
-                alert('សូមជ្រើសរើសទីកន្លែងកំណើតជាមុនសិន!');
-                return;
-            }
-
-            const pVal = pobProv.value;
-            const dVal = pobDist.value;
-            const cVal = pobComm.value;
-            const vVal = pobVill.value;
-
-            curProv.value = pVal;
-            curDist.disabled = false;
-
-            fetch(`/academics/api/locations/districts/?province_id=${pVal}`)
-                .then(res => res.json())
-                .then(d => {
-                    populateSelect(curDist, d.data, '-- ជ្រើសរើសស្រុក/ខណ្ឌ --');
-                    curDist.value = dVal;
-                    if (dVal) {
-                        curComm.disabled = false;
-                        fetch(`/academics/api/locations/communes/?district_id=${dVal}`)
-                            .then(res => res.json())
-                            .then(c => {
-                                populateSelect(curComm, c.data, '-- ជ្រើសរើសឃុំ/សង្កាត់ --');
-                                curComm.value = cVal;
-                                if (cVal) {
-                                    curVill.disabled = false;
-                                    fetch(`/academics/api/locations/villages/?commune_id=${cVal}`)
-                                        .then(res => res.json())
-                                        .then(v => {
-                                            populateSelect(curVill, v.data, '-- ជ្រើសរើសភូមិ --');
-                                            curVill.value = vVal;
-                                            updateCurString();
-                                        });
-                                } else {
-                                    updateCurString();
-                                }
-                            });
-                    } else {
-                        updateCurString();
-                    }
-                });
-        });
-    }
-
-    // Initialize Card Drag and Drop on Enrollment Form
-    initCardDragAndDrop();
-
-    // Initialize Student ID & Latin Name Live Tools
-    initStudentIdLiveChecker();
-    initLatinNameLiveGenerator();
-});
-
-// --- CARD DRAG & DROP REORDERING SYSTEM ---
-function initCardDragAndDrop() {
-    const leftCol = document.getElementById('leftFormCol');
-    const rightCol = document.getElementById('rightFormCol');
-    const columns = [leftCol, rightCol];
-    let draggedCard = null;
-
-    // Restore saved layout
-    const savedLayout = localStorage.getItem('schoolsm_enroll_card_layout');
-    if (savedLayout) {
-        try {
-            const layout = JSON.parse(savedLayout);
-            if (layout.left && Array.isArray(layout.left)) {
-                layout.left.forEach(cardId => {
-                    const card = document.getElementById(cardId);
-                    if (card && leftCol) leftCol.appendChild(card);
-                });
-            }
-            if (layout.right && Array.isArray(layout.right)) {
-                layout.right.forEach(cardId => {
-                    const card = document.getElementById(cardId);
-                    if (card && rightCol) {
-                        const submitBtn = document.getElementById('btnSubmitForm');
-                        if (submitBtn) {
-                            rightCol.insertBefore(card, submitBtn);
-                        } else {
-                            rightCol.appendChild(card);
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            console.error('Failed to restore layout', e);
-        }
-    }
-
-    document.querySelectorAll('.draggable-form-card').forEach(card => {
-        card.addEventListener('dragstart', function(e) {
-            draggedCard = this;
-            this.classList.add('card-dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', this.id);
-        });
-
-        card.addEventListener('dragend', function() {
-            this.classList.remove('card-dragging');
-            document.querySelectorAll('.draggable-form-card').forEach(c => c.classList.remove('card-drag-over'));
-            draggedCard = null;
-            saveCardLayout();
-        });
-
-        card.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (draggedCard && draggedCard !== this) {
-                document.querySelectorAll('.draggable-form-card').forEach(c => c.classList.remove('card-drag-over'));
-                this.classList.add('card-drag-over');
+            if (pobHiddenInput && pobHiddenInput.value) {
+                if (curHiddenInput) curHiddenInput.value = pobHiddenInput.value;
+                if (curPreview) curPreview.textContent = pobHiddenInput.value;
             }
         });
-
-        card.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('card-drag-over');
-            if (draggedCard && draggedCard !== this) {
-                const parent = this.parentElement;
-                const cards = Array.from(parent.querySelectorAll('.draggable-form-card'));
-                const draggedIdx = cards.indexOf(draggedCard);
-                const targetIdx = cards.indexOf(this);
-
-                if (draggedIdx !== -1 && draggedIdx < targetIdx) {
-                    this.after(draggedCard);
-                } else {
-                    this.before(draggedCard);
-                }
-                saveCardLayout();
-            }
-        });
-    });
-
-    columns.forEach(col => {
-        if (!col) return;
-        col.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        });
-        col.addEventListener('drop', function(e) {
-            if (draggedCard && !e.target.closest('.draggable-form-card')) {
-                const submitBtn = col.querySelector('#btnSubmitForm');
-                if (submitBtn) {
-                    col.insertBefore(draggedCard, submitBtn);
-                } else {
-                    col.appendChild(draggedCard);
-                }
-                saveCardLayout();
-            }
-        });
-    });
-}
-
-function saveCardLayout() {
-    const leftCards = Array.from(document.querySelectorAll('#leftFormCol .draggable-form-card')).map(c => c.id);
-    const rightCards = Array.from(document.querySelectorAll('#rightFormCol .draggable-form-card')).map(c => c.id);
-    localStorage.setItem('schoolsm_enroll_card_layout', JSON.stringify({ left: leftCards, right: rightCards }));
-}
-
-function resetCardLayout() {
-    localStorage.removeItem('schoolsm_enroll_card_layout');
-    location.reload();
-}
-
-// ============================================================
-// 🌟 STUDENT ID REAL-TIME LIVE UNIQUENESS CHECK & AUTO-SUGGEST
-// ============================================================
-let studentIdDebounceTimer = null;
-const CURRENT_STUDENT_PK = "{{ student.id|default:'' }}";
-
-function initStudentIdLiveChecker() {
-    const input = document.getElementById('id_student_id');
-    if (!input) return;
-
-    input.addEventListener('input', function() {
-        clearTimeout(studentIdDebounceTimer);
-        studentIdDebounceTimer = setTimeout(() => {
-            checkStudentIdAvailability(this.value.trim());
-        }, 300);
-    });
-
-    input.addEventListener('blur', function() {
-        checkStudentIdAvailability(this.value.trim());
-    });
-
-    // Run initial check if field already has value
-    if (input.value.trim()) {
-        checkStudentIdAvailability(input.value.trim());
-    }
-}
-
-async function checkStudentIdAvailability(val) {
-    const badge = document.getElementById('badgeStudentIdStatus');
-    const feedback = document.getElementById('studentIdFeedbackText');
-    const input = document.getElementById('id_student_id');
-    const yearSelect = document.getElementById('id_academic_year');
-    const yearId = yearSelect ? yearSelect.value : '';
-
-    if (!val) {
-        if (badge) {
-            badge.className = 'badge bg-secondary-subtle text-secondary border px-2 py-0.5 small';
-            badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1 text-primary"></i> ទុកទទេដើម្បីឱ្យប្រព័ន្ធបង្កើតស្វ័យប្រវត្តិ';
-        }
-        if (feedback) feedback.innerHTML = '';
-        if (input) {
-            input.classList.remove('is-invalid', 'is-valid');
-        }
-        return;
-    }
-
-    try {
-        const classroomSelect = document.getElementById('id_classroom');
-        const classroomId = classroomSelect ? classroomSelect.value : '';
-        const url = `/students/api/check-student-id/?student_id=${encodeURIComponent(val)}&exclude_id=${CURRENT_STUDENT_PK}&year_id=${yearId}&classroom_id=${classroomId}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if (data.is_available) {
-            if (badge) {
-                badge.className = 'badge bg-success-subtle text-success border border-success px-2 py-0.5 small';
-                badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> អត្តលេខទំនេរ អាចប្រើបាន';
-            }
-            if (feedback) {
-                feedback.className = 'small text-success mt-1 fw-semibold';
-                feedback.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i> ${data.message}`;
-            }
-            if (input) {
-                input.classList.remove('is-invalid');
-                input.classList.add('is-valid');
-            }
-        } else {
-            if (badge) {
-                badge.className = 'badge bg-danger-subtle text-danger border border-danger px-2 py-0.5 small';
-                badge.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i> ស្ទួនរួចហើយ!';
-            }
-            if (feedback) {
-                feedback.className = 'small text-danger mt-1 fw-bold';
-                feedback.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> ${data.message} <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-decoration-none fw-bold" onclick="applySuggestedStudentId('${data.suggested_id}')">👉 ប្រើ ${data.suggested_id}</button>`;
-            }
-            if (input) {
-                input.classList.remove('is-valid');
-                input.classList.add('is-invalid');
-            }
-        }
-    } catch (e) {
-        console.error('Check student ID error:', e);
-    }
-}
-
-async function fetchNextAvailableStudentId() {
-    const yearSelect = document.getElementById('id_academic_year');
-    const yearId = yearSelect ? yearSelect.value : '';
-    const classroomSelect = document.getElementById('id_classroom');
-    const classroomId = classroomSelect ? classroomSelect.value : '';
-    const input = document.getElementById('id_student_id');
-    const btn = document.getElementById('btnAutoGenerateStudentId');
-
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងទាញយក...';
-    }
-
-    try {
-        const resp = await fetch(`/students/api/generate-student-id/?year_id=${yearId}&classroom_id=${classroomId}`);
-        const data = await resp.json();
-        if (data.status === 'success' && data.student_id) {
-            applySuggestedStudentId(data.student_id);
-        }
-    } catch (e) {
-        console.error('Fetch next ID error:', e);
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> បង្កើតអត្តលេខបន្ទាប់ (Next ID)';
-        }
-    }
-}
-
-function applySuggestedStudentId(suggestedId) {
-    const input = document.getElementById('id_student_id');
-    if (input && suggestedId) {
-        input.value = suggestedId;
-        checkStudentIdAvailability(suggestedId);
-        input.focus();
-    }
-}
-
-// ============================================================
-// 🌟 REAL-TIME LIVE AUTO-GENERATE LATIN NAME FROM KHMER NAME
-// ============================================================
-let latinDebounceTimer = null;
-let lastAutoGeneratedLatin = '';
-let isUserManualLatinEdit = false;
-
-function initLatinNameLiveGenerator() {
-    const khmerInput = document.getElementById('id_khmer_name') || document.querySelector('input[name="khmer_name"]');
-    const latinInput = document.getElementById('id_latin_name') || document.querySelector('input[name="latin_name"]');
-    const autoBtn = document.getElementById('btn_auto_latin');
-    const badge = document.getElementById('latin_auto_status_badge');
-
-    if (!khmerInput || !latinInput) return;
-
-    const khmerScriptRegex = /[\u1780-\u17FF]/;
-
-    // If latinInput already has a valid Latin value on page load, mark as manual;
-    // If it is empty or contains corrupted Khmer script, immediately auto-generate standard Latin!
-    if (latinInput.value.trim() && !khmerScriptRegex.test(latinInput.value)) {
-        isUserManualLatinEdit = true;
-    } else if (khmerInput.value.trim()) {
-        fetchAndApplyLatinName(khmerInput.value.trim(), true);
-    }
-
-    // When user types in Latin name manually
-    latinInput.addEventListener('input', function() {
-        if (latinInput.value.trim() !== lastAutoGeneratedLatin) {
-            isUserManualLatinEdit = true;
-            if (badge) {
-                badge.className = 'badge bg-secondary-subtle text-secondary border px-1.5 py-0.5 small';
-                badge.innerHTML = '<i class="fa-solid fa-pen me-1"></i> កែប្រែដោយដៃ (Manual)';
-            }
-        }
-        if (!latinInput.value.trim()) {
-            isUserManualLatinEdit = false;
-        }
-    });
-
-    // When user types in Khmer name
-    khmerInput.addEventListener('input', function() {
-        const khName = this.value.trim();
-        if (!khName) {
-            if (!isUserManualLatinEdit) {
-                latinInput.value = '';
-                lastAutoGeneratedLatin = '';
-            }
-            return;
-        }
-
-        clearTimeout(latinDebounceTimer);
-        latinDebounceTimer = setTimeout(() => {
-            if (!isUserManualLatinEdit || !latinInput.value.trim()) {
-                fetchAndApplyLatinName(khName, false);
-            }
-        }, 200);
-    });
-
-    // Manual Re-generate button click
-    if (autoBtn) {
-        autoBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const khName = khmerInput.value.trim();
-            if (!khName) {
-                khmerInput.focus();
-                return;
-            }
-            fetchAndApplyLatinName(khName, true);
-        });
-    }
-
-    async function fetchAndApplyLatinName(khmerName, force = false) {
-        if (!khmerName) return;
-        
-        if (autoBtn) {
-            autoBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-primary"></i>';
-        }
-
-        try {
-            const resp = await fetch(`/students/api/romanize/?name=${encodeURIComponent(khmerName)}`);
-            const data = await resp.json();
-            if (data.status === 'success' && data.latin_name) {
-                if (force || !isUserManualLatinEdit || !latinInput.value.trim()) {
-                    latinInput.value = data.latin_name;
-                    lastAutoGeneratedLatin = data.latin_name;
-                    isUserManualLatinEdit = false;
-
-                    if (badge) {
-                        badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5 small';
-                        badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Auto Live';
-                        setTimeout(() => {
-                            if (!isUserManualLatinEdit && badge) {
-                                badge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 small';
-                                badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto Live';
-                            }
-                        }, 2000);
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Auto romanization error:', err);
-        } finally {
-            if (autoBtn) {
-                autoBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-            }
-        }
     }
 }
 </script>
-
-<style>
-.cursor-grab {
-    cursor: grab;
-}
-.cursor-grab:active {
-    cursor: grabbing;
-}
-.draggable-form-card {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.draggable-form-card.card-dragging {
-    opacity: 0.45;
-    transform: scale(0.99);
-    border: 2px dashed #4f46e5 !important;
-}
-.draggable-form-card.card-drag-over {
-    border-top: 3px solid #4f46e5 !important;
-    background-color: #f8faff !important;
-}
-</style>
 {% endblock %}
-

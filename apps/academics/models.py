@@ -90,6 +90,14 @@ class GradeLevel(models.Model):
         rules = self.get_subject_rules()
         return sum(r.max_score for r in rules)
 
+    @property
+    def general_enrollment_options(self):
+        return [o for o in self.enrollment_options.all() if getattr(o, 'form_category', 'GENERAL') == 'GENERAL']
+
+    @property
+    def moeys_enrollment_options(self):
+        return [o for o in self.enrollment_options.all() if getattr(o, 'form_category', 'GENERAL') == 'MOEYS_INDIVIDUAL']
+
     def __str__(self):
         return self.name
 
@@ -561,6 +569,10 @@ class AcademicCalendarRestriction(models.Model):
 
 
 class GradeEnrollmentOption(models.Model):
+    class FormCategory(models.TextChoices):
+        GENERAL = 'GENERAL', 'បែបបទចុះឈ្មោះទូទៅ (Admin បានកំណត់)'
+        MOEYS_INDIVIDUAL = 'MOEYS_INDIVIDUAL', 'បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ'
+
     class FieldType(models.TextChoices):
         TEXT = 'TEXT', 'ប្រអប់អត្ថបទខ្លី (Short Text)'
         TEXTAREA = 'TEXTAREA', 'ប្រអប់អត្ថបទវែង (Long Text / Notes)'
@@ -585,6 +597,13 @@ class GradeEnrollmentOption(models.Model):
     ]
 
     grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE, related_name='enrollment_options', verbose_name="កម្រិតថ្នាក់ / Grade Level")
+    form_category = models.CharField(
+        max_length=30,
+        choices=FormCategory.choices,
+        default=FormCategory.GENERAL,
+        verbose_name="ប្រភេទបែបបទ / Form Category",
+        help_text="បែបបទចុះឈ្មោះទូទៅ (Admin កំណត់) ឬ បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS)"
+    )
     label = models.CharField(max_length=200, verbose_name="ឈ្មោះជម្រើស/សំណួរ (Label)")
     field_name = models.CharField(max_length=100, verbose_name="កូដសម្គាល់ (Field Key)", help_text="e.g. primary_school, diploma_grade, elective_subject")
     field_type = models.CharField(max_length=20, choices=FieldType.choices, default=FieldType.TEXT, verbose_name="ប្រភេទប្រអប់ (Field Type)")
@@ -598,7 +617,7 @@ class GradeEnrollmentOption(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['grade_level__order', 'order', 'id']
+        ordering = ['grade_level__order', 'form_category', 'order', 'id']
         verbose_name = "ជម្រើសចុះឈ្មោះតាមកម្រិតថ្នាក់ / Grade Enrollment Option"
         verbose_name_plural = "ជម្រើសចុះឈ្មោះតាមកម្រិតថ្នាក់ទាំងអស់ / Grade Enrollment Options"
 

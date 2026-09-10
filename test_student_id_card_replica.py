@@ -92,6 +92,16 @@ def test_student_card_replica():
         "selectCardFont",
         "Khmer OS Siemreap",
         "inputIdLabel",
+        "Khmer OS Muol Light",
+        "KhmerOSmuollight.ttf",
+        "--card-var-font",
+        "selectVarFont",
+        "btnDateFontDec",
+        "btnDateFontInc",
+        "labelDateFontSize",
+        "--date-font-size",
+        "--date-font-family",
+        "selectDateFont",
     ]
     for check_item in font_id_checks:
         assert check_item in content_grid, f"Missing font/ID item: '{check_item}'"
@@ -103,6 +113,11 @@ def test_student_card_replica():
     resp_batch = batch_student_id_cards(req_batch)
     assert resp_batch.status_code == 200, f"Expected 200, got {resp_batch.status_code}"
     print("  [OK] Batch cards view returned 200 OK.")
+
+    # 5. Verify no duplicate "ថ្នាក់ ថ្នាក់ទី"
+    assert "ថ្នាក់ ថ្នាក់ទី" not in content_grid, "Found duplicate 'ថ្នាក់ ថ្នាក់ទី' in single card grid!"
+    assert "ថ្នាក់ ថ្នាក់ទី" not in resp_batch.content.decode('utf-8'), "Found duplicate 'ថ្នាក់ ថ្នាក់ទី' in batch cards!"
+    print("  [OK] Verified NO duplicate 'ថ្នាក់ ថ្នាក់ទី' in single or batch card views.")
 
     print("\n[ALL STUDENT ID CARD REPLICA TESTS PASSED SUCCESSFULLY!]")
 

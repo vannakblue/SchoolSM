@@ -51,6 +51,28 @@
             font-style: normal;
         }
 
+        /* Authentic Khmer OS Muol Light Font Definition */
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype'),
+                 local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 local('Khmer OS Muol'),
+                 local('Moul');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype'),
+                 local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 local('Khmer OS Muol'),
+                 local('Moul');
+            font-weight: bold;
+            font-style: normal;
+        }
+
         :root {
             /* Exact MoEYS Colors from User Images */
             --card-border-color: #001ca8; /* Deep Royal Blue outer border & header */
@@ -59,10 +81,15 @@
             --card-id-green: #00a651;     /* Vibrant Emerald Green for ID number matching Image 3 */
             --card-width: 95mm;
             --card-height: 136mm;
+            --photo-width: 90px;
+            --photo-height: 116px;
             --card-body-font: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif;
+            --card-var-font: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, sans-serif;
+            --date-font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif;
             --details-font-size: 13px;
             --details-row-gap: 5.5px;
             --details-line-height: 1.85;
+            --date-font-size: 8.5px;
             --watermark-opacity: 0.16;
             --watermark-size: 180px;
         }
@@ -252,6 +279,14 @@
             margin: 2px 0 2px 0;
             letter-spacing: 0.3px;
         }
+        .card-province-display {
+            font-family: var(--card-var-font);
+            font-weight: normal;
+        }
+        .card-school-display {
+            font-family: var(--card-var-font);
+            font-weight: normal;
+        }
         .card-id-number {
             font-family: var(--card-body-font);
             font-weight: 700;
@@ -261,14 +296,19 @@
             margin-bottom: 3px;
             letter-spacing: 0.5px;
         }
-        .card-id-number .id-tag,
+        .card-id-number .id-tag {
+            color: var(--card-id-green);
+            font-family: var(--card-body-font);
+        }
         .card-id-number .id-val {
             color: var(--card-id-green);
+            font-family: var(--card-var-font);
+            font-weight: normal;
         }
         .card-academic-year {
-            font-family: var(--card-body-font);
-            font-weight: 700;
-            font-size: 12px;
+            font-family: var(--card-var-font);
+            font-weight: normal;
+            font-size: 11.5px;
             color: #000000;
             text-align: center;
             margin-bottom: 11px;
@@ -296,10 +336,11 @@
             margin-right: 5px;
         }
         .detail-value {
-            font-family: var(--card-body-font);
+            font-family: var(--card-var-font);
             color: var(--card-val-blue);
-            font-weight: 700;
-            font-size: calc(var(--details-font-size) + 0.5px);
+            font-weight: normal;
+            font-size: calc(var(--details-font-size) - 0.5px);
+            letter-spacing: 0.15px;
         }
         .radio-indicator {
             font-size: calc(var(--details-font-size) - 1.5px);
@@ -320,18 +361,22 @@
 
         /* Photo Column (No text under photo per Image 5) */
         .photo-column {
-            width: 90px;
+            width: var(--photo-width, 90px);
             flex-shrink: 0;
+            transition: width 0.1s ease;
         }
         .photo-box {
-            width: 90px;
-            height: 116px;
+            width: var(--photo-width, 90px);
+            height: var(--photo-height, 116px);
             background: #0284c7;
-            border: 1px solid var(--card-border-color);
+            border: 1.5px solid var(--card-border-color);
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: width 0.1s ease, height 0.1s ease;
         }
         .photo-img {
             width: 100%;
@@ -350,6 +395,97 @@
             background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
         }
 
+        /* 4-Corner Interactive Handles for Card Blue Border */
+        .card-resize-handle {
+            position: absolute;
+            width: 13px;
+            height: 13px;
+            background-color: #001ca8;
+            border: 2px solid #ffffff;
+            border-radius: 3px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.45);
+            z-index: 40;
+            transition: transform 0.12s ease, background-color 0.12s ease;
+            user-select: none;
+            touch-action: none;
+        }
+        .card-resize-handle:hover,
+        .card-resize-handle.active {
+            background-color: #2563eb;
+            transform: scale(1.4);
+            box-shadow: 0 0 8px #38bdf8;
+        }
+        .card-resize-handle.handle-tl { top: -6px; left: -6px; cursor: nwse-resize; }
+        .card-resize-handle.handle-tr { top: -6px; right: -6px; cursor: nesw-resize; }
+        .card-resize-handle.handle-bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .card-resize-handle.handle-br { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+        /* 4-Corner Interactive Handles for Photo Box */
+        .photo-resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #0284c7;
+            border: 1.5px solid #ffffff;
+            border-radius: 2px;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            z-index: 45;
+            transition: transform 0.12s ease, background-color 0.12s ease;
+            user-select: none;
+            touch-action: none;
+        }
+        .photo-resize-handle:hover,
+        .photo-resize-handle.active {
+            background-color: #f59e0b;
+            transform: scale(1.4);
+            box-shadow: 0 0 7px #fbbf24;
+        }
+        .photo-resize-handle.handle-tl { top: -4px; left: -4px; cursor: nwse-resize; }
+        .photo-resize-handle.handle-tr { top: -4px; right: -4px; cursor: nesw-resize; }
+        .photo-resize-handle.handle-bl { bottom: -4px; left: -4px; cursor: nesw-resize; }
+        .photo-resize-handle.handle-br { bottom: -4px; right: -4px; cursor: nwse-resize; }
+
+        /* Photo Upload Hover Overlay */
+        .photo-upload-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 30;
+            font-size: 9px;
+            backdrop-filter: blur(1px);
+        }
+        .photo-box:hover .photo-upload-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Floating Dimension Tooltip on Drag */
+        .floating-resize-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.95);
+            color: #fbbf24;
+            font-family: 'Kantumruy Pro', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+            border: 1px solid #3b82f6;
+            z-index: 999999;
+            transform: translate(14px, 14px);
+            display: none;
+        }
+
         /* Administration & Signature Column */
         .admin-column {
             flex-grow: 1;
@@ -361,24 +497,28 @@
             justify-content: flex-end;
         }
         .lunar-date {
-            font-family: var(--card-body-font);
-            font-size: 8px;
+            font-family: var(--date-font-family, 'Khmer OS Siemreap', 'Siemreap', sans-serif);
+            font-size: var(--date-font-size, 8.5px);
             line-height: 1.35;
             color: #000000;
-            font-weight: 600;
+            font-weight: normal;
             white-space: nowrap;
             margin-bottom: 2px;
             cursor: pointer;
+            letter-spacing: 0.1px;
+            transition: font-size 0.15s ease;
         }
         .solar-date {
-            font-family: var(--card-body-font);
-            font-size: 8.5px;
+            font-family: var(--date-font-family, 'Khmer OS Siemreap', 'Siemreap', sans-serif);
+            font-size: calc(var(--date-font-size, 8.5px) + 0.5px);
             line-height: 1.35;
             color: #000000;
-            font-weight: 600;
+            font-weight: normal;
             margin-bottom: 3px;
             white-space: nowrap;
             cursor: pointer;
+            letter-spacing: 0.1px;
+            transition: font-size 0.15s ease;
         }
         .principal-title {
             font-family: 'Moul', cursive;
@@ -454,7 +594,11 @@
 
         /* Print Media Styles */
         @media print {
-            .no-print {
+            .no-print,
+            .card-resize-handle,
+            .photo-resize-handle,
+            .photo-upload-overlay,
+            .floating-resize-tooltip {
                 display: none !important;
             }
             body {
@@ -516,7 +660,7 @@
                         <option value="">-- បោះពុម្ពតាមថ្នាក់រៀន --</option>
                         {% for c in classrooms %}
                         <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id or student.classroom and student.classroom.id == c.id and mode == 'class' %}selected{% endif %}>
-                            ថ្នាក់ {{ c.name }} ({{ c.students.count }} នាក់)
+                            {{ c.name|clean_classroom_full }} ({{ c.students.count }} នាក់)
                         </option>
                         {% endfor %}
                     </select>
@@ -609,6 +753,16 @@
                     </div>
                 </div>
 
+                <!-- 6b. Date Font Size Controller (ពង្រីក/បង្រួម Font កាលបរិច្ឆេទ រូបទី២) -->
+                <div class="d-flex flex-column gap-1" style="width: 155px;">
+                    <label class="small text-info fw-bold"><i class="fa-solid fa-calendar-days me-1"></i> ទំហំអក្សរកាលបរិច្ឆេទ:</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" id="btnDateFontDec" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="បង្រួមអក្សរកាលបរិច្ឆេទ (រូបទី២)"><i class="fa-solid fa-minus"></i></button>
+                        <span id="labelDateFontSize" class="badge bg-info text-dark px-2 py-1 small fw-bold" style="min-width: 52px; text-align: center;">8.5px</span>
+                        <button type="button" id="btnDateFontInc" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="ពង្រីកអក្សរកាលបរិច្ឆេទ (រូបទី២)"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+
                 <!-- 7. Background Logo Watermark Controller -->
                 <div class="d-flex flex-column gap-1" style="min-width: 275px;">
                     <label class="small text-warning fw-bold">
@@ -616,7 +770,7 @@
                     </label>
                     <div class="d-flex align-items-center gap-2">
                         <div class="btn-group btn-group-sm">
-                            <button type="button" id="btnWatermarkMoeys" class="btn btn-warning text-dark fw-bold" title="ប្រើ Logo ក្រសួង MoEYS">
+                            <button type="button" id="btnWatermarkMoeys" class="btn btn-warning text-dark fw-bold" data-url="{% static 'img/moeys_logo.png' %}" title="ប្រើ Logo ក្រសួងអប់រំ MoEYS ផ្លូវការបច្ចុប្បន្ន">
                                 MoEYS
                             </button>
                             {% if school_info and school_info.logo_url %}
@@ -656,8 +810,8 @@
                     </div>
                 </div>
 
-                <!-- 9. Font Family Selector (ជ្រើសរើស Font អក្សរ ឧ. Khmer OS Siemreap) -->
-                <div class="d-flex flex-column gap-1" style="min-width: 175px;">
+                <!-- 9. Font Family Selector (ជ្រើសរើស Font អក្សរលើប័ណ្ណ) -->
+                <div class="d-flex flex-column gap-1" style="min-width: 165px;">
                     <label class="small text-warning fw-bold">
                         <i class="fa-solid fa-font me-1"></i> Font អក្សរលើប័ណ្ណ:
                     </label>
@@ -670,6 +824,34 @@
                     </select>
                 </div>
 
+                <!-- 9b. Variable Data Font Family Selector (Font ទិន្នន័យប្រែប្រួល) -->
+                <div class="d-flex flex-column gap-1" style="min-width: 185px;">
+                    <label class="small text-info fw-bold">
+                        <i class="fa-solid fa-signature me-1"></i> Font ទិន្នន័យប្រែប្រួល:
+                    </label>
+                    <select id="selectVarFont" class="form-select form-select-sm bg-dark text-white border-info rounded-pill" title="Font សម្រាប់ទិន្នន័យដែលអាចប្រែប្រួល">
+                        <option value="'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, sans-serif" selected>Khmer OS Muol Light</option>
+                        <option value="'Khmer OS Siemreap', 'Siemreap', sans-serif">Khmer OS Siemreap</option>
+                        <option value="'Kantumruy Pro', sans-serif">Kantumruy Pro</option>
+                        <option value="'Battambang', sans-serif">Battambang</option>
+                        <option value="'Khmer OS', sans-serif">Khmer OS</option>
+                    </select>
+                </div>
+
+                <!-- 9c. Date Font Family Selector (Font កាលបរិច្ឆេទ) -->
+                <div class="d-flex flex-column gap-1" style="min-width: 175px;">
+                    <label class="small text-info fw-bold">
+                        <i class="fa-solid fa-calendar-check me-1"></i> Font កាលបរិច្ឆេទ:
+                    </label>
+                    <select id="selectDateFont" class="form-select form-select-sm bg-dark text-white border-info rounded-pill" title="ប្តូរ Font សម្រាប់កាលបរិច្ឆេទ (រូបទី២)">
+                        <option value="'Khmer OS Siemreap', 'Siemreap', sans-serif" selected>Khmer OS Siemreap</option>
+                        <option value="'Kantumruy Pro', sans-serif">Kantumruy Pro</option>
+                        <option value="'Battambang', sans-serif">Battambang</option>
+                        <option value="'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, sans-serif">Khmer OS Muol Light</option>
+                        <option value="'Khmer OS', sans-serif">Khmer OS</option>
+                    </select>
+                </div>
+
                 <!-- 9. ID Label Controller (ប្តូរពី "លេខ" ទៅជា "អត្តលេខ") -->
                 <div class="d-flex flex-column gap-1" style="width: 105px;">
                     <label class="small text-success fw-bold">
@@ -677,6 +859,33 @@
                     </label>
                     <input type="text" id="inputIdLabel" class="form-control form-control-sm bg-dark text-white border-success fw-bold text-center" value="{{ id_label|default:'អត្តលេខ:' }}" title="ប្តូរស្លាកលេខសម្គាល់សិស្ស">
                 </div>
+
+                <!-- 10. Card Border Frame Size Controller (ទំហំប័ណ្ណ / ស៊ុមខៀវ) -->
+                <div class="d-flex flex-column gap-1" style="width: 185px;">
+                    <label class="small text-warning fw-bold">
+                        <i class="fa-solid fa-expand me-1"></i> ទំហំប័ណ្ណ (ស៊ុមខៀវ):
+                    </label>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" id="btnCardSizeDec" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="បង្រួមប័ណ្ណ"><i class="fa-solid fa-minus"></i></button>
+                        <span id="labelCardSize" class="badge bg-warning text-dark px-2 py-1 small fw-bold" style="min-width: 86px; text-align: center;">95 × 136mm</span>
+                        <button type="button" id="btnCardSizeInc" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="ពង្រីកប័ណ្ណ"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <!-- 11. Photo Frame Size Controller (ទំហំរូបថត 4x6) -->
+                <div class="d-flex flex-column gap-1" style="width: 165px;">
+                    <label class="small text-info fw-bold">
+                        <i class="fa-solid fa-image-portrait me-1"></i> ទំហំរូបថត 4x6:
+                    </label>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" id="btnPhotoSizeDec" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="បង្រួមរូបថត"><i class="fa-solid fa-minus"></i></button>
+                        <span id="labelPhotoSize" class="badge bg-info text-dark px-2 py-1 small fw-bold" style="min-width: 76px; text-align: center;">90 × 116px</span>
+                        <button type="button" id="btnPhotoSizeInc" class="btn btn-sm btn-outline-secondary text-white px-2 py-1" title="ពង្រីករូបថត"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <!-- Hidden Direct Photo Upload Input -->
+                <input type="file" id="inputStudentPhotoDirect" accept="image/*" class="d-none">
 
                 <!-- Reset Button -->
                 <div class="d-flex align-items-center gap-2">
@@ -693,14 +902,17 @@
             <div class="small text-secondary mt-2 d-flex align-items-center justify-content-between">
                 <div>
                     <i class="fa-solid fa-circle-info text-info me-1"></i>
-                    <strong>ការណែនាំ:</strong> Admin អាចវាយបញ្ចូលក្នុងប្រអប់ខាងលើ ឬ <strong>ចុចផ្ទាល់លើផ្ទៃកាត (Click-to-edit)</strong> ដើម្បីកែប្រែភ្លាមៗ។ រាល់ការកែប្រែនឹងត្រូវ Update លើគ្រប់ប័ណ្ណដោយស្វ័យប្រវត្តិ។
+                    <strong>ការណែនាំ:</strong> Admin អាចចាប់ទាញ <strong>ជ្រុងកែងទាំង ៤ (Corner Handles) នៃស៊ុមពណ៌ខៀវ</strong> ដើម្បីពង្រីក/បង្រួមទំហំប័ណ្ណ ឬទំហំរូបថតដោយសេរី, ឬ <strong>ចុចលើរូបថត (Click-to-upload)</strong> ដើម្បីផ្លាស់ប្តូររូបថតសិស្សភ្លាមៗ។
                 </div>
                 <div class="text-warning small">
-                    <i class="fa-solid fa-shield-halved me-1"></i> Font Tacteing & កាលបរិច្ឆេទទាំងពីរនឹងត្រូវរក្សាទុកក្នុង Browser ពេល Print
+                    <i class="fa-solid fa-shield-halved me-1"></i> ទំហំ និងទិន្នន័យទាំងអស់នឹងត្រូវរក្សាទុកស្វ័យប្រវត្តក្នុង Browser
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Floating Live Resize Tooltip -->
+    <div id="floatingResizeTooltip" class="floating-resize-tooltip"></div>
 
     <!-- MAIN CARDS CONTAINER -->
     {% if mode == 'single' and student %}
@@ -884,6 +1096,35 @@
                 }
             } catch(e) {}
 
+            // Variable Data Font Family Dynamic Switching (Khmer OS Muol Light by default)
+            const selectVarFont = document.getElementById('selectVarFont');
+            function applyVarFont(fontFamily, saveToStorage = true) {
+                document.documentElement.style.setProperty('--card-var-font', fontFamily);
+                if (selectVarFont && selectVarFont.value !== fontFamily) {
+                    selectVarFont.value = fontFamily;
+                }
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_card_var_font', fontFamily);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (selectVarFont) {
+                selectVarFont.addEventListener('change', function() {
+                    applyVarFont(this.value, true);
+                });
+            }
+
+            // Load saved variable data font family from localStorage
+            try {
+                const savedVarFont = localStorage.getItem('schoolsm_card_var_font');
+                if (savedVarFont) {
+                    applyVarFont(savedVarFont, false);
+                }
+            } catch(e) {}
+
             // Font Size Dynamic Adjustment (ពង្រីក/បង្រួមទំហំអក្សរសិស្ស)
             let currentFontSize = 13.0;
             const labelFontSize = document.getElementById('labelFontSize');
@@ -923,6 +1164,74 @@
                 });
             }
 
+            // Date Font Size Dynamic Adjustment (ពង្រីក/បង្រួម Font កាលបរិច្ឆេទ រូបទី២)
+            let currentDateFontSize = 8.5;
+            const labelDateFontSize = document.getElementById('labelDateFontSize');
+            const btnDateFontInc = document.getElementById('btnDateFontInc');
+            const btnDateFontDec = document.getElementById('btnDateFontDec');
+
+            function applyDateFontSize(size, saveToStorage = true) {
+                currentDateFontSize = Math.min(16.0, Math.max(5.0, parseFloat(size)));
+                document.documentElement.style.setProperty('--date-font-size', currentDateFontSize.toFixed(1) + 'px');
+                if (labelDateFontSize) labelDateFontSize.textContent = currentDateFontSize.toFixed(1) + 'px';
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_date_font_size', currentDateFontSize);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            // Load saved date font size from localStorage
+            try {
+                const savedDateSize = localStorage.getItem('schoolsm_date_font_size');
+                if (savedDateSize) {
+                    applyDateFontSize(savedDateSize, false);
+                }
+            } catch(e) {}
+
+            if (btnDateFontInc) {
+                btnDateFontInc.addEventListener('click', function() {
+                    applyDateFontSize(currentDateFontSize + 0.5);
+                });
+            }
+            if (btnDateFontDec) {
+                btnDateFontDec.addEventListener('click', function() {
+                    applyDateFontSize(currentDateFontSize - 0.5);
+                });
+            }
+
+            // Date Font Family Dynamic Switching (Khmer OS Siemreap by default)
+            const selectDateFont = document.getElementById('selectDateFont');
+            function applyDateFont(fontFamily, saveToStorage = true) {
+                document.documentElement.style.setProperty('--date-font-family', fontFamily);
+                if (selectDateFont && selectDateFont.value !== fontFamily) {
+                    selectDateFont.value = fontFamily;
+                }
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_date_font_family', fontFamily);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (selectDateFont) {
+                selectDateFont.addEventListener('change', function() {
+                    applyDateFont(this.value, true);
+                });
+            }
+
+            // Load saved date font family from localStorage
+            try {
+                const savedDateFont = localStorage.getItem('schoolsm_date_font_family');
+                if (savedDateFont) {
+                    applyDateFont(savedDateFont, false);
+                } else {
+                    applyDateFont("'Khmer OS Siemreap', 'Siemreap', sans-serif", false);
+                }
+            } catch(e) {}
+
             // Watermark Logo & Opacity Controllers (ប្តូរ Background Watermark Logo)
             const btnWatermarkMoeys = document.getElementById('btnWatermarkMoeys');
             const btnWatermarkSchool = document.getElementById('btnWatermarkSchool');
@@ -949,7 +1258,13 @@
                 const imgs = document.querySelectorAll('.user-custom-watermark-img');
 
                 if (mode === 'moeys') {
-                    svgs.forEach(svg => svg.classList.remove('d-none'));
+                    const moeysUrl = (btnWatermarkMoeys && btnWatermarkMoeys.getAttribute('data-url')) || "{% static 'img/moeys_logo.png' %}";
+                    svgs.forEach(el => {
+                        el.classList.remove('d-none');
+                        if (el.tagName && el.tagName.toLowerCase() === 'img') {
+                            el.src = moeysUrl;
+                        }
+                    });
                     imgs.forEach(img => {
                         img.classList.add('d-none');
                         img.src = '';
@@ -1092,6 +1407,296 @@
                 }
             } catch (e) {}
 
+            // =========================================================================
+            // 4-CORNER DRAG RESIZING FOR CARD BLUE BORDER & PHOTO FRAME
+            // =========================================================================
+            const tooltip = document.getElementById('floatingResizeTooltip');
+            function showTooltip(x, y, text) {
+                if (!tooltip) return;
+                tooltip.textContent = text;
+                tooltip.style.left = x + 'px';
+                tooltip.style.top = y + 'px';
+                tooltip.style.display = 'block';
+            }
+            function hideTooltip() {
+                if (!tooltip) return;
+                tooltip.style.display = 'none';
+            }
+
+            // --- 1. Card Blue Border Dimensions (mm) ---
+            let currentCardW = 95;
+            let currentCardH = 136;
+            const labelCardSize = document.getElementById('labelCardSize');
+            const btnCardSizeInc = document.getElementById('btnCardSizeInc');
+            const btnCardSizeDec = document.getElementById('btnCardSizeDec');
+
+            function applyCardDimensions(w, h, saveToStorage = true) {
+                currentCardW = Math.max(65, Math.min(135, parseInt(w, 10) || 95));
+                currentCardH = Math.max(90, Math.min(190, parseInt(h, 10) || 136));
+                document.documentElement.style.setProperty('--card-width', currentCardW + 'mm');
+                document.documentElement.style.setProperty('--card-height', currentCardH + 'mm');
+                if (labelCardSize) labelCardSize.textContent = `${currentCardW} × ${currentCardH}mm`;
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_card_w', currentCardW);
+                        localStorage.setItem('schoolsm_card_h', currentCardH);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (btnCardSizeInc) {
+                btnCardSizeInc.addEventListener('click', function() {
+                    applyCardDimensions(currentCardW + 3, currentCardH + 4, true);
+                });
+            }
+            if (btnCardSizeDec) {
+                btnCardSizeDec.addEventListener('click', function() {
+                    applyCardDimensions(currentCardW - 3, currentCardH - 4, true);
+                });
+            }
+
+            // --- 2. Photo Box Dimensions (px) ---
+            let currentPhotoW = 90;
+            let currentPhotoH = 116;
+            const labelPhotoSize = document.getElementById('labelPhotoSize');
+            const btnPhotoSizeInc = document.getElementById('btnPhotoSizeInc');
+            const btnPhotoSizeDec = document.getElementById('btnPhotoSizeDec');
+
+            function applyPhotoDimensions(w, h, saveToStorage = true) {
+                currentPhotoW = Math.max(55, Math.min(150, parseInt(w, 10) || 90));
+                currentPhotoH = Math.max(70, Math.min(190, parseInt(h, 10) || 116));
+                document.documentElement.style.setProperty('--photo-width', currentPhotoW + 'px');
+                document.documentElement.style.setProperty('--photo-height', currentPhotoH + 'px');
+                if (labelPhotoSize) labelPhotoSize.textContent = `${currentPhotoW} × ${currentPhotoH}px`;
+                if (saveToStorage) {
+                    try {
+                        localStorage.setItem('schoolsm_photo_w', currentPhotoW);
+                        localStorage.setItem('schoolsm_photo_h', currentPhotoH);
+                        showSavedFeedback();
+                    } catch(e) {}
+                }
+            }
+
+            if (btnPhotoSizeInc) {
+                btnPhotoSizeInc.addEventListener('click', function() {
+                    applyPhotoDimensions(currentPhotoW + 5, currentPhotoH + 6, true);
+                });
+            }
+            if (btnPhotoSizeDec) {
+                btnPhotoSizeDec.addEventListener('click', function() {
+                    applyPhotoDimensions(currentPhotoW - 5, currentPhotoH - 6, true);
+                });
+            }
+
+            // --- 3. Interactive Corner Drag Handlers for Card Frame ---
+            let isResizingCard = false;
+            let cardResizeHandle = null;
+            let cardStartX = 0, cardStartY = 0;
+            let cardInitW = 95, cardInitH = 136;
+
+            function onCardHandleDown(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                isResizingCard = true;
+                cardResizeHandle = this.getAttribute('data-handle');
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                cardStartX = clientX;
+                cardStartY = clientY;
+
+                const cardEl = this.closest('.moeys-id-card');
+                const rect = cardEl.getBoundingClientRect();
+                cardInitW = Math.round(rect.width * 0.264583);
+                cardInitH = Math.round(rect.height * 0.264583);
+
+                document.querySelectorAll('.card-resize-handle').forEach(h => h.classList.add('active'));
+                showTooltip(clientX, clientY, `📐 ទំហំប័ណ្ណ: ${cardInitW}mm × ${cardInitH}mm`);
+
+                window.addEventListener('mousemove', onCardHandleMove);
+                window.addEventListener('touchmove', onCardHandleMove, { passive: false });
+                window.addEventListener('mouseup', onCardHandleUp);
+                window.addEventListener('touchend', onCardHandleUp);
+            }
+
+            function onCardHandleMove(e) {
+                if (!isResizingCard) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = (clientX - cardStartX) * 0.264583;
+                const dy = (clientY - cardStartY) * 0.264583;
+
+                let nw = cardInitW;
+                let nh = cardInitH;
+
+                if (cardResizeHandle === 'br') { nw += dx; nh += dy; }
+                else if (cardResizeHandle === 'bl') { nw -= dx; nh += dy; }
+                else if (cardResizeHandle === 'tr') { nw += dx; nh -= dy; }
+                else if (cardResizeHandle === 'tl') { nw -= dx; nh -= dy; }
+
+                applyCardDimensions(Math.round(nw), Math.round(nh), false);
+                showTooltip(clientX, clientY, `📐 ទំហំប័ណ្ណ: ${currentCardW}mm × ${currentCardH}mm`);
+            }
+
+            function onCardHandleUp() {
+                if (!isResizingCard) return;
+                isResizingCard = false;
+                document.querySelectorAll('.card-resize-handle').forEach(h => h.classList.remove('active'));
+                window.removeEventListener('mousemove', onCardHandleMove);
+                window.removeEventListener('touchmove', onCardHandleMove);
+                window.removeEventListener('mouseup', onCardHandleUp);
+                window.removeEventListener('touchend', onCardHandleUp);
+                hideTooltip();
+                applyCardDimensions(currentCardW, currentCardH, true);
+            }
+
+            document.querySelectorAll('.card-resize-handle').forEach(h => {
+                h.addEventListener('mousedown', onCardHandleDown);
+                h.addEventListener('touchstart', onCardHandleDown, { passive: false });
+            });
+
+            // --- 4. Interactive Corner Drag Handlers for Photo Box ---
+            let isResizingPhoto = false;
+            let photoResizeHandle = null;
+            let photoStartX = 0, photoStartY = 0;
+            let photoInitW = 90, photoInitH = 116;
+
+            function onPhotoHandleDown(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                isResizingPhoto = true;
+                photoResizeHandle = this.getAttribute('data-handle');
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                photoStartX = clientX;
+                photoStartY = clientY;
+
+                const boxEl = this.closest('.photo-box');
+                const rect = boxEl.getBoundingClientRect();
+                photoInitW = Math.round(rect.width);
+                photoInitH = Math.round(rect.height);
+
+                document.querySelectorAll('.photo-resize-handle').forEach(h => h.classList.add('active'));
+                showTooltip(clientX, clientY, `📷 ទំហំរូបថត: ${photoInitW}px × ${photoInitH}px`);
+
+                window.addEventListener('mousemove', onPhotoHandleMove);
+                window.addEventListener('touchmove', onPhotoHandleMove, { passive: false });
+                window.addEventListener('mouseup', onPhotoHandleUp);
+                window.addEventListener('touchend', onPhotoHandleUp);
+            }
+
+            function onPhotoHandleMove(e) {
+                if (!isResizingPhoto) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = clientX - photoStartX;
+                const dy = clientY - photoStartY;
+
+                let nw = photoInitW;
+                let nh = photoInitH;
+
+                if (photoResizeHandle === 'br') { nw += dx; nh += dy; }
+                else if (photoResizeHandle === 'bl') { nw -= dx; nh += dy; }
+                else if (photoResizeHandle === 'tr') { nw += dx; nh -= dy; }
+                else if (photoResizeHandle === 'tl') { nw -= dx; nh -= dy; }
+
+                applyPhotoDimensions(Math.round(nw), Math.round(nh), false);
+                showTooltip(clientX, clientY, `📷 ទំហំរូបថត: ${currentPhotoW}px × ${currentPhotoH}px`);
+            }
+
+            function onPhotoHandleUp() {
+                if (!isResizingPhoto) return;
+                isResizingPhoto = false;
+                document.querySelectorAll('.photo-resize-handle').forEach(h => h.classList.remove('active'));
+                window.removeEventListener('mousemove', onPhotoHandleMove);
+                window.removeEventListener('touchmove', onPhotoHandleMove);
+                window.removeEventListener('mouseup', onPhotoHandleUp);
+                window.removeEventListener('touchend', onPhotoHandleUp);
+                hideTooltip();
+                applyPhotoDimensions(currentPhotoW, currentPhotoH, true);
+            }
+
+            document.querySelectorAll('.photo-resize-handle').forEach(h => {
+                h.addEventListener('mousedown', onPhotoHandleDown);
+                h.addEventListener('touchstart', onPhotoHandleDown, { passive: false });
+            });
+
+            // --- 5. Direct Click-to-Upload Student Photo ---
+            let activeUploadStudentId = null;
+            let activeUploadBox = null;
+            const inputDirectPhoto = document.getElementById('inputStudentPhotoDirect');
+
+            document.querySelectorAll('.photo-box').forEach(box => {
+                box.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('photo-resize-handle')) return;
+                    activeUploadStudentId = this.getAttribute('data-student-id');
+                    activeUploadBox = this;
+                    if (inputDirectPhoto && activeUploadStudentId) {
+                        inputDirectPhoto.click();
+                    }
+                });
+            });
+
+            if (inputDirectPhoto) {
+                inputDirectPhoto.addEventListener('change', function(e) {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file || !activeUploadStudentId) return;
+
+                    // Preview immediately
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const localUrl = evt.target.result;
+                        if (activeUploadBox) {
+                            let img = activeUploadBox.querySelector('.photo-img');
+                            const avatar = activeUploadBox.querySelector('.photo-default-avatar');
+                            if (avatar) avatar.style.display = 'none';
+                            if (!img) {
+                                img = document.createElement('img');
+                                img.className = 'photo-img';
+                                activeUploadBox.prepend(img);
+                            }
+                            img.src = localUrl;
+                            img.style.display = 'block';
+                        }
+                    };
+                    reader.readAsDataURL(file);
+
+                    // Upload via AJAX
+                    const formData = new FormData();
+                    formData.append('photo', file);
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+
+                    fetch(`/students/${activeUploadStudentId}/upload-photo/`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showSavedFeedback();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error uploading photo:', err);
+                    });
+                });
+            }
+
+            // Restore saved sizes
+            try {
+                const savedCardW = localStorage.getItem('schoolsm_card_w');
+                const savedCardH = localStorage.getItem('schoolsm_card_h');
+                if (savedCardW && savedCardH) {
+                    applyCardDimensions(savedCardW, savedCardH, false);
+                }
+                const savedPhotoW = localStorage.getItem('schoolsm_photo_w');
+                const savedPhotoH = localStorage.getItem('schoolsm_photo_h');
+                if (savedPhotoW && savedPhotoH) {
+                    applyPhotoDimensions(savedPhotoW, savedPhotoH, false);
+                }
+            } catch(e) {}
+
             // Reset button handler
             const btnReset = document.getElementById('btnResetDefaults');
             if (btnReset) {
@@ -1099,14 +1704,26 @@
                     localStorage.removeItem(STORAGE_KEY);
                     localStorage.removeItem('schoolsm_card_font_size');
                     localStorage.removeItem('schoolsm_card_font_family');
+                    localStorage.removeItem('schoolsm_card_var_font');
+                    localStorage.removeItem('schoolsm_date_font_size');
+                    localStorage.removeItem('schoolsm_date_font_family');
                     localStorage.removeItem('schoolsm_watermark_mode');
                     localStorage.removeItem('schoolsm_watermark_custom_data');
                     localStorage.removeItem('schoolsm_watermark_opacity');
                     localStorage.removeItem('schoolsm_watermark_size');
+                    localStorage.removeItem('schoolsm_card_w');
+                    localStorage.removeItem('schoolsm_card_h');
+                    localStorage.removeItem('schoolsm_photo_w');
+                    localStorage.removeItem('schoolsm_photo_h');
                     applyFontSize(13.0, false);
+                    applyDateFontSize(8.5, false);
                     applyCardFont("'Khmer OS Siemreap', 'Siemreap', sans-serif", false);
+                    applyVarFont("'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, sans-serif", false);
+                    applyDateFont("'Khmer OS Siemreap', 'Siemreap', sans-serif", false);
                     setWatermarkOpacity(16, false);
                     applyWatermarkSize(180, false);
+                    applyCardDimensions(95, 136, false);
+                    applyPhotoDimensions(90, 116, false);
                     setWatermarkMode('moeys', null, false);
                     const defaults = {
                         tacteing: 'r',

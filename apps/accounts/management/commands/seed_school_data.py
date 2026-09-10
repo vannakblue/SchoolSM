@@ -45,7 +45,9 @@ class Command(BaseCommand):
                     'email': 'admin@school.edu.kh'
                 }
             )
-            admin_user.set_password('admin123')
+            admin_user.set_password('123')
+            admin_user.is_staff = True
+            admin_user.is_superuser = True
             admin_user.save()
 
             accountant_user, _ = User.objects.get_or_create(
@@ -61,15 +63,10 @@ class Command(BaseCommand):
             accountant_user.set_password('admin123')
             accountant_user.save()
 
-            # 3. Academic Years
-            ay_current, _ = AcademicYear.objects.get_or_create(
-                name='2025-2026',
-                defaults={
-                    'start_date': date(2025, 9, 1),
-                    'end_date': date(2026, 7, 15),
-                    'is_current': True
-                }
-            )
+            # 3. Academic Years: Only 2025-2026 and 2026-2027
+            from apps.accounts.system_defaults import ensure_system_defaults
+            ensure_system_defaults()
+            ay_current = AcademicYear.objects.filter(name='2026-2027').first() or AcademicYear.objects.filter(name='2025-2026').first()
 
             # 4. Exact 14 MoEYS Subjects with official short codes (R, D, K, I, G, H, M, Es, P, C, B, He, Ec, E)
             subjects_data = [

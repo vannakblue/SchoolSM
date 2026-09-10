@@ -10,6 +10,7 @@ urlpatterns = [
     path('import/', views.student_import, name='student_import'),
     path('import/template/excel/', views.download_student_template_excel, name='download_student_template_excel'),
     path('import/template/csv/', views.download_student_template_csv, name='download_student_template_csv'),
+    path('import/ai-preview/', views.api_student_excel_ai_preview, name='student_import_ai_preview'),
     
     # Scholarship / Fee Types CRUD
     path('scholarships/', views.scholarship_type_list, name='scholarship_type_list'),
@@ -25,6 +26,7 @@ urlpatterns = [
 
     # AJAX API for Grade-Specific Enrollment Options & Student ID Validation
     path('api/grade-options/', views.api_get_grade_options, name='api_get_grade_options'),
+    path('api/set-registration-mode/', views.api_set_registration_mode, name='api_set_registration_mode'),
     path('api/check-student-id/', views.api_check_student_id, name='api_check_student_id'),
     path('api/check-duplicate/', views.api_check_duplicate_student, name='api_check_duplicate_student'),
     path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),
@@ -51,8 +53,10 @@ urlpatterns = [
 
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),
+    path('<int:pk>/delete/', views.student_delete, name='student_delete'),
     path('<int:pk>/id-card/', views.student_id_card, name='student_id_card'),
     path('id-cards/', views.batch_student_id_cards, name='batch_student_id_cards'),
+    path('<int:pk>/upload-photo/', views.api_student_upload_photo, name='api_student_upload_photo'),
     path('<int:pk>/quick-status/', views.api_quick_set_student_status, name='student_quick_status'),
     path('<int:pk>/exam-status/', views.api_set_student_exam_status, name='student_set_exam_status'),
     path('batch/exam-status/', views.api_batch_set_student_exam_status, name='student_batch_set_exam_status'),

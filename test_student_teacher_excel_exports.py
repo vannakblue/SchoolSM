@@ -1,8 +1,10 @@
 import os
+import sys
 import django
 import io
 import openpyxl
 
+sys.stdout.reconfigure(encoding='utf-8')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school_management.settings')
 django.setup()
 

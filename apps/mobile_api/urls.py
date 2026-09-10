@@ -50,6 +50,7 @@ urlpatterns = [
     path('students/', views.MobileStudentListView.as_view(), name='mobile_api_students_list'),
     path('students/check-id/', views.MobileStudentCheckIDAPIView.as_view(), name='mobile_api_student_check_id'),
     path('students/enroll/', views.MobileStudentEnrollAPIView.as_view(), name='mobile_api_student_enroll'),
+    path('students/grade-options/', views.MobileGradeOptionsAPIView.as_view(), name='mobile_api_grade_options'),
     path('students/romanize/', views.MobileStudentRomanizeAPIView.as_view(), name='mobile_api_student_romanize'),
 
     # 10. Mobile Exam Invigilator / Proctor Shift Requests APIs

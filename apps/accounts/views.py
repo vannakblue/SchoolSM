@@ -14,20 +14,8 @@ def _ensure_admin_exists():
     Preserves all custom passwords and profiles if an admin already exists.
     """
     try:
-        admin_user = User.objects.filter(role=User.Role.ADMIN).first() or User.objects.filter(is_superuser=True).first()
-        if not admin_user:
-            admin_user = User.objects.create(
-                username='admin',
-                email='admin@school.edu.kh',
-                role=User.Role.ADMIN,
-                khmer_name='បណ្ឌិត សុខ វិបុល',
-                latin_name='Dr. SOK VIBOL',
-                is_staff=True,
-                is_superuser=True,
-                is_active=True
-            )
-            admin_user.set_password('admin123')
-            admin_user.save()
+        from .system_defaults import ensure_system_defaults
+        ensure_system_defaults()
     except Exception:
         pass
 
@@ -130,36 +118,22 @@ def demo_login_view(request, role):
 
 def init_admin_view(request):
     """
-    Emergency setup and direct 1-click admin login
+    Emergency setup and direct 1-click admin login.
+    Safely enforces admin account without modifying or overriding existing school data.
     """
     log_messages = []
     try:
         from django.core.management import call_command
         log_messages.append("1. Running database migrations...")
         call_command('migrate', interactive=False)
-        log_messages.append("2. Running seed_school_data...")
-        try:
-            call_command('seed_school_data')
-            log_messages.append("3. Seed data populated successfully.")
-        except Exception as seed_err:
-            log_messages.append(f"Seed note: {seed_err}")
     except Exception as e:
-        log_messages.append(f"Migration error: {e}")
+        log_messages.append(f"Migration note: {e}")
 
     try:
+        from .system_defaults import ensure_system_defaults
+        ensure_system_defaults()
         admin_user = User.objects.filter(username='admin').first()
-        if not admin_user:
-            admin_user = User.objects.create(
-                username='admin',
-                email='admin@school.edu.kh',
-                role=User.Role.ADMIN,
-                khmer_name='បណ្ឌិត សុខ វិបុល',
-                latin_name='Dr. SOK VIBOL',
-                is_staff=True,
-                is_superuser=True,
-                is_active=True
-            )
-        admin_user.set_password('admin123')
+        admin_user.set_password('123')
         admin_user.is_staff = True
         admin_user.is_superuser = True
         admin_user.is_active = True

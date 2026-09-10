@@ -336,3 +336,48 @@ def khmer_academic_year_filter(val):
     return to_khmer_number_filter(s)
 
 
+@register.filter(name='clean_grade_display')
+def clean_grade_display_filter(val):
+    """
+    Strips redundant 'ថ្នាក់ទី' or 'ថ្នាក់' so on ID cards after 'ជាសិស្សរៀនថ្នាក់ទី:',
+    it cleanly outputs e.g. '10G' instead of 'ថ្នាក់ទី 10G'.
+    """
+    if not val:
+        return '12 A'
+    s = str(val).strip()
+    changed = True
+    while changed:
+        changed = False
+        if s.startswith('ថ្នាក់ទី'):
+            s = s[len('ថ្នាក់ទី'):].strip()
+            changed = True
+        elif s.startswith('ថ្នាក់'):
+            s = s[len('ថ្នាក់'):].strip()
+            changed = True
+    return s or '12 A'
+
+
+@register.filter(name='clean_classroom_full')
+def clean_classroom_full_filter(val):
+    """
+    Ensures 'ថ្នាក់ទី' appears exactly once.
+    e.g. 'ថ្នាក់ទី 10G' -> 'ថ្នាក់ទី 10G'
+         '10G' -> 'ថ្នាក់ទី 10G'
+         'ថ្នាក់ ថ្នាក់ទី 10G' -> 'ថ្នាក់ទី 10G'
+         'ថ្នាក់ 10G' -> 'ថ្នាក់ទី 10G'
+    """
+    if not val:
+        return ''
+    s = str(val).strip()
+    while s.startswith('ថ្នាក់ ថ្នាក់ទី'):
+        s = s.replace('ថ្នាក់ ថ្នាក់ទី', 'ថ្នាក់ទី', 1).strip()
+    while s.startswith('ថ្នាក់ទី ថ្នាក់ទី'):
+        s = s.replace('ថ្នាក់ទី ថ្នាក់ទី', 'ថ្នាក់ទី', 1).strip()
+    if s.startswith('ថ្នាក់ទី'):
+        return s
+    if s.startswith('ថ្នាក់'):
+        sub = s[len('ថ្នាក់'):].strip()
+        return f"ថ្នាក់ទី {sub}" if sub else s
+    return f"ថ្នាក់ទី {s}"
+
+

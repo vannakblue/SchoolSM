@@ -30,11 +30,14 @@ def run_tests():
         name='2026-2027',
         defaults={'start_date': date(2026, 9, 1), 'end_date': date(2027, 7, 31), 'is_current': True}
     )
-    cls, _ = Classroom.objects.get_or_create(
-        name='7A',
-        academic_year=year,
-        defaults={'grade_level': 7, 'code': '7A'}
-    )
+    cls = Classroom.objects.filter(academic_year=year, code='7A').first()
+    if not cls:
+        cls = Classroom.objects.create(
+            name='ថ្នាក់ទី ៧A',
+            code='7A',
+            academic_year=year,
+            grade_level=7
+        )
 
     # 2. Clean test baseline
     Student.objects.filter(khmer_name__in=['សុខ ចិន្តា', 'កែវ វិបុល', 'ជា សុផាត']).delete()

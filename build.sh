@@ -6,8 +6,8 @@ pip install -r requirements.txt
 
 python manage.py collectstatic --no-input
 python manage.py migrate
+python manage.py ensure_system_defaults
 python manage.py seed_locations
-python manage.py import_2026_master_roster
 
-
-
+# Live student, teacher, and exam records are strictly preserved.
+# Master roster imports can be triggered manually by the administrator when desired.

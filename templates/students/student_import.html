@@ -162,7 +162,32 @@
                     </div>
                 </div>
 
-                <div class="d-grid">
+                <input type="hidden" name="custom_mapping" id="customMappingInput" value="">
+
+                <!-- AI Smart Assistant Action Bar -->
+                <div class="card bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary p-2 rounded-circle">
+                                <i class="fa-solid fa-wand-magic-sparkles text-white"></i>
+                            </span>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-primary">AI Smart Column Mapper</h6>
+                                <small class="text-muted">ឯកសារខុសទម្រង់? AI នឹងជួយស្កេន និងផ្គូផ្គងជួរឈរស្វ័យប្រវត្តិ</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3 shadow-sm" id="btnAiScan" disabled onclick="runAiPreview()">
+                            <i class="fa-solid fa-microchip me-1"></i> វិភាគដោយ AI
+                        </button>
+                    </div>
+                    <!-- AI Status Indicator -->
+                    <div id="aiScanStatus" class="small mt-2 d-none">
+                        <span class="spinner-border spinner-border-sm text-primary me-1"></span>
+                        <span class="text-primary fw-bold" id="aiStatusText">AI កំពុងវិភាគរចនាសម្ព័ន្ធឯកសារ...</span>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                         <i class="fa-solid fa-upload me-2"></i> ចាប់ផ្តើម Import ទិន្នន័យ (Import Now)
                     </button>
@@ -265,7 +290,57 @@
     </div>
 </div>
 
+<!-- ================= AI COLUMN MAPPING MODAL ================= -->
+<div class="modal fade" id="aiMappingModal" tabindex="-1" aria-labelledby="aiMappingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="aiMappingModalLabel">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>✨ AI Smart Column Mapping (ផ្ទៀងផ្ទាត់ការផ្គូផ្គងជួរឈរ)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-primary py-2 px-3 small mb-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <i class="fa-solid fa-circle-check me-2"></i>
+                        <span>AI បានស្កេន និងរកឃើញជួរឈរចំនួន <strong id="modalColCount">0</strong> និងទិន្នន័យសរុប <strong id="modalRowCount">0</strong> ជួរ។</span>
+                    </div>
+                    <span class="badge bg-primary" id="modalSheetName">Sheet1</span>
+                </div>
+
+                <p class="small text-muted mb-3">
+                    ប្រព័ន្ធបានជ្រើសរើសជួរឈរស្វ័យប្រវត្តិ។ លោកអ្នកអាចកែសម្រួលជម្រើសជួរឈរនីមួយៗ (Dropdown) ប្រសិនបើចង់ផ្លាស់ប្តូរ៖
+                </p>
+
+                <div class="table-responsive border rounded-3 mb-3">
+                    <table class="table table-hover align-middle mb-0" id="aiMappingTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 25%;">ជួរឈរក្នុង File របស់អ្នក</th>
+                                <th style="width: 35%;">តម្លៃគំរូជាក់ស្តែង (Sample Data)</th>
+                                <th style="width: 40%;">ផ្គូផ្គងទៅ Database (Target Field)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="aiMappingTbody">
+                            <!-- Populated dynamically by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ត្រឡប់ក្រោយ</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="confirmAndSubmitImport()">
+                    <i class="fa-solid fa-circle-check me-1"></i> បញ្ជាក់ & ចាប់ផ្តើម Import ឥឡូវនេះ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentAiResult = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('fileInput');
     const fileLabel = document.getElementById('fileLabel');
@@ -273,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dropZone = document.getElementById('dropZone');
     const importForm = document.getElementById('importForm');
     const submitBtn = document.getElementById('submitBtn');
+    const btnAiScan = document.getElementById('btnAiScan');
 
     fileInput.addEventListener('change', function(e) {
         if (this.files && this.files[0]) {
@@ -280,6 +356,9 @@ document.addEventListener('DOMContentLoaded', function() {
             fileLabel.innerHTML = `<span class="text-primary"><i class="fa-solid fa-file me-1"></i> ${file.name}</span>`;
             fileSubLabel.textContent = `ទំហំ: ${(file.size / 1024).toFixed(1)} KB`;
             dropZone.classList.add('border-primary', 'bg-white');
+            btnAiScan.disabled = false;
+        } else {
+            btnAiScan.disabled = true;
         }
     });
 
@@ -304,5 +383,127 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> កំពុងដំណើរការ Import...`;
     });
 });
+
+function runAiPreview() {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput.files || !fileInput.files[0]) {
+        alert('សូមជ្រើសរើសឯកសារ Excel ឬ CSV ជាមុនសិន!');
+        return;
+    }
+
+    const aiStatus = document.getElementById('aiScanStatus');
+    const btnAiScan = document.getElementById('btnAiScan');
+    aiStatus.classList.remove('d-none');
+    btnAiScan.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch("{% url 'student_import_ai_preview' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        aiStatus.classList.add('d-none');
+        btnAiScan.disabled = false;
+
+        if (!data.success) {
+            alert('កំហុសក្នុងការវិភាគ៖ ' + (data.error || 'សូមព្យាយាមម្តងទៀត'));
+            return;
+        }
+
+        currentAiResult = data;
+        renderMappingModal(data);
+    })
+    .catch(err => {
+        aiStatus.classList.add('d-none');
+        btnAiScan.disabled = false;
+        alert('មានបញ្ហាក្នុងការតភ្ជាប់៖ ' + err.message);
+    });
+}
+
+function renderMappingModal(data) {
+    document.getElementById('modalColCount').textContent = data.headers.length;
+    document.getElementById('modalRowCount').textContent = data.total_rows;
+    document.getElementById('modalSheetName').textContent = data.sheet_name || 'Sheet';
+
+    const tbody = document.getElementById('aiMappingTbody');
+    tbody.innerHTML = '';
+
+    const fields = data.fields;
+    const mapping = data.mapping;
+
+    data.headers.forEach((header, idx) => {
+        const idxStr = idx.toString();
+        const mapInfo = mapping[idxStr] || { field: 'ignore', confidence: 0, reason: '' };
+        const selectedField = mapInfo.field;
+
+        // Sample values preview
+        const samples = data.sample_rows.map(r => r[idx]).filter(v => v !== null && v !== undefined && v !== '').slice(0, 3);
+        const sampleText = samples.length ? samples.join(' | ') : '<span class="text-muted fst-italic">ទទេ (Blank)</span>';
+
+        let optionsHtml = '';
+        fields.forEach(f => {
+            const isSelected = (f.name === selectedField);
+            optionsHtml += `<option value="${f.name}" ${isSelected ? 'selected' : ''}>${f.label}</option>`;
+        });
+
+        const badgeColor = mapInfo.confidence >= 80 ? 'bg-success' : (mapInfo.confidence >= 50 ? 'bg-warning text-dark' : 'bg-secondary');
+        const badgeHtml = mapInfo.confidence > 0 
+            ? `<span class="badge ${badgeColor} ms-2 small">✨ ${mapInfo.confidence}% Match</span>`
+            : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">
+                <i class="fa-solid fa-table-columns text-primary me-1"></i> ${header}
+            </td>
+            <td class="small text-muted font-monospace text-truncate" style="max-width: 250px;" title="${samples.join(', ')}">
+                ${sampleText}
+            </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <select class="form-select form-select-sm col-map-select" data-col-idx="${idx}">
+                        ${optionsHtml}
+                    </select>
+                    ${badgeHtml}
+                </div>
+                ${mapInfo.reason ? `<div class="small text-muted mt-1" style="font-size: 0.72rem;">${mapInfo.reason}</div>` : ''}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const modal = new bootstrap.Modal(document.getElementById('aiMappingModal'));
+    modal.show();
+}
+
+function confirmAndSubmitImport() {
+    const selects = document.querySelectorAll('.col-map-select');
+    const customMap = {};
+    selects.forEach(sel => {
+        const idx = sel.getAttribute('data-col-idx');
+        customMap[idx] = sel.value;
+    });
+
+    document.getElementById('customMappingInput').value = JSON.stringify(customMap);
+
+    const modalEl = document.getElementById('aiMappingModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) {
+        modal.hide();
+    }
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> កំពុងដំណើរការ AI Import...`;
+
+    document.getElementById('importForm').submit();
+}
 </script>
 {% endblock %}

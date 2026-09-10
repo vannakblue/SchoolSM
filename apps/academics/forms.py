@@ -190,9 +190,10 @@ class TimetableForm(forms.ModelForm):
 class GradeEnrollmentOptionForm(forms.ModelForm):
     class Meta:
         model = GradeEnrollmentOption
-        fields = ['grade_level', 'label', 'field_name', 'field_type', 'col_width', 'choices', 'placeholder', 'is_required', 'order', 'is_active']
+        fields = ['grade_level', 'form_category', 'label', 'field_name', 'field_type', 'col_width', 'choices', 'placeholder', 'is_required', 'order', 'is_active']
         widgets = {
-            'grade_level': forms.Select(attrs={'class': 'form-select'}),
+            'grade_level': forms.Select(attrs={'class': 'form-select', 'id': 'opt_grade_level'}),
+            'form_category': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'opt_form_category'}),
             'label': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ឈ្មោះសាលាបឋមសិក្សាដើម, និទ្ទេសឌីប្លូម, ថ្ងៃចុះឈ្មោះ...'}),
             'field_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. previous_school, diploma_grade, custom_date'}),
             'field_type': forms.Select(attrs={'class': 'form-select', 'id': 'opt_field_type'}),

@@ -910,8 +910,47 @@ def teacher_import_template_csv(request):
 
 @login_required
 @role_required(['ADMIN'])
+def api_teacher_excel_ai_preview(request):
+    """
+    AJAX endpoint: Analyzes an uploaded Excel/CSV teacher file with AI,
+    detects headers, recommends column mappings, and returns preview rows.
+    """
+    if request.method != 'POST' or not request.FILES.get('file'):
+        return JsonResponse({'success': False, 'error': 'មិនមានឯកសារត្រូវបាន Upload ទេ'}, status=400)
+
+    uploaded_file = request.FILES['file']
+    try:
+        from apps.tools.excel_ai_mapper import (
+            extract_sheet_rows_and_headers,
+            detect_column_mapping_with_ai,
+            TEACHER_TARGET_FIELDS
+        )
+        extracted = extract_sheet_rows_and_headers(uploaded_file, max_sample_rows=5)
+        headers = extracted['headers']
+        sample_rows = extracted['sample_rows']
+
+        if not headers:
+            return JsonResponse({'success': False, 'error': 'មិនអាចស្វែងរកក្បាលជួរឈរ (Header) ក្នុងឯកសារបានឡើយ'})
+
+        mapping_result = detect_column_mapping_with_ai(headers, sample_rows, target_type='teacher')
+
+        return JsonResponse({
+            'success': True,
+            'sheet_name': extracted['sheet_name'],
+            'total_rows': len(extracted['rows']),
+            'headers': headers,
+            'sample_rows': sample_rows,
+            'mapping': mapping_result,
+            'fields': TEACHER_TARGET_FIELDS
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@role_required(['ADMIN'])
 def teacher_import(request):
-    """Bulk imports teachers from Excel or CSV file supporting MoEYS official roster and template formats."""
+    """Bulk imports teachers from Excel or CSV file supporting MoEYS official roster, standard templates, and AI custom formats."""
     import csv
     import io
     import openpyxl
@@ -938,32 +977,124 @@ def teacher_import(request):
         file = request.FILES['file']
         filename = file.name.lower()
         rows_data = []
+        is_ai_dict_mode = False
 
-        try:
-            if filename.endswith('.xlsx'):
-                wb = openpyxl.load_workbook(file, data_only=True)
-                ws = wb['2026'] if '2026' in wb.sheetnames else wb.active
-                for row in ws.iter_rows(values_only=True):
-                    if row and any(row):
-                        rows_data.append(list(row))
-            elif filename.endswith('.csv'):
-                decoded_file = file.read().decode('utf-8-sig')
-                io_string = io.StringIO(decoded_file)
-                reader = csv.reader(io_string)
-                for row in reader:
-                    if row and any(row):
-                        rows_data.append(row)
-            else:
-                messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ .xlsx ឬ .csv")
+        # 1. Check if user confirmed custom column mapping via AI Preview UI
+        custom_mapping_raw = request.POST.get('custom_mapping')
+        if custom_mapping_raw:
+            try:
+                from apps.tools.excel_ai_mapper import extract_sheet_rows_and_headers, normalize_row_data
+                col_mapping = json.loads(custom_mapping_raw)
+                extracted = extract_sheet_rows_and_headers(file)
+                for r in extracted['rows']:
+                    norm = normalize_row_data(r, col_mapping, target_type='teacher')
+                    if norm.get('khmer_name'):
+                        rows_data.append(norm)
+                if rows_data:
+                    is_ai_dict_mode = True
+                    messages.info(request, "✨ បានបញ្ចូលទិន្នន័យដោយជោគជ័យតាមការតម្រឹម AI Smart Mapping!")
+            except Exception as e:
+                messages.warning(request, f"ការប្រើ AI Mapping មានបញ្ហា៖ {str(e)}")
+
+        if not rows_data:
+            try:
+                if filename.endswith('.xlsx'):
+                    wb = openpyxl.load_workbook(file, data_only=True)
+                    ws = wb['2026'] if '2026' in wb.sheetnames else wb.active
+                    for row in ws.iter_rows(values_only=True):
+                        if row and any(row):
+                            rows_data.append(list(row))
+                elif filename.endswith('.csv'):
+                    decoded_file = file.read().decode('utf-8-sig')
+                    io_string = io.StringIO(decoded_file)
+                    reader = csv.reader(io_string)
+                    for row in reader:
+                        if row and any(row):
+                            rows_data.append(row)
+                else:
+                    messages.error(request, "⚠️ ទម្រង់ឯកសារមិនត្រឹមត្រូវ! សូមជ្រើសរើសឯកសារ .xlsx ឬ .csv")
+                    return redirect('teacher_import')
+            except Exception as e:
+                messages.error(request, f"មានបញ្ហាក្នុងការអានឯកសារ៖ {str(e)}")
                 return redirect('teacher_import')
 
-            success_count = 0
-            updated_count = 0
-            errors = []
-            default_pwd_hash = make_password('p123456')
+        # Check if file seems non-standard (e.g. neither MoEYS roster nor standard template header)
+        if not is_ai_dict_mode and rows_data:
+            # Inspect first 5 rows to see if standard format matches
+            has_standard_id = False
+            for r in rows_data[:5]:
+                c0 = str(r[0] or '').lower().strip()
+                c1 = str(r[1] or '').lower().strip() if len(r) > 1 else ''
+                if (c0.isdigit() and c1.isdigit()) or any(kw in c0 for kw in ['t-', 't0', 't1', 't2', 'id', 'teacher']):
+                    has_standard_id = True
+                    break
+            
+            # If columns look non-standard, auto-run AI Smart Column Detection!
+            if not has_standard_id:
+                try:
+                    from apps.tools.excel_ai_mapper import (
+                        extract_sheet_rows_and_headers,
+                        detect_column_mapping_with_ai,
+                        normalize_row_data
+                    )
+                    extracted = extract_sheet_rows_and_headers(file)
+                    if extracted['headers'] and extracted['rows']:
+                        mapping_info = detect_column_mapping_with_ai(
+                            extracted['headers'], extracted['sample_rows'], target_type='teacher'
+                        )
+                        auto_col_map = {k: v['field'] for k, v in mapping_info.items()}
+                        ai_rows = []
+                        for r in extracted['rows']:
+                            norm = normalize_row_data(r, auto_col_map, target_type='teacher')
+                            if norm.get('khmer_name'):
+                                ai_rows.append(norm)
+                        if ai_rows:
+                            rows_data = ai_rows
+                            is_ai_dict_mode = True
+                            messages.info(request, "✨ ប្រព័ន្ធបានប្រើ AI Smart Column Mapper ដោយស្វ័យប្រវត្តិកែសម្រួលជួរឈរទិន្នន័យគ្រូ!")
+                except Exception:
+                    pass
 
-            for idx, r in enumerate(rows_data, 1):
-                if not r or len(r) < 3:
+        success_count = 0
+        updated_count = 0
+        errors = []
+        default_pwd_hash = make_password('p123456')
+
+        for idx, r in enumerate(rows_data, 1):
+            if not r:
+                continue
+
+            # Process record depending on mode (AI Dict Mode vs Standard Row Matrix)
+            if is_ai_dict_mode:
+                k_name = str(r.get('khmer_name') or '').replace('\u200b', ' ').strip()
+                if not k_name:
+                    continue
+                t_id = str(r.get('teacher_id') or '').strip()
+                if not t_id:
+                    t_id = f"T-{Teacher.objects.count() + idx:04d}"
+                l_name = str(r.get('latin_name') or '').strip() or transliterate_khmer_name(k_name)
+                gender_raw = str(r.get('gender') or 'M').strip()
+                dob = r.get('date_of_birth')
+                phone = format_phone_number(r.get('phone', ''))
+                email = str(r.get('email') or '').strip()
+                spec = str(r.get('specialization') or r.get('primary_subject') or 'ទូទៅ').strip()
+                qual = str(r.get('qualification') or '').strip()
+                train_level = str(r.get('training_level') or '').strip()
+                duty = str(r.get('current_duty') or 'គ្រូបង្រៀន').strip()
+                salary = r.get('base_salary') or Decimal('500.00')
+                prakas_cat = str(r.get('prakas_category') or '').strip()
+                prakas_yr = str(r.get('prakas_year') or '').strip()
+                prakas_number = str(r.get('prakas_number') or '').strip()
+                state_hire = r.get('state_hire_date')
+                perm_date = r.get('permanent_date')
+                subj1 = str(r.get('primary_subject') or '').strip()
+                subj2 = str(r.get('secondary_subject') or '').strip()
+                max_hours = 18
+                status = Teacher.Status.ACTIVE
+                is_fee_collector = duty in ['បេឡា', 'គណនេយ្យ', 'លេខា']
+
+            else:
+                if len(r) < 3:
                     continue
 
                 col0_str = str(r[0] or '').strip()
@@ -977,7 +1108,6 @@ def teacher_import(request):
                 if any(col1_lower.startswith(kw) or kw in col1_lower for kw in ['khmer name', 'ឈ្មោះ', 'អត្តលេខ', 'teacher id', 'បញ្ឈប់', 'ក្នុងនោះ']):
                     continue
 
-                # Detect format:
                 # Case A: Official MoEYS Roster (Col 0 = No, Col 1 = Teacher ID, Col 2 = Khmer Name)
                 if col0_str.isdigit() and col1_str.isdigit() and len(r) >= 13:
                     t_id = col1_str
@@ -1142,10 +1272,6 @@ def teacher_import(request):
                 for err in errors[:5]:
                     messages.warning(request, f"⚠️ {err}")
             return redirect('teacher_list')
-
-        except Exception as e:
-            messages.error(request, f"⚠️ មានបញ្ហាក្នុងការ Import៖ {str(e)}")
-            return redirect('teacher_import')
 
     return render(request, 'teachers/teacher_import.html')
 

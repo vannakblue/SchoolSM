@@ -44,6 +44,7 @@ class ApiConstants {
 
   // Student Admission & Directory
   static String get studentEnroll => "$baseUrl/api/v1/students/enroll/";
+  static String get studentGradeOptions => "$baseUrl/api/v1/students/grade-options/";
   static String get studentCheckId => "$baseUrl/api/v1/students/check-id/";
   static String get studentRomanize => "$baseUrl/api/v1/students/romanize/";
   static String get studentsList => "$baseUrl/api/v1/students/";

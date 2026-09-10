@@ -340,11 +340,18 @@ def grade_summary_view(request):
     terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
     classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
-    selected_term_id = request.GET.get('term', str(terms.first().id if terms.first() else ''))
-    selected_class_id = request.GET.get('classroom', str(classrooms.first().id if classrooms.first() else ''))
+    selected_term_id = request.GET.get('term') or request.GET.get('term_id')
+    selected_class_id = request.GET.get('classroom') or request.GET.get('classroom_id')
 
-    selected_term = terms.filter(id=selected_term_id).first() if selected_term_id else None
-    selected_class = classrooms.filter(id=selected_class_id).first() if selected_class_id else None
+    if selected_term_id:
+        selected_term = ExamTerm.objects.filter(id=selected_term_id).first()
+    else:
+        selected_term = terms.first()
+
+    if selected_class_id:
+        selected_class = Classroom.objects.filter(id=selected_class_id).first()
+    else:
+        selected_class = classrooms.first()
 
     subject_rules = []
     summary_results = []

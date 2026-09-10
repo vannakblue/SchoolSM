@@ -17,6 +17,9 @@
         <a href="{% url 'student_edit' student.id %}" class="btn btn-light">
             <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែព័ត៌មាន
         </a>
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteStudentModal">
+            <i class="fa-solid fa-trash-can me-1"></i> លុបសិស្ស
+        </button>
         {% endif %}
     </div>
 </div>
@@ -342,6 +345,48 @@
         </div>
     </div>
 </div>
+
+{% if is_admin %}
+<!-- Delete Student Confirmation Modal -->
+<div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-labelledby="deleteStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold" id="deleteStudentModalLabel">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> បញ្ជាក់ការលុបសិស្ស
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'student_delete' student.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <div class="avatar-circle mx-auto mb-3 bg-danger-subtle text-danger" style="width: 70px; height: 70px; font-size: 1.8rem;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">{{ student.khmer_name }}</h5>
+                    <p class="text-muted small mb-3">កូដសិស្ស (ID)៖ <strong>{{ student.student_id }}</strong> | ថ្នាក់៖ <strong>{{ student.classroom.name|default:"គ្មានថ្នាក់" }}</strong></p>
+                    
+                    <div class="alert alert-warning text-start small mb-0">
+                        <div class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-1"></i> ចំណាំសំខាន់៖</div>
+                        <ul class="mb-0 ps-3">
+                            <li>ប្រសិនបើសិស្សនេះ<strong>បានដូរទៅរៀននៅសាលាផ្សេង</strong> លោកអ្នកអាចគ្រាន់តែប្តូរស្ថានភាពទៅជា <strong>«ផ្ទេរការសិក្សា (Transferred)»</strong> ដើម្បីរក្សាទុកស្ថិតិសិស្សផ្ទេរចេញសម្រាប់ក្រសួង។</li>
+                            <li>ប្រសិនបើចុច <strong>«យល់ព្រមលុប»</strong> ទិន្នន័យសិស្សនេះរួមទាំងគណនីប្រើប្រាស់នឹងត្រូវលុបចេញពីប្រព័ន្ធទាំងស្រុង។</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light justify-content-between">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                    </button>
+                    <button type="submit" class="btn btn-danger px-4 fw-bold">
+                        <i class="fa-solid fa-trash-can me-1"></i> យល់ព្រមលុបចេញពីប្រព័ន្ធ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% block extra_js %}
 <script>

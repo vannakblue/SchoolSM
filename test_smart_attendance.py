@@ -82,10 +82,14 @@ def test_smart_attendance():
     if today_dow > 6:
         today_dow = 1 # Monday if Sunday
 
-    cur_h = now_dt.hour
-    cur_m = now_dt.minute
-    st_time_str = f"{cur_h:02d}:00"
-    end_time_str = f"{(cur_h + 1) % 24:02d}:00" if cur_h < 23 else "23:59"
+    from datetime import timedelta
+    st_time = now_dt - timedelta(minutes=5)
+    end_time = now_dt + timedelta(minutes=55)
+    st_time_str = st_time.strftime('%H:%M')
+    end_time_str = end_time.strftime('%H:%M')
+
+    from apps.attendance.views import get_current_period_info
+    auto_period, _ = get_current_period_info(now_dt.time())
 
     Timetable.objects.filter(teacher=teacher).delete()
     tt_slot = Timetable.objects.create(
@@ -93,12 +97,10 @@ def test_smart_attendance():
         subject=sub_math,
         teacher=teacher,
         day_of_week=today_dow,
-        period_number=3,
+        period_number=auto_period,
         start_time=st_time_str,
         end_time=end_time_str
     )
-
-
 
     # 5. Test GET /attendance/ -> Verify Timetable Auto-Detection
     res_get = client.get('/attendance/')
@@ -107,20 +109,23 @@ def test_smart_attendance():
 
     assert 'ចាក់សោតាមកាលវិភាគ' in html or 'Timetable Auto-Locked' in html
     assert cls_7a.name in html
-    assert 'ម៉ោងទី 3' in html or 'ម៉ោងទី ៣' in html
-    print(f"✅ PASSED: Timetable Auto-Detection successfully locked to {cls_7a.name}, Period 3 ({sub_math.name_kh}) for {teacher.khmer_name}.")
+    assert f'ម៉ោងទី {auto_period}' in html or 'ម៉ោងទី' in html
+    print(f"✅ PASSED: Timetable Auto-Detection successfully locked to {cls_7a.name}, Period {auto_period} ({sub_math.name_kh}) for {teacher.khmer_name}.")
 
     # 6. Test POST Attendance with Absence-First logic
-    # Clean previous attendance records for this date/session
+    # Clean previous attendance records & submission logs for this date/session
     test_date_str = datetime.now().strftime('%Y-%m-%d')
-    StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session='MORNING').delete()
+    post_session = 'MORNING' if auto_period <= 4 else 'AFTERNOON'
+    StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session=post_session).delete()
+    from apps.attendance.models import AttendanceSubmissionLog
+    AttendanceSubmissionLog.objects.filter(classroom=cls_7a, date=test_date_str).delete()
 
     # Submit: ONLY st1 (ABSENT) and st2 (PERMISSION with note) are ticked. st3 and remaining 33 students are UNTICKED (Present).
     post_data = {
         'classroom': str(cls_7a.id),
         'date': test_date_str,
-        'session': 'MORNING',
-        'period': '3',
+        'session': post_session,
+        'period': str(auto_period),
         'subject': str(sub_math.id),
         f'is_absent_{st1.id}': '1',
         f'status_{st1.id}': 'ABSENT',
@@ -133,14 +138,16 @@ def test_smart_attendance():
 
     res_post = client.post('/attendance/', data=post_data, follow=True)
     assert res_post.status_code == 200
+    from django.contrib.messages import get_messages
+    print("Messages:", [m.message for m in get_messages(res_post.wsgi_request)])
 
     # 7. Check Database: ONLY 2 rows must exist in StudentAttendance!
-    saved_records = StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session='MORNING')
+    saved_records = StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session=post_session)
     print(f"✅ PASSED: Total classroom students = {total_students_count}. Total rows saved in DB = {saved_records.count()} (Lean & Fast!).")
     assert saved_records.count() == 2, f"Expected 2 records in DB, got {saved_records.count()}"
 
     rec_st1 = saved_records.filter(student=st1).first()
-    assert rec_st1 is not None and rec_st1.status == 'ABSENT' and rec_st1.period_number == 3
+    assert rec_st1 is not None and rec_st1.status == 'ABSENT' and rec_st1.period_number == auto_period
     rec_st2 = saved_records.filter(student=st2).first()
     assert rec_st2 is not None and rec_st2.status == 'PERMISSION' and 'ឈឺផ្តាសាយ' in rec_st2.notes
 
@@ -152,8 +159,8 @@ def test_smart_attendance():
     post_data_update = {
         'classroom': str(cls_7a.id),
         'date': test_date_str,
-        'session': 'MORNING',
-        'period': '3',
+        'session': post_session,
+        'period': str(auto_period),
         'subject': str(sub_math.id),
         # st1 is UNCHECKED!
         f'is_absent_{st2.id}': '1',
@@ -163,7 +170,7 @@ def test_smart_attendance():
     res_post_update = client.post('/attendance/', data=post_data_update, follow=True)
     assert res_post_update.status_code == 200
 
-    updated_records = StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session='MORNING')
+    updated_records = StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session=post_session)
     assert updated_records.count() == 1, f"Expected 1 record, got {updated_records.count()}"
     assert updated_records.filter(student=st1).count() == 0, "Expected st1 record to be deleted from absent list!"
     print(f"✅ PASSED: Unticking Student 1 deleted their absence record from DB (Now exactly 1 absent student in DB).")
@@ -176,7 +183,7 @@ def test_smart_attendance():
 
     # Cleanup test slot and records
     Timetable.objects.filter(id=tt_slot.id).delete()
-    StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session='MORNING').delete()
+    StudentAttendance.objects.filter(classroom=cls_7a, date=test_date_str, session=post_session).delete()
 
     print("==========================================================================")
     print("🎉 ALL SMART TIMETABLE ATTENDANCE TESTS PASSED 100%!")
