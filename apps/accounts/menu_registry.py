@@ -660,6 +660,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'tool_khmer_number_converter',
             },
             {
+                'key': 'tool_khmer_lunar_converter',
+                'name_kh': 'បម្លែងថ្ងៃខែចន្ទគតិ',
+                'name_en': 'Khmer Lunar Date Converter',
+                'icon': 'fa-solid fa-moon text-warning',
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'url_name': 'tool_khmer_lunar_converter',
+            },
+            {
                 'key': 'tool_text_analyzer',
                 'name_kh': 'រាប់ពាក្យ & វិភាគអត្ថបទ',
                 'name_en': 'Text Word Count & Analyzer',

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -791,8 +792,8 @@
                     <!-- Sub-block 4: Principal Approval -->
                     <div class="movable-sub-block" id="blockSigPrincipal" data-block-id="blockSigPrincipal" data-block-name="ហត្ថលេខានាយកសាលា" style="margin-bottom: 25px; padding: 4px;">
                         <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>នាយកសាលា</span> <span class="sub-block-pos">(0, 0)</span></div>
-                        <div style="font-size: 7.5pt;">ថ្ងៃសៅរ៍ ១១កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
-                        <div style="font-weight: bold; margin-bottom: 2px;">កំពង់កន្ទួត ថ្ងៃទី០១ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="lunar-sig-line" id="lunarSigPrincipal" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទចន្ទគតិ" style="font-size: 7.5pt;">ថ្ងៃសៅរ៍ ១១កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div class="solar-sig-line" id="solarSigPrincipal" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទសុរិយគតិ" style="font-weight: bold; margin-bottom: 2px;">កំពង់កន្ទួត ថ្ងៃទី០១ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
                         <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">នាយកសាលា</div>
                     </div>
 
@@ -800,8 +801,8 @@
                     <div class="movable-sub-block" id="blockSigDistrict" data-block-id="blockSigDistrict" data-block-name="ហត្ថលេខាប្រធានការិយាល័យ" style="margin-top: 25px; padding: 4px;">
                         <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>ប្រធានការិយាល័យ</span> <span class="sub-block-pos">(0, 0)</span></div>
                         <div class="font-muol" style="font-size: 9pt;">បានឃើញ និងឯកភាព</div>
-                        <div style="font-size: 7.5pt;">ថ្ងៃចន្ទ ១៣កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
-                        <div style="font-weight: bold; margin-bottom: 2px;">ថ្ងៃទី ០៣ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
+                        <div class="lunar-sig-line" id="lunarSigDistrict" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទចន្ទគតិ" style="font-size: 7.5pt;">ថ្ងៃចន្ទ ១៣កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
+                        <div class="solar-sig-line" id="solarSigDistrict" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទសុរិយគតិ" style="font-weight: bold; margin-bottom: 2px;">ថ្ងៃទី ០៣ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
                         <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡាស្រុក</div>
                     </div>
                 </div>
@@ -1514,7 +1515,24 @@
             initDragToResizeColumns();
             initDraggableFooter();
             initDraggableSubBlocks();
+
+            // Auto calculate lunar date when editing solar date
+            function bindRosterLunarSync(solarId, lunarId) {
+                const sEl = document.getElementById(solarId);
+                const lEl = document.getElementById(lunarId);
+                if (sEl && lEl) {
+                    sEl.addEventListener('blur', function() {
+                        if (window.KhmerLunar && this.innerText.trim()) {
+                            const newLunar = window.KhmerLunar.getLunarDate(this.innerText.trim(), false);
+                            if (newLunar) lEl.innerText = newLunar;
+                        }
+                    });
+                }
+            }
+            bindRosterLunarSync('solarSigPrincipal', 'lunarSigPrincipal');
+            bindRosterLunarSync('solarSigDistrict', 'lunarSigDistrict');
         });
     </script>
+    <script src="{% static 'js/khmer_lunar.js' %}"></script>
 </body>
 </html>

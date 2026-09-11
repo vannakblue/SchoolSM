@@ -581,7 +581,7 @@ def teacher_leave_create(request):
                                 'leave_type_choices': TeacherLeaveRequest.LeaveType.choices,
                                 'config': config,
                                 'emergency_schedule': emergency_schedule,
-                                'emergency_schedules_json': json.dumps(emergency_schedules_map),
+                                'emergency_schedules_json': json.dumps(emergency_schedules_map, default=str),
                                 'today_str': today.strftime('%Y-%m-%d'),
                             })
 
@@ -598,7 +598,7 @@ def teacher_leave_create(request):
                                 'leave_type_choices': TeacherLeaveRequest.LeaveType.choices,
                                 'config': config,
                                 'emergency_schedule': emergency_schedule,
-                                'emergency_schedules_json': json.dumps(emergency_schedules_map),
+                                'emergency_schedules_json': json.dumps(emergency_schedules_map, default=str),
                                 'today_str': today.strftime('%Y-%m-%d'),
                             })
 
@@ -647,7 +647,7 @@ def teacher_leave_create(request):
         'leave_type_choices': TeacherLeaveRequest.LeaveType.choices,
         'config': config,
         'emergency_schedule': emergency_schedule,
-        'emergency_schedules_json': json.dumps(emergency_schedules_map),
+        'emergency_schedules_json': json.dumps(emergency_schedules_map, default=str),
         'today_str': today.strftime('%Y-%m-%d'),
     })
 

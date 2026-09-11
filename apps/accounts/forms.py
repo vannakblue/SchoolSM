@@ -63,6 +63,7 @@ class SchoolProfileForm(forms.ModelForm):
             'name_kh', 'name_en', 'short_name', 'school_code', 'school_type', 'institution_type', 'education_levels', 'date_format', 'time_format', 'motto',
             'student_id_pattern', 'student_id_prefix', 'student_id_custom_template', 'student_id_digits', 'student_id_include_grade',
             'registration_mode',
+            'is_registration_open', 'registration_start_date', 'registration_end_date', 'registration_closed_message',
             'logo', 'seal', 'principal_signature',
             'ministry_name', 'poe_name', 'doe_name',
             'province', 'district', 'commune', 'village', 'street_address',
@@ -93,6 +94,10 @@ class SchoolProfileForm(forms.ModelForm):
             'student_id_digits': forms.Select(attrs={'class': 'form-select', 'id': 'id_student_id_digits'}),
             'student_id_include_grade': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_student_id_include_grade'}),
             'registration_mode': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_registration_mode'}),
+            'is_registration_open': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_is_registration_open'}),
+            'registration_start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_registration_start_date'}),
+            'registration_end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_registration_end_date'}),
+            'registration_closed_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'សារជូនដំណឹងពេលបិទ ឬផុតកំណត់ការចុះឈ្មោះ'}),
             
             'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_logo'}),
             'seal': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_seal'}),

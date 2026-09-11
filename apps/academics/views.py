@@ -3486,6 +3486,8 @@ def student_teacher_timetable_view(request):
     today_kh_month = kh_months[now.month] if 1 <= now.month <= 12 else ''
     today_kh_year = to_khmer_num(now.year)
     today_kh_dow = kh_days_name[now.weekday()]
+    from apps.accounts.khmer_lunar import get_khmer_lunar_date
+    today_lunar_date = get_khmer_lunar_date(now.date(), with_space=False)
 
     context = {
         'classrooms': classrooms,
@@ -3499,6 +3501,7 @@ def student_teacher_timetable_view(request):
         'today_kh_month': today_kh_month,
         'today_kh_year': today_kh_year,
         'today_kh_dow': today_kh_dow,
+        'today_lunar_date': today_lunar_date,
         'days': DAYS_OF_WEEK,
     }
     return render(request, 'academics/student_teacher_timetable.html', context)
@@ -4238,6 +4241,8 @@ def timetable_daily_reports_view(request):
     today_kh_month = kh_months[now.month] if 1 <= now.month <= 12 else ''
     today_kh_year = to_khmer_num(now.year)
     today_kh_dow = kh_days_name[now.weekday()]
+    from apps.accounts.khmer_lunar import get_khmer_lunar_date
+    today_lunar_date = get_khmer_lunar_date(now.date(), with_space=False)
 
     context = {
         'days': DAYS_OF_WEEK,
@@ -4253,6 +4258,7 @@ def timetable_daily_reports_view(request):
         'today_kh_month': today_kh_month,
         'today_kh_year': today_kh_year,
         'today_kh_dow': today_kh_dow,
+        'today_lunar_date': today_lunar_date,
     }
     return render(request, 'academics/daily_reports.html', context)
 
@@ -7149,18 +7155,61 @@ def academic_year_edit(request, pk):
 @role_required(['ADMIN'])
 def academic_year_delete(request, pk):
     ay = get_object_or_404(AcademicYear, pk=pk)
-    if ay.is_current:
-        messages.error(request, f"មិនអាចលុបឆ្នាំសិក្សាបច្ចុប្បន្ន ({ay.name}) បានទេ! សូមកំណត់ឆ្នាំសិក្សាផ្សេងជាបច្ចុប្បន្នសិន។")
+    
+    # Strictly protect current year 2026-2027 from deletion
+    if ay.is_current or ay.name == '2026-2027':
+        messages.error(request, f"មិនអាចលុបឆ្នាំសិក្សាបច្ចុប្បន្ន ({ay.name}) បានដាច់ខាត! ឆ្នាំសិក្សា 2026-2027 ត្រូវបានកំណត់ជាឆ្នាំសិក្សាសកម្មចម្បងរបស់ប្រព័ន្ធ។")
         return redirect('academic_year_list')
     
-    if ay.enrolled_students.exists() or ay.classrooms.exists():
-        messages.error(request, f"មិនអាចលុបឆ្នាំសិក្សា {ay.name} បានទេ ព្រោះមានទិន្នន័យសិស្ស ឬថ្នាក់រៀនភ្ជាប់ជាមួយ!")
+    delete_action = request.POST.get('delete_action', 'standard').strip()
+    current_year = AcademicYear.objects.filter(is_current=True).first()
+
+    has_students = ay.enrolled_students.exists()
+    has_classrooms = ay.classrooms.exists()
+
+    if delete_action == 'transfer_and_delete':
+        if not current_year:
+            messages.error(request, "រកមិនឃើញឆ្នាំសិក្សាបច្ចុប្បន្ន (2026-2027) សម្រាប់ផ្ទេរទិន្នន័យទៅ!")
+            return redirect('academic_year_list')
+        
+        with transaction.atomic():
+            student_count = ay.enrolled_students.count()
+            # Safely transfer all students to current academic year 2026-2027
+            ay.enrolled_students.update(academic_year=current_year)
+            # Delete any classrooms associated with this inactive year
+            ay.classrooms.all().delete()
+            name = ay.name
+            ay.delete()
+        messages.success(request, f"🎉 បានផ្ទេរសិស្សចំនួន {student_count} នាក់ទៅឆ្នាំបច្ចុប្បន្ន ({current_year.name}) និងបានលុបឆ្នាំសិក្សា {name} ដោយជោគជ័យ!")
         return redirect('academic_year_list')
 
-    name = ay.name
-    ay.delete()
-    messages.success(request, f"បានលុបឆ្នាំសិក្សា {name} ដោយជោគជ័យ!")
-    return redirect('academic_year_list')
+    elif delete_action == 'force_delete':
+        with transaction.atomic():
+            student_count = ay.enrolled_students.count()
+            class_count = ay.classrooms.count()
+            # Clean up test/old students and classrooms belonging specifically to this inactive year
+            ay.enrolled_students.all().delete()
+            ay.classrooms.all().delete()
+            name = ay.name
+            ay.delete()
+        messages.success(request, f"🎉 បានលុបឆ្នាំសិក្សា {name} ព្រមទាំងទិន្នន័យសិស្ស ({student_count} នាក់) និងថ្នាក់រៀន ({class_count} ថ្នាក់) ពាក់ព័ន្ធដោយជោគជ័យ!")
+        return redirect('academic_year_list')
+
+    else:
+        # Standard delete
+        if has_students or has_classrooms:
+            messages.error(
+                request,
+                f"មិនអាចលុបឆ្នាំសិក្សា {ay.name} បានទេ ព្រោះមានទិន្នន័យសិស្ស ({ay.enrolled_students.count()} នាក់) "
+                f"ឬថ្នាក់រៀន ({ay.classrooms.count()} ថ្នាក់) ភ្ជាប់ជាមួយ! "
+                f"សូមជ្រើសរើសជម្រើស «ផ្ទេរសិស្សទៅឆ្នាំបច្ចុប្បន្ន 2026-2027» ឬ «លុបទិន្នន័យទាំងអស់នៃឆ្នាំនេះ» នៅក្នុងផ្ទាំងលុប។"
+            )
+            return redirect('academic_year_list')
+
+        name = ay.name
+        ay.delete()
+        messages.success(request, f"បានលុបឆ្នាំសិក្សា {name} ដោយជោគជ័យ!")
+        return redirect('academic_year_list')
 
 
 @login_required

@@ -130,74 +130,11 @@
         background-color: #1e293b;
     }
 
-    /* Freeze Columns 1-4 (No, ID, Surname, Given Name) */
-    .table-roster-wrapper.freeze-cols .freeze-c1 {
-        position: sticky;
-        left: 0;
-        z-index: 4;
-        background-color: #fff;
-    }
-    .table-roster-wrapper.freeze-cols .freeze-c2 {
-        position: sticky;
-        left: 45px;
-        z-index: 4;
-        background-color: #fff;
-    }
-    .table-roster-wrapper.freeze-cols .freeze-c3 {
-        position: sticky;
-        left: 130px;
-        z-index: 4;
-        background-color: #fff;
-    }
-    .table-roster-wrapper.freeze-cols .freeze-c4 {
-        position: sticky;
-        left: 230px;
-        z-index: 4;
-        background-color: #fff;
-        box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.12);
-    }
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols .freeze-c1,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols .freeze-c2,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols .freeze-c3,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols .freeze-c4 {
-        background-color: #1e293b;
-        box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.4);
-    }
-
-    /* Sticky Headers for Frozen Columns */
-    .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c1,
-    .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c2,
-    .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c3,
-    .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c4 {
-        z-index: 25;
-        background-color: #f1f5f9;
-    }
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c1,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c2,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c3,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols thead tr:first-child .freeze-c4 {
-        background-color: #0f172a;
-    }
-
-    /* Row hover effect including frozen columns */
+    /* Row hover effect */
     .roster-table tbody tr:hover td {
-        background-color: rgba(59, 130, 246, 0.06);
-    }
-    .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c1,
-    .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c2,
-    .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c3,
-    .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c4 {
-        background-color: #f0f7ff !important;
+        background-color: rgba(59, 130, 246, 0.08);
     }
     [data-bs-theme="dark"] .roster-table tbody tr:hover td {
-        background-color: rgba(59, 130, 246, 0.18);
-    }
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c1,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c2,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c3,
-    [data-bs-theme="dark"] .table-roster-wrapper.freeze-cols tbody tr:hover .freeze-c4 {
-        background-color: #1e3a5f !important;
-    }
         background-color: rgba(59, 130, 246, 0.18);
     }
 
@@ -475,7 +412,7 @@
             </div>
         </div>
 
-        <!-- Interactive Table Controls Toolbar (Height Selector, Freeze Toggle, Dual Scroll Nav) -->
+        <!-- Interactive Table Controls Toolbar (Height Selector, Dual Scroll Nav) -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 p-2 rounded-2 bg-light border">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="small fw-bold text-secondary">
@@ -485,15 +422,9 @@
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle" title="Scroll បញ្ឈរមើលសិស្សច្រើននាក់">
                     <i class="fa-solid fa-arrows-up-down me-1"></i> បញ្ឈរ (Vertical)
                 </span>
-                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Scroll ផ្ដេកមើល ៣៥ ជួរឈរ MoEYS">
-                    <i class="fa-solid fa-arrows-left-right me-1"></i> ផ្ដេក (Horizontal - 35 ជួរ)
+                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Scroll ផ្ដេកមើល ៣៥ ជួរឈរ MoEYS ទាំងអស់ដោយសេរី">
+                    <i class="fa-solid fa-arrows-left-right me-1"></i> ផ្ដេក (Horizontal - 35 ជួរឈរ)
                 </span>
-                <div class="form-check form-switch ms-2 mb-0">
-                    <input class="form-check-input" type="checkbox" id="chkFreezeColumns" checked onchange="toggleFreezeColumns(this.checked)">
-                    <label class="form-check-label small fw-bold" for="chkFreezeColumns">
-                        <i class="fa-solid fa-thumbtack me-1 text-warning"></i> ត្រជាក់ជួរឈ្មោះ (Freeze Info)
-                    </label>
-                </div>
             </div>
 
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -514,82 +445,88 @@
             </div>
         </div>
 
-        <!-- 35-Column Table with Dual Scrollbars and Frozen Info Columns -->
-        <div class="table-roster-wrapper height-md freeze-cols" id="tableRosterWrapper">
+        <!-- 35-Column Table with Dual Scrollbars (Free-scrolling with sticky headers) -->
+        <div class="table-roster-wrapper height-md" id="tableRosterWrapper">
             <table class="roster-table table-hover">
                 <thead>
                     <!-- Header Row 1 -->
                     <tr>
-                        <th rowspan="2" style="width: 45px;" class="freeze-c1">ល.រ</th>
-                        <th rowspan="2" style="width: 85px;" class="freeze-c2">អត្តលេខ</th>
-                        <th rowspan="2" style="width: 100px;" class="freeze-c3">គោត្តនាម</th>
-                        <th rowspan="2" style="width: 90px;" class="freeze-c4">នាម</th>
-                        <th rowspan="2" style="width: 50px;">ភេទ</th>
+                        <th rowspan="2" style="min-width: 48px; width: 48px;">ល.រ</th>
+                        <th rowspan="2" style="min-width: 85px; width: 85px;">អត្តលេខ</th>
+                        <th rowspan="2" style="min-width: 100px; width: 100px;">គោត្តនាម</th>
+                        <th rowspan="2" style="min-width: 95px; width: 95px;">នាម</th>
+                        <th rowspan="2" style="min-width: 65px; width: 65px;" class="bg-primary-subtle text-primary">ភេទ</th>
                         <th colspan="3">ថ្ងៃ ខែ ឆ្នាំកំណើត</th>
                         <th colspan="3">ទីកន្លែងកំណើត</th>
                         <th colspan="2">ថ្នាក់រៀន</th>
                         <th colspan="2">ឪពុក</th>
                         <th colspan="2">ម្តាយ</th>
                         <th colspan="2">អាណាព្យាបាល</th>
-                        <th rowspan="2" style="width: 75px;">កុមារកំព្រា</th>
-                        <th rowspan="2" style="width: 130px;">សាលាបឋម</th>
-                        <th rowspan="2" style="width: 130px;">សាលាអនុវិទ្យាល័យ</th>
-                        <th rowspan="2" style="width: 80px;">ជនជាតិភាគតិច</th>
+                        <th rowspan="2" style="min-width: 75px; width: 75px;">កុមារកំព្រា</th>
+                        <th rowspan="2" style="min-width: 130px; width: 130px;">សាលាបឋម</th>
+                        <th rowspan="2" style="min-width: 130px; width: 130px;">សាលាអនុវិទ្យាល័យ</th>
+                        <th rowspan="2" style="min-width: 80px; width: 80px;">ជនជាតិភាគតិច</th>
                         <th colspan="3">ពិការភាព</th>
                         <th colspan="2">ប័ណ្ណសមធម៌</th>
-                        <th rowspan="2" style="width: 80px;">ងាយរងគ្រោះ</th>
-                        <th rowspan="2" style="width: 80px;">អាហារូបករណ៍</th>
-                        <th rowspan="2" style="width: 105px;">លេខទូរស័ព្ទ</th>
-                        <th rowspan="2" style="width: 85px;">ស្ថានភាពសិស្ស</th>
+                        <th rowspan="2" style="min-width: 80px; width: 80px;">ងាយរងគ្រោះ</th>
+                        <th rowspan="2" style="min-width: 80px; width: 80px;">អាហារូបករណ៍</th>
+                        <th rowspan="2" style="min-width: 105px; width: 105px;">លេខទូរស័ព្ទ</th>
+                        <th rowspan="2" style="min-width: 85px; width: 85px;">ស្ថានភាពសិស្ស</th>
                         <th colspan="3">មុខវិជ្ជាជ្រើសរើស (P)</th>
                     </tr>
                     <!-- Header Row 2 -->
                     <tr>
-                        <th style="width: 45px;">ថ្ងៃ</th>
-                        <th style="width: 45px;">ខែ</th>
-                        <th style="width: 55px;">ឆ្នាំ</th>
-                        <th style="width: 95px;">ឃុំ/សង្កាត់</th>
-                        <th style="width: 95px;">ស្រុក/ខណ្ឌ</th>
-                        <th style="width: 95px;">រាជធានី/ខេត្ត</th>
-                        <th style="width: 50px;">កម្រិត</th>
-                        <th style="width: 50px;">បន្ទប់</th>
-                        <th style="width: 110px;">ឈ្មោះឪពុក</th>
-                        <th style="width: 90px;">មុខរបរ</th>
-                        <th style="width: 110px;">ឈ្មោះម្តាយ</th>
-                        <th style="width: 90px;">មុខរបរ</th>
-                        <th style="width: 110px;">ឈ្មោះ</th>
-                        <th style="width: 90px;">មុខរបរ</th>
-                        <th style="width: 75px;">កាយសម្បទា</th>
-                        <th style="width: 65px;">គំហើញ</th>
-                        <th style="width: 65px;">សោតវិញ្ញាណ</th>
-                        <th style="width: 60px;">ក្រ១</th>
-                        <th style="width: 60px;">ក្រ២</th>
-                        <th style="width: 70px;">វិទ្យាសាស្ត្រ</th>
-                        <th style="width: 80px;">វិទ្យាសាស្ត្រសង្គម</th>
-                        <th style="width: 85px;">បច្ចេកទេស/វិជ្ជាជីវៈ</th>
+                        <th style="min-width: 45px; width: 45px;">ថ្ងៃ</th>
+                        <th style="min-width: 45px; width: 45px;">ខែ</th>
+                        <th style="min-width: 55px; width: 55px;">ឆ្នាំ</th>
+                        <th style="min-width: 95px; width: 95px;">ឃុំ/សង្កាត់</th>
+                        <th style="min-width: 95px; width: 95px;">ស្រុក/ខណ្ឌ</th>
+                        <th style="min-width: 95px; width: 95px;">រាជធានី/ខេត្ត</th>
+                        <th style="min-width: 50px; width: 50px;">កម្រិត</th>
+                        <th style="min-width: 50px; width: 50px;">បន្ទប់</th>
+                        <th style="min-width: 110px; width: 110px;">ឈ្មោះឪពុក</th>
+                        <th style="min-width: 90px; width: 90px;">មុខរបរ</th>
+                        <th style="min-width: 110px; width: 110px;">ឈ្មោះម្តាយ</th>
+                        <th style="min-width: 90px; width: 90px;">មុខរបរ</th>
+                        <th style="min-width: 110px; width: 110px;">ឈ្មោះ</th>
+                        <th style="min-width: 90px; width: 90px;">មុខរបរ</th>
+                        <th style="min-width: 75px; width: 75px;">កាយសម្បទា</th>
+                        <th style="min-width: 65px; width: 65px;">គំហើញ</th>
+                        <th style="min-width: 65px; width: 65px;">សោតវិញ្ញាណ</th>
+                        <th style="min-width: 60px; width: 60px;">ក្រ១</th>
+                        <th style="min-width: 60px; width: 60px;">ក្រ២</th>
+                        <th style="min-width: 70px; width: 70px;">វិទ្យាសាស្ត្រ</th>
+                        <th style="min-width: 80px; width: 80px;">វិទ្យាសាស្ត្រសង្គម</th>
+                        <th style="min-width: 85px; width: 85px;">បច្ចេកទេស/វិជ្ជាជីវៈ</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for s in students %}
                     <tr>
                         <!-- 1: No -->
-                        <td class="cell-c text-muted freeze-c1">{{ s.no }}</td>
+                        <td class="cell-c text-muted">{{ s.no }}</td>
                         <!-- 2: ID -->
-                        <td class="cell-c fw-bold freeze-c2">
+                        <td class="cell-c fw-bold">
                             <a href="{% url 'student_detail' s.pk %}" class="text-decoration-none text-primary" title="មើលព័ត៌មានលម្អិត">
                                 {{ s.student_id }}
                             </a>
                         </td>
                         <!-- 3: Surname -->
-                        <td class="cell-l fw-semibold freeze-c3">{{ s.surname }}</td>
+                        <td class="cell-l fw-semibold">{{ s.surname }}</td>
                         <!-- 4: Given Name -->
-                        <td class="cell-l fw-semibold freeze-c4">
+                        <td class="cell-l fw-semibold">
                             <a href="{% url 'student_edit' s.pk %}" class="text-decoration-none text-dark" title="កែសម្រួលព័ត៌មានសិស្ស">
                                 {{ s.given_name }}
                             </a>
                         </td>
                         <!-- 5: Gender -->
-                        <td class="cell-c {% if s.gender == 'ស្រី' %}text-danger fw-bold{% endif %}">{{ s.gender }}</td>
+                        <td class="cell-c">
+                            {% if s.gender == 'ស្រី' %}
+                            <span class="badge bg-danger-subtle text-danger fw-bold border border-danger-subtle px-2 py-1">ស្រី</span>
+                            {% else %}
+                            <span class="badge bg-primary-subtle text-primary fw-bold border border-primary-subtle px-2 py-1">ប្រុស</span>
+                            {% endif %}
+                        </td>
                         <!-- 6-8: DOB -->
                         <td class="cell-c">{{ s.dob_d }}</td>
                         <td class="cell-c">{{ s.dob_m }}</td>
@@ -791,16 +728,6 @@ function setTableHeight(heightClass, btn) {
     }
     btn.classList.remove('btn-outline-secondary');
     btn.classList.add('btn-primary', 'active', 'fw-bold');
-}
-
-function toggleFreezeColumns(checked) {
-    const wrapper = document.getElementById('tableRosterWrapper');
-    if (!wrapper) return;
-    if (checked) {
-        wrapper.classList.add('freeze-cols');
-    } else {
-        wrapper.classList.remove('freeze-cols');
-    }
 }
 
 function scrollTable(direction) {

@@ -482,11 +482,16 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">កាលបរិច្ឆេទចុះហត្ថលេខា (Signing Date)</label>
-                            <input type="date" name="sign_date" class="form-control form-control-sm" value="{{ sign_date_raw }}">
+                            <input type="date" name="sign_date" id="inputSignDate" class="form-control form-control-sm" value="{{ sign_date_raw }}">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">កាលបរិច្ឆេទចន្ទគតិ (Lunar Date)</label>
-                            <input type="text" name="lunar_date" class="form-control form-control-sm" value="{{ lunar_date }}">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold mb-0">កាលបរិច្ឆេទចន្ទគតិ (Lunar Date)</label>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-bold" id="btnAutoCalcResultsLunar" style="font-size: 0.8rem;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> គណនាស្វ័យប្រវត្តិ
+                                </button>
+                            </div>
+                            <input type="text" name="lunar_date" id="inputLunarDate" class="form-control form-control-sm" value="{{ lunar_date }}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">តួនាទីអ្នកចុះហត្ថលេខា (Signer Title / Role)</label>
@@ -845,7 +850,33 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% load static %}
+    <script src="{% static 'js/khmer_lunar.js' %}"></script>
     <script>
+        // Auto calculate lunar date when sign_date changes
+        const signDateEl = document.getElementById('inputSignDate');
+        const lunarDateEl = document.getElementById('inputLunarDate');
+        function autoUpdateResultsLunar(dStr) {
+            if (window.KhmerLunar && dStr) {
+                const lStr = window.KhmerLunar.getLunarDate(dStr);
+                if (lunarDateEl) lunarDateEl.value = lStr;
+                document.querySelectorAll('.sig-lunar-date').forEach(el => el.textContent = lStr);
+            }
+        }
+        if (signDateEl) {
+            signDateEl.addEventListener('change', function() {
+                autoUpdateResultsLunar(this.value);
+            });
+        }
+        const btnAutoCalcResultsLunar = document.getElementById('btnAutoCalcResultsLunar');
+        if (btnAutoCalcResultsLunar) {
+            btnAutoCalcResultsLunar.addEventListener('click', function() {
+                if (signDateEl && signDateEl.value) {
+                    autoUpdateResultsLunar(signDateEl.value);
+                }
+            });
+        }
+
         // Synchronize in-place contenteditable sign_role with hidden inputs and query params
         document.addEventListener('DOMContentLoaded', function() {
             const roleSpans = document.querySelectorAll('.editable-sign-role');

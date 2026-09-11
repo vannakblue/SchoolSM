@@ -23,6 +23,93 @@
     </div>
 </div>
 
+<!-- Admin Registration Period Control Card (No-print) -->
+<div class="custom-card mb-4 p-3 no-print border-start border-4 {% if reg_status == 'OPEN' %}border-success{% elif reg_status == 'NOT_STARTED' %}border-warning{% elif reg_status == 'EXPIRED' %}border-danger{% else %}border-secondary{% endif %}" id="regPeriodControlCard" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-user-clock fs-5"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">ការអនុញ្ញាត និងកំណត់កាលបរិច្ឆេទចុះឈ្មោះសិស្ស (Portal & Mobile App)</h5>
+                <p class="text-muted small mb-0">គ្រប់គ្រងការអនុញ្ញាតឱ្យសិស្ស/មាតាបិតាចុះឈ្មោះតាម Online Portal និងកម្មវិធីទូរស័ព្ទ (Mobile App)</p>
+            </div>
+        </div>
+        <div id="regStatusBadgeWrapper">
+            {% if reg_status == 'OPEN' %}
+            <span class="badge bg-success px-3 py-2 rounded-pill fs-6">
+                <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)
+            </span>
+            {% elif reg_status == 'NOT_STARTED' %}
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6">
+                <i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)
+            </span>
+            {% elif reg_status == 'EXPIRED' %}
+            <span class="badge bg-danger px-3 py-2 rounded-pill fs-6">
+                <i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)
+            </span>
+            {% else %}
+            <span class="badge bg-secondary px-3 py-2 rounded-pill fs-6">
+                <i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Form Inputs for Registration Period -->
+    <form id="regPeriodForm">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+            <!-- Toggle Open/Close -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted">ស្ថានភាពបើក/បិទ (Status)</label>
+                <div class="form-check form-switch p-2 bg-light rounded border ps-5">
+                    <input class="form-check-input" type="checkbox" role="switch" id="inputIsRegOpen" name="is_registration_open" {% if school_profile.is_registration_open %}checked{% endif %}>
+                    <label class="form-check-label fw-bold" for="inputIsRegOpen" id="labelIsRegOpen">
+                        {% if school_profile.is_registration_open %}អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN){% else %}បិទការចុះឈ្មោះ (CLOSED){% endif %}
+                    </label>
+                </div>
+            </div>
+
+            <!-- Start Date & Time -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទចាប់ផ្តើម (Start Date & Time)</label>
+                <input type="datetime-local" class="form-control" id="inputRegStartDate" name="registration_start_date" value="{{ school_profile.registration_start_date|date:'Y-m-d\TH:i' }}">
+            </div>
+
+            <!-- End Date & Time -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទបញ្ចប់/ផុតកំណត់ (End Date & Time)</label>
+                <input type="datetime-local" class="form-control" id="inputRegEndDate" name="registration_end_date" value="{{ school_profile.registration_end_date|date:'Y-m-d\TH:i' }}">
+            </div>
+
+            <!-- Save Button -->
+            <div class="col-md-3">
+                <button type="button" id="btnSaveRegPeriod" class="btn btn-primary w-100 fw-bold py-2">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)
+                </button>
+            </div>
+
+            <!-- Closed Message & Presets -->
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                    <label class="form-label fw-bold small text-muted mb-0">សារជូនដំណឹងពេលបិទ ឬផុតកំណត់ (Closed Notice Message)</label>
+                    <!-- Quick Presets -->
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted small me-1">កំណត់រហ័ស៖</span>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('1week')">១ សប្តាហ៍</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('2weeks')">២ សប្តាហ៍</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('1month')">១ ខែ</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('unlimited')">គ្មានកំណត់ (Unlimited)</button>
+                    </div>
+                </div>
+                <input type="text" class="form-control form-control-sm" id="inputRegClosedMessage" name="registration_closed_message" value="{{ school_profile.registration_closed_message|default:'ការចុះឈ្មោះសិស្សថ្មីត្រូវបានបិទជាបណ្តោះអាសន្ន ឬផុតកំណត់កាលបរិច្ឆេទកំណត់ដោយរដ្ឋបាលសាលា។ សូមទាក់ទងរដ្ឋបាលសាលាសម្រាប់ព័ត៌មានបន្ថែម។' }}">
+            </div>
+        </div>
+    </form>
+    <div id="regSaveAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
+</div>
+
 <!-- Selection Controls Card (No-print) -->
 <div class="custom-card mb-4 p-3 no-print" id="selectorControls">
     <div class="row g-3 align-items-center">
@@ -111,6 +198,14 @@
                     <h5 class="text-secondary fw-bold mb-2" id="posterSubtitle">
                         ថ្នាក់រៀនក្នុងកម្រិតនេះ៖ 7A, 7B, 7C
                     </h5>
+                </div>
+                
+                <!-- Validity / Period Badge on Poster -->
+                <div id="posterPeriodBadge" class="mb-3 text-center" style="display: {% if school_profile.registration_start_date or school_profile.registration_end_date %}block{% else %}none{% endif %};">
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                        <i class="fa-regular fa-calendar-check text-primary me-1"></i>
+                        សុពលភាពចុះឈ្មោះ៖ <strong id="posterPeriodText">{% if school_profile.registration_start_date %}{{ school_profile.registration_start_date|date:"d/m/Y" }}{% else %}ឥឡូវនេះ{% endif %} ដល់ {% if school_profile.registration_end_date %}{{ school_profile.registration_end_date|date:"d/m/Y" }}{% else %}គ្មានកំណត់{% endif %}</strong>
+                    </span>
                 </div>
                 
                 <p class="text-muted small mb-3">
@@ -384,5 +479,127 @@ function copyLink() {
         btn.classList.add('btn-outline-primary');
     }, 2000);
 }
+
+// Registration Period Presets & AJAX
+function setRegPreset(preset) {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const formatDT = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    const inputStart = document.getElementById('inputRegStartDate');
+    const inputEnd = document.getElementById('inputRegEndDate');
+    const switchOpen = document.getElementById('inputIsRegOpen');
+    
+    if (switchOpen) {
+        switchOpen.checked = true;
+        document.getElementById('labelIsRegOpen').textContent = 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)';
+    }
+    if (inputStart) inputStart.value = formatDT(now);
+
+    let end = new Date(now);
+    if (inputEnd) {
+        if (preset === '1week') {
+            end.setDate(end.getDate() + 7);
+            inputEnd.value = formatDT(end);
+        } else if (preset === '2weeks') {
+            end.setDate(end.getDate() + 14);
+            inputEnd.value = formatDT(end);
+        } else if (preset === '1month') {
+            end.setMonth(end.getMonth() + 1);
+            inputEnd.value = formatDT(end);
+        } else if (preset === 'unlimited') {
+            if (inputStart) inputStart.value = '';
+            inputEnd.value = '';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const switchOpen = document.getElementById('inputIsRegOpen');
+    const labelOpen = document.getElementById('labelIsRegOpen');
+    const btnSave = document.getElementById('btnSaveRegPeriod');
+    const alertBox = document.getElementById('regSaveAlert');
+
+    if (switchOpen && labelOpen) {
+        switchOpen.addEventListener('change', function() {
+            labelOpen.textContent = this.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
+        });
+    }
+
+    if (btnSave) {
+        btnSave.addEventListener('click', function() {
+            const formData = new FormData(document.getElementById('regPeriodForm'));
+            btnSave.disabled = true;
+            btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+
+            fetch("{% url 'api_save_registration_period' %}", {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnSave.disabled = false;
+                btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
+
+                if (data.success) {
+                    alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+                    alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message} (${data.status_reason})`;
+                    alertBox.classList.remove('d-none');
+
+                    // Update Status Badge
+                    const badgeWrapper = document.getElementById('regStatusBadgeWrapper');
+                    const card = document.getElementById('regPeriodControlCard');
+                    if (card) {
+                        card.classList.remove('border-success', 'border-warning', 'border-danger', 'border-secondary');
+
+                        if (data.status_code === 'OPEN') {
+                            badgeWrapper.innerHTML = `<span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)</span>`;
+                            card.classList.add('border-success');
+                        } else if (data.status_code === 'NOT_STARTED') {
+                            badgeWrapper.innerHTML = `<span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)</span>`;
+                            card.classList.add('border-warning');
+                        } else if (data.status_code === 'EXPIRED') {
+                            badgeWrapper.innerHTML = `<span class="badge bg-danger px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)</span>`;
+                            card.classList.add('border-danger');
+                        } else {
+                            badgeWrapper.innerHTML = `<span class="badge bg-secondary px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)</span>`;
+                            card.classList.add('border-secondary');
+                        }
+                    }
+
+                    // Update Poster Badge
+                    const posterBadge = document.getElementById('posterPeriodBadge');
+                    const posterText = document.getElementById('posterPeriodText');
+                    if (posterBadge && posterText) {
+                        if (data.start_date || data.end_date) {
+                            posterBadge.style.display = 'block';
+                            const sStr = data.start_date_display || 'ឥឡូវនេះ';
+                            const eStr = data.end_date_display || 'គ្មានកំណត់';
+                            posterText.textContent = `${sStr} ដល់ ${eStr}`;
+                        } else {
+                            posterBadge.style.display = 'none';
+                        }
+                    }
+
+                    setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
+                } else {
+                    alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
+                    alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.error || 'មានបញ្ហាក្នុងការរក្សាទុក'}`;
+                    alertBox.classList.remove('d-none');
+                }
+            })
+            .catch(err => {
+                btnSave.disabled = false;
+                btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
+                alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> Connection error: ${err}`;
+                alertBox.classList.remove('d-none');
+            });
+        });
+    }
+});
 </script>
 {% endblock %}

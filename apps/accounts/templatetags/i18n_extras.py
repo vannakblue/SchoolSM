@@ -381,3 +381,24 @@ def clean_classroom_full_filter(val):
     return f"ថ្នាក់ទី {s}"
 
 
+@register.filter(name='khmer_lunar_date')
+def khmer_lunar_date_filter(val, with_space=True):
+    """
+    Template filter to convert any solar date (date/datetime/string) to Khmer Lunar Calendar date.
+    Usage: {{ exam.exam_date|khmer_lunar_date }}
+    """
+    from apps.accounts.khmer_lunar import get_khmer_lunar_date
+    return get_khmer_lunar_date(val, with_space=with_space)
+
+
+@register.simple_tag
+def today_khmer_lunar_date(with_space=True):
+    """
+    Template tag to output today's Khmer Lunar Calendar date.
+    Usage: {% today_khmer_lunar_date %}
+    """
+    from apps.accounts.khmer_lunar import get_khmer_lunar_date
+    import datetime
+    return get_khmer_lunar_date(datetime.date.today(), with_space=with_space)
+
+

@@ -7,6 +7,7 @@ urlpatterns = [
     path('enroll/online/', views.public_student_enroll, name='public_student_enroll'),
     path('enroll/success/<int:pk>/', views.public_enroll_success, name='public_enroll_success'),
     path('enroll/qr/', views.enrollment_qr_code, name='enrollment_qr_code'),
+    path('enroll/api/registration-period/save/', views.api_save_registration_period, name='api_save_registration_period'),
     path('import/', views.student_import, name='student_import'),
     path('import/template/excel/', views.download_student_template_excel, name='download_student_template_excel'),
     path('import/template/csv/', views.download_student_template_csv, name='download_student_template_csv'),

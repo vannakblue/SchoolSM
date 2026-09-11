@@ -1,0 +1,1422 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}បម្លែងថ្ងៃខែចន្ទគតិ (Khmer Lunar Calendar Converter) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero Celestial Result Card */
+    .lunar-hero-card {
+        background: radial-gradient(circle at 80% 20%, #1e1b4b 0%, #0f172a 60%, #030712 100%);
+        border: 1px solid rgba(251, 191, 36, 0.25);
+        border-radius: 24px;
+        padding: 2.2rem;
+        color: #ffffff;
+        box-shadow: 0 16px 40px -8px rgba(15, 23, 42, 0.45), 0 0 35px rgba(245, 158, 11, 0.08);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .lunar-hero-card::before {
+        content: "";
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .lunar-primary-text {
+        font-size: 1.85rem;
+        font-weight: 800;
+        line-height: 1.6;
+        color: #fef08a;
+        text-shadow: 0 2px 14px rgba(245, 158, 11, 0.3);
+        letter-spacing: 0.2px;
+    }
+    @media (max-width: 768px) {
+        .lunar-primary-text {
+            font-size: 1.45rem;
+        }
+    }
+    .lunar-solar-sub {
+        font-size: 1.05rem;
+        color: #cbd5e1;
+    }
+
+    /* Holy Day (ថ្ងៃសីល) Golden Glow */
+    .holy-day-badge {
+        background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #f59e0b 100%);
+        color: #ffffff;
+        font-weight: 700;
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.45);
+        border: 1px solid rgba(254, 240, 138, 0.4);
+    }
+    .holy-day-banner {
+        background: rgba(217, 119, 6, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        border-radius: 14px;
+        padding: 10px 16px;
+        color: #fde68a;
+    }
+
+    /* Moon Phase Visual */
+    .moon-visual-box {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.06);
+        border: 2px solid rgba(254, 240, 138, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.8rem;
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.2);
+        flex-shrink: 0;
+    }
+
+    /* Breakdown Component Cards */
+    .lunar-metric-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        height: 100%;
+    }
+    .lunar-metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+        border-color: #cbd5e1;
+    }
+    .lunar-metric-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    /* Copy Card Row */
+    .copy-format-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 14px 18px;
+        transition: all 0.2s ease;
+    }
+    .copy-format-card:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    /* Quick Steppers & Calendar View */
+    .stepper-btn {
+        min-width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        border-radius: 10px;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+    }
+    .calendar-head {
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        padding: 6px 2px;
+    }
+    .calendar-day-cell {
+        aspect-ratio: 1 / 1;
+        min-height: 52px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        position: relative;
+        padding: 2px;
+    }
+    .calendar-day-cell:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+        transform: scale(1.04);
+        z-index: 2;
+    }
+    .calendar-day-cell.active-day {
+        background: #1e3a8a !important;
+        color: #ffffff !important;
+        border-color: #1e3a8a !important;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.35);
+    }
+    .calendar-day-cell.active-day .cal-solar-num,
+    .calendar-day-cell.active-day .cal-lunar-text {
+        color: #ffffff !important;
+    }
+    .calendar-day-cell.is-holy {
+        border: 1.5px solid #f59e0b;
+        background: #fefce8;
+    }
+    .calendar-day-cell.is-holy::after {
+        content: "☸️";
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-size: 0.65rem;
+    }
+    .cal-solar-num {
+        font-weight: 800;
+        font-size: 0.95rem;
+        line-height: 1;
+        color: #1e293b;
+    }
+    .cal-lunar-text {
+        font-size: 0.68rem;
+        color: #64748b;
+        line-height: 1.1;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 95%;
+    }
+    .calendar-day-cell.other-month {
+        opacity: 0.35;
+        background: #f8fafc;
+        cursor: not-allowed;
+    }
+
+    /* Preset Festival Pills */
+    .preset-pill {
+        border-radius: 30px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .preset-pill:hover {
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Page Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'tools_hub' %}"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> មជ្ឈមណ្ឌលឧបករណ៍</a></li>
+                    <li class="breadcrumb-item active">Khmer Lunar Converter</li>
+                </ol>
+            </nav>
+            <h2 class="h4 fw-bold text-dark mb-0">
+                <i class="fa-solid fa-moon text-warning me-2"></i>បម្លែងថ្ងៃខែសុរិយគតិ ទៅជាចន្ទគតិ (Solar to Khmer Lunar Date Converter)
+            </h2>
+            <p class="text-muted small mb-0">
+                វាយបញ្ចូលថ្ងៃខែឆ្នាំសុរិយគតិ (គ្រិស្តសករាជ) ប្រព័ន្ធនឹងគណនាចេញថ្ងៃខែឆ្នាំចន្ទគតិខ្មែរផ្លូវការ ឆ្នាំសត្វ ស័ក ពុទ្ធសករាជ និងថ្ងៃសីលដោយស្វ័យប្រវត្តិភ្លាមៗ។
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Excel Tools Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-file-excel me-1.5"></i> ទាញយកជា Excel
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2" style="min-width: 300px; z-index: 1050;">
+                    <li>
+                        <h6 class="dropdown-header text-uppercase small fw-bold text-success">
+                            <i class="fa-solid fa-calculator me-1"></i> កម្មវិធី Excel ស្វ័យប្រវត្ត (Interactive)
+                        </h6>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item rounded-3 py-2" data-bs-toggle="modal" data-bs-target="#configureExcelYearModal">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-sliders text-success me-1.5"></i>កំណត់ឆ្នាំ & ទាញយកគំរូ Excel...</div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">កំណត់ពីឆ្នាំណា ដល់ឆ្នាំណា (ឧ. 2000 - 2035)</small>
+                        </button>
+                    </li>
+                    <li>
+                        <a class="dropdown-item rounded-3 py-2" id="btnDownloadExcelTool" href="{% url 'tool_lunar_download_excel_tool' %}?start_year=2000&end_year=2035">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-file-arrow-down text-success me-1.5"></i>គំរូ Excel ស្វ័យប្រវត្ត (២០០០-២០៣៥)</div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">ទាញយកភ្លាមៗទម្រង់ស្តង់ដារសាលារៀន</small>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <h6 class="dropdown-header text-uppercase small fw-bold text-primary">
+                            <i class="fa-regular fa-calendar-days me-1"></i> ប្រតិទិនចន្ទគតិជា Excel
+                        </h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item rounded-3 py-2" id="btnExportMonthExcel" href="{% url 'tool_lunar_export_calendar_excel' %}">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-calendar-week text-primary me-1.5"></i>ទាញយកប្រតិទិនខែនេះ (.xlsx)</div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">តារាងចន្ទគតិពេញមួយខែ និងថ្ងៃសីល</small>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item rounded-3 py-2" id="btnExportYearExcel" href="{% url 'tool_lunar_export_calendar_excel' %}">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-calendar-days text-info me-1.5"></i>ទាញយកប្រតិទិនពេញមួយឆ្នាំ (.xlsx)</div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">ប្រតិទិន ១២ ខែ និងថ្ងៃបុណ្យជាតិ</small>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item rounded-3 py-2" data-bs-toggle="modal" data-bs-target="#batchExcelModal">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-file-import text-warning me-1.5"></i>បម្លែងបញ្ជីថ្ងៃខែពី Excel (Batch)</div>
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">Upload បញ្ជីសិស្ស -> បន្ថែមថ្ងៃខែចន្ទគតិ</small>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark shadow-sm" onclick="setTodayDate()">
+                <i class="fa-solid fa-calendar-day me-1"></i> ថ្ងៃនេះ (Today)
+            </button>
+            <a href="{% url 'tools_hub' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅ Tools Hub
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Layout -->
+    <div class="row g-4">
+        <!-- Left Column: Input Panel & Presets & Monthly Calendar -->
+        <div class="col-xl-5 col-lg-6">
+            <!-- 1. Input Box Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa-regular fa-calendar-check text-primary me-2"></i>វាយបញ្ចូលថ្ងៃខែឆ្នាំសុរិយគតិ
+                    </h5>
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1 small fw-semibold">
+                        <i class="fa-solid fa-bolt me-1"></i>ស្វ័យប្រវត្តិ ១០០%
+                    </span>
+                </div>
+
+                <!-- Steppers Bar (Navigation) -->
+                <div class="d-flex align-items-center justify-content-between gap-1 mb-3 bg-light p-1.5 rounded-3 border">
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('year', -1)" title="ថយក្រោយ ១ ឆ្នាំ">« ឆ្នាំ</button>
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('month', -1)" title="ថយក្រោយ ១ ខែ">‹ ខែ</button>
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('day', -1)" title="ថយក្រោយ ១ ថ្ងៃ">‹ ថ្ងៃ</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill fw-bold" onclick="setTodayDate()">ថ្ងៃនេះ</button>
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('day', 1)" title="ទៅមុខ ១ ថ្ងៃ">ថ្ងៃ ›</button>
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('month', 1)" title="ទៅមុខ ១ ខែ">ខែ ›</button>
+                    <button type="button" class="btn btn-sm btn-white border stepper-btn" onclick="stepDate('year', 1)" title="ទៅមុខ ១ ឆ្នាំ">ឆ្នាំ »</button>
+                </div>
+
+                <!-- Main Date Picker Input -->
+                <div class="mb-3">
+                    <label for="solarDateInput" class="form-label fw-bold small text-muted">
+                        ជ្រើសរើសកាលបរិច្ឆេទសុរិយគតិ (Date Picker)
+                    </label>
+                    <div class="input-group input-group-lg shadow-none">
+                        <span class="input-group-text bg-light text-primary border-end-0">
+                            <i class="fa-regular fa-calendar-days fs-5"></i>
+                        </span>
+                        <input type="date" id="solarDateInput" class="form-control fw-bold fs-5 border-start-0" value="{{ today_str }}" oninput="onSolarDateChanged(this.value)" onchange="onSolarDateChanged(this.value)" autofocus>
+                    </div>
+                    <div class="form-text small">
+                        គាំទ្រការជ្រើសតាមប្រតិទិន ឬវាយកាលបរិច្ឆេទដោយផ្ទាល់ (YYYY-MM-DD)
+                    </div>
+                </div>
+
+                <!-- Text Free-Form Input for Quick Pasting -->
+                <div class="mb-4">
+                    <label for="solarTextInput" class="form-label fw-semibold small text-muted">
+                        ឬវាយបញ្ចូលជាអក្សរ (ឧ. 11/09/2026 ឬ ថ្ងៃទី ១១ ខែ កញ្ញា ឆ្នាំ ២០២៦)
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="solarTextInput" class="form-control" placeholder="ឧ. 11/09/2026 ឬ 2026-09-11" oninput="onSolarTextTyping(this.value)">
+                        <button class="btn btn-outline-secondary" type="button" onclick="parseAndApplyText()" title="បំលែង">
+                            <i class="fa-solid fa-arrow-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fast Dropdowns (Day / Month / Year) -->
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <label class="form-label small text-muted mb-1">ថ្ងៃទី (Day)</label>
+                        <select id="selectDay" class="form-select form-select-sm fw-semibold" onchange="onSelectDropdownChanged()">
+                            {% for d in "1234567890123456789012345678901"|make_list %}
+                                <option value="{{ forloop.counter }}">{{ forloop.counter }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small text-muted mb-1">ខែ (Month)</label>
+                        <select id="selectMonth" class="form-select form-select-sm fw-semibold" onchange="onSelectDropdownChanged()">
+                            <option value="1">មករា (1)</option>
+                            <option value="2">កុម្ភៈ (2)</option>
+                            <option value="3">មីនា (3)</option>
+                            <option value="4">មេសា (4)</option>
+                            <option value="5">ឧសភា (5)</option>
+                            <option value="6">មិថុនា (6)</option>
+                            <option value="7">កក្កដា (7)</option>
+                            <option value="8">សីហា (8)</option>
+                            <option value="9">កញ្ញា (9)</option>
+                            <option value="10">តុលា (10)</option>
+                            <option value="11">វិច្ឆិកា (11)</option>
+                            <option value="12">ធ្នូ (12)</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small text-muted mb-1">ឆ្នាំ (Year)</label>
+                        <input type="number" id="selectYear" class="form-control form-select-sm fw-semibold" value="2026" min="1900" max="2100" onchange="onSelectDropdownChanged()" oninput="onSelectDropdownChanged()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Traditional Festivals & Key Dates Presets -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-champagne-glasses text-danger me-2"></i>កាលបរិច្ឆេទទិវា & ពិធីបុណ្យសំខាន់ៗ
+                </h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm preset-pill" onclick="jumpToDate('2026-04-14')">
+                        🌸 ចូលឆ្នាំខ្មែរ (14 មេសា)
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm preset-pill text-dark" onclick="jumpToDate('2026-10-10')">
+                        🌾 ភ្ជុំបិណ្ឌ (15រោច ភទ្របទ)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm preset-pill" onclick="jumpToDate('2026-11-23')">
+                        🛶 អុំទូក សំពះព្រះខែ
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm preset-pill" onclick="jumpToDate('2026-05-01')">
+                        ☸️ វិសាខបូជា (15កើត ពិសាខ)
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm preset-pill text-dark" onclick="jumpToDate('2026-02-02')">
+                        🕯️ មាឃបូជា (15កើត មាឃ)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm preset-pill" onclick="jumpToDate('2026-05-05')">
+                        🐂 ច្រត់ព្រះនង្គ័ល
+                    </button>
+                    <button type="button" class="btn btn-outline-dark btn-sm preset-pill" onclick="jumpToDate('2026-11-09')">
+                        🇰🇭 បុណ្យឯករាជ្យជាតិ (9 វិច្ឆិកា)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm preset-pill" onclick="jumpToDate('2026-10-05')">
+                        👨‍🏫 ទិវាគ្រូបង្រៀន (5 តុលា)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Monthly Visual Calendar Grid -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-calendar-days text-primary me-2"></i>ប្រតិទិនចន្ទគតិប្រចាំខែ
+                        </h6>
+                        <small class="text-muted" id="calMonthLabel">ខែកញ្ញា ឆ្នាំ២០២៦</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-sm btn-light border py-0 px-2" onclick="stepCalendarMonth(-1)">‹</button>
+                        <button type="button" class="btn btn-sm btn-light border py-0 px-2" onclick="stepCalendarMonth(1)">›</button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+                    <span class="small text-muted"><span class="badge bg-warning text-dark me-1">☸️</span> ថ្ងៃសីល (Holy Days)</span>
+                    <span class="small text-muted"><span class="badge bg-primary me-1">●</span> ថ្ងៃជ្រើសរើស</span>
+                </div>
+
+                <!-- Calendar Weekday Header -->
+                <div class="calendar-grid mb-1">
+                    <div class="calendar-head">ច</div>
+                    <div class="calendar-head">អ</div>
+                    <div class="calendar-head">ពុ</div>
+                    <div class="calendar-head">ព្រ</div>
+                    <div class="calendar-head">សុ</div>
+                    <div class="calendar-head text-danger">សៅ</div>
+                    <div class="calendar-head text-danger">អា</div>
+                </div>
+
+                <!-- Calendar Days Grid Container -->
+                <div class="calendar-grid" id="calendarDaysGrid">
+                    <!-- Populated dynamically by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Live Results, Cards, Copy Formats, AI Insights -->
+        <div class="col-xl-7 col-lg-6">
+            <!-- 1. Hero Result Display Card -->
+            <div class="lunar-hero-card mb-4" id="lunarHeroCard">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark px-3 py-1.5 rounded-pill fw-bold" id="lunarBadgeEra">
+                            ព.ស. ២៥៧០
+                        </span>
+                        <span class="badge bg-white bg-opacity-20 text-white px-3 py-1.5 rounded-pill fw-semibold" id="lunarYearTypeBadge">
+                            ឆ្នាំប្រក្រតី
+                        </span>
+                    </div>
+                    <div class="moon-visual-box" id="moonVisualIcon" title="ដំណាក់កាលព្រះច័ន្ទ">
+                        🌕
+                    </div>
+                </div>
+
+                <!-- Big Lunar Text Display -->
+                <div class="mb-2">
+                    <div class="small text-white-50 text-uppercase fw-semibold mb-1">កាលបរិច្ឆេទចន្ទគតិខ្មែរផ្លូវការ (MoEYS Official Standard)</div>
+                    <div class="lunar-primary-text" id="lunarFullDisplay">
+                        ថ្ងៃសុក្រ ១៤រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស. ២៥៧០
+                    </div>
+                </div>
+
+                <!-- Subtitle: Gregorian counterpart -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-2 border-bottom border-white border-opacity-15">
+                    <span class="lunar-solar-sub">
+                        <i class="fa-regular fa-sun text-warning me-1"></i>ត្រូវនឹង <strong id="solarFullDisplay">ថ្ងៃសុក្រ ទី១១ ខែកញ្ញា ឆ្នាំ២០២៦</strong>
+                    </span>
+                    <span class="text-white-50 small" id="solarIsoDisplay">(2026-09-11)</span>
+                </div>
+
+                <!-- Holy Day Banner (Shows dynamically if is holy day) -->
+                <div class="holy-day-banner d-flex align-items-center justify-content-between mb-3" id="holyDayBanner">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fs-4">☸️</span>
+                        <div>
+                            <strong id="holyDayTitle">ថ្ងៃនេះជាថ្ងៃសីល!</strong>
+                            <div class="small text-white-50" id="holyDayDesc">ថ្ងៃសីល ដាច់ខែ (១៤រោច) • ពុទ្ធសាសនិកខ្មែរចូលរួមរក្សាសីល និងធ្វើបុណ្យ</div>
+                        </div>
+                    </div>
+                    <span class="badge holy-day-badge px-3 py-1.5 rounded-pill">
+                        ថ្ងៃសីល
+                    </span>
+                </div>
+
+                <!-- Fast Copy Full Line Button -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-1">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="copyFormat('full')">
+                        <i class="fa-regular fa-copy text-primary me-1.5"></i>ចម្លងថ្ងៃខែចន្ទគតិ
+                    </button>
+                    <button type="button" class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="askAiAboutLunarDate()">
+                        <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i>សួរ AI អំពីថ្ងៃនេះ
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Deconstructed 6-Cards Grid -->
+            <div class="row g-3 mb-4">
+                <!-- Weekday -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ថ្ងៃនៃសប្តាហ៍</span>
+                            <div class="lunar-metric-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="fa-solid fa-calendar-day"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardWeekday">ថ្ងៃសុក្រ</h4>
+                        <small class="text-muted" id="cardWeekdayEn">Friday</small>
+                    </div>
+                </div>
+
+                <!-- Moon Phase & Day -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ដំណាក់កាលព្រះច័ន្ទ</span>
+                            <div class="lunar-metric-icon bg-warning bg-opacity-15 text-warning">
+                                <i class="fa-solid fa-moon"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardLunarDay">១៤រោច</h4>
+                        <small class="text-muted" id="cardMoonPhase">រនោច (Waning)</small>
+                    </div>
+                </div>
+
+                <!-- Lunar Month -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ខែចន្ទគតិ</span>
+                            <div class="lunar-metric-icon bg-success bg-opacity-10 text-success">
+                                <i class="fa-solid fa-leaf"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardLunarMonth">ខែស្រាពណ៍</h4>
+                        <small class="text-muted" id="cardMonthLen">មាន ២៩ ថ្ងៃ</small>
+                    </div>
+                </div>
+
+                <!-- Zodiac Animal -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ឆ្នាំសត្វទាំង១២</span>
+                            <div class="lunar-metric-icon bg-danger bg-opacity-10 text-danger fs-5" id="cardZodiacEmoji">
+                                🐎
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardZodiacYear">ឆ្នាំមមី</h4>
+                        <small class="text-muted" id="cardZodiacEn">Horse</small>
+                    </div>
+                </div>
+
+                <!-- Sak (Stem) -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ស័កទាំង១០</span>
+                            <div class="lunar-metric-icon bg-info bg-opacity-10 text-info">
+                                <i class="fa-solid fa-dharmachakra"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardSak">អដ្ឋស័ក</h4>
+                        <small class="text-muted">ពាក្យស័កទី ៨</small>
+                    </div>
+                </div>
+
+                <!-- Buddhist Era -->
+                <div class="col-sm-4 col-6">
+                    <div class="lunar-metric-card">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted fw-semibold">ពុទ្ធសករាជ</span>
+                            <div class="lunar-metric-icon bg-purple bg-opacity-10 text-purple" style="color: #7c3aed; background: rgba(124, 58, 237, 0.1);">
+                                <i class="fa-solid fa-om"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0" id="cardBuddhistEra">ព.ស. ២៥៧០</h4>
+                        <small class="text-muted">B.E. 2570</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Formats Ready-to-Copy for Official Documents -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-copy text-success me-2"></i>ទម្រង់កាលបរិច្ឆេទសម្រាប់ចម្លងយកទៅប្រើ (Quick Copy Formats)
+                    </h5>
+                    <span class="badge bg-light text-muted border">ចុចដើម្បីចម្លង</span>
+                </div>
+                <div class="d-flex flex-column gap-3">
+                    <!-- Format 1: Official MoEYS Full -->
+                    <div class="copy-format-card">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold small text-primary">
+                                <i class="fa-solid fa-stamp me-1"></i>១. ទម្រង់លិខិតរដ្ឋបាល/MoEYS ផ្លូវការពេញលេញ
+                            </span>
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1" onclick="copyFormat('full', this)">
+                                <i class="fa-regular fa-copy me-1"></i>ចម្លង
+                            </button>
+                        </div>
+                        <div class="fw-bold text-dark" id="copyTextFull">
+                            ថ្ងៃសុក្រ ១៤រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស. ២៥៧០
+                        </div>
+                    </div>
+
+                    <!-- Format 2: Dual Date (Solar + Lunar) -->
+                    <div class="copy-format-card">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold small text-success">
+                                <i class="fa-solid fa-calendar-check me-1"></i>២. ទម្រង់កាលបរិច្ឆេទគូ (សុរិយគតិ + ចន្ទគតិ)
+                            </span>
+                            <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1" onclick="copyFormat('dual', this)">
+                                <i class="fa-regular fa-copy me-1"></i>ចម្លង
+                            </button>
+                        </div>
+                        <div class="fw-bold text-dark" id="copyTextDual">
+                            ថ្ងៃសុក្រ ទី១១ ខែកញ្ញា ឆ្នាំ២០២៦ (ត្រូវនឹងថ្ងៃសុក្រ ១៤រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស. ២៥៧០)
+                        </div>
+                    </div>
+
+                    <!-- Format 3: Official Header -->
+                    <div class="copy-format-card">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold small text-warning text-dark">
+                                <i class="fa-solid fa-building-columns me-1"></i>៣. ទម្រង់ក្បាលលិខិតរដ្ឋបាល (Official Header)
+                            </span>
+                            <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3 py-1 text-dark" onclick="copyFormat('header', this)">
+                                <i class="fa-regular fa-copy me-1"></i>ចម្លង
+                            </button>
+                        </div>
+                        <div class="fw-bold text-dark" id="copyTextHeader">
+                            រាជធានីភ្នំពេញ, ថ្ងៃសុក្រ ១៤រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស. ២៥៧០
+                        </div>
+                    </div>
+
+                    <!-- Format 4: Short Compact -->
+                    <div class="copy-format-card">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold small text-secondary">
+                                <i class="fa-solid fa-compress me-1"></i>៤. ទម្រង់ចន្ទគតិសង្ខេប
+                            </span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1" onclick="copyFormat('compact', this)">
+                                <i class="fa-regular fa-copy me-1"></i>ចម្លង
+                            </button>
+                        </div>
+                        <div class="fw-bold text-dark" id="copyTextCompact">
+                            សុក្រ ១៤រោច ខែស្រាពណ៍ ព.ស.២៥៧០
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Dedicated Excel Converter & Calendar Export Suite Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac !important;">
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 46px; height: 46px; background: #16a34a; color: white; font-size: 1.4rem;">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-success mb-0">ទាញយកជាឯកសារ Excel (Excel Converter Tool)</h5>
+                            <small class="text-muted">បម្លែងថ្ងៃខែសុរិយគតិ ទៅជាចន្ទគតិក្នុង Microsoft Excel ផ្ទាល់</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-success px-3 py-1.5 rounded-pill fw-bold">
+                        <i class="fa-solid fa-bolt me-1"></i>Offline 100%
+                    </span>
+                </div>
+
+                <p class="text-dark small mb-3" style="line-height: 1.6;">
+                    លោកអ្នកអាចទាញយកឯកសារ Excel នេះទៅប្រើប្រាស់លើកុំព្យូទ័រ (Offline) ដោយមិនបាច់ភ្ជាប់អ៊ីនធឺណិត។ គ្រាន់តែវាយបញ្ចូលថ្ងៃខែសុរិយគតិក្នុងក្រឡា Cell ណាមួយ វានឹងចេញថ្ងៃខែចន្ទគតិ ថ្ងៃសីល ឆ្នាំសត្វ ស័ក ព.ស. ដោយស្វ័យប្រវត្តិភ្លាមៗដូចនៅលើ Web Browser!
+                </p>
+
+                <!-- Year Range Selector Bar -->
+                <div class="bg-white p-3 rounded-3 border border-success border-opacity-25 mb-3 shadow-none">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                        <label class="form-label fw-bold text-dark small mb-0">
+                            <i class="fa-solid fa-sliders text-success me-1"></i> កំណត់ចន្លោះឆ្នាំសម្រាប់ឯកសារ Excel (Year Range)៖
+                        </label>
+                        <div class="small text-muted" id="yearRangeSummary">
+                            សរុប <strong class="text-success" id="lblTotalYears">36</strong> ឆ្នាំ • ទំហំប្រមាណ <strong id="lblEstSize">~1.3 MB</strong>
+                        </div>
+                    </div>
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-5 col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted small fw-semibold">ពីឆ្នាំ</span>
+                                <input type="number" id="inputStartYear" class="form-control fw-bold text-center" value="2000" min="1950" max="2060" oninput="onYearRangeInputChanged()">
+                            </div>
+                        </div>
+                        <div class="col-sm-5 col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted small fw-semibold">ដល់ឆ្នាំ</span>
+                                <input type="number" id="inputEndYear" class="form-control fw-bold text-center" value="2035" min="1950" max="2060" oninput="onYearRangeInputChanged()">
+                            </div>
+                        </div>
+                        <div class="col-sm-2 col-12">
+                            <button type="button" class="btn btn-outline-success btn-sm w-100 py-1 fw-semibold" onclick="setPresetYearRange(2000, 2035)" title="ស្តង់ដារសាលារៀន">
+                                ២០០០-២០៣៥
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Quick Preset Badges -->
+                    <div class="d-flex flex-wrap align-items-center gap-1.5 pt-1 border-top">
+                        <span class="small text-muted me-1" style="font-size: 0.75rem;">ជម្រើសរហ័ស៖</span>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2 rounded-pill" onclick="setPresetYearRange(2005, 2026)">
+                            🎓 សិស្សបច្ចុប្បន្ន (2005-2026)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-success py-0.5 px-2 rounded-pill fw-bold" onclick="setPresetYearRange(2000, 2035)">
+                            🏫 ស្តង់ដារ (2000-2035)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2 rounded-pill" onclick="setPresetYearRange(1970, 2030)">
+                            👨‍🏫 គ្រូ & សិស្ស (1970-2030)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2 rounded-pill" onclick="setPresetYearRange(1980, 2040)">
+                            🌐 គ្រប់ជំនាន់ (1980-2040)
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2 rounded-pill" onclick="setPresetYearRange(2020, 2030)">
+                            ⚡ លឿនរហ័ស (2020-2030)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <a id="btnCardDownloadExcel" href="{% url 'tool_lunar_download_excel_tool' %}?start_year=2000&end_year=2035" class="btn btn-success w-100 py-2.5 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                            <i class="fa-solid fa-file-arrow-down fs-5"></i>
+                            <span>ទាញយក Excel (ឆ្នាំ <span id="lblBtnStartYear">2000</span> - <span id="lblBtnEndYear">2035</span>)</span>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-outline-success w-100 py-2.5 rounded-3 fw-bold bg-white d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#batchExcelModal">
+                            <i class="fa-solid fa-file-import fs-5 text-success"></i>
+                            <span>បម្លែងបញ្ជីថ្ងៃខែពី Excel (Batch)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top border-success border-opacity-25">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="small fw-semibold text-muted">ទាញយកប្រតិទិនជា Excel៖</span>
+                        <a id="btnLinkExportMonth" href="{% url 'tool_lunar_export_calendar_excel' %}" class="badge bg-white text-success border border-success text-decoration-none py-1.5 px-2.5 rounded-pill">
+                            <i class="fa-regular fa-calendar-days me-1"></i>ខែនេះ (.xlsx)
+                        </a>
+                        <a id="btnLinkExportYear" href="{% url 'tool_lunar_export_calendar_excel' %}" class="badge bg-white text-primary border border-primary text-decoration-none py-1.5 px-2.5 rounded-pill">
+                            <i class="fa-solid fa-calendar me-1"></i>ពេញមួយឆ្នាំ (.xlsx)
+                        </a>
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-muted" data-bs-toggle="modal" data-bs-target="#vbaCodeModal">
+                        <i class="fa-solid fa-code me-1"></i>រូបមន្ត & VBA Macro
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. Astrological & Cultural Knowledge Note -->
+            <div class="card border-0 bg-light rounded-4 p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-20 text-warning d-flex align-items-center justify-content-center p-3" style="width: 48px; height: 48px; font-size: 1.4rem;">
+                        <i class="fa-solid fa-landmark"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">ចំណេះដឹងអំពីប្រតិទិនចន្ទគតិខ្មែរ (Chhankitek)</h6>
+                        <p class="text-muted small mb-0">
+                            ប្រតិទិនចន្ទគតិខ្មែរត្រូវបានគណនាតាមចលនារបស់ព្រះច័ន្ទជុំវិញផែនដី ស្របតាមក្បួនតារាសាស្ត្រហោរាសាស្ត្របុរាណ ហៅថា ក្បួនហារគុណ អវមាន និងពោធិ៍ថី។ មួយឆ្នាំមាន ១២ ខែ (ខែសេសមាន ២៩ថ្ងៃ ខែគូមាន ៣០ថ្ងៃ)។ រៀងរាល់ ២ ទៅ ៣ ឆ្នាំម្តង នឹងមានឆ្នាំ <strong>អធិកមាស</strong> (បន្ថែមខែអាសាឍមួយទៀត ហៅថា ទុតិយាសាឍ មាន ៣៨៤ ថ្ងៃ) ឬឆ្នាំ <strong>អធិកវារ</strong> (បន្ថែមមួយថ្ងៃនៅខែជេស្ឋ មាន ៣៥៥ ថ្ងៃ) ដើម្បីឱ្យប្រតិទិនចន្ទគតិដើរទន្ទឹមគ្នាជាមួយរដូវកាលសុរិយគតិ។
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Batch Excel Upload & Conversion -->
+<div class="modal fade" id="batchExcelModal" tabindex="-1" aria-labelledby="batchExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom py-3 px-4 bg-success text-white rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-file-excel fs-4"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="batchExcelModalLabel">បម្លែងបញ្ជីថ្ងៃខែពីឯកសារ Excel (Batch Converter)</h6>
+                        <small class="text-white-50">បន្ថែមថ្ងៃខែចន្ទគតិ ឆ្នាំសត្វ ស័ក ព.ស. ចូលក្នុង Excel របស់អ្នក</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'tool_lunar_batch_convert_excel' %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដែលមានជួរឈរថ្ងៃខែឆ្នាំកំណើតសិស្ស ឬបុគ្គលិក។ ប្រព័ន្ធនឹងគណនាកាលបរិច្ឆេទចន្ទគតិ និងបន្ថែម ៤ ជួរឈរថ្មីៗដោយស្វ័យប្រវត្តិ។
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">ជ្រើសរើសឯកសារ Excel (.xlsx)</label>
+                        <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info py-2 px-3 small mb-0 rounded-3">
+                        <i class="fa-solid fa-circle-info me-1"></i> <strong>ចំណាំ៖</strong> ប្រព័ន្ធនឹងរក្សាទុកទិន្នន័យដើមរបស់អ្នក និងបន្ថែម ៤ ជួរឈរថ្មី (កាលបរិច្ឆេទចន្ទគតិពេញលេញ, ឆ្នាំសត្វ & ស័ក, ពុទ្ធសករាជ, ថ្ងៃសីល)។
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-2 px-4 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 fw-bold">
+                        <i class="fa-solid fa-bolt me-1"></i> បម្លែង និងទាញយក Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: VBA Macro Code & Formula Guide -->
+<div class="modal fade" id="vbaCodeModal" tabindex="-1" aria-labelledby="vbaCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom py-3 px-4 bg-dark text-white rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-code text-warning fs-4"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="vbaCodeModalLabel">រូបមន្ត Excel & កូដ VBA (Formula & Macro Guide)</h6>
+                        <small class="text-white-50">របៀបប្រើរូបមន្តចន្ទគតិក្នុង Microsoft Excel</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <h6 class="fw-bold text-primary"><i class="fa-solid fa-calculator me-1"></i>១. របៀបប្រើរូបមន្តក្នុង Excel (Native Formula - មិនបាច់បើក Macro)</h6>
+                <p class="text-muted small">
+                    នៅក្នុងឯកសារ Excel ដែលទាញយកពី SchoolSM រូបមន្តស្វ័យប្រវត្តត្រូវបានភ្ជាប់រួចជាស្រេច តាមរយៈអនុគមន៍ <code>INDEX / MATCH</code> ឬ <code>VLOOKUP</code> ភ្ជាប់ទៅតារាង <code>ទិន្នន័យចន្ទគតិ_DB</code>។
+                </p>
+                <div class="bg-light p-3 rounded-3 font-monospace small mb-3 border">
+                    =INDEX(ទិន្នន័យចន្ទគតិ_DB!E:E, MATCH(C6, ទិន្នន័យចន្ទគតិ_DB!A:A, 0))
+                </div>
+
+                <h6 class="fw-bold text-success"><i class="fa-solid fa-laptop-code me-1"></i>២. កូដ VBA Macro សម្រាប់បង្កើត Function <code>=CHHANKITEK(A2)</code></h6>
+                <p class="text-muted small">
+                    លោកអ្នកអាចចុច Alt + F11 ក្នុង Excel រួច Insert Module និងបិទភ្ជាប់ (Paste) កូដខាងក្រោម ដើម្បីប្រើប្រាស់អនុគមន៍ផ្ទាល់ខ្លួន <code>=CHHANKITEK(ក្រឡាថ្ងៃខែ)</code> បានគ្រប់ទីកន្លែង៖
+                </p>
+                <pre class="bg-dark text-light p-3 rounded-3 small overflow-auto" style="max-height: 200px;"><code>' Khmer Lunar Calendar Function for Excel VBA
+Public Function CHHANKITEK(dInput As Variant) As String
+    On Error GoTo ErrHandler
+    Dim wsDB As Worksheet
+    Set wsDB = ThisWorkbook.Sheets("ទិន្នន័យចន្ទគតិ_DB")
+    Dim r As Range, matchRow As Long
+    Set r = wsDB.Range("A:A")
+    matchRow = Application.WorksheetFunction.Match(CLng(CDate(dInput)), r, 0)
+    CHHANKITEK = wsDB.Cells(matchRow, 5).Value
+    Exit Function
+ErrHandler:
+    CHHANKITEK = "កាលបរិច្ឆេទមិនត្រឹមត្រូវ"
+End Function</code></pre>
+            </div>
+            <div class="modal-footer border-top py-2 px-4 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-4" data-bs-dismiss="modal">យល់ព្រម</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Configure Year Range & Download Excel -->
+<div class="modal fade" id="configureExcelYearModal" tabindex="-1" aria-labelledby="configureExcelYearModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom py-3 px-4 bg-success text-white rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-sliders fs-4"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="configureExcelYearModalLabel">កំណត់ចន្លោះឆ្នាំសម្រាប់ទាញយក Excel (Year Range)</h6>
+                        <small class="text-white-50">កំណត់ពីឆ្នាំណា ដល់ឆ្នាំណា តាមតម្រូវការជាក់ស្តែង</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">
+                    ប្រព័ន្ធនឹងបង្កើតឯកសារ Excel ដែលមានរូបមន្តស្វ័យប្រវត្តិ ព្រមទាំងគណនារាល់ថ្ងៃទាំងអស់ក្នុងចន្លោះឆ្នាំដែលលោកអ្នកបានកំណត់ សម្រាប់ប្រើប្រាស់បម្លែងកាលបរិច្ឆេទដោយមិនបាច់ភ្ជាប់អ៊ីនធឺណិត។
+                </p>
+
+                <!-- Year Input Grid -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-dark">ចាប់ពីឆ្នាំ (Start Year)៖</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-regular fa-calendar"></i></span>
+                            <input type="number" id="modalStartYear" class="form-control form-control-lg fw-bold text-center" value="2000" min="1950" max="2060" oninput="onModalYearInputChanged()">
+                        </div>
+                        <div class="form-text small">គាំទ្រចាប់ពីឆ្នាំ ១៩៥០</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-dark">ដល់ឆ្នាំ (End Year)៖</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="fa-regular fa-calendar-check"></i></span>
+                            <input type="number" id="modalEndYear" class="form-control form-control-lg fw-bold text-center" value="2035" min="1950" max="2060" oninput="onModalYearInputChanged()">
+                        </div>
+                        <div class="form-text small">គាំទ្ររហូតដល់ឆ្នាំ ២០៦០</div>
+                    </div>
+                </div>
+
+                <!-- Quick Preset Selection -->
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted mb-1.5">ជម្រើសកំណត់លឿន (Quick Presets)៖</label>
+                    <div class="d-flex flex-wrap gap-1.5">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5" onclick="setPresetYearRange(2005, 2026)">
+                            🎓 សិស្សបច្ចុប្បន្ន (2005-2026)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill py-1 px-2.5 fw-bold" onclick="setPresetYearRange(2000, 2035)">
+                            🏫 ស្តង់ដារសាលា (2000-2035)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5" onclick="setPresetYearRange(1970, 2030)">
+                            👨‍🏫 គ្រូ & សិស្ស (1970-2030)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5" onclick="setPresetYearRange(1980, 2040)">
+                            🌐 គ្រប់ជំនាន់ (1980-2040)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5" onclick="setPresetYearRange(2020, 2030)">
+                            ⚡ លឿនរហ័ស (2020-2030)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Summary Box -->
+                <div class="bg-light p-3 rounded-3 border">
+                    <div class="row text-center g-2">
+                        <div class="col-4 border-end">
+                            <span class="text-muted d-block" style="font-size: 0.72rem;">ចំនួនឆ្នាំ</span>
+                            <strong class="text-dark fs-6" id="modalTotalYears">36</strong> <span class="small text-muted">ឆ្នាំ</span>
+                        </div>
+                        <div class="col-4 border-end">
+                            <span class="text-muted d-block" style="font-size: 0.72rem;">ចំនួនថ្ងៃសរុប</span>
+                            <strong class="text-dark fs-6" id="modalTotalDays">13,149</strong> <span class="small text-muted">ថ្ងៃ</span>
+                        </div>
+                        <div class="col-4">
+                            <span class="text-muted d-block" style="font-size: 0.72rem;">ទំហំប្រមាណ</span>
+                            <strong class="text-success fs-6" id="modalEstSize">~1.3 MB</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top py-2.5 px-4 bg-light rounded-bottom-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                <a id="btnModalDownloadExcel" href="{% url 'tool_lunar_download_excel_tool' %}?start_year=2000&end_year=2035" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="fa-solid fa-file-arrow-down me-1.5"></i> ទាញយក Excel (<span id="modalBtnStartYear">2000</span> - <span id="modalBtnEndYear">2035</span>)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include Khmer Lunar Engine & AI Assistant JS -->
+<script src="{% static 'js/khmer_lunar.js' %}"></script>
+<script src="{% static 'js/tool_ai_assistant.js' %}"></script>
+
+<script>
+(function () {
+    'use strict';
+
+    // State Variables
+    let currentSelectedDate = '{{ today_str|default:"2026-09-11" }}';
+    let currentCalendarViewDate = new Date(currentSelectedDate);
+    let currentLunarData = null;
+
+    const EN_WEEKDAYS = {
+        'ថ្ងៃចន្ទ': 'Monday', 'ថ្ងៃអង្គារ': 'Tuesday', 'ថ្ងៃពុធ': 'Wednesday',
+        'ថ្ងៃព្រហស្បតិ៍': 'Thursday', 'ថ្ងៃសុក្រ': 'Friday', 'ថ្ងៃសៅរ៍': 'Saturday', 'ថ្ងៃអាទិត្យ': 'Sunday'
+    };
+
+    const EN_ZODIAC = {
+        'ជូត': 'Rat', 'ឆ្លូវ': 'Ox', 'ខាល': 'Tiger', 'ថោះ': 'Rabbit',
+        'រោង': 'Dragon', 'ម្សាញ់': 'Snake', 'មមី': 'Horse', 'មមែ': 'Goat',
+        'វក': 'Monkey', 'រកា': 'Rooster', 'ច': 'Dog', 'កុរ': 'Pig'
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputEl = document.getElementById('solarDateInput');
+        if (inputEl && inputEl.value) {
+            updateAll(inputEl.value);
+        } else {
+            setTodayDate();
+        }
+    });
+
+    /**
+     * Updates lunar converter UI from a solar date string (YYYY-MM-DD or parseable)
+     */
+    function updateAll(solarDateStr) {
+        if (!solarDateStr) return;
+        currentSelectedDate = solarDateStr;
+
+        // 1. Calculate via client-side KhmerLunar engine
+        let data = null;
+        if (window.KhmerLunar && typeof window.KhmerLunar.getLunarDetails === 'function') {
+            data = window.KhmerLunar.getLunarDetails(solarDateStr);
+        }
+
+        if (!data) {
+            // Fallback: fetch via backend API
+            fetch(`/tools/api/solar-to-lunar/?date=${encodeURIComponent(solarDateStr)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success && res.data) {
+                        applyLunarData(res.data);
+                    }
+                })
+                .catch(err => console.error('API lunar error:', err));
+            return;
+        }
+
+        applyLunarData(data);
+    }
+
+    /**
+     * Renders lunar details to the DOM
+     */
+    function applyLunarData(data) {
+        currentLunarData = data;
+
+        // Inputs sync
+        const inputEl = document.getElementById('solarDateInput');
+        if (inputEl && inputEl.value !== data.solarDate) {
+            inputEl.value = data.solarDate;
+        }
+
+        const textInputEl = document.getElementById('solarTextInput');
+        if (textInputEl) {
+            textInputEl.value = data.solarDate;
+        }
+
+        // Dropdowns sync
+        const selDay = document.getElementById('selectDay');
+        const selMonth = document.getElementById('selectMonth');
+        const selYear = document.getElementById('selectYear');
+        if (selDay) selDay.value = data.solarDay;
+        if (selMonth) selMonth.value = data.solarMonth;
+        if (selYear) selYear.value = data.solarYear;
+
+        // Hero Card
+        document.getElementById('lunarFullDisplay').textContent = data.fullString;
+        document.getElementById('solarFullDisplay').textContent = data.solarFullKh;
+        document.getElementById('solarIsoDisplay').textContent = `(${data.solarDate})`;
+        document.getElementById('lunarBadgeEra').textContent = `ព.ស. ${data.buddhistEraKh}`;
+        document.getElementById('lunarYearTypeBadge').textContent = data.yearTypeLabel;
+        document.getElementById('moonVisualIcon').textContent = data.moonIcon || '🌕';
+
+        // Holy Day banner
+        const holyBanner = document.getElementById('holyDayBanner');
+        if (data.isHolyDay) {
+            holyBanner.style.display = 'flex';
+            document.getElementById('holyDayTitle').textContent = `ថ្ងៃនេះជា${data.holyDayLabel || 'ថ្ងៃសីល'}!`;
+            document.getElementById('holyDayDesc').textContent = `${data.lunarDay} ${data.lunarMonth} • ពុទ្ធសាសនិកខ្មែរចូលរួមរក្សាសីល និងធ្វើបុណ្យ`;
+        } else {
+            holyBanner.style.display = 'none';
+        }
+
+        // Deconstructed 6 Cards
+        document.getElementById('cardWeekday').textContent = data.dayOfWeek;
+        document.getElementById('cardWeekdayEn').textContent = EN_WEEKDAYS[data.dayOfWeek] || '';
+        document.getElementById('cardLunarDay').textContent = data.lunarDay;
+        document.getElementById('cardMoonPhase').textContent = `${data.moonPhase === 'កើត' ? 'ខ្នើត (Waxing)' : 'រនោច (Waning)'} • ថ្ងៃទី ${data.moonNumKh}`;
+        document.getElementById('cardLunarMonth').textContent = `ខែ${data.lunarMonth}`;
+        document.getElementById('cardMonthLen').textContent = `មាន ${data.monthLen || 30} ថ្ងៃ`;
+        document.getElementById('cardZodiacYear').textContent = data.zodiacFull;
+        document.getElementById('cardZodiacEmoji').textContent = data.zodiacEmoji || '✨';
+        document.getElementById('cardZodiacEn').textContent = EN_ZODIAC[data.zodiacYear] || '';
+        document.getElementById('cardSak').textContent = data.stem;
+        document.getElementById('cardBuddhistEra').textContent = `ព.ស. ${data.buddhistEraKh}`;
+
+        // Copy strings
+        document.getElementById('copyTextFull').textContent = data.fullString;
+        document.getElementById('copyTextDual').textContent = data.dualDateString || `${data.solarFullKh} (ត្រូវនឹង${data.fullString})`;
+        document.getElementById('copyTextHeader').textContent = data.officialHeaderString || `រាជធានីភ្នំពេញ, ${data.fullString}`;
+        document.getElementById('copyTextCompact').textContent = `${data.dowShort} ${data.lunarDay} ខែ${data.lunarMonth} ព.ស.${data.buddhistEraKh}`;
+
+        // Synchronize Excel download links
+        const excelToolBtn = document.getElementById('btnDownloadExcelTool');
+        if (excelToolBtn) {
+            excelToolBtn.href = `{% url 'tool_lunar_download_excel_tool' %}?date=${encodeURIComponent(data.solarDate)}`;
+        }
+        const cardExcelBtn = document.getElementById('btnCardDownloadExcel');
+        if (cardExcelBtn) {
+            cardExcelBtn.href = `{% url 'tool_lunar_download_excel_tool' %}?date=${encodeURIComponent(data.solarDate)}`;
+        }
+        const exportMonthBtn = document.getElementById('btnExportMonthExcel');
+        if (exportMonthBtn) {
+            exportMonthBtn.href = `{% url 'tool_lunar_export_calendar_excel' %}?year=${data.solarYear}&month=${data.solarMonth}`;
+        }
+        const linkExportMonth = document.getElementById('btnLinkExportMonth');
+        if (linkExportMonth) {
+            linkExportMonth.href = `{% url 'tool_lunar_export_calendar_excel' %}?year=${data.solarYear}&month=${data.solarMonth}`;
+            linkExportMonth.innerHTML = `<i class="fa-regular fa-calendar-days me-1"></i>ខែ${data.solarMonthKh} (${data.solarMonth}/${data.solarYear})`;
+        }
+        const exportYearBtn = document.getElementById('btnExportYearExcel');
+        if (exportYearBtn) {
+            exportYearBtn.href = `{% url 'tool_lunar_export_calendar_excel' %}?year=${data.solarYear}`;
+        }
+        const linkExportYear = document.getElementById('btnLinkExportYear');
+        if (linkExportYear) {
+            linkExportYear.href = `{% url 'tool_lunar_export_calendar_excel' %}?year=${data.solarYear}`;
+            linkExportYear.innerHTML = `<i class="fa-solid fa-calendar me-1"></i>ពេញមួយឆ្នាំ ${data.solarYear}`;
+        }
+
+        // Synchronize and render calendar grid
+        currentCalendarViewDate = new Date(data.solarYear, data.solarMonth - 1, 1);
+        renderCalendarGrid(data.solarYear, data.solarMonth, data.solarDay);
+    }
+
+    /**
+     * Builds and displays the Monthly Visual Calendar Grid
+     */
+    function renderCalendarGrid(year, month, activeDay) {
+        const gridEl = document.getElementById('calendarDaysGrid');
+        if (!gridEl) return;
+        gridEl.innerHTML = '';
+
+        const monthNamesKh = [
+            'មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា',
+            'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'
+        ];
+
+        const monthLabel = document.getElementById('calMonthLabel');
+        if (monthLabel) {
+            monthLabel.textContent = `ខែ${monthNamesKh[month - 1]} ឆ្នាំ${window.KhmerLunar.toKhmerDigits(year)} (${month}/${year})`;
+        }
+
+        const firstDayOfMonth = new Date(year, month - 1, 1);
+        const daysInCurrentMonth = new Date(year, month, 0).getDate();
+
+        // JS day: 0=Sun, 1=Mon, ..., 6=Sat
+        // Cambodian grid starts with Monday (index 0)
+        let firstDayIndex = (firstDayOfMonth.getDay() + 6) % 7;
+
+        // Days from previous month
+        const prevMonthDays = new Date(year, month - 1, 0).getDate();
+        for (let i = firstDayIndex - 1; i >= 0; i--) {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day-cell other-month';
+            cell.innerHTML = `<span class="cal-solar-num">${prevMonthDays - i}</span>`;
+            gridEl.appendChild(cell);
+        }
+
+        // Days of current month
+        for (let d = 1; d <= daysInCurrentMonth; d++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const details = window.KhmerLunar.getLunarDetails(dateStr);
+
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day-cell';
+            if (d === activeDay) {
+                cell.classList.add('active-day');
+            }
+            if (details.isHolyDay) {
+                cell.classList.add('is-holy');
+                cell.setAttribute('title', details.holyDayLabel || 'ថ្ងៃសីល');
+            }
+
+            cell.innerHTML = `
+                <span class="cal-solar-num">${d}</span>
+                <span class="cal-lunar-text">${details.lunarDay}</span>
+            `;
+
+            cell.addEventListener('click', function () {
+                updateAll(dateStr);
+            });
+
+            gridEl.appendChild(cell);
+        }
+    }
+
+    // Step calendar view month
+    window.stepCalendarMonth = function (delta) {
+        currentCalendarViewDate.setMonth(currentCalendarViewDate.getMonth() + delta);
+        const y = currentCalendarViewDate.getFullYear();
+        const m = currentCalendarViewDate.getMonth() + 1;
+        renderCalendarGrid(y, m, y === currentLunarData?.solarYear && m === currentLunarData?.solarMonth ? currentLunarData.solarDay : -1);
+    };
+
+    // Navigation steppers
+    window.stepDate = function (unit, delta) {
+        const curDate = new Date(currentSelectedDate);
+        if (isNaN(curDate.getTime())) return;
+
+        if (unit === 'year') {
+            curDate.setFullYear(curDate.getFullYear() + delta);
+        } else if (unit === 'month') {
+            curDate.setMonth(curDate.getMonth() + delta);
+        } else if (unit === 'day') {
+            curDate.setDate(curDate.getDate() + delta);
+        }
+
+        const y = curDate.getFullYear();
+        const m = String(curDate.getMonth() + 1).padStart(2, '0');
+        const d = String(curDate.getDate()).padStart(2, '0');
+        updateAll(`${y}-${m}-${d}`);
+    };
+
+    // Set to Today
+    window.setTodayDate = function () {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        updateAll(`${y}-${m}-${d}`);
+    };
+
+    // Jump to specific date string
+    window.jumpToDate = function (dateStr) {
+        updateAll(dateStr);
+    };
+
+    // Event Handler: Solar Date picker input
+    window.onSolarDateChanged = function (val) {
+        if (val) updateAll(val);
+    };
+
+    // Event Handler: Text input typing
+    window.onSolarTextTyping = function (val) {
+        if (!val || val.length < 8) return;
+        const parsed = window.KhmerLunar.parseDate(val);
+        if (parsed && !isNaN(parsed.getTime())) {
+            const y = parsed.getFullYear();
+            const m = String(parsed.getMonth() + 1).padStart(2, '0');
+            const d = String(parsed.getDate()).padStart(2, '0');
+            updateAll(`${y}-${m}-${d}`);
+        }
+    };
+
+    window.parseAndApplyText = function () {
+        const val = document.getElementById('solarTextInput')?.value;
+        if (val) {
+            window.onSolarTextTyping(val);
+        }
+    };
+
+    // Event Handler: Dropdown Selects Changed
+    window.onSelectDropdownChanged = function () {
+        const day = document.getElementById('selectDay')?.value;
+        const month = document.getElementById('selectMonth')?.value;
+        const year = document.getElementById('selectYear')?.value;
+        if (day && month && year) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            updateAll(dateStr);
+        }
+    };
+
+    // Copy to clipboard helper
+    window.copyFormat = function (type, btnEl) {
+        let text = '';
+        if (type === 'full') {
+            text = document.getElementById('copyTextFull')?.textContent?.trim();
+        } else if (type === 'dual') {
+            text = document.getElementById('copyTextDual')?.textContent?.trim();
+        } else if (type === 'header') {
+            text = document.getElementById('copyTextHeader')?.textContent?.trim();
+        } else if (type === 'compact') {
+            text = document.getElementById('copyTextCompact')?.textContent?.trim();
+        }
+
+        if (!text) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            if (btnEl) {
+                const origHtml = btnEl.innerHTML;
+                btnEl.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i>បានចម្លង!';
+                btnEl.classList.remove('btn-outline-primary', 'btn-outline-success', 'btn-outline-warning', 'btn-outline-secondary');
+                btnEl.classList.add('btn-success', 'text-white');
+                setTimeout(() => {
+                    btnEl.innerHTML = origHtml;
+                    btnEl.classList.remove('btn-success', 'text-white');
+                }, 2000);
+            } else {
+                // Toast notification
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 p-3';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="toast show align-items-center text-white bg-success border-0 shadow-lg" role="alert">
+                        <div class="d-flex">
+                            <div class="toast-body fw-bold">
+                                <i class="fa-solid fa-circle-check me-2"></i>បានចម្លងកាលបរិច្ឆេទចន្ទគតិជោគជ័យ!
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2500);
+            }
+        }).catch(err => {
+            alert('មិនអាចចម្លងបានទេ: ' + err);
+        });
+    };
+
+    // Global year range state (Start year to End year)
+    let selectedStartYear = 2000;
+    let selectedEndYear = 2035;
+
+    window.setPresetYearRange = function (start, end) {
+        selectedStartYear = start;
+        selectedEndYear = end;
+        syncYearRangeUI();
+    };
+
+    window.onYearRangeInputChanged = function () {
+        const s = parseInt(document.getElementById('inputStartYear')?.value || 2000, 10);
+        const e = parseInt(document.getElementById('inputEndYear')?.value || 2035, 10);
+        selectedStartYear = isNaN(s) ? 2000 : s;
+        selectedEndYear = isNaN(e) ? 2035 : e;
+        syncYearRangeUI(false);
+    };
+
+    window.onModalYearInputChanged = function () {
+        const s = parseInt(document.getElementById('modalStartYear')?.value || 2000, 10);
+        const e = parseInt(document.getElementById('modalEndYear')?.value || 2035, 10);
+        selectedStartYear = isNaN(s) ? 2000 : s;
+        selectedEndYear = isNaN(e) ? 2035 : e;
+        syncYearRangeUI(true);
+    };
+
+    function syncYearRangeUI(fromModal = false) {
+        let s = Math.min(selectedStartYear, selectedEndYear);
+        let e = Math.max(selectedStartYear, selectedEndYear);
+        if (s < 1950) s = 1950;
+        if (e > 2060) e = 2060;
+
+        const totalYears = e - s + 1;
+        const totalDays = Math.round(totalYears * 365.25);
+        const estMb = (totalYears * 0.034 + 0.08).toFixed(1);
+
+        // Update Card UI
+        const inputS = document.getElementById('inputStartYear');
+        const inputE = document.getElementById('inputEndYear');
+        if (inputS && !fromModal) inputS.value = s;
+        if (inputE && !fromModal) inputE.value = e;
+        if (inputS && fromModal) inputS.value = s;
+        if (inputE && fromModal) inputE.value = e;
+
+        const lblTotalYears = document.getElementById('lblTotalYears');
+        if (lblTotalYears) lblTotalYears.textContent = totalYears;
+        const lblEstSize = document.getElementById('lblEstSize');
+        if (lblEstSize) lblEstSize.textContent = `~${estMb} MB`;
+        const lblBtnStartYear = document.getElementById('lblBtnStartYear');
+        if (lblBtnStartYear) lblBtnStartYear.textContent = s;
+        const lblBtnEndYear = document.getElementById('lblBtnEndYear');
+        if (lblBtnEndYear) lblBtnEndYear.textContent = e;
+
+        // Update Modal UI
+        const mS = document.getElementById('modalStartYear');
+        const mE = document.getElementById('modalEndYear');
+        if (mS) mS.value = s;
+        if (mE) mE.value = e;
+        const mYears = document.getElementById('modalTotalYears');
+        if (mYears) mYears.textContent = totalYears;
+        const mDays = document.getElementById('modalTotalDays');
+        if (mDays) mDays.textContent = totalDays.toLocaleString();
+        const mSize = document.getElementById('modalEstSize');
+        if (mSize) mSize.textContent = `~${estMb} MB`;
+        const mBtnStart = document.getElementById('modalBtnStartYear');
+        if (mBtnStart) mBtnStart.textContent = s;
+        const mBtnEnd = document.getElementById('modalBtnEndYear');
+        if (mBtnEnd) mBtnEnd.textContent = e;
+
+        // Update download links
+        const curDate = currentSelectedDate || '2026-09-11';
+        const cardBtn = document.getElementById('btnCardDownloadExcel');
+        if (cardBtn) {
+            cardBtn.href = `{% url 'tool_lunar_download_excel_tool' %}?start_year=${s}&end_year=${e}&date=${encodeURIComponent(curDate)}`;
+        }
+        const toolBtn = document.getElementById('btnDownloadExcelTool');
+        if (toolBtn) {
+            toolBtn.href = `{% url 'tool_lunar_download_excel_tool' %}?start_year=${s}&end_year=${e}&date=${encodeURIComponent(curDate)}`;
+        }
+        const modalBtn = document.getElementById('btnModalDownloadExcel');
+        if (modalBtn) {
+            modalBtn.href = `{% url 'tool_lunar_download_excel_tool' %}?start_year=${s}&end_year=${e}&date=${encodeURIComponent(curDate)}`;
+        }
+    }
+
+    // Call initial sync
+    syncYearRangeUI();
+
+    // AI Assistant Question Helper
+    window.askAiAboutLunarDate = function () {
+        if (!currentLunarData) return;
+        const query = `${currentLunarData.fullString} (ត្រូវនឹង ${currentLunarData.solarFullKh})`;
+        if (window.ToolAiAssistant && typeof window.ToolAiAssistant.run === 'function') {
+            window.ToolAiAssistant.run({
+                toolName: 'khmer_lunar_converter',
+                action: 'explain',
+                content: query,
+                title: `🌕 Gemini AI: ការពន្យល់អំពី ${currentLunarData.lunarDay} ${currentLunarData.lunarMonth}`
+            });
+        } else {
+            alert(query);
+        }
+    };
+
+})();
+</script>
+{% endblock %}

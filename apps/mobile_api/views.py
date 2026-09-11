@@ -1962,6 +1962,7 @@ class MobileStudentEnrollAPIView(APIView):
             'MOEYS_INDIVIDUAL': 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ MoEYS (Individual 35 Columns)',
             'BOTH': 'អនុញ្ញាតជម្រើសទាំងពីរ (Both Modes Available)',
         }
+        is_reg_allowed, reg_reason, reg_status = school_profile.is_student_registration_allowed()
 
         moeys_choices = {
             'orphan_status': [
@@ -2043,10 +2044,40 @@ class MobileStudentEnrollAPIView(APIView):
             'school_code': school_profile.school_code,
             'registration_mode': reg_mode,
             'registration_mode_display': reg_mode_display_map.get(reg_mode, reg_mode),
+            'registration_period': {
+                'is_allowed': is_reg_allowed,
+                'status_code': reg_status,
+                'message': reg_reason,
+                'is_open': school_profile.is_registration_open,
+                'start_date': school_profile.registration_start_date.isoformat() if school_profile.registration_start_date else None,
+                'end_date': school_profile.registration_end_date.isoformat() if school_profile.registration_end_date else None,
+                'closed_message': school_profile.registration_closed_message,
+            },
             'moeys_choices': moeys_choices,
         })
 
     def post(self, request):
+        # Check if student registration is currently authorized by Admin for this period
+        school_profile = SchoolProfile.get_settings()
+        is_staff = request.user and request.user.is_authenticated and (
+            request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'superadmin']
+        )
+        if not is_staff:
+            is_allowed, reason, status_code = school_profile.is_student_registration_allowed()
+            if not is_allowed:
+                return Response({
+                    'status': 'error',
+                    'status_code': status_code,
+                    'message': reason,
+                    'registration_period': {
+                        'is_allowed': False,
+                        'status_code': status_code,
+                        'message': reason,
+                        'start_date': school_profile.registration_start_date.isoformat() if school_profile.registration_start_date else None,
+                        'end_date': school_profile.registration_end_date.isoformat() if school_profile.registration_end_date else None,
+                    }
+                }, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data
         enrollment_mode = str(data.get('enrollment_mode', 'ADMIN_CUSTOM')).strip().upper()
         if enrollment_mode not in ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL']:
@@ -2261,6 +2292,99 @@ class MobileStudentEnrollAPIView(APIView):
                 'status': 'error',
                 'message': f"កំហុសក្នុងការចុះឈ្មោះ៖ {str(e)}"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MobileStudentRegistrationPeriodAPIView(APIView):
+    """
+    Mobile API: Student Registration Period Control Endpoint.
+    GET /api/v1/students/registration-period/ (Public: Check whether registration is open)
+    POST /api/v1/students/registration-period/ (Admin only: Update registration status & period)
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        profile = SchoolProfile.get_settings()
+        is_allowed, reason, status_code = profile.is_student_registration_allowed()
+        return Response({
+            'status': 'success',
+            'is_allowed': is_allowed,
+            'status_code': status_code,
+            'message': reason,
+            'is_registration_open': profile.is_registration_open,
+            'registration_start_date': profile.registration_start_date.isoformat() if profile.registration_start_date else None,
+            'registration_end_date': profile.registration_end_date.isoformat() if profile.registration_end_date else None,
+            'registration_closed_message': profile.registration_closed_message,
+            'school_name': profile.name_kh or profile.school_name,
+            'phone': profile.phone,
+            'email': profile.email,
+            'server_time': timezone.now().isoformat(),
+        })
+
+    def post(self, request):
+        if not (request.user and request.user.is_authenticated and (
+            request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'superadmin']
+        )):
+            return Response({
+                'status': 'error',
+                'message': 'ការអនុញ្ញាតត្រូវបានបដិសេធ! មានតែ Admin ប៉ុណ្ណោះដែលអាចកំណត់កាលបរិច្ឆេទចុះឈ្មោះបាន។ (Admin authorization required)'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        profile = SchoolProfile.get_settings()
+
+        if 'is_registration_open' in data:
+            val = data.get('is_registration_open')
+            if isinstance(val, bool):
+                profile.is_registration_open = val
+            elif isinstance(val, str):
+                profile.is_registration_open = val.lower() in ['true', '1', 'yes', 't']
+            elif isinstance(val, (int, float)):
+                profile.is_registration_open = bool(val)
+
+        if 'registration_start_date' in data:
+            val = data.get('registration_start_date')
+            if val:
+                from django.utils.dateparse import parse_datetime
+                dt = parse_datetime(str(val))
+                if dt:
+                    if timezone.is_naive(dt):
+                        dt = timezone.make_aware(dt)
+                    profile.registration_start_date = dt
+            else:
+                profile.registration_start_date = None
+
+        if 'registration_end_date' in data:
+            val = data.get('registration_end_date')
+            if val:
+                from django.utils.dateparse import parse_datetime
+                dt = parse_datetime(str(val))
+                if dt:
+                    if timezone.is_naive(dt):
+                        dt = timezone.make_aware(dt)
+                    profile.registration_end_date = dt
+            else:
+                profile.registration_end_date = None
+
+        if 'registration_closed_message' in data:
+            profile.registration_closed_message = str(data.get('registration_closed_message', '')).strip()
+
+        profile.save()
+
+        is_allowed, reason, status_code = profile.is_student_registration_allowed()
+        return Response({
+            'status': 'success',
+            'message': 'បានកែប្រែនិងកំណត់កាលបរិច្ឆេទចុះឈ្មោះសិស្សដោយជោគជ័យ!',
+            'is_allowed': is_allowed,
+            'status_code': status_code,
+            'registration_period': {
+                'is_allowed': is_allowed,
+                'status_code': status_code,
+                'is_registration_open': profile.is_registration_open,
+                'registration_start_date': profile.registration_start_date.isoformat() if profile.registration_start_date else None,
+                'registration_end_date': profile.registration_end_date.isoformat() if profile.registration_end_date else None,
+                'registration_closed_message': profile.registration_closed_message,
+            }
+        })
 
 
 class MobileGradeOptionsAPIView(APIView):

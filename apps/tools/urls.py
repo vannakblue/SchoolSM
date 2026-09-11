@@ -23,6 +23,10 @@ urlpatterns = [
 
     # Classroom & Academic Utilities
     path('khmer-number-converter/', views.khmer_number_converter_view, name='tool_khmer_number_converter'),
+    path('khmer-lunar-converter/', views.khmer_lunar_converter_view, name='tool_khmer_lunar_converter'),
+    path('khmer-lunar-converter/download-template/', views.tool_lunar_download_excel_tool, name='tool_lunar_download_excel_tool'),
+    path('khmer-lunar-converter/export-calendar/', views.tool_lunar_export_calendar_excel, name='tool_lunar_export_calendar_excel'),
+    path('khmer-lunar-converter/batch-convert/', views.tool_lunar_batch_convert_excel, name='tool_lunar_batch_convert_excel'),
     path('text-analyzer/', views.text_analyzer_view, name='tool_text_analyzer'),
     path('voice-typing/', views.voice_typing_view, name='tool_voice_typing'),
     path('classroom-picker/', views.classroom_picker_view, name='tool_classroom_picker'),
@@ -52,6 +56,7 @@ urlpatterns = [
 
     # Backend API Endpoints
     path('api/ai-assist/', views.api_tool_ai_assist, name='api_tool_ai_assist'),
+    path('api/solar-to-lunar/', views.api_solar_to_lunar, name='api_solar_to_lunar'),
     path('api/classroom/<int:classroom_id>/students/', views.api_classroom_students, name='api_tool_classroom_students'),
     path('api/pdf-merge/', views.api_pdf_merge, name='api_tool_pdf_merge'),
     path('api/pdf-to-docx/', views.api_pdf_to_docx, name='api_tool_pdf_to_docx'),

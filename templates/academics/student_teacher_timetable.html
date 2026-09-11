@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}កាលវិភាគសិស្ស-គ្រូ (Student & Teacher Timetables) | SchoolSM{% endblock %}
 
@@ -398,8 +399,13 @@
     <div class="collapse mt-3 pt-3 border-top" id="customDateCollapse">
         <div class="row g-2 align-items-center">
             <div class="col-md-6">
-                <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទចន្ទគតិ (ជួរទី ១)៖</label>
-                <input type="text" class="form-control form-control-sm" id="inputLunarDate" value="{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០" oninput="updateCustomDates()">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small fw-bold text-muted mb-0">កាលបរិច្ឆេទចន្ទគតិ (ជួរទី ១)៖</label>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-bold" id="btnAutoCalcTimetableLunar" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> គណនាស្វ័យប្រវត្តិ
+                    </button>
+                </div>
+                <input type="text" class="form-control form-control-sm" id="inputLunarDate" value="{{ today_lunar_date|default:'ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០' }}" oninput="updateCustomDates()">
             </div>
             <div class="col-md-6">
                 <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសុរិយគតិ (ជួរទី ២)៖</label>
@@ -508,7 +514,7 @@
 
                     <!-- Right: Homeroom Teacher -->
                     <div class="tt-sig-col">
-                        <div class="lbl-lunar-date">{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០</div>
+                        <div class="lbl-lunar-date">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
                         <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
                         <div class="tt-sig-role">ហត្ថលេខាគ្រូបន្ទុកថ្នាក់</div>
                         <div class="tt-sig-space" style="height: 87px;"></div>
@@ -629,7 +635,7 @@
 
                     <!-- Right: Teacher -->
                     <div class="tt-sig-col">
-                        <div class="lbl-lunar-date">{{ today_kh_dow }} ១២កើត ខែបឋមាសាឍ ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០</div>
+                        <div class="lbl-lunar-date">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
                         <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
                         <div class="tt-sig-role">ហត្ថលេខាគ្រូ</div>
                         <div class="tt-sig-space" style="height: 87px;"></div>
@@ -756,9 +762,33 @@
         });
     }
 
+    function autoCalcTimetableLunar() {
+        const solarVal = document.getElementById('inputSolarDate')?.value || '';
+        if (window.KhmerLunar && solarVal) {
+            const autoLunar = window.KhmerLunar.getLunarDate(solarVal, false);
+            const inp = document.getElementById('inputLunarDate');
+            if (inp) {
+                inp.value = autoLunar;
+                updateCustomDates();
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const solarInp = document.getElementById('inputSolarDate');
+        if (solarInp) {
+            solarInp.addEventListener('input', autoCalcTimetableLunar);
+        }
+        const btnAuto = document.getElementById('btnAutoCalcTimetableLunar');
+        if (btnAuto) {
+            btnAuto.addEventListener('click', autoCalcTimetableLunar);
+        }
+    });
+
     function switchAcademicYear(yearId) {
         if (!yearId) return;
         window.location.href = `{% url 'student_teacher_timetable_view' %}?year=${yearId}`;
     }
 </script>
+<script src="{% static 'js/khmer_lunar.js' %}"></script>
 {% endblock %}

@@ -1588,7 +1588,15 @@ def get_smart_local_ai_response(user_message, user, school_name, active_year, st
     )
 
 
-
-
-
-
+def api_khmer_lunar_date(request):
+    """
+    API endpoint: returns the Khmer lunar date for a given solar date.
+    GET /accounts/api/khmer-lunar/?date=YYYY-MM-DD
+    """
+    from .khmer_lunar import calculate_khmer_lunar_details
+    date_str = request.GET.get('date', '').strip()
+    try:
+        details = calculate_khmer_lunar_details(date_str)
+        return JsonResponse({'status': 'success', **details})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

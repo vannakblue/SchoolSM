@@ -18,6 +18,7 @@ from openpyxl.utils import get_column_letter
 
 from apps.accounts.decorators import role_required
 from apps.accounts.utils import send_telegram_notification
+from apps.accounts.khmer_lunar import get_khmer_lunar_date
 from .models import (
     ExamTerm, Grade,
     StandardizedExam, StandardizedExamType, ExamRoom, ExamSubject, ExamCandidate, CandidateSubjectScore,
@@ -516,6 +517,12 @@ def _preload_classroom_report_card_data(classroom, ay):
     if classroom:
         rules = list(classroom.get_subject_rules())
         subjects = [r.subject for r in rules if r.subject]
+        graded_subjects = list(Subject.objects.filter(subject_grades__student__classroom=classroom).distinct())
+        existing_sub_ids = {s.id for s in subjects}
+        for gs in graded_subjects:
+            if gs.id not in existing_sub_ids:
+                subjects.append(gs)
+                existing_sub_ids.add(gs.id)
     if not subjects and classroom:
         subjects = list(Subject.objects.filter(subject_grades__student__classroom=classroom).distinct())
     if not subjects:
@@ -691,6 +698,22 @@ def _preload_classroom_report_card_data(classroom, ay):
     s2_ov_ranks = _rank_dict({sid: data['s2_ov_avg'] for sid, data in student_summary.items()})
     ann_ov_ranks = _rank_dict({sid: data['ann_ov_avg'] for sid, data in student_summary.items()})
 
+    # Calculate term-specific scores and ranks for GEIP transcript and monthly/term views
+    term_sub_scores = defaultdict(lambda: defaultdict(dict))
+    term_ov_scores = defaultdict(lambda: defaultdict(float))
+    for g in grades_qs:
+        term_sub_scores[g.exam_term_id][g.subject_id][g.student_id] = float(g.score)
+        term_ov_scores[g.exam_term_id][g.student_id] += float(g.score)
+
+    term_sub_ranks = defaultdict(lambda: defaultdict(dict))
+    for t_id, s_dict in term_sub_scores.items():
+        for sub_id, stu_scs in s_dict.items():
+            term_sub_ranks[t_id][sub_id] = _rank_dict(stu_scs)
+
+    term_ov_ranks = defaultdict(dict)
+    for t_id, stu_totals in term_ov_scores.items():
+        term_ov_ranks[t_id] = _rank_dict(stu_totals)
+
     year_kh = to_khmer_num(ay.start_date.year + 1) if (ay and ay.start_date) else to_khmer_num(datetime.date.today().year)
 
     return {
@@ -706,8 +729,15 @@ def _preload_classroom_report_card_data(classroom, ay):
         'total_students_kh': total_students_kh,
         'total_females_kh': total_females_kh,
         'total_in_class': total_students,
+        'total_students': total_students,
+        'total_females': total_females,
         'subjects': subjects,
         'teacher_map': teacher_map,
+        'grades_by_student_term': grades_by_student_term,
+        'term_sub_scores': term_sub_scores,
+        'term_sub_ranks': term_sub_ranks,
+        'term_ov_scores': term_ov_scores,
+        'term_ov_ranks': term_ov_ranks,
         'sub_s1_scores': sub_s1_scores,
         'sub_s2_scores': sub_s2_scores,
         'sub_ann_scores': sub_ann_scores,
@@ -984,6 +1014,275 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
             })
             next_idx += 1
 
+    CANONICAL_18_GEIP_SUBJECTS = [
+        (1, 'ល្បឿនអំណាន', 100, ['ល្បឿនអំណាន', 'អំណាន', 'reading speed', 'reading']),
+        (2, 'ភាសាខ្មែរ', 75, ['ភាសាខ្មែរ', 'ខ្មែរ', 'khmer']),
+        (3, 'គណិតវិទ្យា', 125, ['គណិតវិទ្យា', 'គណិត', 'mathematics', 'math']),
+        (4, 'រូបវិទ្យា', 75, ['រូបវិទ្យា', 'រូប', 'physics', 'phys']),
+        (5, 'គីមីវិទ្យា', 75, ['គីមីវិទ្យា', 'គីមី', 'chemistry', 'chem']),
+        (6, 'ជីវវិទ្យា', 75, ['ជីវវិទ្យា', 'ជីវ', 'biology', 'bio']),
+        (7, 'ប្រវត្តិវិទ្យា', 50, ['ប្រវត្តិវិទ្យា', 'ប្រវត្តិ', 'history', 'hist']),
+        (8, 'ព័ត៌មានវិទ្យា', 50, ['ព័ត៌មានវិទ្យា', 'កុំព្យូទ័រ', 'ict', 'computer', 'information technology']),
+        (9, 'សីល-ពលរដ្ឋ', 50, ['សីល-ពលរដ្ឋ', 'សីលធម៌-ពលរដ្ឋ', 'សីលធម៌', 'ពលរដ្ឋ', 'civics', 'moral', 'ethics']),
+        (10, 'ផែនដីវិទ្យា', 50, ['ផែនដីវិទ្យា', 'ផែនដី', 'earth science', 'earth']),
+        (11, 'ភូមិវិទ្យា', 50, ['ភូមិវិទ្យា', 'ភូមិ', 'geography', 'geo']),
+        (12, 'គេហវិទ្យា', 50, ['គេហវិទ្យា', 'គេហ', 'home economics']),
+        (13, 'អប់រំកាយ', 50, ['អប់រំកាយ', 'កីឡា', 'pe', 'physical education', 'sport']),
+        (14, 'ភាសាចិន/បំណិន', 50, ['ភាសាចិន/បំណិន', 'ភាសាចិន', 'ចិន', 'បំណិនជីវិត', 'បំណិន', 'chinese', 'life skill']),
+        (15, 'សេដ្ឋកិច្ច', 50, ['សេដ្ឋកិច្ច', 'economics', 'econ']),
+        (16, 'សិល្បៈ', 50, ['សិល្បៈ', 'art', 'arts']),
+        (17, 'កសិកម្ម', 50, ['កសិកម្ម', 'agriculture', 'agri']),
+        (18, 'ភាសាបរទេស', 50, ['ភាសាបរទេស', 'អង់គ្លេស', 'បារាំង', 'english', 'french', 'foreign']),
+    ]
+
+    from apps.academics.models import GradeLevelRule
+
+    cls_obj = classroom or getattr(student, 'classroom', None)
+    
+    # 1. Fetch official subject rules from classroom / grade-level
+    cls_rules = list(cls_obj.get_subject_rules()) if cls_obj else []
+    if not cls_rules and cls_obj:
+        cls_rules = list(GradeLevelRule.objects.filter(
+            grade_level=cls_obj.grade_level,
+            track=cls_obj.track
+        ).select_related('subject').order_by('subject__order', 'order', 'id'))
+        if not cls_rules:
+            cls_rules = list(GradeLevelRule.objects.filter(
+                grade_level=cls_obj.grade_level
+            ).select_related('subject').order_by('subject__order', 'order', 'id'))
+
+    subject_configs = []
+    seen_sub_ids = set()
+
+    if cls_rules:
+        for r in cls_rules:
+            if r.subject and r.subject_id not in seen_sub_ids:
+                subject_configs.append({
+                    'subject': r.subject,
+                    'name_kh': r.subject.name_kh or r.subject.name_en,
+                    'max_score': float(r.max_score),
+                })
+                seen_sub_ids.add(r.subject_id)
+
+    # Include assigned subjects for this classroom
+    if cls_obj:
+        for cs in cls_obj.assigned_subjects.select_related('subject'):
+            if cs.subject and cs.subject_id not in seen_sub_ids:
+                r_match = GradeLevelRule.objects.filter(grade_level=cls_obj.grade_level, subject=cs.subject).first()
+                max_sc = float(r_match.max_score) if r_match else 50.0
+                subject_configs.append({
+                    'subject': cs.subject,
+                    'name_kh': cs.subject.name_kh or cs.subject.name_en,
+                    'max_score': max_sc,
+                })
+                seen_sub_ids.add(cs.subject_id)
+
+        graded_subs = list(Subject.objects.filter(subject_grades__student__classroom=cls_obj).distinct().order_by('order', 'id'))
+        for gs in graded_subs:
+            if gs.id not in seen_sub_ids:
+                r_match = GradeLevelRule.objects.filter(grade_level=cls_obj.grade_level, subject=gs).first()
+                max_sc = float(r_match.max_score) if r_match else 50.0
+                subject_configs.append({
+                    'subject': gs,
+                    'name_kh': gs.name_kh or gs.name_en,
+                    'max_score': max_sc,
+                })
+                seen_sub_ids.add(gs.id)
+
+    # Fallback if no rules configured in database
+    if not subject_configs:
+        for g_idx, g_name, g_max, g_aliases in CANONICAL_18_GEIP_SUBJECTS:
+            matched_sub = None
+            for sub in preloaded_data.get('subjects', []):
+                s_name = (sub.name_kh or '').strip().lower()
+                s_code = (sub.code or '').strip().lower()
+                s_en = (sub.name_en or '').strip().lower()
+                if any(alias in s_name or alias in s_code or alias in s_en for alias in g_aliases):
+                    matched_sub = sub
+                    break
+            subject_configs.append({
+                'subject': matched_sub,
+                'name_kh': g_name,
+                'max_score': float(g_max),
+            })
+
+    transcript_subjects = []
+    grades_map = preloaded_data.get('grades_by_student_term', {}).get(sid, {})
+
+    cnt_a = cnt_b = cnt_c = cnt_d = cnt_e = 0
+    cnt_good = cnt_fair = cnt_medium = cnt_poor = 0
+
+    geip_total_obtained = 0.0
+    geip_scored_count = 0
+    geip_total_max = sum(cfg['max_score'] for cfg in subject_configs)
+    if geip_total_max <= 0:
+        geip_total_max = 1.0
+    transcript_total_max = int(geip_total_max) if float(geip_total_max).is_integer() else f"{geip_total_max:.2f}"
+    transcript_avg_max = '50.00'
+
+    for idx, cfg in enumerate(subject_configs, 1):
+        sub = cfg.get('subject')
+        sub_name = cfg['name_kh']
+        sub_max = cfg['max_score']
+
+        sc = None
+        rk = ''
+        if sub:
+            if term and (sub.id, term.id) in grades_map:
+                sc = grades_map[(sub.id, term.id)]
+                if term.id in preloaded_data.get('term_sub_ranks', {}):
+                    rk = preloaded_data['term_sub_ranks'][term.id].get(sub.id, {}).get(sid, '')
+            elif preloaded_data.get('sub_ann_scores', {}).get(sub.id, {}).get(sid) is not None:
+                sc = preloaded_data['sub_ann_scores'][sub.id].get(sid)
+                rk = preloaded_data.get('sub_ann_ranks', {}).get(sub.id, {}).get(sid, '')
+            elif preloaded_data.get('sub_s1_scores', {}).get(sub.id, {}).get(sid) is not None:
+                sc = preloaded_data['sub_s1_scores'][sub.id].get(sid)
+                rk = preloaded_data.get('sub_s1_ranks', {}).get(sub.id, {}).get(sid, '')
+
+            # Alias matching if grade was recorded under an equivalent subject
+            if sc is None and term:
+                for (g_sub_id, g_term_id), g_val in grades_map.items():
+                    if g_term_id == term.id:
+                        g_sub = next((s for s in preloaded_data.get('subjects', []) if s.id == g_sub_id), None)
+                        if g_sub:
+                            sub_kh = (sub.name_kh or '').strip()
+                            g_kh = (g_sub.name_kh or '').strip()
+                            if sub_kh and (sub_kh == g_kh or sub_kh in g_kh or g_kh in sub_kh):
+                                sc = g_val
+                                if term.id in preloaded_data.get('term_sub_ranks', {}):
+                                    rk = preloaded_data['term_sub_ranks'][term.id].get(g_sub_id, {}).get(sid, '')
+                                break
+
+        max_display = int(sub_max) if float(sub_max).is_integer() else f"{sub_max:.2f}"
+
+        if sc is not None:
+            sc_val = float(sc)
+            geip_total_obtained += sc_val
+            geip_scored_count += 1
+            pct = (sc_val / float(sub_max)) * 100.0 if sub_max > 0 else 0.0
+            if pct >= 89.5:
+                let = 'A'; rem = 'ល្អប្រសើរ'; res = 'ជាប់'; cnt_a += 1; cnt_good += 1
+            elif pct >= 79.5:
+                let = 'B'; rem = 'ល្អណាស់'; res = 'ជាប់'; cnt_b += 1; cnt_good += 1
+            elif pct >= 69.5:
+                let = 'C'; rem = 'ល្អ'; res = 'ជាប់'; cnt_c += 1; cnt_good += 1
+            elif pct >= 59.5:
+                let = 'D'; rem = 'ល្អបង្គួរ'; res = 'ជាប់'; cnt_d += 1; cnt_fair += 1
+            elif pct >= 49.5:
+                let = 'E'; rem = 'មធ្យម'; res = 'ជាប់'; cnt_e += 1; cnt_medium += 1
+            else:
+                let = 'F'; rem = 'ខ្សោយ'; res = 'ធ្លាក់'; cnt_poor += 1
+
+            transcript_subjects.append({
+                'no': idx,
+                'no_kh': to_khmer_num(idx),
+                'name_kh': sub_name,
+                'max_score': max_display,
+                'score_display': _fmt_score(sc_val),
+                'rank_display': str(rk) if rk else '-',
+                'mention': let,
+                'remark': rem,
+                'result': res,
+                'other': '',
+                'is_na': False,
+            })
+        else:
+            cnt_poor += 1
+            is_sub1 = (idx == 1)
+            transcript_subjects.append({
+                'no': idx,
+                'no_kh': to_khmer_num(idx),
+                'name_kh': sub_name,
+                'max_score': max_display,
+                'score_display': '#N/A',
+                'rank_display': '#N/A',
+                'mention': '#N/A' if is_sub1 else 'F',
+                'remark': '#N/A' if is_sub1 else 'ខ្សោយ',
+                'result': '#N/A' if is_sub1 else 'ធ្លាក់',
+                'other': '',
+                'is_na': True,
+            })
+
+    if geip_scored_count > 0:
+        transcript_total_score = _fmt_score(geip_total_obtained)
+        transcript_total_is_na = False
+        ov_rank_val = preloaded_data.get('term_ov_ranks', {}).get(term.id, {}).get(sid) if term else preloaded_data['ann_ov_ranks'].get(sid)
+        transcript_total_rank = str(ov_rank_val) if ov_rank_val else '1'
+        pct_ov = (geip_total_obtained / float(geip_total_max)) * 100.0 if geip_total_max > 0 else 0.0
+        avg_score_val = round(pct_ov / 2.0, 2)
+        transcript_avg_score = f"{avg_score_val:.2f}"
+        transcript_avg_is_na = False
+        transcript_avg_rank = transcript_total_rank
+
+        if pct_ov >= 89.5:
+            transcript_total_mention = transcript_avg_mention = 'A'
+            transcript_total_remark = transcript_avg_remark = 'ល្អប្រសើរ'
+            transcript_total_result = transcript_avg_result = 'ជាប់'
+        elif pct_ov >= 79.5:
+            transcript_total_mention = transcript_avg_mention = 'B'
+            transcript_total_remark = transcript_avg_remark = 'ល្អណាស់'
+            transcript_total_result = transcript_avg_result = 'ជាប់'
+        elif pct_ov >= 69.5:
+            transcript_total_mention = transcript_avg_mention = 'C'
+            transcript_total_remark = transcript_avg_remark = 'ល្អ'
+            transcript_total_result = transcript_avg_result = 'ជាប់'
+        elif pct_ov >= 59.5:
+            transcript_total_mention = transcript_avg_mention = 'D'
+            transcript_total_remark = transcript_avg_remark = 'ល្អបង្គួរ'
+            transcript_total_result = transcript_avg_result = 'ជាប់'
+        elif pct_ov >= 49.5:
+            transcript_total_mention = transcript_avg_mention = 'E'
+            transcript_total_remark = transcript_avg_remark = 'មធ្យម'
+            transcript_total_result = transcript_avg_result = 'ជាប់'
+        else:
+            transcript_total_mention = transcript_avg_mention = 'F'
+            transcript_total_remark = transcript_avg_remark = 'ខ្សោយ'
+            transcript_total_result = transcript_avg_result = 'ធ្លាក់'
+        transcript_overall_mention = transcript_total_remark
+    else:
+        transcript_total_score = '#N/A'
+        transcript_total_rank = '#N/A'
+        transcript_total_mention = '#N/A'
+        transcript_total_remark = 'ខ្សោយ'
+        transcript_total_result = '#N/A'
+        transcript_total_is_na = True
+
+        transcript_avg_score = '#N/A'
+        transcript_avg_rank = '#N/A'
+        transcript_avg_mention = '#N/A'
+        transcript_avg_remark = 'ខ្សោយ'
+        transcript_avg_result = '#N/A'
+        transcript_avg_is_na = True
+        transcript_overall_mention = 'ខ្សោយ'
+
+    grade_lvl = classroom.grade_level if classroom else 12
+    track_raw = str(getattr(classroom, 'track', '')).upper()
+    if 'SCI' in track_raw:
+        track_kh = 'វិទ្យាសាស្ត្រ'
+    elif 'SOC' in track_raw:
+        track_kh = 'សង្គម'
+    else:
+        track_kh = 'វិទ្យាសាស្ត្រ' if grade_lvl >= 11 else 'ទូទៅ'
+    transcript_grade_track = f"{grade_lvl} {track_kh}"
+    transcript_classroom_name = (classroom.name or classroom.code) if classroom else '12A'
+
+    stu_stat = str(getattr(student, 'status', '')).upper()
+    if stu_stat in ['PROMOTED', 'PASSED']:
+        transcript_student_status = 'ឡើងថ្នាក់'
+    elif stu_stat in ['REPEATER', 'RETAINED']:
+        transcript_student_status = 'ត្រួតថ្នាក់'
+    elif stu_stat in ['TRANSFERRED_IN', 'TRANSFER']:
+        transcript_student_status = 'ផ្ទេរចូល'
+    elif stu_stat in ['DROPPED_OUT', 'DROPOUT']:
+        transcript_student_status = 'បោះបង់'
+    else:
+        transcript_student_status = 'ធម្មតា'
+
+    homeroom_teacher_obj = classroom.homeroom_teacher if classroom else None
+    transcript_teacher_name = (homeroom_teacher_obj.khmer_name or homeroom_teacher_obj.get_full_name()) if homeroom_teacher_obj else 'ស៊ិន ម៉ូនីដា'
+    transcript_teacher_phone = (homeroom_teacher_obj.phone or getattr(homeroom_teacher_obj, 'phone_number', None)) if homeroom_teacher_obj else '(093) 995-927'
+    transcript_term_title = term.name if term else ''
+
     KHMER_MONTH_NAMES = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ']
     if student.date_of_birth:
         d = student.date_of_birth
@@ -1035,12 +1334,48 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
         'year_kh': preloaded_data['year_kh'],
         'total_students_kh': preloaded_data['total_students_kh'],
         'total_females_kh': preloaded_data['total_females_kh'],
+        'total_students': preloaded_data.get('total_students', 40),
+        'total_females': preloaded_data.get('total_females', 29),
         'total_in_class': preloaded_data['total_in_class'],
         'report_title_kh': report_title_kh,
         'report_title_en': report_title_en,
         'current_period': 'annual',
         'subjects': subject_rows,
         'tr_subjects': tr_subject_rows,
+        # MoEYS GEIP Student Score Bulletin / Transcript (matching transcript.pdf)
+        'transcript_subjects': transcript_subjects,
+        'transcript_total_max': transcript_total_max,
+        'transcript_total_score': transcript_total_score,
+        'transcript_total_rank': transcript_total_rank,
+        'transcript_total_mention': transcript_total_mention,
+        'transcript_total_remark': transcript_total_remark,
+        'transcript_total_result': transcript_total_result,
+        'transcript_total_is_na': transcript_total_is_na,
+        'transcript_avg_max': transcript_avg_max,
+        'transcript_avg_score': transcript_avg_score,
+        'transcript_avg_rank': transcript_avg_rank,
+        'transcript_avg_mention': transcript_avg_mention,
+        'transcript_avg_remark': transcript_avg_remark,
+        'transcript_avg_result': transcript_avg_result,
+        'transcript_avg_is_na': transcript_avg_is_na,
+        'transcript_counts': {
+            'a': cnt_a, 'b': cnt_b, 'c': cnt_c, 'd': cnt_d, 'e': cnt_e,
+            'good': cnt_good, 'fair': cnt_fair, 'medium': cnt_medium, 'poor': cnt_poor
+        },
+        'transcript_overall_mention': transcript_overall_mention,
+        'transcript_grade_track': transcript_grade_track,
+        'transcript_classroom_name': transcript_classroom_name,
+        'transcript_student_status': transcript_student_status,
+        'homeroom_teacher_name': transcript_teacher_name,
+        'homeroom_teacher_phone': transcript_teacher_phone,
+        'transcript_term_title': transcript_term_title,
+        'absences_total_month': str(s1_ex + s1_un),
+        'absences_excused_month': str(s1_ex) if s1_ex > 0 else '',
+        'absences_unexcused_month': str(s1_un) if s1_un > 0 else '',
+        'absences_total_cumul': str(total_absences),
+        'absences_excused_cumul': str(s1_ex + s2_ex) if (s1_ex + s2_ex) > 0 else '',
+        'absences_unexcused_cumul': str(s1_un + s2_un) if (s1_un + s2_un) > 0 else '',
+        'student_no_kh': to_khmer_num(student.student_id or student.id),
         'student_id_kh': student_id_kh,
         'student_gender_short': student_gender_short,
         'student_dob_kh': student_dob_kh,
@@ -1115,15 +1450,30 @@ def report_card_western_view(request, student_id, term_id=None):
     from django.shortcuts import get_object_or_404, render
 
     student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), pk=student_id)
-    term = get_object_or_404(ExamTerm, pk=term_id) if term_id else ExamTerm.objects.filter(academic_year=student.academic_year).first()
+    req_term_id = request.GET.get('term_id')
+    effective_term_id = req_term_id or term_id
+    
+    ay = student.academic_year or (student.classroom.academic_year if student.classroom else None)
+    terms = list(ExamTerm.objects.filter(academic_year=ay).order_by('start_date', 'id')) if ay else list(ExamTerm.objects.all().order_by('-id')[:20])
+
+    term = None
+    if effective_term_id:
+        term = ExamTerm.objects.filter(pk=effective_term_id).first()
+    if not term and terms:
+        term = terms[0]
 
     data = _calculate_bilingual_report_card_data(student, term=term, request=request)
     data['reports'] = [data]
     data['is_batch'] = False
     data['current_period'] = data.get('current_period', 'annual')
+    data['term'] = term
+    data['terms'] = terms
     
     model = (request.GET.get('model') or request.GET.get('format') or '').strip().lower()
-    if model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
+    if model in ['transcript', 'geip', 'bulletin']:
+        template_name = 'examinations/report_card_transcript.html'
+        data['current_model'] = 'transcript'
+    elif model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
         template_name = 'examinations/report_card_moeys_tr.html'
         data['current_model'] = 'tr'
     elif model in ['western', 'bilingual', 'international']:
@@ -1159,14 +1509,26 @@ def report_card_tr_view(request, student_id, term_id=None):
 
 
 @login_required
+def report_card_transcript_view(request, student_id, term_id=None):
+    """
+    Direct endpoint for MoEYS GEIP Student Score Bulletin / Transcript (matching transcript.pdf)
+    """
+    q = request.GET.copy()
+    q['model'] = 'transcript'
+    request.GET = q
+    return report_card_western_view(request, student_id, term_id)
+
+
+@login_required
 @role_required(['ADMIN', 'TEACHER'])
 def classroom_report_cards_western_view(request, classroom_id: int):
     """
     Batch generation & printing of Official Academic Report Cards (ព្រឹត្តិបត្រពិន្ទុ)
     for all active students in a classroom.
-    Supports all three models:
+    Supports all four models:
       - 'moeys': Authentic Cambodian Public School 1-Page Model
       - 'tr': MoEYS Secondary / High School Model (matching tr.pdf)
+      - 'transcript': MoEYS GEIP Student Score Bulletin (matching transcript.pdf)
       - 'western': Western / Bilingual 2-Page Model
     """
     from apps.academics.models import Classroom
@@ -1175,11 +1537,17 @@ def classroom_report_cards_western_view(request, classroom_id: int):
     from django.shortcuts import get_object_or_404, render
 
     classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
-    term_id = request.GET.get('term_id')
-    term = ExamTerm.objects.filter(pk=term_id).first() if term_id else ExamTerm.objects.filter(academic_year=classroom.academic_year).first()
+    req_term_id = request.GET.get('term_id')
+    ay = classroom.academic_year
+    terms = list(ExamTerm.objects.filter(academic_year=ay).order_by('start_date', 'id')) if ay else list(ExamTerm.objects.all().order_by('-id')[:20])
+
+    term = None
+    if req_term_id:
+        term = ExamTerm.objects.filter(pk=req_term_id).first()
+    if not term and terms:
+        term = terms[0]
 
     students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('khmer_name', 'id')
-    ay = classroom.academic_year
     preloaded_data = _preload_classroom_report_card_data(classroom, ay)
     reports = []
     for stu in students:
@@ -1188,7 +1556,10 @@ def classroom_report_cards_western_view(request, classroom_id: int):
 
     first_rep = reports[0] if reports else {}
     model = (request.GET.get('model') or request.GET.get('format') or '').strip().lower()
-    if model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
+    if model in ['transcript', 'geip', 'bulletin']:
+        template_name = 'examinations/report_card_transcript.html'
+        current_model = 'transcript'
+    elif model in ['tr', 'moeys_tr', 'highschool', 'secondary']:
         template_name = 'examinations/report_card_moeys_tr.html'
         current_model = 'tr'
     elif model in ['western', 'bilingual', 'international']:
@@ -1201,6 +1572,7 @@ def classroom_report_cards_western_view(request, classroom_id: int):
     context = {
         'classroom': classroom,
         'term': term,
+        'terms': terms,
         'academic_year': classroom.academic_year,
         'reports': reports,
         'is_batch': True,
@@ -1232,6 +1604,18 @@ def classroom_report_cards_tr_view(request, classroom_id: int):
     """
     q = request.GET.copy()
     q['model'] = 'tr'
+    request.GET = q
+    return classroom_report_cards_western_view(request, classroom_id)
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def classroom_report_cards_transcript_view(request, classroom_id: int):
+    """
+    Direct batch endpoint for MoEYS GEIP Student Score Bulletin / Transcript (matching transcript.pdf)
+    """
+    q = request.GET.copy()
+    q['model'] = 'transcript'
     request.GET = q
     return classroom_report_cards_western_view(request, classroom_id)
 
@@ -4022,8 +4406,8 @@ def exam_results_sheet_print_view(request, exam_id):
     sign_month_kh = KHMER_MONTH_NAMES.get(sign_date.month, '')
     sign_year_kh = to_khmer_digits(sign_date.year)
 
-    # Khmer Lunar Calendar Date (e.g. ថ្ងៃសុក្រ ៥កើត ខែបឋមាសាឍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០)
-    lunar_date = request.GET.get('lunar_date', '').strip() or 'ថ្ងៃសុក្រ ៥កើត ខែបឋមាសាឍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'
+    # Khmer Lunar Calendar Date (auto-calculated from sign_date if not custom overridden)
+    lunar_date = request.GET.get('lunar_date', '').strip() or get_khmer_lunar_date(sign_date)
 
     # Signer Role title (principal)
     sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
@@ -6539,7 +6923,7 @@ def annual_results_print_view(request):
     sign_day_kh = to_khmer_2digits(sign_date.day)
     sign_month_kh = KHMER_MONTH_NAMES.get(sign_date.month, '')
     sign_year_kh = to_khmer_digits(sign_date.year)
-    lunar_date = request.GET.get('lunar_date', '').strip() or 'ថ្ងៃព្រហស្បតិ៍ ១២រោច ខែស្រាពណ៍ ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩'
+    lunar_date = request.GET.get('lunar_date', '').strip() or get_khmer_lunar_date(sign_date)
     sign_role = request.GET.get('sign_role', '').strip() or 'នាយក'
 
     # Title header
@@ -6675,36 +7059,26 @@ def annual_results_print_view(request):
 
     # Pagination:
     # Page 1: Up to 45 rows (leaves ~1.5 - 2 cm space at bottom matching user request)
-    # Intermediate Pages: Up to 48 rows
-    # Final Page (with summary footer): Up to 36 rows
+    # Pagination:
+    # If total students <= 40, all students and the summary footer fit on Page 1,
+    # leaving ~1.5 - 1.7 cm space at the bottom (matching user requirement).
+    # If total students > 40:
+    #   Page 1 holds up to 44 rows (leaving ~1.5 cm space at bottom).
+    #   Intermediate pages hold up to 45 rows (leaving ~1.5 cm space at bottom).
+    #   Final page holds up to 36 rows with the summary footer.
     sheets = []
-    if total_students <= 32:
+    if total_students <= 40:
         sheets.append({
             'page_number': 1,
             'is_first_page': True,
             'is_last_page': True,
             'rows': students_list,
         })
-    elif total_students <= 45:
-        # Split between Page 1 and Page 2 so both pages look balanced
-        p1_count = min(32, total_students - 6)
-        sheets.append({
-            'page_number': 1,
-            'is_first_page': True,
-            'is_last_page': False,
-            'rows': students_list[:p1_count],
-        })
-        sheets.append({
-            'page_number': 2,
-            'is_first_page': False,
-            'is_last_page': True,
-            'rows': students_list[p1_count:],
-        })
     else:
-        # Total > 45: Page 1 holds 45 rows to leave 1-2 cm space at bottom
-        p1_count = 45
-        if total_students == 46:
-            p1_count = 44  # avoid single orphan row on last page
+        if total_students <= 46:
+            p1_count = min(40, total_students - 4)
+        else:
+            p1_count = 44
 
         sheets.append({
             'page_number': 1,
@@ -6724,8 +7098,8 @@ def annual_results_print_view(request):
                 })
                 break
             else:
-                chunk = rem_students[:48]
-                rem_students = rem_students[48:]
+                chunk = rem_students[:45]
+                rem_students = rem_students[45:]
                 is_last = (len(rem_students) == 0)
                 sheets.append({
                     'page_number': cur_page,
@@ -8240,7 +8614,7 @@ def exam_invigilator_roster_print(request, plan_id):
         solar_date_kh = custom_solar_date or f"ទី{day_2dig} ខែ{month_name} ឆ្នាំ{year_dig}"
         shift_session_kh = "ព្រឹក" if (sl.session == ExamShiftSlot.Session.MORNING or "ព្រឹក" in sl.session_name) else "រសៀល"
         be_year_kh = to_khmer_digits(sl.date.year + 544)
-        lunar_line = custom_lunar_date or f"{day_name} ៥រោច ខែទុតិយាសាឍ ឆ្នាំរោង ឆស័ក ព.ស.{be_year_kh}"
+        lunar_line = custom_lunar_date or get_khmer_lunar_date(sl.date, with_space=False)
 
         regs_sorted = sorted(sl.registrations.select_related('teacher').all(), key=sort_key)
         total_regs = len(regs_sorted)
@@ -10474,9 +10848,9 @@ def standardized_exam_schedule_print(request, exam_id):
     # School short code for date line: e.g. "វិ.ច.ប.ក.ស"
     school_code_line = request.GET.get('school_code', school.short_name or 'វិ.ច.ប.ក.ស')
 
-    # Lunar date line
-    default_lunar = "ថ្ងៃអង្គារ ៩រោច ខែជេស្ឋ ឆ្នាំថោះ បញ្ចស័ក ព.ស. ២៥៧០"
-    lunar_date_line = request.GET.get('lunar_date', default_lunar)
+    # Lunar date line (auto-calculated from sign_date)
+    default_lunar = get_khmer_lunar_date(sd)
+    lunar_date_line = request.GET.get('lunar_date', '').strip() or default_lunar
 
     context = {
         'exam': exam,

@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from django.http import JsonResponse, HttpResponse
 import sys, traceback
 
-from apps.accounts.views import telegram_webhook, init_admin_view
+from apps.accounts.views import telegram_webhook, init_admin_view, api_khmer_lunar_date
 
 def health_check(request):
     return JsonResponse({'status': 'ok', 'service': 'SchoolSM', 'message': 'Server is active and healthy'})
@@ -64,6 +64,7 @@ urlpatterns = [
     path('maintenance-preview/', lambda request: render(request, 'maintenance.html'), name='maintenance_preview'),
     path('init-admin/', init_admin_view, name='root_init_admin'),
     path('api/telegram/webhook/', telegram_webhook, name='telegram_webhook'),
+    path('api/khmer-lunar/', api_khmer_lunar_date, name='root_api_khmer_lunar_date'),
     
     path('accounts/', include('apps.accounts.urls')),
     path('dashboard/', include('apps.dashboard.urls')),

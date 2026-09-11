@@ -536,10 +536,14 @@
         <div class="collapse mt-3 pt-3 border-top" id="customDateCollapse">
             <div class="row g-2 align-items-center">
                 <div class="col-md-6">
-                    <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទពុទ្ធសករាជ / ចន្ទគតិ (ជួរទី
-                        ១)៖</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-bold text-muted mb-0">កាលបរិច្ឆេទពុទ្ធសករាជ / ចន្ទគតិ (ជួរទី ១)៖</label>
+                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-bold" id="btnAutoCalcDailyLunar" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> គណនាស្វ័យប្រវត្តិ
+                        </button>
+                    </div>
                     <input type="text" class="form-control form-control-sm" id="inputLunarDate"
-                        value="{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក ព.ស.២៥៧០"
+                        value="{{ today_lunar_date|default:'ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០' }}"
                         oninput="updateCustomDates()">
                 </div>
                 <div class="col-md-6">
@@ -848,8 +852,7 @@
 
                 <!-- Right: Reporter Signature -->
                 <div class="col-6 text-center">
-                    <div class="lbl-lunar-date text-dark small mb-0">{{ today_kh_dow }} ១១កើត ខែបុស្ស ឆ្នាំម្សាញ់ អដ្ឋស័ក
-                        ព.ស.២៥៧០</div>
+                    <div class="lbl-lunar-date text-dark small mb-0">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
                     <div class="lbl-solar-date text-dark small mb-0">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
                         ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
                     <div class="fw-bold" style="font-size: 0.92rem;">អ្នករៀបចំរបាយការណ៍</div>
@@ -1068,6 +1071,7 @@
     </div>
 </div>
 
+<script src="{% static 'js/khmer_lunar.js' %}"></script>
 <script>
     const reportLabels = {
         'duty_sheets': 'ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)',
@@ -1119,6 +1123,31 @@
             el.innerText = solarVal;
         });
     }
+
+    function autoCalcDailyLunar() {
+        const solarVal = document.getElementById('inputSolarDate')?.value || '';
+        if (window.KhmerLunar && solarVal) {
+            const autoLunar = window.KhmerLunar.getLunarDate(solarVal, false);
+            const inp = document.getElementById('inputLunarDate');
+            if (inp) {
+                inp.value = autoLunar;
+                updateCustomDates();
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const solarInp = document.getElementById('inputSolarDate');
+        if (solarInp) {
+            solarInp.addEventListener('input', function() {
+                autoCalcDailyLunar();
+            });
+        }
+        const btnAuto = document.getElementById('btnAutoCalcDailyLunar');
+        if (btnAuto) {
+            btnAuto.addEventListener('click', autoCalcDailyLunar);
+        }
+    });
 
     // ============================================================
     // 🌟 PRINT PAGES CONFIGURATION MODAL LOGIC

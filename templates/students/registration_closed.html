@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ការចុះឈ្មោះសិស្សថ្មីមិនទាន់បើក ឬផុតកំណត់ | {{ school_profile.name_kh|default:"SchoolSM" }}</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-navy: #0f172a;
+            --accent-blue: #2563eb;
+            --warm-bg: #f8fafc;
+        }
+        body {
+            background-color: var(--warm-bg);
+            font-family: 'Kantumruy Pro', 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #1e293b;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            color: white;
+            padding: 40px 20px 70px;
+            border-bottom-left-radius: 36px;
+            border-bottom-right-radius: 36px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+        .main-container {
+            margin-top: -45px;
+            margin-bottom: 50px;
+        }
+        .notice-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.8);
+            padding: 36px 32px;
+            text-align: center;
+        }
+        .icon-bubble {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 38px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+        }
+        .bubble-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .bubble-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .bubble-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .period-box {
+            background: #f8fafc;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 24px 0;
+            text-align: start;
+        }
+        .period-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .period-item:last-child {
+            margin-bottom: 0;
+        }
+        .contact-box {
+            background: #eff6ff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #bfdbfe;
+            text-align: start;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="container" style="max-width: 720px;">
+            <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
+                {% if school_profile.logo %}
+                <img src="{{ school_profile.logo.url }}" alt="School Logo" style="width: 54px; height: 54px; object-fit: contain; background: white; border-radius: 12px; padding: 4px;">
+                {% else %}
+                <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 22px;">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+                {% endif %}
+                <div class="text-start">
+                    <h3 class="fw-bold mb-0 text-white">{{ school_profile.name_kh|default:"ប្រព័ន្ធគ្រប់គ្រងសាលារៀន" }}</h3>
+                    <div class="text-white-50 small">{{ school_profile.name_en|default:"School Management System" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container main-container" style="max-width: 680px;">
+        <div class="notice-card">
+            
+            {% if status_code == 'NOT_STARTED' %}
+            <div class="icon-bubble bubble-warning">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6 mb-3">
+                <i class="fa-solid fa-hourglass-start me-1"></i> មិនទាន់ចាប់ផ្តើមទទួលពាក្យ (Not Started Yet)
+            </span>
+            <h4 class="fw-bold text-dark mb-2">ការចុះឈ្មោះសិស្សថ្មីមិនទាន់បើកដំណើរការនៅឡើយទេ</h4>
+            {% elif status_code == 'EXPIRED' %}
+            <div class="icon-bubble bubble-danger">
+                <i class="fa-solid fa-calendar-xmark"></i>
+            </div>
+            <span class="badge bg-danger px-3 py-2 rounded-pill fs-6 mb-3">
+                <i class="fa-solid fa-circle-exclamation me-1"></i> បានផុតកំណត់កាលបរិច្ឆេទ (Registration Expired)
+            </span>
+            <h4 class="fw-bold text-dark mb-2">ការចុះឈ្មោះសិស្សថ្មីបានផុតកំណត់កាលបរិច្ឆេទ</h4>
+            {% else %}
+            <div class="icon-bubble bubble-secondary">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <span class="badge bg-secondary px-3 py-2 rounded-pill fs-6 mb-3">
+                <i class="fa-solid fa-lock me-1"></i> បិទការចុះឈ្មោះជាបណ្តោះអាសន្ន (Registration Closed)
+            </span>
+            <h4 class="fw-bold text-dark mb-2">ការចុះឈ្មោះសិស្សថ្មីត្រូវបានផ្អាកជាបណ្តោះអាសន្ន</h4>
+            {% endif %}
+
+            <p class="text-muted fs-6 mb-3 px-md-3">
+                {{ reason|default:school_profile.registration_closed_message }}
+            </p>
+
+            <!-- Period Details Box -->
+            <div class="period-box">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-calendar-days text-primary me-2"></i>ព័ត៌មានសុពលភាពចុះឈ្មោះ (Admission Schedule)
+                </h6>
+                <div class="period-item">
+                    <div class="text-muted small" style="width: 140px;">កាលបរិច្ឆេទចាប់ផ្តើម៖</div>
+                    <div class="fw-bold text-dark">
+                        {% if start_date %}
+                            <i class="fa-regular fa-calendar-check text-success me-1"></i>{{ start_date|date:"d/m/Y វេលាម៉ោង H:i" }}
+                        {% else %}
+                            <span class="text-muted">បើកភ្លាមៗ (តាមការកំណត់ជាក់ស្តែង)</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="period-item">
+                    <div class="text-muted small" style="width: 140px;">កាលបរិច្ឆេទផុតកំណត់៖</div>
+                    <div class="fw-bold text-dark">
+                        {% if end_date %}
+                            <i class="fa-regular fa-calendar-xmark text-danger me-1"></i>{{ end_date|date:"d/m/Y វេលាម៉ោង H:i" }}
+                        {% else %}
+                            <span class="text-muted">គ្មានកំណត់ពេលវេលាបញ្ចប់</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if current_year %}
+                <div class="period-item">
+                    <div class="text-muted small" style="width: 140px;">សម្រាប់ឆ្នាំសិក្សា៖</div>
+                    <div class="fw-bold text-primary">{{ current_year.name }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- School Contact Box -->
+            <div class="contact-box">
+                <h6 class="fw-bold text-primary mb-2">
+                    <i class="fa-solid fa-headset me-2"></i>ទំនាក់ទំនងសាកសួរព័ត៌មានរដ្ឋបាលសាលា
+                </h6>
+                <div class="small text-muted mb-2">ប្រសិនបើមាតាបិតា ឬសិស្សានុសិស្សមានចម្ងល់បន្ថែម ឬត្រូវការជំនួយក្នុងការចុះឈ្មោះ សូមទាក់ទងមកកាន់៖</div>
+                <div class="d-flex flex-wrap gap-3 mt-2">
+                    {% if school_profile.phone %}
+                    <a href="tel:{{ school_profile.phone }}" class="btn btn-sm btn-white border bg-white text-dark text-decoration-none shadow-sm">
+                        <i class="fa-solid fa-phone text-success me-1"></i> {{ school_profile.phone }}
+                    </a>
+                    {% endif %}
+                    {% if school_profile.telegram_channel %}
+                    <a href="{{ school_profile.telegram_channel }}" target="_blank" class="btn btn-sm btn-white border bg-white text-primary text-decoration-none shadow-sm">
+                        <i class="fa-brands fa-telegram text-info me-1"></i> Telegram
+                    </a>
+                    {% endif %}
+                    {% if school_profile.facebook_page %}
+                    <a href="{{ school_profile.facebook_page }}" target="_blank" class="btn btn-sm btn-white border bg-white text-primary text-decoration-none shadow-sm">
+                        <i class="fa-brands fa-facebook text-primary me-1"></i> Facebook Page
+                    </a>
+                    {% endif %}
+                    {% if school_profile.email %}
+                    <a href="mailto:{{ school_profile.email }}" class="btn btn-sm btn-white border bg-white text-dark text-decoration-none shadow-sm">
+                        <i class="fa-solid fa-envelope text-warning me-1"></i> {{ school_profile.email }}
+                    </a>
+                    {% endif %}
+                </div>
+                {% if school_profile.street_address or school_profile.province %}
+                <div class="small text-muted mt-2">
+                    <i class="fa-solid fa-location-dot me-1 text-danger"></i> អាសយដ្ឋាន៖ {{ school_profile.street_address }} {{ school_profile.commune }} {{ school_profile.district }} {{ school_profile.province }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-4 d-flex justify-content-center gap-2">
+                <button onclick="window.location.reload()" class="btn btn-primary px-4 rounded-pill">
+                    <i class="fa-solid fa-rotate-right me-1"></i> ផ្ទុកទំព័រឡើងវិញ (Refresh)
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

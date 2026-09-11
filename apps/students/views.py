@@ -330,6 +330,25 @@ def public_student_enroll(request):
     configured_mode = school_profile.registration_mode or SchoolProfile.RegistrationMode.BOTH
 
     current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+
+    # Check if student registration is permitted by Admin for this period
+    is_allowed, closed_reason, status_code = school_profile.is_student_registration_allowed()
+    is_staff_preview = request.user.is_authenticated and (
+        request.user.is_staff or request.user.is_superuser or str(getattr(request.user, 'role', '')).upper() in ['ADMIN', 'STAFF', 'TEACHER']
+    )
+    if not is_allowed and not is_staff_preview:
+        if request.method == 'POST':
+            messages.error(request, closed_reason)
+            return redirect('public_student_enroll')
+        return render(request, 'students/registration_closed.html', {
+            'school_profile': school_profile,
+            'reason': closed_reason,
+            'status_code': status_code,
+            'current_year': current_year,
+            'start_date': school_profile.registration_start_date,
+            'end_date': school_profile.registration_end_date,
+        })
+
     classrooms = Classroom.objects.filter(academic_year=current_year).select_related('academic_year').order_by('grade_level', 'code') if current_year else Classroom.objects.select_related('academic_year').order_by('grade_level', 'code')
 
     classroom_id = request.GET.get('classroom')
@@ -464,6 +483,9 @@ def public_student_enroll(request):
         'school_profile': school_profile,
         'configured_mode': configured_mode,
         'active_mode': active_mode,
+        'is_staff_preview': is_staff_preview,
+        'is_reg_allowed': is_allowed,
+        'reg_status': status_code,
     })
 
 
@@ -1131,6 +1153,10 @@ def enrollment_qr_code(request):
             'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
         })
 
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.get_settings()
+    is_reg_allowed, reg_reason, reg_status = school_profile.is_student_registration_allowed()
+
     return render(request, 'students/enrollment_qr_modal.html', {
         'public_url': base_url,
         'base_url': base_url,
@@ -1139,7 +1165,86 @@ def enrollment_qr_code(request):
         'classrooms': classrooms,
         'grade_data': grade_data,
         'classroom_data': classroom_data,
+        'school_profile': school_profile,
+        'is_reg_allowed': is_reg_allowed,
+        'reg_reason': reg_reason,
+        'reg_status': reg_status,
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_save_registration_period(request):
+    """
+    AJAX endpoint for Admin to configure student registration authorization & period:
+    - is_registration_open (bool)
+    - registration_start_date (datetime)
+    - registration_end_date (datetime)
+    - registration_closed_message (str)
+    """
+    from apps.accounts.models import SchoolProfile
+    from django.http import JsonResponse
+    from django.utils.dateparse import parse_datetime
+    from django.utils import timezone
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        sp = SchoolProfile.get_settings()
+        
+        # Parse is_open
+        is_open_val = request.POST.get('is_registration_open')
+        if is_open_val is not None:
+            sp.is_registration_open = str(is_open_val).lower() in ['true', '1', 'on', 'yes']
+
+        # Parse start_date
+        start_str = request.POST.get('registration_start_date', '').strip()
+        if start_str:
+            dt = parse_datetime(start_str)
+            if dt and timezone.is_naive(dt):
+                dt = timezone.make_aware(dt)
+            sp.registration_start_date = dt
+        else:
+            sp.registration_start_date = None
+
+        # Parse end_date
+        end_str = request.POST.get('registration_end_date', '').strip()
+        if end_str:
+            dt = parse_datetime(end_str)
+            if dt and timezone.is_naive(dt):
+                dt = timezone.make_aware(dt)
+            sp.registration_end_date = dt
+        else:
+            sp.registration_end_date = None
+
+        # Closed message
+        msg = request.POST.get('registration_closed_message')
+        if msg is not None:
+            sp.registration_closed_message = msg.strip()
+
+        sp.save()
+
+        is_allowed, reason, status_code = sp.is_student_registration_allowed()
+        from django.utils.timezone import localtime
+        start_formatted = localtime(sp.registration_start_date).strftime('%d/%m/%Y %H:%M') if sp.registration_start_date else ''
+        end_formatted = localtime(sp.registration_end_date).strftime('%d/%m/%Y %H:%M') if sp.registration_end_date else ''
+
+        return JsonResponse({
+            'success': True,
+            'status': 'success',
+            'message': 'បានរក្សាទុកការកំណត់សុពលភាពចុះឈ្មោះសិស្សដោយជោគជ័យ!',
+            'is_allowed': is_allowed,
+            'status_code': status_code,
+            'status_reason': reason,
+            'is_registration_open': sp.is_registration_open,
+            'start_date': sp.registration_start_date.isoformat() if sp.registration_start_date else None,
+            'end_date': sp.registration_end_date.isoformat() if sp.registration_end_date else None,
+            'start_date_display': start_formatted,
+            'end_date_display': end_formatted,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required

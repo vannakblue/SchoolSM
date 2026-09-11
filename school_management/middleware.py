@@ -51,6 +51,8 @@ class MaintenanceModeMiddleware:
                 '/attendance/admin_hub/',
                 '/dashboard/admin/',
                 '/maintenance-preview/',
+                '/api/khmer-lunar/',
+                '/accounts/api/khmer-lunar/',
             ]
             if any(path.startswith(prefix) for prefix in exempt_prefixes):
                 return self.get_response(request)

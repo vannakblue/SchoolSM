@@ -1,0 +1,641 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ព្រឹត្តិបត្រពិន្ទុ {{ reports.0.transcript_term_title|default:"តេស្តដើមឆ្នាំ" }} ឆ្នាំសិក្សា {{ reports.0.academic_year_kh }} - {% if is_batch %}ថ្នាក់ {{ classroom.name }}{% else %}{{ reports.0.student.khmer_name }}{% endif %}</title>
+
+    <!-- Google Fonts for Authentic Cambodian MoEYS Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --khmer-font-muol: 'Moul', 'Khmer OS Muol Light', serif;
+            --khmer-font-body: 'Siemreap', 'Battambang', Arial, sans-serif;
+            --primary-blue: #0000ff;
+            --header-bg: #cfe2f2;
+            --banner-bg: #c8d9f7;
+            --red-alert: #ff0000;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: var(--khmer-font-body);
+            font-size: 8.5pt;
+            color: #000000;
+            margin: 0;
+            padding: 20px 10px;
+        }
+
+        .font-muol {
+            font-family: var(--khmer-font-muol);
+        }
+
+        .fw-bold {
+            font-weight: bold;
+        }
+
+        .text-center { text-align: center; }
+        .text-start { text-align: left; }
+        .text-end { text-align: right; }
+
+        /* Top Action Toolbar (Screen Only) */
+        .no-print-toolbar {
+            max-width: 210mm;
+            margin: 0 auto 16px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 10px 16px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* Report Sheet Container (Exact A4 Portrait per student) */
+        .transcript-page {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto 20px auto;
+            background: #ffffff;
+            padding: 6mm 10mm 4mm 10mm;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Top Header Grid */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .header-left {
+            line-height: 1.35;
+            font-size: 8.2pt;
+        }
+
+        .header-left .school-ministry {
+            font-weight: bold;
+            font-size: 8.2pt;
+        }
+
+        .header-left .school-dept {
+            font-weight: bold;
+            font-size: 8.2pt;
+        }
+
+        .header-left .school-name {
+            font-weight: bold;
+            font-size: 8.5pt;
+            margin-bottom: 2px;
+        }
+
+        .pill-badge {
+            display: inline-block;
+            background-color: var(--header-bg);
+            color: var(--primary-blue);
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 8pt;
+            margin-top: 2px;
+            border: 0.5px solid #a8c7ea;
+        }
+
+        .header-right {
+            text-align: center;
+            line-height: 1.35;
+            margin-right: 15px;
+        }
+
+        .header-right .kingdom {
+            font-size: 9pt;
+        }
+
+        .header-right .motto {
+            font-size: 8.2pt;
+        }
+
+        /* Centered Document Title */
+        .doc-title-container {
+            text-align: center;
+            margin: 2px 0 6px 0;
+            line-height: 1.3;
+        }
+
+        .doc-main-title {
+            color: var(--primary-blue);
+            font-size: 10.5pt;
+            letter-spacing: 0.3px;
+        }
+
+        .doc-year-title {
+            color: var(--primary-blue);
+            font-size: 9.5pt;
+        }
+
+        /* Generic Table Styles */
+        table.tbl-bordered {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000000;
+            font-size: 7.8pt;
+        }
+
+        table.tbl-bordered th,
+        table.tbl-bordered td {
+            border: 1px solid #000000;
+            padding: 2.2px 3px;
+            vertical-align: middle;
+            color: #000000;
+            line-height: 1.2;
+        }
+
+        /* Student Info Box */
+        .student-info-tbl {
+            margin-bottom: 5px;
+        }
+
+        .student-info-tbl th {
+            background-color: var(--header-bg);
+            font-weight: bold;
+            text-align: center;
+            padding: 3px 2px;
+            font-size: 8pt;
+        }
+
+        .student-info-tbl td {
+            text-align: center;
+            font-size: 8.2pt;
+            padding: 3px 2px;
+        }
+
+        /* Section Banner Bar */
+        .section-banner {
+            background-color: var(--banner-bg);
+            color: var(--primary-blue);
+            text-align: center;
+            font-family: var(--khmer-font-muol);
+            font-size: 8.5pt;
+            padding: 2px 4px;
+            border: 1px solid #000000;
+            border-bottom: none;
+            line-height: 1.3;
+        }
+
+        /* Subject Grades Table */
+        .grades-tbl {
+            margin-bottom: 5px;
+        }
+
+        .grades-tbl th {
+            text-align: center;
+            font-weight: bold;
+            background-color: #ffffff;
+            font-size: 7.8pt;
+            padding: 2.5px 2px;
+        }
+
+        .grades-tbl td {
+            font-size: 7.8pt;
+            padding: 1.8px 3px;
+        }
+
+        .text-na {
+            color: var(--red-alert) !important;
+            font-weight: bold;
+        }
+
+        .col-no { width: 4.5%; text-align: center; }
+        .col-sub { width: 22%; text-align: left; padding-left: 6px !important; }
+        .col-max { width: 11%; text-align: center; }
+        .col-score { width: 12%; text-align: center; }
+        .col-rank { width: 10%; text-align: center; }
+        .col-mention { width: 8%; text-align: center; }
+        .col-remark { width: 11.5%; text-align: center; }
+        .col-result { width: 10.5%; text-align: center; }
+        .col-other { width: 10.5%; text-align: center; }
+
+        /* Section B: Absences Table */
+        .absences-container {
+            margin-bottom: 5px;
+        }
+
+        .absences-tbl th {
+            background-color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+            font-size: 7.8pt;
+            padding: 2px;
+        }
+
+        .absences-tbl td {
+            font-size: 7.8pt;
+            padding: 1.8px 4px;
+        }
+
+        /* Section C: Mention Breakdown */
+        .mention-container {
+            margin-bottom: 4px;
+        }
+
+        .mention-tbl th {
+            background-color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+            font-size: 7.5pt;
+            padding: 2px;
+        }
+
+        .mention-tbl td {
+            text-align: center;
+            font-size: 7.8pt;
+            padding: 2px;
+        }
+
+        /* Overall Evaluation Cell in Section C table */
+        .overall-eval-cell {
+            text-align: center;
+            font-size: 8pt;
+            padding: 2.5px 4px !important;
+            font-weight: bold;
+        }
+
+        .overall-eval-cell .eval-val {
+            margin-left: 10px;
+            font-size: 8.5pt;
+        }
+
+        /* Signatures and Remarks Section (Footer) */
+        .signatures-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 2px;
+            padding: 0 8px;
+            font-size: 8pt;
+        }
+
+        .sig-col-left {
+            width: 35%;
+            text-align: center;
+            line-height: 1.35;
+        }
+
+        .sig-col-right {
+            width: 55%;
+            text-align: center;
+            line-height: 1.35;
+        }
+
+        .date-kh-line {
+            font-size: 7.8pt;
+            margin-bottom: 2px;
+        }
+
+        .sig-title-teacher {
+            margin-top: 3px;
+            font-size: 8.5pt;
+        }
+
+        .sig-space {
+            height: 25px;
+        }
+
+        .teacher-name-txt {
+            font-size: 8.5pt;
+            font-weight: bold;
+        }
+
+        .teacher-phone-txt {
+            font-size: 8pt;
+        }
+
+        /* Editable inline elements */
+        [contenteditable="true"] {
+            outline: none;
+            transition: background 0.2s;
+        }
+        [contenteditable="true"]:hover {
+            background: #fff9db;
+            border-radius: 2px;
+        }
+        [contenteditable="true"]:focus {
+            background: #fff3bf;
+            border-radius: 2px;
+        }
+
+        /* Print Media Styles (Exact 1 A4 Page per Student) */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print-toolbar {
+                display: none !important;
+            }
+            .transcript-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 6mm 10mm 4mm 10mm !important;
+                margin: 0 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Screen Toolbar (4-Model Switcher + Print Actions) -->
+    <div class="no-print-toolbar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
+            </button>
+
+            <!-- 4-Model Switcher Button Group -->
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="ប្តូរទៅទម្រង់សាលារដ្ឋ ៨ ជួរ (MoEYS Annual 8-Cols)">
+                    <i class="fas fa-landmark me-1"></i> គំរូសាលារដ្ឋ (៨ ជួរ)
+                </a>
+                <a href="?model=tr{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-success btn-sm fw-bold" title="ប្តូរទៅទម្រង់វិទ្យាល័យតាម tr.pdf (MoEYS tr.pdf)">
+                    <i class="fas fa-file-invoice me-1"></i> គំរូ tr.pdf
+                </a>
+                <span class="btn btn-info text-white btn-sm fw-bold shadow-xs">
+                    <i class="fas fa-file-alt me-1"></i> គំរូ transcript.pdf
+                </span>
+                <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="ប្តូរទៅទម្រង់អន្តរជាតិ/ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
+                    <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
+                </a>
+            </div>
+
+            <!-- Exam Term Selector -->
+            {% if terms %}
+            <div class="d-flex align-items-center gap-1 ms-1">
+                <label for="termSelector" class="small text-muted fw-bold text-nowrap mb-0 d-none d-lg-inline">
+                    <i class="fas fa-calendar-check text-primary me-1"></i>សម័យប្រឡង៖
+                </label>
+                <select id="termSelector" class="form-select form-select-sm rounded-pill fw-bold border-primary text-primary" style="max-width: 250px;" onchange="switchExamTerm(this.value)">
+                    {% for t in terms %}
+                    <option value="{{ t.id }}" {% if term and term.id == t.id %}selected{% endif %}>
+                        {{ t.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            {% if is_batch %}
+            <span class="badge bg-primary fs-6 px-3 py-1">
+                <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
+            </span>
+            {% else %}
+            <span class="text-muted small">
+                សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id|default:reports.0.student.id }})
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
+                <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
+            </button>
+            <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
+                បិទ
+            </button>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- REPORT CARDS ITERATION (SUPPORTS SINGLE STUDENT OR ENTIRE CLASSROOM)-->
+    <!-- =================================================================== -->
+    {% for r in reports %}
+    <div class="transcript-page">
+        <div>
+            <!-- Top Header Grid -->
+            <div class="header-top">
+                <div class="header-left" style="margin-top: 14px;">
+                    <div class="school-dept" contenteditable="true">{{ r.school_department_kh|default:"មន្ទីរអប់រំ យុវជន និងកីឡាខេត្តកណ្ដាល" }}</div>
+                    <div class="school-name" contenteditable="true">{{ r.school_name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</div>
+                </div>
+                <div class="header-right">
+                    <div class="font-muol kingdom">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="font-muol motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                </div>
+            </div>
+
+            <!-- Centered Document Title -->
+            <div class="doc-title-container">
+                <div class="font-muol doc-main-title" contenteditable="true">ព្រឹត្តិបត្រពិន្ទុ {{ r.transcript_term_title|default:term.name|default:"" }}</div>
+                <div class="font-muol doc-year-title" contenteditable="true">ឆ្នាំសិក្សា {{ r.academic_year_kh|default:"២០២៥-២០២៦" }}</div>
+            </div>
+
+            <!-- Student Info Table -->
+            <table class="tbl-bordered student-info-tbl">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">អត្តលេខ-គោត្តនាម និងនាម</th>
+                        <th style="width: 8%;">ភេទ</th>
+                        <th style="width: 20%;">ថ្នាក់</th>
+                        <th style="width: 14%;">សិស្សសរុប</th>
+                        <th style="width: 13%;">ស្រី</th>
+                        <th style="width: 20%;">ស្ថានភាពសិស្ស</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold" contenteditable="true">{{ r.student.student_id|default:r.student.id }}-{{ r.student.khmer_name }}</td>
+                        <td contenteditable="true">{{ r.student_gender_kh|default:"-" }}</td>
+                        <td contenteditable="true">{{ r.transcript_classroom_name|default:r.classroom.name|default:r.classroom.code|default:"12A" }}</td>
+                        <td contenteditable="true">{{ r.total_students|default:r.total_students_kh|default:"40" }}</td>
+                        <td contenteditable="true">{{ r.total_females|default:r.total_females_kh|default:"29" }}</td>
+                        <td contenteditable="true">{{ r.transcript_student_status|default:"ធម្មតា" }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Section A: Academic Results -->
+            <div class="section-banner">ក.លទ្ធផលនៃការសិក្សា</div>
+            <table class="tbl-bordered grades-tbl">
+                <thead>
+                    <tr>
+                        <th class="col-no">ល.រ</th>
+                        <th class="col-sub text-center">មុខវិជ្ជា</th>
+                        <th class="col-max">ពិន្ទុអតិបរិមា</th>
+                        <th class="col-score">ពិន្ទុប្រឡងបាន</th>
+                        <th class="col-rank">ចំណាត់ថ្នាក់</th>
+                        <th class="col-mention">និទ្ទេស</th>
+                        <th class="col-remark">មូលវិចារ</th>
+                        <th class="col-result">លទ្ធផល</th>
+                        <th class="col-other">ផ្សេងៗ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in r.transcript_subjects %}
+                    <tr>
+                        <td class="col-no">{{ sub.no_kh|default:forloop.counter }}</td>
+                        <td class="col-sub">{{ sub.name_kh }}</td>
+                        <td class="col-max">{{ sub.max_score }}</td>
+                        <td class="col-score {% if sub.is_na %}text-na{% endif %}">{{ sub.score_display }}</td>
+                        <td class="col-rank {% if sub.is_na %}text-na{% endif %}">{{ sub.rank_display }}</td>
+                        <td class="col-mention {% if sub.is_na and sub.mention == '#N/A' %}text-na{% endif %}">{{ sub.mention }}</td>
+                        <td class="col-remark {% if sub.is_na and sub.remark == '#N/A' %}text-na{% endif %}">{{ sub.remark }}</td>
+                        <td class="col-result {% if sub.is_na and sub.result == '#N/A' %}text-na{% endif %}">{{ sub.result }}</td>
+                        <td class="col-other">{{ sub.other }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Summary Row 1: Total Score -->
+                    <tr class="fw-bold">
+                        <td colspan="2" class="text-center">ពិន្ទុសរុប</td>
+                        <td class="col-max">{{ r.transcript_total_max|default:"1125" }}</td>
+                        <td class="col-score {% if r.transcript_total_is_na %}text-na{% endif %}">{{ r.transcript_total_score|default:"#N/A" }}</td>
+                        <td class="col-rank {% if r.transcript_total_is_na %}text-na{% endif %}">{{ r.transcript_total_rank|default:"#N/A" }}</td>
+                        <td class="col-mention {% if r.transcript_total_is_na %}text-na{% endif %}">{{ r.transcript_total_mention|default:"#N/A" }}</td>
+                        <td class="col-remark">{{ r.transcript_total_remark|default:"ខ្សោយ" }}</td>
+                        <td class="col-result {% if r.transcript_total_is_na %}text-na{% endif %}">{{ r.transcript_total_result|default:"#N/A" }}</td>
+                        <td class="col-other"></td>
+                    </tr>
+
+                    <!-- Summary Row 2: Average Score -->
+                    <tr class="fw-bold">
+                        <td colspan="2" class="text-center">មធ្យមភាគ</td>
+                        <td class="col-max">{{ r.transcript_avg_max|default:"50.00" }}</td>
+                        <td class="col-score {% if r.transcript_avg_is_na %}text-na{% endif %}">{{ r.transcript_avg_score|default:"#N/A" }}</td>
+                        <td class="col-rank {% if r.transcript_avg_is_na %}text-na{% endif %}">{{ r.transcript_avg_rank|default:"#N/A" }}</td>
+                        <td class="col-mention {% if r.transcript_avg_is_na %}text-na{% endif %}">{{ r.transcript_avg_mention|default:"#N/A" }}</td>
+                        <td class="col-remark">{{ r.transcript_avg_remark|default:"ខ្សោយ" }}</td>
+                        <td class="col-result {% if r.transcript_avg_is_na %}text-na{% endif %}">{{ r.transcript_avg_result|default:"#N/A" }}</td>
+                        <td class="col-other"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Section B: Monthly Absences -->
+            <div class="absences-container">
+                <div class="section-banner">ខ. ចំនួនអវត្តមានក្នុងខែ</div>
+                <table class="tbl-bordered absences-tbl">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">អវត្តមាន</th>
+                            <th style="width: 35%;">{{ r.transcript_term_title|default:"តេស្តដើមឆ្នាំ" }}</th>
+                            <th style="width: 40%;">សរុបអវត្តមាន(បូកយោងពីខែមុន)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold">សរុប</td>
+                            <td class="text-center">{{ r.absences_total_month|default:"0" }}</td>
+                            <td class="text-center">{{ r.absences_total_cumul|default:"0" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center">ច្បាប់</td>
+                            <td class="text-center">{{ r.absences_excused_month|default:"" }}</td>
+                            <td class="text-center">{{ r.absences_excused_cumul|default:"" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center">អត់ច្បាប់</td>
+                            <td class="text-center">{{ r.absences_unexcused_month|default:"" }}</td>
+                            <td class="text-center">{{ r.absences_unexcused_cumul|default:"" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Section C: Mentions Breakdown -->
+            <div class="mention-container">
+                <div class="section-banner">គ. មូលវិចារ</div>
+                <table class="tbl-bordered mention-tbl">
+                    <thead>
+                        <tr>
+                            <th style="width: 14%;">និទ្ទេស៖</th>
+                            <th style="width: 8.6%;">A</th>
+                            <th style="width: 8.6%;">B</th>
+                            <th style="width: 8.6%;">C</th>
+                            <th style="width: 8.6%;">D</th>
+                            <th style="width: 8.6%;">E</th>
+                            <th style="width: 11%;">ល្អ</th>
+                            <th style="width: 11%;">ល្អបង្គួរ</th>
+                            <th style="width: 11%;">មធ្យម</th>
+                            <th style="width: 11%;">ខ្សោយ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold">ចំ.មុខវិជ្ជា៖</td>
+                            <td>{{ r.transcript_counts.a|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.b|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.c|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.d|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.e|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.good|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.fair|default:"0" }}</td>
+                            <td>{{ r.transcript_counts.medium|default:"0" }}</td>
+                            <td class="fw-bold">{{ r.transcript_counts.poor|default:"17" }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="10" class="text-center fw-bold overall-eval-cell">
+                                លទ្ធផលការសិក្សា <span class="eval-val" contenteditable="true">{{ r.transcript_overall_mention|default:"ខ្សោយ" }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Signatures & Dates Footer -->
+        <div class="signatures-footer">
+            <div class="sig-col-left">
+                <div>បានឃើញ និងឯកភាព</div>
+                <div class="font-muol" style="margin-top: 4px;" contenteditable="true">{{ r.principal_title|default:"នាយក" }}</div>
+            </div>
+            <div class="sig-col-right">
+                <div class="date-kh-line" contenteditable="true">ថ្ងៃ...............ខែ.....................ឆ្នាំ.........................ព.ស.២៥៦......</div>
+                <div class="date-kh-line" contenteditable="true">.....................ថ្ងៃទី...............ខែ.................ឆ្នាំ២០២.......</div>
+                <div class="font-muol sig-title-teacher">គ្រូបន្ទុកថ្នាក់</div>
+                <div class="sig-space"></div>
+                <div class="teacher-name-txt" contenteditable="true">{{ r.homeroom_teacher_name|default:"ស៊ិន ម៉ូនីដា" }}</div>
+                <div class="teacher-phone-txt" contenteditable="true">{{ r.homeroom_teacher_phone|default:"(093) 995-927" }}</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+        function switchExamTerm(termId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('term_id', termId);
+            window.location.href = url.toString();
+        }
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ echo.
 
 :: Create trigger flag
 echo active > maintenance.flag
+python -c "import django, os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school_management.settings'); django.setup(); from apps.attendance.models import AttendanceSetting; s = AttendanceSetting.get_settings(); s.is_maintenance_mode = True; s.save(update_fields=['is_maintenance_mode'])" 2>nul
 
 if exist "maintenance.flag" (
     color 0A

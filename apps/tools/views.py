@@ -19,6 +19,12 @@ from apps.tools.backup_utils import (
 
 from apps.academics.models import Classroom, AcademicYear
 from apps.students.models import Student
+from apps.accounts.khmer_lunar import calculate_khmer_lunar_details, get_khmer_lunar_date
+from apps.tools.lunar_excel_service import (
+    generate_dynamic_lunar_converter_excel,
+    export_lunar_calendar_excel,
+    batch_convert_uploaded_excel
+)
 
 import pypdf
 from docx import Document
@@ -148,6 +154,115 @@ def khmer_number_converter_view(request):
 
 
 @login_required
+def khmer_lunar_converter_view(request):
+    """
+    Solar to Khmer Lunar Date Converter (Chhankitek) with real-time conversion,
+    monthly calendar view, MoEYS formal signature lines, and holy days detection.
+    """
+    import datetime
+    today = datetime.date.today()
+    initial_details = calculate_khmer_lunar_details(today)
+    return render(request, 'tools/khmer_lunar_converter.html', {
+        'page_title': 'បម្លែងថ្ងៃខែចន្ទគតិ (Khmer Lunar Calendar Converter)',
+        'today_str': today.strftime('%Y-%m-%d'),
+        'today_details': initial_details,
+    })
+
+
+@login_required
+def tool_lunar_download_excel_tool(request):
+    """
+    Downloads the interactive dynamic Excel file (.xlsx) which has built-in formulas
+    that automatically convert Solar Dates to Khmer Lunar Dates inside Microsoft Excel / WPS / Google Sheets.
+    Supports customizable start_year and end_year.
+    """
+    try:
+        start_year = int(request.GET.get('start_year', 2000))
+        end_year = int(request.GET.get('end_year', 2035))
+    except (ValueError, TypeError):
+        start_year, end_year = 2000, 2035
+
+    if start_year > end_year:
+        start_year, end_year = end_year, start_year
+
+    # Clamp to reasonable bounds (1950 to 2060)
+    start_year = max(1950, min(2060, start_year))
+    end_year = max(start_year, min(2060, end_year))
+
+    sample_date = request.GET.get('date', '').strip() or None
+    buf = generate_dynamic_lunar_converter_excel(start_year=start_year, end_year=end_year, sample_date=sample_date)
+
+    filename = f"SchoolSM_Khmer_Lunar_Converter_{start_year}_{end_year}.xlsx"
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def tool_lunar_export_calendar_excel(request):
+    """
+    Exports a clean, official MoEYS-formatted Khmer Lunar Calendar for a specific month or an entire year.
+    """
+    import datetime
+    today = datetime.date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+    except (ValueError, TypeError):
+        year = today.year
+
+    month_param = request.GET.get('month', '').strip()
+    month = None
+    if month_param:
+        try:
+            m = int(month_param)
+            if 1 <= m <= 12:
+                month = m
+        except (ValueError, TypeError):
+            pass
+
+    buf = export_lunar_calendar_excel(year=year, month=month)
+    suffix = f"Month_{month}" if month else "Full_Year"
+    filename = f"Khmer_Lunar_Calendar_{year}_{suffix}.xlsx"
+
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@require_POST
+def tool_lunar_batch_convert_excel(request):
+    """
+    Uploads an existing Excel file with solar dates and returns the updated file
+    with Khmer lunar dates, zodiac, sak, and holy days appended.
+    """
+    excel_file = request.FILES.get('excel_file')
+    if not excel_file:
+        messages.error(request, "សូមជ្រើសរើសឯកសារ Excel ដើម្បីបម្លែង។")
+        return redirect('tool_khmer_lunar_converter')
+
+    try:
+        buf = batch_convert_uploaded_excel(excel_file.read())
+        orig_name = excel_file.name.rsplit('.', 1)[0]
+        filename = f"{orig_name}_Khmer_Lunar_Converted.xlsx"
+        response = HttpResponse(
+            buf.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        messages.error(request, f"មានបញ្ហាក្នុងការបម្លែងឯកសារ Excel៖ {e}")
+        return redirect('tool_khmer_lunar_converter')
+
+
+@login_required
 def text_analyzer_view(request):
     """
     Word Counter, Character Counter, Khmer Text Analyzer & Reading Time Estimator.
@@ -197,6 +312,26 @@ def calculator_converter_view(request):
 # --------------------------------------------------------------------------
 # API Endpoints
 # --------------------------------------------------------------------------
+
+@login_required
+@require_GET
+def api_solar_to_lunar(request):
+    """
+    API endpoint that accepts a Gregorian/solar date string (e.g. YYYY-MM-DD or DD/MM/YYYY)
+    and returns rich Khmer lunar date details, holy day status, moon phases, and copyable text.
+    """
+    date_str = request.GET.get('date', '').strip()
+    try:
+        details = calculate_khmer_lunar_details(date_str if date_str else None)
+        return JsonResponse({
+            'success': True,
+            'data': details,
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+        }, status=400)
 
 @login_required
 @require_GET

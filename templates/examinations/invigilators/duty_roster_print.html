@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -869,7 +870,21 @@
         // Initialize on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', function() {
             applySizing(false);
+
+            // Auto calculate lunar date when solar date changes in duty roster toolbar
+            const solarInp = document.querySelector('input[name="solar_date"]');
+            const lunarInp = document.querySelector('input[name="lunar_date"]');
+            if (solarInp && lunarInp) {
+                solarInp.addEventListener('input', function() {
+                    if (window.KhmerLunar && this.value) {
+                        const autoLunar = window.KhmerLunar.getLunarDate(this.value, false);
+                        lunarInp.value = autoLunar;
+                        document.querySelectorAll('.lunar-date').forEach(el => el.textContent = autoLunar);
+                    }
+                });
+            }
         });
     </script>
+    <script src="{% static 'js/khmer_lunar.js' %}"></script>
 </body>
 </html>

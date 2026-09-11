@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -84,7 +87,8 @@ def evaluate_attendance_timing_window(teacher_profile, classroom, period_number,
 
     # 1. System Maintenance Check
     att_settings = AttendanceSetting.get_settings()
-    if att_settings.is_maintenance_mode:
+    flag_path = Path(settings.BASE_DIR) / 'maintenance.flag'
+    if att_settings.is_maintenance_mode or flag_path.exists() or os.environ.get('MAINTENANCE_MODE') == '1':
         return {
             'can_submit': False,
             'status_code': 'LOCKED_MAINTENANCE',
@@ -972,6 +976,12 @@ def attendance_admin_hub(request):
     att_settings = AttendanceSetting.get_settings()
     telegram_config = TelegramConfig.objects.first()
 
+    flag_path = Path(settings.BASE_DIR) / 'maintenance.flag'
+    flag_exists = flag_path.exists()
+    if flag_exists != att_settings.is_maintenance_mode:
+        att_settings.is_maintenance_mode = flag_exists
+        att_settings.save(update_fields=['is_maintenance_mode'])
+
     if request.method == 'POST':
         action = request.POST.get('action')
 
@@ -1109,6 +1119,16 @@ def attendance_admin_hub(request):
             if maint_msg:
                 att_settings.maintenance_message = maint_msg
             att_settings.save()
+
+            flag_path = Path(settings.BASE_DIR) / 'maintenance.flag'
+            try:
+                if is_maint:
+                    flag_path.write_text('active\n', encoding='utf-8')
+                else:
+                    if flag_path.exists():
+                        flag_path.unlink()
+            except Exception:
+                pass
 
             status_text = "បើកដំណើរការ (Maintenance ON)" if is_maint else "បិទបញ្ចប់ (Maintenance OFF)"
             messages.warning(request, f"🛠️ ការបិទប្រព័ន្ធថែទាំត្រូវបាន៖ {status_text}!")

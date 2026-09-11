@@ -11,6 +11,7 @@ echo.
 
 if exist "maintenance.flag" (
     del /f /q "maintenance.flag"
+    python -c "import django, os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'school_management.settings'); django.setup(); from apps.attendance.models import AttendanceSetting; s = AttendanceSetting.get_settings(); s.is_maintenance_mode = False; s.save(update_fields=['is_maintenance_mode'])" 2>nul
     color 0A
     echo [STATUS] ----------------------------------------------------
     echo [SUCCESS] Maintenance Mode is now DEACTIVATED!

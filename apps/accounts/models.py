@@ -450,6 +450,60 @@ class SchoolProfile(models.Model):
         help_text="កំណត់វិធីចុះឈ្មោះសិស្ស៖ តាមទម្រង់ Admin កំណត់ ឬ តាមសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ ឬ បើកទាំងពីរ"
     )
 
+    # Student Registration Allowance & Period Configuration (Admin Control for Portal & Mobile App)
+    is_registration_open = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការចុះឈ្មោះសិស្ស / Enable Student Registration",
+        help_text="អនុញ្ញាត ឬ ផ្អាក ការចុះឈ្មោះសិស្សថ្មីទាំងនៅលើ Portal និង Mobile App"
+    )
+    registration_start_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទចាប់ផ្តើមចុះឈ្មោះ / Registration Start Date & Time",
+        help_text="ពេលវេលាចាប់ផ្តើមអនុញ្ញាតឱ្យសិស្សចុះឈ្មោះ (ទុកទទេ ប្រសិនបើបើកភ្លាមៗ)"
+    )
+    registration_end_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទផុតកំណត់ចុះឈ្មោះ / Registration End Date & Time",
+        help_text="ពេលវេលាបញ្ចប់/ផុតកំណត់ការចុះឈ្មោះ (ទុកទទេ ប្រសិនបើគ្មានកំណត់)"
+    )
+    registration_closed_message = models.CharField(
+        max_length=500,
+        blank=True,
+        default="ការចុះឈ្មោះសិស្សថ្មីត្រូវបានបិទជាបណ្តោះអាសន្ន ឬផុតកំណត់កាលបរិច្ឆេទកំណត់ដោយរដ្ឋបាលសាលា។ សូមទាក់ទងរដ្ឋបាលសាលាសម្រាប់ព័ត៌មានបន្ថែម។",
+        verbose_name="សារជូនដំណឹងពេលបិទការចុះឈ្មោះ / Closed Notice Message"
+    )
+
+    def is_student_registration_allowed(self):
+        """
+        Determines whether student registration is currently permitted by Admin.
+        Used by both Web Portal and Mobile App.
+        Returns: (allowed: bool, reason: str, status_code: str)
+        status_code: 'OPEN', 'CLOSED_MANUAL', 'NOT_STARTED', 'EXPIRED'
+        """
+        from django.utils import timezone
+        if not self.is_registration_open:
+            msg = self.registration_closed_message or "ការចុះឈ្មោះសិស្សថ្មីត្រូវបានបិទដោយរដ្ឋបាលសាលា។"
+            return False, msg, "CLOSED_MANUAL"
+
+        now = timezone.now()
+        if self.registration_start_date and now < self.registration_start_date:
+            from django.utils.timezone import localtime
+            local_start = localtime(self.registration_start_date)
+            start_str = local_start.strftime('%d/%m/%Y វេលាម៉ោង %H:%M')
+            msg = f"ការចុះឈ្មោះសិស្សថ្មីមិនទាន់បើកដំណើរការនៅឡើយទេ។ នឹងចាប់ផ្តើមទទួលពាក្យនៅថ្ងៃទី {start_str}។"
+            return False, msg, "NOT_STARTED"
+
+        if self.registration_end_date and now > self.registration_end_date:
+            from django.utils.timezone import localtime
+            local_end = localtime(self.registration_end_date)
+            end_str = local_end.strftime('%d/%m/%Y វេលាម៉ោង %H:%M')
+            msg = f"ការចុះឈ្មោះសិស្សថ្មីបានផុតកំណត់កាលបរិច្ឆេទទទួលពាក្យហើយ (ផុតកំណត់កាលពីថ្ងៃទី {end_str})។"
+            return False, msg, "EXPIRED"
+
+        return True, "ការចុះឈ្មោះកំពុងបើកដំណើរការជាធម្មតា។", "OPEN"
+
     # MoEYS Administrative & Hierarchy
     ministry_name = models.CharField(
         max_length=200,
