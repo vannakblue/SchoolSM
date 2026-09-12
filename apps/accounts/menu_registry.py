@@ -480,6 +480,30 @@ MENU_SECTIONS_CATALOG = [
         'default_roles': ['ADMIN', 'ACCOUNTANT'],
         'items': [
             {
+                'key': 'revenue_list',
+                'name_kh': 'ប្រភពចំណូលសាលារដ្ឋ',
+                'name_en': 'Public School Revenues',
+                'icon': 'fa-solid fa-hand-holding-dollar text-success',
+                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'url_name': 'revenue_list',
+            },
+            {
+                'key': 'teacher_overtime_list',
+                'name_kh': 'ប្រាក់ឧបត្ថម្ភបង្រៀនលើសម៉ោង',
+                'name_en': 'Teacher Overtime Allowances',
+                'icon': 'fa-solid fa-user-clock text-primary',
+                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'url_name': 'teacher_overtime_list',
+            },
+            {
+                'key': 'financial_balance_dashboard',
+                'name_kh': 'សមតុល្យចំណូល-ចំណាយ',
+                'name_en': 'Financial Balance & Cash Flow',
+                'icon': 'fa-solid fa-scale-balanced text-info',
+                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'url_name': 'financial_balance_dashboard',
+            },
+            {
                 'key': 'monthly_fees_tracker',
                 'name_kh': 'បញ្ជីទឹកភ្លើងប្រចាំខែ',
                 'name_en': 'Monthly Utilities & Due Fees',

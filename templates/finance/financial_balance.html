@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}សមតុល្យចំណូល-ចំណាយសាលារដ្ឋ (Public School Financial Balance) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-scale-balanced text-primary me-2"></i>សមតុល្យចំណូល-ចំណាយសាលារៀន (Financial Balance)
+        </h2>
+        <p class="text-muted small mb-0">
+            របាយការណ៍សរុបចំណូលតាមប្រភព ធៀបនឹងការចំណាយប្រតិបត្តិការសាលា និងប្រាក់ឧបត្ថម្ភគ្រូលើសម៉ោង
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-dark" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពរបាយការណ៍
+        </button>
+        <a href="{% url 'revenue_list' %}" class="btn btn-outline-success fw-semibold">
+            <i class="fa-solid fa-hand-holding-dollar me-1"></i> គ្រប់គ្រងចំណូល
+        </a>
+        <a href="{% url 'expense_list' %}" class="btn btn-outline-danger fw-semibold">
+            <i class="fa-solid fa-money-bill-transfer me-1"></i> គ្រប់គ្រងចំណាយ
+        </a>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="custom-card p-3 mb-4 no-print">
+    <form method="GET" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">ឆ្នាំសិក្សា</label>
+            <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- ឆ្នាំសិក្សាទាំងអស់ --</option>
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if selected_year|stringformat:"s" == y.id|stringformat:"s" %}selected{% endif %}>
+                    {{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">ប្រចាំខែ (ប្រតិទិន)</label>
+            <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- គ្រប់ខែទាំងអស់ក្នុងឆ្នាំ --</option>
+                {% for m in months %}
+                <option value="{{ m }}" {% if selected_month|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
+                    ខែទី {{ m }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="{% url 'financial_balance_dashboard' %}" class="btn btn-sm btn-light w-100 mt-md-4">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> កំណត់ឡើងវិញ
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- 3 Main Pillars: Revenue vs Expense vs Net Balance -->
+<div class="row g-3 mb-4">
+    <!-- Revenue -->
+    <div class="col-md-4">
+        <div class="custom-card p-3 border-start border-success border-4 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">ចំណូលសរុប (Total Revenue)</span>
+                <span class="badge bg-success-subtle text-success fs-6"><i class="fa-solid fa-arrow-down-long"></i></span>
+            </div>
+            <h3 class="fw-bold text-success mb-1">{{ rev_khr|floatformat:0 }} ៛</h3>
+            <div class="text-muted small mb-2">+ ${{ rev_usd|floatformat:2 }} USD</div>
+            <div class="border-top pt-2 d-flex justify-content-between text-muted small">
+                <span>សមមូលសរុប (KHR)៖</span>
+                <strong class="text-dark">{{ rev_equiv_khr|floatformat:0 }} ៛</strong>
+            </div>
+            <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-check-double text-success me-1"></i> រាប់ស្វ័យប្រវត្តិពី <strong>ថ្លៃទឹកភ្លើងសិស្ស</strong> + <strong>វិក្កយបត្រ</strong> + <strong>ចំណូលផ្ទាល់សាលា</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense -->
+    <div class="col-md-4">
+        <div class="custom-card p-3 border-start border-danger border-4 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">ចំណាយសរុប (Total Expense)</span>
+                <span class="badge bg-danger-subtle text-danger fs-6"><i class="fa-solid fa-arrow-up-long"></i></span>
+            </div>
+            <h3 class="fw-bold text-danger mb-1">{{ exp_khr|floatformat:0 }} ៛</h3>
+            <div class="text-muted small mb-2">+ ${{ exp_usd|floatformat:2 }} USD</div>
+            <div class="border-top pt-2 d-flex justify-content-between text-muted small">
+                <span>សមមូលសរុប (KHR)៖</span>
+                <strong class="text-dark">{{ exp_equiv_khr|floatformat:0 }} ៛</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net Cash Balance -->
+    <div class="col-md-4">
+        <div class="custom-card p-3 border-start {% if net_equiv_khr >= 0 %}border-primary{% else %}border-warning{% endif %} border-4 h-100 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-bold text-uppercase">សមតុល្យនៅសល់ (Net Balance)</span>
+                {% if net_equiv_khr >= 0 %}
+                <span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-check me-1"></i> សល់ថវិកា (Surplus)</span>
+                {% else %}
+                <span class="badge bg-danger px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> ខ្វះថវិកា (Deficit)</span>
+                {% endif %}
+            </div>
+            <h3 class="fw-bold {% if net_equiv_khr >= 0 %}text-primary{% else %}text-danger{% endif %} mb-1">
+                {{ balance_khr|floatformat:0 }} ៛
+            </h3>
+            <div class="text-muted small mb-2">
+                {% if balance_usd >= 0 %}+${{ balance_usd|floatformat:2 }}{% else %}-${{ balance_usd|floatformat:2|slice:"1:" }}{% endif %} USD
+            </div>
+            <div class="border-top pt-2 d-flex justify-content-between small">
+                <span class="text-muted">សមតុល្យសរុបសមមូល៖</span>
+                <strong class="{% if net_equiv_khr >= 0 %}text-primary{% else %}text-danger{% endif %} fs-6">
+                    {{ net_equiv_khr|floatformat:0 }} ៛ (~${{ net_equiv_usd|floatformat:2 }})
+                </strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Breakdown Columns -->
+<div class="row g-4 mb-4">
+    <!-- Left: Revenues by Source -->
+    <div class="col-lg-6">
+        <div class="custom-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 class="fw-bold mb-0 text-success">
+                    <i class="fa-solid fa-chart-pie me-2"></i>ចំណាត់ថ្នាក់តាមប្រភពចំណូល
+                </h5>
+                <span class="badge bg-success-subtle text-success">{{ rev_by_source|length }} ប្រភព</span>
+            </div>
+
+            {% if rev_by_source %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>ប្រភពចំណូល</th>
+                            <th class="text-end">ទឹកប្រាក់ (៛)</th>
+                            <th class="text-end">ទឹកប្រាក់ ($)</th>
+                            <th class="text-end">ភាគរយ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rev_by_source %}
+                        <tr>
+                            <td class="small fw-semibold">
+                                {{ item.label }}
+                                <span class="badge bg-light text-muted border ms-1">{{ item.count }}</span>
+                            </td>
+                            <td class="text-end small">{{ item.khr|floatformat:0 }} ៛</td>
+                            <td class="text-end small">${{ item.usd|floatformat:2 }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-success-subtle text-success">{{ item.percent }}%</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-4 mb-0">មិនទាន់មានទិន្នន័យចំណូលក្នុងចន្លោះពេលនេះ</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: Expenses by Category -->
+    <div class="col-lg-6">
+        <div class="custom-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 class="fw-bold mb-0 text-danger">
+                    <i class="fa-solid fa-chart-simple me-2"></i>ចំណាត់ថ្នាក់តាមប្រភេទចំណាយ
+                </h5>
+                <span class="badge bg-danger-subtle text-danger">{{ exp_by_category|length }} ផ្នែក</span>
+            </div>
+
+            {% if exp_by_category %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>ប្រភេទចំណាយ</th>
+                            <th class="text-end">ទឹកប្រាក់ (៛)</th>
+                            <th class="text-end">ទឹកប្រាក់ ($)</th>
+                            <th class="text-end">ភាគរយ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in exp_by_category %}
+                        <tr>
+                            <td class="small fw-semibold">
+                                {{ item.label }}
+                                <span class="badge bg-light text-muted border ms-1">{{ item.count }}</span>
+                            </td>
+                            <td class="text-end small">{{ item.khr|floatformat:0 }} ៛</td>
+                            <td class="text-end small">${{ item.usd|floatformat:2 }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-danger-subtle text-danger">{{ item.percent }}%</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-4 mb-0">មិនទាន់មានទិន្នន័យចំណាយក្នុងចន្លោះពេលនេះ</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Ledger: Recent Transactions -->
+<div class="row g-4">
+    <!-- Recent Revenues -->
+    <div class="col-lg-6">
+        <div class="custom-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-success"><i class="fa-solid fa-receipt me-1"></i> កំណត់ត្រាចំណូលចុងក្រោយ</h6>
+                <a href="{% url 'revenue_list' %}" class="small text-decoration-none">មើលទាំងអស់ &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm small mb-0">
+                    <thead>
+                        <tr class="text-muted">
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>បរិយាយ</th>
+                            <th class="text-end">ចំនួនទឹកប្រាក់</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in revenues %}
+                        <tr>
+                            <td>{{ r.date|date:"d/m/Y" }}</td>
+                            <td>{{ r.title }}</td>
+                            <td class="text-end fw-bold text-success">
+                                {% if r.amount_khr > 0 %}{{ r.amount_khr|floatformat:0 }} ៛{% else %}${{ r.amount_usd|floatformat:2 }}{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">គ្មានទិន្នន័យ</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Expenses -->
+    <div class="col-lg-6">
+        <div class="custom-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-danger"><i class="fa-solid fa-money-bill-transfer me-1"></i> កំណត់ត្រាចំណាយចុងក្រោយ</h6>
+                <a href="{% url 'expense_list' %}" class="small text-decoration-none">មើលទាំងអស់ &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm small mb-0">
+                    <thead>
+                        <tr class="text-muted">
+                            <th>កាលបរិច្ឆេទ</th>
+                            <th>បរិយាយ</th>
+                            <th class="text-end">ចំនួនទឹកប្រាក់</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in expenses %}
+                        <tr>
+                            <td>{{ e.date|date:"d/m/Y" }}</td>
+                            <td>{{ e.title }}</td>
+                            <td class="text-end fw-bold text-danger">
+                                {% if e.amount_khr > 0 %}{{ e.amount_khr|floatformat:0 }} ៛{% else %}${{ e.amount|floatformat:2 }}{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">គ្មានទិន្នន័យ</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

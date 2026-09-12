@@ -4,7 +4,7 @@
 <html lang="km">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>ប័ណ្ណសម្គាល់ខ្លួនសិស្ស - MoEYS Standard Student ID Card</title>
     
     <!-- Google Fonts: Moul, Kantumruy Pro, Siemreap, Battambang -->
@@ -588,8 +588,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 80px);
+            min-height: calc(100vh - 180px);
             padding: 30px;
+        }
+
+        .single-student-card-item.active-single-card {
+            display: block !important;
+        }
+
+        .single-student-card-item.d-none {
+            display: none !important;
         }
 
         /* Print Media Styles */
@@ -606,14 +614,65 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
+            body.mode-single #container4Grid {
+                display: none !important;
+            }
+            body.mode-single #containerSingleCard {
+                display: block !important;
+            }
+            body.mode-single .single-student-card-item:not(.active-single-card) {
+                display: none !important;
+            }
+            body.mode-single .single-student-card-item.active-single-card {
+                display: flex !important;
+                justify-content: center !important;
+                align-items: flex-start !important;
+                margin: 0 auto !important;
+                padding-top: 12mm !important;
+                page-break-inside: avoid !important;
+            }
+            body.mode-single .single-card-sheet {
+                min-height: auto !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                display: block !important;
+            }
+            body:not(.mode-single) #containerSingleCard {
+                display: none !important;
+            }
+            body:not(.mode-single) #container4Grid {
+                display: block !important;
+            }
             .a4-sheet {
                 margin: 0 auto !important;
-                padding: 8mm 6mm !important;
+                padding: 6mm 6mm !important;
                 box-shadow: none !important;
                 width: 210mm !important;
                 height: 297mm !important;
+                max-height: 297mm !important;
+                box-sizing: border-box !important;
                 page-break-after: always !important;
                 page-break-inside: avoid !important;
+                break-inside: avoid-page !important;
+                overflow: hidden !important;
+            }
+            .moeys-id-card {
+                page-break-inside: avoid !important;
+                break-inside: avoid-page !important;
+                position: relative !important;
+            }
+            .card-watermark {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .card-watermark img,
+            .card-watermark svg {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .tacteing-char-val:hover,
             .card-lunar-display:hover,
@@ -632,12 +691,12 @@
             }
             @page {
                 size: A4 portrait;
-                margin: 6mm 4mm;
+                margin: 0;
             }
         }
     </style>
 </head>
-<body>
+<body class="{% if mode == 'single' %}mode-single{% else %}mode-4grid{% endif %}">
 
     <!-- Top Action Toolbar (Hidden during Print) -->
     <div class="print-toolbar no-print">
@@ -655,11 +714,12 @@
 
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <!-- Classroom Filter -->
-                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                <form method="GET" action="{% url 'batch_student_id_cards' %}" class="d-flex align-items-center gap-2 mb-0" id="classroomFilterForm">
+                    <input type="hidden" name="mode" id="filterFormMode" value="{{ mode|default:'4_grid' }}">
                     <select name="classroom" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill" onchange="this.form.submit()">
                         <option value="">-- បោះពុម្ពតាមថ្នាក់រៀន --</option>
                         {% for c in classrooms %}
-                        <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id or student.classroom and student.classroom.id == c.id and mode == 'class' %}selected{% endif %}>
+                        <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id %}selected{% endif %}>
                             {{ c.name|clean_classroom_full }} ({{ c.students.count }} នាក់)
                         </option>
                         {% endfor %}
@@ -667,15 +727,13 @@
                 </form>
 
                 <!-- Toggle Mode: 4 Cards Sheet vs Single Card -->
-                <div class="btn-group btn-group-sm">
-                    <a href="?mode=4_grid" class="btn {% if mode == '4_grid' or mode == 'batch' or not mode %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-start-pill">
+                <div class="btn-group btn-group-sm shadow-sm" id="viewModeButtonGroup" role="group">
+                    <button type="button" id="btnMode4Grid" class="btn {% if mode != 'single' %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-start-pill px-3" title="ទិដ្ឋភាពសន្លឹក A4 (៤ ប័ណ្ណ/ទំព័រ)">
                         <i class="fa-solid fa-table-cells-large me-1"></i> សន្លឹក A4 (៤ ប័ណ្ណ/ទំព័រ)
-                    </a>
-                    {% if student %}
-                    <a href="?mode=single" class="btn {% if mode == 'single' %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-end-pill">
+                    </button>
+                    <button type="button" id="btnModeSingle" class="btn {% if mode == 'single' %}btn-warning text-dark fw-bold{% else %}btn-outline-light{% endif %} rounded-end-pill px-3" title="ទិដ្ឋភាពប័ណ្ណទោលម្តងមួយៗ">
                         <i class="fa-solid fa-id-badge me-1"></i> ប័ណ្ណទោល
-                    </a>
-                    {% endif %}
+                    </button>
                 </div>
 
                 <!-- Admin Customization Toggle Button -->
@@ -920,21 +978,74 @@
     <div id="floatingResizeTooltip" class="floating-resize-tooltip"></div>
 
     <!-- MAIN CARDS CONTAINER -->
-    {% if mode == 'single' and student %}
-        <!-- Single Card Preview -->
-        <div class="single-card-sheet no-print-bg">
-            {% include "students/_moeys_card_item.html" with st=student %}
-        </div>
-    {% else %}
-        <!-- A4 Sheets Grid (4 Cards per page, exactly as in image) -->
+    <!-- 4-CARDS PER PAGE A4 CONTAINER -->
+    <div id="container4Grid" class="cards-view-mode-container {% if mode == 'single' %}d-none{% endif %}">
         {% for page_students in pages %}
         <div class="a4-sheet">
             {% for st in page_students %}
                 {% include "students/_moeys_card_item.html" with st=st %}
             {% endfor %}
         </div>
+        {% empty %}
+        <div class="text-center text-white py-5">
+            <p class="fs-5">ពុំមានទិន្នន័យសិស្សសម្រាប់បោះពុម្ពទេ</p>
+        </div>
         {% endfor %}
-    {% endif %}
+    </div>
+
+    <!-- SINGLE CARD PREVIEW CONTAINER -->
+    <div id="containerSingleCard" class="cards-view-mode-container {% if mode != 'single' %}d-none{% endif %}">
+        <!-- Single Card Navigation Toolbar (Only visible when > 1 student) -->
+        {% if students|length > 1 %}
+        <div class="no-print d-flex flex-wrap align-items-center justify-content-center gap-3 my-3">
+            <div class="d-flex align-items-center gap-2 bg-dark p-2 px-3 rounded-pill border border-secondary shadow-sm">
+                <button type="button" id="btnPrevSingleStudent" class="btn btn-sm btn-outline-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="សិស្សមុន">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <div class="d-flex align-items-center gap-2">
+                    <label for="selectSingleStudent" class="small text-warning fw-bold mb-0">
+                        <i class="fa-solid fa-user-graduate me-1"></i> សិស្ស:
+                    </label>
+                    <select id="selectSingleStudent" class="form-select form-select-sm bg-dark text-white border-warning rounded-pill" style="min-width: 250px;">
+                        {% for st in students %}
+                        <option value="{{ st.id }}" {% if student and student.id == st.id or forloop.first and not student %}selected{% endif %} data-index="{{ forloop.counter }}">
+                            {{ forloop.counter }}. {{ st.khmer_name }} ({{ st.student_id|format_student_exam_id|default:"គ្មានអត្តលេខ" }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="button" id="btnNextSingleStudent" class="btn btn-sm btn-outline-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="សិស្សបន្ទាប់">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <span class="badge bg-secondary rounded-pill ms-2">
+                    <span id="singleStudentIndex">1</span> / {{ students|length }}
+                </span>
+            </div>
+            <div class="text-secondary small">
+                <i class="fa-solid fa-circle-info text-info me-1"></i>
+                ចុចប៊ូតុង <strong>បោះពុម្ពប័ណ្ណ (Print Cards)</strong> ដើម្បីបោះពុម្ពតែប័ណ្ណទោលរបស់សិស្សនេះ
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Single Card Sheets Wrapper -->
+        <div class="single-card-sheet no-print-bg">
+            {% for st in students %}
+            <div class="single-student-card-item {% if student and student.id == st.id or forloop.first and not student %}active-single-card{% else %}d-none{% endif %}" data-student-id="{{ st.id }}" data-index="{{ forloop.counter }}">
+                {% include "students/_moeys_card_item.html" with st=st %}
+            </div>
+            {% empty %}
+            {% if student %}
+            <div class="single-student-card-item active-single-card" data-student-id="{{ student.id }}" data-index="1">
+                {% include "students/_moeys_card_item.html" with st=student %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -1775,6 +1886,128 @@
                         btnToggle.classList.replace('btn-warning', 'btn-outline-warning');
                     }
                 });
+            }
+
+            // View Mode Switching: 4-Grid vs Single Card (ប័ណ្ណទោល)
+            const btnMode4Grid = document.getElementById('btnMode4Grid');
+            const btnModeSingle = document.getElementById('btnModeSingle');
+            const container4Grid = document.getElementById('container4Grid');
+            const containerSingleCard = document.getElementById('containerSingleCard');
+            const filterFormMode = document.getElementById('filterFormMode');
+            const selectSingleStudent = document.getElementById('selectSingleStudent');
+            const singleStudentIndex = document.getElementById('singleStudentIndex');
+            const btnPrevSingle = document.getElementById('btnPrevSingleStudent');
+            const btnNextSingle = document.getElementById('btnNextSingleStudent');
+
+            function setViewMode(mode, updateUrl = true) {
+                if (mode === 'single') {
+                    document.body.classList.remove('mode-4grid');
+                    document.body.classList.add('mode-single');
+                    if (container4Grid) container4Grid.classList.add('d-none');
+                    if (containerSingleCard) containerSingleCard.classList.remove('d-none');
+
+                    if (btnMode4Grid) {
+                        btnMode4Grid.className = 'btn btn-outline-light rounded-start-pill px-3';
+                    }
+                    if (btnModeSingle) {
+                        btnModeSingle.className = 'btn btn-warning text-dark fw-bold rounded-end-pill px-3';
+                    }
+                    if (filterFormMode) filterFormMode.value = 'single';
+                } else {
+                    document.body.classList.remove('mode-single');
+                    document.body.classList.add('mode-4grid');
+                    if (containerSingleCard) containerSingleCard.classList.add('d-none');
+                    if (container4Grid) container4Grid.classList.remove('d-none');
+
+                    if (btnMode4Grid) {
+                        btnMode4Grid.className = 'btn btn-warning text-dark fw-bold rounded-start-pill px-3';
+                    }
+                    if (btnModeSingle) {
+                        btnModeSingle.className = 'btn btn-outline-light rounded-end-pill px-3';
+                    }
+                    if (filterFormMode) filterFormMode.value = '4_grid';
+                }
+
+                if (updateUrl && window.history && window.history.replaceState) {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('mode', mode);
+                    window.history.replaceState(null, '', currentUrl.toString());
+                }
+            }
+
+            if (btnMode4Grid) {
+                btnMode4Grid.addEventListener('click', function() {
+                    setViewMode('4_grid', true);
+                });
+            }
+
+            if (btnModeSingle) {
+                btnModeSingle.addEventListener('click', function() {
+                    setViewMode('single', true);
+                });
+            }
+
+            // Single student switcher inside Single Card View
+            function showSingleStudentById(stId) {
+                const singleCards = document.querySelectorAll('.single-student-card-item');
+                let foundIndex = 1;
+                singleCards.forEach(card => {
+                    if (card.getAttribute('data-student-id') == stId) {
+                        card.classList.remove('d-none');
+                        card.classList.add('active-single-card');
+                        foundIndex = card.getAttribute('data-index') || 1;
+                    } else {
+                        card.classList.add('d-none');
+                        card.classList.remove('active-single-card');
+                    }
+                });
+
+                if (selectSingleStudent && selectSingleStudent.value != stId) {
+                    selectSingleStudent.value = stId;
+                }
+                if (singleStudentIndex) {
+                    singleStudentIndex.textContent = foundIndex;
+                }
+
+                if (window.history && window.history.replaceState) {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('student_id', stId);
+                    window.history.replaceState(null, '', currentUrl.toString());
+                }
+            }
+
+            if (selectSingleStudent) {
+                selectSingleStudent.addEventListener('change', function() {
+                    showSingleStudentById(this.value);
+                });
+            }
+
+            if (btnPrevSingle && selectSingleStudent) {
+                btnPrevSingle.addEventListener('click', function() {
+                    let idx = selectSingleStudent.selectedIndex;
+                    if (idx > 0) {
+                        selectSingleStudent.selectedIndex = idx - 1;
+                        showSingleStudentById(selectSingleStudent.value);
+                    }
+                });
+            }
+
+            if (btnNextSingle && selectSingleStudent) {
+                btnNextSingle.addEventListener('click', function() {
+                    let idx = selectSingleStudent.selectedIndex;
+                    if (idx < selectSingleStudent.options.length - 1) {
+                        selectSingleStudent.selectedIndex = idx + 1;
+                        showSingleStudentById(selectSingleStudent.value);
+                    }
+                });
+            }
+
+            // Initialize correct student index counter
+            if (selectSingleStudent && singleStudentIndex) {
+                const opt = selectSingleStudent.options[selectSingleStudent.selectedIndex];
+                if (opt) {
+                    singleStudentIndex.textContent = opt.getAttribute('data-index') || (selectSingleStudent.selectedIndex + 1);
+                }
             }
         });
     </script>

@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ប្រភពចំណូលសាលារដ្ឋ (Public School Revenues) | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="fa-solid fa-hand-holding-dollar text-success me-2"></i>ប្រភពចំណូលសាលារដ្ឋ (School Revenues)
+        </h2>
+        <p class="text-muted small mb-0">
+            កត់ត្រា និងតាមដានថវិកាកម្មវិធីរដ្ឋ (PB) វិភាគទានសហគមន៍/អាណាព្យាបាល ថ្លៃឈ្នួលអាហារដ្ឋាន និងចំណូលផ្សេងៗ
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-dark" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពបញ្ជី
+        </button>
+        <a href="{% url 'financial_balance_dashboard' %}" class="btn btn-outline-primary fw-semibold">
+            <i class="fa-solid fa-scale-balanced me-1"></i> ផ្ទាំងសមតុល្យចំណូល-ចំណាយ
+        </a>
+        <button class="btn btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addRevenueModal">
+            <i class="fa-solid fa-plus me-1"></i> កត់ត្រាចំណូលថ្មី
+        </button>
+    </div>
+</div>
+
+<!-- Live Automated Student Collections Banner -->
+<div class="alert alert-success border-success-subtle d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm">
+    <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-success fs-6 px-3 py-2">
+            <i class="fa-solid fa-bolt me-1"></i> ស្វ័យប្រវត្តិ (Auto-Sync)
+        </span>
+        <div>
+            <div class="fw-bold text-dark mb-1">
+                ប្រព័ន្ធគិតបញ្ចូលចំណូលពីសិស្សដោយស្វ័យប្រវត្តិ (Live Real-Time Integration)
+            </div>
+            <div class="small text-muted">
+                ⚡💧 ថ្លៃទឹកភ្លើងតាមសិស្ស៖ <strong class="text-success">{{ student_utility_khr|floatformat:0 }} ៛</strong> ({{ student_utility_count }} លើក)
+                | 🧾 វិក្កយបត្រសិស្ស៖ <strong class="text-primary">${{ student_invoice_usd|floatformat:2 }}</strong> ({{ student_invoice_count }} លើក)
+                | 🏛️ ចំណូលផ្ទាល់សាលា៖ <strong>{{ direct_khr|floatformat:0 }} ៛</strong> + <strong>${{ direct_usd|floatformat:2 }}</strong>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2 mt-md-0">
+        <a href="{% url 'monthly_fees_tracker' %}" class="btn btn-sm btn-outline-success me-1">
+            <i class="fa-solid fa-faucet-drip me-1"></i> បញ្ជីទឹកភ្លើង
+        </a>
+        <a href="{% url 'invoice_list' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-file-invoice me-1"></i> វិក្កយបត្រ
+        </a>
+    </div>
+</div>
+
+<!-- Summary Metrics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="custom-card p-3 border-start border-success border-4 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">ចំណូលគិតជារៀល (KHR)</span>
+                    <h4 class="fw-bold text-success mb-0 mt-1">{{ total_khr|floatformat:0 }} ៛</h4>
+                </div>
+                <div class="bg-success-subtle text-success rounded-3 p-3 fs-4">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="custom-card p-3 border-start border-primary border-4 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">ចំណូលគិតជាដុល្លារ (USD)</span>
+                    <h4 class="fw-bold text-primary mb-0 mt-1">${{ total_usd|floatformat:2 }}</h4>
+                </div>
+                <div class="bg-primary-subtle text-primary rounded-3 p-3 fs-4">
+                    <i class="fa-solid fa-dollar-sign"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="custom-card p-3 border-start border-warning border-4 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">សរុបជាប្រាក់រៀលសរុប</span>
+                    <h4 class="fw-bold text-dark mb-0 mt-1">~{{ total_equiv_khr|floatformat:0 }} ៛</h4>
+                    <span class="text-muted small">(អត្រាប្តូរប្រាក់ $1 = 4,100៛)</span>
+                </div>
+                <div class="bg-warning-subtle text-warning rounded-3 p-3 fs-4">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="custom-card p-3 border-start border-info border-4 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">សរុបជាដុល្លារសរុប</span>
+                    <h4 class="fw-bold text-info mb-0 mt-1">~${{ total_equiv_usd|floatformat:2 }}</h4>
+                    <span class="text-muted small">ចំនួនកំណត់ត្រា៖ {{ revenues.count }}</span>
+                </div>
+                <div class="bg-info-subtle text-info rounded-3 p-3 fs-4">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="custom-card p-3 mb-4 no-print">
+    <form method="GET" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">តម្រងតាមប្រភពចំណូល</label>
+            <select name="source" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- ប្រភពចំណូលទាំងអស់ --</option>
+                {% for code, label in sources %}
+                <option value="{{ code }}" {% if selected_source == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">ឆ្នាំសិក្សា</label>
+            <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- ឆ្នាំសិក្សាទាំងអស់ --</option>
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if selected_year|stringformat:"s" == y.id|stringformat:"s" %}selected{% endif %}>
+                    {{ y.name }} {% if y.is_current %}(បច្ចុប្បន្ន){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="{% url 'revenue_list' %}" class="btn btn-sm btn-light w-100 mt-md-4">
+                <i class="fa-solid fa-arrows-rotate me-1"></i> កំណត់ឡើងវិញ
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="custom-card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>កាលបរិច្ឆេទ</th>
+                    <th>ប្រភពចំណូល</th>
+                    <th>បរិយាយ / ចំណងជើង</th>
+                    <th class="text-end">ទឹកប្រាក់ (រៀល ៛)</th>
+                    <th class="text-end">ទឹកប្រាក់ (ដុល្លារ $)</th>
+                    <th>លេខយោង/បង្កាន់ដៃ</th>
+                    <th>អ្នកកត់ត្រា</th>
+                    <th class="text-end no-print">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rev in revenues %}
+                <tr>
+                    <td class="text-muted small">{{ forloop.counter }}</td>
+                    <td class="small">{{ rev.date|date:"d/m/Y" }}</td>
+                    <td>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                            {{ rev.get_source_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="fw-bold">{{ rev.title }}</div>
+                        {% if rev.notes %}
+                        <span class="text-muted small d-block">{{ rev.notes }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-bold text-success fs-6">
+                        {% if rev.amount_khr > 0 %}{{ rev.amount_khr|floatformat:0 }} ៛{% else %}-{% endif %}
+                    </td>
+                    <td class="text-end fw-bold text-primary fs-6">
+                        {% if rev.amount_usd > 0 %}${{ rev.amount_usd|floatformat:2 }}{% else %}-{% endif %}
+                    </td>
+                    <td>
+                        {% if rev.receipt_reference %}
+                        <span class="badge bg-light text-dark border">{{ rev.receipt_reference }}</span>
+                        {% endif %}
+                        {% if rev.receipt_file %}
+                        <a href="{{ rev.receipt_file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">
+                        {{ rev.recorded_by.display_name|default:rev.recorded_by.username|default:"Admin" }}
+                    </td>
+                    <td class="text-end no-print">
+                        <form method="POST" action="{% url 'revenue_delete' rev.id %}" class="d-inline" onsubmit="return confirm('តើលោកអ្នកពិតជាចង់លុបចំណូល «{{ rev.title }}» មែនទេ?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="លុប">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary"></i>
+                        <p class="mb-0">មិនទាន់មានទិន្នន័យចំណូលសាលារៀននៅឡើយទេ។ សូមចុចប៊ូតុង «កត់ត្រាចំណូលថ្មី» ដើម្បីបញ្ចូល។</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Add Revenue -->
+<div class="modal fade" id="addRevenueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-plus-circle me-1"></i> កត់ត្រាចំណូលសាលារដ្ឋថ្មី
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        លោកអ្នកអាចបញ្ចូលទឹកប្រាក់ជា <strong>ប្រាក់រៀល (៛)</strong> ឬ <strong>ប្រាក់ដុល្លារ ($)</strong> ឬទាំងពីរស្របតាមប្រភពចំណូលជាក់ស្ដែង។
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ចំណងជើង / បរិយាយចំណូល *</label>
+                        {{ form.title }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ប្រភពចំណូល *</label>
+                            {{ form.source_type }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">ឆ្នាំសិក្សា</label>
+                            {{ form.academic_year }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-success">ចំនួនទឹកប្រាក់ជារៀល (KHR ៛)</label>
+                            {{ form.amount_khr }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-primary">ចំនួនទឹកប្រាក់ជាដុល្លារ (USD $)</label>
+                            {{ form.amount_usd }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">កាលបរិច្ឆេទទទួល *</label>
+                            {{ form.date }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">លេខលិខិត ឬលេខបង្កាន់ដៃយោង</label>
+                            {{ form.receipt_reference }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">ឯកសារភ្ជាប់ (វិក្កយបត្រ / បង្កាន់ដៃ / លិខិតរដ្ឋ)</label>
+                        {{ form.receipt_file }}
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small">កំណត់ចំណាំបន្ថែម</label>
+                        {{ form.notes }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកចំណូល
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

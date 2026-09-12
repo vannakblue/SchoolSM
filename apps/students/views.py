@@ -1397,18 +1397,20 @@ def student_id_card(request, pk):
     classrooms = Classroom.objects.all().order_by('name')
 
     mode = request.GET.get('mode', '4_grid')
-    if mode == 'single':
-        students = [student]
-    elif mode == 'class' and student.classroom:
-        students = list(Student.objects.filter(classroom=student.classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
+    if mode not in ['4_grid', 'single', 'class']:
+        mode = '4_grid'
+
+    if mode == 'class' and student.classroom:
+        all_students = list(Student.objects.filter(classroom=student.classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
+        pages = [all_students[i:i + 4] for i in range(0, len(all_students), 4)]
+        students = all_students
     else:
         peers = list(Student.objects.filter(classroom=student.classroom).exclude(pk=student.pk).select_related('classroom', 'academic_year').order_by('student_id')[:3]) if student.classroom else []
-        students = [student] + peers
-        while len(students) < 4:
-            students.append(student)
-
-    chunk_size = 4
-    pages = [students[i:i + chunk_size] for i in range(0, len(students), chunk_size)]
+        grid_students = [student] + peers
+        while len(grid_students) < 4:
+            grid_students.append(student)
+        pages = [grid_students[i:i + 4] for i in range(0, len(grid_students), 4)]
+        students = [student]
 
     return render(request, 'students/student_id_card.html', {
         'student': student,
@@ -1417,6 +1419,7 @@ def student_id_card(request, pk):
         'total_students': len(students),
         'school_info': school_info,
         'classrooms': classrooms,
+        'selected_classroom': student.classroom,
         'day_kh': day_kh,
         'month_kh': month_kh,
         'year_kh': year_kh,
@@ -1471,8 +1474,24 @@ def batch_student_id_cards(request):
     chunk_size = 4
     pages = [students[i:i + chunk_size] for i in range(0, len(students), chunk_size)]
 
+    mode = request.GET.get('mode', '4_grid')
+    if mode not in ['4_grid', 'single']:
+        mode = '4_grid'
+
+    student_id = request.GET.get('student_id')
+    selected_student = None
+    if student_id:
+        selected_student = next((s for s in students if str(s.id) == str(student_id)), None)
+        if not selected_student:
+            try:
+                selected_student = Student.objects.select_related('classroom', 'academic_year').get(pk=student_id)
+            except Student.DoesNotExist:
+                selected_student = None
+    if not selected_student and students:
+        selected_student = students[0]
+
     return render(request, 'students/student_id_card.html', {
-        'student': students[0] if students else None,
+        'student': selected_student,
         'students': students,
         'pages': pages,
         'total_students': len(students),
@@ -1487,7 +1506,7 @@ def batch_student_id_cards(request):
         'solar_date': solar_date,
         'school_name': school_name,
         'province_name': province_name,
-        'mode': 'batch',
+        'mode': mode,
     })
 
 

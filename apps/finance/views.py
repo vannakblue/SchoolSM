@@ -13,9 +13,13 @@ from apps.accounts.decorators import role_required
 from apps.accounts.utils import send_telegram_notification
 from .models import (
     FeeCategory, Invoice, PaymentTransaction, Expense, Payroll,
-    MonthlyFeeConfig, MonthlyFeeRate, StudentMonthlyPayment, StudentMonthlyCategory
+    MonthlyFeeConfig, MonthlyFeeRate, StudentMonthlyPayment, StudentMonthlyCategory,
+    SchoolRevenue, TeacherOvertimeConfig, TeacherOvertimeRecord
 )
-from .forms import FeeCategoryForm, InvoiceForm, PaymentTransactionForm, ExpenseForm
+from .forms import (
+    FeeCategoryForm, InvoiceForm, PaymentTransactionForm, ExpenseForm,
+    SchoolRevenueForm, TeacherOvertimeConfigForm, TeacherOvertimeRecordForm
+)
 from apps.students.models import Student, StudentCategory
 from apps.teachers.models import Teacher, TeacherAttendance
 from apps.academics.models import Classroom, AcademicYear, GradeLevel
@@ -1703,7 +1707,10 @@ def expense_list(request):
     if category_filter:
         expenses = expenses.filter(category=category_filter)
 
-    total_expense = expenses.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
+    total_expense_usd = expenses.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
+    total_expense_khr = expenses.aggregate(s=Sum('amount_khr'))['s'] or Decimal('0.00')
+    total_equiv_khr = total_expense_khr + (total_expense_usd * Decimal('4100.00'))
+    total_equiv_usd = total_expense_usd + (total_expense_khr / Decimal('4100.00'))
 
     if request.method == 'POST':
         form = ExpenseForm(request.POST, request.FILES)
@@ -1711,18 +1718,464 @@ def expense_list(request):
             exp = form.save(commit=False)
             exp.recorded_by = request.user
             exp.save()
-            messages.success(request, f"បានកត់ត្រាចំណាយ {exp.title} (${exp.amount}) ជោគជ័យ!")
+            amount_display = f"{exp.amount_khr:,.0f}៛" if exp.amount_khr > 0 else f"${exp.amount}"
+            messages.success(request, f"✅ បានកត់ត្រាចំណាយ «{exp.title}» ({amount_display}) ជោគជ័យ!")
             return redirect('expense_list')
     else:
         form = ExpenseForm(initial={'date': datetime.now().date()})
 
     return render(request, 'finance/expense_list.html', {
         'expenses': expenses,
-        'total_expense': total_expense,
+        'total_expense': total_expense_usd,
+        'total_expense_khr': total_expense_khr,
+        'total_equiv_khr': total_equiv_khr,
+        'total_equiv_usd': total_equiv_usd,
         'form': form,
         'categories': Expense.Category.choices,
         'selected_category': category_filter,
     })
+
+
+# ==============================================================================
+# PUBLIC SCHOOL REVENUE & OVERTIME ALLOWANCE MANAGEMENT (ប្រព័ន្ធចំណូល & លើសម៉ោងសាលារដ្ឋ)
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def revenue_list(request):
+    """
+    Manages state and institutional revenue sources:
+    - MoEYS Program Budget (PB / ថវិកាកម្មវិធីរដ្ឋ)
+    - Parent & Community Contributions (វិភាគទានសហគមន៍/អាណាព្យាបាល)
+    - Classroom Utilities Collection
+    - Canteen / Booth Rental
+    - School Services (Uniforms, Badges, Student Cards)
+    - Donations / Alumni Grants
+    """
+    active_year = get_active_academic_year(request)
+    revenues = SchoolRevenue.objects.select_related('academic_year', 'recorded_by').all()
+    source_filter = request.GET.get('source', '').strip()
+    year_filter = request.GET.get('year', '')
+
+    if source_filter:
+        revenues = revenues.filter(source_type=source_filter)
+    if year_filter:
+        revenues = revenues.filter(academic_year_id=year_filter)
+    elif active_year:
+        revenues = revenues.filter(Q(academic_year=active_year) | Q(academic_year__isnull=True))
+
+    total_khr = sum(r.amount_khr for r in revenues)
+    total_usd = sum(r.amount_usd for r in revenues)
+
+    # Automatically aggregate Student Monthly Utilities (ថ្លៃទឹកភ្លើងប្រមូលពីសិស្សផ្ទាល់)
+    monthly_pmts_qs = StudentMonthlyPayment.objects.filter(paid_amount__gt=0)
+    if year_filter:
+        monthly_pmts_qs = monthly_pmts_qs.filter(academic_year_id=year_filter)
+    elif active_year:
+        monthly_pmts_qs = monthly_pmts_qs.filter(academic_year=active_year)
+    student_utility_khr = monthly_pmts_qs.aggregate(s=Sum('paid_amount'))['s'] or Decimal('0.00')
+    student_utility_count = monthly_pmts_qs.count()
+
+    # Automatically aggregate Student Invoice Payments (កម្រៃផ្សេងៗតាមវិក្កយបត្រសិស្ស)
+    invoice_pmts_qs = PaymentTransaction.objects.select_related('invoice__academic_year')
+    if year_filter:
+        invoice_pmts_qs = invoice_pmts_qs.filter(invoice__academic_year_id=year_filter)
+    elif active_year:
+        invoice_pmts_qs = invoice_pmts_qs.filter(invoice__academic_year=active_year)
+    student_invoice_usd = invoice_pmts_qs.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
+    student_invoice_count = invoice_pmts_qs.count()
+
+    # Grand Total Revenues (Direct Revenues + Automated Student Collections)
+    grand_total_khr = total_khr + student_utility_khr
+    grand_total_usd = total_usd + student_invoice_usd
+    total_equiv_khr = grand_total_khr + (grand_total_usd * Decimal('4100.00'))
+    total_equiv_usd = grand_total_usd + (grand_total_khr / Decimal('4100.00'))
+
+    if request.method == 'POST':
+        form = SchoolRevenueForm(request.POST, request.FILES)
+        if form.is_valid():
+            rev = form.save(commit=False)
+            rev.recorded_by = request.user
+            if not rev.academic_year and active_year:
+                rev.academic_year = active_year
+            rev.save()
+            amount_str = f"{rev.amount_khr:,.0f}៛" if rev.amount_khr > 0 else f"${rev.amount_usd}"
+            messages.success(request, f"✅ បានកត់ត្រាចំណូល «{rev.title}» ({amount_str}) ជោគជ័យ!")
+            return redirect('revenue_list')
+    else:
+        form = SchoolRevenueForm(initial={'date': timezone.now().date(), 'academic_year': active_year})
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+    return render(request, 'finance/revenue_list.html', {
+        'revenues': revenues,
+        'form': form,
+        'sources': SchoolRevenue.RevenueSource.choices,
+        'selected_source': source_filter,
+        'academic_years': academic_years,
+        'active_year': active_year,
+        'selected_year': year_filter or (active_year.id if active_year else ''),
+        'direct_khr': total_khr,
+        'direct_usd': total_usd,
+        'student_utility_khr': student_utility_khr,
+        'student_utility_count': student_utility_count,
+        'student_invoice_usd': student_invoice_usd,
+        'student_invoice_count': student_invoice_count,
+        'total_khr': grand_total_khr,
+        'total_usd': grand_total_usd,
+        'total_equiv_khr': total_equiv_khr,
+        'total_equiv_usd': total_equiv_usd,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def revenue_delete(request, pk):
+    rev = get_object_or_404(SchoolRevenue, pk=pk)
+    title = rev.title
+    rev.delete()
+    messages.success(request, f"🗑️ បានលុបកំណត់ត្រាចំណូល «{title}» ជោគជ័យ!")
+    return redirect('revenue_list')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def teacher_overtime_list(request):
+    """
+    Public School Overtime Allowance System:
+    Calculates and tracks compensation for teachers teaching beyond their government standard quota.
+    Admin configures standard weekly/monthly hours and hourly rate ($ or KHR).
+    """
+    now = timezone.now()
+    selected_month = int(request.GET.get('month', now.month))
+    selected_year = int(request.GET.get('year', now.year))
+    active_year = get_active_academic_year(request)
+    config = TeacherOvertimeConfig.get_config()
+
+    records = TeacherOvertimeRecord.objects.filter(
+        month=selected_month, year=selected_year
+    ).select_related('teacher', 'academic_year', 'recorded_by')
+
+    # Summary metrics
+    total_overtime_hours = sum(r.overtime_hours for r in records)
+    total_allowance_khr = sum(r.total_allowance_khr for r in records)
+    total_allowance_usd = sum(r.total_allowance_usd for r in records)
+    total_paid_khr = sum(r.total_allowance_khr for r in records if r.status == TeacherOvertimeRecord.Status.PAID)
+    total_paid_usd = sum(r.total_allowance_usd for r in records if r.status == TeacherOvertimeRecord.Status.PAID)
+
+    config_form = TeacherOvertimeConfigForm(instance=config)
+    record_form = TeacherOvertimeRecordForm(initial={
+        'month': selected_month,
+        'year': selected_year,
+        'academic_year': active_year,
+        'standard_hours': config.standard_hours_monthly,
+        'rate_per_hour_khr': config.rate_per_hour_khr,
+        'rate_per_hour_usd': config.rate_per_hour_usd,
+    })
+
+    return render(request, 'finance/teacher_overtime_list.html', {
+        'records': records,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'months': range(1, 13),
+        'years': [now.year - 1, now.year, now.year + 1],
+        'config': config,
+        'config_form': config_form,
+        'record_form': record_form,
+        'total_overtime_hours': total_overtime_hours,
+        'total_allowance_khr': total_allowance_khr,
+        'total_allowance_usd': total_allowance_usd,
+        'total_paid_khr': total_paid_khr,
+        'total_paid_usd': total_paid_usd,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def teacher_overtime_generate(request):
+    """
+    Populates overtime allowance records for all active teachers for the specified month/year.
+    """
+    now = timezone.now()
+    selected_month = int(request.POST.get('month', request.GET.get('month', now.month)))
+    selected_year = int(request.POST.get('year', request.GET.get('year', now.year)))
+    active_year = get_active_academic_year(request)
+    config = TeacherOvertimeConfig.get_config()
+
+    teachers = Teacher.objects.filter(status='ACTIVE')
+    created_count = 0
+
+    with transaction.atomic():
+        for teacher in teachers:
+            record, created = TeacherOvertimeRecord.objects.get_or_create(
+                teacher=teacher,
+                month=selected_month,
+                year=selected_year,
+                defaults={
+                    'academic_year': active_year,
+                    'standard_hours': config.standard_hours_monthly,
+                    'actual_hours': config.standard_hours_monthly,
+                    'overtime_hours': Decimal('0.00'),
+                    'rate_per_hour_khr': config.rate_per_hour_khr,
+                    'rate_per_hour_usd': config.rate_per_hour_usd,
+                    'status': TeacherOvertimeRecord.Status.PENDING,
+                    'recorded_by': request.user,
+                }
+            )
+            if created:
+                created_count += 1
+
+    messages.success(
+        request,
+        f"🎉 បានរៀបចំបញ្ជីគ្រូបង្រៀនចំនួន {teachers.count()} នាក់ សម្រាប់ខែ {selected_month:02d}/{selected_year} ជោគជ័យ! (លោកអ្នកអាចកែសម្រួលម៉ោងបង្រៀនជាក់ស្តែងបានភ្លាមៗ)"
+    )
+    return redirect(f"/finance/teacher-overtime/?month={selected_month}&year={selected_year}")
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def teacher_overtime_save_hours(request):
+    """
+    Quick update of actual hours or overtime hours for a teacher.
+    """
+    if request.method == 'POST':
+        record_id = request.POST.get('record_id')
+        actual_hours = request.POST.get('actual_hours')
+        rate_khr = request.POST.get('rate_per_hour_khr')
+        rate_usd = request.POST.get('rate_per_hour_usd')
+
+        record = get_object_or_404(TeacherOvertimeRecord, pk=record_id)
+        if actual_hours is not None:
+            record.actual_hours = Decimal(str(actual_hours))
+        if rate_khr is not None:
+            record.rate_per_hour_khr = Decimal(str(rate_khr))
+        if rate_usd is not None:
+            record.rate_per_hour_usd = Decimal(str(rate_usd))
+
+        record.save()
+        messages.success(request, f"✅ បានកែសម្រួលម៉ោងគ្រូ {record.teacher.khmer_name} (ម៉ោងលើស៖ {record.overtime_hours}h = {record.total_allowance_khr:,.0f}៛ / ${record.total_allowance_usd}) ជោគជ័យ!")
+        return redirect(f"/finance/teacher-overtime/?month={record.month}&year={record.year}")
+
+    return redirect('teacher_overtime_list')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def teacher_overtime_mark_paid(request, pk):
+    """
+    Marks the overtime allowance as PAID and auto-creates an Expense entry.
+    """
+    record = get_object_or_404(TeacherOvertimeRecord, pk=pk)
+    record.status = TeacherOvertimeRecord.Status.PAID
+    record.payment_date = timezone.now().date()
+    voucher = request.POST.get('voucher_ref', f"OT-{record.year}{record.month:02d}-{record.teacher.id:03d}")
+    record.voucher_ref = voucher
+    record.save()
+
+    # Automatically create or sync into Expense model so it is reflected in school expenditures
+    if record.total_allowance_usd > 0 or record.total_allowance_khr > 0:
+        Expense.objects.create(
+            title=f"ប្រាក់ឧបត្ថម្ភបង្រៀនលើសម៉ោង - {record.teacher.khmer_name} ({record.month:02d}/{record.year})",
+            category=Expense.Category.TEACHER_OVERTIME,
+            amount=record.total_allowance_usd,
+            amount_khr=record.total_allowance_khr,
+            date=record.payment_date,
+            notes=f"បង្រៀនលើស {record.overtime_hours} ម៉ោង (អត្រា {record.rate_per_hour_khr:,.0f}៛ / ${record.rate_per_hour_usd} ក្នុងមួយម៉ោង) លេខយោង៖ {voucher}",
+            recorded_by=request.user
+        )
+
+    messages.success(
+        request,
+        f"🎉 បានកត់ត្រាទូទាត់ប្រាក់ឧបត្ថម្ភជូនគ្រូ {record.teacher.khmer_name} ចំនួន {record.total_allowance_khr:,.0f}៛ (${record.total_allowance_usd}) និងបានបញ្ចូលទៅក្នុងតារាងចំណាយសាលាដោយស្វ័យប្រវត្តិ!"
+    )
+    return redirect(f"/finance/teacher-overtime/?month={record.month}&year={record.year}")
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def teacher_overtime_config_save(request):
+    """
+    Saves rate per hour and standard hours configured by Admin.
+    """
+    if request.method == 'POST':
+        config = TeacherOvertimeConfig.get_config()
+        form = TeacherOvertimeConfigForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "⚙️ បានកែប្រែការកំណត់អត្រាប្រាក់ឧបត្ថម្ភលើសម៉ោងគ្រូដោយជោគជ័យ!")
+    return redirect('teacher_overtime_list')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def financial_balance_dashboard(request):
+    """
+    Comprehensive Cash Flow & Financial Balance Dashboard for Public Schools:
+    Total Revenue - Total Expenses = Net Remaining Balance
+    Includes breakdown by source/category, multi-currency (KHR/USD), and print view.
+    """
+    active_year = get_active_academic_year(request)
+    year_filter = request.GET.get('year', '')
+    month_filter = request.GET.get('month', '')
+
+    revenues_qs = SchoolRevenue.objects.select_related('academic_year', 'recorded_by').all()
+    expenses_qs = Expense.objects.select_related('recorded_by').all()
+
+    if year_filter:
+        revenues_qs = revenues_qs.filter(academic_year_id=year_filter)
+        try:
+            ay = AcademicYear.objects.get(pk=year_filter)
+            if ay.start_date and ay.end_date:
+                expenses_qs = expenses_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+        except Exception:
+            pass
+    elif active_year:
+        matching_revs = revenues_qs.filter(academic_year=active_year)
+        if matching_revs.exists():
+            revenues_qs = revenues_qs.filter(Q(academic_year=active_year) | Q(academic_year__isnull=True))
+        if active_year.start_date and active_year.end_date and expenses_qs.filter(date__gte=active_year.start_date, date__lte=active_year.end_date).exists():
+            expenses_qs = expenses_qs.filter(date__gte=active_year.start_date, date__lte=active_year.end_date)
+
+    if month_filter:
+        try:
+            m_int = int(month_filter)
+            revenues_qs = revenues_qs.filter(date__month=m_int)
+            expenses_qs = expenses_qs.filter(date__month=m_int)
+        except ValueError:
+            pass
+
+    # Automatically aggregate Student Monthly Utilities (ថ្លៃទឹកភ្លើងតាមសិស្ស)
+    monthly_pmts_qs = StudentMonthlyPayment.objects.filter(paid_amount__gt=0)
+    if year_filter:
+        monthly_pmts_qs = monthly_pmts_qs.filter(academic_year_id=year_filter)
+    elif active_year:
+        monthly_pmts_qs = monthly_pmts_qs.filter(academic_year=active_year)
+    if month_filter:
+        try:
+            monthly_pmts_qs = monthly_pmts_qs.filter(month=int(month_filter))
+        except ValueError:
+            pass
+
+    student_utility_khr = monthly_pmts_qs.aggregate(s=Sum('paid_amount'))['s'] or Decimal('0.00')
+    student_utility_count = monthly_pmts_qs.count()
+
+    # Automatically aggregate Student Invoice Payments (កម្រៃផ្សេងៗតាមវិក្កយបត្រសិស្ស)
+    invoice_pmts_qs = PaymentTransaction.objects.select_related('invoice__academic_year')
+    if year_filter:
+        invoice_pmts_qs = invoice_pmts_qs.filter(invoice__academic_year_id=year_filter)
+    elif active_year:
+        invoice_pmts_qs = invoice_pmts_qs.filter(invoice__academic_year=active_year)
+    if month_filter:
+        try:
+            invoice_pmts_qs = invoice_pmts_qs.filter(payment_date__month=int(month_filter))
+        except ValueError:
+            pass
+
+    student_invoice_usd = invoice_pmts_qs.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
+    student_invoice_count = invoice_pmts_qs.count()
+
+    # Revenues calculations (Direct School Revenue + Live Student Collections)
+    rev_khr = sum(r.amount_khr for r in revenues_qs) + student_utility_khr
+    rev_usd = sum(r.amount_usd for r in revenues_qs) + student_invoice_usd
+    rev_equiv_khr = rev_khr + (rev_usd * Decimal('4100.00'))
+    rev_equiv_usd = rev_usd + (rev_khr / Decimal('4100.00'))
+
+    # Expenses calculations
+    exp_khr = sum(e.amount_khr for e in expenses_qs)
+    exp_usd = sum(e.amount for e in expenses_qs)
+    exp_equiv_khr = exp_khr + (exp_usd * Decimal('4100.00'))
+    exp_equiv_usd = exp_usd + (exp_khr / Decimal('4100.00'))
+
+    # Net Cash Balance (សមតុល្យចំណូល-ចំណាយ)
+    balance_khr = rev_khr - exp_khr
+    balance_usd = rev_usd - exp_usd
+    net_equiv_khr = rev_equiv_khr - exp_equiv_khr
+    net_equiv_usd = rev_equiv_usd - exp_equiv_usd
+
+    # Breakdown by revenue source
+    rev_by_source = []
+    if student_utility_khr > 0:
+        s_equiv = round(student_utility_khr / Decimal('4100.00'), 2)
+        rev_by_source.append({
+            'label': 'ថ្លៃទឹក-ភ្លើងបន្ទប់រៀនប្រចាំខែ (ប្រមូលតាមសិស្ស / Auto Live)',
+            'code': 'STUDENT_UTILITIES_AUTO',
+            'khr': student_utility_khr,
+            'usd': Decimal('0.00'),
+            'equiv_usd': s_equiv,
+            'count': student_utility_count,
+            'percent': round((s_equiv / rev_equiv_usd * 100), 1) if rev_equiv_usd > 0 else 0
+        })
+
+    if student_invoice_usd > 0:
+        rev_by_source.append({
+            'label': 'កម្រៃសេវា & វិក្កយបត្រសិស្ស (ប្រមូលតាមវិក្កយបត្រ / Auto Live)',
+            'code': 'STUDENT_INVOICES_AUTO',
+            'khr': Decimal('0.00'),
+            'usd': student_invoice_usd,
+            'equiv_usd': student_invoice_usd,
+            'count': student_invoice_count,
+            'percent': round((student_invoice_usd / rev_equiv_usd * 100), 1) if rev_equiv_usd > 0 else 0
+        })
+
+    for code, label in SchoolRevenue.RevenueSource.choices:
+        s_revs = [r for r in revenues_qs if r.source_type == code]
+        if s_revs:
+            s_khr = sum(r.amount_khr for r in s_revs)
+            s_usd = sum(r.amount_usd for r in s_revs)
+            s_equiv_usd = s_usd + (s_khr / Decimal('4100.00'))
+            rev_by_source.append({
+                'label': label,
+                'code': code,
+                'khr': s_khr,
+                'usd': s_usd,
+                'equiv_usd': s_equiv_usd,
+                'count': len(s_revs),
+                'percent': round((s_equiv_usd / rev_equiv_usd * 100), 1) if rev_equiv_usd > 0 else 0
+            })
+
+    # Breakdown by expense category
+    exp_by_category = []
+    for code, label in Expense.Category.choices:
+        c_exps = [e for e in expenses_qs if e.category == code]
+        if c_exps:
+            c_khr = sum(e.amount_khr for e in c_exps)
+            c_usd = sum(e.amount for e in c_exps)
+            c_equiv_usd = c_usd + (c_khr / Decimal('4100.00'))
+            exp_by_category.append({
+                'label': label,
+                'code': code,
+                'khr': c_khr,
+                'usd': c_usd,
+                'equiv_usd': c_equiv_usd,
+                'count': len(c_exps),
+                'percent': round((c_equiv_usd / exp_equiv_usd * 100), 1) if exp_equiv_usd > 0 else 0
+            })
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    return render(request, 'finance/financial_balance.html', {
+        'rev_khr': rev_khr,
+        'rev_usd': rev_usd,
+        'rev_equiv_khr': rev_equiv_khr,
+        'rev_equiv_usd': rev_equiv_usd,
+        'exp_khr': exp_khr,
+        'exp_usd': exp_usd,
+        'exp_equiv_khr': exp_equiv_khr,
+        'exp_equiv_usd': exp_equiv_usd,
+        'balance_khr': balance_khr,
+        'balance_usd': balance_usd,
+        'net_equiv_khr': net_equiv_khr,
+        'net_equiv_usd': net_equiv_usd,
+        'rev_by_source': rev_by_source,
+        'exp_by_category': exp_by_category,
+        'revenues': revenues_qs[:20],
+        'expenses': expenses_qs[:20],
+        'academic_years': academic_years,
+        'active_year': active_year,
+        'selected_year': year_filter or (active_year.id if active_year else ''),
+        'selected_month': month_filter,
+        'months': range(1, 13),
+    })
+
 
 
 @login_required

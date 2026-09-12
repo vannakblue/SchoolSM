@@ -214,17 +214,20 @@ class PaymentTransaction(models.Model):
 
 class Expense(models.Model):
     class Category(models.TextChoices):
-        UTILITIES = 'UTILITIES', 'ថ្លៃទឹក ភ្លើង អ៊ីនធឺណិត / Utilities'
-        SUPPLIES = 'SUPPLIES', 'សម្ភារៈការិយាល័យ & បង្រៀន / Supplies'
+        UTILITIES = 'UTILITIES', 'ថ្លៃទឹក ភ្លើង អ៊ីនធឺណិតសាលា / School Utilities'
+        SUPPLIES = 'SUPPLIES', 'សម្ភារៈការិយាល័យ & បង្រៀន (ដីស ហ្វឺត ក្រដាស) / Supplies'
         RENT = 'RENT', 'ថ្លៃជួលទីតាំង & អាគារ / Building Rent'
-        MAINTENANCE = 'MAINTENANCE', 'ការជួសជុល & ថែទាំ / Repairs & Maintenance'
+        MAINTENANCE = 'MAINTENANCE', 'ការជួសជុល & ថែទាំអគារ/បន្ទប់ទឹក / Repairs & Maintenance'
         EVENTS = 'EVENTS', 'កម្មវិធី & កីឡាសាលា / School Events & Sports'
+        TEACHER_OVERTIME = 'TEACHER_OVERTIME', 'ប្រាក់ឧបត្ថម្ភគ្រូបង្រៀនលើសម៉ោង / Teacher Overtime Allowance'
+        SANITATION_ENV = 'SANITATION_ENV', 'អនាម័យ បរិស្ថាន & សួនច្បារ / Sanitation & Environment'
         SALARY = 'SALARY', 'ប្រាក់ខែ & ប្រាក់រង្វាន់ / Salaries & Bonuses'
         OTHER = 'OTHER', 'ចំណាយផ្សេងៗ / Other Expenses'
 
     title = models.CharField(max_length=200, verbose_name="ចំណងជើងចំណាយ / Expense Title")
     category = models.CharField(max_length=30, choices=Category.choices, default=Category.UTILITIES, verbose_name="ប្រភេទចំណាយ / Category")
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="ចំនួនទឹកប្រាក់ ($) / Amount")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់ ($) / Amount (USD)")
+    amount_khr = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់ (រៀល ៛) / Amount (KHR)")
     date = models.DateField(verbose_name="កាលបរិច្ឆេទចំណាយ / Expense Date")
     voucher_file = models.FileField(upload_to='expenses/vouchers/', blank=True, null=True, verbose_name="បង្កាន់ដៃ/វិក្កយបត្រចំណាយ / Voucher/Receipt")
     notes = models.TextField(blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
@@ -237,7 +240,123 @@ class Expense(models.Model):
         verbose_name_plural = "ចំណាយទាំងអស់ / Expenses"
 
     def __str__(self):
-        return f"[{self.get_category_display()}] {self.title}: ${self.amount}"
+        return f"[{self.get_category_display()}] {self.title}: ${self.amount} / {self.amount_khr:,.0f}៛"
+
+    @property
+    def total_usd_equivalent(self):
+        return round(self.amount + (self.amount_khr / Decimal('4100.00')), 2)
+
+    @property
+    def total_khr_equivalent(self):
+        return round(self.amount_khr + (self.amount * Decimal('4100.00')), 0)
+
+
+class SchoolRevenue(models.Model):
+    class RevenueSource(models.TextChoices):
+        STATE_BUDGET = 'STATE_BUDGET', 'ថវិកាកម្មវិធីរដ្ឋ (MoEYS Program Budget / PB)'
+        PARENT_CONTRIBUTION = 'PARENT_CONTRIBUTION', 'វិភាគទានសហគមន៍/អាណាព្យាបាល (Community & Parent Support)'
+        UTILITY_COLLECTION = 'UTILITY_COLLECTION', 'ថ្លៃទឹកភ្លើងបន្ទប់រៀនប្រចាំខែ (Classroom Utilities)'
+        CANTEEN_RENT = 'CANTEEN_RENT', 'ថ្លៃឈ្នួលអាហារដ្ឋាន/តូបលក់ដូរ (Canteen / Booth Rent)'
+        SCHOOL_SERVICES = 'SCHOOL_SERVICES', 'ចំណូលសេវាកម្ម (ឯកសណ្ឋាន កាតសិស្ស សៀវភៅតាមដាន)'
+        DONATION = 'DONATION', 'អំណោយ/សប្បុរសជន/អតីតសិស្ស (Donations & Grants)'
+        OTHER = 'OTHER', 'ចំណូលផ្សេងៗ / Other Revenue'
+
+    title = models.CharField(max_length=200, verbose_name="ចំណងជើងចំណូល / Revenue Title")
+    source_type = models.CharField(max_length=40, choices=RevenueSource.choices, default=RevenueSource.STATE_BUDGET, verbose_name="ប្រភពចំណូល / Source")
+    amount_khr = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់ (រៀល ៛) / Amount (KHR)")
+    amount_usd = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), verbose_name="ចំនួនទឹកប្រាក់ (ដុល្លារ $) / Amount (USD)")
+    date = models.DateField(verbose_name="កាលបរិច្ឆេទទទួល / Date Received")
+    receipt_reference = models.CharField(max_length=100, blank=True, null=True, verbose_name="លេខបង្កាន់ដៃ/លិខិតយោង / Voucher Ref")
+    receipt_file = models.FileField(upload_to='revenue/vouchers/', blank=True, null=True, verbose_name="ឯកសារភ្ជាប់ / Receipt File")
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    notes = models.TextField(blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="អ្នកកត់ត្រា / Recorded By")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-id']
+        verbose_name = "ចំណូលសាលា / School Revenue"
+        verbose_name_plural = "ចំណូលសាលាទាំងអស់ / School Revenues"
+
+    def __str__(self):
+        return f"[{self.get_source_type_display()}] {self.title}: {self.amount_khr:,.0f}៛ / ${self.amount_usd:,.2f}"
+
+    @property
+    def total_usd_equivalent(self):
+        return round(self.amount_usd + (self.amount_khr / Decimal('4100.00')), 2)
+
+    @property
+    def total_khr_equivalent(self):
+        return round(self.amount_khr + (self.amount_usd * Decimal('4100.00')), 0)
+
+
+class TeacherOvertimeConfig(models.Model):
+    rate_per_hour_khr = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('10000.00'), verbose_name="អត្រាក្នុងមួយម៉ោង (រៀល ៛/h) / Rate (KHR)")
+    rate_per_hour_usd = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('2.50'), verbose_name="អត្រាក្នុងមួយម៉ោង (ដុល្លារ $/h) / Rate (USD)")
+    standard_hours_weekly = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('16.00'), verbose_name="ម៉ោងកាតព្វកិច្ចរដ្ឋក្នុងមួយសប្តាហ៍ / Standard Weekly Hours")
+    standard_hours_monthly = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('64.00'), verbose_name="ម៉ោងកាតព្វកិច្ចរដ្ឋក្នុងមួយខែ / Standard Monthly Hours")
+    notes = models.TextField(blank=True, null=True, default="អត្រាប្រាក់ឧបត្ថម្ភបង្រៀនលើសម៉ោងកំណត់សម្រាប់គ្រូបង្រៀនសាលារដ្ឋ", verbose_name="កំណត់ចំណាំ / Policy Notes")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "ការកំណត់អត្រាលើសម៉ោង / Overtime Rate Config"
+        verbose_name_plural = "ការកំណត់អត្រាលើសម៉ោង / Overtime Rate Configs"
+
+    @classmethod
+    def get_config(cls):
+        config = cls.objects.first()
+        if not config:
+            config = cls.objects.create()
+        return config
+
+
+class TeacherOvertimeRecord(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'រង់ចាំបើក / Pending'
+        APPROVED = 'APPROVED', 'បានអនុម័ត / Approved'
+        PAID = 'PAID', 'បើករួចរាល់ / Paid'
+
+    teacher = models.ForeignKey('teachers.Teacher', on_delete=models.CASCADE, related_name='overtime_records', verbose_name="គ្រូបង្រៀន / Teacher")
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    month = models.PositiveSmallIntegerField(verbose_name="ប្រចាំខែ (1-12) / Month")
+    year = models.PositiveIntegerField(verbose_name="ប្រចាំឆ្នាំ / Year")
+    standard_hours = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('64.00'), verbose_name="ម៉ោងកាតព្វកិច្ចរដ្ឋ / Standard Hours")
+    actual_hours = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('64.00'), verbose_name="ម៉ោងបង្រៀនជាក់ស្តែង / Actual Taught Hours")
+    overtime_hours = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0.00'), verbose_name="ម៉ោងបង្រៀនលើស / Overtime Hours")
+    rate_per_hour_khr = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('10000.00'), verbose_name="អត្រា/ម៉ោង (រៀល ៛)")
+    rate_per_hour_usd = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('2.50'), verbose_name="អត្រា/ម៉ោង (ដុល្លារ $)")
+    total_allowance_khr = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), verbose_name="សរុបប្រាក់ឧបត្ថម្ភ (រៀល ៛)")
+    total_allowance_usd = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name="សរុបប្រាក់ឧបត្ថម្ភ (ដុល្លារ $)")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name="ស្ថានភាព / Status")
+    payment_date = models.DateField(blank=True, null=True, verbose_name="ថ្ងៃបើកប្រាក់ / Payment Date")
+    voucher_ref = models.CharField(max_length=100, blank=True, null=True, verbose_name="លេខលិខិតទូទាត់ / Voucher Ref")
+    notes = models.TextField(blank=True, null=True, verbose_name="កំណត់ចំណាំ / Notes")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="អ្នកកត់ត្រា / Recorded By")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-year', '-month', 'teacher__khmer_name']
+        unique_together = ('teacher', 'month', 'year')
+        verbose_name = "ប្រាក់ឧបត្ថម្ភលើសម៉ោងគ្រូ / Teacher Overtime Allowance"
+        verbose_name_plural = "ប្រាក់ឧបត្ថម្ភលើសម៉ោងគ្រូទាំងអស់ / Teacher Overtime Allowances"
+
+    def calculate(self):
+        if self.actual_hours > self.standard_hours:
+            self.overtime_hours = self.actual_hours - self.standard_hours
+        else:
+            self.overtime_hours = Decimal('0.00')
+
+        self.total_allowance_khr = round(self.overtime_hours * self.rate_per_hour_khr, 0)
+        self.total_allowance_usd = round(self.overtime_hours * self.rate_per_hour_usd, 2)
+
+    def save(self, *args, **kwargs):
+        self.calculate()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.teacher.khmer_name} ({self.month:02d}/{self.year}) : {self.overtime_hours}h លើសម៉ោង = {self.total_allowance_khr:,.0f}៛ / ${self.total_allowance_usd}"
 
 
 class Payroll(models.Model):

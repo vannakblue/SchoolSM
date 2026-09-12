@@ -45,11 +45,26 @@ urlpatterns = [
     path('invoices/<int:pk>/pay/', views.record_payment, name='record_payment'),
     path('receipts/<int:pk>/', views.official_receipt, name='official_receipt'),
     
-    # Expenses & Payroll
+    # Expenses & General Finance
     path('expenses/', views.expense_list, name='expense_list'),
     path('payroll/', views.payroll_list, name='payroll_list'),
     path('payroll/generate/', views.payroll_generate, name='payroll_generate'),
     path('payroll/<int:pk>/mark-paid/', views.payroll_mark_paid, name='payroll_mark_paid'),
+
+    # Public School Revenue Sources & Records (ប្រភពចំណូលសាលារដ្ឋ)
+    path('revenues/', views.revenue_list, name='revenue_list'),
+    path('revenues/<int:pk>/delete/', views.revenue_delete, name='revenue_delete'),
+
+    # Public School Teacher Overtime Allowances (ប្រាក់ឧបត្ថម្ភគ្រូបង្រៀនលើសម៉ោង)
+    path('teacher-overtime/', views.teacher_overtime_list, name='teacher_overtime_list'),
+    path('teacher-overtime/generate/', views.teacher_overtime_generate, name='teacher_overtime_generate'),
+    path('teacher-overtime/save-hours/', views.teacher_overtime_save_hours, name='teacher_overtime_save_hours'),
+    path('teacher-overtime/<int:pk>/mark-paid/', views.teacher_overtime_mark_paid, name='teacher_overtime_mark_paid'),
+    path('teacher-overtime/config/', views.teacher_overtime_config_save, name='teacher_overtime_config_save'),
+
+    # Public School Financial Balance & Cash Flow (សមតុល្យចំណូល-ចំណាយ)
+    path('financial-balance/', views.financial_balance_dashboard, name='financial_balance_dashboard'),
+    path('balance/', views.financial_balance_dashboard),
 
     # Payment Audit Logs, Firestore Cloud Sync & Any-Time Backup Suite
     path('payment-logs/', views.payment_logs_dashboard, name='payment_logs_dashboard'),
