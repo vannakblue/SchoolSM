@@ -46,6 +46,15 @@
     .bank-card.bakong-card {
         background: linear-gradient(135deg, #c0392b 0%, #8e1b10 100%);
     }
+    .bank-card.acleda-card {
+        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
+    }
+    .bank-card.canadia-card {
+        background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%);
+    }
+    .bank-card.wing-card {
+        background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+    }
     .qr-preview-thumb {
         width: 44px;
         height: 44px;
@@ -422,32 +431,55 @@
             </div>
         </div>
 
-        <!-- Tab 3: School Bank Accounts & ABA QR Codes -->
+        <!-- Tab 3: School Bank Accounts & Multi-Bank Settings -->
         <div class="tab-pane fade" id="banks-pane" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-building-columns text-primary me-2"></i> គ្រប់គ្រងគណនីធនាគារ &amp; KHQR សម្រាប់អ្នកបង់ប្រាក់</h5>
+                    <p class="text-muted small mb-0">Admin អាចកំណត់ជម្រើសធនាគារ (ABA, Bakong KHQR, ACLEDA, Canadia...) សម្រាប់ឱ្យសិស្ស និងអាណាព្យាបាលជ្រើសរើសពេលបង់ប្រាក់</p>
+                </div>
+                <button type="button" class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#bankModal">
+                    <i class="fa-solid fa-plus me-1"></i> បន្ថែមគណនីធនាគារថ្មី
+                </button>
+            </div>
+
             <div class="row g-4">
                 {% for bm in payment_methods %}
                 <div class="col-lg-4 col-md-6">
-                    <div class="bank-card {% if 'ABA' in bm.bank_name %}aba-card{% elif 'Bakong' in bm.bank_name %}bakong-card{% endif %} shadow">
+                    <div class="bank-card {{ bm.get_brand_badge_info.card_class }} shadow">
                         <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="badge {% if bm.is_default %}bg-warning text-dark{% else %}bg-white bg-opacity-25 text-white{% endif %} px-2 py-1">
-                                {% if bm.is_default %}<i class="fa-solid fa-star me-1"></i> លំនាំដើម (Default){% else %}Active{% endif %}
-                            </span>
-                            <span class="fw-bold fs-5">{{ bm.bank_name }}</span>
+                            <div class="d-flex align-items-center gap-1">
+                                {% if bm.is_default %}
+                                    <span class="badge bg-warning text-dark px-2 py-1">
+                                        <i class="fa-solid fa-star me-1"></i> លំនាំដើម
+                                    </span>
+                                {% endif %}
+                                {% if bm.is_active %}
+                                    <span class="badge bg-success bg-opacity-75 text-white px-2 py-1">
+                                        <i class="fa-solid fa-circle-check me-1"></i> សកម្ម (Active)
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-75 text-white px-2 py-1">
+                                        <i class="fa-solid fa-circle-pause me-1"></i> ផ្អាក (Inactive)
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <span class="fw-bold fs-5">{{ bm.get_brand_badge_info.btn_icon }} {{ bm.bank_name }}</span>
                         </div>
                         
                         <div class="d-flex align-items-center gap-3 my-3">
                             {% if bm.qr_image %}
-                                <a href="{{ bm.qr_image.url }}" target="_blank">
-                                    <img src="{{ bm.qr_image.url }}" alt="QR Code" class="bg-white p-1 rounded shadow" style="width: 72px; height: 72px; object-fit: contain;">
+                                <a href="{{ bm.qr_image.url }}" target="_blank" title="ចុចដើម្បីមើល QR ធំ">
+                                    <img src="{{ bm.qr_image.url }}" alt="QR Code" class="bg-white p-1 rounded shadow" style="width: 76px; height: 76px; object-fit: contain;">
                                 </a>
                             {% else %}
-                                <div class="bg-white bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+                                <div class="bg-white bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 76px; height: 76px;">
                                     <i class="fa-solid fa-qrcode fs-2 text-white"></i>
                                 </div>
                             {% endif %}
-                            <div>
+                            <div style="min-width: 0;">
                                 <div class="small opacity-75">ឈ្មោះម្ចាស់គណនី</div>
-                                <h6 class="fw-bold mb-1 text-white">{{ bm.account_name }}</h6>
+                                <h6 class="fw-bold mb-1 text-white text-truncate" title="{{ bm.account_name }}">{{ bm.account_name }}</h6>
                                 <div class="small opacity-75">លេខគណនី (Account No)</div>
                                 <code class="text-warning fw-bold fs-6">{{ bm.account_number }}</code>
                             </div>
@@ -457,14 +489,24 @@
 
                         <div class="d-flex align-items-center justify-content-between border-top border-white border-opacity-25 pt-3">
                             <span class="small badge bg-light bg-opacity-25">{{ bm.get_currency_display }}</span>
-                            <div class="d-flex gap-1">
+                            <div class="d-flex gap-1 align-items-center">
+                                <!-- Toggle Active/Inactive -->
+                                <form method="POST" action="{% url 'api_manage_payment_methods' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="toggle_active">
+                                    <input type="hidden" name="method_id" value="{{ bm.id }}">
+                                    <button type="submit" class="btn btn-sm {% if bm.is_active %}btn-outline-light text-white{% else %}btn-outline-warning text-warning{% endif %} py-0 px-2 fw-semibold" style="font-size: 0.75rem;" title="ចុចដើម្បី បើក/បិទ ជម្រើសនេះ">
+                                        {% if bm.is_active %}<i class="fa-solid fa-toggle-on text-success me-1"></i> បើក{% else %}<i class="fa-solid fa-toggle-off text-muted me-1"></i> បិទ{% endif %}
+                                    </button>
+                                </form>
+
                                 {% if not bm.is_default %}
                                     <form method="POST" action="{% url 'api_manage_payment_methods' %}" class="d-inline">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="set_default">
                                         <input type="hidden" name="method_id" value="{{ bm.id }}">
-                                        <button type="submit" class="btn btn-sm btn-warning py-0 px-2 fw-bold" style="font-size: 0.75rem;">
-                                            Set Default
+                                        <button type="submit" class="btn btn-sm btn-warning py-0 px-2 fw-bold" style="font-size: 0.75rem;" title="កំណត់ជាគណនីចម្បង">
+                                            Default
                                         </button>
                                     </form>
                                 {% endif %}
@@ -483,7 +525,7 @@
                 {% empty %}
                 <div class="col-12 text-center py-5 text-muted">
                     <i class="fa-solid fa-building-columns fs-1 mb-2 d-block text-secondary"></i>
-                    មិនទាន់មានការកំណត់គណនីធនាគារឡើយ។ សូមចុចប៊ូតុងខាងលើដើម្បីបន្ថែម ABA Bank QR Code!
+                    មិនទាន់មានការកំណត់គណនីធនាគារឡើយ។ សូមចុចប៊ូតុងខាងលើដើម្បីបន្ថែម ABA Bank, Bakong KHQR, ACLEDA ឬ Canadia!
                 </div>
                 {% endfor %}
             </div>
@@ -492,38 +534,42 @@
     </div>
 </div>
 
-<!-- Modal: Add / Configure Bank & ABA QR Code -->
+<!-- Modal: Add / Configure Bank & Multi-Bank Settings -->
 <div class="modal fade" id="bankModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-qrcode text-primary me-2"></i> បន្ថែមគណនីធនាគារ &amp; ABA QR</h5>
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-qrcode text-primary me-2"></i> កំណត់គណនីធនាគារ &amp; Bakong / ABA / ACLEDA / Canadia</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{% url 'api_manage_payment_methods' %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">ឈ្មោះធនាគារ (Bank Name) *</label>
-                        <select name="bank_name" class="form-select">
-                            <option value="ABA Bank">ABA Bank (ABA Pay / KHQR)</option>
-                            <option value="Bakong KHQR">Bakong KHQR (គ្រប់ធនាគារទាំងអស់)</option>
-                            <option value="ACLEDA Bank">ACLEDA Bank Plc.</option>
-                            <option value="Canadia Bank">Canadia Bank</option>
-                            <option value="Wing Bank">Wing Bank</option>
-                            <option value="Other Bank">ធនាគារផ្សេងៗ</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">ឈ្មោះម្ចាស់គណនី (Account Name) *</label>
-                        <input type="text" name="account_name" required class="form-control" placeholder="ឧ. SCHOOL MANAGEMENT ACCOUNT">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">លេខគណនី (Account Number) *</label>
-                        <input type="text" name="account_number" required class="form-control" placeholder="ឧ. 000 123 456">
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">ប្រភេទធនាគារ (Bank Type) *</label>
+                            <select name="bank_type" class="form-select" id="bankTypeSelect" onchange="updateBankDefaults()">
+                                <option value="ABA">ABA Bank (ABA Pay / KHQR)</option>
+                                <option value="BAKONG">Bakong KHQR (គ្រប់ធនាគារទាំងអស់)</option>
+                                <option value="ACLEDA">ACLEDA Bank Plc. (Unity ToanChet)</option>
+                                <option value="CANADIA">Canadia Bank (Canadia App)</option>
+                                <option value="WING">Wing Bank (Wing KHQR)</option>
+                                <option value="OTHER">ធនាគារផ្សេងៗ / Other Bank</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">ឈ្មោះបង្ហាញ (Display Bank Name) *</label>
+                            <input type="text" name="bank_name" id="bankNameInput" required class="form-control" value="ABA Bank">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">ឈ្មោះម្ចាស់គណនី (Account Name) *</label>
+                            <input type="text" name="account_name" required class="form-control" placeholder="ឧ. SCHOOL MANAGEMENT ACCOUNT">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">លេខគណនី (Account Number) *</label>
+                            <input type="text" name="account_number" required class="form-control" placeholder="ឧ. 000 123 456">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold small">រូបិយប័ណ្ណ (Currency)</label>
                             <select name="currency" class="form-select">
                                 <option value="KHR">រៀល (KHR ៛)</option>
@@ -531,18 +577,30 @@
                                 <option value="BOTH">ទាំងពីរ (KHR / USD)</option>
                             </select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">រូបភាព QR Code</label>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">រូបភាព QR Code (QR Image File)</label>
                             <input type="file" name="qr_image" accept="image/*" class="form-control">
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">ការណែនាំសម្រាប់ការបង់ប្រាក់ (Instructions)</label>
-                        <textarea name="instructions" rows="2" class="form-control" placeholder="សូមស្កេន QR Code ខាងលើដើម្បីបង់ប្រាក់ និងដាក់ Memo ជាអត្តលេខសិស្ស"></textarea>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" name="is_default" id="isDefaultCheck" checked>
-                        <label class="form-check-label fw-semibold small" for="isDefaultCheck">កំណត់ជាគណនីលំនាំដើម (Default Account)</label>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">ទិន្នន័យ Bakong KHQR String / Payload (ប្រសិនបើមាន)</label>
+                            <textarea name="khqr_payload" rows="2" class="form-control font-monospace small" placeholder="ឧ. 00020101021229300012bakong@abaa... (KHQR String សម្រាប់ generate QR dynamic)"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">ការណែនាំសម្រាប់ការបង់ប្រាក់ (Instructions)</label>
+                            <textarea name="instructions" rows="2" class="form-control" placeholder="សូមស្កេន QR Code ខាងលើដើម្បីបង់ប្រាក់ និងដាក់ Memo ជាអត្តលេខសិស្ស"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_default" id="isDefaultCheck">
+                                <label class="form-check-label fw-semibold small" for="isDefaultCheck">កំណត់ជាគណនីលំនាំដើម (Default Account)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="isActiveCheck" checked>
+                                <label class="form-check-label fw-semibold small" for="isActiveCheck">បើកឱ្យជ្រើសរើស (Active for Payers)</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
@@ -553,4 +611,23 @@
         </div>
     </div>
 </div>
+
+<script>
+function updateBankDefaults() {
+    const sel = document.getElementById('bankTypeSelect');
+    const nameIn = document.getElementById('bankNameInput');
+    if (!sel || !nameIn) return;
+    const map = {
+        'ABA': 'ABA Bank',
+        'BAKONG': 'Bakong KHQR',
+        'ACLEDA': 'ACLEDA Bank Plc.',
+        'CANADIA': 'Canadia Bank',
+        'WING': 'Wing Bank',
+        'OTHER': 'Other Bank'
+    };
+    if (map[sel.value]) {
+        nameIn.value = map[sel.value];
+    }
+}
+</script>
 {% endblock %}

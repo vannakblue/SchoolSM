@@ -4,11 +4,14 @@ from .models import FeeCategory, Invoice, PaymentTransaction, Expense, Payroll
 class FeeCategoryForm(forms.ModelForm):
     class Meta:
         model = FeeCategory
-        fields = ['name', 'default_amount', 'description']
+        fields = ['name', 'category_type', 'default_amount', 'applicable_grade_note', 'description', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ថ្លៃសិក្សាឆមាសទី១'}),
-            'default_amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ ឬ វិភាគទានសាលារៀន'}),
+            'category_type': forms.Select(attrs={'class': 'form-select'}),
+            'default_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '25.00'}),
+            'applicable_grade_note': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. សម្រាប់តែថ្នាក់ទី ៧ ឬសិស្សចុះឈ្មោះថ្មី'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'បញ្ជាក់អត្ថន័យចំណាយឱ្យបានច្បាស់លាស់ ឧ. សេវាចុះឈ្មោះ សៀវភៅតាមដាន និងកាតសិស្ស'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

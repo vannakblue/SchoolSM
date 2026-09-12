@@ -29,6 +29,15 @@ urlpatterns = [
 
     # Standard Invoicing & Receipts
     path('fees/', views.fee_category_list, name='fee_category_list'),
+    path('fees/<int:pk>/edit/', views.fee_category_edit, name='fee_category_edit'),
+    path('fees/<int:pk>/delete/', views.fee_category_delete, name='fee_category_delete'),
+    path('fees/<int:pk>/toggle-active/', views.fee_category_toggle_active, name='fee_category_toggle_active'),
+
+    # Aliases for fee categories
+    path('fee-categories/', views.fee_category_list),
+    path('fee-categories/<int:pk>/edit/', views.fee_category_edit),
+    path('fee-categories/<int:pk>/delete/', views.fee_category_delete),
+    path('fee-categories/<int:pk>/toggle-active/', views.fee_category_toggle_active),
     path('invoices/', views.invoice_list, name='invoice_list'),
     path('invoices/create/', views.invoice_create, name='invoice_create'),
     path('invoices/batch-create/', views.invoice_batch_create, name='invoice_batch_create'),

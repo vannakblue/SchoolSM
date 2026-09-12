@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'fee_category_list' %}">ប្រភេទកម្រៃសិក្សា</a></li>
+                <li class="breadcrumb-item active" aria-current="page">កែប្រែមុខកម្រៃ</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0 text-dark">{{ title }}</h2>
+    </div>
+    <a href="{% url 'fee_category_list' %}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="custom-card shadow-sm border-0">
+            <div class="alert alert-info border-0 d-flex align-items-start gap-3 mb-4" style="background-color: #e8f4fd; border-radius: 10px;">
+                <i class="fa-solid fa-circle-info text-primary fs-4 mt-1"></i>
+                <div>
+                    <strong class="text-primary d-block mb-1">ការកំណត់អត្ថន័យចំណាយសម្រាប់ការបង់ប្រាក់</strong>
+                    <span class="small text-muted">
+                        អត្ថន័យចំណាយ និងការពិពណ៌នាដែល Admin កំណត់នៅទីនេះ នឹងត្រូវបានបង្ហាញដោយស្វ័យប្រវត្តិលើវិក្កយបត្រ (Invoices), បង្កាន់ដៃទទួលប្រាក់ (Receipts) និងសារ Telegram Bot ជូនមាតាបិតា ដើម្បីបញ្ជាក់គោលបំណងនៃការបង់ប្រាក់ឱ្យបានច្បាស់លាស់។
+                    </span>
+                </div>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label class="form-label fw-bold small text-secondary">
+                            ឈ្មោះមុខកម្រៃ / មុខចំណាយ <span class="text-danger">*</span>
+                        </label>
+                        {{ form.name }}
+                        <div class="form-text small">ឧ. ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ, វិភាគទានសាលារៀន, ថ្លៃទឹកភ្លើង</div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold small text-secondary">
+                            ប្រភេទចម្បង (Category Type) <span class="text-danger">*</span>
+                        </label>
+                        {{ form.category_type }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">
+                            តម្លៃលំនាំដើម ($ USD) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted fw-bold">$</span>
+                            {{ form.default_amount }}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">
+                            កំណត់ចំណាំកម្រិតថ្នាក់ / ក្រុមសិស្ស
+                        </label>
+                        {{ form.applicable_grade_note }}
+                        <div class="form-text small">ឧ. សម្រាប់ថ្នាក់ទី ៧ ដល់ ទី ១២ ឬសិស្សចុះឈ្មោះថ្មី</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-secondary">
+                            អត្ថន័យចំណាយលម្អិត (Clarified Purpose / Description)
+                        </label>
+                        {{ form.description }}
+                        <div class="form-text small">បញ្ជាក់ពីមុខចំណាយជាក់ស្តែង ឧ. សេវាចុះឈ្មោះ សៀវភៅតាមដាន និងកាតសិស្ស ឬ មូលនិធិអភិវឌ្ឍន៍សាលារៀន</div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch p-3 bg-light rounded-3 mt-2 border">
+                            {{ form.is_active }}
+                            <label class="form-check-label fw-bold ms-2" for="{{ form.is_active.id_for_label }}">
+                                បើកដំណើរការមុខកម្រៃនេះ (Active for Invoicing & Telegram Bot)
+                            </label>
+                            <div class="small text-muted ms-2 ps-4">ប្រសិនបើបិទ (Inactive) មុខកម្រៃនេះនឹងមិនបង្ហាញសម្រាប់ការចេញវិក្កយបត្រថ្មីទេ ប៉ុន្តែទិន្នន័យចាស់ៗនៅតែរក្សាទុកដដែល។</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top d-flex gap-2 justify-content-end">
+                    <a href="{% url 'fee_category_list' %}" class="btn btn-light px-4">
+                        <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការផ្លាស់ប្តូរ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

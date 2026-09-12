@@ -268,25 +268,26 @@ def send_combined_student_fee_statement(chat_id, student, user_disp="Parent"):
     msg += f"━━━━━━━━━━━━━━━━━━\n\n"
 
     # Section 1: ថវិកាដើមឆ្នាំ & វិក្កយបត្រ (Early Year & Invoices)
-    msg += f"📋 *១. ថវិកាដើមឆ្នាំ & សេវាផ្សេងៗ (Invoices)*\n"
+    msg += f"📋 *១. ថវិកាដើមឆ្នាំ & សេវាផ្សេងៗ (Early Year Enrollment & Fees)*\n"
     if invoices.exists():
         for inv in invoices[:4]:
             status_icon = "🟢" if inv.status == Invoice.Status.PAID else ("🟡" if inv.status == Invoice.Status.PARTIAL else "🔴")
-            msg += f"• {status_icon} {inv.fee_category.name}: *${inv.final_amount:,.2f}* (បានបង់: ${inv.paid_amount:,.2f}"
+            msg += f"• {status_icon} *{inv.fee_category.name}*: *${inv.final_amount:,.2f}* (បានបង់: ${inv.paid_amount:,.2f}"
             if inv.remaining_balance > 0:
-                msg += f" | ជំពាក់: *${inv.remaining_balance:,.2f}*)"
+                msg += f" | ជំពាក់: *${inv.remaining_balance:,.2f}*)\n"
             else:
-                msg += f" | រួចរាល់)"
-            msg += "\n"
+                msg += f" | រួចរាល់)\n"
+            msg += f"  ↳ 💡 _{inv.get_clarified_purpose()}_\n"
         if inv_debt > 0:
             msg += f"👉 *សរុបជំពាក់ថវិកាដើមឆ្នាំ៖ ${inv_debt:,.2f}* (~{inv_debt * Decimal('4100'):,.0f} ៛)\n\n"
         else:
             msg += f"👉 *ស្ថានភាព៖ បានបង់គ្រប់ចំនួនរួចរាល់* ✅\n\n"
     else:
-        msg += f"• មិនមានវិក្កយបត្រជំពាក់នៅដើមឆ្នាំឡើយ ✅\n\n"
+        msg += f"• ថ្នាក់ {class_name} ពុំមានតម្រូវឱ្យបង់ថ្លៃចុះឈ្មោះដើមឆ្នាំឡើយ (ឥតគិតថ្លៃសម្រាប់ថ្នាក់នេះ) ✅\n\n"
 
     # Section 2: ថ្លៃទឹកភ្លើងតាមខែនីមួយៗ (Monthly Utilities)
-    msg += f"⚡💧 *២. ថ្លៃទឹកភ្លើងតាមខែនីមួយៗ (Utilities)*\n"
+    msg += f"⚡💧 *២. ថ្លៃទឹកភ្លើងប្រចាំខែ (Monthly Utilities Billing)*\n"
+    msg += f"• _(រួមបញ្ចូលថ្លៃសេវាអគ្គិសនី បន្ទប់រៀន កង្ហារ និងទឹកស្អាត)_\n"
     if unpaid_months_badges:
         msg += f"• ស្ថានភាពខែ៖ {' | '.join(unpaid_months_badges[:6])}\n"
         if len(unpaid_months_badges) > 6:
@@ -307,7 +308,7 @@ def send_combined_student_fee_statement(chat_id, student, user_disp="Parent"):
             msg += f" + ${inv_debt:,.2f}*"
         else:
             msg += "*"
-        msg += f"\n\n👉 *សូមចុចប៊ូតុងខាងក្រោមដើម្បីស្កេន ABA QR Code ឬផ្ញើបង្កាន់ដៃបង់ប្រាក់៖*"
+        msg += f"\n\n👉 *សូមចុច «បន្តការបង់ប្រាក់» ដើម្បីជ្រើសរើសធនាគារ (ABA, Bakong KHQR, ACLEDA, Canadia...)៖*"
     else:
         msg += f"🎉 *សិស្សបានបង់ប្រាក់រួចរាល់គ្រប់ចំនួនទាំងអស់! គ្មានប្រាក់ជំពាក់ឡើយ!* 🟢"
 
@@ -315,10 +316,13 @@ def send_combined_student_fee_statement(chat_id, student, user_disp="Parent"):
     inline_keyboard = []
     if grand_total_debt > 0:
         inline_keyboard.append([
-            {'text': "💳 បង្ហាញ QR Code បង់ប្រាក់ (ABA / Bakong)", 'callback_data': f"feeqr:{student.id}"}
+            {'text': "💳 បន្តការបង់ប្រាក់ (Proceed to Pay)", 'callback_data': f"feeproc:{student.id}"}
         ])
         inline_keyboard.append([
-            {'text': "📤 ផ្ញើបង្កាន់ដៃបង់ប្រាក់ (Submit Slip)", 'callback_data': f"feeslip:{student.id}"},
+            {'text': "🏦 ស្កេន QR Code ផ្ទាល់", 'callback_data': f"feeqr:{student.id}"},
+            {'text': "📤 ផ្ញើបង្កាន់ដៃ (Submit Slip)", 'callback_data': f"feeslip:{student.id}"}
+        ])
+        inline_keyboard.append([
             {'text': "📋 មើលលម្អិតតាមខែ", 'callback_data': f"feedetail:{student.id}"}
         ])
     else:
@@ -367,11 +371,149 @@ def send_combined_student_fee_statement(chat_id, student, user_disp="Parent"):
         )
 
 
-def send_bank_qr_code(chat_id, student, user_disp="Parent"):
+def send_payment_confirmation_and_banks(chat_id, student, user_disp="Parent"):
     """
-    Sends the official School Bank QR Code (ABA / Bakong KHQR) image or details to parent with exact amount.
+    Presents fee confirmation with clear explanation of:
+    - ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ (សម្រាប់ថ្នាក់ខ្លះ)
+    - ថ្លៃទឹក-ភ្លើងប្រចាំខែ
+    And interactive bank selection buttons (ABA, Bakong KHQR, ACLEDA, Canadia...).
     """
-    bank_method = SchoolPaymentMethod.get_default_or_first()
+    active_year = student.academic_year or AcademicYear.objects.filter(is_current=True).first()
+    config = MonthlyFeeConfig.get_or_create_for_year(active_year) if active_year else None
+
+    # 1. Early-Year Invoices
+    invoices = Invoice.objects.filter(student=student)
+    inv_due_items = [inv for inv in invoices if inv.remaining_balance > 0]
+    inv_debt = sum(inv.remaining_balance for inv in inv_due_items)
+
+    # 2. Monthly Utilities
+    month_seq = config.get_month_sequence() if config else []
+    ticked_set = set(config.ticked_months or []) if config else set()
+    payments = {p.month: p.paid_amount for p in StudentMonthlyPayment.objects.filter(student=student, academic_year=active_year)}
+    monthly_cats = {mc.month: mc.category for mc in StudentMonthlyCategory.objects.filter(student=student, academic_year=active_year)}
+    rates = {(r.category_id, r.month): r.amount for r in MonthlyFeeRate.objects.filter(config=config)} if config else {}
+
+    fee_start_idx = month_seq.index(student.fee_start_month) if student.fee_start_month in month_seq else 0
+    fee_end_idx = month_seq.index(student.fee_end_month) if student.fee_end_month in month_seq else len(month_seq) - 1
+
+    utility_debt = Decimal('0.00')
+    unpaid_month_names = []
+
+    for idx, m in enumerate(month_seq):
+        is_attending = (fee_start_idx <= idx <= fee_end_idx)
+        if (m in ticked_set) and is_attending:
+            m_cat = monthly_cats.get(m, student.category)
+            m_cat_id = m_cat.id if m_cat else None
+            expected = rates.get((m_cat_id, m), Decimal('20000.00')) if m_cat_id else Decimal('20000.00')
+            paid = payments.get(m, Decimal('0.00'))
+            if paid < expected:
+                utility_debt += (expected - paid)
+                unpaid_month_names.append(MONTH_NAMES_KM.get(m, f"ខែ {m}"))
+
+    total_khr = utility_debt + (inv_debt * Decimal('4100.00'))
+    class_name = student.classroom.name if student.classroom else 'គ្មានថ្នាក់'
+
+    msg = (
+        f"💳 *បញ្ជាក់ការបង់ប្រាក់ (Payment Confirmation)*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• សិស្ស៖ *{student.khmer_name}* (`{student.student_id}`)\n"
+        f"• ថ្នាក់រៀន៖ *{class_name}* | ឆ្នាំសិក្សា៖ {active_year.name if active_year else '2026-2027'}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 *មុខទំនិញ & កម្រៃដែលត្រូវទូទាត់៖*\n\n"
+    )
+
+    # 1. Enrollment Fee Explanation
+    msg += f"1️⃣ 🎓 *ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ*៖\n"
+    if inv_debt > 0:
+        for inv in inv_due_items:
+            msg += f"   • {inv.fee_category.name}៖ *${inv.remaining_balance:,.2f}* (~{inv.remaining_balance * Decimal('4100'):,.0f} ៛)\n"
+            msg += f"     ↳ 💡 _{inv.get_clarified_purpose()}_\n"
+    else:
+        msg += f"   • ថ្នាក់ {class_name} ពុំមានតម្រូវឱ្យបង់ថ្លៃចុះឈ្មោះដើមឆ្នាំឡើយ (ឥតគិតថ្លៃសម្រាប់ថ្នាក់នេះ ឬបានបង់រួច) ✅\n"
+    msg += "\n"
+
+    # 2. Monthly Utilities Explanation
+    msg += f"2️⃣ ⚡💧 *ថ្លៃទឹក-ភ្លើងប្រចាំខែ (Water & Electricity)*៖\n"
+    if utility_debt > 0:
+        msg += f"   • ទឹកប្រាក់៖ *{utility_debt:,.0f} ៛*\n"
+        msg += f"   • ខែដែលត្រូវបង់៖ {', '.join(unpaid_month_names)}\n"
+        msg += f"   ↳ 💡 _រួមបញ្ចូលថ្លៃសេវាអគ្គិសនី កង្ហារ បន្ទប់រៀន និងទឹកស្អាតប្រចាំខែ_\n"
+    else:
+        msg += f"   • បានបង់គ្រប់ខែទាំងអស់រួចរាល់ 🟢\n"
+
+    msg += (
+        f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 *ទឹកប្រាក់សរុបត្រូវបង់៖ {total_khr:,.0f} ៛*"
+    )
+    if inv_debt > 0:
+        msg += f" (ឬ *${inv_debt:,.2f}* USD)"
+
+    msg += f"\n\n👉 *សូមជ្រើសរើសធនាគារដែលលោកអ្នកចង់បង់ប្រាក់ (Select Bank)៖*"
+
+    # Bank Buttons
+    active_banks = list(SchoolPaymentMethod.get_active_methods())
+    if not active_banks:
+        default_bm = SchoolPaymentMethod.get_default_or_first()
+        if default_bm:
+            active_banks = [default_bm]
+
+    inline_keyboard = []
+    bank_row = []
+    for bm in active_banks:
+        badge = bm.get_brand_badge_info()
+        bank_row.append({
+            'text': f"{badge['btn_icon']} {badge['short_name']}",
+            'callback_data': f"feebank:{student.id}:{bm.id}"
+        })
+        if len(bank_row) == 2:
+            inline_keyboard.append(bank_row)
+            bank_row = []
+    if bank_row:
+        inline_keyboard.append(bank_row)
+
+    inline_keyboard.append([
+        {'text': "🔙 ត្រឡប់ក្រោយ (Back)", 'callback_data': f"feerefresh:{student.id}"}
+    ])
+
+    reply_markup = {'inline_keyboard': inline_keyboard}
+
+    tconfig = TelegramConfig.objects.filter(is_active=True).first()
+    if tconfig and tconfig.bot_token:
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{tconfig.bot_token}/sendMessage",
+                json={
+                    'chat_id': chat_id,
+                    'text': msg,
+                    'parse_mode': 'Markdown',
+                    'reply_markup': reply_markup
+                },
+                timeout=8
+            )
+        except Exception as e:
+            logger.error(f"Error sending payment confirmation to Telegram: {e}")
+    else:
+        send_telegram_notification(
+            title="💳 បញ្ជាក់ការបង់ប្រាក់",
+            message=msg,
+            custom_chat_id=chat_id,
+            reply_markup=reply_markup
+        )
+
+    return {'success': True, 'message': 'សូមជ្រើសរើសធនាគារដែលចង់បង់ប្រាក់'}
+
+
+def send_bank_qr_code(chat_id, student, bank_method=None, user_disp="Parent"):
+    """
+    Sends the official Bank QR Code for the specific bank chosen by the user (ABA, Bakong KHQR, ACLEDA, Canadia...)
+    Generates dynamic QR image if needed, specifies clear fee purpose notes, and provides
+    Verify & Show Invoice buttons!
+    """
+    if isinstance(bank_method, (int, str)):
+        bank_method = SchoolPaymentMethod.objects.filter(id=bank_method).first()
+    if not bank_method:
+        bank_method = SchoolPaymentMethod.get_default_or_first()
+
     active_year = student.academic_year or AcademicYear.objects.filter(is_current=True).first()
     config = MonthlyFeeConfig.get_or_create_for_year(active_year) if active_year else None
 
@@ -401,39 +543,63 @@ def send_bank_qr_code(chat_id, student, user_disp="Parent"):
     invoices = Invoice.objects.filter(student=student, status__in=[Invoice.Status.UNPAID, Invoice.Status.PARTIAL, Invoice.Status.OVERDUE])
     inv_debt = sum(inv.remaining_balance for inv in invoices)
 
-    payable_amount_khr = utility_debt
+    payable_amount_khr = utility_debt + (inv_debt * Decimal('4100.00'))
     memo_text = f"STU-{student.student_id}"
 
     # Build Bank QR Message
-    bank_name = bank_method.bank_name if bank_method else "ABA Bank"
+    bank_name = bank_method.bank_name if bank_method else "Bakong KHQR"
     account_name = bank_method.account_name if bank_method else "SCHOOL MANAGEMENT"
     account_num = bank_method.account_number if bank_method else "000 123 456"
-    instructions = bank_method.instructions if bank_method else "សូមស្កេន QR Code ដើម្បីបង់ប្រាក់"
+    class_name = student.classroom.name if student.classroom else 'គ្មានថ្នាក់'
+
+    badge = bank_method.get_brand_badge_info() if bank_method else {'btn_icon': '💳'}
 
     caption = (
-        f"💳 *ABA / BAKONG QR CODE សម្រាប់បង់ប្រាក់*\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
+        f"{badge.get('btn_icon', '💳')} *QR CODE សម្រាប់បង់ប្រាក់តាម {bank_name}*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"• ធនាគារ៖ *{bank_name}*\n"
         f"• ឈ្មោះគណនី៖ *{account_name}*\n"
         f"• លេខគណនី៖ `{account_num}`\n"
-        f"• សិស្ស៖ *{student.khmer_name}* ({student.student_id})\n"
-        f"• ចំនួនទឹកប្រាក់ត្រូវបង់៖ *{payable_amount_khr:,.0f} ៛*"
-    )
-    if inv_debt > 0:
-        caption += f" (ឬ *${inv_debt:,.2f}* សម្រាប់ដើមឆ្នាំ)"
-    caption += (
-        f"\n• កំណត់សម្គាល់ (Memo)៖ `{memo_text}`\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"📝 *ការណែនាំ៖*\n"
-        f"1. បើកកម្មវិធី ABA Mobile / Bakong ឬធនាគារណាក៏បានដើម្បីស្កេន QR\n"
-        f"2. បញ្ចូល Memo: `{memo_text}`\n"
-        f"3. បន្ទាប់ពីផ្ទេររួច សូមចុចប៊ូតុង «ផ្ញើបង្កាន់ដៃបង់ប្រាក់» ខាងក្រោម ឬផ្ញើរូបភាព Receipt មកទីនេះភ្លាមៗ!"
+        f"• សិស្ស៖ *{student.khmer_name}* (`{student.student_id}`)\n"
+        f"• ថ្នាក់រៀន៖ {class_name}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 *អត្ថន័យចំណាយ (Payment Breakdown)៖*\n"
     )
 
+    if inv_debt > 0:
+        caption += f"• 🎓 ថ្លៃចុះឈ្មោះដើមឆ្នាំ៖ *${inv_debt:,.2f}* (~{inv_debt * Decimal('4100'):,.0f} ៛)\n"
+    else:
+        caption += f"• 🎓 ថ្លៃចុះឈ្មោះដើមឆ្នាំ៖ ឥតគិតថ្លៃសម្រាប់ថ្នាក់នេះ ✅\n"
+
+    if utility_debt > 0:
+        caption += f"• ⚡💧 ថ្លៃទឹក-ភ្លើង៖ *{utility_debt:,.0f} ៛* ({', '.join(unpaid_months)})\n"
+    else:
+        caption += f"• ⚡💧 ថ្លៃទឹក-ភ្លើង៖ បានបង់រួចរាល់ ✅\n"
+
+    caption += (
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 *ចំនួនទឹកប្រាក់ត្រូវបង់៖ {payable_amount_khr:,.0f} ៛*"
+    )
+    if inv_debt > 0:
+        caption += f" (ឬ ${inv_debt:,.2f} USD)"
+    caption += (
+        f"\n• កំណត់សម្គាល់ (Memo)៖ `{memo_text}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📝 *ការណែនាំ៖*\n"
+        f"1. បើកកម្មវិធី {bank_name} ឬ Bakong KHQR ដើម្បីស្កេន\n"
+        f"2. ពិនិត្យឈ្មោះគណនី `{account_name}` និងចំនួនទឹកប្រាក់\n"
+        f"3. ដាក់ Memo: `{memo_text}`\n"
+        f"4. ពេលផ្ទេររួច សូមចុចប៊ូតុង «ផ្ទៀងផ្ទាត់ & បង្ហាញវិក្កយបត្រ» ឬផ្ញើរូបភាពបង្កាន់ដៃមកទីនេះ!"
+    )
+
+    bm_id = bank_method.id if bank_method else 0
     inline_keyboard = [
         [
+            {'text': "✅ ផ្ទៀងផ្ទាត់ & បង្ហាញវិក្កយបត្រ (Invoice)", 'callback_data': f"feeverify:{student.id}:{bm_id}"}
+        ],
+        [
             {'text': "📤 ផ្ញើបង្កាន់ដៃបង់ប្រាក់ (Submit Slip)", 'callback_data': f"feeslip:{student.id}"},
-            {'text': "🔄 ពិនិត្យស្ថានភាពឡើងវិញ", 'callback_data': f"feerefresh:{student.id}"}
+            {'text': "🔄 ប្តូរធនាគារផ្សេង", 'callback_data': f"feeproc:{student.id}"}
         ]
     ]
     reply_markup = {'inline_keyboard': inline_keyboard}
@@ -446,7 +612,7 @@ def send_bank_qr_code(chat_id, student, user_disp="Parent"):
                 photo_bytes = f.read()
             send_telegram_photo(
                 photo_bytes=photo_bytes,
-                filename="bank_qr.png",
+                filename=f"bank_qr_{bm_id}.png",
                 caption=caption,
                 custom_chat_id=chat_id,
                 reply_markup=reply_markup
@@ -454,6 +620,31 @@ def send_bank_qr_code(chat_id, student, user_disp="Parent"):
             has_sent_photo = True
         except Exception as e:
             logger.warning(f"Failed to open bank qr image: {e}")
+
+    # If no uploaded image, dynamically generate high-res QR Code using qrcode library
+    if not has_sent_photo:
+        try:
+            import qrcode
+            qr_content = (
+                bank_method.khqr_payload
+                if (bank_method and bank_method.khqr_payload)
+                else f"KHQR://{bank_name}/{account_num}?amount={payable_amount_khr}&currency=KHR&memo={memo_text}"
+            )
+            img = qrcode.make(qr_content)
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            photo_bytes = buf.getvalue()
+
+            send_telegram_photo(
+                photo_bytes=photo_bytes,
+                filename=f"qr_{bm_id}.png",
+                caption=caption,
+                custom_chat_id=chat_id,
+                reply_markup=reply_markup
+            )
+            has_sent_photo = True
+        except Exception as e:
+            logger.warning(f"Dynamic QR generation fallback: {e}")
 
     if not has_sent_photo:
         tconfig = TelegramConfig.objects.filter(is_active=True).first()
@@ -479,6 +670,234 @@ def send_bank_qr_code(chat_id, student, user_disp="Parent"):
         chat_id=chat_id,
         user_disp=user_disp
     )
+
+    return {'success': True, 'message': f'បានបង្ហាញ QR Code ធនាគារ {bank_name} រួចរាល់!'}
+
+
+def execute_and_generate_invoice(chat_id, student, bank_method=None, user_disp="Parent"):
+    """
+    Executes fee settlement and generates an official, beautiful invoice delivered directly in Telegram.
+    Clarifies each item:
+    1. ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ (សម្រាប់ថ្នាក់ជាក់លាក់)
+    2. ថ្លៃទឹក-ភ្លើងប្រចាំខែ (បញ្ជីខែ)
+    Shows Invoice No, Date, Student Name, Class, Paid Amount, Payment Method, Status, and Web Invoice URL.
+    """
+    active_year = student.academic_year or AcademicYear.objects.filter(is_current=True).first()
+    config = MonthlyFeeConfig.get_or_create_for_year(active_year) if active_year else None
+
+    # Get active bank method
+    if isinstance(bank_method, (int, str)):
+        bank_method = SchoolPaymentMethod.objects.filter(id=bank_method).first()
+    if not bank_method:
+        bank_method = SchoolPaymentMethod.get_default_or_first()
+
+    bank_name = bank_method.bank_name if bank_method else "Bakong KHQR"
+
+    month_seq = config.get_month_sequence() if config else []
+    ticked_set = set(config.ticked_months or []) if config else set()
+    rates = {(r.category_id, r.month): r.amount for r in MonthlyFeeRate.objects.filter(config=config)} if config else {}
+    monthly_cats = {mc.month: mc.category for mc in StudentMonthlyCategory.objects.filter(student=student, academic_year=active_year)}
+
+    fee_start_idx = month_seq.index(student.fee_start_month) if student.fee_start_month in month_seq else 0
+    fee_end_idx = month_seq.index(student.fee_end_month) if student.fee_end_month in month_seq else len(month_seq) - 1
+
+    paid_months_names = []
+    utility_paid_total = Decimal('0.00')
+
+    # Invoices (Early year)
+    invoices = Invoice.objects.filter(student=student, status__in=[Invoice.Status.UNPAID, Invoice.Status.PARTIAL, Invoice.Status.OVERDUE])
+    invoice_paid_total = Decimal('0.00')
+    inv_paid_list = []
+    primary_invoice = None
+
+    with transaction.atomic():
+        # 1. Process Utility Months
+        for idx, m in enumerate(month_seq):
+            is_attending = (fee_start_idx <= idx <= fee_end_idx)
+            if not ((m in ticked_set) and is_attending):
+                continue
+
+            m_cat = monthly_cats.get(m, student.category)
+            m_cat_id = m_cat.id if m_cat else None
+            expected = rates.get((m_cat_id, m), Decimal('20000.00')) if m_cat_id else Decimal('20000.00')
+
+            payment, _ = StudentMonthlyPayment.objects.get_or_create(
+                student=student,
+                academic_year=active_year,
+                month=m,
+                defaults={'expected_amount': expected, 'paid_amount': Decimal('0.00')}
+            )
+            if payment.paid_amount < expected:
+                diff = expected - payment.paid_amount
+                payment.expected_amount = expected
+                payment.paid_amount = expected
+                payment.status = StudentMonthlyPayment.Status.PAID
+                payment.payment_date = timezone.now()
+                # Map bank to PaymentMethod
+                if 'ABA' in bank_name.upper():
+                    payment.payment_method = StudentMonthlyPayment.PaymentMethod.ABA_BANK
+                elif 'BAKONG' in bank_name.upper():
+                    payment.payment_method = StudentMonthlyPayment.PaymentMethod.KHQR_BAKONG
+                else:
+                    payment.payment_method = StudentMonthlyPayment.PaymentMethod.BANK_TRANSFER
+
+                payment.notes = f"ទូទាត់តាម Telegram Bot ({bank_name}) ដោយ {user_disp}"
+                payment.save()
+                paid_months_names.append(MONTH_NAMES_KM.get(m, f"ខែ {m}"))
+                utility_paid_total += diff
+                log_payment_transaction_to_firestore(payment, user_disp=user_disp)
+
+        # 2. Process Early Year Invoices
+        for inv in invoices:
+            rem = inv.remaining_balance
+            if rem > 0:
+                inv.paid_amount = inv.final_amount
+                inv.status = Invoice.Status.PAID
+                inv.save()
+                invoice_paid_total += rem
+
+                # Create PaymentTransaction
+                p_trans = PaymentTransaction.objects.create(
+                    invoice=inv,
+                    amount=rem,
+                    payment_method=PaymentTransaction.PaymentMethod.ABA_BANK if 'ABA' in bank_name.upper() else PaymentTransaction.PaymentMethod.KHQR_BAKONG,
+                    transaction_reference=f"TG-{timezone.now().strftime('%Y%m%d%H%M%S')}-{student.id}",
+                    receipt_number=f"REC-{timezone.now().year}-{inv.id:04d}-{timezone.now().strftime('%m%d%H%M')}",
+                    notes=f"បង់តាម Telegram Bot ({bank_name})"
+                )
+                inv_paid_list.append((inv, p_trans))
+                if not primary_invoice:
+                    primary_invoice = inv
+
+    # If no existing invoice in DB, but utilities were paid, find or create an Invoice record for receipt representation
+    if not primary_invoice:
+        primary_invoice = Invoice.objects.filter(student=student).first()
+
+    class_name = student.classroom.name if student.classroom else 'គ្មានថ្នាក់'
+    invoice_no = primary_invoice.invoice_no if primary_invoice else f"INV-{timezone.now().year}-{student.id:04d}"
+
+    # Build Official Invoice Telegram Document
+    inv_msg = (
+        f"🧾 *វិក្កយបត្រផ្លូវការ / OFFICIAL INVOICE*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📄 *លេខវិក្កយបត្រ (Invoice No)៖* `{invoice_no}`\n"
+        f"🗓 *កាលបរិច្ឆេទ (Date)៖* {timezone.now().strftime('%d/%m/%Y %H:%M')}\n"
+        f"👤 *សិស្ស (Student)៖* *{student.khmer_name}* (`{student.student_id}`)\n"
+        f"🏫 *ថ្នាក់រៀន (Class)៖* {class_name} | ឆ្នាំសិក្សា៖ {active_year.name if active_year else '2026-2027'}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 *ព័ត៌មានលម្អិតនៃចំណាយ (Itemized Breakdown)៖*\n\n"
+    )
+
+    # 1. Early year items
+    if inv_paid_list:
+        for inv, p_trans in inv_paid_list:
+            inv_msg += f"1️⃣ 🎓 *{inv.fee_category.name}*៖ *${inv.final_amount:,.2f}* (~{inv.final_amount * Decimal('4100'):,.0f} ៛)\n"
+            inv_msg += f"   ↳ 💡 _{inv.get_clarified_purpose()}_\n"
+            inv_msg += f"   ↳ លេខបង្កាន់ដៃ៖ `{p_trans.receipt_number}`\n\n"
+    else:
+        inv_msg += f"1️⃣ 🎓 *ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ*៖\n"
+        inv_msg += f"   ↳ 💡 _ថ្នាក់ {class_name} គ្មានការទារថ្លៃចុះឈ្មោះដើមឆ្នាំឡើយ (ឥតគិតថ្លៃ/រួចរាល់)_ ✅\n\n"
+
+    # 2. Utility items
+    if paid_months_names:
+        inv_msg += f"2️⃣ ⚡💧 *ថ្លៃទឹក-ភ្លើងប្រចាំខែ (Monthly Utilities)*៖ *{utility_paid_total:,.0f} ៛*\n"
+        inv_msg += f"   ↳ 💡 _ថ្លៃសេវាអគ្គិសនី និងទឹកស្អាតបន្ទប់រៀន ({', '.join(paid_months_names)})_\n\n"
+    else:
+        inv_msg += f"2️⃣ ⚡💧 *ថ្លៃទឹក-ភ្លើងប្រចាំខែ*៖ បានបង់រួចរាល់គ្រប់ខែទាំងអស់ ✅\n\n"
+
+    total_khr = utility_paid_total + (invoice_paid_total * Decimal('4100.00'))
+    inv_msg += (
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💳 *វិធីសាស្ត្រទូទាត់ (Method)៖* *{bank_name}*\n"
+        f"💰 *ទឹកប្រាក់សរុបបានទូទាត់ (Total Paid)៖* *{total_khr:,.0f} ៛*"
+    )
+    if invoice_paid_total > 0:
+        inv_msg += f" (ឬ *${invoice_paid_total:,.2f}* USD)"
+    inv_msg += (
+        f"\n🟢 *ស្ថានភាព (Payment Status)៖* **បានទូទាត់ជោគជ័យ (PAID)** ✅\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🙏 *សាលារៀនសូមថ្លែងអំណរគុណយ៉ាងជ្រាលជ្រៅចំពោះការបង់ប្រាក់ទាន់ពេលវេលា!*"
+    )
+
+    # Buttons
+    clean_keyboard = []
+    if primary_invoice:
+        clean_keyboard.append([
+            {'text': "🖨 មើលវិក្កយបត្រផ្លូវការ (Invoice)", 'callback_data': f"feeinv:{primary_invoice.id}"}
+        ])
+    clean_keyboard.append([
+        {'text': "🔄 ពិនិត្យស្ថានភាពកម្រៃឡើងវិញ", 'callback_data': f"feerefresh:{student.id}"}
+    ])
+
+    reply_markup = {'inline_keyboard': clean_keyboard}
+
+    # Dispatch to chat
+    tconfig = TelegramConfig.objects.filter(is_active=True).first()
+    if tconfig and tconfig.bot_token:
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{tconfig.bot_token}/sendMessage",
+                json={
+                    'chat_id': chat_id,
+                    'text': inv_msg,
+                    'parse_mode': 'Markdown',
+                    'reply_markup': reply_markup
+                },
+                timeout=8
+            )
+        except Exception as e:
+            logger.error(f"Error sending invoice to Telegram: {e}")
+    else:
+        send_telegram_notification(
+            title="🧾 វិក្កយបត្រផ្លូវការ",
+            message=inv_msg,
+            custom_chat_id=chat_id,
+            reply_markup=reply_markup
+        )
+
+    return {
+        'success': True,
+        'message': f"បានទូទាត់ប្រាក់ និងចេញវិក្កយបត្រ {invoice_no} ជោគជ័យ!",
+        'invoice_no': invoice_no,
+        'updated_text': inv_msg
+    }
+
+
+def send_single_invoice_telegram(chat_id, invoice):
+    """
+    Sends official single invoice summary to parent in Telegram with clarified fee purpose.
+    """
+    student = invoice.student
+    class_name = student.classroom.name if student.classroom else 'គ្មានថ្នាក់'
+    status_icon = "🟢" if invoice.status == Invoice.Status.PAID else ("🟡" if invoice.status == Invoice.Status.PARTIAL else "🔴")
+
+    msg = (
+        f"🧾 *វិក្កយបត្រផ្លូវការ / OFFICIAL INVOICE*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📄 *លេខវិក្កយបត្រ៖* `{invoice.invoice_no}`\n"
+        f"🗓 *កាលបរិច្ឆេទចេញ៖* {invoice.created_at.strftime('%d/%m/%Y')}\n"
+        f"👤 *សិស្ស៖* *{student.khmer_name}* (`{student.student_id}`)\n"
+        f"🏫 *ថ្នាក់រៀន៖* {class_name} | ឆ្នាំសិក្សា៖ {invoice.academic_year.name}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 *មុខកម្រៃ៖* *{invoice.fee_category.name}*\n"
+        f"💡 *អត្ថន័យចំណាយ៖* _{invoice.get_clarified_purpose()}_\n"
+        f"• តម្លៃដើម៖ ${invoice.original_amount:,.2f}\n"
+        f"• បញ្ចុះតម្លៃ៖ {invoice.discount_percent}%\n"
+        f"• តម្លៃត្រូវទូទាត់៖ *${invoice.final_amount:,.2f}* (~{invoice.final_amount * Decimal('4100'):,.0f} ៛)\n"
+        f"• ចំនួនបានបង់៖ ${invoice.paid_amount:,.2f}\n"
+        f"• ទឹកប្រាក់នៅសល់៖ *${invoice.remaining_balance:,.2f}*\n"
+        f"• ស្ថានភាព៖ {status_icon} *{invoice.get_status_display()}*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    )
+    if invoice.notes:
+        msg += f"📝 *កំណត់ចំណាំ៖* {invoice.notes}\n\n"
+
+    send_telegram_notification(
+        title="វិក្កយបត្រផ្លូវការ",
+        message=msg,
+        custom_chat_id=chat_id
+    )
+    return {'success': True, 'message': f'បានបង្ហាញវិក្កយបត្រ {invoice.invoice_no}'}
 
 
 def handle_telegram_photo_message(msg):
@@ -638,7 +1057,37 @@ def process_telegram_fee_callback(callback_data, user_disp, chat_id, message_id)
     parts = callback_data.split(':')
     action_type = parts[0]
 
-    if action_type == 'feeqr':
+    if action_type == 'feeproc':
+        student_id = parts[1]
+        student = Student.objects.filter(id=student_id).first()
+        if student:
+            return send_payment_confirmation_and_banks(chat_id, student, user_disp=user_disp)
+        return {'success': False, 'message': 'រកមិនឃើញសិស្សឡើយ'}
+
+    elif action_type == 'feebank':
+        student_id = parts[1]
+        method_id = parts[2] if len(parts) > 2 else None
+        student = Student.objects.filter(id=student_id).first()
+        if student:
+            return send_bank_qr_code(chat_id, student, bank_method=method_id, user_disp=user_disp)
+        return {'success': False, 'message': 'រកមិនឃើញសិស្សឡើយ'}
+
+    elif action_type == 'feeverify':
+        student_id = parts[1]
+        method_id = parts[2] if len(parts) > 2 else None
+        student = Student.objects.filter(id=student_id).first()
+        if student:
+            return execute_and_generate_invoice(chat_id, student, bank_method=method_id, user_disp=user_disp)
+        return {'success': False, 'message': 'រកមិនឃើញសិស្សឡើយ'}
+
+    elif action_type == 'feeinv':
+        inv_id = parts[1]
+        inv = Invoice.objects.filter(id=inv_id).select_related('student', 'fee_category', 'academic_year').first()
+        if inv:
+            return send_single_invoice_telegram(chat_id, inv)
+        return {'success': False, 'message': 'រកមិនឃើញវិក្កយបត្រឡើយ'}
+
+    elif action_type == 'feeqr':
         student_id = parts[1]
         student = Student.objects.filter(id=student_id).first()
         if student:

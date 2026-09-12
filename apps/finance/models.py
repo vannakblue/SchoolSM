@@ -4,13 +4,43 @@ from decimal import Decimal
 from datetime import datetime
 
 class FeeCategory(models.Model):
+    class CategoryType(models.TextChoices):
+        ENROLLMENT = 'ENROLLMENT', 'ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ / Early Year Enrollment'
+        CONTRIBUTION = 'CONTRIBUTION', 'វិភាគទានសាលារៀន / School Contribution'
+        TUITION = 'TUITION', 'កម្រៃសិក្សា / Tuition Fee'
+        UTILITIES = 'UTILITIES', 'ថ្លៃទឹក-ភ្លើង / Utilities Billing'
+        UNIFORM = 'UNIFORM', 'ថ្លៃឯកសណ្ឋាន / Uniform'
+        BOOKS = 'BOOKS', 'ថ្លៃសៀវភៅ & សម្ភារៈ / Books & Supplies'
+        OTHER = 'OTHER', 'កម្រៃផ្សេងៗ / Other'
+
     name = models.CharField(max_length=150, verbose_name="ឈ្មោះកម្រៃសិក្សា / Fee Title")
-    default_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('250.00'), verbose_name="តម្លៃលំនាំដើម ($) / Default Amount")
-    description = models.TextField(blank=True, null=True, verbose_name="ការពិពណ៌នា / Description")
+    category_type = models.CharField(
+        max_length=30,
+        choices=CategoryType.choices,
+        default=CategoryType.OTHER,
+        verbose_name="ប្រភេទមុខចំណាយ / Category Type"
+    )
+    default_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('25.00'), verbose_name="តម្លៃលំនាំដើម ($) / Default Amount")
+    description = models.TextField(blank=True, null=True, verbose_name="អត្ថន័យចំណាយ / Description & Purpose")
+    applicable_grade_note = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name="កម្រិតថ្នាក់ដែលត្រូវអនុវត្ត / Applicable Grade Note",
+        help_text="ឧទាហរណ៍៖ សម្រាប់តែថ្នាក់ទី ៧ ឬសិស្សចុះឈ្មោះថ្មី"
+    )
+    is_active = models.BooleanField(default=True, verbose_name="សកម្ម / Active")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     class Meta:
+        ordering = ['-is_active', 'name']
         verbose_name = "ប្រភេទកម្រៃសិក្សា / Fee Category"
         verbose_name_plural = "ប្រភេទកម្រៃសិក្សាទាំងអស់ / Fee Categories"
+
+    @property
+    def invoice_count(self):
+        return self.invoices.count() if hasattr(self, 'invoices') else self.invoice_set.count()
 
     def __str__(self):
         return f"{self.name} (${self.default_amount})"
@@ -25,7 +55,7 @@ class Invoice(models.Model):
 
     invoice_no = models.CharField(max_length=50, unique=True, blank=True, verbose_name="លេខវិក្កយបត្រ / Invoice No")
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='invoices', verbose_name="សិស្ស / Student")
-    fee_category = models.ForeignKey(FeeCategory, on_delete=models.CASCADE, verbose_name="ប្រភេទកម្រៃ / Fee Category")
+    fee_category = models.ForeignKey(FeeCategory, on_delete=models.CASCADE, related_name='invoices', verbose_name="ប្រភេទកម្រៃ / Fee Category")
     academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, verbose_name="ឆ្នាំសិក្សា / Academic Year")
     original_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="តម្លៃដើម ($) / Original Amount")
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), verbose_name="បញ្ចុះតម្លៃ (%) / Discount/Scholarship %")
@@ -51,8 +81,18 @@ class Invoice(models.Model):
             self.status = self.Status.PAID
         elif self.paid_amount > 0:
             self.status = self.Status.PARTIAL
-        elif datetime.now().date() > self.due_date and self.paid_amount == 0:
-            self.status = self.Status.OVERDUE
+        elif self.due_date:
+            due = self.due_date
+            if isinstance(due, str):
+                from datetime import date
+                try:
+                    due = date.fromisoformat(due)
+                except Exception:
+                    due = None
+            if due and datetime.now().date() > due and self.paid_amount == 0:
+                self.status = self.Status.OVERDUE
+            else:
+                self.status = self.Status.UNPAID
         else:
             self.status = self.Status.UNPAID
 
@@ -77,6 +117,50 @@ class Invoice(models.Model):
 
         self.update_status()
         super().save(*args, **kwargs)
+
+    def get_clarified_purpose(self):
+        """
+        Returns a human-readable, unambiguous explanation of what this fee covers,
+        incorporating the exact purpose/description and target grade defined by Admin.
+        """
+        cat = self.fee_category
+        cat_name = cat.name if cat else ''
+        cat_type = getattr(cat, 'category_type', '') or ''
+        cat_desc = (cat.description or '').strip() if cat else ''
+        grade_note = (cat.applicable_grade_note or '').strip() if cat else ''
+        notes = (self.notes or '').strip()
+        class_name = self.student.classroom.name if self.student and self.student.classroom else ''
+        
+        target_class_desc = f" (សម្រាប់ថ្នាក់ {class_name})" if class_name else ""
+        if grade_note and not target_class_desc:
+            target_class_desc = f" ({grade_note})"
+
+        # Check by category type or keyword
+        if cat_type == FeeCategory.CategoryType.ENROLLMENT or any(k in cat_name for k in ['ចុះឈ្មោះ', 'ដើមឆ្នាំ', 'Enrollment', 'Registration', 'Admission']):
+            prefix = cat_name if cat_name else "ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ"
+            desc_text = f"៖ {cat_desc}" if cat_desc else "៖ សេវាចុះឈ្មោះ សៀវភៅតាមដាន និងកាតសិស្ស"
+            return f"{prefix}{target_class_desc}{desc_text}"
+        elif cat_type == FeeCategory.CategoryType.CONTRIBUTION or any(k in cat_name for k in ['វិភាគទាន', 'សប្បុរសធម៌', 'មូលនិធិ', 'Contribution', 'Donation']):
+            prefix = cat_name if cat_name else "វិភាគទានសាលារៀន"
+            desc_text = f"៖ {cat_desc}" if cat_desc else "៖ មូលនិធិអភិវឌ្ឍន៍សាលារៀន និងបរិស្ថានសិក្សា"
+            return f"{prefix}{target_class_desc}{desc_text}"
+        elif cat_type == FeeCategory.CategoryType.UTILITIES or any(k in cat_name for k in ['ទឹក', 'ភ្លើង', 'Utility', 'Utilities']):
+            prefix = cat_name if cat_name else "ថ្លៃសេវាទឹកស្អាត និងអគ្គិសនីប្រចាំខែ"
+            desc_text = f" ({cat_desc})" if cat_desc else " (Utilities Billing)"
+            return f"{prefix}{desc_text}"
+        elif cat_type == FeeCategory.CategoryType.UNIFORM or any(k in cat_name for k in ['ឯកសណ្ឋាន', 'Uniform']):
+            prefix = cat_name if cat_name else "ថ្លៃឯកសណ្ឋានសិស្សផ្លូវការ"
+            desc_text = f" ({cat_desc})" if cat_desc else " និងស្លាកឈ្មោះ"
+            return f"{prefix}{desc_text}"
+        elif cat_type == FeeCategory.CategoryType.BOOKS or any(k in cat_name for k in ['សៀវភៅ', 'Book']):
+            prefix = cat_name if cat_name else "ថ្លៃសៀវភៅសិក្សាគោល"
+            desc_text = f" ({cat_desc})" if cat_desc else " និងឯកសារជំនួយស្មារតី"
+            return f"{prefix}{desc_text}"
+        elif cat_desc:
+            return f"{cat_name}{target_class_desc}៖ {cat_desc}"
+        elif notes:
+            return f"{cat_name}{target_class_desc} ({notes})"
+        return f"{cat_name}{target_class_desc} (កម្រៃសិក្សាផ្លូវការ)"
 
     def __str__(self):
         return f"{self.invoice_no} - {self.student.khmer_name} (${self.final_amount}) [{self.get_status_display()}]"
@@ -398,6 +482,68 @@ class SchoolPaymentMethod(models.Model):
     @classmethod
     def get_default_or_first(cls):
         return cls.objects.filter(is_active=True, is_default=True).first() or cls.objects.filter(is_active=True).first()
+
+    @classmethod
+    def get_active_methods(cls):
+        return cls.objects.filter(is_active=True).order_by('-is_default', 'display_order', 'id')
+
+    def get_brand_badge_info(self):
+        """Returns styling info, emoji icon, and badge class for bank cards."""
+        btype = str(self.bank_type or '').upper()
+        bname = str(self.bank_name or '').upper()
+        if 'ABA' in btype or 'ABA' in bname:
+            return {
+                'brand': 'ABA',
+                'color': '#003366',
+                'btn_icon': '🔴',
+                'short_name': 'ABA Pay',
+                'card_class': 'aba-card',
+                'badge_class': 'bg-primary'
+            }
+        elif 'BAKONG' in btype or 'BAKONG' in bname:
+            return {
+                'brand': 'BAKONG',
+                'color': '#cc0000',
+                'btn_icon': '🔵',
+                'short_name': 'Bakong KHQR',
+                'card_class': 'bakong-card',
+                'badge_class': 'bg-danger'
+            }
+        elif 'ACLEDA' in btype or 'ACLEDA' in bname:
+            return {
+                'brand': 'ACLEDA',
+                'color': '#0d47a1',
+                'btn_icon': '🟢',
+                'short_name': 'ACLEDA Bank',
+                'card_class': 'acleda-card',
+                'badge_class': 'bg-success'
+            }
+        elif 'CANADIA' in btype or 'CANADIA' in bname:
+            return {
+                'brand': 'CANADIA',
+                'color': '#b71c1c',
+                'btn_icon': '🟠',
+                'short_name': 'Canadia Bank',
+                'card_class': 'canadia-card',
+                'badge_class': 'bg-warning text-dark'
+            }
+        elif 'WING' in btype or 'WING' in bname:
+            return {
+                'brand': 'WING',
+                'color': '#689f38',
+                'btn_icon': '🟡',
+                'short_name': 'Wing Bank',
+                'card_class': 'wing-card',
+                'badge_class': 'bg-info text-dark'
+            }
+        return {
+            'brand': 'OTHER',
+            'color': '#374151',
+            'btn_icon': '🏦',
+            'short_name': self.bank_name,
+            'card_class': 'other-bank-card',
+            'badge_class': 'bg-secondary'
+        }
 
     def __str__(self):
         return f"{self.bank_name} - {self.account_name} ({self.account_number})"

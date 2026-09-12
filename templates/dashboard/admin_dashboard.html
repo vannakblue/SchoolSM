@@ -96,10 +96,10 @@
     </div>
 </div>
 
-<!-- Row 2: Charts and Today Attendance -->
+<!-- Row 2: Charts and Today Dual Attendance -->
 <div class="row g-4 mb-4">
     <!-- Chart: Revenue vs Expense -->
-    <div class="col-lg-8">
+    <div class="col-lg-7">
         <div class="custom-card h-100">
             <div class="card-header-clean">
                 <div>
@@ -110,34 +110,152 @@
                     <i class="fa-solid fa-chart-simple me-1"></i> Financial Overview
                 </div>
             </div>
-            <div style="height: 300px;">
+            <div style="height: 310px;">
                 <canvas id="revenueExpenseChart"></canvas>
             </div>
         </div>
     </div>
 
-    <!-- Attendance Today Status -->
-    <div class="col-lg-4">
-        <div class="custom-card h-100">
-            <div class="card-header-clean">
-                <h5 class="fw-bold mb-0">វត្តមានសិស្សថ្ងៃនេះ</h5>
-                <a href="{% url 'student_attendance_grid' %}" class="btn btn-sm btn-outline-primary">ស្រង់វត្តមាន</a>
-            </div>
-            
-            <div class="text-center my-3">
-                <div class="display-5 fw-bold text-primary">{{ today_att_rate }}%</div>
-                <p class="text-muted small">អត្រាវត្តមានសរុបថ្ងៃនេះ</p>
-            </div>
+    <!-- Attendance Today Status: Dual Student & Teacher Overview -->
+    <div class="col-lg-5">
+        <div class="custom-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="card-header-clean pb-2">
+                    <div>
+                        <h5 class="fw-bold mb-0">វត្តមានសិស្ស និងគ្រូថ្ងៃនេះ</h5>
+                        <span class="text-muted small">ការតាមដានវត្តមានប្រចាំថ្ងៃផ្ទាល់ (Realtime)</span>
+                    </div>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">
+                        <i class="fa-solid fa-circle text-success me-1 fa-fade" style="font-size: 0.6rem;"></i> Live Sync
+                    </span>
+                </div>
 
-            <div class="d-flex justify-content-between p-3 bg-light rounded-3 mb-2">
-                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i> វត្តមាន (Present)</span>
-                <span class="fw-bold">{{ today_present }} នាក់</span>
-            </div>
-            <div class="d-flex justify-content-between p-3 bg-light rounded-3">
-                <span class="text-danger fw-bold"><i class="fa-solid fa-circle-xmark me-1"></i> អវត្តមាន (Absent)</span>
-                <span class="fw-bold">{{ today_absent }} នាក់</span>
+                <!-- Dual Rate Cards (Students vs Teachers) -->
+                <div class="row g-2 my-2">
+                    <!-- Student Rate Card -->
+                    <div class="col-6">
+                        <div class="p-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 text-center h-100">
+                            <div class="small fw-bold text-primary mb-1">
+                                <i class="fa-solid fa-user-graduate me-1"></i> វត្តមានសិស្ស
+                            </div>
+                            <div class="display-6 fw-bold text-primary mb-1">{{ today_att_rate }}%</div>
+                            <div class="small text-muted">
+                                មក៖ <strong class="text-success">{{ today_present }}</strong> | អវត្តមាន៖ <strong class="text-danger">{{ today_absent }}</strong>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'student_attendance_grid' %}" class="btn btn-sm btn-primary w-100 py-1" style="font-size: 0.78rem;">
+                                    <i class="fa-solid fa-clipboard-check me-1"></i> ស្រង់វត្តមានសិស្ស
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Teacher Rate Card -->
+                    <div class="col-6">
+                        <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-center h-100">
+                            <div class="small fw-bold text-success mb-1">
+                                <i class="fa-solid fa-chalkboard-user me-1"></i> វត្តមានគ្រូបង្រៀន
+                            </div>
+                            <div class="display-6 fw-bold text-success mb-1">{{ today_teacher_att_rate }}%</div>
+                            <div class="small text-muted">
+                                ស្កេន៖ <strong class="text-success">{{ today_teacher_punched }}/{{ total_teachers }}</strong> | យឺត៖ <strong class="text-danger">{{ today_teacher_late }}</strong>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'teacher_punch_logs' %}" class="btn btn-sm btn-success w-100 py-1" style="font-size: 0.78rem;">
+                                    <i class="fa-solid fa-list-check me-1"></i> មើល Punch Logs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Biometrics Quick Launchpad -->
+                <div class="bg-light p-2.5 rounded-3 border mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-qrcode text-primary me-1"></i> កន្លែងស្កេនវត្តមានគ្រូ (Teacher Kiosks)
+                        </span>
+                        <a href="{% url 'teacher_attendance_settings' %}" class="small text-decoration-none text-muted" title="ការកំណត់វិធីសាស្ត្រស្កេន">
+                            <i class="fa-solid fa-gear"></i> កំណត់
+                        </a>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'teacher_face_ai_kiosk' %}" class="btn btn-sm btn-outline-info flex-fill py-1 fw-semibold text-truncate">
+                            <i class="fa-solid fa-camera me-1"></i> Face AI Kiosk
+                        </a>
+                        <a href="{% url 'teacher_kiosk_view' %}" class="btn btn-sm btn-outline-primary flex-fill py-1 fw-semibold text-truncate">
+                            <i class="fa-solid fa-qrcode me-1"></i> QR Kiosk
+                        </a>
+                        <a href="{% url 'biometric_hub' %}" class="btn btn-sm btn-outline-warning flex-fill py-1 fw-semibold text-truncate">
+                            <i class="fa-solid fa-fingerprint me-1"></i> Biometric
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Real-time Live Teacher Attendance Feed Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm border-start border-4 border-info">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-info bg-opacity-10 text-info rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <i class="fa-solid fa-bolt fs-6"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0">ការស្កេនវត្តមានគ្រូចុងក្រោយ (Live Teacher Punch Feed)</h6>
+                <span class="text-muted small">កំណត់ត្រាស្កេនផ្ទៃមុខ AI, QR Code, និងម៉ាស៊ីនស្កេនដៃថ្មីៗ</span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 small">
+                ថ្ងៃនេះស្កេនទាន់ពេល៖ <strong class="text-success">{{ today_teacher_ontime }}</strong> | មកយឺត៖ <strong class="text-danger">{{ today_teacher_late }}</strong>
+            </span>
+            <a href="{% url 'teacher_punch_logs' %}" class="btn btn-outline-secondary btn-sm py-1 px-2.5 fw-bold">
+                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> មើលទាំងអស់
+            </a>
+        </div>
+    </div>
+
+    <!-- Ticker Grid -->
+    <div class="row g-2">
+        {% for punch in recent_teacher_punches %}
+        <div class="col-md-4 col-sm-6">
+            <div class="p-2 rounded-3 bg-light border d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2 text-truncate">
+                    {% if punch.teacher.photo %}
+                    <img src="{{ punch.teacher.photo.url }}" class="rounded-circle border" width="34" height="34" style="object-fit: cover;">
+                    {% else %}
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small" style="width: 34px; height: 34px; font-size: 0.8rem;">
+                        {{ punch.teacher.khmer_name|slice:":1" }}
+                    </div>
+                    {% endif %}
+                    <div class="text-truncate">
+                        <strong class="text-dark small d-block text-truncate">{{ punch.teacher.khmer_name }}</strong>
+                        <span class="text-muted font-monospace" style="font-size: 0.72rem;">
+                            {{ punch.punch_time|date:"H:i:s" }} • {{ punch.get_method_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 ms-1">
+                    {% if punch.status_result == 'ON_TIME' %}
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                        <i class="fa-solid fa-check me-0.5"></i> ទាន់ពេល
+                    </span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                        <i class="fa-solid fa-clock me-0.5"></i> មកយឺត
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-3 text-muted small">
+            <i class="fa-solid fa-clock-rotate-left fa-2x mb-1 d-block opacity-25"></i>
+            មិនទាន់មានកំណត់ត្រាស្កេនវត្តមានគ្រូនាថ្ងៃនេះនៅឡើយទេ
+        </div>
+        {% endfor %}
     </div>
 </div>
 

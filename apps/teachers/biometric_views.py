@@ -453,11 +453,24 @@ def face_ai_kiosk_view(request):
     enrolled_count = TeacherBiometricProfile.objects.filter(is_enrolled_face=True).count()
     total_teachers = Teacher.objects.filter(status=Teacher.Status.ACTIVE).count()
 
+    today = date.today()
+    today_punches = TeacherPunchLog.objects.filter(
+        date=today
+    ).select_related('teacher').order_by('-punch_time')[:12]
+
+    today_total_punches = TeacherPunchLog.objects.filter(date=today).count()
+    today_ontime_punches = TeacherPunchLog.objects.filter(date=today, status_result=TeacherPunchLog.StatusResult.ON_TIME).count()
+    today_late_punches = TeacherPunchLog.objects.filter(date=today, status_result=TeacherPunchLog.StatusResult.LATE).count()
+
     return render(request, 'teachers/face_ai_kiosk.html', {
         'config': config,
         'school_profile': school_profile,
         'enrolled_count': enrolled_count,
         'total_teachers': total_teachers,
+        'today_punches': today_punches,
+        'today_total_punches': today_total_punches,
+        'today_ontime_punches': today_ontime_punches,
+        'today_late_punches': today_late_punches,
         'page_title': 'Webcam Face AI Attendance (ស្កេនផ្ទៃមុខ AI)'
     })
 
@@ -970,11 +983,26 @@ def teacher_punch_logs_view(request):
             logs = logs.none()
 
     total_count = logs.count()
+    ontime_count = logs.filter(status_result=TeacherPunchLog.StatusResult.ON_TIME).count()
+    late_count = logs.filter(status_result=TeacherPunchLog.StatusResult.LATE).count()
+    qr_count = logs.filter(method=TeacherPunchLog.Method.QR_SCAN).count()
+    face_count = logs.filter(method=TeacherPunchLog.Method.FACE_AI).count()
+    device_count = logs.filter(method__in=[
+        TeacherPunchLog.Method.BIOMETRIC_DEVICE,
+        TeacherPunchLog.Method.USB_FINGERPRINT,
+        TeacherPunchLog.Method.USB_FILE_IMPORT
+    ]).count()
+
     logs_page = logs[:100]
 
     return render(request, 'teachers/punch_logs.html', {
         'logs': logs_page,
         'total_count': total_count,
+        'ontime_count': ontime_count,
+        'late_count': late_count,
+        'qr_count': qr_count,
+        'face_count': face_count,
+        'device_count': device_count,
         'selected_date': date_filter,
         'selected_method': method_filter,
         'selected_status': status_filter,
@@ -983,6 +1011,132 @@ def teacher_punch_logs_view(request):
         'status_choices': TeacherPunchLog.StatusResult.choices,
         'page_title': 'កំណត់ត្រាស្កេនវត្តមានគ្រូលម្អិត (Punch Logs & Audit Trail)'
     })
+
+
+@login_required
+@role_required(['ADMIN'])
+def export_punch_logs_excel(request):
+    """
+    Exports filtered teacher punch logs to Excel (.xlsx) file.
+    """
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    method_filter = request.GET.get('method', '')
+    status_filter = request.GET.get('status', '')
+    date_filter = request.GET.get('date', '')
+    query = request.GET.get('q', '').strip()
+
+    logs = TeacherPunchLog.objects.select_related('teacher').order_by('-punch_time')
+
+    if date_filter:
+        try:
+            d = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            logs = logs.filter(date=d)
+        except ValueError:
+            pass
+
+    if method_filter:
+        logs = logs.filter(method=method_filter)
+    if status_filter:
+        logs = logs.filter(status_result=status_filter)
+    if query:
+        logs = logs.filter(
+            Q(teacher__teacher_id__icontains=query) |
+            Q(teacher__khmer_name__icontains=query) |
+            Q(teacher__latin_name__icontains=query)
+        )
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Punch_Logs"
+
+    # Header Title
+    ws.merge_cells('A1:J1')
+    ws['A1'] = f"កំណត់ត្រាវត្តមានគ្រូបង្រៀន (Teacher Attendance Punch Logs) - SchoolSM"
+    ws['A1'].font = Font(name='Khmer OS Battambang', size=14, bold=True, color='1E3A8A')
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+    ws.merge_cells('A2:J2')
+    filter_desc = f"កាលបរិច្ឆេទ: {date_filter or 'ទាំងអស់'} | វិធីសាស្ត្រ: {method_filter or 'ទាំងអស់'} | ស្ថានភាព: {status_filter or 'ទាំងអស់'} | សរុប: {logs.count()} កំណត់ត្រា"
+    ws['A2'] = filter_desc
+    ws['A2'].font = Font(name='Khmer OS Battambang', size=10, italic=True, color='4B5563')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+
+    headers = [
+        "ល.រ", "កាលបរិច្ឆេទ", "ម៉ោងស្កេន", "អត្តលេខ", "ឈ្មោះគ្រូបង្រៀន",
+        "ភេទ", "វិធីសាស្ត្រស្កេន", "ស្ថានភាព", "ទីតាំង GPS", "កំណត់សម្គាល់"
+    ]
+    ws.append([]) # row 3 blank
+    ws.append(headers) # row 4
+
+    header_fill = PatternFill(start_color='2563EB', end_color='2563EB', fill_type='solid')
+    header_font = Font(name='Khmer OS Battambang', size=11, bold=True, color='FFFFFF')
+    thin_border = Border(
+        left=Side(style='thin', color='D1D5DB'),
+        right=Side(style='thin', color='D1D5DB'),
+        top=Side(style='thin', color='D1D5DB'),
+        bottom=Side(style='thin', color='D1D5DB')
+    )
+
+    for col_idx in range(1, 11):
+        cell = ws.cell(row=4, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = thin_border
+
+    ws.row_dimensions[4].height = 28
+
+    for idx, log in enumerate(logs, 1):
+        gender_kh = "ស្រី" if log.teacher.gender == 'F' else "ប្រុស"
+        status_kh = "ទាន់ពេល" if log.status_result == TeacherPunchLog.StatusResult.ON_TIME else ("មកយឺត" if log.status_result == TeacherPunchLog.StatusResult.LATE else log.get_status_result_display())
+        gps_str = f"{log.gps_lat:.4f}, {log.gps_lng:.4f}" if (log.gps_lat and log.gps_lng) else "-"
+        row_data = [
+            idx,
+            log.date.strftime('%d/%m/%Y'),
+            log.punch_time.strftime('%H:%M:%S'),
+            log.teacher.teacher_id,
+            log.teacher.khmer_name,
+            gender_kh,
+            log.get_method_display(),
+            status_kh,
+            gps_str,
+            log.notes or "-"
+        ]
+        ws.append(row_data)
+        cur_row = ws.max_row
+        ws.row_dimensions[cur_row].height = 22
+        for col_idx in range(1, 11):
+            cell = ws.cell(row=cur_row, column=col_idx)
+            cell.font = Font(name='Khmer OS Battambang', size=10)
+            cell.border = thin_border
+            cell.alignment = Alignment(
+                horizontal='center' if col_idx in [1, 2, 3, 4, 6, 7, 8] else 'left',
+                vertical='center'
+            )
+            if col_idx == 8:
+                if log.status_result == TeacherPunchLog.StatusResult.ON_TIME:
+                    cell.font = Font(name='Khmer OS Battambang', size=10, color='15803D', bold=True)
+                elif log.status_result == TeacherPunchLog.StatusResult.LATE:
+                    cell.font = Font(name='Khmer OS Battambang', size=10, color='DC2626', bold=True)
+
+    # Column widths
+    col_widths = {1: 8, 2: 14, 3: 12, 4: 14, 5: 24, 6: 10, 7: 20, 8: 14, 9: 22, 10: 30}
+    for col_idx, width in col_widths.items():
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = width
+
+    out_io = io.BytesIO()
+    wb.save(out_io)
+    out_io.seek(0)
+
+    filename = f"teacher_punch_logs_{date_filter or 'all'}.xlsx"
+    response = HttpResponse(
+        out_io.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required

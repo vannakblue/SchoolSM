@@ -6,24 +6,25 @@
 {% block extra_css %}
 <style>
     .face-kiosk-wrapper {
-        background: linear-gradient(135deg, #090d16 0%, #111827 100%);
+        background: radial-gradient(circle at 50% 20%, #172554 0%, #090d16 65%, #030712 100%);
         border-radius: 1.5rem;
         color: #f8fafc;
         overflow: hidden;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(59, 130, 246, 0.25);
     }
     .video-viewport {
         position: relative;
         border-radius: 1.25rem;
         overflow: hidden;
         background: #000;
-        box-shadow: 0 0 35px rgba(59, 130, 246, 0.3);
-        border: 2px solid rgba(59, 130, 246, 0.4);
+        box-shadow: 0 0 40px rgba(37, 99, 235, 0.35);
+        border: 2px solid rgba(59, 130, 246, 0.5);
     }
     #webcamVideo {
         width: 100%;
         height: auto;
-        max-height: 480px;
+        max-height: 460px;
         object-fit: cover;
         transform: scaleX(-1); /* Mirror view */
     }
@@ -37,25 +38,70 @@
         transform: scaleX(-1);
     }
     .match-card-success {
-        background: rgba(34, 197, 94, 0.15);
-        border: 1px solid rgba(34, 197, 94, 0.4);
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.5);
         border-radius: 1.25rem;
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px 0 rgba(34, 197, 94, 0.2);
     }
     .face-radar {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 220px;
-        height: 220px;
+        width: 230px;
+        height: 230px;
         transform: translate(-50%, -50%);
-        border: 2px dashed rgba(59, 130, 246, 0.6);
+        border: 2px dashed rgba(59, 130, 246, 0.7);
         border-radius: 50%;
         pointer-events: none;
         animation: radar-spin 8s linear infinite;
     }
+    .face-radar::after {
+        content: '';
+        position: absolute;
+        top: 15px; left: 15px; right: 15px; bottom: 15px;
+        border: 1.5px solid rgba(147, 197, 253, 0.4);
+        border-radius: 50%;
+    }
     @keyframes radar-spin {
         100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    /* Corner HUD Targeting Brackets */
+    .hud-bracket {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border-color: #38bdf8;
+        pointer-events: none;
+    }
+    .hud-tl { top: 20px; left: 20px; border-top: 3px solid; border-left: 3px solid; }
+    .hud-tr { top: 20px; right: 20px; border-top: 3px solid; border-right: 3px solid; }
+    .hud-bl { bottom: 65px; left: 20px; border-bottom: 3px solid; border-left: 3px solid; }
+    .hud-br { bottom: 65px; right: 20px; border-bottom: 3px solid; border-right: 3px solid; }
+    
+    .scan-line {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+        box-shadow: 0 0 15px #38bdf8;
+        animation: scan-vertical 3s ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+    @keyframes scan-vertical {
+        0% { top: 10%; opacity: 0.2; }
+        50% { opacity: 0.9; }
+        100% { top: 85%; opacity: 0.2; }
+    }
+    .recent-feed-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .recent-feed-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(59, 130, 246, 0.3);
     }
 </style>
 {% endblock %}
@@ -65,11 +111,18 @@
     
     <!-- Top Action Bar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-info-subtle text-info fw-bold px-3 py-1 rounded-pill">
-                <i class="fa-solid fa-camera me-1"></i> Facial Recognition AI
-            </span>
-            <span class="text-white-50 small">បានចុះឈ្មោះ៖ <strong>{{ enrolled_count }}/{{ total_teachers }}</strong> នាក់</span>
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-3 py-1.5 rounded-pill">
+                    <i class="fa-solid fa-camera me-1"></i> Facial Recognition AI
+                </span>
+                <span class="text-white-50 small">បានចុះឈ្មោះ៖ <strong class="text-info">{{ enrolled_count }}/{{ total_teachers }}</strong> នាក់</span>
+            </div>
+            <!-- Live Digital Clock -->
+            <div class="bg-dark bg-opacity-50 px-3 py-1 rounded-pill border border-secondary border-opacity-25 d-none d-md-flex align-items-center gap-2">
+                <i class="fa-solid fa-clock text-warning small"></i>
+                <span class="font-monospace fw-bold text-warning small" id="liveDigitalClock">--:--:--</span>
+            </div>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <a href="{% url 'teacher_kiosk_view' %}" class="btn btn-outline-primary btn-sm fw-bold">
@@ -81,7 +134,10 @@
             <a href="{% url 'teacher_punch_logs' %}" class="btn btn-outline-light btn-sm">
                 <i class="fa-solid fa-list me-1"></i> Logs
             </a>
-            <button onclick="toggleFullScreen()" class="btn btn-dark btn-sm border">
+            <button onclick="toggleAudio()" class="btn btn-dark btn-sm border" id="btnAudioToggle" title="បិទ/បើកសំឡេង Chime">
+                <i class="fa-solid fa-volume-high text-success" id="audioIcon"></i>
+            </button>
+            <button onclick="toggleFullScreen()" class="btn btn-dark btn-sm border" title="ពេញអេក្រង់ Fullscreen">
                 <i class="fa-solid fa-expand"></i>
             </button>
         </div>
@@ -89,37 +145,81 @@
 
     <!-- Main Face AI Kiosk Container -->
     <div class="face-kiosk-wrapper p-4 p-lg-5">
-        <div class="row g-4 align-items-center">
+        
+        <!-- Kiosk Header Stats Bar -->
+        <div class="row g-3 mb-4 pb-3 border-bottom border-secondary border-opacity-25 align-items-center">
+            <div class="col-md-5">
+                <h4 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-expand text-primary"></i> ផ្ទាំងស្កេនផ្ទៃមុខ AI វត្តមានគ្រូ
+                </h4>
+                <p class="text-white-50 small mb-0">{{ school_profile.name_kh|default:"វិទ្យាល័យ SchoolSM" }} • កត់ត្រាដោយស្វ័យប្រវត្តិ</p>
+            </div>
+            <div class="col-md-7">
+                <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-2">
+                    <div class="bg-white bg-opacity-5 px-3 py-1.5 rounded-3 border border-secondary border-opacity-25 text-center">
+                        <small class="text-white-50 d-block" style="font-size: 0.72rem;">វត្តមានថ្ងៃនេះ</small>
+                        <strong class="text-white fs-6" id="kioskTotalCount">{{ today_total_punches }}</strong>
+                    </div>
+                    <div class="bg-success bg-opacity-10 px-3 py-1.5 rounded-3 border border-success border-opacity-25 text-center">
+                        <small class="text-success d-block" style="font-size: 0.72rem;">ទាន់ពេល</small>
+                        <strong class="text-success fs-6" id="kioskOntimeCount">{{ today_ontime_punches }}</strong>
+                    </div>
+                    <div class="bg-danger bg-opacity-10 px-3 py-1.5 rounded-3 border border-danger border-opacity-25 text-center">
+                        <small class="text-danger d-block" style="font-size: 0.72rem;">មកយឺត</small>
+                        <strong class="text-danger fs-6" id="kioskLateCount">{{ today_late_punches }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 align-items-start">
             
             <!-- Left Side: Live Webcam & Overlay Detection -->
             <div class="col-lg-7 text-center">
-                <div class="video-viewport mx-auto max-w-xl position-relative">
+                <div class="video-viewport mx-auto position-relative">
                     <video id="webcamVideo" autoplay playsinline muted></video>
                     <canvas id="faceOverlayCanvas"></canvas>
                     <div class="face-radar" id="faceRadar"></div>
                     
-                    <div class="position-absolute bottom-0 start-0 end-0 p-3 bg-gradient-dark text-center" style="background: linear-gradient(transparent, rgba(0,0,0,0.8));">
-                        <span id="aiStatusText" class="badge bg-primary bg-opacity-75 rounded-pill px-3 py-2 fw-semibold">
+                    <!-- HUD Brackets & Scan Line -->
+                    <div class="hud-bracket hud-tl"></div>
+                    <div class="hud-bracket hud-tr"></div>
+                    <div class="hud-bracket hud-bl"></div>
+                    <div class="hud-bracket hud-br"></div>
+                    <div class="scan-line"></div>
+                    
+                    <div class="position-absolute bottom-0 start-0 end-0 p-3 text-center" style="background: linear-gradient(transparent, rgba(0,0,0,0.85));">
+                        <span id="aiStatusText" class="badge bg-primary bg-opacity-85 rounded-pill px-3 py-2 fw-semibold">
                             <i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបើកកាមេរ៉ា និងទាញទិន្នន័យផ្ទៃមុខ...
                         </span>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-center gap-2 mt-3">
+                <!-- Controls toolbar below camera -->
+                <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mt-3">
+                    <div class="d-flex align-items-center gap-1">
+                        <select id="cameraSelect" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill px-3" style="max-width: 220px;" onchange="changeCamera(this.value)">
+                            <option value="">ជ្រើសរើសកាមេរ៉ា (Default)</option>
+                        </select>
+                    </div>
                     <button onclick="startWebcam()" class="btn btn-outline-info btn-sm rounded-pill px-3">
                         <i class="fa-solid fa-rotate me-1"></i> Reset កាមេរ៉ា
+                    </button>
+                    <button onclick="triggerSimulationCheckin()" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="សាកល្បង Check-in សម្រាប់តេស្ត">
+                        <i class="fa-solid fa-flask-vial me-1 text-warning"></i> តេស្តស្កេន
                     </button>
                 </div>
             </div>
 
-            <!-- Right Side: Real-time Recognition Result Card -->
+            <!-- Right Side: Recognition Result Card & Live Punch Stream -->
             <div class="col-lg-5">
                 
+                <!-- Matched Teacher Result Card -->
                 <div class="match-card-success p-4 mb-4 text-center text-lg-start" id="resultCard">
                     <div class="d-flex flex-column flex-lg-row align-items-center gap-3">
-                        <img id="matchedTeacherPhoto" src="https://ui-avatars.com/api/?name=School+SM&background=0D8ABC&color=fff" class="rounded-circle border border-2 border-success shadow" width="80" height="80" style="object-fit: cover;">
+                        <img id="matchedTeacherPhoto" src="https://ui-avatars.com/api/?name=School+SM&background=0D8ABC&color=fff" class="rounded-circle border border-2 border-success shadow" width="84" height="84" style="object-fit: cover;">
                         <div>
-                            <span class="badge bg-success rounded-pill px-2 py-1 small mb-1" id="matchedStatusBadge">
+                            <span class="badge bg-success rounded-pill px-2.5 py-1 small mb-1" id="matchedStatusBadge">
                                 រង់ចាំការស្កេនផ្ទៃមុខ...
                             </span>
                             <h4 class="fw-bold text-white mb-0" id="matchedTeacherName">សូមឈរមុខកាមេរ៉ា</h4>
@@ -132,6 +232,52 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-white-50 small">ម៉ោង Check-in ចុងក្រោយ៖</span>
                         <strong class="text-info font-monospace fs-5" id="lastMatchedTime">--:--:--</strong>
+                    </div>
+                </div>
+
+                <!-- Live Recent Check-in Feed Ticker -->
+                <div class="bg-white bg-opacity-5 p-3 rounded-4 border border-secondary border-opacity-25 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-white small text-uppercase mb-0">
+                            <i class="fa-solid fa-bolt text-warning me-1"></i> ការស្កេនថ្មីៗថ្ងៃនេះ (Recent Live Feed)
+                        </h6>
+                        <span class="badge bg-secondary bg-opacity-50 rounded-pill small" id="feedCount">{{ today_punches|length }}</span>
+                    </div>
+
+                    <div class="recent-feed-list" id="recentFeedList" style="max-height: 220px; overflow-y: auto;">
+                        {% for p in today_punches %}
+                        <div class="recent-feed-item p-2 mb-2 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                {% if p.teacher.photo %}
+                                <img src="{{ p.teacher.photo.url }}" class="rounded-circle border border-secondary" width="30" height="30" style="object-fit: cover;">
+                                {% else %}
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small" style="width: 30px; height: 30px; font-size: 0.75rem;">
+                                    {{ p.teacher.khmer_name|slice:":1" }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <strong class="text-white small d-block">{{ p.teacher.khmer_name }}</strong>
+                                    <span class="text-white-50 font-monospace" style="font-size: 0.72rem;">{{ p.punch_time|date:"H:i:s" }}</span>
+                                </div>
+                            </div>
+                            <div>
+                                {% if p.status_result == 'ON_TIME' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-check me-0.5"></i> ទាន់ពេល
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-clock me-0.5"></i> មកយឺត
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-3 text-white-50 small" id="emptyFeedNotice">
+                            <i class="fa-solid fa-clock-rotate-left opacity-50 mb-1 d-block"></i>
+                            មិនទាន់មានការស្កេននៅឡើយទេថ្ងៃនេះ
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -163,8 +309,55 @@
     let isDetecting = false;
     let lastPunchTeacherId = null;
     let lastPunchTime = 0;
+    let isAudioEnabled = true;
+    let currentStream = null;
 
-    // 1. Fetch Enrolled Face Descriptors
+    // 1. Digital Clock
+    function updateClock() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+        const clockEl = document.getElementById('liveDigitalClock');
+        if (clockEl) clockEl.textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Audio Toggle
+    function toggleAudio() {
+        isAudioEnabled = !isAudioEnabled;
+        const icon = document.getElementById('audioIcon');
+        if (isAudioEnabled) {
+            icon.className = 'fa-solid fa-volume-high text-success';
+        } else {
+            icon.className = 'fa-solid fa-volume-xmark text-danger';
+        }
+    }
+
+    // 3. Populate Available Cameras
+    async function getCameras() {
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            const select = document.getElementById('cameraSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">ជ្រើសរើសកាមេរ៉ា (Default)</option>';
+            videoDevices.forEach((device, index) => {
+                const opt = document.createElement('option');
+                opt.value = device.deviceId;
+                opt.textContent = device.label || `កាមេរ៉ាទី ${index + 1}`;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn("Camera enum error:", e);
+        }
+    }
+
+    function changeCamera(deviceId) {
+        startWebcam(deviceId);
+    }
+
+    // 4. Fetch Enrolled Face Descriptors
     async function loadEnrolledFaces() {
         try {
             const res = await fetch("{% url 'api_get_enrolled_faces' %}");
@@ -178,16 +371,26 @@
         }
     }
 
-    // 2. Start Webcam
-    function startWebcam() {
+    // 5. Start Webcam
+    function startWebcam(deviceId = null) {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: deviceId ? { deviceId: { exact: deviceId } } : { width: 640, height: 480, facingMode: 'user' }
+        };
+
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then((stream) => {
+                    currentStream = stream;
                     video.srcObject = stream;
                     video.onloadedmetadata = () => {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
                         isDetecting = true;
+                        getCameras();
                         runFaceDetectionLoop();
                     };
                 })
@@ -198,8 +401,9 @@
         }
     }
 
-    // 3. Audio Chime Player
+    // 6. Audio Chime Player
     function playSuccessChime() {
+        if (!isAudioEnabled) return;
         try {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
@@ -216,24 +420,59 @@
         } catch (e) {}
     }
 
-    // 4. Face Detection & Recognition Loop
+    // 7. Face Detection & Recognition Loop
     async function runFaceDetectionLoop() {
         if (!isDetecting) return;
 
         // Draw video frame to canvas for inspection
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Periodically simulate/perform face match if enrolled teachers exist
-        const now = Date.now();
-        if (enrolledTeachers.length > 0 && (now - lastPunchTime > 8000)) {
-            // Pick candidate matching or simulate match when user faces camera
-            // In full client face-api, compute euclidean distance between descriptors
-        }
-
         requestAnimationFrame(runFaceDetectionLoop);
     }
 
-    // 5. Submit Face AI Check-in
+    // 8. Prepend New Punch to Live Feed
+    function addPunchToLiveFeed(data) {
+        const feedList = document.getElementById('recentFeedList');
+        const emptyNotice = document.getElementById('emptyFeedNotice');
+        if (emptyNotice) emptyNotice.remove();
+
+        const item = document.createElement('div');
+        item.className = 'recent-feed-item p-2 mb-2 d-flex justify-content-between align-items-center';
+        
+        const photoHtml = data.photo_url
+            ? `<img src="${data.photo_url}" class="rounded-circle border border-secondary" width="30" height="30" style="object-fit: cover;">`
+            : `<div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small" style="width: 30px; height: 30px; font-size: 0.75rem;">${data.teacher_name.slice(0, 1)}</div>`;
+
+        const badgeHtml = data.status_result === 'ON_TIME'
+            ? `<span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5" style="font-size: 0.72rem;"><i class="fa-solid fa-check me-0.5"></i> ទាន់ពេល</span>`
+            : `<span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5" style="font-size: 0.72rem;"><i class="fa-solid fa-clock me-0.5"></i> មកយឺត</span>`;
+
+        item.innerHTML = `
+            <div class="d-flex align-items-center gap-2">
+                ${photoHtml}
+                <div>
+                    <strong class="text-white small d-block">${data.teacher_name}</strong>
+                    <span class="text-white-50 font-monospace" style="font-size: 0.72rem;">${data.punch_time}</span>
+                </div>
+            </div>
+            <div>${badgeHtml}</div>
+        `;
+
+        feedList.insertBefore(item, feedList.firstChild);
+
+        // Update counts
+        const totalEl = document.getElementById('kioskTotalCount');
+        if (totalEl) totalEl.textContent = parseInt(totalEl.textContent || '0') + 1;
+        if (data.status_result === 'ON_TIME') {
+            const ontimeEl = document.getElementById('kioskOntimeCount');
+            if (ontimeEl) ontimeEl.textContent = parseInt(ontimeEl.textContent || '0') + 1;
+        } else {
+            const lateEl = document.getElementById('kioskLateCount');
+            if (lateEl) lateEl.textContent = parseInt(lateEl.textContent || '0') + 1;
+        }
+    }
+
+    // 9. Submit Face AI Check-in
     async function submitFaceCheckin(teacher) {
         const now = Date.now();
         if (lastPunchTeacherId === teacher.id && (now - lastPunchTime < 10000)) {
@@ -259,14 +498,26 @@
                 document.getElementById('matchedTeacherSub').textContent = `ID: ${data.teacher_id} • វត្តមានជោគជ័យ`;
                 document.getElementById('lastMatchedTime').textContent = data.punch_time;
                 document.getElementById('matchedStatusBadge').textContent = data.status_label;
-                document.getElementById('matchedStatusBadge').className = data.status_result === 'ON_TIME' ? 'badge bg-success rounded-pill px-2 py-1 small mb-1' : 'badge bg-danger rounded-pill px-2 py-1 small mb-1';
+                document.getElementById('matchedStatusBadge').className = data.status_result === 'ON_TIME' ? 'badge bg-success rounded-pill px-2.5 py-1 small mb-1' : 'badge bg-danger rounded-pill px-2.5 py-1 small mb-1';
                 
                 if (data.photo_url) {
                     document.getElementById('matchedTeacherPhoto').src = data.photo_url;
                 }
+
+                addPunchToLiveFeed(data);
             }
         } catch (err) {
             console.error("Face Check-in Error:", err);
+        }
+    }
+
+    // 10. Simulation / Demo Check-in Trigger
+    function triggerSimulationCheckin() {
+        if (enrolledTeachers.length > 0) {
+            const randomTeacher = enrolledTeachers[Math.floor(Math.random() * enrolledTeachers.length)];
+            submitFaceCheckin(randomTeacher);
+        } else {
+            alert("មិនទាន់មានគ្រូបានចុះឈ្មោះ Face Enrollment នៅឡើយទេ!");
         }
     }
 

@@ -41,6 +41,7 @@ urlpatterns = [
     # 4. Admin Method Settings & Punch Logs Audit
     path('attendance/settings/', biometric_views.teacher_attendance_settings_view, name='teacher_attendance_settings'),
     path('attendance/logs/', biometric_views.teacher_punch_logs_view, name='teacher_punch_logs'),
+    path('attendance/logs/export-excel/', biometric_views.export_punch_logs_excel, name='export_punch_logs_excel'),
     path('my-attendance/', biometric_views.teacher_my_attendance_history_view, name='teacher_my_attendance_history'),
 
     # Teacher Information Re-Submission Campaign & Self-Update Portal

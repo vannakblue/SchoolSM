@@ -44,8 +44,30 @@ def admin_dashboard(request):
         today_attendances = today_attendances.filter(classroom__academic_year=current_year)
     today_present = today_attendances.filter(status=StudentAttendance.Status.PRESENT).count()
     today_absent = today_attendances.filter(status=StudentAttendance.Status.ABSENT).count()
+    today_student_permission = today_attendances.filter(status__in=['PERMISSION', 'EXCUSED']).count()
+    today_student_late = today_attendances.filter(status='LATE').count()
     today_att_total = today_attendances.count()
     today_att_rate = round((today_present / today_att_total) * 100, 1) if today_att_total > 0 else 100.0
+
+    # Today Teacher Attendance & Real-time Live Punch Monitoring
+    from apps.teachers.models import TeacherPunchLog, TeacherAttendance
+    today_teacher_att = TeacherAttendance.objects.filter(date=today)
+    punched_teacher_ids = TeacherPunchLog.objects.filter(date=today).values_list('teacher_id', flat=True).distinct()
+    today_teacher_punched = punched_teacher_ids.count() if punched_teacher_ids.exists() else today_teacher_att.count()
+    today_teacher_ontime = TeacherPunchLog.objects.filter(date=today, status_result=TeacherPunchLog.StatusResult.ON_TIME).count()
+    today_teacher_late = TeacherPunchLog.objects.filter(date=today, status_result=TeacherPunchLog.StatusResult.LATE).count()
+    today_teacher_excused = today_teacher_att.filter(status=TeacherAttendance.Status.EXCUSED_LEAVE).count()
+
+    teacher_base_count = total_teachers if total_teachers > 0 else 1
+    today_teacher_att_rate = round((today_teacher_punched / teacher_base_count) * 100, 1) if total_teachers > 0 else 0.0
+    if today_teacher_att_rate > 100.0:
+        today_teacher_att_rate = 100.0
+    today_teacher_not_yet = max(0, total_teachers - today_teacher_punched)
+
+    # Real-time Recent Teacher Punches Feed (latest 6 records)
+    recent_teacher_punches = TeacherPunchLog.objects.filter(date=today).select_related('teacher').order_by('-punch_time')[:6]
+    if not recent_teacher_punches.exists():
+        recent_teacher_punches = TeacherPunchLog.objects.select_related('teacher').order_by('-punch_time')[:5]
 
     # Finance this month
     this_month = today.month
@@ -114,6 +136,15 @@ def admin_dashboard(request):
         'today_att_rate': today_att_rate,
         'today_present': today_present,
         'today_absent': today_absent,
+        'today_student_permission': today_student_permission,
+        'today_student_late': today_student_late,
+        'today_teacher_punched': today_teacher_punched,
+        'today_teacher_ontime': today_teacher_ontime,
+        'today_teacher_late': today_teacher_late,
+        'today_teacher_excused': today_teacher_excused,
+        'today_teacher_att_rate': today_teacher_att_rate,
+        'today_teacher_not_yet': today_teacher_not_yet,
+        'recent_teacher_punches': recent_teacher_punches,
         'month_revenue': month_revenue,
         'month_expense': month_expense,
         'total_due_amount': total_due_amount,

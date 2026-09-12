@@ -24,16 +24,110 @@ from apps.academics.utils import get_active_academic_year
 @login_required
 @role_required(['ADMIN', 'ACCOUNTANT'])
 def fee_category_list(request):
-    categories = FeeCategory.objects.all()
+    """
+    Manages school fee definitions and expenditure categories:
+    - Early Year Enrollment Fee (ថ្លៃចុះឈ្មោះចូលរៀនដើមឆ្នាំ)
+    - School Contribution (វិភាគទានសាលារៀន)
+    - Tuition, Utilities, Uniforms, Books, etc.
+    Provides complete Add, Edit, Delete, and Toggle Active capabilities for Admin.
+    """
+    categories = FeeCategory.objects.all().prefetch_related('invoices')
+    query = request.GET.get('q', '').strip()
+    type_filter = request.GET.get('type', '').strip()
+
+    if query:
+        categories = categories.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(applicable_grade_note__icontains=query)
+        )
+    if type_filter:
+        categories = categories.filter(category_type=type_filter)
+
     if request.method == 'POST':
         form = FeeCategoryForm(request.POST)
         if form.is_valid():
             cat = form.save()
-            messages.success(request, f"បានបង្កើតប្រភេទកម្រៃ {cat.name} ជោគជ័យ!")
+            messages.success(request, f"✅ បានបង្កើតមុខចំណាយ/កម្រៃ «{cat.name}» ដោយជោគជ័យ!")
             return redirect('fee_category_list')
     else:
         form = FeeCategoryForm()
-    return render(request, 'finance/fee_category_list.html', {'categories': categories, 'form': form})
+
+    total_categories = FeeCategory.objects.count()
+    active_categories = FeeCategory.objects.filter(is_active=True).count()
+
+    context = {
+        'categories': categories,
+        'form': form,
+        'query': query,
+        'type_filter': type_filter,
+        'category_types': FeeCategory.CategoryType.choices,
+        'total_categories': total_categories,
+        'active_categories': active_categories,
+    }
+    return render(request, 'finance/fee_category_list.html', context)
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def fee_category_edit(request, pk):
+    """
+    Edits an existing fee expenditure definition/purpose.
+    """
+    cat = get_object_or_404(FeeCategory, pk=pk)
+    if request.method == 'POST':
+        form = FeeCategoryForm(request.POST, instance=cat)
+        if form.is_valid():
+            cat = form.save()
+            messages.success(request, f"✅ បានកែប្រែព័ត៌មានមុខកម្រៃ «{cat.name}» ដោយជោគជ័យ!")
+            return redirect('fee_category_list')
+    else:
+        form = FeeCategoryForm(instance=cat)
+
+    return render(request, 'finance/fee_category_form.html', {
+        'form': form,
+        'category': cat,
+        'title': f'កែប្រែមុខកម្រៃ៖ {cat.name}'
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def fee_category_delete(request, pk):
+    """
+    Deletes or safe-deactivates a fee category.
+    """
+    cat = get_object_or_404(FeeCategory, pk=pk)
+    inv_count = cat.invoices.count() if hasattr(cat, 'invoices') else cat.invoice_set.count()
+    force = request.POST.get('force') == 'true' or request.GET.get('force') == 'true'
+
+    if inv_count > 0 and not force:
+        cat.is_active = False
+        cat.save()
+        messages.warning(
+            request,
+            f"⚠️ ប្រភេទកម្រៃ «{cat.name}» មានវិក្កយបត្រចំនួន {inv_count} ភ្ជាប់ជាមួយ ដូច្នេះប្រព័ន្ធបានប្តូរទៅជា «ផ្អាកដំណើរការ (Inactive)» ដើម្បីការពារសុចរិតភាពទិន្នន័យគណនេយ្យ។"
+        )
+    else:
+        name = cat.name
+        cat.delete()
+        messages.success(request, f"🗑️ បានលុបមុខកម្រៃ «{name}» ដោយជោគជ័យ!")
+
+    return redirect('fee_category_list')
+
+
+@login_required
+@role_required(['ADMIN', 'ACCOUNTANT'])
+def fee_category_toggle_active(request, pk):
+    """
+    Quick toggle active / inactive status for a fee definition.
+    """
+    cat = get_object_or_404(FeeCategory, pk=pk)
+    cat.is_active = not cat.is_active
+    cat.save()
+    status_str = "បើកដំណើរការ (Active)" if cat.is_active else "ផ្អាកដំណើរការ (Inactive)"
+    messages.success(request, f"បាន{status_str} មុខកម្រៃ «{cat.name}» ជោគជ័យ!")
+    return redirect('fee_category_list')
 
 
 @login_required
@@ -1969,6 +2063,14 @@ def api_manage_payment_methods(request):
             messages.success(request, "បានលុបគណនីធនាគារជោគជ័យ!")
             return redirect('payment_logs_dashboard')
 
+        if action == 'toggle_active' and method_id:
+            pm = get_object_or_404(SchoolPaymentMethod, id=method_id)
+            pm.is_active = not pm.is_active
+            pm.save()
+            st_text = "បើកដំណើរការ (Active)" if pm.is_active else "បិទដំណើរការ (Inactive)"
+            messages.success(request, f"បាន{st_text} គណនី {pm.bank_name} ជោគជ័យ!")
+            return redirect('payment_logs_dashboard')
+
         if action == 'set_default' and method_id:
             SchoolPaymentMethod.objects.exclude(id=method_id).update(is_default=False)
             SchoolPaymentMethod.objects.filter(id=method_id).update(is_default=True)
@@ -1979,16 +2081,35 @@ def api_manage_payment_methods(request):
         account_name = request.POST.get('account_name', '').strip()
         account_number = request.POST.get('account_number', '').strip()
         currency = request.POST.get('currency', 'KHR')
+        khqr_payload = request.POST.get('khqr_payload', '').strip()
         instructions = request.POST.get('instructions', '').strip()
         is_default = request.POST.get('is_default') == 'on'
         is_active = request.POST.get('is_active') != 'off'
 
+        bank_type = request.POST.get('bank_type')
+        if not bank_type:
+            bn_upper = bank_name.upper()
+            if 'ABA' in bn_upper:
+                bank_type = SchoolPaymentMethod.BankType.ABA
+            elif 'BAKONG' in bn_upper:
+                bank_type = SchoolPaymentMethod.BankType.BAKONG
+            elif 'ACLEDA' in bn_upper:
+                bank_type = SchoolPaymentMethod.BankType.ACLEDA
+            elif 'CANADIA' in bn_upper:
+                bank_type = SchoolPaymentMethod.BankType.CANADIA
+            elif 'WING' in bn_upper:
+                bank_type = SchoolPaymentMethod.BankType.WING
+            else:
+                bank_type = SchoolPaymentMethod.BankType.OTHER
+
         if method_id:
             pm = get_object_or_404(SchoolPaymentMethod, id=method_id)
+            pm.bank_type = bank_type
             pm.bank_name = bank_name
             pm.account_name = account_name
             pm.account_number = account_number
             pm.currency = currency
+            pm.khqr_payload = khqr_payload
             pm.instructions = instructions
             pm.is_default = is_default
             pm.is_active = is_active
@@ -1998,10 +2119,12 @@ def api_manage_payment_methods(request):
             messages.success(request, f"បានកែប្រែគណនី {pm.bank_name} ជោគជ័យ!")
         else:
             pm = SchoolPaymentMethod.objects.create(
+                bank_type=bank_type,
                 bank_name=bank_name,
                 account_name=account_name,
                 account_number=account_number,
                 currency=currency,
+                khqr_payload=khqr_payload,
                 instructions=instructions,
                 is_default=is_default,
                 is_active=is_active,

@@ -88,9 +88,12 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>{{ invoice.fee_category.name }} ({{ invoice.academic_year.name }})</td>
-                    <td class="text-center">{{ payment.get_payment_method_display }}</td>
-                    <td class="text-end fw-bold text-success fs-6">${{ payment.amount }}</td>
+                    <td>
+                        <div class="fw-bold">{{ invoice.fee_category.name }} ({{ invoice.academic_year.name }})</div>
+                        <div class="text-muted small mt-1"><i class="fa-solid fa-circle-info text-primary me-1"></i> {{ invoice.get_clarified_purpose }}</div>
+                    </td>
+                    <td class="text-center align-middle">{{ payment.get_payment_method_display }}</td>
+                    <td class="text-end fw-bold text-success fs-6 align-middle">${{ payment.amount }}</td>
                 </tr>
             </tbody>
             <tfoot>

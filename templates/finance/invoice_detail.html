@@ -78,8 +78,11 @@
                 <tbody>
                     <tr>
                         <td>
-                            <div class="fw-bold">{{ invoice.fee_category.name }}</div>
-                            <span class="text-muted small">{{ invoice.notes|default:"កម្រៃសិក្សាផ្លូវការ" }}</span>
+                            <div class="fw-bold fs-6">{{ invoice.fee_category.name }}</div>
+                            <div class="text-primary small fw-semibold mt-1"><i class="fa-solid fa-circle-info me-1"></i> {{ invoice.get_clarified_purpose }}</div>
+                            {% if invoice.notes %}
+                                <span class="text-muted small d-block mt-1">កំណត់ចំណាំ៖ {{ invoice.notes }}</span>
+                            {% endif %}
                         </td>
                         <td class="text-end">${{ invoice.original_amount }}</td>
                         <td class="text-end text-success">-{{ invoice.discount_percent }}%</td>

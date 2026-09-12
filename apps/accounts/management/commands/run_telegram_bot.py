@@ -69,7 +69,7 @@ class Command(BaseCommand):
                                             reply_markup=None
                                         )
 
-                            elif cb_data.startswith(('feepay:', 'feeqr:', 'feedetail:', 'feeslip:', 'feerefresh:', 'feereceipt:')):
+                            elif cb_data.startswith('fee'):
                                 from apps.finance.telegram_bot import process_telegram_fee_callback
                                 res = process_telegram_fee_callback(cb_data, user_disp, chat_id, message_id)
                                 toast_text = res.get('message', 'បានដំណើរការរួចរាល់!')

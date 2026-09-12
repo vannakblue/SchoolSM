@@ -504,6 +504,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'expense_list',
             },
             {
+                'key': 'fee_category_list',
+                'name_kh': 'អត្ថន័យចំណាយ & ប្រភេទកម្រៃ',
+                'name_en': 'Fee & Payment Purposes',
+                'icon': 'fa-solid fa-tags text-success',
+                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'url_name': 'fee_category_list',
+            },
+            {
                 'key': 'scholarship_type_list',
                 'name_kh': 'ប្រភេទកម្រៃ & អាហារូបករណ៍',
                 'name_en': 'Scholarships & Fee Categories',

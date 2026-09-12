@@ -262,6 +262,60 @@
             print-color-adjust: exact;
         }
     }
+
+    /* Timetable Print Configuration Options */
+    .timetable-sheet.tt-fit-1-page {
+        padding: 20px 30px 15px !important;
+    }
+    .timetable-sheet.tt-fit-1-page .tt-table th,
+    .timetable-sheet.tt-fit-1-page .tt-table td {
+        padding: 2.5px 3px !important;
+        font-size: 0.82rem !important;
+    }
+    .timetable-sheet.tt-fit-1-page .tt-table .cell-slot {
+        height: 32px !important;
+    }
+    .timetable-sheet.tt-fit-1-page .tt-sig-space {
+        height: 48px !important;
+    }
+    .timetable-sheet.tt-fit-1-page .tt-header {
+        margin-bottom: 12px !important;
+    }
+
+    .timetable-sheet.tt-margin-compact {
+        padding: 15px 20px !important;
+    }
+    .timetable-sheet.tt-margin-wide {
+        padding: 40px 50px !important;
+    }
+
+    .timetable-sheet.tt-font-small .tt-table th,
+    .timetable-sheet.tt-font-small .tt-table td {
+        font-size: 0.78rem !important;
+    }
+    .timetable-sheet.tt-font-large .tt-table th,
+    .timetable-sheet.tt-font-large .tt-table td {
+        font-size: 0.95rem !important;
+    }
+
+    .tt-hide-school-name .tt-school-name { display: none !important; }
+    .tt-hide-dates .tt-meta-dates { display: none !important; }
+    .tt-hide-signatures .tt-footer { display: none !important; }
+
+    @media print {
+        .timetable-sheet.tt-fit-1-page {
+            page-break-after: always !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            max-height: 98vh !important;
+        }
+        .timetable-sheet.tt-margin-compact {
+            padding: 5mm !important;
+        }
+        .timetable-sheet.tt-margin-wide {
+            padding: 15mm !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -386,6 +440,9 @@
                 </ul>
             </div>
 
+            <button type="button" class="btn btn-outline-primary btn-sm fw-bold py-1.5" data-bs-toggle="modal" data-bs-target="#timetablePrintConfigModal" title="កំណត់ទម្រង់ និងចំនួនទំព័រព្រីនកាលវិភាគ">
+                <i class="fa-solid fa-sliders me-1.5"></i> កំណត់ទំព័រព្រីន (Print Config)
+            </button>
             <button type="button" class="btn btn-dark btn-sm fw-bold px-3 py-1.5" onclick="window.print()">
                 <i class="fa-solid fa-print me-1.5"></i> បោះពុម្ព (Print)
             </button>
@@ -789,6 +846,154 @@
         if (!yearId) return;
         window.location.href = `{% url 'student_teacher_timetable_view' %}?year=${yearId}`;
     }
+
+    // Timetable Print Configuration Logic
+    function applyTimetablePrintConfig() {
+        const pageFit = document.getElementById('cfgPageFit')?.value || 'fit-1-page';
+        const pageMargin = document.getElementById('cfgPageMargin')?.value || 'compact';
+        const fontScale = document.getElementById('cfgFontScale')?.value || 'normal';
+        
+        const showHeader = document.getElementById('cfgShowHeader')?.checked ?? true;
+        const showDates = document.getElementById('cfgShowDates')?.checked ?? true;
+        const showSigs = document.getElementById('cfgShowSigs')?.checked ?? true;
+
+        const sheets = document.querySelectorAll('.timetable-sheet');
+        sheets.forEach(sheet => {
+            // Page fit
+            if (pageFit === 'fit-1-page') {
+                sheet.classList.add('tt-fit-1-page');
+            } else {
+                sheet.classList.remove('tt-fit-1-page');
+            }
+
+            // Margin
+            sheet.classList.remove('tt-margin-compact', 'tt-margin-wide');
+            if (pageMargin === 'compact') sheet.classList.add('tt-margin-compact');
+            if (pageMargin === 'wide') sheet.classList.add('tt-margin-wide');
+
+            // Font scale
+            sheet.classList.remove('tt-font-small', 'tt-font-large');
+            if (fontScale === 'small') sheet.classList.add('tt-font-small');
+            if (fontScale === 'large') sheet.classList.add('tt-font-large');
+
+            // Toggles
+            if (!showHeader) sheet.classList.add('tt-hide-school-name');
+            else sheet.classList.remove('tt-hide-school-name');
+
+            if (!showDates) sheet.classList.add('tt-hide-dates');
+            else sheet.classList.remove('tt-hide-dates');
+
+            if (!showSigs) sheet.classList.add('tt-hide-signatures');
+            else sheet.classList.remove('tt-hide-signatures');
+        });
+    }
+
+    function printWithConfig() {
+        applyTimetablePrintConfig();
+        const modalEl = document.getElementById('timetablePrintConfigModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    }
 </script>
 <script src="{% static 'js/khmer_lunar.js' %}"></script>
+
+<!-- MODAL: TIMETABLE PRINT CONFIGURATION -->
+<div class="modal fade no-print" id="timetablePrintConfigModal" tabindex="-1" aria-labelledby="ttPrintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header bg-primary text-white py-3 px-4 rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i class="fa-solid fa-sliders fs-6"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="ttPrintModalLabel">កំណត់ទំព័រព្រីនកាលវិភាគ (Print Settings)</h5>
+                        <small class="text-white-50">រៀបចំទំហំទំព័រ A4 គែមក្រដាស និងផ្នែកត្រូវបង្ហាញ</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <!-- Page Fit Option -->
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted">
+                            <i class="fa-solid fa-file-lines text-primary me-1"></i> កម្រិតទំព័រ (Target Page Fit)៖
+                        </label>
+                        <select class="form-select fw-bold" id="cfgPageFit" onchange="applyTimetablePrintConfig()">
+                            <option value="fit-1-page" selected>⭐ សមល្មម ១ ទំព័រ A4 គត់ (Strict Fit 1 A4 Page - Recommended)</option>
+                            <option value="standard">ទម្រង់ស្តង់ដារធម្មតា (Standard Scale 100%)</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">ជម្រើសសមល្មម ១ ទំព័រ A4 នឹងបង្រួមចន្លោះគម្លាតដើម្បីកុំឱ្យធ្លាក់ហត្ថលេខាទៅទំព័រទី ២។</small>
+                    </div>
+
+                    <!-- Margin Option -->
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted">
+                            <i class="fa-solid fa-arrows-split-up-and-left text-primary me-1"></i> គែមក្រដាស (Margins)៖
+                        </label>
+                        <select class="form-select" id="cfgPageMargin" onchange="applyTimetablePrintConfig()">
+                            <option value="compact" selected>តូចល្មម Compact (5mm)</option>
+                            <option value="normal">ធម្មតា Normal (10mm)</option>
+                            <option value="wide">ធំទូលាយ Wide (15mm)</option>
+                        </select>
+                    </div>
+
+                    <!-- Font Scaling -->
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted">
+                            <i class="fa-solid fa-text-height text-primary me-1"></i> ទំហំអក្សរតារាង (Font Scale)៖
+                        </label>
+                        <select class="form-select" id="cfgFontScale" onchange="applyTimetablePrintConfig()">
+                            <option value="small">តូចល្មម (Compact 90%)</option>
+                            <option value="normal" selected>ស្តង់ដារ (Normal 100%)</option>
+                            <option value="large">ធំច្បាស់ (Large 110%)</option>
+                        </select>
+                    </div>
+
+                    <!-- Display Toggles -->
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted mb-2">
+                            <i class="fa-solid fa-eye text-primary me-1"></i> ផ្នែកដែលត្រូវបង្ហាញលើសន្លឹកកាលវិភាគ៖
+                        </label>
+                        <div class="bg-light p-3 rounded-3 border">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="cfgShowHeader" checked onchange="applyTimetablePrintConfig()">
+                                <label class="form-check-label small fw-semibold" for="cfgShowHeader">បង្ហាញឈ្មោះសាលា & ចំណងជើងកាលវិភាគ</label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="cfgShowDates" checked onchange="applyTimetablePrintConfig()">
+                                <label class="form-check-label small fw-semibold" for="cfgShowDates">បង្ហាញកាលបរិច្ឆេទចន្ទគតិ និងសុរិយគតិ</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cfgShowSigs" checked onchange="applyTimetablePrintConfig()">
+                                <label class="form-check-label small fw-semibold" for="cfgShowSigs">បង្ហាញប្រអប់ហត្ថលេខានាយក និងគ្រូបន្ទុកថ្នាក់</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2.5 px-4 rounded-bottom-4 justify-content-between">
+                <button type="button" class="btn btn-secondary fw-semibold px-3" data-bs-dismiss="modal">
+                    បិទ
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary fw-bold px-3" onclick="applyTimetablePrintConfig()" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-check me-1"></i> អនុវត្ត (Apply)
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="printWithConfig()">
+                        <i class="fa-solid fa-print me-1"></i> ព្រីនភ្លាមៗ (Print Now)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
