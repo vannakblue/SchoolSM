@@ -492,13 +492,35 @@
                                 <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
                                 {{ moeys_form.track }}
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">សាលាបឋមសិក្សាពីមុន</label>
-                                {{ moeys_form.primary_school }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">គ្រឹះស្ថានមធ្យមសិក្សាពីមុន</label>
-                                {{ moeys_form.secondary_school }}
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small d-flex justify-content-between align-items-center mb-1">
+                                    <span>គ្រឹះស្ថានសិក្សាពីមុន (Previous School)</span>
+                                    <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                                </label>
+                                <div class="d-flex flex-wrap gap-3 mb-2 p-2 bg-light rounded border">
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="public_prev_school_choice" id="pub_choice_primary_school" value="PRIMARY" checked>
+                                        <label class="form-check-label small fw-semibold" for="pub_choice_primary_school" style="cursor: pointer;">
+                                            <i class="fa-solid fa-school text-primary me-1"></i>សាលាបឋមសិក្សាពីមុន
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="public_prev_school_choice" id="pub_choice_secondary_school" value="SECONDARY">
+                                        <label class="form-check-label small fw-semibold" for="pub_choice_secondary_school" style="cursor: pointer;">
+                                            <i class="fa-solid fa-building-columns text-info me-1"></i>គ្រឹះស្ថានមធ្យមសិក្សាពីមុន
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="public_prev_school_choice" id="pub_choice_none_school" value="NONE">
+                                        <label class="form-check-label small text-muted" for="pub_choice_none_school" style="cursor: pointer;">គ្មាន</label>
+                                    </div>
+                                </div>
+                                <div id="pub_wrap_primary_school">
+                                    {{ moeys_form.primary_school }}
+                                </div>
+                                <div id="pub_wrap_secondary_school" style="display: none;">
+                                    {{ moeys_form.secondary_school }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -573,11 +595,17 @@
                                 {{ moeys_form.disability_hearing }}
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</label>
+                                <label class="form-label fw-bold small d-flex justify-content-between align-items-center">
+                                    <span>ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</span>
+                                    <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                                </label>
                                 {{ moeys_form.equity_card_1 }}
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ២ (IDPoor 2)</label>
+                                <label class="form-label fw-bold small d-flex justify-content-between align-items-center">
+                                    <span>ប័ណ្ណសមធម៌ក្រ២ (IDPoor 2)</span>
+                                    <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                                </label>
                                 {{ moeys_form.equity_card_2 }}
                             </div>
                             <div class="col-md-4">
@@ -832,6 +860,80 @@
                     reader.readAsDataURL(this.files[0]);
                 }
             });
+        }
+        // Mutual exclusivity for IDPoor 1 & IDPoor 2
+        const card1 = document.getElementById('moeys_equity_card_1');
+        const card2 = document.getElementById('moeys_equity_card_2');
+        if (card1 && card2) {
+            card1.addEventListener('change', function() {
+                if (this.value && this.value !== 'មិនមាន') {
+                    card2.value = 'មិនមាន';
+                }
+            });
+            card2.addEventListener('change', function() {
+                if (this.value && this.value !== 'មិនមាន') {
+                    card1.value = 'មិនមាន';
+                }
+            });
+            if (card1.value && card1.value !== 'មិនមាន' && card2.value && card2.value !== 'មិនមាន') {
+                card2.value = 'មិនមាន';
+            }
+        }
+
+        // Mutual exclusivity for Previous School (Primary vs Secondary)
+        const pubPriInput = document.querySelector('#publicMoeysSection [name="primary_school"]') || document.getElementById('moeys_primary_school');
+        const pubSecInput = document.querySelector('#publicMoeysSection [name="secondary_school"]') || document.getElementById('moeys_secondary_school');
+        const pubRadPri = document.getElementById('pub_choice_primary_school');
+        const pubRadSec = document.getElementById('pub_choice_secondary_school');
+        const pubRadNone = document.getElementById('pub_choice_none_school');
+        const pubWrapPri = document.getElementById('pub_wrap_primary_school');
+        const pubWrapSec = document.getElementById('pub_wrap_secondary_school');
+
+        if (pubPriInput && pubSecInput && pubRadPri && pubRadSec) {
+            function updatePubView(choice) {
+                if (choice === 'SECONDARY') {
+                    if (pubWrapPri) pubWrapPri.style.display = 'none';
+                    if (pubWrapSec) pubWrapSec.style.display = 'block';
+                    pubPriInput.value = '';
+                } else if (choice === 'NONE') {
+                    if (pubWrapPri) pubWrapPri.style.display = 'none';
+                    if (pubWrapSec) pubWrapSec.style.display = 'none';
+                    pubPriInput.value = '';
+                    pubSecInput.value = '';
+                } else {
+                    if (pubWrapPri) pubWrapPri.style.display = 'block';
+                    if (pubWrapSec) pubWrapSec.style.display = 'none';
+                    pubSecInput.value = '';
+                }
+            }
+
+            if (pubSecInput.value.trim()) {
+                pubRadSec.checked = true;
+                updatePubView('SECONDARY');
+            } else {
+                pubRadPri.checked = true;
+                updatePubView('PRIMARY');
+            }
+
+            pubRadPri.addEventListener('change', function() { if (this.checked) updatePubView('PRIMARY'); });
+            pubRadSec.addEventListener('change', function() { if (this.checked) updatePubView('SECONDARY'); });
+            if (pubRadNone) {
+                pubRadNone.addEventListener('change', function() { if (this.checked) updatePubView('NONE'); });
+            }
+
+            const pubForm = pubPriInput.closest('form');
+            if (pubForm) {
+                pubForm.addEventListener('submit', function() {
+                    if (pubRadPri.checked) {
+                        pubSecInput.value = '';
+                    } else if (pubRadSec.checked) {
+                        pubPriInput.value = '';
+                    } else if (pubRadNone && pubRadNone.checked) {
+                        pubPriInput.value = '';
+                        pubSecInput.value = '';
+                    }
+                });
+            }
         }
     });
     </script>

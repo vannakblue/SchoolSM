@@ -1045,6 +1045,11 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             label: "សាលាបឋមសិក្សាពីមុន (Primary School)",
             hint: "ឧ. បឋមសិក្សា ហ៊ុន សែន...",
             icon: Icons.school_outlined,
+            onChanged: (v) {
+              if (v.trim().isNotEmpty && _secondarySchoolController.text.isNotEmpty) {
+                setState(() => _secondarySchoolController.clear());
+              }
+            },
           ),
           const SizedBox(height: 14),
           _buildTextField(
@@ -1052,6 +1057,11 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             label: "គ្រឹះស្ថានមធ្យមសិក្សាពីមុន (Secondary School)",
             hint: "ឧ. អនុវិទ្យាល័យ / វិទ្យាល័យ...",
             icon: Icons.account_balance_outlined,
+            onChanged: (v) {
+              if (v.trim().isNotEmpty && _primarySchoolController.text.isNotEmpty) {
+                setState(() => _primarySchoolController.clear());
+              }
+            },
           ),
         ],
       ),
@@ -1110,19 +1120,29 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _equityCard1,
+                  value: _equityCard1,
                   decoration: _inputDecoration("ប័ណ្ណសមធម៌ក្រ១", Icons.credit_card_rounded),
                   items: ['មិនមាន', 'មាន'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => setState(() => _equityCard1 = v ?? 'មិនមាន'),
+                  onChanged: (v) => setState(() {
+                    _equityCard1 = v ?? 'មិនមាន';
+                    if (_equityCard1 != 'មិនមាន') {
+                      _equityCard2 = 'មិនមាន';
+                    }
+                  }),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _equityCard2,
+                  value: _equityCard2,
                   decoration: _inputDecoration("ប័ណ្ណសមធម៌ក្រ២", Icons.credit_card_rounded),
                   items: ['មិនមាន', 'មាន'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => setState(() => _equityCard2 = v ?? 'មិនមាន'),
+                  onChanged: (v) => setState(() {
+                    _equityCard2 = v ?? 'មិនមាន';
+                    if (_equityCard2 != 'មិនមាន') {
+                      _equityCard1 = 'មិនមាន';
+                    }
+                  }),
                 ),
               ),
             ],

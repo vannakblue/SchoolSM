@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views, online_exam_views
 
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
 
     path('summary/', views.grade_summary_view, name='grade_summary'),
     path('results/semester/', views.semester_results_view, name='semester_results'),
+    re_path(r'^results/(?P<prefix>semester|annual)/&(?P<extra>.*)$', views.redirect_malformed_results_query, name='redirect_malformed_results_query'),
     path('results/semester/export-excel/', views.export_semester_results_excel, name='export_semester_results_excel'),
     path('results/semester/subject-ranks/print/', views.semester_subject_ranks_print_view, name='semester_subject_ranks_print_view'),
     path('results/semester/subject-ranks/export-excel/', views.export_semester_subject_ranks_excel, name='export_semester_subject_ranks_excel'),

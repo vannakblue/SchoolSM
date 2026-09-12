@@ -1037,6 +1037,20 @@ def api_quick_set_student_status(request, pk):
         fee_end_month = request.POST.get('fee_end_month')
 
         if new_status:
+            khmer_status_map = {
+                'កំពុងរៀន': 'ACTIVE',
+                'កំពុងសិក្សា': 'ACTIVE',
+                'ផ្អាកការសិក្សា': 'SUSPENDED',
+                'បោះបង់ការសិក្សា': 'DROPPED',
+                'បោះបង់ / ឈប់រៀន': 'DROPPED',
+                'បោះបង់': 'DROPPED',
+                'ឈប់រៀន': 'DROPPED',
+                'ផ្ទេរការសិក្សា': 'TRANSFERRED',
+                'ផ្ទេរចេញ': 'TRANSFERRED',
+                'បញ្ចប់ការសិក្សា': 'GRADUATED',
+            }
+            if new_status in khmer_status_map:
+                new_status = khmer_status_map[new_status]
             student.status = new_status
             if fee_end_month and str(fee_end_month).isdigit():
                 student.fee_end_month = int(fee_end_month)
@@ -3244,6 +3258,13 @@ def student_age_grade_statistics(request):
 
     all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'name') if active_year else Classroom.objects.all().order_by('grade_level', 'name')
 
+    import datetime
+    today = datetime.date.today()
+    from apps.accounts.khmer_lunar import get_khmer_lunar_date
+    today_lunar_date = get_khmer_lunar_date(today)
+    from apps.accounts.templatetags.i18n_extras import to_khmer_number_filter, KHMER_MONTHS
+    today_solar_date = f"ថ្ងៃទី {to_khmer_number_filter(today.day)} ខែ {KHMER_MONTHS.get(today.month, '')} ឆ្នាំ {to_khmer_number_filter(today.year)}"
+
     context = {
         'all_years': all_years,
         'active_year': active_year,
@@ -3271,6 +3292,9 @@ def student_age_grade_statistics(request):
         'upper_sec_p1_cats': upper_sec_p1_cats,
         'upper_sec_p2_cats': upper_sec_p2_cats,
         'school_info': school_info,
+        'today': today,
+        'today_lunar_date': today_lunar_date,
+        'today_solar_date': today_solar_date,
     }
     return render(request, 'students/student_age_grade_statistics.html', context)
 
@@ -4683,6 +4707,7 @@ def _get_moeys_individual_student_roster_data(request):
     track_filter = request.GET.get('track', 'ALL').strip().upper()
     equity_filter = request.GET.get('equity', 'ALL').strip()
     gender_filter = request.GET.get('gender', 'ALL').strip().upper()
+    status_filter = request.GET.get('status', 'ALL').strip().upper()
     search_q = request.GET.get('q', '').strip()
 
     qs = Student.objects.select_related('classroom', 'academic_year')
@@ -4705,6 +4730,9 @@ def _get_moeys_individual_student_roster_data(request):
 
     if gender_filter in ['F', 'M']:
         qs = qs.filter(gender=gender_filter)
+
+    if status_filter and status_filter != 'ALL':
+        qs = qs.filter(status=status_filter)
 
     if search_q:
         qs = qs.filter(
@@ -4802,13 +4830,30 @@ def _get_moeys_individual_student_roster_data(request):
         risk = _val('risk_card')
         sch = _val('scholarship')
         phone = s.phone or _val('phone')
-        status_disp = s.status
+
+        # Student Status in Khmer (MoEYS Standard: កំពុងរៀន, ផ្អាកការសិក្សា, បោះបង់ការសិក្សា, ...)
+        status_map = {
+            'ACTIVE': 'កំពុងរៀន',
+            'SUSPENDED': 'ផ្អាកការសិក្សា',
+            'DROPPED': 'បោះបង់ការសិក្សា',
+            'TRANSFERRED': 'ផ្ទេរការសិក្សា',
+            'GRADUATED': 'បញ្ចប់ការសិក្សា',
+        }
+        raw_status = (_val('status') or s.status or 'ACTIVE').strip()
+        status_disp = getattr(s, 'status_display_name', None) or (s.get_status_display() if hasattr(s, 'get_status_display') else '')
+        if not status_disp or str(status_disp).upper() in status_map:
+            status_disp = status_map.get(str(status_disp).upper(), status_map.get(str(raw_status).upper(), raw_status))
+        elif str(raw_status).upper() in status_map and status_disp == raw_status:
+            status_disp = status_map[str(raw_status).upper()]
+
+        status_color = getattr(s, 'status_badge_color', 'success') or 'success'
 
         # Tracks
-        trk_val = _val('track') or (s.classroom.track if s.classroom else '') or ''
-        is_sc = ('P' if ('វិទ្យាសាស្ត្រ' in trk_val and 'សង្គម' not in trk_val) or _val('is_sc') == 'P' else '')
-        is_ss = ('P' if 'សង្គម' in trk_val or _val('is_ss') == 'P' else '')
-        is_voc = ('P' if 'វិជ្ជាជីវៈ' in trk_val or _val('is_voc') == 'P' else '')
+        trk_val = str(_val('track') or (s.classroom.track if s.classroom else '') or '').strip()
+        trk_upper = trk_val.upper()
+        is_sc = ('✓' if ('វិទ្យាសាស្ត្រ' in trk_val and 'សង្គម' not in trk_val) or (trk_upper == 'SCIENCE') or _val('is_sc') in ['P', '✓', True] else '')
+        is_ss = ('✓' if 'សង្គម' in trk_val or (trk_upper == 'SOCIAL') or _val('is_ss') in ['P', '✓', True] else '')
+        is_voc = ('✓' if 'វិជ្ជាជីវៈ' in trk_val or (trk_upper == 'VOCATIONAL') or _val('is_voc') in ['P', '✓', True] else '')
 
         # Track filter
         if track_filter == 'SCIENCE' and not is_sc:
@@ -4870,6 +4915,8 @@ def _get_moeys_individual_student_roster_data(request):
             'scholarship': sch,
             'phone': phone,
             'status': status_disp,
+            'status_code': s.status,
+            'status_color': status_color,
             'is_sc': is_sc,
             'is_ss': is_ss,
             'is_voc': is_voc,
@@ -4879,6 +4926,17 @@ def _get_moeys_individual_student_roster_data(request):
     female_pct = round((total_female / total_count * 100), 1) if total_count > 0 else 0.0
 
     all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.none()
+
+    from apps.students.models import StudentStatusConfig
+    available_statuses = list(StudentStatusConfig.objects.filter(is_active=True).order_by('order', 'id'))
+    if not available_statuses:
+        available_statuses = [
+            {'code': 'ACTIVE', 'name': 'កំពុងរៀន', 'name_en': 'Active'},
+            {'code': 'SUSPENDED', 'name': 'ផ្អាកការសិក្សា', 'name_en': 'Suspended'},
+            {'code': 'DROPPED', 'name': 'បោះបង់ការសិក្សា', 'name_en': 'Dropped'},
+            {'code': 'TRANSFERRED', 'name': 'ផ្ទេរការសិក្សា', 'name_en': 'Transferred'},
+            {'code': 'GRADUATED', 'name': 'បញ្ចប់ការសិក្សា', 'name_en': 'Graduated'},
+        ]
 
     return {
         'students': students_list,
@@ -4900,6 +4958,8 @@ def _get_moeys_individual_student_roster_data(request):
         'track_filter': track_filter,
         'equity_filter': equity_filter,
         'gender_filter': gender_filter,
+        'status_filter': status_filter,
+        'available_statuses': available_statuses,
         'search_q': search_q,
         'all_classrooms': all_classrooms,
     }
@@ -4913,6 +4973,7 @@ def moeys_individual_student_roster(request):
     Renders the complete 35-column MoEYS matrix with filters, search, and KPI summaries.
     """
     data = _get_moeys_individual_student_roster_data(request)
+    data['is_admin'] = (getattr(request.user, 'role', '') == 'ADMIN' or request.user.is_superuser)
     return render(request, 'students/moeys_individual_student_roster.html', data)
 
 
@@ -5264,9 +5325,9 @@ def moeys_individual_student_roster_export_excel(request):
         c.alignment = align_center
         c.border = cell_border
 
-    # AG4:AI4 -> គន្លងអប់រំ (សូមគូសធីក P )
+    # AG4:AI4 -> គន្លងអប់រំ (សូមគូសធីក ✓ )
     ws.merge_cells('AG4:AI4')
-    ws['AG4'] = 'គន្លងអប់រំ (សូមគូសធីក P )'
+    ws['AG4'] = 'គន្លងអប់រំ (សូមគូសធីក ✓ )'
     ws['AG4'].font = font_th
     ws['AG4'].alignment = align_center
     _apply_border_range(4, 33, 4, 35)

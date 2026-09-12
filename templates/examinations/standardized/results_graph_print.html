@@ -392,7 +392,7 @@
                 <a href="{% url 'exam_results_sheet_print_view' exam.id %}?mode=summary{% if selected_room_id %}&room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}" class="btn btn-outline" style="border-radius: 0; border: none;">
                     <i class="fa-solid fa-chart-pie me-1"></i> តារាងសរុប
                 </a>
-                <a href="{% url 'exam_results_graph_view' exam.id %}{% if selected_room_id %}?room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}" class="btn btn-outline active" style="border-radius: 0; border: none;">
+                <a href="{% url 'exam_results_graph_view' exam.id %}{% if selected_room_id %}?room_id={{ selected_room_id }}{% if selected_class %}&class_name={{ selected_class }}{% endif %}{% elif selected_class %}?class_name={{ selected_class }}{% endif %}" class="btn btn-outline active" style="border-radius: 0; border: none;">
                     <i class="fa-solid fa-chart-column me-1"></i> ក្រាប
                 </a>
             </div>

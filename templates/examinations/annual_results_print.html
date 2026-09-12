@@ -243,7 +243,7 @@
         <div class="card shadow-sm border-0 rounded-4 p-3 mb-3 bg-white">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-2 border-bottom mb-2">
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{% url 'annual_results' %}{% if selected_classroom %}?classroom={{ selected_classroom.id }}{% endif %}{% if target_year %}&year={{ target_year.id }}{% endif %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                    <a href="{% url 'annual_results' %}{% if selected_classroom %}?classroom={{ selected_classroom.id }}{% if target_year %}&year={{ target_year.id }}{% endif %}{% elif target_year %}?year={{ target_year.id }}{% endif %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                         <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
                     </a>
                     <span class="fw-bold fs-6 text-success">

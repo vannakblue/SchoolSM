@@ -62,9 +62,12 @@ def run_suite():
     assert 'ក្រសួងអប់រំ យុវជន និងកីឡា' in content
     assert 'វិទ្យាសាស្ត្រ' in content
     assert 'ប័ណ្ណសមធម៌' in content
+    assert 'គន្លងអប់រំ ( ✓ )' in content, "Expected Track header (គន្លងអប់រំ ( ✓ )) in web view header"
+    assert '<span class="track-check">✓</span>' in content, "Expected Tick symbol (✓) in student track cell"
+    assert 'កំពុងរៀន' in content, "Expected Khmer student status ('កំពុងរៀន') in web view"
     print(f"HTTP Status: {response.status_code}")
     print(f"Rendered HTML length: {len(content)} bytes")
-    print("✅ TEST 2 PASSED: Web view rendered cleanly.\n")
+    print("✅ TEST 2 PASSED: Web view rendered cleanly with Tick mark (✓) and Khmer status.\n")
 
     # TEST 3: Excel Export - moeys_individual_student_roster_export_excel
     print("--- [TEST 3] Testing Excel Export (.xlsx with 35 Columns) ---")
@@ -89,12 +92,15 @@ def run_suite():
     print(f"Row 3 Cell 1: {row3_val}")
     assert 'ក្រសួងអប់រំ' in str(row1_val)
     assert 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ' in str(row3_val)
+    assert ws['AG4'].value == 'គន្លងអប់រំ (សូមគូសធីក ✓ )', f"Expected AG4 header with ✓, got {ws['AG4'].value}"
     
     # Check data row
     data_row_6_id = ws.cell(row=6, column=2).value
     data_row_6_name = ws.cell(row=6, column=3).value
-    print(f"Row 6 (First student) Col 2 (ID): {data_row_6_id}, Col 3 (Surname): {data_row_6_name}")
-    print("✅ TEST 3 PASSED: Excel export strictly adheres to the 35-column MoEYS standard.\n")
+    data_row_6_status = ws.cell(row=6, column=32).value
+    print(f"Row 6 (First student) Col 2 (ID): {data_row_6_id}, Col 3 (Surname): {data_row_6_name}, Col 32 (Status): {data_row_6_status}")
+    assert data_row_6_status in ['កំពុងរៀន', 'ផ្អាកការសិក្សា', 'បោះបង់ការសិក្សា', 'ផ្ទេរការសិក្សា', 'បញ្ចប់ការសិក្សា'], f"Expected Khmer status in Excel, got {data_row_6_status}"
+    print("✅ TEST 3 PASSED: Excel export strictly adheres to the 35-column MoEYS standard with Tick mark (✓) and Khmer status.\n")
 
     # TEST 4: Print / PDF View - moeys_individual_student_roster_print
     print("--- [TEST 4] Testing Print / Save as PDF View ---")
@@ -106,9 +112,12 @@ def run_suite():
     assert 'margin: 1.2cm;' in content_print, "Expected default margin: 1.2cm (within 1.0 to 1.5cm)"
     assert 'changeMargin' in content_print, "Expected margin switcher function"
     assert '1.0cm' in content_print and '1.5cm' in content_print, "Expected margin options 1.0cm to 1.5cm"
+    assert 'គន្លងអប់រំ ( ✓ )' in content_print, "Expected Track header (គន្លងអប់រំ ( ✓ )) in print header"
+    assert '<span class="track-check">✓</span>' in content_print, "Expected Tick symbol (✓) in print track cell"
+    assert 'កំពុងរៀន' in content_print, "Expected Khmer status ('កំពុងរៀន') in print view"
     print(f"HTTP Status: {response_print.status_code}")
     print(f"Print HTML length: {len(content_print)} bytes")
-    print("✅ TEST 4 PASSED: Print / PDF view strictly fulfills 1 to 1.5cm margin requirement.\n")
+    print("✅ TEST 4 PASSED: Print / PDF view strictly fulfills 1 to 1.5cm margin requirement, Tick mark (✓), and Khmer status.\n")
 
     # TEST 5: Admin Grade Options Management
     print("--- [TEST 5] Testing Admin Grade Options Manager ---")

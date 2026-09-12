@@ -408,7 +408,7 @@
                        class="btn {% if view_mode == 'summary' %}btn-info text-white fw-bold active{% else %}btn-outline-info{% endif %}">
                         <i class="fa-solid fa-chart-pie me-1"></i> ៣. របាយការណ៍បូកសរុប (Summary)
                     </a>
-                    <a href="{% url 'exam_results_graph_view' exam.id %}{% if selected_room_id %}?room_id={{ selected_room_id }}{% endif %}{% if selected_class %}&class_name={{ selected_class }}{% endif %}"
+                    <a href="{% url 'exam_results_graph_view' exam.id %}{% if selected_room_id %}?room_id={{ selected_room_id }}{% if selected_class %}&class_name={{ selected_class }}{% endif %}{% elif selected_class %}?class_name={{ selected_class }}{% endif %}"
                        class="btn {% if view_mode == 'graph' %}btn-warning fw-bold text-dark active{% else %}btn-outline-warning text-dark{% endif %}">
                         <i class="fa-solid fa-chart-column me-1"></i> ៤. ក្រាបលទ្ធផល (Graph)
                     </a>

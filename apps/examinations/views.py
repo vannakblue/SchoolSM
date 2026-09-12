@@ -5939,6 +5939,18 @@ def semester_results_view(request):
         'is_admin': is_admin,
     })
 
+def redirect_malformed_results_query(request, prefix, extra=''):
+    """
+    Gracefully handles and redirects malformed query URLs like:
+    /examinations/results/semester/&semester=2 -> /examinations/results/semester/?semester=2
+    """
+    from urllib.parse import unquote
+    query_str = unquote(extra).lstrip('&')
+    target_url = f"/examinations/results/{prefix}/"
+    if query_str:
+        target_url += f"?{query_str}"
+    return redirect(target_url)
+
 
 @login_required
 def annual_results_view(request):

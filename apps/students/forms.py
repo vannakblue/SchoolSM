@@ -517,6 +517,19 @@ class MoeysIndividualStudentForm(forms.ModelForm):
                 raise forms.ValidationError(
                     f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! ដើម្បីការពារទិន្នន័យស្ទួន សូមកុំចុះឈ្មោះឡើងវិញ។"
                 )
+
+        # Enforce mutual exclusivity: only one IDPoor card can be selected (ក្រ១ ឬ ក្រ២)
+        eq1 = (cleaned_data.get('equity_card_1') or '').strip()
+        eq2 = (cleaned_data.get('equity_card_2') or '').strip()
+        if eq1 and eq1 != 'មិនមាន' and eq2 and eq2 != 'មិនមាន':
+            self.add_error('equity_card_2', '⚠️ ប័ណ្ណសមធម៌អាចជ្រើសរើសបានតែមួយប៉ុណ្ណោះ (ក្រ១ ឬ ក្រ២)។')
+
+        # Enforce mutual exclusivity: only one previous school can be selected (បឋមសិក្សា ឬ មធ្យមសិក្សា)
+        pri_sch = (cleaned_data.get('primary_school') or '').strip()
+        sec_sch = (cleaned_data.get('secondary_school') or '').strip()
+        if pri_sch and sec_sch:
+            self.add_error('secondary_school', '⚠️ គ្រឹះស្ថានសិក្សាពីមុនអាចជ្រើសរើសបានតែមួយប៉ុណ្ណោះ (បឋមសិក្សា ឬ មធ្យមសិក្សា)។')
+
         return cleaned_data
 
     def save(self, commit=True):
@@ -561,14 +574,14 @@ class MoeysIndividualStudentForm(forms.ModelForm):
             'guardian_name': self.cleaned_data.get('guardian_name', ''),
             'guardian_job': self.cleaned_data.get('guardian_job', ''),
             'orphan_status': self.cleaned_data.get('orphan_status', 'មិនមែន'),
-            'primary_school': self.cleaned_data.get('primary_school', ''),
-            'secondary_school': self.cleaned_data.get('secondary_school', ''),
+            'primary_school': self.cleaned_data.get('primary_school', '').strip(),
+            'secondary_school': '' if self.cleaned_data.get('primary_school', '').strip() else self.cleaned_data.get('secondary_school', '').strip(),
             'ethnic_minority': self.cleaned_data.get('ethnic_minority', 'មិនមែន'),
             'disability_physical': self.cleaned_data.get('disability_physical', 'មិនមាន'),
             'disability_sight': self.cleaned_data.get('disability_sight', 'មិនមាន'),
             'disability_hearing': self.cleaned_data.get('disability_hearing', 'មិនមាន'),
             'equity_card_1': self.cleaned_data.get('equity_card_1', 'មិនមាន'),
-            'equity_card_2': self.cleaned_data.get('equity_card_2', 'មិនមាន'),
+            'equity_card_2': 'មិនមាន' if self.cleaned_data.get('equity_card_1', 'មិនមាន') != 'មិនមាន' else self.cleaned_data.get('equity_card_2', 'មិនមាន'),
             'risk_card': self.cleaned_data.get('risk_card', 'មិនមាន'),
             'scholarship': self.cleaned_data.get('scholarship', 'មិនមាន'),
             'track': track_val,

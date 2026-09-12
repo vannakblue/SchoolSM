@@ -2125,12 +2125,18 @@ class MobileStudentEnrollAPIView(APIView):
         orphan_status = str(data.get('orphan_status', 'មិនមែន')).strip()
         primary_school = str(data.get('primary_school', '')).strip()
         secondary_school = str(data.get('secondary_school', '')).strip()
+        # Enforce mutual exclusivity (only one previous school can be active)
+        if primary_school and secondary_school:
+            secondary_school = ''
         ethnic_minority = str(data.get('ethnic_minority', 'មិនមែន')).strip()
         disability_physical = str(data.get('disability_physical', 'មិនមាន')).strip()
         disability_sight = str(data.get('disability_sight', 'មិនមាន')).strip()
         disability_hearing = str(data.get('disability_hearing', 'មិនមាន')).strip()
         equity_card_1 = str(data.get('equity_card_1', 'មិនមាន')).strip()
         equity_card_2 = str(data.get('equity_card_2', 'មិនមាន')).strip()
+        # Enforce mutual exclusivity (only one IDPoor card can be active)
+        if equity_card_1 != 'មិនមាន' and equity_card_2 != 'មិនមាន':
+            equity_card_2 = 'មិនមាន'
         risk_card = str(data.get('risk_card', 'មិនមាន')).strip()
         moeys_scholarship = str(data.get('scholarship', 'មិនមាន')).strip()
         track = str(data.get('track', 'ទូទៅ')).strip()

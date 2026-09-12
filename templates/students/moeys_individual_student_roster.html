@@ -374,13 +374,30 @@
                     </select>
                 </div>
 
+                <!-- Status Filter -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold mb-1">ស្ថានភាពសិស្ស</label>
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>-- គ្រប់ស្ថានភាព --</option>
+                        {% for st in available_statuses %}
+                        <option value="{{ st.code }}" {% if status_filter == st.code %}selected{% endif %}>{{ st.name }}</option>
+                        {% empty %}
+                        <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>កំពុងរៀន</option>
+                        <option value="SUSPENDED" {% if status_filter == 'SUSPENDED' %}selected{% endif %}>ផ្អាកការសិក្សា</option>
+                        <option value="DROPPED" {% if status_filter == 'DROPPED' %}selected{% endif %}>បោះបង់ការសិក្សា</option>
+                        <option value="TRANSFERRED" {% if status_filter == 'TRANSFERRED' %}selected{% endif %}>ផ្ទេរការសិក្សា</option>
+                        <option value="GRADUATED" {% if status_filter == 'GRADUATED' %}selected{% endif %}>បញ្ចប់ការសិក្សា</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- Search Input -->
                 <div class="col-md-3 col-sm-12">
                     <label class="form-label small fw-bold mb-1">ស្វែងរកសិស្ស</label>
                     <div class="input-group input-group-sm">
                         <input type="text" name="q" value="{{ search_q }}" class="form-control" placeholder="អត្តលេខ, ឈ្មោះ, ឪពុកម្តាយ, ទូរស័ព្ទ...">
                         <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-                        {% if search_q or grade_filter != '12' or class_id != 'ALL' or track_filter != 'ALL' or equity_filter != 'ALL' or gender_filter != 'ALL' %}
+                        {% if search_q or grade_filter != '12' or class_id != 'ALL' or track_filter != 'ALL' or equity_filter != 'ALL' or gender_filter != 'ALL' or status_filter != 'ALL' %}
                         <a href="{% url 'moeys_individual_student_roster' %}" class="btn btn-outline-secondary" title="កំណត់ឡើងវិញ"><i class="fas fa-undo"></i></a>
                         {% endif %}
                     </div>
@@ -472,7 +489,7 @@
                         <th rowspan="2" style="min-width: 80px; width: 80px;">អាហារូបករណ៍</th>
                         <th rowspan="2" style="min-width: 105px; width: 105px;">លេខទូរស័ព្ទ</th>
                         <th rowspan="2" style="min-width: 85px; width: 85px;">ស្ថានភាពសិស្ស</th>
-                        <th colspan="3">មុខវិជ្ជាជ្រើសរើស (P)</th>
+                        <th colspan="3">គន្លងអប់រំ ( ✓ )</th>
                     </tr>
                     <!-- Header Row 2 -->
                     <tr>
@@ -586,17 +603,47 @@
                         <td class="cell-c">{{ s.phone }}</td>
                         <!-- 32: Status -->
                         <td class="cell-c">
-                            <span class="badge bg-light text-dark border">{{ s.status }}</span>
+                            {% if s.status_color == 'warning' %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"
+                                  {% if is_admin %}role="button" style="cursor: pointer;" onclick="openRosterQuickStatus({{ s.id }}, '{{ s.full_name|escapejs }}', '{{ s.student_id }}', '{{ s.status_code }}')"{% endif %}
+                                  title="{% if is_admin %}ចុចដើម្បីប្តូរស្ថានភាពសិស្ស{% endif %}">
+                                {{ s.status }}
+                            </span>
+                            {% elif s.status_color == 'danger' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"
+                                  {% if is_admin %}role="button" style="cursor: pointer;" onclick="openRosterQuickStatus({{ s.id }}, '{{ s.full_name|escapejs }}', '{{ s.student_id }}', '{{ s.status_code }}')"{% endif %}
+                                  title="{% if is_admin %}ចុចដើម្បីប្តូរស្ថានភាពសិស្ស{% endif %}">
+                                {{ s.status }}
+                            </span>
+                            {% elif s.status_color == 'info' %}
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"
+                                  {% if is_admin %}role="button" style="cursor: pointer;" onclick="openRosterQuickStatus({{ s.id }}, '{{ s.full_name|escapejs }}', '{{ s.student_id }}', '{{ s.status_code }}')"{% endif %}
+                                  title="{% if is_admin %}ចុចដើម្បីប្តូរស្ថានភាពសិស្ស{% endif %}">
+                                {{ s.status }}
+                            </span>
+                            {% elif s.status_color == 'primary' %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"
+                                  {% if is_admin %}role="button" style="cursor: pointer;" onclick="openRosterQuickStatus({{ s.id }}, '{{ s.full_name|escapejs }}', '{{ s.student_id }}', '{{ s.status_code }}')"{% endif %}
+                                  title="{% if is_admin %}ចុចដើម្បីប្តូរស្ថានភាពសិស្ស{% endif %}">
+                                {{ s.status }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"
+                                  {% if is_admin %}role="button" style="cursor: pointer;" onclick="openRosterQuickStatus({{ s.id }}, '{{ s.full_name|escapejs }}', '{{ s.student_id }}', '{{ s.status_code }}')"{% endif %}
+                                  title="{% if is_admin %}ចុចដើម្បីប្តូរស្ថានភាពសិស្ស{% endif %}">
+                                {{ s.status }}
+                            </span>
+                            {% endif %}
                         </td>
-                        <!-- 33-35: Tracks (P) -->
+                        <!-- 33-35: Tracks (✓) -->
                         <td class="cell-c">
-                            {% if s.is_sc %}<span class="track-check">P</span>{% endif %}
+                            {% if s.is_sc %}<span class="track-check">✓</span>{% endif %}
                         </td>
                         <td class="cell-c">
-                            {% if s.is_ss %}<span class="track-check">P</span>{% endif %}
+                            {% if s.is_ss %}<span class="track-check">✓</span>{% endif %}
                         </td>
                         <td class="cell-c">
-                            {% if s.is_voc %}<span class="track-check">P</span>{% endif %}
+                            {% if s.is_voc %}<span class="track-check">✓</span>{% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -699,6 +746,52 @@
     </div>
 </div>
 
+{% if is_admin %}
+<!-- Quick Status Modal for MoEYS Roster -->
+<div class="modal fade" id="rosterQuickStatusModal" tabindex="-1" aria-labelledby="rosterQuickStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title fw-bold" id="rosterQuickStatusModalLabel">
+                    <i class="fa-solid fa-user-pen me-2"></i> កែប្រែស្ថានភាពសិស្ស
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="rosterQuickStatusForm" action="">
+                {% csrf_token %}
+                <div class="modal-body p-3">
+                    <div class="mb-2">
+                        <small class="text-muted d-block">ឈ្មោះសិស្ស៖</small>
+                        <strong class="text-dark fs-6" id="rosterStatusStudentName">-</strong>
+                        <div class="small text-muted">អត្តលេខ៖ <span class="badge bg-light text-dark border" id="rosterStatusStudentID">-</span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">ស្ថានភាពសិក្សា *</label>
+                        <select name="status" id="rosterStatusSelect" class="form-select form-select-sm">
+                            {% for st in available_statuses %}
+                            <option value="{{ st.code }}">{{ st.name }}</option>
+                            {% empty %}
+                            <option value="ACTIVE">កំពុងរៀន</option>
+                            <option value="SUSPENDED">ផ្អាកការសិក្សា</option>
+                            <option value="DROPPED">បោះបង់ការសិក្សា</option>
+                            <option value="TRANSFERRED">ផ្ទេរការសិក្សា</option>
+                            <option value="GRADUATED">បញ្ចប់ការសិក្សា</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const syncForm = document.getElementById('moeysSyncForm');
@@ -712,6 +805,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function openRosterQuickStatus(id, name, studentCode, currentStatus) {
+    const modalEl = document.getElementById('rosterQuickStatusModal');
+    if (!modalEl) return;
+    document.getElementById('rosterStatusStudentName').innerText = name;
+    document.getElementById('rosterStatusStudentID').innerText = studentCode;
+    document.getElementById('rosterStatusSelect').value = currentStatus || 'ACTIVE';
+    document.getElementById('rosterQuickStatusForm').action = `/students/${id}/quick-status/`;
+    new bootstrap.Modal(modalEl).show();
+}
 
 function setTableHeight(heightClass, btn) {
     const wrapper = document.getElementById('tableRosterWrapper');

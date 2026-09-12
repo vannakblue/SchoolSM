@@ -316,19 +316,36 @@
                     </h5>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-bold small mb-0">ឆ្នាំសិក្សា *</label>
+                            <label class="form-label fw-bold small mb-0">
+                                ឆ្នាំសិក្សា {% if is_admin %}*{% else %}<span class="badge bg-secondary-subtle text-secondary border small fw-normal ms-1"><i class="fa-solid fa-lock me-1"></i>សម្រាប់ Admin</span>{% endif %}
+                            </label>
                             {% if is_admin %}
                             <a href="{% url 'academic_year_list' %}" class="small text-primary text-decoration-none fw-bold" target="_blank" title="គ្រប់គ្រង ឬបន្ថែមឆ្នាំសិក្សាថ្មី">
                                 <i class="fa-solid fa-plus-circle me-1"></i>បន្ថែមឆ្នាំសិក្សា
                             </a>
                             {% endif %}
                         </div>
-                        {{ form.academic_year }}
+                        {% if is_admin %}
+                            {{ form.academic_year }}
+                        {% else %}
+                            <input type="text" class="form-control bg-light" value="{{ form.instance.academic_year.name|default:current_year.name }}" disabled>
+                            <input type="hidden" name="academic_year" value="{{ form.instance.academic_year.id|default:current_year.id }}">
+                        {% endif %}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
-                        {{ form.classroom }}
-                        <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បែបបទបន្ថែម</div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">
+                                ថ្នាក់រៀន {% if is_admin %}*{% else %}<span class="badge bg-secondary-subtle text-secondary border small fw-normal ms-1"><i class="fa-solid fa-lock me-1"></i>សម្រាប់ Admin</span>{% endif %}
+                            </label>
+                        </div>
+                        {% if is_admin %}
+                            {{ form.classroom }}
+                            <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បែបបទបន្ថែម</div>
+                        {% else %}
+                            <input type="text" class="form-control bg-light" value="{{ form.instance.classroom.name|default:'មិនទាន់កំណត់ថ្នាក់' }}" disabled>
+                            <input type="hidden" name="classroom" value="{{ form.instance.classroom.id|default:'' }}">
+                            <div class="form-text small text-muted">កំណត់ដោយរដ្ឋបាលសាលា (សិស្សមិនអាចកែប្រែបានទេ)</div>
+                        {% endif %}
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍ *</label>
@@ -531,11 +548,17 @@
                             {{ moeys_form.disability_hearing }}
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</label>
+                            <label class="form-label fw-bold small d-flex justify-content-between align-items-center">
+                                <span>ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</span>
+                                <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                            </label>
                             {{ moeys_form.equity_card_1 }}
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small">ប័ណ្ណសមធម៌ក្រ២ (IDPoor 2)</label>
+                            <label class="form-label fw-bold small d-flex justify-content-between align-items-center">
+                                <span>ប័ណ្ណសមធម៌ក្រ២ (IDPoor 2)</span>
+                                <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                            </label>
                             {{ moeys_form.equity_card_2 }}
                         </div>
                         <div class="col-md-4">
@@ -571,13 +594,32 @@
                         <i class="fa-solid fa-graduation-cap me-2"></i>៦. ការសិក្សា & ថ្នាក់រៀន
                     </h5>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">ឆ្នាំសិក្សា *</label>
-                        {{ moeys_form.academic_year }}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">
+                                ឆ្នាំសិក្សា {% if is_admin %}*{% else %}<span class="badge bg-secondary-subtle text-secondary border small fw-normal ms-1"><i class="fa-solid fa-lock me-1"></i>សម្រាប់ Admin</span>{% endif %}
+                            </label>
+                        </div>
+                        {% if is_admin %}
+                            {{ moeys_form.academic_year }}
+                        {% else %}
+                            <input type="text" class="form-control bg-light" value="{{ moeys_form.instance.academic_year.name|default:current_year.name }}" disabled>
+                            <input type="hidden" name="academic_year" value="{{ moeys_form.instance.academic_year.id|default:current_year.id }}">
+                        {% endif %}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">ថ្នាក់រៀន *</label>
-                        {{ moeys_form.classroom }}
-                        <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បន្ថែមរបស់ MoEYS</div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small mb-0">
+                                ថ្នាក់រៀន {% if is_admin %}*{% else %}<span class="badge bg-secondary-subtle text-secondary border small fw-normal ms-1"><i class="fa-solid fa-lock me-1"></i>សម្រាប់ Admin</span>{% endif %}
+                            </label>
+                        </div>
+                        {% if is_admin %}
+                            {{ moeys_form.classroom }}
+                            <div class="form-text small text-muted">ជ្រើសរើសថ្នាក់ដើម្បីទាញយកប្រអប់បន្ថែមរបស់ MoEYS</div>
+                        {% else %}
+                            <input type="text" class="form-control bg-light" value="{{ moeys_form.instance.classroom.name|default:'មិនទាន់កំណត់ថ្នាក់' }}" disabled>
+                            <input type="hidden" name="classroom" value="{{ moeys_form.instance.classroom.id|default:'' }}">
+                            <div class="form-text small text-muted">កំណត់ដោយរដ្ឋបាលសាលា (សិស្សមិនអាចកែប្រែបានទេ)</div>
+                        {% endif %}
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
@@ -592,12 +634,34 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">សាលាបឋមសិក្សាពីមុន</label>
-                        {{ moeys_form.primary_school }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">គ្រឹះស្ថានមធ្យមសិក្សាពីមុន</label>
-                        {{ moeys_form.secondary_school }}
+                        <label class="form-label fw-bold small d-flex justify-content-between align-items-center mb-1">
+                            <span>គ្រឹះស្ថានសិក្សាពីមុន (Previous School)</span>
+                            <span class="badge bg-light text-muted border fw-normal" style="font-size: 0.68rem;">រើសបានតែមួយ</span>
+                        </label>
+                        <div class="d-flex flex-wrap gap-2 mb-2 p-1 bg-light rounded border">
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="prev_school_choice" id="choice_primary_school" value="PRIMARY" checked>
+                                <label class="form-check-label small fw-semibold" for="choice_primary_school" style="cursor: pointer;">
+                                    <i class="fa-solid fa-school text-primary me-1"></i>បឋមសិក្សា
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="prev_school_choice" id="choice_secondary_school" value="SECONDARY">
+                                <label class="form-check-label small fw-semibold" for="choice_secondary_school" style="cursor: pointer;">
+                                    <i class="fa-solid fa-building-columns text-info me-1"></i>មធ្យមសិក្សា
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="prev_school_choice" id="choice_none_school" value="NONE">
+                                <label class="form-check-label small text-muted" for="choice_none_school" style="cursor: pointer;">គ្មាន</label>
+                            </div>
+                        </div>
+                        <div id="wrap_primary_school">
+                            {{ moeys_form.primary_school }}
+                        </div>
+                        <div id="wrap_secondary_school" style="display: none;">
+                            {{ moeys_form.secondary_school }}
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា</label>
@@ -901,7 +965,94 @@ document.addEventListener('DOMContentLoaded', function() {
     initAutoRomanizer();
     initMoeysAutoRomanizer();
     initAddressCascade();
+    initEquityCardMutualExclusion();
+    initPreviousSchoolMutualExclusion();
 });
+
+// Mutual exclusivity for Previous School (Primary vs Secondary)
+function initPreviousSchoolMutualExclusion() {
+    const priInput = document.getElementById('moeys_primary_school');
+    const secInput = document.getElementById('moeys_secondary_school');
+    const radPri = document.getElementById('choice_primary_school');
+    const radSec = document.getElementById('choice_secondary_school');
+    const radNone = document.getElementById('choice_none_school');
+    const wrapPri = document.getElementById('wrap_primary_school');
+    const wrapSec = document.getElementById('wrap_secondary_school');
+
+    if (!priInput || !secInput || !radPri || !radSec) return;
+
+    function updateView(choice) {
+        if (choice === 'SECONDARY') {
+            if (wrapPri) wrapPri.style.display = 'none';
+            if (wrapSec) wrapSec.style.display = 'block';
+            priInput.value = '';
+        } else if (choice === 'NONE') {
+            if (wrapPri) wrapPri.style.display = 'none';
+            if (wrapSec) wrapSec.style.display = 'none';
+            priInput.value = '';
+            secInput.value = '';
+        } else {
+            if (wrapPri) wrapPri.style.display = 'block';
+            if (wrapSec) wrapSec.style.display = 'none';
+            secInput.value = '';
+        }
+    }
+
+    // Check initial values
+    if (secInput.value.trim()) {
+        radSec.checked = true;
+        updateView('SECONDARY');
+    } else if (priInput.value.trim()) {
+        radPri.checked = true;
+        updateView('PRIMARY');
+    } else {
+        radPri.checked = true;
+        updateView('PRIMARY');
+    }
+
+    radPri.addEventListener('change', function() { if (this.checked) updateView('PRIMARY'); });
+    radSec.addEventListener('change', function() { if (this.checked) updateView('SECONDARY'); });
+    if (radNone) {
+        radNone.addEventListener('change', function() { if (this.checked) updateView('NONE'); });
+    }
+
+    const form = priInput.closest('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            if (radPri.checked) {
+                secInput.value = '';
+            } else if (radSec.checked) {
+                priInput.value = '';
+            } else if (radNone && radNone.checked) {
+                priInput.value = '';
+                secInput.value = '';
+            }
+        });
+    }
+}
+
+// Mutual exclusivity for IDPoor 1 & IDPoor 2 (can only select one)
+function initEquityCardMutualExclusion() {
+    const card1 = document.getElementById('moeys_equity_card_1');
+    const card2 = document.getElementById('moeys_equity_card_2');
+    if (!card1 || !card2) return;
+
+    card1.addEventListener('change', function() {
+        if (this.value && this.value !== 'មិនមាន') {
+            card2.value = 'មិនមាន';
+        }
+    });
+
+    card2.addEventListener('change', function() {
+        if (this.value && this.value !== 'មិនមាន') {
+            card1.value = 'មិនមាន';
+        }
+    });
+
+    if (card1.value && card1.value !== 'មិនមាន' && card2.value && card2.value !== 'មិនមាន') {
+        card2.value = 'មិនមាន';
+    }
+}
 
 // Student ID Live Checker for General Mode
 function initStudentIdLiveChecker() {
