@@ -45,6 +45,9 @@
             
             <div class="text-start small p-3 bg-light rounded-3">
                 <div class="mb-2"><strong>អត្តលេខមន្ត្រី៖</strong> <span class="badge bg-primary">{{ teacher.teacher_id }}</span></div>
+                {% if teacher.subject_code %}
+                <div class="mb-2"><strong>កូដមុខវិជ្ជាបង្រៀន៖</strong> <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace fs-6"><i class="fa-solid fa-tag me-1"></i>{{ teacher.subject_code }}</span></div>
+                {% endif %}
                 <div class="mb-2"><strong>ភេទ៖</strong> {{ teacher.get_gender_display }}</div>
                 <div class="mb-2"><strong>ទូរស័ព្ទចម្បង៖</strong> <a href="tel:{{ teacher.phone }}" class="text-decoration-none fw-bold">{{ teacher.phone }}</a></div>
                 {% if teacher.phone2 %}

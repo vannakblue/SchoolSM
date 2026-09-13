@@ -175,7 +175,12 @@
                 {% for t in teachers %}
                 <tr class="teacher-data-row" data-edit-url="{% url 'teacher_edit' t.id %}" data-detail-url="{% url 'teacher_detail' t.id %}" title="ចុចពីរដង (Double-Click) ដើម្បីកែប្រែព័ត៌មានគ្រូ">
                     <td class="text-center fw-bold text-muted sticky-col-idx">{{ forloop.counter }}</td>
-                    <td class="text-center sticky-col-id"><span class="badge bg-light text-primary border fw-bold font-monospace">{{ t.teacher_id }}</span></td>
+                    <td class="text-center sticky-col-id">
+                        <span class="badge bg-light text-primary border fw-bold font-monospace">{{ t.teacher_id }}</span>
+                        {% if t.subject_code %}
+                        <div class="mt-1"><span class="badge bg-primary text-white font-monospace px-1.5 py-0.5" title="កូដមុខវិជ្ជាបង្រៀន">{{ t.subject_code }}</span></div>
+                        {% endif %}
+                    </td>
                     <td class="fw-bold sticky-col-name">
                         <div class="d-flex align-items-center justify-content-between gap-2">
                             <div>

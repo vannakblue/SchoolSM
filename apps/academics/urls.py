@@ -97,6 +97,7 @@ urlpatterns = [
     path('timetable/transfer-class/', views.timetable_transfer_class, name='timetable_transfer_class'),
     path('timetable/auto-generate/', views.timetable_auto_generate, name='timetable_auto_generate'),
     path('timetable/export-excel/', views.timetable_export_excel, name='timetable_export_excel'),
+    path('timetable/import-excel/', views.timetable_import_excel, name='timetable_import_excel'),
     path('timetable/clear-all/', views.timetable_clear_all, name='timetable_clear_all'),
     path('timetable/create/', views.timetable_create, name='timetable_create'),
     path('timetable/<int:pk>/edit/', views.timetable_edit, name='timetable_edit'),

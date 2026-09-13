@@ -292,6 +292,7 @@ class ClassSubject(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='class_assignments')
     teacher = models.ForeignKey('teachers.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='subject_assignments')
     weekly_hours = models.IntegerField(default=4, verbose_name="ម៉ោងក្នុងមួយសប្តាហ៍ / Weekly Hours")
+    teacher_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="កូដគ្រូតាមមុខវិជ្ជា / Teacher Subject Code")
 
     class Meta:
         unique_together = ('classroom', 'subject')

@@ -2016,33 +2016,14 @@ def timetable_view(request):
             cs_by_teacher[cs.teacher_id].append(cs)
             cs_pairs_set.add((cs.subject_id, cs.teacher_id))
 
-    # Build unique sequential teacher-subject codes (e.g. K1, K2, M1, M2, P1, P2...)
-    distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0] or 0, x[1] or 0))
-
-    teacher_subject_code_map = {}
-    subject_teacher_counters = {}
-
-    for (s_id, t_id) in distinct_assignments:
-        sub = subjects_by_id.get(s_id)
-        sub_code = sub.code if sub and sub.code else 'S'
-        
-        if s_id not in subject_teacher_counters:
-            subject_teacher_counters[s_id] = 1
-        else:
-            subject_teacher_counters[s_id] += 1
-            
-        code = f"{sub_code}{subject_teacher_counters[s_id]}"
-        teacher_subject_code_map[(s_id, t_id)] = code
-
-    # Fallback assignment for any active teachers/subjects
-    for s in subjects:
-        for t in teachers:
-            if (s.id, t.id) not in teacher_subject_code_map:
-                if s.id not in subject_teacher_counters:
-                    subject_teacher_counters[s.id] = 1
-                else:
-                    subject_teacher_counters[s.id] += 1
-                teacher_subject_code_map[(s.id, t.id)] = f"{s.code or 'S'}{subject_teacher_counters[s.id]}"
+    # Retrieve permanent teacher-subject duty codes (e.g. M1, M2, P1, C1, K1...)
+    from .utils import get_teacher_subject_duty_code_map
+    teacher_subject_code_map, teacher_direct_code = get_teacher_subject_duty_code_map(
+        academic_year=active_year,
+        subjects=subjects,
+        teachers=teachers,
+        class_subjects=class_subject_assignments
+    )
 
     # Build options per classroom with slot_code (e.g. K1, M2...)
     class_options_map = {}
@@ -2116,11 +2097,13 @@ def timetable_view(request):
                 'teacher_id': entry.teacher_id,
                 'teacher_name': tch_name,
                 'teacher_short': tch_short,
+                'room': entry.room or '',
             }
             matrix_state[f"{cls.id}_{entry.day_of_week}_{entry.period_number}"] = {
                 'subject_id': entry.subject_id,
                 'teacher_id': entry.teacher_id,
                 'slot_code': slot_code,
+                'room': entry.room or '',
             }
 
         # Build grid cells per day and period
@@ -3968,16 +3951,13 @@ def timetable_daily_reports_view(request):
 
     distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0] or 0, x[1] or 0))
 
-    teacher_subject_code_map = {}
-    subject_teacher_counters = {}
-    for (s_id, t_id) in distinct_assignments:
-        sub = subjects_by_id.get(s_id)
-        sub_code = sub.code if sub and sub.code else 'S'
-        if s_id not in subject_teacher_counters:
-            subject_teacher_counters[s_id] = 1
-        else:
-            subject_teacher_counters[s_id] += 1
-        teacher_subject_code_map[(s_id, t_id)] = f"{sub_code}{subject_teacher_counters[s_id]}"
+    from .utils import get_teacher_subject_duty_code_map
+    teacher_subject_code_map, teacher_direct_code = get_teacher_subject_duty_code_map(
+        academic_year=active_year,
+        subjects=subjects,
+        teachers=teachers,
+        class_subjects=class_subject_assignments
+    )
 
     # Selected filters from request
     selected_day = request.GET.get('day', 'all')
@@ -4960,6 +4940,51 @@ def timetable_export_excel(request):
 
 @login_required
 @role_required(['ADMIN'])
+def timetable_import_excel(request):
+    """
+    Import master timetable slots from Excel sheet 'GT' (e.g. 'បំណែងចែកគ្រូ2027.xlsx')
+    and permanently store them in the database for the active academic year.
+    Also creates an active TimetableVersion snapshot and synchronizes ClassSubject records.
+    """
+    from .utils import get_active_academic_year
+    from .duty_importer import import_timetable_from_gt_sheet
+    import os
+    from django.conf import settings
+
+    active_year = get_active_academic_year(request)
+    
+    if request.method == 'POST':
+        excel_file = request.FILES.get('excel_file')
+        file_source = None
+        
+        if excel_file:
+            file_source = excel_file
+        else:
+            default_path_2027 = os.path.join(settings.BASE_DIR, 'បំណែងចែកគ្រូ2027.xlsx')
+            default_path_data = os.path.join(settings.BASE_DIR, 'data.xlsx')
+            if os.path.exists(default_path_2027):
+                file_source = default_path_2027
+            elif os.path.exists(default_path_data):
+                file_source = default_path_data
+            else:
+                messages.error(request, "សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដើម្បីបញ្ចូល ឬដាក់ឯកសារ បំណែងចែកគ្រូ2027.xlsx ក្នុងប្រព័ន្ធ!")
+                return redirect(f"/academics/timetable/{f'?year={active_year.id}' if active_year else ''}")
+
+        res = import_timetable_from_gt_sheet(file_source, target_academic_year=active_year)
+        if res.get('success'):
+            slots_total = res.get('slots_total', 0)
+            classrooms_count = res.get('classrooms_count', 0)
+            msg = f"📥 នាំចូលកាលវិភាគរួមពី Sheet 'GT' ជោគជ័យ! បានបញ្ចូល {slots_total} ម៉ោងសិក្សា លើ {classrooms_count} ថ្នាក់រៀន ក្នុងឆ្នាំសិក្សា {res.get('academic_year', '')}។"
+            messages.success(request, msg)
+        else:
+            err_msg = " ; ".join(res.get('errors', [])) or "មានបញ្ហាក្នុងការនាំចូលកាលវិភាគពី Excel"
+            messages.error(request, f"បរាជ័យក្នុងការនាំចូលកាលវិភាគ៖ {err_msg}")
+            
+    return redirect(f"/academics/timetable/{f'?year={active_year.id}' if active_year else ''}")
+
+
+@login_required
+@role_required(['ADMIN'])
 def timetable_clear_all(request):
     """
     Clear all timetable entries for the active academic year.
@@ -5618,24 +5643,22 @@ def teacher_assignments_manager(request):
                     distinct_assignments.append({'subject_id': cs.subject_id, 'teacher_id': cs.teacher_id})
         distinct_assignments.sort(key=lambda x: (x['subject_id'], x['teacher_id']))
 
-        teacher_subject_code_map = {}
-        subject_teacher_counters = {}
-        for item in distinct_assignments:
-            s_id = item['subject_id']
-            t_id = item['teacher_id']
-            sub = next((s for s in subjects if s.id == s_id), None)
-            sub_code = sub.code if (sub and sub.code) else 'S'
-            if s_id not in subject_teacher_counters:
-                subject_teacher_counters[s_id] = 1
-            else:
-                subject_teacher_counters[s_id] += 1
-            teacher_subject_code_map[(s_id, t_id)] = f"{sub_code}{subject_teacher_counters[s_id]}"
+        from .utils import get_teacher_subject_duty_code_map
+        teacher_subject_code_map, teacher_direct_code = get_teacher_subject_duty_code_map(
+            academic_year=active_year,
+            subjects=subjects,
+            teachers=teachers,
+            class_subjects=cs_query
+        )
 
         selected_teacher_codes = []
         if selected_teacher:
+            if getattr(selected_teacher, 'subject_code', None):
+                selected_teacher_codes.append(selected_teacher.subject_code)
             for s in subjects:
-                if (s.id, selected_teacher.id) in teacher_subject_code_map:
-                    selected_teacher_codes.append(teacher_subject_code_map[(s.id, selected_teacher.id)])
+                c = teacher_subject_code_map.get((s.id, selected_teacher.id))
+                if c and c not in selected_teacher_codes:
+                    selected_teacher_codes.append(c)
 
         # Retrieve dynamic training level quotas for modal customization from in-memory teachers
         training_quotas = get_training_level_quotas()

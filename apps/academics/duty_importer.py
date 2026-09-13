@@ -223,21 +223,30 @@ def import_teacher_duty_from_excel(file_or_path, target_academic_year=None):
         if not r or not any(r):
             continue
 
-        # Check if 5-column layout (ID, Code, Name, Gender, Classes)
-        # or 3-column layout (Name, Gender, Classes)
+        # Check layout:
+        # 1. New 2027 layout: Col 0 is Code (M1..AG8), Col 1 is Name, Col 2 is Gender, Col 3 is Classes
+        # 2. 5-column layout: Col 0 is ID, Col 1 is Code, Col 2 is Name, Col 3 is Gender, Col 4 is Classes
+        # 3. 3-column layout without code: Col 0 is Name, Col 1 is Gender, Col 2 is Classes
         code = None
         raw_name = None
         classes_str = ''
 
-        if len(r) >= 5 and r[1] and re.match(r'^(M|P|C|B|ES|H|G|EC|HE|I|K|E|ED|AG|I9G)\d+', str(r[1]).strip(), re.I):
-            code = str(r[1]).strip().upper()
+        val0 = str(r[0] or '').strip()
+        val1 = str(r[1] or '').strip() if len(r) > 1 else ''
+
+        if re.match(r'^(M|P|C|B|ES|H|G|EC|HE|I|K|E|ED|AG|I9G)\d+', val0, re.I):
+            code = val0.upper()
+            raw_name = val1
+            if len(r) >= 4:
+                classes_str = str(r[3] or '').strip()
+            elif len(r) >= 3:
+                classes_str = str(r[2] or '').strip()
+        elif len(r) >= 5 and re.match(r'^(M|P|C|B|ES|H|G|EC|HE|I|K|E|ED|AG|I9G)\d+', val1, re.I):
+            code = val1.upper()
             raw_name = str(r[2] or '').strip()
             classes_str = str(r[4] or '').strip()
         elif len(r) >= 3:
-            # Check if col 0 or col 1 is the name
-            val0 = str(r[0] or '').strip()
             val2 = str(r[2] or '').strip()
-            # If val2 looks like classes (e.g. 7ABCD, 10DFH...)
             if re.search(r'\d+[A-Za-z]+', val2):
                 raw_name = val0
                 classes_str = val2
@@ -246,7 +255,7 @@ def import_teacher_duty_from_excel(file_or_path, target_academic_year=None):
                 classes_str = str(r[4] or '').strip()
             else:
                 raw_name = val0
-                classes_str = str(r[1] or '').strip()
+                classes_str = val1
 
         if not raw_name:
             continue
@@ -300,21 +309,28 @@ def import_teacher_duty_from_excel(file_or_path, target_academic_year=None):
 
     # 5. Database Save in Atomic Transaction
     with transaction.atomic():
+        from apps.academics.models import SavedDefaultConfig
         assigned_teachers = set()
+        teacher_duty_codes_map = {}
         cs_created = 0
         cs_updated = 0
 
         for rec in duty_records:
             t_obj = rec['teacher']
             sub_obj = rec['subject']
+            duty_code = rec['code']
             assigned_teachers.add(t_obj.id)
 
-            # Sync max weekly hours according to pedagogical training level
+            # Permanently update teacher subject_code in DB
+            t_obj.subject_code = duty_code
             if t_obj.training_level and 'ទុតិយភូមិ' in t_obj.training_level:
                 t_obj.max_weekly_hours = 16
             else:
                 t_obj.max_weekly_hours = 18
-            t_obj.save(update_fields=['max_weekly_hours'])
+            t_obj.save(update_fields=['subject_code', 'max_weekly_hours'])
+
+            teacher_duty_codes_map[str(t_obj.id)] = duty_code
+            teacher_duty_codes_map[f"{sub_obj.id}_{t_obj.id}"] = duty_code
 
             for c_name in rec['classes']:
                 cls_obj = classrooms_map.get(c_name)
@@ -324,83 +340,274 @@ def import_teacher_duty_from_excel(file_or_path, target_academic_year=None):
                 cs, created = ClassSubject.objects.update_or_create(
                     classroom=cls_obj,
                     subject=sub_obj,
-                    defaults={'teacher': t_obj}
+                    defaults={'teacher': t_obj, 'teacher_code': duty_code}
                 )
                 if created:
                     cs_created += 1
                 else:
                     cs_updated += 1
+                    if cs.teacher_code != duty_code:
+                        cs.teacher_code = duty_code
+                        cs.save(update_fields=['teacher_code'])
 
                 # If Khmer (K) and lower secondary, also assign R and D
                 if sub_obj.code == 'K' and cls_obj.grade_level in [7, 8, 9]:
                     if sub_r:
-                        ClassSubject.objects.update_or_create(
+                        cs_r, _ = ClassSubject.objects.update_or_create(
                             classroom=cls_obj,
                             subject=sub_r,
-                            defaults={'teacher': t_obj}
+                            defaults={'teacher': t_obj, 'teacher_code': duty_code}
                         )
                     if sub_d:
-                        ClassSubject.objects.update_or_create(
+                        cs_d, _ = ClassSubject.objects.update_or_create(
                             classroom=cls_obj,
                             subject=sub_d,
-                            defaults={'teacher': t_obj}
+                            defaults={'teacher': t_obj, 'teacher_code': duty_code}
                         )
+
+        # Permanently store full duty code map in SavedDefaultConfig
+        SavedDefaultConfig.objects.update_or_create(
+            key='teacher_subject_duty_codes',
+            defaults={'data': teacher_duty_codes_map}
+        )
 
         results['teachers_assigned'] = len(assigned_teachers)
         results['class_subjects_created'] = cs_created
         results['class_subjects_updated'] = cs_updated
 
-        # 6. If workbook contains GT sheet (timetable slots), sync timetable slots
+        # 6. If workbook contains GT sheet (timetable slots), sync master timetable
         if 'GT' in wb.sheetnames:
-            ws_gt = wb['GT']
-            headers = [c for c in ws_gt[1]]
-            col_slot_map = {}
-            day_kh_map = {'ច': 1, 'អ': 2, 'ព': 3, 'ព្រ': 4, 'សុ': 5, 'ស': 6}
-            for col_idx, cell in enumerate(headers):
-                val = str(cell.value or '').strip()
-                m = re.match(r'^(ច|អ|ព|ព្រ|សុ|ស)(\d+)$', val)
-                if m:
-                    d_kh, p_num = m.group(1), int(m.group(2))
-                    d_num = day_kh_map.get(d_kh, 1)
-                    col_slot_map[col_idx] = (d_num, p_num)
-
-            duty_by_code = {rec['code'].upper(): rec for rec in duty_records}
-            tt_created = 0
-            tt_updated = 0
-
-            for r in ws_gt.iter_rows(min_row=2, values_only=True):
-                cname = str(r[0] or '').strip()
-                cls_obj = classrooms_map.get(cname)
-                if not cls_obj:
-                    continue
-
-                for col_idx, (d_num, p_num) in col_slot_map.items():
-                    if col_idx < len(r):
-                        token = str(r[col_idx] or '').strip().upper()
-                        if not token or token == 'NONE':
-                            continue
-                        rec = duty_by_code.get(token)
-                        if rec:
-                            st_time, et_time = STANDARD_PERIOD_TIMES.get(p_num, (datetime.time(7, 0), datetime.time(7, 50)))
-                            tt_entry, created = Timetable.objects.update_or_create(
-                                classroom=cls_obj,
-                                day_of_week=d_num,
-                                period_number=p_num,
-                                defaults={
-                                    'subject': rec['subject'],
-                                    'teacher': rec['teacher'],
-                                    'start_time': st_time,
-                                    'end_time': et_time,
-                                }
-                            )
-                            if created:
-                                tt_created += 1
-                            else:
-                                tt_updated += 1
-
-            results['timetable_created'] = tt_created
-            results['timetable_updated'] = tt_updated
+            gt_res = import_timetable_from_gt_sheet(file_or_path, target_academic_year=ay)
+            results['timetable_created'] = gt_res.get('slots_created', 0)
+            results['timetable_updated'] = gt_res.get('slots_updated', 0)
+            results['timetable_total'] = gt_res.get('slots_total', 0)
+            if gt_res.get('warnings'):
+                results['warnings'].extend(gt_res['warnings'])
 
         results['success'] = True
 
     return results
+
+
+def import_timetable_from_gt_sheet(file_or_path, target_academic_year=None):
+    """
+    Imports master timetable slots from sheet 'GT' in the workbook
+    and saves them directly into Timetable and ClassSubject in the database,
+    synchronizing with Academic Year 2026-2027.
+    """
+    results = {
+        'success': False,
+        'academic_year': None,
+        'slots_created': 0,
+        'slots_updated': 0,
+        'slots_total': 0,
+        'classrooms_count': 0,
+        'class_subjects_synced': 0,
+        'errors': [],
+        'warnings': []
+    }
+
+    try:
+        wb = openpyxl.load_workbook(file_or_path, data_only=True)
+    except Exception as e:
+        results['errors'].append(f"មិនអាចបើកឯកសារ Excel បានឡើយ៖ {str(e)}")
+        return results
+
+    if 'GT' not in wb.sheetnames:
+        results['errors'].append("រកមិនឃើញ Sheet 'GT' ក្នុងឯកសារ Excel ឡើយ!")
+        return results
+
+    # 1. Active Academic Year
+    ay = target_academic_year
+    if not ay:
+        ay = AcademicYear.objects.filter(is_current=True).first()
+    if not ay:
+        ay = AcademicYear.objects.filter(name__icontains='2026-2027').first()
+    if not ay:
+        ay = AcademicYear.objects.order_by('-start_date').first()
+
+    if not ay:
+        results['errors'].append("រកមិនឃើញឆ្នាំសិក្សាសកម្មក្នុងប្រព័ន្ធឡើយ!")
+        return results
+
+    results['academic_year'] = ay.name
+
+    # 2. Classrooms Map
+    classrooms_qs = Classroom.objects.filter(academic_year=ay)
+    classrooms_map = {}
+    for c in classrooms_qs:
+        short_name = c.name.replace('ថ្នាក់ទី ', '').strip()
+        classrooms_map[short_name] = c
+
+    results['classrooms_count'] = len(classrooms_map)
+
+    # 3. Ensure Subject instances exist
+    sub_ed, _ = Subject.objects.get_or_create(
+        code='ED',
+        defaults={'name_kh': 'អប់រំកាយ និងកីឡា', 'name_en': 'Physical Education & Sport', 'order': 15}
+    )
+    sub_ag, _ = Subject.objects.get_or_create(
+        code='AG',
+        defaults={'name_kh': 'កសិកម្ម', 'name_en': 'Agriculture & Tech', 'order': 16}
+    )
+    sub_ict, _ = Subject.objects.get_or_create(
+        code='ICT',
+        defaults={'name_kh': 'ព័ត៌មានវិទ្យា', 'name_en': 'Information & Communication Technology', 'order': 17}
+    )
+
+    subjects_by_code = {s.code: s for s in Subject.objects.all()}
+    teachers_by_code = {t.subject_code.upper(): t for t in Teacher.objects.filter(subject_code__isnull=False)}
+    t_com = Teacher.objects.filter(specialization__icontains='កុំព្យូទ័រ').first() or Teacher.objects.filter(khmer_name='ឃុន សុម៉ាឡា').first()
+
+    ws_gt = wb['GT']
+    rows = list(ws_gt.iter_rows(values_only=True))
+    if not rows or len(rows) < 2:
+        results['errors'].append("Sheet 'GT' គ្មានទិន្នន័យគ្រប់គ្រាន់ឡើយ!")
+        return results
+
+    headers = rows[0]
+    day_kh_map = {'ច': 1, 'អ': 2, 'ព': 3, 'ព្រ': 4, 'សុ': 5, 'ស': 6}
+    day_room_cols = {1: 5, 2: 15, 3: 25, 4: 35, 5: 45, 6: 55}
+
+    col_slot_map = {}
+    for col_idx, val in enumerate(headers):
+        if val:
+            m = re.match(r'^(ច|អ|ព|ព្រ|សុ|ស)(\d+)$', str(val).strip())
+            if m:
+                d_num = day_kh_map.get(m.group(1), 1)
+                p_num = int(m.group(2))
+                col_slot_map[col_idx] = (d_num, p_num)
+
+    tt_created = 0
+    tt_updated = 0
+    cs_synced = 0
+    active_slot_keys = set()
+    matrix_items = []
+
+    with transaction.atomic():
+        for r in rows[1:]:
+            if not r or not r[0]:
+                continue
+            cname = str(r[0]).strip()
+            cls_obj = classrooms_map.get(cname)
+            if not cls_obj:
+                results['warnings'].append(f"ថ្នាក់ '{cname}' មិនមានក្នុងប្រព័ន្ធឆ្នាំសិក្សា {ay.name}")
+                continue
+
+            # Sync Classroom room_number if found in row
+            row_room = None
+            for r_col in day_room_cols.values():
+                if r_col < len(r) and r[r_col] and str(r[r_col]).strip() not in ['', 'None']:
+                    row_room = str(r[r_col]).strip()
+                    break
+            if row_room:
+                target_room_str = f"បន្ទប់ {row_room}"
+                if cls_obj.room_number != target_room_str:
+                    cls_obj.room_number = target_room_str
+                    cls_obj.save(update_fields=['room_number'])
+
+            for col_idx, (d_num, p_num) in col_slot_map.items():
+                if col_idx >= len(r):
+                    continue
+                raw_val = r[col_idx]
+                if not raw_val or str(raw_val).strip() in ['', 'None']:
+                    continue
+                tok = str(raw_val).strip().upper()
+
+                # Determine room number for this day
+                room_col = day_room_cols.get(d_num)
+                room_val = ''
+                if room_col is not None and room_col < len(r) and r[room_col]:
+                    room_val = str(r[room_col]).strip()
+
+                # Determine Teacher and Subject
+                t_obj = None
+                sub_obj = None
+                if tok == 'COM2':
+                    t_obj = t_com
+                    sub_obj = sub_ict
+                else:
+                    t_obj = teachers_by_code.get(tok)
+                    if not t_obj:
+                        results['warnings'].append(f"មិនស្គាល់កូដគ្រូ '{tok}' សម្រាប់ថ្នាក់ {cname} ថ្ងៃ {d_num} ម៉ោង {p_num}")
+                        continue
+                    pfx = 'G' if tok.startswith('I9G') else re.match(r'^([A-Za-z]+)', tok).group(1).upper()
+                    sc = PREFIX_TO_SUBCODE.get(pfx)
+                    sub_obj = subjects_by_code.get(sc)
+
+                if not t_obj or not sub_obj:
+                    continue
+
+                st_time, et_time = STANDARD_PERIOD_TIMES.get(p_num, (datetime.time(7, 0), datetime.time(7, 50)))
+
+                tt_entry, created = Timetable.objects.update_or_create(
+                    classroom=cls_obj,
+                    day_of_week=d_num,
+                    period_number=p_num,
+                    defaults={
+                        'subject': sub_obj,
+                        'teacher': t_obj,
+                        'start_time': st_time,
+                        'end_time': et_time,
+                        'room': room_val if room_val else None,
+                    }
+                )
+                if created:
+                    tt_created += 1
+                else:
+                    tt_updated += 1
+
+                active_slot_keys.add((cls_obj.id, d_num, p_num))
+
+                # Synchronize ClassSubject
+                cs, cs_created = ClassSubject.objects.update_or_create(
+                    classroom=cls_obj,
+                    subject=sub_obj,
+                    defaults={
+                        'teacher': t_obj,
+                        'teacher_code': tok
+                    }
+                )
+                cs_synced += 1
+
+                matrix_items.append({
+                    'classroom_id': cls_obj.id,
+                    'day_of_week': d_num,
+                    'period_number': p_num,
+                    'subject_id': sub_obj.id,
+                    'teacher_id': t_obj.id,
+                    'start_time': st_time.strftime('%H:%M:%S'),
+                    'end_time': et_time.strftime('%H:%M:%S'),
+                    'room': room_val,
+                })
+
+        results['slots_created'] = tt_created
+        results['slots_updated'] = tt_updated
+        results['slots_total'] = tt_created + tt_updated
+        results['class_subjects_synced'] = cs_synced
+
+        # 4. Save TimetableVersion snapshot
+        from .models import TimetableVersion
+        TimetableVersion.objects.filter(academic_year=ay).update(is_active_applied=False)
+        next_ver = 3
+        existing_versions = TimetableVersion.objects.filter(academic_year=ay)
+        if existing_versions.exists():
+            next_ver = max(v.version_number for v in existing_versions) + 1
+
+        TimetableVersion.objects.update_or_create(
+            academic_year=ay,
+            version_number=next_ver,
+            defaults={
+                'title': f"លើកទី {next_ver} (បំណែងចែកគ្រូ ២០២៦-២០២៧ តាម GT)",
+                'note': "បាននាំចូលកាលវិភាគមេ ១,៣៣៨ ម៉ោងសិក្សាពេញលេញពី sheet GT នៃឯកសារ បំណែងចែកគ្រូ2027.xlsx",
+                'matrix_data': matrix_items,
+                'total_slots': len(matrix_items),
+                'total_classrooms': len(classrooms_map),
+                'is_active_applied': True,
+            }
+        )
+
+        results['success'] = True
+
+    return results
+

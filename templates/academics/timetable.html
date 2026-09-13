@@ -600,6 +600,11 @@
                 <i class="fa-solid fa-file-excel"></i> នាំចេញ Excel
             </a>
 
+            <!-- នាំចូលកាលវិភាគពី Excel (GT) -->
+            <button type="button" class="btn-action-custom" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff;" data-bs-toggle="modal" data-bs-target="#importTimetableExcelModal" title="នាំចូលកាលវិភាគមេពី Sheet 'GT' នៃឯកសារ Excel (បំណែងចែកគ្រូ2027.xlsx)">
+                <i class="fa-solid fa-file-arrow-up"></i> នាំចូលកាលវិភាគ (GT)
+            </button>
+
             <!-- នាំចេញកាលវិភាគ (Backup) -->
             <button type="button" class="btn-action-custom btn-export" onclick="exportTimetableBackup()" title="ទាញយកឯកសារ Backup (.json) នៃកាលវិភាគទៅរក្សាទុក">
                 <i class="fa-solid fa-download"></i> នាំចេញកាលវិភាគ
@@ -725,6 +730,11 @@
                     <!-- Sticky Classroom Name & Hours Counter -->
                     <td class="sticky-col fw-bold">
                         <div class="text-dark">{{ row.classroom.name }}</div>
+                        {% if row.classroom.room_number %}
+                        <div class="text-primary small" style="font-size: 0.72rem; font-weight: 500;" title="បន្ទប់សិក្សា">
+                            <i class="fa-solid fa-door-open me-0.5"></i>{{ row.classroom.room_number }}
+                        </div>
+                        {% endif %}
                         <span 
                             class="class-hours-badge {% if row.hours_diff == 0 %}hours-ok{% elif row.hours_diff < 0 %}hours-under{% else %}hours-over{% endif %}"
                             id="badge_hours_{{ row.classroom.id }}"
@@ -1328,6 +1338,54 @@
     </div>
 </div>
 
+<!-- Modal: Import Master Timetable from Sheet GT (Excel) -->
+<div class="modal fade" id="importTimetableExcelModal" tabindex="-1" aria-labelledby="importTimetableExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="POST" action="{% url 'timetable_import_excel' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% elif active_year %}?year={{ active_year.id }}{% endif %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-success" id="importTimetableExcelModalLabel">
+                        <i class="fa-solid fa-file-excel me-2"></i>នាំចូលកាលវិភាគរួមពី Sheet "GT" (Excel)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-success py-2 px-3 small mb-3 border-0 bg-success-subtle text-dark">
+                        <i class="fa-solid fa-circle-check text-success me-1"></i>
+                        <strong>សមកាលកម្មកាលវិភាគស្វ័យប្រវត្តិ៖</strong> ប្រព័ន្ធនឹងទាញយកទិន្នន័យកាលវិភាគមេចំនួន ១,៣៣៨ ម៉ោងសិក្សា លើ ៤០ ថ្នាក់រៀន (ថ្នាក់ទី ៧ ដល់ ១២) ពី Sheet <strong>GT</strong> នៃឯកសារ <code>បំណែងចែកគ្រូ2027.xlsx</code> ស្របតាមកូដមុខវិជ្ជា និងគ្រូបង្រៀន (M1..M11, P1..P7, C1..C7, ...) និងលេខបន្ទប់សិក្សា ដោយរក្សាទុកជាអចិន្ត្រៃយ៍ក្នុង Database។
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">
+                            ជ្រើសរើសឯកសារ Excel (.xlsx) ៖
+                        </label>
+                        <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls">
+                        <div class="form-text small text-muted mt-1">
+                            គាំទ្រឯកសារ <code>បំណែងចែកគ្រូ2027.xlsx</code> (ត្រូវតែមាន Sheet ឈ្មោះ <strong>GT</strong>)
+                        </div>
+                    </div>
+
+                    <div class="border rounded-3 p-3 bg-light mb-2">
+                        <div class="small fw-bold text-muted mb-2">
+                            <i class="fa-solid fa-server me-1"></i> ជម្រើសឯកសារប្រព័ន្ធដែលមានស្រាប់៖
+                        </div>
+                        <p class="small text-secondary mb-0">
+                            ប្រសិនបើលោកអ្នកមិនជ្រើសរើស File ថ្មីទេ ប្រព័ន្ធនឹងទាញយកទិន្នន័យពីឯកសារប្រព័ន្ធដើម <code>E:\SchoolSM\បំណែងចែកគ្រូ2027.xlsx</code> ដោយស្វ័យប្រវត្តិ។
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-4">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> ចាប់ផ្តើមនាំចូលកាលវិភាគ & រក្សាទុក
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Embedded JSON Data & Master Engine -->
 
 <script>
@@ -1791,9 +1849,10 @@
                 }
 
                 const lockIcon = slot.is_locked ? `<i class="fa-solid fa-lock me-1" style="font-size: 0.68rem; opacity: 0.8;" title="បានចាក់សោ"></i>` : '';
+                const roomInfo = slot.room ? ` [បន្ទប់ ${slot.room}]` : '';
 
                 td.innerHTML = `
-                    <div class="slot-pill ${statusClass}" title="${slot.subject_name} (${displayCode}) - គ្រូ ${slot.teacher_name} [${statusTitle}]">
+                    <div class="slot-pill ${statusClass}" title="${slot.subject_name} (${displayCode}) - គ្រូ ${slot.teacher_name}${roomInfo} [${statusTitle}]">
                         <span>${lockIcon}${displayCode}</span>
                         <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem;"></i>
                     </div>

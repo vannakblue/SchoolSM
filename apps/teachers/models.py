@@ -16,6 +16,7 @@ class Teacher(models.Model):
         INACTIVE = 'INACTIVE', 'អសកម្ម / Inactive'
 
     teacher_id = models.CharField(max_length=50, unique=True, verbose_name="កូដសម្គាល់គ្រូ / Teacher ID")
+    subject_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="កូដគ្រូតាមមុខវិជ្ជា / Teacher Subject Duty Code")
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_profile')
     khmer_name = models.CharField(max_length=150, verbose_name="ឈ្មោះខ្មែរ / Khmer Name")
     latin_name = models.CharField(max_length=150, verbose_name="ឈ្មោះឡាតាំង / Latin Name")

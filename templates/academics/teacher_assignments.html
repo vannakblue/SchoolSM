@@ -172,14 +172,19 @@
             <!-- Teachers List -->
             <div style="max-height: 600px; overflow-y: auto; padding-right: 4px;" id="teacherListContainer">
                 {% for item in teacher_stats %}
-                <a href="?teacher={{ item.teacher.id }}{% if active_academic_year %}&year={{ active_academic_year.id }}{% endif %}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name|default:item.teacher.latin_name }} {{ item.teacher.specialization|default:'' }} {{ item.teacher.training_level|default:'' }}">
+                <a href="?teacher={{ item.teacher.id }}{% if active_academic_year %}&year={{ active_academic_year.id }}{% endif %}" class="teacher-item {% if item.is_selected %}active{% endif %}" data-name="{{ item.teacher.khmer_name|default:item.teacher.latin_name }} {{ item.teacher.subject_code|default:'' }} {{ item.teacher.specialization|default:'' }} {{ item.teacher.training_level|default:'' }}">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; font-size: 0.85rem;">
                                 {{ item.teacher.khmer_name|default:item.teacher.latin_name|slice:":1" }}
                             </div>
                             <div>
-                                <div class="fw-bold text-dark small">{{ item.teacher.khmer_name|default:item.teacher.latin_name }}</div>
+                                <div class="fw-bold text-dark small d-flex align-items-center gap-1">
+                                    {% if item.teacher.subject_code %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-1 py-0" style="font-size: 0.68rem;">{{ item.teacher.subject_code }}</span>
+                                    {% endif %}
+                                    <span>{{ item.teacher.khmer_name|default:item.teacher.latin_name }}</span>
+                                </div>
                                 <div class="text-muted d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.72rem;">
                                     <span>{{ item.teacher.specialization|default:"" }}</span>
                                     {% if item.teacher.training_level and 'ទុតិយភូមិ' in item.teacher.training_level %}
@@ -220,13 +225,18 @@
                             <i class="fa-solid fa-chalkboard-user"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold text-primary mb-0">{{ selected_teacher.khmer_name|default:selected_teacher.latin_name }}</h5>
+                            <h5 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+                                <span>{{ selected_teacher.khmer_name|default:selected_teacher.latin_name }}</span>
+                                {% if selected_teacher.subject_code %}
+                                <span class="badge bg-primary text-white font-monospace shadow-xs fs-6" title="កូដគ្រូបង្រៀនតាមមុខវិជ្ជា"><i class="fa-solid fa-tag me-1"></i>{{ selected_teacher.subject_code }}</span>
+                                {% endif %}
+                            </h5>
                             <div class="small text-dark mt-1 d-flex flex-wrap align-items-center gap-1">
                                 <span class="badge bg-white text-primary border"><i class="fa-solid fa-id-card me-1"></i>{{ selected_teacher.teacher_id|default:"-" }}</span>
                                 <span class="badge bg-white text-dark border"><i class="fa-solid fa-book-open me-1"></i>ឯកទេស៖ {{ selected_teacher.specialization|default:"-" }}</span>
                                 <span class="badge bg-info-subtle text-info border"><i class="fa-solid fa-graduation-cap me-1"></i>កម្រិតបណ្តុះបណ្តាល៖ {{ selected_teacher.training_level|default:"មិនទាន់កំណត់" }}</span>
-                                {% if selected_teacher_codes %}
-                                <span class="badge bg-purple-subtle text-purple border"><i class="fa-solid fa-tag me-1"></i>កូដមុខវិជ្ជា៖ {{ selected_teacher_codes }}</span>
+                                {% if selected_teacher_codes or selected_teacher.subject_code %}
+                                <span class="badge bg-purple-subtle text-purple border"><i class="fa-solid fa-tag me-1"></i>កូដមុខវិជ្ជា៖ {{ selected_teacher.subject_code|default:selected_teacher_codes }}</span>
                                 {% endif %}
                                 <span class="badge bg-success text-white" id="badgeAssignedClassCount"><i class="fa-solid fa-check-circle me-1"></i>កំពុងចាត់តាំង៖ {{ selected_assigned_count }} ថ្នាក់-មុខវិជ្ជា</span>
                             </div>
