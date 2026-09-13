@@ -2249,12 +2249,13 @@ def timetable_view(request):
     return render(request, 'academics/timetable.html', context)
 
 
-# ----------------- TIMETABLE VERSIONING & REVISION SYSTEM -----------------
+# ----------------- TIMETABLE VERSIONING, ARCHIVES & CROSS-YEAR PRESERVATION -----------------
 
 @login_required
 def timetable_versions_list(request):
     """
-    Returns JSON list of saved timetable versions/revisions for the active academic year.
+    Returns JSON list of saved timetable versions/revisions for the active or selected academic year.
+    Also returns available academic years list for easy switching in the history modal.
     """
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
@@ -2266,6 +2267,18 @@ def timetable_versions_list(request):
 
     if not active_year:
         active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    all_years = list(AcademicYear.objects.all().order_by('-start_date'))
+    years_summary = []
+    for y in all_years:
+        v_count = TimetableVersion.objects.filter(academic_year=y).count()
+        years_summary.append({
+            'id': y.id,
+            'name': y.name,
+            'is_current': y.is_current,
+            'version_count': v_count,
+            'is_selected': (active_year and y.id == active_year.id)
+        })
 
     versions = list(TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number', '-created_at')) if active_year else []
     
@@ -2286,6 +2299,7 @@ def timetable_versions_list(request):
             'created_by': creator_name,
             'created_at': v.created_at.strftime('%d/%m/%Y %H:%M'),
             'updated_at': v.updated_at.strftime('%d/%m/%Y %H:%M'),
+            'academic_year_name': v.academic_year.name if v.academic_year else '',
         })
 
     return JsonResponse({
@@ -2294,6 +2308,7 @@ def timetable_versions_list(request):
             'id': active_year.id if active_year else None,
             'name': active_year.name if active_year else '',
         },
+        'available_years': years_summary,
         'next_version_number': next_ver_num,
         'versions': versions_data,
         'count': len(versions_data),
@@ -2306,11 +2321,12 @@ def timetable_version_save(request):
     """
     Saves a new timetable snapshot version/revision (e.g. លើកទី ១, លើកទី ២...)
     or updates an existing revision for the active academic year.
+    Enriched with full classroom metadata, teacher codes, and class-subject assignments.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
 
-    from .utils import get_active_academic_year
+    from .utils import get_active_academic_year, get_teacher_subject_duty_code_map
     active_year = get_active_academic_year(request)
 
     try:
@@ -2343,29 +2359,63 @@ def timetable_version_save(request):
         blocked_items = data.get('blocked_slots') or []
         class_subjects_data = data.get('class_subject_assignments') or data.get('class_subjects') or {}
 
+        # Lookups for enrichment
+        teacher_duty_map, _ = get_teacher_subject_duty_code_map(academic_year=active_year)
+
         # If matrix not supplied in payload, extract from current live Timetable table
         if matrix_items is None:
             live_entries = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher')
             matrix_items = []
             for e in live_entries:
+                sub_code = e.subject.code if (e.subject and e.subject.code) else 'S'
+                t_code = teacher_duty_map.get((e.subject_id, e.teacher_id)) or (e.teacher.subject_code if e.teacher else '') or sub_code
                 matrix_items.append({
                     'classroom_id': e.classroom_id,
                     'classroom_name': e.classroom.name if e.classroom else '',
+                    'classroom_code': e.classroom.clean_code if e.classroom else '',
+                    'grade_level': e.classroom.grade_level if e.classroom else None,
                     'subject_id': e.subject_id,
+                    'subject_code': sub_code,
                     'subject_name': e.subject.name_kh if e.subject else '',
                     'teacher_id': e.teacher_id,
+                    'teacher_str_id': e.teacher.teacher_id if e.teacher else '',
                     'teacher_name': e.teacher.khmer_name if e.teacher else '',
+                    'teacher_code': t_code,
                     'day_of_week': e.day_of_week,
                     'period_number': e.period_number,
                     'start_time': e.start_time.strftime('%H:%M') if e.start_time else None,
                     'end_time': e.end_time.strftime('%H:%M') if e.end_time else None,
-                    'room': e.room or '',
+                    'room': e.room or (e.classroom.room_number if e.classroom else ''),
                 })
+        else:
+            cls_by_id = {c.id: c for c in Classroom.objects.filter(academic_year=active_year)}
+            sub_by_id = {s.id: s for s in Subject.objects.all()}
+            tch_by_id = {t.id: t for t in Teacher.objects.all()}
+            for item in matrix_items:
+                cid = item.get('classroom_id')
+                sid = item.get('subject_id')
+                tid = item.get('teacher_id')
+                c_obj = cls_by_id.get(cid)
+                s_obj = sub_by_id.get(sid)
+                t_obj = tch_by_id.get(tid)
+                if c_obj and not item.get('classroom_name'):
+                    item['classroom_name'] = c_obj.name
+                    item['classroom_code'] = c_obj.clean_code
+                    item['grade_level'] = c_obj.grade_level
+                if s_obj and not item.get('subject_name'):
+                    item['subject_name'] = s_obj.name_kh
+                    item['subject_code'] = s_obj.code
+                if t_obj and not item.get('teacher_name'):
+                    item['teacher_name'] = t_obj.khmer_name
+                    item['teacher_str_id'] = t_obj.teacher_id
+                t_code = teacher_duty_map.get((sid, tid)) or (t_obj.subject_code if t_obj else '')
+                if t_code and not item.get('teacher_code'):
+                    item['teacher_code'] = t_code
 
         # Calculate counts
         class_ids = set()
         for item in matrix_items:
-            cid = item.get('classroom_id')
+            cid = item.get('classroom_id') or item.get('classroom_code')
             if cid:
                 class_ids.add(cid)
 
@@ -2374,14 +2424,22 @@ def timetable_version_save(request):
 
         # Snapshot current ClassSubject assignments if empty
         if not class_subjects_data:
-            cs_qs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('subject', 'teacher')
+            cs_qs = ClassSubject.objects.filter(classroom__academic_year=active_year, teacher__isnull=False).select_related('classroom', 'subject', 'teacher')
             cs_map = defaultdict(list)
             for cs in cs_qs:
+                sub_code = cs.subject.code if (cs.subject and cs.subject.code) else 'S'
+                t_code = cs.teacher_code or teacher_duty_map.get((cs.subject_id, cs.teacher_id)) or (cs.teacher.subject_code if cs.teacher else '') or sub_code
                 cs_map[str(cs.classroom_id)].append({
                     'classroom_id': cs.classroom_id,
+                    'classroom_name': cs.classroom.name if cs.classroom else '',
+                    'classroom_code': cs.classroom.clean_code if cs.classroom else '',
                     'subject_id': cs.subject_id,
+                    'subject_code': sub_code,
+                    'subject_name': cs.subject.name_kh if cs.subject else '',
                     'teacher_id': cs.teacher_id,
+                    'teacher_str_id': cs.teacher.teacher_id if cs.teacher else '',
                     'teacher_name': cs.teacher.khmer_name if cs.teacher else '',
+                    'teacher_code': t_code,
                     'weekly_hours': cs.weekly_hours,
                 })
             class_subjects_data = dict(cs_map)
@@ -2431,6 +2489,8 @@ def timetable_version_save(request):
 def timetable_version_restore(request, version_id):
     """
     Restores / applies a saved TimetableVersion to the live Master Timetable database table!
+    Supports restoring within the same academic year or cross-year restore into active/target year.
+    Automatically maps or creates classrooms by code and restores teacher duty codes.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
@@ -2438,50 +2498,142 @@ def timetable_version_restore(request, version_id):
     version = TimetableVersion.objects.filter(id=version_id).first()
     if not version:
         return JsonResponse({'status': 'error', 'message': f'រកមិនឃើញកំណែកាលវិភាគ ID {version_id} ឡើយ!'}, status=404)
-        
-    active_year = version.academic_year
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    
+    target_year = active_year or version.academic_year
+    auto_create_classrooms = True
+    sync_teachers = True
 
     try:
-        sync_teachers = True
         if request.body:
             try:
                 b_data = json.loads(request.body.decode('utf-8'))
                 sync_teachers = b_data.get('sync_teachers', True)
+                auto_create_classrooms = b_data.get('auto_create_classrooms', True)
+                t_year_param = b_data.get('target_year_id') or b_data.get('academic_year_id')
+                if t_year_param and str(t_year_param).isdigit():
+                    t_obj = AcademicYear.objects.filter(id=int(t_year_param)).first()
+                    if t_obj:
+                        target_year = t_obj
             except Exception:
                 pass
 
         with transaction.atomic():
-            # 1. Clear active year live timetables
-            Timetable.objects.filter(classroom__academic_year=active_year).delete()
+            # 1. Clear target year live timetables
+            Timetable.objects.filter(classroom__academic_year=target_year).delete()
 
-            # Cache valid IDs to prevent integrity errors if objects were deleted in DB
-            valid_classroom_ids = set(Classroom.objects.filter(academic_year=active_year).values_list('id', flat=True))
-            valid_subject_ids = set(Subject.objects.values_list('id', flat=True))
-            valid_teacher_ids = set(Teacher.objects.values_list('id', flat=True))
+            # Target year classrooms map
+            target_classrooms = list(Classroom.objects.filter(academic_year=target_year))
+            target_by_id = {c.id: c for c in target_classrooms}
+            target_by_code = {}
+            for c in target_classrooms:
+                if c.code:
+                    target_by_code[c.clean_code.lower()] = c
+                    target_by_code[c.code.strip().lower()] = c
+                if c.name:
+                    target_by_code[c.name.strip().lower()] = c
+
+            # Source classrooms metadata lookup from version
+            src_class_info = {}
+            if version.academic_year:
+                for sc in Classroom.objects.filter(academic_year=version.academic_year):
+                    src_class_info[sc.id] = sc
+
+            # Mapping src_cid -> target_classroom_obj
+            classroom_map = {}
+            for item in (version.matrix_data or []):
+                src_cid = item.get('classroom_id')
+                c_code = str(item.get('classroom_code') or '').strip().lower()
+                c_name = str(item.get('classroom_name') or '').strip().lower()
+                
+                # If restoring within same academic year
+                if target_year.id == version.academic_year_id and src_cid in target_by_id:
+                    classroom_map[src_cid] = target_by_id[src_cid]
+                    continue
+
+                # Match by code or clean code or name
+                tgt = target_by_code.get(c_code) or target_by_code.get(c_name)
+                if not tgt and src_cid in src_class_info:
+                    sc = src_class_info[src_cid]
+                    sc_code = sc.clean_code.lower() if sc.code else ''
+                    tgt = target_by_code.get(sc_code) or target_by_code.get(sc.name.strip().lower())
+
+                # If missing and auto_create_classrooms is True
+                if not tgt and auto_create_classrooms:
+                    sc = src_class_info.get(src_cid)
+                    n = item.get('classroom_name') or (sc.name if sc else f"ថ្នាក់ #{src_cid}")
+                    cd = item.get('classroom_code') or (sc.code if sc else f"C{src_cid}")
+                    gl = item.get('grade_level') or (sc.grade_level if sc else 7)
+                    tr = sc.track if sc else 'GENERAL'
+                    rm = item.get('room') or (sc.room_number if sc else '')
+                    cap = sc.capacity if sc else 40
+
+                    tgt = Classroom.objects.create(
+                        name=n,
+                        code=cd,
+                        grade_level=gl,
+                        track=tr,
+                        academic_year=target_year,
+                        room_number=rm,
+                        capacity=cap
+                    )
+                    target_classrooms.append(tgt)
+                    target_by_id[tgt.id] = tgt
+                    if tgt.code:
+                        target_by_code[tgt.clean_code.lower()] = tgt
+                        target_by_code[tgt.code.strip().lower()] = tgt
+                    if tgt.name:
+                        target_by_code[tgt.name.strip().lower()] = tgt
+
+                if tgt and src_cid:
+                    classroom_map[src_cid] = tgt
+
+            # Valid Subject & Teacher Lookups
+            all_subjects_by_id = {s.id: s for s in Subject.objects.all()}
+            all_subjects_by_code = {s.code.lower(): s for s in all_subjects_by_id.values() if s.code}
+            all_teachers_by_id = {t.id: t for t in Teacher.objects.all()}
+            all_teachers_by_str_id = {t.teacher_id: t for t in all_teachers_by_id.values() if t.teacher_id}
+            all_teachers_by_name = {t.khmer_name.strip(): t for t in all_teachers_by_id.values() if t.khmer_name}
 
             # 2. Restore timetable slots
             restored_entries = []
             for item in (version.matrix_data or []):
-                cls_id = item.get('classroom_id')
+                src_cid = item.get('classroom_id')
+                tgt_cls = classroom_map.get(src_cid)
+                if not tgt_cls and item.get('classroom_code'):
+                    tgt_cls = target_by_code.get(str(item.get('classroom_code')).strip().lower())
+
+                sub_id = item.get('subject_id')
+                sub_obj = all_subjects_by_id.get(sub_id)
+                if not sub_obj and item.get('subject_code'):
+                    sub_obj = all_subjects_by_code.get(str(item.get('subject_code')).strip().lower())
+
+                tch_id = item.get('teacher_id')
+                tch_obj = all_teachers_by_id.get(tch_id)
+                if not tch_obj and item.get('teacher_str_id'):
+                    tch_obj = all_teachers_by_str_id.get(str(item.get('teacher_str_id')).strip())
+                if not tch_obj and item.get('teacher_name'):
+                    tch_obj = all_teachers_by_name.get(str(item.get('teacher_name')).strip())
+
                 day_num = int(item.get('day_of_week') or 1)
                 p_num = int(item.get('period_number') or 1)
-                sub_id = item.get('subject_id')
-                tch_id = item.get('teacher_id')
 
-                if cls_id in valid_classroom_ids and sub_id in valid_subject_ids and tch_id in valid_teacher_ids:
+                if tgt_cls and sub_obj and tch_obj:
                     st_time, et_time = STANDARD_PERIOD_TIMES.get(
                         p_num, 
                         (datetime.time(7, 0), datetime.time(7, 50))
                     )
                     restored_entries.append(Timetable(
-                        classroom_id=cls_id,
-                        subject_id=sub_id,
-                        teacher_id=tch_id,
+                        classroom=tgt_cls,
+                        subject=sub_obj,
+                        teacher=tch_obj,
                         day_of_week=day_num,
                         period_number=p_num,
                         start_time=st_time,
                         end_time=et_time,
-                        room=item.get('room') or ''
+                        room=item.get('room') or tgt_cls.room_number or ''
                     ))
 
             if restored_entries:
@@ -2490,53 +2642,89 @@ def timetable_version_restore(request, version_id):
             # 3. Restore ClassSubject teacher assignments if available
             if sync_teachers and version.class_subject_assignments:
                 cs_data = version.class_subject_assignments
+                cs_items = []
                 if isinstance(cs_data, dict):
                     for cid_str, items in cs_data.items():
-                        try:
-                            c_id = int(cid_str)
-                            if c_id in valid_classroom_ids:
-                                for itm in items:
-                                    s_id = itm.get('subject_id')
-                                    t_id = itm.get('teacher_id')
-                                    if s_id in valid_subject_ids and t_id in valid_teacher_ids:
-                                        ClassSubject.objects.update_or_create(
-                                            classroom_id=c_id,
-                                            subject_id=s_id,
-                                            defaults={'teacher_id': t_id}
-                                        )
-                        except Exception:
-                            pass
+                        if isinstance(items, list):
+                            for itm in items:
+                                cs_items.append(itm)
                 elif isinstance(cs_data, list):
-                    for itm in cs_data:
-                        c_id = itm.get('classroom_id')
-                        s_id = itm.get('subject_id')
-                        t_id = itm.get('teacher_id')
-                        if c_id in valid_classroom_ids and s_id in valid_subject_ids and t_id in valid_teacher_ids:
-                            ClassSubject.objects.update_or_create(
-                                classroom_id=c_id,
-                                subject_id=s_id,
-                                defaults={'teacher_id': t_id}
-                            )
+                    cs_items = cs_data
+
+                for itm in cs_items:
+                    src_cid = itm.get('classroom_id')
+                    tgt_cls = classroom_map.get(src_cid)
+                    if not tgt_cls and itm.get('classroom_code'):
+                        tgt_cls = target_by_code.get(str(itm.get('classroom_code')).strip().lower())
+
+                    sub_id = itm.get('subject_id')
+                    sub_obj = all_subjects_by_id.get(sub_id) or all_subjects_by_code.get(str(itm.get('subject_code') or '').strip().lower())
+
+                    tch_id = itm.get('teacher_id')
+                    tch_obj = all_teachers_by_id.get(tch_id) or all_teachers_by_str_id.get(str(itm.get('teacher_str_id') or '').strip())
+
+                    t_code = itm.get('teacher_code')
+                    w_hours = itm.get('weekly_hours') or 2
+
+                    if tgt_cls and sub_obj and tch_obj:
+                        ClassSubject.objects.update_or_create(
+                            classroom=tgt_cls,
+                            subject=sub_obj,
+                            defaults={
+                                'teacher': tch_obj,
+                                'weekly_hours': w_hours,
+                                'teacher_code': t_code or '',
+                            }
+                        )
 
             # 4. Mark active version
-            TimetableVersion.objects.filter(academic_year=active_year).update(is_active_applied=False)
-            version.is_active_applied = True
-            version.save(update_fields=['is_active_applied', 'updated_at'])
+            if target_year.id == version.academic_year_id:
+                TimetableVersion.objects.filter(academic_year=target_year).update(is_active_applied=False)
+                version.is_active_applied = True
+                version.save(update_fields=['is_active_applied', 'updated_at'])
+            else:
+                latest_v = TimetableVersion.objects.filter(academic_year=target_year).order_by('-version_number').first()
+                next_v = (latest_v.version_number + 1) if latest_v else 1
+                TimetableVersion.objects.filter(academic_year=target_year).update(is_active_applied=False)
+                TimetableVersion.objects.create(
+                    academic_year=target_year,
+                    version_number=next_v,
+                    title=f"ស្ដារពី {version.academic_year.name if version.academic_year else ''} ({version.title})",
+                    note=f"ស្ដារពីកំណែកាលវិភាគ ID {version.id} នៃឆ្នាំ {version.academic_year.name if version.academic_year else ''}",
+                    matrix_data=version.matrix_data,
+                    blocked_slots=version.blocked_slots or [],
+                    class_subject_assignments=version.class_subject_assignments or {},
+                    total_slots=len(restored_entries),
+                    total_classrooms=len(classroom_map),
+                    is_active_applied=True,
+                    created_by=request.user if request.user.is_authenticated else None,
+                )
 
             # 5. Restore blocked slots to session
             if version.blocked_slots and hasattr(request, 'session'):
-                session_key = f"blocked_slots_{active_year.id}"
-                request.session[session_key] = version.blocked_slots
+                session_key = f"blocked_slots_{target_year.id}"
+                remapped_blocked = []
+                for blk in version.blocked_slots:
+                    b_cid = blk.get('classroom_id')
+                    tgt_c = classroom_map.get(b_cid)
+                    if tgt_c:
+                        b_copy = dict(blk)
+                        b_copy['classroom_id'] = tgt_c.id
+                        remapped_blocked.append(b_copy)
+                    else:
+                        remapped_blocked.append(blk)
+                request.session[session_key] = remapped_blocked
                 request.session.modified = True
 
         v_display = f'"{version.title}"' if (version.title and 'លើកទី' in version.title) else f'លើកទី {version.version_number} "{version.title}"'
         return JsonResponse({
             'status': 'success',
-            'message': f'បានទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគ {v_display} ({len(restored_entries)} ម៉ោង) សម្រាប់ឆ្នាំសិក្សា {active_year.name} ដោយជោគជ័យ!',
+            'message': f'បានទាញយក និងដាក់ប្រើប្រាស់កាលវិភាគ {v_display} ({len(restored_entries)} ម៉ោង) សម្រាប់ឆ្នាំសិក្សា {target_year.name} ដោយជោគជ័យ!',
             'version_id': version.id,
             'version_number': version.version_number,
             'title': version.title,
             'count': len(restored_entries),
+            'target_year_name': target_year.name,
             'matrix_data': version.matrix_data,
             'blocked_slots': version.blocked_slots,
         })
@@ -2612,28 +2800,816 @@ def timetable_version_export(request, version_id):
         return HttpResponse('Timetable version not found', status=404)
         
     creator_name = (version.created_by.get_full_name() or version.created_by.username) if version.created_by else 'Admin'
+    cfg = SavedDefaultConfig.objects.filter(key='teacher_subject_duty_codes').first()
+    duty_codes = cfg.data if (cfg and isinstance(cfg.data, dict)) else {}
+
     export_dict = {
         'app': 'SchoolSM',
         'type': 'timetable_version_snapshot',
+        'schema_version': '3.5',
         'version_number': version.version_number,
         'title': version.title,
         'note': version.note or '',
         'academic_year': {
             'id': version.academic_year_id,
-            'name': version.academic_year.name,
+            'name': version.academic_year.name if version.academic_year else '',
         },
         'total_slots': version.total_slots,
         'total_classrooms': version.total_classrooms,
         'created_by': creator_name,
         'created_at': version.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'teacher_duty_codes': duty_codes,
         'matrix_data': version.matrix_data,
         'blocked_slots': version.blocked_slots,
         'class_subject_assignments': version.class_subject_assignments,
     }
-    filename = f"SchoolSM_Timetable_{version.academic_year.name}_V{version.version_number}.json"
+    filename = f"SchoolSM_Timetable_{version.academic_year.name if version.academic_year else 'General'}_V{version.version_number}.json"
     response = HttpResponse(json.dumps(export_dict, indent=2, ensure_ascii=False), content_type='application/json; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# ----------------- TIMETABLE CROSS-YEAR PREVIEW & COPY -----------------
+
+@login_required
+def timetable_copy_from_year_preview(request):
+    """
+    Returns preview statistics of what will be copied from a source academic year
+    (or specific version) to the active/target academic year.
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    source_year_id = request.GET.get('source_year_id')
+    version_id = request.GET.get('version_id')
+
+    if not source_year_id or not str(source_year_id).isdigit():
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសឆ្នាំសិក្សាប្រភព'}, status=400)
+
+    src_year = AcademicYear.objects.filter(id=int(source_year_id)).first()
+    if not src_year:
+        return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញឆ្នាំសិក្សាប្រភពឡើយ'}, status=404)
+
+    target_year = active_year
+    target_year_id = request.GET.get('target_year_id')
+    if target_year_id and str(target_year_id).isdigit():
+        t_year = AcademicYear.objects.filter(id=int(target_year_id)).first()
+        if t_year:
+            target_year = t_year
+
+    selected_version = None
+    if version_id and str(version_id).isdigit():
+        selected_version = TimetableVersion.objects.filter(id=int(version_id), academic_year=src_year).first()
+
+    src_classrooms = list(Classroom.objects.filter(academic_year=src_year).order_by('grade_level', 'code'))
+    target_classrooms = list(Classroom.objects.filter(academic_year=target_year)) if target_year else []
+    target_class_codes = {c.clean_code.lower() for c in target_classrooms if c.code}
+    target_class_names = {c.name.strip().lower() for c in target_classrooms if c.name}
+
+    matched_classrooms = []
+    missing_classrooms = []
+    for c in src_classrooms:
+        c_code = c.clean_code.lower() if c.code else ''
+        c_name = c.name.strip().lower() if c.name else ''
+        if c_code in target_class_codes or c_name in target_class_names:
+            matched_classrooms.append({'id': c.id, 'name': c.name, 'code': c.code, 'grade_level': c.grade_level})
+        else:
+            missing_classrooms.append({'id': c.id, 'name': c.name, 'code': c.code, 'grade_level': c.grade_level, 'track': c.track, 'room_number': c.room_number})
+
+    if selected_version:
+        total_slots = selected_version.total_slots
+        matrix_items = selected_version.matrix_data or []
+        assigned_teacher_ids = {item.get('teacher_id') for item in matrix_items if item.get('teacher_id')}
+        cs_raw = selected_version.class_subject_assignments or {}
+        class_subjects_count = len(cs_raw) if isinstance(cs_raw, list) else sum(len(v) for v in cs_raw.values())
+    else:
+        live_tt_qs = Timetable.objects.filter(classroom__academic_year=src_year)
+        total_slots = live_tt_qs.count()
+        assigned_teacher_ids = set(live_tt_qs.exclude(teacher__isnull=True).values_list('teacher_id', flat=True))
+        class_subjects_count = ClassSubject.objects.filter(classroom__academic_year=src_year, teacher__isnull=False).count()
+
+    cfg = SavedDefaultConfig.objects.filter(key='teacher_subject_duty_codes').first()
+    duty_codes = cfg.data if (cfg and isinstance(cfg.data, dict)) else {}
+    teachers_with_code = Teacher.objects.filter(subject_code__isnull=False).exclude(subject_code='').count()
+
+    versions = list(TimetableVersion.objects.filter(academic_year=src_year).order_by('-version_number'))
+    versions_list = [{'id': v.id, 'version_number': v.version_number, 'title': v.title, 'total_slots': v.total_slots, 'is_active': v.is_active_applied} for v in versions]
+
+    return JsonResponse({
+        'status': 'success',
+        'source_year': {
+            'id': src_year.id,
+            'name': src_year.name,
+        },
+        'target_year': {
+            'id': target_year.id if target_year else None,
+            'name': target_year.name if target_year else '',
+        },
+        'selected_version': {
+            'id': selected_version.id,
+            'version_number': selected_version.version_number,
+            'title': selected_version.title,
+        } if selected_version else None,
+        'classrooms_total': len(src_classrooms),
+        'classrooms_matched': len(matched_classrooms),
+        'classrooms_missing': len(missing_classrooms),
+        'missing_classrooms_list': missing_classrooms,
+        'timetable_slots_count': total_slots,
+        'class_subjects_count': class_subjects_count,
+        'assigned_teachers_count': len(assigned_teacher_ids),
+        'duty_codes_count': max(len(duty_codes), teachers_with_code),
+        'versions': versions_list,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_copy_from_year(request):
+    """
+    Directly copies and clones timetable data, class-subject teacher assignments,
+    teacher duty codes, and auto-creates missing classrooms from a source academic year
+    (or specific version) into the target academic year.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        source_year_id = data.get('source_year_id')
+        if not source_year_id or not str(source_year_id).isdigit():
+            return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសឆ្នាំសិក្សាប្រភព'}, status=400)
+
+        src_year = AcademicYear.objects.filter(id=int(source_year_id)).first()
+        if not src_year:
+            return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញឆ្នាំសិក្សាប្រភពឡើយ'}, status=404)
+
+        target_year = active_year
+        target_year_id = data.get('target_year_id')
+        if target_year_id and str(target_year_id).isdigit():
+            t_year = AcademicYear.objects.filter(id=int(target_year_id)).first()
+            if t_year:
+                target_year = t_year
+
+        if not target_year:
+            return JsonResponse({'status': 'error', 'message': 'មិនមានឆ្នាំសិក្សាគោលដៅឡើយ'}, status=400)
+
+        version_id = data.get('version_id')
+        if src_year.id == target_year.id and not version_id:
+            return JsonResponse({'status': 'error', 'message': 'ឆ្នាំសិក្សាប្រភព និងឆ្នាំសិក្សាគោលដៅដូចគ្នា! សូមជ្រើសរើសកំណែកាលវិភាគ (Version) ឬឆ្នាំសិក្សាផ្សេង។'}, status=400)
+
+        copy_timetable = data.get('copy_timetable', True)
+        copy_class_subjects = data.get('copy_class_subjects', True)
+        copy_teacher_codes = data.get('copy_teacher_codes', True)
+        auto_create_classrooms = data.get('auto_create_classrooms', True)
+        copy_blocked_slots = data.get('copy_blocked_slots', True)
+
+        selected_version = None
+        if version_id and str(version_id).isdigit():
+            selected_version = TimetableVersion.objects.filter(id=int(version_id), academic_year=src_year).first()
+
+        with transaction.atomic():
+            # 1. Map or auto-create classrooms in target_year
+            src_classrooms = list(Classroom.objects.filter(academic_year=src_year))
+            target_classrooms = list(Classroom.objects.filter(academic_year=target_year))
+            
+            target_class_by_code = {}
+            for c in target_classrooms:
+                if c.code:
+                    target_class_by_code[c.clean_code.lower()] = c
+                    target_class_by_code[c.code.strip().lower()] = c
+                if c.name:
+                    target_class_by_code[c.name.strip().lower()] = c
+
+            created_classes_count = 0
+            src_to_target_class_map = {} # src_classroom_id -> target_classroom_obj
+
+            for src_c in src_classrooms:
+                key_code = src_c.clean_code.lower() if src_c.code else ''
+                key_raw = src_c.code.strip().lower() if src_c.code else ''
+                key_name = src_c.name.strip().lower() if src_c.name else ''
+                
+                matched = target_class_by_code.get(key_code) or target_class_by_code.get(key_raw) or target_class_by_code.get(key_name)
+                
+                if not matched and auto_create_classrooms:
+                    matched = Classroom.objects.create(
+                        name=src_c.name,
+                        code=src_c.code,
+                        grade_level=src_c.grade_level,
+                        track=src_c.track,
+                        academic_year=target_year,
+                        room_number=src_c.room_number,
+                        capacity=src_c.capacity,
+                    )
+                    created_classes_count += 1
+                    target_classrooms.append(matched)
+                    if matched.code:
+                        target_class_by_code[matched.clean_code.lower()] = matched
+                        target_class_by_code[matched.code.strip().lower()] = matched
+                    if matched.name:
+                        target_class_by_code[matched.name.strip().lower()] = matched
+
+                if matched:
+                    src_to_target_class_map[src_c.id] = matched
+
+            # 2. Copy teacher duty codes
+            restored_codes_count = 0
+            if copy_teacher_codes:
+                cfg = SavedDefaultConfig.objects.filter(key='teacher_subject_duty_codes').first()
+                if cfg and isinstance(cfg.data, dict):
+                    restored_codes_count = len(cfg.data)
+                tch_with_codes = Teacher.objects.filter(subject_code__isnull=False).exclude(subject_code='')
+                restored_codes_count = max(restored_codes_count, tch_with_codes.count())
+
+            # 3. Copy ClassSubject assignments
+            restored_cs_count = 0
+            if copy_class_subjects:
+                if selected_version and selected_version.class_subject_assignments:
+                    cs_data = selected_version.class_subject_assignments
+                    cs_list = []
+                    if isinstance(cs_data, dict):
+                        for cid_str, items in cs_data.items():
+                            if isinstance(items, list):
+                                for itm in items:
+                                    cs_list.append(itm)
+                    elif isinstance(cs_data, list):
+                        cs_list = cs_data
+
+                    for itm in cs_list:
+                        src_cid = itm.get('classroom_id')
+                        tgt_cls = src_to_target_class_map.get(src_cid)
+                        if not tgt_cls and itm.get('classroom_code'):
+                            tgt_cls = target_class_by_code.get(str(itm.get('classroom_code')).strip().lower())
+                        sub_id = itm.get('subject_id')
+                        tch_id = itm.get('teacher_id')
+                        t_code = itm.get('teacher_code')
+                        w_hours = itm.get('weekly_hours') or 2
+                        if tgt_cls and sub_id and tch_id:
+                            ClassSubject.objects.update_or_create(
+                                classroom=tgt_cls,
+                                subject_id=sub_id,
+                                defaults={
+                                    'teacher_id': tch_id,
+                                    'weekly_hours': w_hours,
+                                    'teacher_code': t_code or '',
+                                }
+                            )
+                            restored_cs_count += 1
+                else:
+                    src_cs_qs = ClassSubject.objects.filter(classroom__academic_year=src_year, teacher__isnull=False)
+                    for scs in src_cs_qs:
+                        tgt_cls = src_to_target_class_map.get(scs.classroom_id)
+                        if tgt_cls:
+                            ClassSubject.objects.update_or_create(
+                                classroom=tgt_cls,
+                                subject_id=scs.subject_id,
+                                defaults={
+                                    'teacher_id': scs.teacher_id,
+                                    'weekly_hours': scs.weekly_hours,
+                                    'teacher_code': scs.teacher_code or '',
+                                }
+                            )
+                            restored_cs_count += 1
+
+            # 4. Copy Timetable slots
+            restored_slots_count = 0
+            new_matrix_entries = []
+            if copy_timetable:
+                Timetable.objects.filter(classroom__academic_year=target_year).delete()
+
+                if selected_version and selected_version.matrix_data:
+                    for itm in selected_version.matrix_data:
+                        src_cid = itm.get('classroom_id')
+                        tgt_cls = src_to_target_class_map.get(src_cid)
+                        if not tgt_cls and itm.get('classroom_code'):
+                            tgt_cls = target_class_by_code.get(str(itm.get('classroom_code')).strip().lower())
+                        sub_id = itm.get('subject_id')
+                        tch_id = itm.get('teacher_id')
+                        p_num = int(itm.get('period_number') or 1)
+                        d_num = int(itm.get('day_of_week') or 1)
+                        if tgt_cls and sub_id and tch_id:
+                            st_time, et_time = STANDARD_PERIOD_TIMES.get(
+                                p_num, 
+                                (datetime.time(7, 0), datetime.time(7, 50))
+                            )
+                            new_matrix_entries.append(Timetable(
+                                classroom=tgt_cls,
+                                subject_id=sub_id,
+                                teacher_id=tch_id,
+                                day_of_week=d_num,
+                                period_number=p_num,
+                                start_time=st_time,
+                                end_time=et_time,
+                                room=itm.get('room') or tgt_cls.room_number or '',
+                            ))
+                else:
+                    src_tt_qs = Timetable.objects.filter(classroom__academic_year=src_year).select_related('classroom')
+                    for stt in src_tt_qs:
+                        tgt_cls = src_to_target_class_map.get(stt.classroom_id)
+                        if tgt_cls and stt.subject_id and stt.teacher_id:
+                            new_matrix_entries.append(Timetable(
+                                classroom=tgt_cls,
+                                subject_id=stt.subject_id,
+                                teacher_id=stt.teacher_id,
+                                day_of_week=stt.day_of_week,
+                                period_number=stt.period_number,
+                                start_time=stt.start_time,
+                                end_time=stt.end_time,
+                                room=stt.room or tgt_cls.room_number or '',
+                            ))
+
+                if new_matrix_entries:
+                    Timetable.objects.bulk_create(new_matrix_entries)
+                    restored_slots_count = len(new_matrix_entries)
+
+            # 5. Copy blocked slots
+            if copy_blocked_slots:
+                src_session_key = f"blocked_slots_{src_year.id}"
+                tgt_session_key = f"blocked_slots_{target_year.id}"
+                blocked = request.session.get(src_session_key, []) if hasattr(request, 'session') else []
+                if selected_version and selected_version.blocked_slots:
+                    blocked = selected_version.blocked_slots
+                if blocked and hasattr(request, 'session'):
+                    remapped_blocked = []
+                    for blk in blocked:
+                        b_cid = blk.get('classroom_id')
+                        tgt_c = src_to_target_class_map.get(b_cid)
+                        if tgt_c:
+                            b_copy = dict(blk)
+                            b_copy['classroom_id'] = tgt_c.id
+                            remapped_blocked.append(b_copy)
+                        else:
+                            remapped_blocked.append(blk)
+                    request.session[tgt_session_key] = remapped_blocked
+                    request.session.modified = True
+
+            # 6. Create snapshot version for target year
+            latest_v = TimetableVersion.objects.filter(academic_year=target_year).order_by('-version_number').first()
+            next_v = (latest_v.version_number + 1) if latest_v else 1
+            ver_title = f"ចម្លងពីឆ្នាំ {src_year.name}"
+            if selected_version:
+                ver_title += f" ({selected_version.title})"
+
+            v_matrix = []
+            for entry in new_matrix_entries:
+                v_matrix.append({
+                    'classroom_id': entry.classroom_id,
+                    'classroom_name': entry.classroom.name,
+                    'classroom_code': entry.classroom.code,
+                    'subject_id': entry.subject_id,
+                    'subject_name': entry.subject.name_kh if entry.subject else '',
+                    'teacher_id': entry.teacher_id,
+                    'teacher_name': entry.teacher.khmer_name if entry.teacher else '',
+                    'day_of_week': entry.day_of_week,
+                    'period_number': entry.period_number,
+                    'room': entry.room or '',
+                })
+
+            TimetableVersion.objects.filter(academic_year=target_year).update(is_active_applied=False)
+            TimetableVersion.objects.create(
+                academic_year=target_year,
+                version_number=next_v,
+                title=ver_title,
+                note=f"បានចម្លង និងស្ដារដោយជោគជ័យពីឆ្នាំសិក្សា {src_year.name} មកប្រើសម្រាប់ឆ្នាំ {target_year.name}",
+                matrix_data=v_matrix,
+                blocked_slots=(request.session.get(f"blocked_slots_{target_year.id}", []) if hasattr(request, 'session') else []),
+                class_subject_assignments={},
+                total_slots=restored_slots_count,
+                total_classrooms=len(src_to_target_class_map),
+                is_active_applied=True,
+                created_by=request.user if request.user.is_authenticated else None,
+            )
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f"🎉 បានចម្លងទិន្នន័យពីឆ្នាំ {src_year.name} មកកាន់ឆ្នាំ {target_year.name} ដោយជោគជ័យ!\n"
+                       f"• ថ្នាក់រៀន៖ {len(src_to_target_class_map)} ថ្នាក់ (បង្កើតថ្មី {created_classes_count} ថ្នាក់)\n"
+                       f"• ម៉ោងបង្រៀនកាលវិភាគ៖ {restored_slots_count} ម៉ោង\n"
+                       f"• ការចាត់តាំងគ្រូតាមមុខវិជ្ជា៖ {restored_cs_count} មុខវិជ្ជា\n"
+                       f"• លេខកូដគ្រូបង្រៀន៖ {restored_codes_count} កូដ",
+            'created_classrooms_count': created_classes_count,
+            'classrooms_created': created_classes_count,
+            'classrooms_total': len(src_to_target_class_map),
+            'restored_slots_count': restored_slots_count,
+            'timetable_slots_copied': restored_slots_count,
+            'restored_cs_count': restored_cs_count,
+            'class_subjects_copied': restored_cs_count,
+            'restored_codes_count': restored_codes_count,
+            'teacher_codes_copied': restored_codes_count,
+            'version_number': next_v,
+            'target_year_name': target_year.name,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+# ----------------- TIMETABLE FULL BACKUP EXPORT & IMPORT (JSON) -----------------
+
+@login_required
+def timetable_export_backup_file(request):
+    """
+    Exports a 100% comprehensive, self-contained JSON backup file from the database.
+    Contains:
+      - Academic year metadata
+      - Full classrooms list with names, codes, grade levels, rooms
+      - Full subjects list with codes and names
+      - Full teachers list with IDs, names, and permanent subject codes
+      - Full teacher duty codes map (from SavedDefaultConfig)
+      - Full ClassSubject assignments with weekly hours and teacher codes
+      - Full Timetable slots with days, periods, classrooms, subjects, teachers, rooms
+      - Session blocked slots
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    year_param = request.GET.get('year') or request.GET.get('academic_year_id')
+    if year_param and str(year_param).isdigit():
+        found = AcademicYear.objects.filter(id=int(year_param)).first()
+        if found:
+            active_year = found
+
+    if not active_year:
+        active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    now = datetime.datetime.now()
+    year_str = active_year.name.replace('/', '-').replace(' ', '_') if active_year else 'General'
+
+    # 1. Classrooms
+    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code')) if active_year else []
+    classrooms_data = []
+    for c in classrooms:
+        classrooms_data.append({
+            'id': c.id,
+            'name': c.name,
+            'code': c.code,
+            'clean_code': c.clean_code,
+            'grade_level': c.grade_level,
+            'track': c.track,
+            'room_number': c.room_number or '',
+            'capacity': c.capacity or 40,
+        })
+
+    # 2. Subjects
+    subjects = list(Subject.objects.all().order_by('order', 'id'))
+    subjects_data = []
+    for s in subjects:
+        subjects_data.append({
+            'id': s.id,
+            'code': s.code,
+            'name_kh': s.name_kh,
+            'name_en': s.name_en,
+            'color_code': s.color_code,
+            'category': s.category,
+        })
+
+    # 3. Teachers & Duty Codes
+    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    teachers_data = []
+    for t in teachers:
+        teachers_data.append({
+            'id': t.id,
+            'teacher_id': t.teacher_id,
+            'khmer_name': t.khmer_name,
+            'latin_name': t.latin_name or '',
+            'subject_code': t.subject_code or '',
+            'specialization': t.specialization or '',
+        })
+
+    cfg = SavedDefaultConfig.objects.filter(key='teacher_subject_duty_codes').first()
+    duty_codes = cfg.data if (cfg and isinstance(cfg.data, dict)) else {}
+
+    # 4. ClassSubject assignments
+    cs_qs = ClassSubject.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else []
+    class_subject_assignments = []
+    for cs in cs_qs:
+        class_subject_assignments.append({
+            'classroom_id': cs.classroom_id,
+            'classroom_name': cs.classroom.name if cs.classroom else '',
+            'classroom_code': cs.classroom.clean_code if cs.classroom else '',
+            'grade_level': cs.classroom.grade_level if cs.classroom else None,
+            'subject_id': cs.subject_id,
+            'subject_code': cs.subject.code if cs.subject else '',
+            'subject_name': cs.subject.name_kh if cs.subject else '',
+            'teacher_id': cs.teacher_id,
+            'teacher_str_id': cs.teacher.teacher_id if cs.teacher else '',
+            'teacher_name': cs.teacher.khmer_name if cs.teacher else '',
+            'teacher_code': cs.teacher_code or duty_codes.get(f"{cs.subject_id}_{cs.teacher_id}") or (cs.teacher.subject_code if cs.teacher else '') or '',
+            'weekly_hours': cs.weekly_hours,
+        })
+
+    # 5. Timetable slots
+    tt_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else []
+    timetable_slots = []
+    for tt in tt_qs:
+        sub_code = tt.subject.code if tt.subject else ''
+        t_code = duty_codes.get(f"{tt.subject_id}_{tt.teacher_id}") or (tt.teacher.subject_code if tt.teacher else '') or sub_code
+        timetable_slots.append({
+            'classroom_id': tt.classroom_id,
+            'classroom_name': tt.classroom.name if tt.classroom else '',
+            'classroom_code': tt.classroom.clean_code if tt.classroom else '',
+            'grade_level': tt.classroom.grade_level if tt.classroom else None,
+            'subject_id': tt.subject_id,
+            'subject_code': sub_code,
+            'subject_name': tt.subject.name_kh if tt.subject else '',
+            'teacher_id': tt.teacher_id,
+            'teacher_str_id': tt.teacher.teacher_id if tt.teacher else '',
+            'teacher_name': tt.teacher.khmer_name if tt.teacher else '',
+            'teacher_code': t_code,
+            'day_of_week': tt.day_of_week,
+            'period_number': tt.period_number,
+            'start_time': tt.start_time.strftime('%H:%M') if tt.start_time else None,
+            'end_time': tt.end_time.strftime('%H:%M') if tt.end_time else None,
+            'room': tt.room or (tt.classroom.room_number if tt.classroom else ''),
+        })
+
+    blocked_slots = request.session.get(f"blocked_slots_{active_year.id if active_year else 'all'}", []) if hasattr(request, 'session') else []
+
+    backup_payload = {
+        'app': 'SchoolSM',
+        'type': 'timetable_full_backup',
+        'version': '3.5',
+        'schema_version': '3.5',
+        'export_date': now.isoformat(),
+        'export_formatted': now.strftime('%d/%m/%Y %H:%M'),
+        'academic_year': {
+            'id': active_year.id if active_year else None,
+            'name': active_year.name if active_year else '',
+            'is_current': active_year.is_current if active_year else False,
+        },
+        'counts': {
+            'total_classrooms': len(classrooms_data),
+            'total_timetable_slots': len(timetable_slots),
+            'total_class_subject_assignments': len(class_subject_assignments),
+            'total_teachers': len(teachers_data),
+            'total_duty_codes': len(duty_codes),
+        },
+        'classrooms': classrooms_data,
+        'subjects': subjects_data,
+        'teachers': teachers_data,
+        'teacher_duty_codes': duty_codes,
+        'class_subject_assignments': class_subject_assignments,
+        'timetable_slots': timetable_slots,
+        'blocked_slots': blocked_slots,
+    }
+
+    filename = f"SchoolSM_Timetable_Backup_{year_str}_{now.strftime('%Y%m%d_%H%M')}.json"
+    response = HttpResponse(json.dumps(backup_payload, indent=2, ensure_ascii=False), content_type='application/json; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def timetable_import_backup_file(request):
+    """
+    Imports and restores a JSON backup file into the active academic year.
+    Supports both client-side JSON uploads and file uploads.
+    Handles cross-year importing with classroom auto-creation and teacher code preservation.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    year_param = request.GET.get('academic_year_id') or request.GET.get('year')
+    if year_param and str(year_param).isdigit():
+        found = AcademicYear.objects.filter(id=int(year_param)).first()
+        if found:
+            active_year = found
+
+    try:
+        parsed_data = None
+        auto_create_classrooms = True
+        sync_teachers = True
+
+        if request.FILES.get('backup_file'):
+            file_content = request.FILES['backup_file'].read().decode('utf-8')
+            parsed_data = json.loads(file_content)
+        elif request.body:
+            body_dict = json.loads(request.body.decode('utf-8'))
+            if 'target_year_id' in body_dict and str(body_dict['target_year_id']).isdigit():
+                found = AcademicYear.objects.filter(id=int(body_dict['target_year_id'])).first()
+                if found:
+                    active_year = found
+            if 'backup_data' in body_dict:
+                parsed_data = body_dict['backup_data']
+                auto_create_classrooms = body_dict.get('auto_create_classrooms', True)
+                sync_teachers = body_dict.get('sync_teachers', True)
+            else:
+                parsed_data = body_dict
+
+        if not active_year:
+            return JsonResponse({'status': 'error', 'message': 'មិនមានឆ្នាំសិក្សាគោលដៅឡើយ'}, status=400)
+
+        if not parsed_data or not isinstance(parsed_data, dict):
+            return JsonResponse({'status': 'error', 'message': 'ទម្រង់ឯកសារ Backup មិនត្រឹមត្រូវឡើយ'}, status=400)
+
+        with transaction.atomic():
+            target_classrooms = list(Classroom.objects.filter(academic_year=active_year))
+            target_by_code = {}
+            for c in target_classrooms:
+                if c.code:
+                    target_by_code[c.clean_code.lower()] = c
+                    target_by_code[c.code.strip().lower()] = c
+                if c.name:
+                    target_by_code[c.name.strip().lower()] = c
+
+            subjects_by_id = {s.id: s for s in Subject.objects.all()}
+            subjects_by_code = {s.code.lower(): s for s in subjects_by_id.values() if s.code}
+            teachers_by_id = {t.id: t for t in Teacher.objects.all()}
+            teachers_by_str_id = {t.teacher_id: t for t in teachers_by_id.values() if t.teacher_id}
+            teachers_by_name = {t.khmer_name.strip(): t for t in teachers_by_id.values() if t.khmer_name}
+
+            # 2. Restore Teacher Duty Codes from backup
+            restored_codes_count = 0
+            if 'teacher_duty_codes' in parsed_data and isinstance(parsed_data['teacher_duty_codes'], dict):
+                duty_codes = parsed_data['teacher_duty_codes']
+                cfg, _ = SavedDefaultConfig.objects.get_or_create(key='teacher_subject_duty_codes', defaults={'data': {}})
+                cfg.data = {**(cfg.data or {}), **duty_codes}
+                cfg.save()
+                restored_codes_count = len(duty_codes)
+
+            if 'teachers' in parsed_data and isinstance(parsed_data['teachers'], list):
+                for t_item in parsed_data['teachers']:
+                    s_code = t_item.get('subject_code')
+                    if s_code:
+                        t_obj = teachers_by_str_id.get(t_item.get('teacher_id')) or teachers_by_name.get(t_item.get('khmer_name'))
+                        if t_obj and not t_obj.subject_code:
+                            t_obj.subject_code = s_code
+                            t_obj.save(update_fields=['subject_code'])
+
+            # 3. Match or auto-create classrooms from backup
+            created_classes_count = 0
+            classroom_id_map = {}
+
+            backup_classrooms = parsed_data.get('classrooms', [])
+            for c_info in backup_classrooms:
+                old_id = c_info.get('id')
+                c_name = str(c_info.get('name') or '').strip()
+                c_code = str(c_info.get('code') or c_info.get('clean_code') or '').strip()
+                clean_c_code = c_code.lower()
+                for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់']:
+                    if clean_c_code.startswith(pfx):
+                        clean_c_code = clean_c_code[len(pfx):].strip()
+
+                tgt = target_by_code.get(clean_c_code) or target_by_code.get(c_code.lower()) or target_by_code.get(c_name.lower())
+                
+                if not tgt and auto_create_classrooms and (c_code or c_name):
+                    tgt = Classroom.objects.create(
+                        name=c_name or f"ថ្នាក់ទី {c_code}",
+                        code=c_code or c_name,
+                        grade_level=c_info.get('grade_level') or 7,
+                        track=c_info.get('track') or 'GENERAL',
+                        academic_year=active_year,
+                        room_number=c_info.get('room_number') or '',
+                        capacity=c_info.get('capacity') or 40,
+                    )
+                    created_classes_count += 1
+                    target_classrooms.append(tgt)
+                    if tgt.code:
+                        target_by_code[tgt.clean_code.lower()] = tgt
+                        target_by_code[tgt.code.strip().lower()] = tgt
+                    if tgt.name:
+                        target_by_code[tgt.name.strip().lower()] = tgt
+
+                if tgt and old_id:
+                    classroom_id_map[old_id] = tgt
+
+            # 4. Restore ClassSubject assignments
+            restored_cs_count = 0
+            cs_list = parsed_data.get('class_subject_assignments') or parsed_data.get('class_options') or []
+            if isinstance(cs_list, dict):
+                flattened = []
+                for cid_str, items in cs_list.items():
+                    if isinstance(items, list):
+                        for itm in items:
+                            flattened.append(itm)
+                cs_list = flattened
+
+            if sync_teachers and isinstance(cs_list, list):
+                for itm in cs_list:
+                    tgt_cls = classroom_id_map.get(itm.get('classroom_id'))
+                    if not tgt_cls and itm.get('classroom_code'):
+                        tgt_cls = target_by_code.get(str(itm.get('classroom_code')).strip().lower())
+                    if not tgt_cls and itm.get('classroom_name'):
+                        tgt_cls = target_by_code.get(str(itm.get('classroom_name')).strip().lower())
+
+                    sub_obj = subjects_by_id.get(itm.get('subject_id')) or subjects_by_code.get(str(itm.get('subject_code') or '').strip().lower())
+                    tch_obj = teachers_by_id.get(itm.get('teacher_id')) or teachers_by_str_id.get(str(itm.get('teacher_str_id') or '').strip()) or teachers_by_name.get(str(itm.get('teacher_name') or '').strip())
+
+                    if tgt_cls and sub_obj and tch_obj:
+                        ClassSubject.objects.update_or_create(
+                            classroom=tgt_cls,
+                            subject=sub_obj,
+                            defaults={
+                                'teacher': tch_obj,
+                                'weekly_hours': itm.get('weekly_hours') or 2,
+                                'teacher_code': itm.get('teacher_code') or '',
+                            }
+                        )
+                        restored_cs_count += 1
+
+            # 5. Restore Timetable matrix slots
+            restored_slots_count = 0
+            Timetable.objects.filter(classroom__academic_year=active_year).delete()
+
+            slots_to_create = []
+            raw_slots = parsed_data.get('timetable_slots') or parsed_data.get('matrix') or []
+            if not raw_slots and 'matrix_state' in parsed_data and isinstance(parsed_data['matrix_state'], dict):
+                for k, slot in parsed_data['matrix_state'].items():
+                    if slot and slot.get('subject_id'):
+                        parts = k.split('_')
+                        if len(parts) >= 3:
+                            raw_slots.append({
+                                'classroom_id': int(parts[0]),
+                                'day_of_week': int(parts[1]),
+                                'period_number': int(parts[2]),
+                                'subject_id': slot.get('subject_id'),
+                                'teacher_id': slot.get('teacher_id'),
+                                'room': slot.get('room') or '',
+                            })
+
+            for itm in raw_slots:
+                tgt_cls = classroom_id_map.get(itm.get('classroom_id'))
+                if not tgt_cls and itm.get('classroom_code'):
+                    tgt_cls = target_by_code.get(str(itm.get('classroom_code')).strip().lower())
+                if not tgt_cls and itm.get('classroom_name'):
+                    tgt_cls = target_by_code.get(str(itm.get('classroom_name')).strip().lower())
+
+                sub_obj = subjects_by_id.get(itm.get('subject_id')) or subjects_by_code.get(str(itm.get('subject_code') or '').strip().lower())
+                tch_obj = teachers_by_id.get(itm.get('teacher_id')) or teachers_by_str_id.get(str(itm.get('teacher_str_id') or '').strip()) or teachers_by_name.get(str(itm.get('teacher_name') or '').strip())
+
+                day_num = int(itm.get('day_of_week') or 1)
+                p_num = int(itm.get('period_number') or 1)
+
+                if tgt_cls and sub_obj and tch_obj:
+                    st_time, et_time = STANDARD_PERIOD_TIMES.get(
+                        p_num, 
+                        (datetime.time(7, 0), datetime.time(7, 50))
+                    )
+                    slots_to_create.append(Timetable(
+                        classroom=tgt_cls,
+                        subject=sub_obj,
+                        teacher=tch_obj,
+                        day_of_week=day_num,
+                        period_number=p_num,
+                        start_time=st_time,
+                        end_time=et_time,
+                        room=itm.get('room') or tgt_cls.room_number or '',
+                    ))
+
+            if slots_to_create:
+                Timetable.objects.bulk_create(slots_to_create)
+                restored_slots_count = len(slots_to_create)
+
+            # 6. Save a snapshot in TimetableVersion for active_year
+            latest_v = TimetableVersion.objects.filter(academic_year=active_year).order_by('-version_number').first()
+            next_v = (latest_v.version_number + 1) if latest_v else 1
+            src_name = parsed_data.get('academic_year', {}).get('name') or 'File Backup'
+            
+            TimetableVersion.objects.filter(academic_year=active_year).update(is_active_applied=False)
+            TimetableVersion.objects.create(
+                academic_year=active_year,
+                version_number=next_v,
+                title=f"ស្ដារពី Backup ({src_name})",
+                note=f"បាននាំចូល និងស្ដារពីឯកសារ Backup ដោយជោគជ័យសម្រាប់ឆ្នាំ {active_year.name}",
+                matrix_data=[{
+                    'classroom_id': s.classroom_id,
+                    'classroom_name': s.classroom.name,
+                    'classroom_code': s.classroom.code,
+                    'subject_id': s.subject_id,
+                    'subject_name': s.subject.name_kh if s.subject else '',
+                    'teacher_id': s.teacher_id,
+                    'teacher_name': s.teacher.khmer_name if s.teacher else '',
+                    'day_of_week': s.day_of_week,
+                    'period_number': s.period_number,
+                    'room': s.room or '',
+                } for s in slots_to_create],
+                blocked_slots=parsed_data.get('blocked_slots') or [],
+                class_subject_assignments={},
+                total_slots=restored_slots_count,
+                total_classrooms=len(target_classrooms),
+                is_active_applied=True,
+                created_by=request.user if request.user.is_authenticated else None,
+            )
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f"🎉 បានបញ្ចូល និងស្ដារកាលវិភាគពី Backup ដោយជោគជ័យ!\n"
+                       f"• ថ្នាក់រៀន៖ {len(target_classrooms)} ថ្នាក់ (បង្កើតថ្មី {created_classes_count} ថ្នាក់)\n"
+                       f"• ម៉ោងបង្រៀនកាលវិភាគ៖ {restored_slots_count} ម៉ោង\n"
+                       f"• ការចាត់តាំងគ្រូតាមមុខវិជ្ជា៖ {restored_cs_count} មុខវិជ្ជា\n"
+                       f"• លេខកូដគ្រូបង្រៀន៖ {restored_codes_count} កូដ",
+            'created_classrooms_count': created_classes_count,
+            'restored_slots_count': restored_slots_count,
+            'restored_cs_count': restored_cs_count,
+            'restored_codes_count': restored_codes_count,
+            'academic_year_name': active_year.name,
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
 
 
 

@@ -112,6 +112,12 @@ urlpatterns = [
     path('timetable/versions/<int:version_id>/export/', views.timetable_version_export, name='timetable_version_export'),
     path('timetable/versions/<int:version_id>/update/', views.timetable_version_update, name='timetable_version_update'),
 
+    # Timetable Cross-Year Preservation & Backup/Restore (ចម្លងពីឆ្នាំមុន & នាំចេញ/នាំចូល Backup)
+    path('timetable/copy-from-year/preview/', views.timetable_copy_from_year_preview, name='timetable_copy_from_year_preview'),
+    path('timetable/copy-from-year/', views.timetable_copy_from_year, name='timetable_copy_from_year'),
+    path('timetable/backup/export/', views.timetable_export_backup_file, name='timetable_export_backup_file'),
+    path('timetable/backup/import/', views.timetable_import_backup_file, name='timetable_import_backup_file'),
+
 
     # Subject Requirements & Weekly Hours
     path('subject-requirements/', views.subject_requirements_manager, name='subject_requirements_manager'),

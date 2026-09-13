@@ -595,6 +595,11 @@
                 <i class="fa-solid fa-clock-rotate-left"></i> កំណែកាលវិភាគ <span class="badge bg-white text-dark rounded-pill px-1.5" id="headerVersionCountBadge">{{ timetable_versions|length }}</span>
             </button>
 
+            <!-- ចម្លងពីឆ្នាំមុន (Copy from Previous Academic Year) -->
+            <button type="button" class="btn-action-custom" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff;" onclick="openCopyFromPreviousYearModal()" title="ចម្លងកាលវិភាគរួម ការចាត់តាំងគ្រូ និងកូដគ្រូ ពីឆ្នាំមុនមកប្រើក្នុងឆ្នាំនេះដូចដើម">
+                <i class="fa-solid fa-copy me-1"></i> ចម្លងពីឆ្នាំមុន
+            </button>
+
             <!-- នាំចេញ Excel -->
             <a href="{% url 'timetable_export_excel' %}" class="btn-action-custom btn-excel">
                 <i class="fa-solid fa-file-excel"></i> នាំចេញ Excel
@@ -1283,7 +1288,18 @@
                             លោកអ្នកអាចចុច <strong>"ទាញយកមកប្រើ (Restore)"</strong> លើកំណែណាមួយ ដើម្បីដាក់ឱ្យដំណើរការលើកាលវិភាគរួមភ្លាមៗ។
                         </p>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="input-group input-group-sm" style="width: auto;">
+                            <span class="input-group-text bg-white fw-bold text-muted border-primary"><i class="fa-solid fa-filter me-1"></i>ឆ្នាំ៖</span>
+                            <select id="versionsModalYearSelect" class="form-select form-select-sm fw-bold border-primary" onchange="onVersionsModalYearChange(this.value)">
+                                <option value="{{ active_year.id }}" selected>{{ active_year.name }} (ឆ្នាំបច្ចុប្បន្ន)</option>
+                                {% for y in academic_years %}
+                                    {% if y.id != active_year.id %}
+                                        <option value="{{ y.id }}">{{ y.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
                         <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openSaveVersionModal()" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border: none;">
                             <i class="fa-solid fa-plus me-1"></i> រក្សាទុកលើកថ្មី
                         </button>
@@ -1300,6 +1316,147 @@
             </div>
             <div class="modal-footer bg-light py-2">
                 <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Copy Timetable from Previous Year (ចម្លងកាលវិភាគពីឆ្នាំមុន / ឆ្នាំផ្សេង) -->
+<div class="modal fade" id="copyFromPreviousYearModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white py-3" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left fs-5 text-warning"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">ចម្លងកាលវិភាគពីឆ្នាំមុន / ឆ្នាំសិក្សាផ្សេង</h5>
+                        <div class="small opacity-75">ទាញយកកាលវិភាគរួម ការចាត់តាំងគ្រូបង្រៀន និងលេខកូដគ្រូ មកប្រើក្នុងឆ្នាំ {{ active_year.name }}</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formCopyFromYear" onsubmit="event.preventDefault(); executeCopyFromYear();">
+                    <!-- Source Academic Year -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">
+                            <i class="fa-solid fa-calendar-day text-primary me-1"></i> ជ្រើសរើសឆ្នាំសិក្សាប្រភព (Source Academic Year) <span class="text-danger">*</span>
+                        </label>
+                        <select id="copySourceYearSelect" class="form-select fw-bold py-2" required onchange="onCopySourceYearChange()">
+                            <option value="">-- សូមជ្រើសរើសឆ្នាំសិក្សា --</option>
+                            {% for y in academic_years %}
+                                {% if y.id != active_year.id %}
+                                    <option value="{{ y.id }}">{{ y.name }}{% if y.is_current %} (ឆ្នាំបច្ចុប្បន្ន){% endif %}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Source Timetable Version (Optional) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">
+                            <i class="fa-solid fa-bookmark text-purple me-1" style="color: #7c3aed;"></i> កំណែកាលវិភាគដែលត្រូវចម្លង (Version / Revision)
+                        </label>
+                        <select id="copySourceVersionSelect" class="form-select fw-semibold" onchange="onCopySourceVersionChange()">
+                            <option value="">⚡ កាលវិភាគបច្ចុប្បន្ន (Live Active Timetable នៃឆ្នាំនោះ)</option>
+                        </select>
+                    </div>
+
+                    <!-- Data Preview Card -->
+                    <div id="copyDataPreviewContainer" class="bg-light p-3 rounded-3 border mb-3 d-none">
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                            <span class="fw-bold small text-dark"><i class="fa-solid fa-chart-pie text-info me-1"></i> ទិន្នន័យដែលបានរកឃើញក្នុងឆ្នាំនោះ៖</span>
+                            <span class="badge bg-success" id="copyPreviewStatusBadge">ទិន្នន័យគ្រប់គ្រាន់</span>
+                        </div>
+                        <div class="row g-2 text-center">
+                            <div class="col-6 col-md-3">
+                                <div class="bg-white p-2.5 rounded border shadow-2xs">
+                                    <div class="text-muted small">ថ្នាក់រៀនសរុប</div>
+                                    <div class="fs-5 fw-bold text-primary" id="copyPreviewClassCount">0</div>
+                                    <div class="badge bg-light text-muted border px-1.5 py-0.5 mt-1" style="font-size: 0.7rem;" id="copyPreviewClassDetail">0 មានស្រាប់</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="bg-white p-2.5 rounded border shadow-2xs">
+                                    <div class="text-muted small">ម៉ោងបង្រៀន</div>
+                                    <div class="fs-5 fw-bold text-success" id="copyPreviewSlotCount">0</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">ម៉ោងសិក្សា</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="bg-white p-2.5 rounded border shadow-2xs">
+                                    <div class="text-muted small">ការចាត់តាំងគ្រូ</div>
+                                    <div class="fs-5 fw-bold text-info" id="copyPreviewCsCount">0</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">មុខវិជ្ជាតាមថ្នាក់</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="bg-white p-2.5 rounded border shadow-2xs">
+                                    <div class="text-muted small">កូដគ្រូបង្រៀន</div>
+                                    <div class="fs-5 fw-bold text-warning" id="copyPreviewCodesCount">0</div>
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">(M1, M2, K1...)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="copyMissingClassesAlert" class="alert alert-warning py-2 px-3 mt-2 mb-0 small d-none">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            រកឃើញមាន <strong id="copyMissingClassesCount">0</strong> ថ្នាក់ មិនទាន់មានបង្កើតក្នុងឆ្នាំ {{ active_year.name }} នៅឡើយ។ ប្រព័ន្ធនឹងបង្កើតថ្នាក់រៀនទាំងនេះដោយស្វ័យប្រវត្តិ!
+                        </div>
+                    </div>
+
+                    <!-- Options Checkboxes -->
+                    <div class="border rounded-3 p-3 mb-3 bg-white">
+                        <div class="fw-bold small text-dark mb-2 pb-1 border-bottom">
+                            <i class="fa-solid fa-sliders text-secondary me-1"></i> ជ្រើសរើសទិន្នន័យដែលត្រូវចម្លង (Copy Options):
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkCopyTimetable" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="chkCopyTimetable">
+                                <i class="fa-solid fa-calendar-days text-primary me-1"></i> ស្ដារកាលវិភាគរួម (Master Timetable Matrix)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-left: 0.2rem;">ចម្លងម៉ោងបង្រៀនទាំងអស់តាមថ្ងៃ ម៉ោង បន្ទប់ និងគ្រូ</div>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkCopyClassSubjects" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="chkCopyClassSubjects">
+                                <i class="fa-solid fa-user-check text-info me-1"></i> ស្ដារការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់ និងមុខវិជ្ជា (Class-Subject Assignments)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-left: 0.2rem;">ចម្លងការបែងចែកគ្រូបង្រៀនតាមថ្នាក់ និងម៉ោងកំណត់ក្នុងសប្តាហ៍</div>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkCopyTeacherCodes" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="chkCopyTeacherCodes">
+                                <i class="fa-solid fa-id-badge text-warning me-1"></i> ស្ដារលេខកូដគ្រូបង្រៀន (Teacher Duty Codes)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-left: 0.2rem;">រក្សាទុកកូដគ្រូតាមមុខវិជ្ជា (K1, M1, AG1...) ចូលក្នុង Database ស្វ័យប្រវត្តិ</div>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkAutoCreateClassrooms" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="chkAutoCreateClassrooms">
+                                <i class="fa-solid fa-school text-success me-1"></i> បង្កើតថ្នាក់រៀនដោយស្វ័យប្រវត្តិ ប្រសិនបើមិនទាន់មានក្នុងឆ្នាំនេះ (Auto-Create Classrooms)
+                            </label>
+                            <div class="text-muted" style="font-size: 0.75rem; margin-left: 0.2rem;">បង្កើតថ្នាក់រៀន (7A, 7B...) ក្នុងឆ្នាំ {{ active_year.name }} ឱ្យដូចឆ្នាំមុនភ្លាមៗ</div>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="chkCopyBlockedSlots" checked>
+                            <label class="form-check-label fw-bold text-dark small" for="chkCopyBlockedSlots">
+                                <i class="fa-solid fa-ban text-danger me-1"></i> ចម្លងការកំណត់បិទពេលសិក្សា (Copy Session Blocking)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        <strong>ចំណាំ៖</strong> ទិន្នន័យដែលបានចម្លងនឹងត្រូវបញ្ចូលទៅក្នុងឆ្នាំសិក្សា <strong>{{ active_year.name }}</strong> ហើយត្រូវបានរក្សាទុកជាកំណែកាលវិភាគថ្មី (Version Snapshot) មួយដោយស្វ័យប្រវត្តិ។
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" id="btnSubmitCopyFromYear" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none;">
+                            <i class="fa-solid fa-copy me-1"></i> ចាប់ផ្តើមចម្លងទិន្នន័យ
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -2246,67 +2403,34 @@
     }
 
 
-    // Full Comprehensive Backup & Export Timetable to JSON File
+    // Full Comprehensive Database-Backed Backup & Export Timetable to JSON File
     function exportTimetableBackup() {
         try {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hour = String(now.getHours()).padStart(2, '0');
-            const minute = String(now.getMinutes()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}_${hour}${minute}`;
+            const exportUrl = `/academics/timetable/backup/export/?year=${ACTIVE_YEAR_ID}`;
             
-            const totalSlots = Object.values(MATRIX_STATE).filter(s => s && s.subject_id).length;
-
-            const backupData = {
-                app: 'SchoolSM',
-                type: 'timetable_full_backup',
-                version: '3.0',
-                export_date: now.toISOString(),
-                export_formatted: `${day}/${month}/${year} ${hour}:${minute}`,
-                academic_year: {
-                    id: ACTIVE_YEAR_ID,
-                    name: '{{ active_year.name|escapejs }}'
-                },
-                total_slots: totalSlots,
-                total_classrooms: Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.length : 0,
-                custom_palette: (typeof loadCustomPalette === 'function') ? loadCustomPalette() : null,
-                classrooms: CLASSROOMS_LIST,
-                subjects: SUBJECTS_LIST,
-                class_subject_assignments: CLASS_OPTIONS,
-                class_requirements: CLASS_REQUIREMENTS,
-                teacher_assigned_hours: TEACHER_ASSIGNED_HOURS,
-                teacher_max_hours: TEACHER_MAX_HOURS,
-                matrix_state: MATRIX_STATE,
-            };
-
-            const jsonStr = JSON.stringify(backupData, null, 2);
-            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            showAutoSaveBadge('✅ កំពុងនាំចេញ File Backup កាលវិភាគ...');
             
+            // Trigger download directly from database
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `SchoolSM_Timetable_Backup_${formattedDate}.json`;
+            a.href = exportUrl;
+            a.download = '';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
 
-            showAutoSaveBadge('✅ បាននាំចេញ File Backup កាលវិភាគជោគជ័យ');
-            
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'success',
                     title: 'នាំចេញ Backup ពេញលេញជោគជ័យ!',
                     html: `
                         <div class="text-start small">
-                            <p class="mb-2">ឯកសារ Backup <strong>"${a.download}"</strong> ត្រូវបានទាញយករួចរាល់។</p>
+                            <p class="mb-2">ឯកសារ Backup ពេញលេញសម្រាប់ឆ្នាំសិក្សា <strong>{{ active_year.name|escapejs }}</strong> ត្រូវបានទាញយក។</p>
                             <ul class="list-unstyled mb-0 bg-light p-2.5 rounded border">
-                                <li class="mb-1"><i class="fa-solid fa-calendar-check text-primary me-1.5"></i> ម៉ោងបង្រៀនក្នុងកាលវិភាគ៖ <strong>${totalSlots}</strong> ម៉ោង</li>
-                                <li class="mb-1"><i class="fa-solid fa-school text-info me-1.5"></i> ថ្នាក់រៀនសរុប៖ <strong>${Array.isArray(CLASSROOMS_LIST) ? CLASSROOMS_LIST.length : 0}</strong> ថ្នាក់</li>
-                                <li class="mb-1"><i class="fa-solid fa-user-tie text-success me-1.5"></i> ការចាត់តាំងគ្រូតាមថ្នាក់ និងមុខវិជ្ជា៖ <strong>វេចខ្ចប់ពេញលេញ (Full ClassSubject)</strong></li>
-                                <li><i class="fa-solid fa-palette text-warning me-1.5"></i> ការកំណត់កូដពណ៌ & ម៉ោងកំណត់៖ <strong>វេចខ្ចប់ពេញលេញ</strong></li>
+                                <li class="mb-1"><i class="fa-solid fa-calendar-check text-primary me-1.5"></i> កាលវិភាគរួម (Master Timetable Matrix)</li>
+                                <li class="mb-1"><i class="fa-solid fa-school text-info me-1.5"></i> ថ្នាក់រៀនទាំងអស់ (Classrooms & Rooms)</li>
+                                <li class="mb-1"><i class="fa-solid fa-user-check text-success me-1.5"></i> ការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់ និងមុខវិជ្ជា (Class-Subject Assignments)</li>
+                                <li class="mb-1"><i class="fa-solid fa-id-badge text-warning me-1.5"></i> លេខកូដគ្រូបង្រៀន (Teacher Duty Codes: M1, K1...)</li>
+                                <li><i class="fa-solid fa-ban text-danger me-1.5"></i> ការកំណត់បិទពេលសិក្សា (Session Blocking)</li>
                             </ul>
                         </div>
                     `,
@@ -2314,7 +2438,7 @@
                     confirmButtonText: 'យល់ព្រម'
                 });
             } else {
-                alert(`✅ បាននាំចេញ File Backup "${a.download}" (${totalSlots} ម៉ោងសិក្សា) ដោយជោគជ័យ!`);
+                alert('✅ បាននាំចេញ File Backup កាលវិភាគពេញលេញដោយជោគជ័យ!');
             }
         } catch (err) {
             console.error('Export Backup Error:', err);
@@ -2322,229 +2446,335 @@
         }
     }
 
-    // Import & Restore Timetable from JSON Backup File
-    function importTimetableBackup(event) {
+    // Import & Restore Timetable from JSON Backup File (Supports Cross-Year, Class Auto-Creation, Teacher Codes)
+    async function importTimetableBackup(event) {
         const file = event.target.files && event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
+        try {
+            const fileText = await file.text();
+            let parsed = null;
             try {
-                const content = e.target.result;
-                const parsed = JSON.parse(content);
+                parsed = JSON.parse(fileText);
+            } catch (jsonErr) {
+                throw new Error('ឯកសារដែលបានជ្រើសរើសមិនមែនជាទម្រង់ JSON ត្រឹមត្រូវឡើយ!');
+            }
 
-                let newMatrixState = null;
-                let customPalette = null;
-                let backupClassSubjects = null;
+            // Detect schema info
+            let slotCount = 0;
+            if (parsed.total_slots) {
+                slotCount = parsed.total_slots;
+            } else if (Array.isArray(parsed.timetable_slots)) {
+                slotCount = parsed.timetable_slots.length;
+            } else if (parsed.matrix_state && typeof parsed.matrix_state === 'object') {
+                slotCount = Object.values(parsed.matrix_state).filter(s => s && s.subject_id).length;
+            } else if (typeof parsed === 'object') {
+                slotCount = Object.values(parsed).filter(s => s && s.subject_id).length;
+            }
 
-                if (parsed && typeof parsed === 'object') {
-                    if (parsed.matrix_state && typeof parsed.matrix_state === 'object') {
-                        newMatrixState = parsed.matrix_state;
-                        customPalette = parsed.custom_palette;
-                        backupClassSubjects = parsed.class_subject_assignments;
-                    } else if (!parsed.app && !parsed.version) {
-                        // Support direct matrix_state JSON
-                        newMatrixState = parsed;
-                    }
-                }
+            let classCount = parsed.total_classrooms || (Array.isArray(parsed.classrooms) ? parsed.classrooms.length : 0);
+            let sourceYearName = (parsed.academic_year && parsed.academic_year.name) || 'ឯកសារ Backup';
 
-                if (!newMatrixState || typeof newMatrixState !== 'object') {
-                    throw new Error('ទម្រង់ទិន្នន័យក្នុងឯកសារមិនត្រឹមត្រូវ (Invalid backup format)');
-                }
-
-                const slotCount = Object.values(newMatrixState).filter(s => s && s.subject_id).length;
-
-                // 1. Analyze discrepancies between imported backup and current Academic Year teacher assignments
-                let discrepancies = [];
-                let unassignedSubjects = [];
-                let remappedMatrixState = JSON.parse(JSON.stringify(newMatrixState));
-                let remappedCount = 0;
-
-                for (const [key, slot] of Object.entries(remappedMatrixState)) {
-                    if (slot && slot.subject_id) {
-                        const parts = key.split('_');
-                        const classId = parseInt(parts[0]);
-                        const subId = parseInt(slot.subject_id);
-                        const oldTeacherId = slot.teacher_id;
-
-                        const classOpts = (typeof CLASS_OPTIONS !== 'undefined' && CLASS_OPTIONS[classId]) ? CLASS_OPTIONS[classId] : [];
-                        const activeOpt = classOpts.find(opt => opt.subject_id === subId);
-
-                        if (activeOpt) {
-                            if (activeOpt.teacher_id !== oldTeacherId) {
-                                discrepancies.push({
-                                    classId,
-                                    subjectName: activeOpt.subject_name,
-                                    oldTeacherId,
-                                    newTeacherId: activeOpt.teacher_id,
-                                    newTeacherName: activeOpt.teacher_name,
-                                    newSlotCode: activeOpt.slot_code
-                                });
-                                // Auto-align to newly assigned teacher
-                                slot.teacher_id = activeOpt.teacher_id;
-                                slot.teacher_name = activeOpt.teacher_name;
-                                slot.slot_code = activeOpt.slot_code;
-                                remappedCount++;
-                            }
-                        } else {
-                            unassignedSubjects.push({
-                                classId,
-                                subjectName: slot.subject_name || `មុខវិជ្ជា #${subId}`
-                            });
-                        }
-                    }
-                }
-
-                const executeImport = (targetState, isAutoRemapped = false, syncClassSubjects = false) => {
-                    pushHistoryState();
-                    MATRIX_STATE = targetState;
-
-                    if (customPalette && typeof applyCustomPalette === 'function') {
-                        applyCustomPalette(customPalette);
-                        try {
-                            localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(customPalette));
-                        } catch (err) {}
-                    }
-
-                    renderAllMatrixCells();
-                    updateAllHoursCounters();
-                    
-                    const toSync = (syncClassSubjects && backupClassSubjects) ? backupClassSubjects : null;
-                    saveMasterMatrix(false, toSync);
-
-                    let detailMsg = `បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន ${slotCount} ម៉ោង និងបានរក្សាទុកក្នុង Database រួចរាល់!`;
-                    if (isAutoRemapped && remappedCount > 0) {
-                        detailMsg += `\n✨ ប្រព័ន្ធបានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន ${remappedCount} ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីក្នុងឆ្នាំសិក្សានេះដោយស្វ័យប្រវត្តិ!`;
-                    }
-                    if (unassignedSubjects.length > 0 && !syncClassSubjects) {
-                        detailMsg += `\n⚠️ ចំណាំ៖ មាន ${unassignedSubjects.length} ម៉ោង ដែលមុខវិជ្ជានោះមិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មីនៅឡើយ (សូមពិនិត្យមើលផ្ទាំង «គ្រប់គ្រងគ្រូ & ចាត់តាំងថ្នាក់»)។`;
-                    }
-
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'បញ្ចូលទិន្នន័យជោគជ័យ!',
-                            html: `
-                                <div class="text-start small">
-                                    <p class="mb-2">✅ បានបញ្ចូលទិន្នន័យកាលវិភាគចំនួន <strong>${slotCount}</strong> ម៉ោងសិក្សា។</p>
-                                    ${syncClassSubjects ? `<div class="alert alert-primary py-2 px-3 mb-2"><i class="fa-solid fa-user-check me-1"></i> បានស្ដារឡើងវិញនូវការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់ (ClassSubject Assignments) រួចរាល់!</div>` : ''}
-                                    ${remappedCount > 0 && !syncClassSubjects ? `<div class="alert alert-success py-2 px-3 mb-2"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> បានកែតម្រូវ និងផ្ទេរម៉ោងចំនួន <strong>${remappedCount}</strong> ម៉ោង ទៅឱ្យគ្រូដែលបានចាត់តាំងថ្មីដោយស្វ័យប្រវត្តិ!</div>` : ''}
-                                    ${unassignedSubjects.length > 0 && !syncClassSubjects ? `<div class="alert alert-warning py-2 px-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> មាន <strong>${unassignedSubjects.length}</strong> ម៉ោង មិនទាន់មានគ្រូចាត់តាំងក្នុងឆ្នាំថ្មី។</div>` : ''}
-                                </div>
-                            `,
-                            confirmButtonColor: '#4f46e5',
-                            confirmButtonText: 'យល់ព្រម'
-                        }).then(() => {
-                            if (syncClassSubjects) {
-                                window.location.reload();
-                            }
-                        });
-                    } else {
-                        alert(`✅ ${detailMsg}`);
-                        if (syncClassSubjects) window.location.reload();
-                    }
-                };
-
-                if (backupClassSubjects && unassignedSubjects.length > 0 && typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'ស្ដារទាំងការចាត់តាំងគ្រូតាមថ្នាក់?',
-                        html: `
-                            <div class="text-start small">
-                                <p class="mb-2">ឯកសារ Backup នេះមានផ្ទុកទាំង <strong>កាលវិភាគរួម (${slotCount} ម៉ោង)</strong> និង <strong>ការចាត់តាំងគ្រូបង្រៀនតាមថ្នាក់</strong>។</p>
-                                <div class="alert alert-info py-2 px-3 mb-3">
-                                    <i class="fa-solid fa-circle-info me-1"></i> តើលោកអ្នកចង់ស្ដារទាំងការចាត់តាំងគ្រូតាមថ្នាក់ (ClassSubject) ចូលក្នុង Database ស្វ័យប្រវត្តិ ឬចង់ប្រើការចាត់តាំងគ្រូដែលមានស្រាប់ក្នុងឆ្នាំសិក្សានេះ?
-                                </div>
-                            </div>
-                        `,
-                        icon: 'question',
-                        showCancelButton: true,
-                        showDenyButton: true,
-                        confirmButtonColor: '#4f46e5',
-                        denyButtonColor: '#10b981',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: '<i class="fa-solid fa-arrows-rotate me-1"></i> ស្ដារទាំងកាលវិភាគ & ការចាត់តាំងគ្រូ (ពេញលេញ)',
-                        denyButtonText: '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្ដារតែកាលវិភាគ (ផ្ទេរទៅគ្រូថ្មី)',
-                        cancelButtonText: 'បោះបង់'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            executeImport(newMatrixState, false, true);
-                        } else if (result.isDenied) {
-                            executeImport(remappedMatrixState, true, false);
-                        }
-                    });
-                } else if (discrepancies.length > 0 && typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'រកឃើញការផ្លាស់ប្តូរគ្រូបង្រៀន!',
-                        html: `
-                            <div class="text-start small">
-                                <p class="mb-2">ឯកសារកាលវិភាគចាស់មាន <strong>${slotCount}</strong> ម៉ោងសិក្សា។</p>
-                                <div class="alert alert-info py-2 px-3 mb-3">
-                                    <i class="fa-solid fa-circle-info me-1"></i> រកឃើញមាន <strong>${remappedCount}</strong> ម៉ោង ដែលគ្រូបង្រៀនត្រូវបានផ្លាស់ប្តូរក្នុងឆ្នាំសិក្សាថ្មីនេះ (ឧ. គីមីវិទ្យា, ជីវវិទ្យា...)។
-                                </div>
-                                <p class="fw-bold mb-1 text-dark">តើលោកអ្នកចង់ឱ្យប្រព័ន្ធធ្វើដូចម្តេច?</p>
-                            </div>
-                        `,
-                        icon: 'question',
-                        showCancelButton: true,
-                        showDenyButton: true,
-                        confirmButtonColor: '#10b981',
-                        denyButtonColor: '#3b82f6',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> ផ្ទេរទៅគ្រូថ្មីស្វ័យប្រវត្តិ (Auto-Align)',
-                        denyButtonText: '<i class="fa-solid fa-clock-rotate-left me-1"></i> រក្សាទុកតាម File ចាស់',
-                        cancelButtonText: 'បោះបង់'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            executeImport(remappedMatrixState, true, false);
-                        } else if (result.isDenied) {
-                            executeImport(newMatrixState, false, false);
-                        }
-                    });
-                } else if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'បញ្ជាក់ការបញ្ចូលទិន្នន័យ',
-                        text: `តើលោកអ្នកចង់បញ្ចូលទិន្នន័យកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោងសិក្សា) មកជំនួសកាលវិភាគបច្ចុប្បន្នមែនទេ?`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#10b981',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: 'យល់ព្រមបញ្ចូល',
-                        cancelButtonText: 'បោះបង់'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            executeImport(newMatrixState, false, !!backupClassSubjects);
-                        }
-                    });
-                } else {
-                    if (confirm(`តើលោកអ្នកចង់បញ្ចូលទិន្នន័យកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោងសិក្សា) មែនទេ?`)) {
-                        executeImport(remappedMatrixState, true, !!backupClassSubjects);
-                    }
-                }
-
-            } catch (err) {
-                console.error('Import Backup Error:', err);
+            const proceedImportDatabase = async () => {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'បរាជ័យក្នុងការបញ្ចូល File Backup',
-                        text: 'File មិនត្រឹមត្រូវ ឬខូចខាត! សូមជ្រើសរើស File Backup (.json) ដែលបាននាំចេញពីប្រព័ន្ធ SchoolSM។',
-                        confirmButtonColor: '#ef4444'
+                        title: 'កំពុងនាំចូលទិន្នន័យ...',
+                        text: 'សូមរង់ចាំមួយភ្លែត ប្រព័ន្ធកំពុងស្ដារថ្នាក់រៀន ការចាត់តាំងគ្រូ និងកាលវិភាគ...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+                }
+
+                try {
+                    const res = await safeFetchJson('/academics/timetable/backup/import/', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            backup_data: parsed,
+                            auto_create_classrooms: true,
+                            sync_teachers: true
+                        })
+                    });
+
+                    if (res.status === 'success') {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'នាំចូល Backup ជោគជ័យ!',
+                                html: `
+                                    <div class="text-start small">
+                                        <p class="mb-2"><strong>${res.message.replace(/\n/g, '<br>')}</strong></p>
+                                    </div>
+                                `,
+                                confirmButtonColor: '#4f46e5',
+                                confirmButtonText: 'យល់ព្រម'
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            alert(res.message);
+                            window.location.reload();
+                        }
+                    } else {
+                        throw new Error(res.message || 'Error importing backup');
+                    }
+                } catch (apiErr) {
+                    console.error('Import API Error:', apiErr);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'បរាជ័យក្នុងការនាំចូល',
+                            text: apiErr.message,
+                            confirmButtonColor: '#ef4444'
+                        });
+                    } else {
+                        alert('⚠️ បរាជ័យក្នុងការនាំចូល៖ ' + apiErr.message);
+                    }
+                }
+            };
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'បញ្ជាក់ការនាំចូលឯកសារ Backup',
+                    html: `
+                        <div class="text-start small">
+                            <p class="mb-2">ឯកសារ៖ <strong>${escapeHtml(file.name)}</strong></p>
+                            <div class="bg-light p-2.5 rounded border mb-3">
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-1"><i class="fa-solid fa-calendar-day text-primary me-1.5"></i> ឆ្នាំសិក្សាប្រភព៖ <strong>${escapeHtml(sourceYearName)}</strong></li>
+                                    <li class="mb-1"><i class="fa-solid fa-calendar-check text-success me-1.5"></i> ម៉ោងសិក្សាក្នុងកាលវិភាគ៖ <strong>${slotCount}</strong> ម៉ោង</li>
+                                    <li class="mb-1"><i class="fa-solid fa-school text-info me-1.5"></i> ចំនួនថ្នាក់រៀន៖ <strong>${classCount}</strong> ថ្នាក់</li>
+                                    <li><i class="fa-solid fa-id-badge text-warning me-1.5"></i> រក្សាទុកកូដគ្រូ & ការចាត់តាំងគ្រូតាមថ្នាក់៖ <strong>ស្វ័យប្រវត្តិ</strong></li>
+                                </ul>
+                            </div>
+                            <div class="alert alert-warning py-2 px-3 mb-0 small">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                ទិន្នន័យនេះនឹងត្រូវបញ្ចូលទៅក្នុងឆ្នាំសិក្សា <strong>{{ active_year.name|escapejs }}</strong> ហើយរក្សាទុកជាកំណែកាលវិភាគថ្មីមួយភ្លាមៗ។
+                            </div>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4f46e5',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fa-solid fa-file-import me-1"></i> យល់ព្រមនាំចូល (ពេញលេញ)',
+                    cancelButtonText: 'បោះបង់'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        proceedImportDatabase();
+                    }
+                });
+            } else {
+                if (confirm(`តើលោកអ្នកចង់នាំចូលកាលវិភាគពី File "${file.name}" (${slotCount} ម៉ោង) ចូលទៅក្នុងឆ្នាំ {{ active_year.name|escapejs }} មែនទេ?`)) {
+                    proceedImportDatabase();
+                }
+            }
+
+        } catch (err) {
+            console.error('Import Backup Error:', err);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ឯកសារ Backup មិនត្រឹមត្រូវ',
+                    text: err.message,
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                alert('⚠️ ' + err.message);
+            }
+        } finally {
+            event.target.value = '';
+        }
+    }
+
+    // Modal Functions for Copying from Previous Year
+    function openCopyFromPreviousYearModal() {
+        const modalEl = document.getElementById('copyFromPreviousYearModal');
+        if (!modalEl) return;
+
+        const select = document.getElementById('copySourceYearSelect');
+        if (select) select.selectedIndex = 0;
+
+        const vSelect = document.getElementById('copySourceVersionSelect');
+        if (vSelect) vSelect.innerHTML = '<option value="">⚡ កាលវិភាគបច្ចុប្បន្ន (Live Active Timetable នៃឆ្នាំនោះ)</option>';
+
+        const prevCont = document.getElementById('copyDataPreviewContainer');
+        if (prevCont) prevCont.classList.add('d-none');
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    async function onCopySourceYearChange() {
+        const yearSelect = document.getElementById('copySourceYearSelect');
+        const sourceYearId = yearSelect ? yearSelect.value : '';
+        const previewContainer = document.getElementById('copyDataPreviewContainer');
+        const versionSelect = document.getElementById('copySourceVersionSelect');
+
+        if (!sourceYearId) {
+            if (previewContainer) previewContainer.classList.add('d-none');
+            if (versionSelect) {
+                versionSelect.innerHTML = '<option value="">⚡ កាលវិភាគបច្ចុប្បន្ន (Live Active Timetable នៃឆ្នាំនោះ)</option>';
+            }
+            return;
+        }
+
+        await loadCopyYearPreview(sourceYearId, '');
+    }
+
+    async function onCopySourceVersionChange() {
+        const yearSelect = document.getElementById('copySourceYearSelect');
+        const versionSelect = document.getElementById('copySourceVersionSelect');
+        const sourceYearId = yearSelect ? yearSelect.value : '';
+        const versionId = versionSelect ? versionSelect.value : '';
+
+        if (!sourceYearId) return;
+        await loadCopyYearPreview(sourceYearId, versionId);
+    }
+
+    async function loadCopyYearPreview(sourceYearId, versionId = '') {
+        const previewContainer = document.getElementById('copyDataPreviewContainer');
+        const versionSelect = document.getElementById('copySourceVersionSelect');
+
+        try {
+            let url = `/academics/timetable/copy-from-year/preview/?source_year_id=${sourceYearId}&target_year_id=${ACTIVE_YEAR_ID}`;
+            if (versionId) {
+                url += `&version_id=${versionId}`;
+            }
+            const data = await safeFetchJson(url);
+            if (data.status === 'success') {
+                if (!versionId && Array.isArray(data.versions)) {
+                    let vOptions = '<option value="">⚡ កាលវិភាគបច្ចុប្បន្ន (Live Active Timetable នៃឆ្នាំនោះ)</option>';
+                    data.versions.forEach(v => {
+                        const activeTag = v.is_active ? ' ★' : '';
+                        vOptions += `<option value="${v.id}">លើកទី ${v.version_number}: ${escapeHtml(v.title || '')} (${v.total_slots} ម៉ោង)${activeTag}</option>`;
+                    });
+                    if (versionSelect) versionSelect.innerHTML = vOptions;
+                }
+
+                const elCls = document.getElementById('copyPreviewClassCount');
+                const elClsDet = document.getElementById('copyPreviewClassDetail');
+                const elSlot = document.getElementById('copyPreviewSlotCount');
+                const elCs = document.getElementById('copyPreviewCsCount');
+                const elCodes = document.getElementById('copyPreviewCodesCount');
+
+                if (elCls) elCls.innerText = data.classrooms_total || 0;
+                if (elClsDet) elClsDet.innerText = `${data.classrooms_matched || 0} មានស្រាប់`;
+                if (elSlot) elSlot.innerText = data.timetable_slots_count || 0;
+                if (elCs) elCs.innerText = data.class_subjects_count || 0;
+                if (elCodes) elCodes.innerText = data.duty_codes_count || 0;
+
+                const missingAlert = document.getElementById('copyMissingClassesAlert');
+                const missingCount = document.getElementById('copyMissingClassesCount');
+                if (data.classrooms_missing > 0) {
+                    if (missingCount) missingCount.innerText = data.classrooms_missing;
+                    if (missingAlert) missingAlert.classList.remove('d-none');
+                } else {
+                    if (missingAlert) missingAlert.classList.add('d-none');
+                }
+
+                if (previewContainer) previewContainer.classList.remove('d-none');
+            } else {
+                alert('⚠️ មិនអាចមើលព័ត៌មានឆ្នាំសិក្សាបានទេ៖ ' + (data.message || 'Error'));
+            }
+        } catch (err) {
+            console.error('Copy Preview Error:', err);
+        }
+    }
+
+    async function executeCopyFromYear() {
+        const yearSelect = document.getElementById('copySourceYearSelect');
+        const versionSelect = document.getElementById('copySourceVersionSelect');
+        const sourceYearId = yearSelect ? yearSelect.value : '';
+        const versionId = versionSelect ? versionSelect.value : '';
+
+        if (!sourceYearId) {
+            alert('សូមជ្រើសរើសឆ្នាំសិក្សាប្រភពជាមុនសិន!');
+            return;
+        }
+
+        const copyTimetable = document.getElementById('chkCopyTimetable')?.checked ?? true;
+        const copyClassSubjects = document.getElementById('chkCopyClassSubjects')?.checked ?? true;
+        const copyTeacherCodes = document.getElementById('chkCopyTeacherCodes')?.checked ?? true;
+        const autoCreateClassrooms = document.getElementById('chkAutoCreateClassrooms')?.checked ?? true;
+        const copyBlockedSlots = document.getElementById('chkCopyBlockedSlots')?.checked ?? true;
+
+        if (!copyTimetable && !copyClassSubjects && !copyTeacherCodes) {
+            alert('សូមជ្រើសរើសយ៉ាងហោចណាស់ទិន្នន័យមួយប្រភេទដើម្បីចម្លង!');
+            return;
+        }
+
+        const srcYearName = yearSelect.options[yearSelect.selectedIndex]?.text || 'ឆ្នាំមុន';
+
+        const confirmMsg = `តើលោកអ្នកពិតជាចង់ចម្លងទិន្នន័យកាលវិភាគពី "${srcYearName}" មកកាន់ឆ្នាំបច្ចុប្បន្ន ({{ active_year.name|escapejs }}) មែនទេ?\n\nប្រព័ន្ធនឹងធ្វើការស្ដារ និងរក្សាទុកទិន្នន័យដោយស្វ័យប្រវត្តិ។`;
+        if (!confirm(confirmMsg)) return;
+
+        const submitBtn = document.getElementById('btnSubmitCopyFromYear');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងចម្លងទិន្នន័យ...';
+        }
+
+        try {
+            const payload = {
+                source_year_id: parseInt(sourceYearId),
+                version_id: versionId ? parseInt(versionId) : null,
+                target_year_id: ACTIVE_YEAR_ID,
+                copy_timetable: copyTimetable,
+                copy_class_subjects: copyClassSubjects,
+                copy_teacher_codes: copyTeacherCodes,
+                auto_create_classrooms: autoCreateClassrooms,
+                copy_blocked_slots: copyBlockedSlots
+            };
+
+            const res = await safeFetchJson('/academics/timetable/copy-from-year/', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (res.status === 'success') {
+                const modalEl = document.getElementById('copyFromPreviousYearModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ចម្លងទិន្នន័យជោគជ័យ!',
+                        html: `
+                            <div class="text-start small">
+                                <p class="mb-2"><strong>${res.message || 'បានចម្លងទិន្នន័យជោគជ័យ!'}</strong></p>
+                                <ul class="list-unstyled mb-0 bg-light p-2.5 rounded border">
+                                    <li class="mb-1"><i class="fa-solid fa-school text-primary me-1.5"></i> ថ្នាក់រៀនសរុប៖ <strong>${res.classrooms_total || 0}</strong> ថ្នាក់ (បង្កើតថ្មី <strong>${res.classrooms_created || 0}</strong> ថ្នាក់)</li>
+                                    <li class="mb-1"><i class="fa-solid fa-calendar-check text-success me-1.5"></i> ម៉ោងកាលវិភាគ៖ <strong>${res.timetable_slots_copied || 0}</strong> ម៉ោង</li>
+                                    <li class="mb-1"><i class="fa-solid fa-user-check text-info me-1.5"></i> ការចាត់តាំងគ្រូតាមថ្នាក់៖ <strong>${res.class_subjects_copied || 0}</strong> មុខវិជ្ជា</li>
+                                    <li class="mb-1"><i class="fa-solid fa-id-badge text-warning me-1.5"></i> លេខកូដគ្រូបង្រៀន៖ <strong>${res.teacher_codes_copied || 0}</strong> កូដ</li>
+                                    <li><i class="fa-solid fa-bookmark text-purple me-1.5" style="color: #7c3aed;"></i> កំណែកាលវិភាគថ្មី៖ <strong>លើកទី ${res.version_number || 1}</strong></li>
+                                </ul>
+                            </div>
+                        `,
+                        confirmButtonColor: '#0284c7',
+                        confirmButtonText: 'យល់ព្រម'
+                    }).then(() => {
+                        window.location.reload();
                     });
                 } else {
-                    alert('⚠️ File មិនត្រឹមត្រូវ! សូមជ្រើសរើស File Backup (.json) ដែលបាននាំចេញពីប្រព័ន្ធ SchoolSM។');
+                    alert('✅ ' + (res.message || 'បានចម្លងទិន្នន័យជោគជ័យ!'));
+                    window.location.reload();
                 }
-            } finally {
-                // Reset file input so user can re-import same file if needed
-                event.target.value = '';
+            } else {
+                alert('⚠️ បរាជ័យក្នុងការចម្លងទិន្នន័យ៖ ' + (res.message || 'Unknown error'));
             }
-        };
-
-        reader.onerror = function() {
-            alert('⚠️ មិនអាចអានឯកសារបានទេ!');
-            event.target.value = '';
-        };
-
-        reader.readAsText(file);
+        } catch (err) {
+            console.error('Execute Copy Error:', err);
+            alert('⚠️ កំហុសប្រព័ន្ធ៖ ' + err.message);
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-copy me-1"></i> ចាប់ផ្តើមចម្លងទិន្នន័យ';
+            }
+        }
     }
 
     function toggleFullScreen() {
@@ -3409,13 +3639,20 @@
         const modalEl = document.getElementById('timetableVersionsModal');
         if (!modalEl) return;
 
+        const yearSelect = document.getElementById('versionsModalYearSelect');
+        if (yearSelect) yearSelect.value = ACTIVE_YEAR_ID;
+
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
 
-        await refreshVersionsList(true);
+        await refreshVersionsList(true, ACTIVE_YEAR_ID);
     }
 
-    async function refreshVersionsList(showLoading = false) {
+    function onVersionsModalYearChange(yearId) {
+        refreshVersionsList(true, yearId);
+    }
+
+    async function refreshVersionsList(showLoading = false, yearId = null) {
         const container = document.getElementById('timetableVersionsListContainer');
         if (showLoading && container) {
             container.innerHTML = `
@@ -3426,19 +3663,24 @@
             `;
         }
 
+        const targetYearId = yearId || document.getElementById('versionsModalYearSelect')?.value || ACTIVE_YEAR_ID;
+
         try {
-            const data = await safeFetchJson(`/academics/timetable/versions/?academic_year_id=${ACTIVE_YEAR_ID}`);
+            const data = await safeFetchJson(`/academics/timetable/versions/?academic_year_id=${targetYearId}`);
 
             if (data.status === 'success') {
                 TIMETABLE_VERSIONS = data.versions || [];
-                NEXT_VERSION_NUMBER = data.next_version_number || (TIMETABLE_VERSIONS.length + 1);
+                if (parseInt(targetYearId) === parseInt(ACTIVE_YEAR_ID)) {
+                    NEXT_VERSION_NUMBER = data.next_version_number || (TIMETABLE_VERSIONS.length + 1);
 
-                // Update Header Count Badge
-                const countBadge = document.getElementById('headerVersionCountBadge');
-                if (countBadge) countBadge.innerText = TIMETABLE_VERSIONS.length;
+                    // Update Header Count Badge
+                    const countBadge = document.getElementById('headerVersionCountBadge');
+                    if (countBadge) countBadge.innerText = TIMETABLE_VERSIONS.length;
+
+                    updateVersionDropdownFromList(TIMETABLE_VERSIONS);
+                }
 
                 renderVersionsList(TIMETABLE_VERSIONS);
-                updateVersionDropdownFromList(TIMETABLE_VERSIONS);
             } else if (container) {
                 container.innerHTML = `<div class="alert alert-danger">មិនអាចទាញយកទិន្នន័យបានឡើយ៖ ${data.message}</div>`;
             }
