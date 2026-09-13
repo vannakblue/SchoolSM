@@ -4949,36 +4949,41 @@ def timetable_import_excel(request):
     from .utils import get_active_academic_year
     from .duty_importer import import_timetable_from_gt_sheet
     import os
+    import traceback
     from django.conf import settings
 
     active_year = get_active_academic_year(request)
     
     if request.method == 'POST':
-        excel_file = request.FILES.get('excel_file')
-        file_source = None
-        
-        if excel_file:
-            file_source = excel_file
-        else:
-            default_path_2027 = os.path.join(settings.BASE_DIR, 'បំណែងចែកគ្រូ2027.xlsx')
-            default_path_data = os.path.join(settings.BASE_DIR, 'data.xlsx')
-            if os.path.exists(default_path_2027):
-                file_source = default_path_2027
-            elif os.path.exists(default_path_data):
-                file_source = default_path_data
+        try:
+            excel_file = request.FILES.get('excel_file')
+            file_source = None
+            
+            if excel_file:
+                file_source = excel_file
             else:
-                messages.error(request, "សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដើម្បីបញ្ចូល ឬដាក់ឯកសារ បំណែងចែកគ្រូ2027.xlsx ក្នុងប្រព័ន្ធ!")
-                return redirect(f"/academics/timetable/{f'?year={active_year.id}' if active_year else ''}")
+                default_path_2027 = os.path.join(settings.BASE_DIR, 'បំណែងចែកគ្រូ2027.xlsx')
+                default_path_data = os.path.join(settings.BASE_DIR, 'data.xlsx')
+                if os.path.exists(default_path_2027):
+                    file_source = default_path_2027
+                elif os.path.exists(default_path_data):
+                    file_source = default_path_data
+                else:
+                    messages.error(request, "សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដើម្បីបញ្ចូល ឬដាក់ឯកសារ បំណែងចែកគ្រូ2027.xlsx ក្នុងប្រព័ន្ធ!")
+                    return redirect(f"/academics/timetable/{f'?year={active_year.id}' if active_year else ''}")
 
-        res = import_timetable_from_gt_sheet(file_source, target_academic_year=active_year)
-        if res.get('success'):
-            slots_total = res.get('slots_total', 0)
-            classrooms_count = res.get('classrooms_count', 0)
-            msg = f"📥 នាំចូលកាលវិភាគរួមពី Sheet 'GT' ជោគជ័យ! បានបញ្ចូល {slots_total} ម៉ោងសិក្សា លើ {classrooms_count} ថ្នាក់រៀន ក្នុងឆ្នាំសិក្សា {res.get('academic_year', '')}។"
-            messages.success(request, msg)
-        else:
-            err_msg = " ; ".join(res.get('errors', [])) or "មានបញ្ហាក្នុងការនាំចូលកាលវិភាគពី Excel"
-            messages.error(request, f"បរាជ័យក្នុងការនាំចូលកាលវិភាគ៖ {err_msg}")
+            res = import_timetable_from_gt_sheet(file_source, target_academic_year=active_year)
+            if res.get('success'):
+                slots_total = res.get('slots_total', 0)
+                classrooms_count = res.get('classrooms_count', 0)
+                msg = f"📥 នាំចូលកាលវិភាគរួមពី Sheet 'GT' ជោគជ័យ! បានបញ្ចូល {slots_total} ម៉ោងសិក្សា លើ {classrooms_count} ថ្នាក់រៀន ក្នុងឆ្នាំសិក្សា {res.get('academic_year', '')}។"
+                messages.success(request, msg)
+            else:
+                err_msg = " ; ".join(res.get('errors', [])) or "មានបញ្ហាក្នុងការនាំចូលកាលវិភាគពី Excel"
+                messages.error(request, f"បរាជ័យក្នុងការនាំចូលកាលវិភាគ៖ {err_msg}")
+        except Exception as e:
+            traceback.print_exc()
+            messages.error(request, f"កំហុសប្រព័ន្ធក្នុងការនាំចូលកាលវិភាគ៖ {str(e)}")
             
     return redirect(f"/academics/timetable/{f'?year={active_year.id}' if active_year else ''}")
 
