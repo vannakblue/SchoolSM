@@ -101,6 +101,114 @@ STANDARD_PERIOD_TIMES = {
     8: (datetime.time(16, 0), datetime.time(16, 50)),
 }
 
+CODE_TO_TEACHER_NAME_MAP = {
+    'M1': 'កាន ដាវី',
+    'M2': 'សា ប៊ុនថន',
+    'M3': 'យ៉ន ណារ៉ា',
+    'M4': 'ផេង លាងឃន',
+    'M5': 'លឿង រក្សា',
+    'M6': 'ឡុច សាវិន',
+    'M7': 'យ៉ន សីហា',
+    'M8': 'សេង សុសៅគន្ធ',
+    'M9': 'ប៊ុន ឡាង',
+    'M10': 'សួន ច័ន្ទសុធី',
+    'M11': 'ផាត់ ស្រ៊ុន',
+    'P1': 'ផល ឌីណា',
+    'P2': 'ណុំ ស្រីណែត',
+    'P3': 'សុង ភ័ស',
+    'P4': 'កែវ សុគន្ធារី',
+    'P5': 'សាន់ កឿន',
+    'P6': 'ជួង សុភ័ក្រ',
+    'P7': 'វិន ភារុន',
+    'C1': 'ដុក ណាសួន',
+    'C2': 'ឯក អមរា',
+    'C3': 'គង់ ម៉ានិន',
+    'C4': 'ហន ស៊ីដារ៉ា',
+    'C5': 'ពៅ ស៊ីនាង',
+    'C6': 'បូ កញ្ញា',
+    'C7': 'ក្រឹង ចន្ថា',
+    'B1': 'សំ ពិសី',
+    'B2': 'ជៃ ស្រីពៅ',
+    'B3': 'អ៊ឹម សំអុល',
+    'B4': 'អ៊ិន ឆាយ',
+    'B5': 'ហៀង សេងហៃ',
+    'B6': 'ឈឿន លីឆាយ',
+    'ES1': 'វ៉ាន់ ម៉ាលីស',
+    'ES2': 'ហេង សានសុផានី',
+    'ES3': 'មូល គន្ធា',
+    'ES4': 'សុខ ស្រីនាង',
+    'H1': 'សុន វាសនា',
+    'H2': 'ឈាង ចាន់រ៉ា',
+    'H3': 'សួរ ចន្ទ្រា',
+    'H4': 'ឃឹម ស្រស់',
+    'H5': 'អេង រតនា',
+    'H6': 'ស៊ុំ វ៉េង',
+    'I9G1': 'ទឹម ប៊ុនធន',
+    'G2': 'ចេង បុណ្ណវេទ',
+    'G3': 'ហេង កន្យា',
+    'G4': 'ជួ សូរីយា',
+    'G5': 'សួន ស្រីរ័ត្ន',
+    'G6': 'សុទ្ធ ចរិយា',
+    'EC1': 'ប៊ុន សម្បត្តិ',
+    'EC2': 'ពូន រចនា',
+    'EC3': 'ហ៊ូ រ៉ន',
+    'HE1': 'យ៉េន ចាន់នី',
+    'HE2': 'យ៉េន ចាន់ណាក់',
+    'HE3': 'ហេង សានម៉ូណាវី',
+    'HE4': 'សែត រុនស្រី',
+    'I1': 'ពឺន ពិដោរ',
+    'I2': 'ឆេង សុដានី',
+    'I3': 'គង់ សម្បត្តិ',
+    'I4': 'អាន ចាន់ថា',
+    'I5': 'យ៉ាង សុផាន',
+    'I6': 'សូកាន លក្ខិណា',
+    'I7': 'ផន កុសល',
+    'K1': 'យូ ម៉ាលីស',
+    'K2': 'ឃុត បូរាមី',
+    'K3': 'ជឹង សុខចាន់',
+    'K4': 'ប៉ន ផល្លី',
+    'K5': 'ប្រាក់ សារិន',
+    'K6': 'ហួត លក្ខិណា',
+    'K7': 'សុន ឌីម៉ង់',
+    'K8': 'ដួង ពិសេស',
+    'K9': 'ដួង ពិសាល',
+    'K10': 'មាស ស្រីលក្ខ័',
+    'K11': 'ណុប វ៉ាង',
+    'K12': 'ខឹម សុផា',
+    'K13': 'ហេង  ឃាង',
+    'K14': 'លន ស្រីលក្ខ័',
+    'K15': 'ខៀវ ខេមរិន្ទ',
+    'K16': 'គាន  ហ៊ឺ',
+    'E1': 'ចាន់  ធី',
+    'E2': 'អោម សុខុម',
+    'E3': 'អ៊ុយ វាសនា',
+    'E4': 'ឃុន សុម៉ាឡា',
+    'E5': 'ថោង ធីតា',
+    'E6': 'ទិត សោម៉នវីរៈ',
+    'E7': 'អៀ សេរីពង្ស',
+    'E8': 'ប្រាក់ សុភារៈ',
+    'ED1': 'ឆេង សុជាតា',
+    'ED2': 'នាង ជំនិត',
+    'ED3': 'សួស  សុខឃៀង',
+    'ED4': 'ម៉ង់ ប៊ុនណារិទ្ធ',
+    'ED5': 'សុខា សាមឌី',
+    'ED6': 'ជៀស ឌីនីន',
+    'ED7': 'ផន សុផារិទ្ធ',
+    'ED8': 'មៀច ដាវណ្ណ',
+    'ED9': 'ផន ពុទ្ធាវី',
+    'ED10': 'ផាត់ ចាន់សុផាន់ណា',
+    'ED11': 'ឌុច វិសាល',
+    'AG1': 'ជុំ សុផន',
+    'AG2': 'ងួន គ្រីន',
+    'AG3': 'ចេង ចំរើន',
+    'AG4': 'ឡេង សេស',
+    'AG5': 'លី ហួត',
+    'AG6': 'ហុង សំអឿន',
+    'AG7': 'ជឹម នី',
+    'AG8': 'សឿន សម្បត្តិ',
+    'COM2': 'ឃុន សុម៉ាឡា',
+}
+
 def find_teacher_in_db(raw_name, db_teachers=None):
     if not raw_name:
         return None
@@ -456,8 +564,22 @@ def import_timetable_from_gt_sheet(file_or_path, target_academic_year=None):
     )
 
     subjects_by_code = {s.code: s for s in Subject.objects.all()}
-    teachers_by_code = {t.subject_code.upper(): t for t in Teacher.objects.filter(subject_code__isnull=False)}
-    t_com = Teacher.objects.filter(specialization__icontains='កុំព្យូទ័រ').first() or Teacher.objects.filter(khmer_name='ឃុន សុម៉ាឡា').first()
+    db_teachers = list(Teacher.objects.all())
+    teachers_by_code = {t.subject_code.upper(): t for t in Teacher.objects.filter(subject_code__isnull=False).exclude(subject_code='')}
+
+    # Automatically resolve and permanently save subject_code in DB for all teachers from CODE_TO_TEACHER_NAME_MAP
+    for code, tname in CODE_TO_TEACHER_NAME_MAP.items():
+        if code not in teachers_by_code:
+            t_found = find_teacher_in_db(tname, db_teachers)
+            if t_found:
+                if t_found.subject_code != code:
+                    t_found.subject_code = code
+                    t_found.save(update_fields=['subject_code'])
+                teachers_by_code[code] = t_found
+
+    t_com = teachers_by_code.get('COM2') or Teacher.objects.filter(specialization__icontains='កុំព្យូទ័រ').first() or Teacher.objects.filter(khmer_name='ឃុន សុម៉ាឡា').first()
+    if t_com and 'COM2' not in teachers_by_code:
+        teachers_by_code['COM2'] = t_com
 
     ws_gt = wb['GT']
     rows = list(ws_gt.iter_rows(values_only=True))
@@ -528,6 +650,12 @@ def import_timetable_from_gt_sheet(file_or_path, target_academic_year=None):
                     sub_obj = sub_ict
                 else:
                     t_obj = teachers_by_code.get(tok)
+                    if not t_obj and tok in CODE_TO_TEACHER_NAME_MAP:
+                        t_obj = find_teacher_in_db(CODE_TO_TEACHER_NAME_MAP[tok], db_teachers)
+                        if t_obj:
+                            t_obj.subject_code = tok
+                            t_obj.save(update_fields=['subject_code'])
+                            teachers_by_code[tok] = t_obj
                     if not t_obj:
                         results['warnings'].append(f"មិនស្គាល់កូដគ្រូ '{tok}' សម្រាប់ថ្នាក់ {cname} ថ្ងៃ {d_num} ម៉ោង {p_num}")
                         continue
