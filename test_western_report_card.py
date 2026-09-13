@@ -50,6 +50,10 @@ def run_tests():
             'academic_year': ay
         }
     )
+    student.classroom = cls_4b
+    student.academic_year = ay
+    student.status = 'ACTIVE'
+    student.save()
 
     # Setup Subjects
     sub_kh = Subject.objects.filter(name_kh="ភាសាខ្មែរ").first() or Subject.objects.create(name_kh="ភាសាខ្មែរ", name_en='Khmer', credit=4, code='KH_04')

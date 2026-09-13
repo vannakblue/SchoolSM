@@ -488,7 +488,7 @@ def _fmt_score(val, decimals=2):
         return str(val)
 
 
-def _preload_classroom_report_card_data(classroom, ay):
+def _preload_classroom_report_card_data(classroom, ay, fallback_student=None):
     from apps.accounts.models import SchoolProfile
     from apps.academics.models import Subject, ClassSubject, Timetable
     from apps.attendance.models import StudentAttendance
@@ -499,7 +499,7 @@ def _preload_classroom_report_card_data(classroom, ay):
 
     school_info = SchoolProfile.get_settings()
     school_name_kh = school_info.name_kh if (school_info and school_info.name_kh) else 'វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត'
-    principal_title = getattr(school_info, 'principal_title', None) or 'នាយកស្តីទីវិទ្យាល័យ'
+    principal_title = getattr(school_info, 'principal_title', None) or 'នាយក'
     principal_name = school_info.principal_name if (school_info and school_info.principal_name) else ''
     homeroom_teacher = classroom.homeroom_teacher.khmer_name if (classroom and classroom.homeroom_teacher) else ''
 
@@ -507,6 +507,8 @@ def _preload_classroom_report_card_data(classroom, ay):
     academic_year_kh = to_khmer_num(ay_name)
 
     class_students = list(Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('khmer_name', 'id')) if classroom else []
+    if not class_students and fallback_student:
+        class_students = [fallback_student]
     total_students = len(class_students)
     total_females = sum(1 for s in class_students if str(s.gender).upper() in ['F', 'FEMALE', 'ស្រី'])
     total_students_kh = to_khmer_num(total_students)
@@ -525,6 +527,8 @@ def _preload_classroom_report_card_data(classroom, ay):
                 existing_sub_ids.add(gs.id)
     if not subjects and classroom:
         subjects = list(Subject.objects.filter(subject_grades__student__classroom=classroom).distinct())
+    if not subjects and fallback_student:
+        subjects = list(Subject.objects.filter(subject_grades__student=fallback_student).distinct())
     if not subjects:
         subjects = list(Subject.objects.all().order_by('order', 'id')[:12])
 
@@ -767,7 +771,7 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
         ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
 
     if preloaded_data is None:
-        preloaded_data = _preload_classroom_report_card_data(classroom, ay)
+        preloaded_data = _preload_classroom_report_card_data(classroom, ay, fallback_student=student)
 
     sid = student.id
     student_gender_kh = 'ស្រី' if str(student.gender).upper() in ['F', 'FEMALE', 'ស្រី'] else 'ប្រុស'
@@ -1301,7 +1305,21 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
     if school_info and getattr(school_info, 'province', None):
         school_province = str(school_info.province).replace('ខេត្ត', '').strip()
     school_department_kh = f"មន្ទីរអប់រំ យុវជន និងកីឡាខេត្ត{school_province}"
-    school_location = (school_info and (getattr(school_info, 'district', None) or getattr(school_info, 'commune', None))) or 'កំពង់កន្ទួត'
+    
+    # Official school abbreviation (អក្សរកាត់សាលារៀន ឧ. វ.ហ.ស.ក.ក)
+    school_abbr = 'វ.ហ.ស.ក.ក'
+    if school_info:
+        s_name = (getattr(school_info, 'short_name', None) or '').strip()
+        name_kh = (getattr(school_info, 'name_kh', None) or '').strip()
+        if s_name and ('.' in s_name or len(s_name) <= 15):
+            school_abbr = s_name
+        elif 'ហ៊ុន សែន' in name_kh and 'កំពង់កន្ទួត' in name_kh:
+            school_abbr = 'វ.ហ.ស.ក.ក'
+        elif s_name:
+            school_abbr = s_name
+        elif name_kh:
+            school_abbr = 'វ.ហ.ស.ក.ក'
+    school_location = school_abbr
     ann_overall_mention = get_khmer_mention(ann_ov_val)
 
     school_address = 'ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល'
@@ -1382,6 +1400,7 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
         'total_students_tr_kh': total_students_tr_kh,
         'school_department_kh': school_department_kh,
         'school_location': school_location,
+        'school_abbr': school_abbr,
         'ann_overall_mention': ann_overall_mention,
         # MoEYS Summary Rows values
         's1_exam_total': _fmt_score(summ.get('s1_exam_total')),

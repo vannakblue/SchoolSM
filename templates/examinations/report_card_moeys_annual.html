@@ -55,7 +55,7 @@
         }
 
         /* Page Container (A4 Portrait format - Exactly 1 Sheet per Student) */
-        .report-card-sheet {
+        .report-page-container {
             width: 210mm;
             max-width: 210mm;
             min-height: 297mm;
@@ -68,7 +68,7 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
         }
 
         /* Header Layout */
@@ -326,6 +326,9 @@
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
             }
             .report-card-sheet:last-child {
                 page-break-after: auto !important;
@@ -562,7 +565,7 @@
         <div class="signatures-container">
             <div class="sig-box sig-box-left">
                 <div class="sig-title-seen">បានឃើញ និងឯកភាព</div>
-                <div class="sig-role-title">{{ r.principal_title|default:"នាយកស្តីទីវិទ្យាល័យ" }}</div>
+                <div class="sig-role-title" contenteditable="true">{{ r.principal_title|default:"នាយក" }}</div>
                 <div class="sig-space-area"></div>
                 <div class="sig-person-name">{{ r.principal_name }}</div>
             </div>

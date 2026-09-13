@@ -78,7 +78,7 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             position: relative;
         }
 
@@ -365,6 +365,9 @@
                 margin: 0 !important;
                 page-break-after: always !important;
                 break-after: page !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
             }
             @page {
                 size: A4 portrait;
