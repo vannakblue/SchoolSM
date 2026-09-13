@@ -1306,19 +1306,14 @@ def _calculate_bilingual_report_card_data(student, term=None, academic_year=None
         school_province = str(school_info.province).replace('ខេត្ត', '').strip()
     school_department_kh = f"មន្ទីរអប់រំ យុវជន និងកីឡាខេត្ត{school_province}"
     
-    # Official school abbreviation (អក្សរកាត់សាលារៀន ឧ. វ.ហ.ស.ក.ក)
-    school_abbr = 'វ.ហ.ស.ក.ក'
+    # Official school abbreviation: Directly pulled from "ឈ្មោះកាត់សាលា *" in submenu ព័ត៌មានសាលារៀន (SchoolProfile.short_name)
+    school_abbr = ''
     if school_info:
-        s_name = (getattr(school_info, 'short_name', None) or '').strip()
-        name_kh = (getattr(school_info, 'name_kh', None) or '').strip()
-        if s_name and ('.' in s_name or len(s_name) <= 15):
-            school_abbr = s_name
-        elif 'ហ៊ុន សែន' in name_kh and 'កំពង់កន្ទួត' in name_kh:
-            school_abbr = 'វ.ហ.ស.ក.ក'
-        elif s_name:
-            school_abbr = s_name
-        elif name_kh:
-            school_abbr = 'វ.ហ.ស.ក.ក'
+        school_abbr = (getattr(school_info, 'short_name', None) or '').strip()
+        if not school_abbr:
+            school_abbr = (getattr(school_info, 'name_kh', None) or '').strip()
+    if not school_abbr:
+        school_abbr = 'វ.ហ.ស.ក.ក'
     school_location = school_abbr
     ann_overall_mention = get_khmer_mention(ann_ov_val)
 
@@ -1488,6 +1483,12 @@ def report_card_western_view(request, student_id, term_id=None):
     data['term'] = term
     data['terms'] = terms
     
+    from apps.accounts.khmer_lunar import calculate_khmer_lunar_details
+    selected_date_raw = (request.GET.get('date') or request.GET.get('solar_date') or '').strip()
+    lunar_info = calculate_khmer_lunar_details(selected_date_raw) if selected_date_raw else None
+    data['selected_solar_date'] = selected_date_raw
+    data['lunar_info'] = lunar_info
+
     model = (request.GET.get('model') or request.GET.get('format') or '').strip().lower()
     if model in ['transcript', 'geip', 'bulletin']:
         template_name = 'examinations/report_card_transcript.html'
@@ -1588,6 +1589,10 @@ def classroom_report_cards_western_view(request, classroom_id: int):
         template_name = 'examinations/report_card_moeys_annual.html'
         current_model = 'moeys'
 
+    from apps.accounts.khmer_lunar import calculate_khmer_lunar_details
+    selected_date_raw = (request.GET.get('date') or request.GET.get('solar_date') or '').strip()
+    lunar_info = calculate_khmer_lunar_details(selected_date_raw) if selected_date_raw else None
+
     context = {
         'classroom': classroom,
         'term': term,
@@ -1599,6 +1604,8 @@ def classroom_report_cards_western_view(request, classroom_id: int):
         'student': first_rep.get('student'),
         'current_period': first_rep.get('current_period', 'annual'),
         'current_model': current_model,
+        'selected_solar_date': selected_date_raw,
+        'lunar_info': lunar_info,
     }
     return render(request, template_name, context)
 

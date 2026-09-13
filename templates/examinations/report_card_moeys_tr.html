@@ -275,6 +275,34 @@
             font-size: 7.5pt;
         }
 
+        .rc-date-highlight {
+            background-color: #dcfce7 !important;
+            border-radius: 4px;
+            transition: background-color 0.8s ease;
+        }
+
+        .date-buddhist-line[contenteditable="true"]:hover,
+        .date-solar-line[contenteditable="true"]:hover {
+            background: #fef9c333;
+            outline: 1px dashed #ca8a04;
+            border-radius: 3px;
+            cursor: text;
+        }
+
+        .date-buddhist-line[contenteditable="true"]:focus,
+        .date-solar-line[contenteditable="true"]:focus {
+            background: #fef9c3;
+            outline: 1.5px solid #ca8a04;
+            border-radius: 3px;
+        }
+
+        .school-abbr-txt[contenteditable="true"]:hover,
+        .school-loc-txt[contenteditable="true"]:hover {
+            background: #e0e7ff;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
         /* Print Media Styles (Exact 1 A4 Page per Student) */
         @media print {
             body {
@@ -284,6 +312,15 @@
             }
             .no-print-toolbar {
                 display: none !important;
+            }
+            .rc-date-highlight {
+                background-color: transparent !important;
+            }
+            .date-buddhist-line[contenteditable="true"],
+            .date-solar-line[contenteditable="true"],
+            .school-abbr-txt[contenteditable="true"] {
+                outline: none !important;
+                background: transparent !important;
             }
             .tr-report-sheet {
                 width: 100% !important;
@@ -309,47 +346,92 @@
 </head>
 <body>
 
-    <!-- Screen Toolbar (3-Model Switcher + Print Actions) -->
+    <!-- Screen Toolbar (3-Model Switcher + Print Actions + Auto Date Adjuster) -->
     <div class="no-print-toolbar">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
-            </button>
+        <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
+                </button>
 
-            <!-- 4-Model Switcher Button Group -->
-            <div class="btn-group btn-group-sm" role="group">
-                <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="ប្តូរទៅទម្រង់សាលារដ្ឋ ៨ ជួរ (MoEYS Annual 8-Cols)">
-                    <i class="fas fa-landmark me-1"></i> គំរូសាលារដ្ឋ (៨ ជួរ)
-                </a>
-                <span class="btn btn-success btn-sm fw-bold shadow-xs">
-                    <i class="fas fa-file-invoice me-1"></i> គំរូសាលារដ្ឋ (តាម tr.pdf)
+                <!-- 4-Model Switcher Button Group -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="គំរូទី១៖ គំរូសាលារដ្ឋ (៨ ជួរ)">
+                        <i class="fas fa-landmark me-1"></i> គំរូទី១
+                    </a>
+                    <span class="btn btn-success btn-sm fw-bold shadow-xs" title="គំរូទី២៖ គំរូសាលារដ្ឋ (តាម tr.pdf)">
+                        <i class="fas fa-file-invoice me-1"></i> គំរូទី២
+                    </span>
+                    <a href="?model=transcript{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-info btn-sm fw-bold" title="គំរូទី៣៖ គំរូ transcript.pdf">
+                        <i class="fas fa-file-alt me-1"></i> គំរូទី៣
+                    </a>
+                    <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="គំរូអន្តរជាតិ៖ ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
+                        <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
+                    </a>
+                </div>
+
+                {% if is_batch %}
+                <span class="badge bg-primary fs-6 px-3 py-1">
+                    <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
                 </span>
-                <a href="?model=transcript{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-info btn-sm fw-bold" title="ប្តូរទៅទម្រង់ព្រឹត្តិបត្រពិន្ទុតាម transcript.pdf">
-                    <i class="fas fa-file-alt me-1"></i> គំរូ transcript.pdf
-                </a>
-                <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="ប្តូរទៅទម្រង់អន្តរជាតិ/ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
-                    <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
-                </a>
+                {% else %}
+                <span class="text-muted small">
+                    សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id }})
+                </span>
+                {% endif %}
             </div>
 
-            {% if is_batch %}
-            <span class="badge bg-primary fs-6 px-3 py-1">
-                <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
-            </span>
-            {% else %}
-            <span class="text-muted small">
-                សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id }})
-            </span>
-            {% endif %}
+            <div class="d-flex align-items-center gap-2">
+                <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
+                    <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
+                </button>
+                <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
+                    បិទ
+                </button>
+            </div>
         </div>
 
-        <div class="d-flex align-items-center gap-2">
-            <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
-                <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
-            </button>
-            <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
-                បិទ
-            </button>
+        <!-- Second Row: Automatic Solar-to-Lunar Date Adjuster -->
+        <div class="w-100 mt-2 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle d-flex align-items-center gap-1 py-1.5 px-2.5">
+                    <i class="fa-solid fa-calendar-day"></i> កែតម្រូវកាលបរិច្ឆេទ
+                </span>
+
+                <!-- Solar Datepicker -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text bg-light text-muted" title="ជ្រើសរើសថ្ងៃខែឆ្នាំសុរិយគតិ">
+                        <i class="fa-regular fa-calendar text-primary me-1"></i>សុរិយគតិ
+                    </span>
+                    <input type="date" id="toolbarSolarPicker" class="form-control form-control-sm" style="width: 135px;" title="ជ្រើសរើសថ្ងៃខែឆ្នាំសុរិយគតិ (Gregorian Date)">
+                </div>
+
+                <!-- Free typing solar input -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <input type="text" id="toolbarSolarInput" class="form-control form-control-sm" style="min-width: 220px;" placeholder="វាយថ្ងៃខែ (ឧ. 13/09/2026 ឬ ១៣ កញ្ញា ២០២៦)" title="វាយថ្ងៃខែសុរិយគតិ វានឹងចេញចន្ទគតិស្វ័យប្រវត្តិ">
+                </div>
+
+                <!-- School Abbreviation (ឈ្មោះកាត់សាលា) -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text bg-light text-muted" title="ឈ្មោះអក្សរកាត់សាលារៀន (ទាញចេញពី ព័ត៌មានសាលារៀន)"><i class="fa-solid fa-school text-primary me-1"></i>អក្សរកាត់សាលា</span>
+                    <input type="text" id="toolbarPrefixInput" class="form-control form-control-sm" style="width: 120px;" value="{{ reports.0.school_abbr|default:reports.0.school_location|default:'វ.ហ.ស.ក.ក' }}" title="ឈ្មោះអក្សរកាត់សាលារៀន (ទាញចេញពី ព័ត៌មានសាលារៀន)">
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="btnSetTodayDate" title="កំណត់យកកាលបរិច្ឆេទថ្ងៃនេះ">
+                    <i class="fa-solid fa-bolt me-1 text-warning"></i>ថ្ងៃនេះ
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetDateDots" title="កំណត់ជាចុចៗទទេ (សម្រាប់សរសេរដៃ)">
+                    <i class="fa-solid fa-rotate-left me-1"></i>ទុកចន្លោះចុចៗ
+                </button>
+            </div>
+
+            <!-- Live Calculated Khmer Lunar Date Badge -->
+            <div class="d-flex align-items-center gap-1.5 bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 small" title="ថ្ងៃខែឆ្នាំចន្ទគតិគណនាស្វ័យប្រវត្តិតាមថ្ងៃខែសុរិយគតិ">
+                <i class="fa-solid fa-moon text-warning"></i>
+                <span class="fw-bold">ចន្ទគតិស្វ័យប្រវត្តិ៖</span>
+                <span id="toolbarLunarDisplay" class="fw-bold text-dark">ទុកចន្លោះចុចៗ (Blank / Dots)</span>
+            </div>
         </div>
     </div>
 
@@ -548,10 +630,10 @@
                     <div>......................................................................................</div>
                     <div>......................................................................................</div>
                 </div>
-                <div class="date-buddhist-line">
+                <div class="date-buddhist-line rc-date-buddhist" contenteditable="true" spellcheck="false" title="ថ្ងៃខែឆ្នាំចន្ទគតិ (ចេញស្វ័យប្រវត្តិតាមថ្ងៃខែសុរិយគតិ ឬចុចកែប្រែបាន)">
                     ថ្ងៃ..........................ខែ....................ឆ្នាំ........................ ព.ស. ២៥.......
                 </div>
-                <div class="date-solar-line">
+                <div class="date-solar-line rc-date-solar" data-template-type="tr" contenteditable="true" spellcheck="false" title="វាយថ្ងៃខែឆ្នាំសុរិយគតិនៅទីនេះ (ឧ. ថ្ងៃទី១៣ ខែកញ្ញា ឆ្នាំ២០២៦) វានឹងគណនាចេញចន្ទគតិស្វ័យប្រវត្តិ">
                     <span class="school-abbr-txt" contenteditable="true" title="ចុចដើម្បីកែប្រែអក្សរកាត់">{{ r.school_abbr|default:r.school_location|default:"វ.ហ.ស.ក.ក" }}</span> ថ្ងៃទី............... ខែ ................... ឆ្នាំ..................
                 </div>
             </div>
@@ -564,10 +646,10 @@
                     <div>......................................................................................</div>
                     <div>......................................................................................</div>
                 </div>
-                <div class="date-buddhist-line">
+                <div class="date-buddhist-line rc-date-buddhist" contenteditable="true" spellcheck="false" title="ថ្ងៃខែឆ្នាំចន្ទគតិ (ចេញស្វ័យប្រវត្តិតាមថ្ងៃខែសុរិយគតិ ឬចុចកែប្រែបាន)">
                     ថ្ងៃ..........................ខែ....................ឆ្នាំ........................ ព.ស. ២៥.......
                 </div>
-                <div class="date-solar-line">
+                <div class="date-solar-line rc-date-solar" data-template-type="tr" contenteditable="true" spellcheck="false" title="វាយថ្ងៃខែឆ្នាំសុរិយគតិនៅទីនេះ (ឧ. ថ្ងៃទី១៣ ខែកញ្ញា ឆ្នាំ២០២៦) វានឹងគណនាចេញចន្ទគតិស្វ័យប្រវត្តិ">
                     <span class="school-abbr-txt" contenteditable="true" title="ចុចដើម្បីកែប្រែអក្សរកាត់">{{ r.school_abbr|default:r.school_location|default:"វ.ហ.ស.ក.ក" }}</span> ថ្ងៃទី............... ខែ ................... ឆ្នាំ..................
                 </div>
             </div>
@@ -575,5 +657,7 @@
     </div>
     {% endfor %}
 
+    <script src="{% static 'js/khmer_lunar.js' %}"></script>
+    <script src="{% static 'js/report_card_date_sync.js' %}"></script>
 </body>
 </html>

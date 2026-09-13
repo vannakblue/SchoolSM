@@ -43,6 +43,11 @@
         'កញ្ញា': 9, 'តុលា': 10, 'វិច្ឆិកា': 11, 'ធ្នូ': 12
     };
 
+    const KHMER_MONTH_NAMES_SOLAR = [
+        'មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា',
+        'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'
+    ];
+
     function toKhmerDigits(num) {
         if (num === null || num === undefined) return '';
         return String(num).split('').map(ch => KHMER_DIGITS[ch] || ch).join('');
@@ -127,39 +132,49 @@
         if (!input) return new Date();
         if (input instanceof Date && !isNaN(input)) return input;
 
-        const str = String(input).trim();
+        const rawStr = String(input).trim();
+        const str = parseKhmerDigits(rawStr);
 
         // 1. Check standard ISO format: YYYY-MM-DD
-        const isoMatch = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+        const isoMatch = str.match(/(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})/);
         if (isoMatch) {
             return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10));
         }
 
-        // 2. Check DD/MM/YYYY or DD-MM-YYYY
-        const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+        // 2. Check DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+        const dmyMatch = str.match(/(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/);
         if (dmyMatch) {
             return new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
         }
 
-        // 3. Check Khmer solar string: e.g. "ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦" or "ទី០៦ ខែតុលា ឆ្នាំ២០២៦"
-        const latinDigitsStr = parseKhmerDigits(str);
-        const khMatch = latinDigitsStr.match(/(\d{1,2})\s*ខែ\s*([^\s]+)\s*ឆ្នាំ\s*(\d{4})/);
-        if (khMatch) {
-            const day = parseInt(khMatch[1], 10);
-            const rawMonth = khMatch[2].trim();
-            const year = parseInt(khMatch[3], 10);
-            let month = 1;
-            for (const [mName, mIdx] of Object.entries(KHMER_SOLAR_MONTHS)) {
-                if (rawMonth.includes(mName)) {
-                    month = mIdx;
-                    break;
+        // 3. Check Khmer solar string with month name: e.g. "ថ្ងៃទី ១៨ ខែ ឧសភា ឆ្នាំ ២០២៦" or "13 តុលា 2026"
+        for (const [mName, mIdx] of Object.entries(KHMER_SOLAR_MONTHS)) {
+            if (rawStr.includes(mName)) {
+                const yearMatch = str.match(/(\d{4})/);
+                const dayMatch = str.match(/(?:ថ្ងៃទី\s*|ទី\s*|^|[^\d])(\d{1,2})(?=[^\d]|$)/);
+                if (yearMatch && dayMatch) {
+                    return new Date(parseInt(yearMatch[1], 10), mIdx - 1, parseInt(dayMatch[1], 10));
                 }
             }
-            return new Date(year, month - 1, day);
+        }
+
+        // 4. Three numbers separated by spaces: DD MM YYYY
+        const spaceMatch = str.match(/(\d{1,2})\s+(\d{1,2})\s+(\d{4})/);
+        if (spaceMatch) {
+            return new Date(parseInt(spaceMatch[3], 10), parseInt(spaceMatch[2], 10) - 1, parseInt(spaceMatch[1], 10));
         }
 
         const fallback = new Date(str);
         return isNaN(fallback.getTime()) ? new Date() : fallback;
+    }
+
+    function formatSolarKhmer(input, prefix = '') {
+        const d = parseDate(input);
+        const dayKh = toKhmerDigits(d.getDate());
+        const monthKh = KHMER_MONTH_NAMES_SOLAR[d.getMonth()] || '';
+        const yearKh = toKhmerDigits(d.getFullYear());
+        const p = prefix ? `${prefix.trim()} ` : '';
+        return `${p}ថ្ងៃទី${dayKh} ខែ${monthKh} ឆ្នាំ${yearKh}`;
     }
 
     function calculateLunarDetails(input) {
@@ -373,7 +388,10 @@
         getLunarDetails: calculateLunarDetails,
         parseDate,
         toKhmerDigits,
-        bindAutoConversion
+        parseKhmerDigits,
+        formatSolarKhmer,
+        bindAutoConversion,
+        KHMER_SOLAR_MONTHS
     };
 
 })(typeof window !== 'undefined' ? window : this);

@@ -345,6 +345,12 @@
             border-radius: 2px;
         }
 
+        .rc-date-highlight {
+            background-color: #dcfce7 !important;
+            border-radius: 4px;
+            transition: background-color 0.8s ease;
+        }
+
         /* Print Media Styles (Exact 1 A4 Page per Student) */
         @media print {
             body {
@@ -354,6 +360,13 @@
             }
             .no-print-toolbar {
                 display: none !important;
+            }
+            .rc-date-highlight {
+                background-color: transparent !important;
+            }
+            [contenteditable="true"] {
+                outline: none !important;
+                background: transparent !important;
             }
             .transcript-page {
                 width: 210mm !important;
@@ -378,63 +391,108 @@
 </head>
 <body>
 
-    <!-- Screen Toolbar (4-Model Switcher + Print Actions) -->
+    <!-- Screen Toolbar (4-Model Switcher + Print Actions + Auto Date Adjuster) -->
     <div class="no-print-toolbar">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
-            </button>
+        <div class="d-flex align-items-center justify-content-between w-100 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button onclick="window.close(); if(!window.closed) history.back();" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>ត្រឡប់ក្រោយ
+                </button>
 
-            <!-- 4-Model Switcher Button Group -->
-            <div class="btn-group btn-group-sm" role="group">
-                <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="ប្តូរទៅទម្រង់សាលារដ្ឋ ៨ ជួរ (MoEYS Annual 8-Cols)">
-                    <i class="fas fa-landmark me-1"></i> គំរូសាលារដ្ឋ (៨ ជួរ)
-                </a>
-                <a href="?model=tr{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-success btn-sm fw-bold" title="ប្តូរទៅទម្រង់វិទ្យាល័យតាម tr.pdf (MoEYS tr.pdf)">
-                    <i class="fas fa-file-invoice me-1"></i> គំរូ tr.pdf
-                </a>
-                <span class="btn btn-info text-white btn-sm fw-bold shadow-xs">
-                    <i class="fas fa-file-alt me-1"></i> គំរូ transcript.pdf
+                <!-- 4-Model Switcher Button Group -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="?model=moeys{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-primary btn-sm fw-bold" title="គំរូទី១៖ គំរូសាលារដ្ឋ (៨ ជួរ)">
+                        <i class="fas fa-landmark me-1"></i> គំរូទី១
+                    </a>
+                    <a href="?model=tr{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-success btn-sm fw-bold" title="គំរូទី២៖ គំរូសាលារដ្ឋតាម tr.pdf (MoEYS tr.pdf)">
+                        <i class="fas fa-file-invoice me-1"></i> គំរូទី២
+                    </a>
+                    <span class="btn btn-info text-white btn-sm fw-bold shadow-xs" title="គំរូទី៣៖ គំរូ transcript.pdf">
+                        <i class="fas fa-file-alt me-1"></i> គំរូទី៣
+                    </span>
+                    <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="គំរូអន្តរជាតិ៖ ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
+                        <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
+                    </a>
+                </div>
+
+                <!-- Exam Term Selector -->
+                {% if terms %}
+                <div class="d-flex align-items-center gap-1 ms-1">
+                    <label for="termSelector" class="small text-muted fw-bold text-nowrap mb-0 d-none d-lg-inline">
+                        <i class="fas fa-calendar-check text-primary me-1"></i>សម័យប្រឡង៖
+                    </label>
+                    <select id="termSelector" class="form-select form-select-sm rounded-pill fw-bold border-primary text-primary" style="max-width: 250px;" onchange="switchExamTerm(this.value)">
+                        {% for t in terms %}
+                        <option value="{{ t.id }}" {% if term and term.id == t.id %}selected{% endif %}>
+                            {{ t.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                {% if is_batch %}
+                <span class="badge bg-primary fs-6 px-3 py-1">
+                    <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
                 </span>
-                <a href="?model=western{% if term %}&term_id={{ term.id }}{% endif %}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="ប្តូរទៅទម្រង់អន្តរជាតិ/ទ្វេភាសា ២ ទំព័រ (Western/Bilingual)">
-                    <i class="fas fa-globe me-1"></i> គំរូអន្តរជាតិ (២ ទំព័រ)
-                </a>
+                {% else %}
+                <span class="text-muted small">
+                    សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id|default:reports.0.student.id }})
+                </span>
+                {% endif %}
             </div>
 
-            <!-- Exam Term Selector -->
-            {% if terms %}
-            <div class="d-flex align-items-center gap-1 ms-1">
-                <label for="termSelector" class="small text-muted fw-bold text-nowrap mb-0 d-none d-lg-inline">
-                    <i class="fas fa-calendar-check text-primary me-1"></i>សម័យប្រឡង៖
-                </label>
-                <select id="termSelector" class="form-select form-select-sm rounded-pill fw-bold border-primary text-primary" style="max-width: 250px;" onchange="switchExamTerm(this.value)">
-                    {% for t in terms %}
-                    <option value="{{ t.id }}" {% if term and term.id == t.id %}selected{% endif %}>
-                        {{ t.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <div class="d-flex align-items-center gap-2">
+                <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
+                    <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
+                </button>
+                <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
+                    បិទ
+                </button>
             </div>
-            {% endif %}
-
-            {% if is_batch %}
-            <span class="badge bg-primary fs-6 px-3 py-1">
-                <i class="fas fa-users me-1"></i> ថ្នាក់៖ {{ classroom.name }} (សរុប {{ reports|length }} នាក់)
-            </span>
-            {% else %}
-            <span class="text-muted small">
-                សិស្ស៖ <strong>{{ reports.0.student.khmer_name }}</strong> ({{ reports.0.student.student_id|default:reports.0.student.id }})
-            </span>
-            {% endif %}
         </div>
 
-        <div class="d-flex align-items-center gap-2">
-            <button onclick="window.print()" class="btn btn-sm btn-primary px-3 fw-bold">
-                <i class="fas fa-print me-1"></i>បោះពុម្ព (Print A4)
-            </button>
-            <button onclick="window.close()" class="btn btn-sm btn-outline-dark">
-                បិទ
-            </button>
+        <!-- Second Row: Automatic Solar-to-Lunar Date Adjuster -->
+        <div class="w-100 mt-2 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-info text-white d-flex align-items-center gap-1 py-1.5 px-2.5">
+                    <i class="fa-solid fa-calendar-day"></i> កែតម្រូវកាលបរិច្ឆេទ
+                </span>
+
+                <!-- Solar Datepicker -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text bg-light text-muted" title="ជ្រើសរើសថ្ងៃខែឆ្នាំសុរិយគតិ">
+                        <i class="fa-regular fa-calendar text-primary me-1"></i>សុរិយគតិ
+                    </span>
+                    <input type="date" id="toolbarSolarPicker" class="form-control form-control-sm" style="width: 135px;" title="ជ្រើសរើសថ្ងៃខែឆ្នាំសុរិយគតិ (Gregorian Date)">
+                </div>
+
+                <!-- Free typing solar input -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <input type="text" id="toolbarSolarInput" class="form-control form-control-sm" style="min-width: 220px;" placeholder="វាយថ្ងៃខែ (ឧ. 13/09/2026 ឬ ១៣ កញ្ញា ២០២៦)" title="វាយថ្ងៃខែសុរិយគតិ វានឹងចេញចន្ទគតិស្វ័យប្រវត្តិ">
+                </div>
+
+                <!-- School Abbreviation (ឈ្មោះកាត់សាលា) -->
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text bg-light text-muted" title="ឈ្មោះអក្សរកាត់សាលារៀន (ទាញចេញពី ព័ត៌មានសាលារៀន)"><i class="fa-solid fa-school text-primary me-1"></i>អក្សរកាត់សាលា</span>
+                    <input type="text" id="toolbarPrefixInput" class="form-control form-control-sm" style="width: 120px;" value="{{ reports.0.school_abbr|default:reports.0.school_location|default:'វ.ហ.ស.ក.ក' }}" title="ឈ្មោះអក្សរកាត់សាលារៀន (ទាញចេញពី ព័ត៌មានសាលារៀន)">
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="btnSetTodayDate" title="កំណត់យកកាលបរិច្ឆេទថ្ងៃនេះ">
+                    <i class="fa-solid fa-bolt me-1 text-warning"></i>ថ្ងៃនេះ
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResetDateDots" title="កំណត់ជាចុចៗទទេ (សម្រាប់សរសេរដៃ)">
+                    <i class="fa-solid fa-rotate-left me-1"></i>ទុកចន្លោះចុចៗ
+                </button>
+            </div>
+
+            <!-- Live Calculated Khmer Lunar Date Badge -->
+            <div class="d-flex align-items-center gap-1.5 bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 small" title="ថ្ងៃខែឆ្នាំចន្ទគតិគណនាស្វ័យប្រវត្តិតាមថ្ងៃខែសុរិយគតិ">
+                <i class="fa-solid fa-moon text-warning"></i>
+                <span class="fw-bold">ចន្ទគតិស្វ័យប្រវត្តិ៖</span>
+                <span id="toolbarLunarDisplay" class="fw-bold text-dark">ទុកចន្លោះចុចៗ (Blank / Dots)</span>
+            </div>
         </div>
     </div>
 
@@ -458,7 +516,7 @@
 
             <!-- Centered Document Title -->
             <div class="doc-title-container">
-                <div class="font-muol doc-main-title" contenteditable="true">ព្រឹត្តិបត្រពិន្ទុ {{ r.transcript_term_title|default:term.name|default:"" }}</div>
+                <div class="font-muol doc-main-title" contenteditable="true">ព្រឹត្តិបត្រពិន្ទុ {% if r.transcript_term_title %}{{ r.transcript_term_title }}{% elif term %}{{ term.name }}{% endif %}</div>
                 <div class="font-muol doc-year-title" contenteditable="true">ឆ្នាំសិក្សា {{ r.academic_year_kh|default:"២០២៥-២០២៦" }}</div>
             </div>
 
@@ -478,7 +536,7 @@
                     <tr>
                         <td class="fw-bold" contenteditable="true">{{ r.student.student_id|default:r.student.id }}-{{ r.student.khmer_name }}</td>
                         <td contenteditable="true">{{ r.student_gender_kh|default:"-" }}</td>
-                        <td contenteditable="true">{{ r.transcript_classroom_name|default:r.classroom.name|default:r.classroom.code|default:"12A" }}</td>
+                        <td contenteditable="true">{% if r.transcript_classroom_name %}{{ r.transcript_classroom_name }}{% elif r.classroom %}{{ r.classroom.name|default:r.classroom.code }}{% elif r.student.classroom %}{{ r.student.classroom.name }}{% else %}12A{% endif %}</td>
                         <td contenteditable="true">{{ r.total_students|default:r.total_students_kh|default:"40" }}</td>
                         <td contenteditable="true">{{ r.total_females|default:r.total_females_kh|default:"29" }}</td>
                         <td contenteditable="true">{{ r.transcript_student_status|default:"ធម្មតា" }}</td>
@@ -622,8 +680,8 @@
                 <div class="font-muol" style="margin-top: 4px;" contenteditable="true">{{ r.principal_title|default:"នាយក" }}</div>
             </div>
             <div class="sig-col-right">
-                <div class="date-kh-line" contenteditable="true">ថ្ងៃ...............ខែ.....................ឆ្នាំ.........................ព.ស.២៥៦......</div>
-                <div class="date-kh-line" contenteditable="true">.....................ថ្ងៃទី...............ខែ.................ឆ្នាំ២០២.......</div>
+                <div class="date-kh-line rc-date-buddhist" contenteditable="true" spellcheck="false" title="ថ្ងៃខែឆ្នាំចន្ទគតិ (ចេញស្វ័យប្រវត្តិតាមថ្ងៃខែសុរិយគតិ ឬកែប្រែបាន)">ថ្ងៃ...............ខែ.....................ឆ្នាំ.........................ព.ស.២៥៦......</div>
+                <div class="date-kh-line rc-date-solar" data-template-type="transcript" contenteditable="true" spellcheck="false" title="វាយថ្ងៃខែឆ្នាំសុរិយគតិនៅទីនេះ (ឧ. ថ្ងៃទី១៣ ខែកញ្ញា ឆ្នាំ២០២៦) វានឹងចេញចន្ទគតិស្វ័យប្រវត្តិ"><span class="school-abbr-txt" contenteditable="true" title="ចុចកែប្រែឈ្មោះអក្សរកាត់សាលា">{{ reports.0.school_abbr|default:reports.0.school_location|default:"វ.ហ.ស.ក.ក" }}</span> ថ្ងៃទី...............ខែ.................ឆ្នាំ២០២.......</div>
                 <div class="font-muol sig-title-teacher">គ្រូបន្ទុកថ្នាក់</div>
                 <div class="sig-space"></div>
                 <div class="teacher-name-txt" contenteditable="true">{{ r.homeroom_teacher_name|default:"ស៊ិន ម៉ូនីដា" }}</div>
@@ -633,6 +691,8 @@
     </div>
     {% endfor %}
 
+    <script src="{% static 'js/khmer_lunar.js' %}"></script>
+    <script src="{% static 'js/report_card_date_sync.js' %}"></script>
     <script>
         function switchExamTerm(termId) {
             const url = new URL(window.location.href);
