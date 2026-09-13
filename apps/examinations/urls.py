@@ -7,6 +7,7 @@ urlpatterns = [
     path('terms/create/', views.exam_term_create, name='exam_term_create'),
     path('terms/<int:term_id>/edit/', views.exam_term_edit, name='exam_term_edit'),
     path('terms/<int:term_id>/delete/', views.exam_term_delete, name='exam_term_delete'),
+    path('terms/<int:term_id>/toggle-active-grading/', views.exam_term_toggle_active_grading, name='exam_term_toggle_active_grading'),
     path('terms/<int:term_id>/toggle-provisional-publish/', views.api_toggle_term_provisional_publish, name='api_toggle_term_provisional_publish'),
     path('terms/<int:term_id>/graph/', views.term_results_graph_view, name='term_results_graph_view'),
     path('term-subjects/', views.exam_term_subjects_manage, name='exam_term_subjects_manage'),

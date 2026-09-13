@@ -35,6 +35,11 @@ class ExamTerm(models.Model):
     grading_start_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងចាប់ផ្តើមបញ្ចូលពិន្ទុ / Grading Start Time")
     grading_end_datetime = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទ & ម៉ោងបញ្ចប់បញ្ចូលពិន្ទុ / Grading Deadline")
     is_grading_locked = models.BooleanField(default=False, verbose_name="ចាក់សោការបញ្ចូលពិន្ទុ / Lock Grade Entry")
+    is_active_for_grading = models.BooleanField(
+        default=False,
+        verbose_name="បើកដំណើរការបញ្ចូលពិន្ទុសម្រាប់គ្រូ (Active Grading Term)",
+        help_text="បើកដំណើរការសម័យប្រឡងនេះ ឱ្យគ្រូបង្រៀនអាចបញ្ចូលពិន្ទុបាន (លើ Portal និង Mobile App)"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -57,6 +62,49 @@ class ExamTerm(models.Model):
         if self.grading_end_datetime and now > self.grading_end_datetime:
             return False, 'EXPIRED', f'ការបញ្ចូលពិន្ទុបានផុតកំណត់កាលពីថ្ងៃ {self.grading_end_datetime.strftime("%d/%m/%Y %H:%M")}'
         return True, 'OPEN', 'កំពុងបើកដំណើរការបញ្ចូលពិន្ទុ'
+
+    def set_as_active_grading_term(self):
+        """
+        Sets this term as the sole active grading term for its academic year (or system),
+        and unlocks it.
+        """
+        from django.db import transaction
+        with transaction.atomic():
+            ExamTerm.objects.filter(academic_year=self.academic_year).exclude(id=self.id).update(is_active_for_grading=False)
+            self.is_active_for_grading = True
+            self.is_grading_locked = False
+            self.save(update_fields=['is_active_for_grading', 'is_grading_locked'])
+
+    @classmethod
+    def get_active_grading_term(cls, academic_year=None):
+        """
+        Returns the exam term set as active for grading by Admin.
+        Falls back to the latest unlocked term in the academic year.
+        """
+        qs = cls.objects.all()
+        if academic_year:
+            qs = qs.filter(academic_year=academic_year)
+        
+        # 1. Explicitly activated by Admin
+        active = qs.filter(is_active_for_grading=True).first()
+        if active:
+            return active
+        
+        # 2. Fallback to latest unlocked term
+        fallback = qs.filter(is_grading_locked=False).order_by('-start_date', '-id').first()
+        if fallback:
+            fallback.is_active_for_grading = True
+            fallback.save(update_fields=['is_active_for_grading'])
+            return fallback
+
+        # 3. Ultimate fallback to first available
+        ultimate = qs.order_by('-start_date', '-id').first()
+        if ultimate:
+            ultimate.is_active_for_grading = True
+            ultimate.is_grading_locked = False
+            ultimate.save(update_fields=['is_active_for_grading', 'is_grading_locked'])
+            return ultimate
+        return None
 
     def __str__(self):
         return f"{self.name} ({self.academic_year.name})"

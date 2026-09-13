@@ -6018,6 +6018,55 @@ def teacher_assignments_auto_assign(request):
         
     return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
 
+
+@login_required
+@role_required(['ADMIN'])
+def teacher_assignments_import_excel(request):
+    """
+    Import teacher duty assignments from Excel file (e.g. 'បំណែងចែកគ្រូ2027.xlsx')
+    and permanently store them in the database for the active academic year.
+    """
+    from .utils import get_active_academic_year
+    from .duty_importer import import_teacher_duty_from_excel
+    import os
+    from django.conf import settings
+
+    active_year = get_active_academic_year(request)
+    
+    if request.method == 'POST':
+        excel_file = request.FILES.get('excel_file')
+        file_source = None
+        
+        if excel_file:
+            file_source = excel_file
+        else:
+            # Fallback to standard system file if exists
+            default_path_2027 = os.path.join(settings.BASE_DIR, 'បំណែងចែកគ្រូ2027.xlsx')
+            default_path_data = os.path.join(settings.BASE_DIR, 'data.xlsx')
+            if os.path.exists(default_path_2027):
+                file_source = default_path_2027
+            elif os.path.exists(default_path_data):
+                file_source = default_path_data
+            else:
+                messages.error(request, "សូមជ្រើសរើសឯកសារ Excel (.xlsx) ដើម្បីបញ្ចូល ឬដាក់ឯកសារ បំណែងចែកគ្រូ2027.xlsx ក្នុងប្រព័ន្ធ!")
+                return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
+
+        res = import_teacher_duty_from_excel(file_source, target_academic_year=active_year)
+        if res.get('success'):
+            t_count = res.get('teachers_assigned', 0)
+            cs_count = res.get('class_subjects_created', 0) + res.get('class_subjects_updated', 0)
+            tt_count = res.get('timetable_created', 0) + res.get('timetable_updated', 0)
+            
+            msg = f"📥 នាំចូលបំណែងចែកភារកិច្ចគ្រូជោគជ័យ! បានចាត់តាំងគ្រូចំនួន {t_count} នាក់ ទៅលើ {cs_count} ថ្នាក់-មុខវិជ្ជា ក្នុងឆ្នាំសិក្សា {res.get('academic_year', '')}។"
+            if tt_count > 0:
+                msg += f" (បានធ្វើសមកាលកម្មកាលវិភាគ {tt_count} ម៉ោងសិក្សាផងដែរ)"
+            messages.success(request, msg)
+        else:
+            err_msg = " ; ".join(res.get('errors', [])) or "មានបញ្ហាក្នុងការនាំចូលទិន្នន័យពី Excel"
+            messages.error(request, f"បរាជ័យក្នុងការនាំចូលបំណែងចែកភារកិច្ច៖ {err_msg}")
+            
+    return redirect(f"/academics/teacher-assignments/{f'?year={active_year.id}' if active_year else ''}")
+
 # ----------------- TEACHER & STAFF ON-DUTY ALLOCATION (ម៉ោងប្រចាំការ) -----------------
 
 @login_required

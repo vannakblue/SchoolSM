@@ -12,9 +12,11 @@
     </div>
     {% if selected_term and selected_class %}
     <div class="d-flex gap-2 flex-wrap">
+        {% if can_manage_class_reports %}
         <button type="button" class="btn btn-outline-info fw-bold btn-sm rounded-pill px-3 shadow-xs" onclick="openClassTelegramModal('{{ selected_class.id }}', '{{ selected_term.id }}', '{{ selected_class.name }}', '{{ selected_term.name }}')">
             <i class="fa-brands fa-telegram me-1"></i> ផ្ញើប័ណ្ណពិន្ទុទាំងអស់ទៅ Telegram (PDF/Message)
         </button>
+        {% endif %}
         <a href="{% url 'grade_entry_matrix' %}?term={{ selected_term.id }}&classroom={{ selected_class.id }}" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-3 shadow-xs">
             <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែពិន្ទុ
         </a>
@@ -57,8 +59,12 @@
                 <i class="fa-solid fa-ranking-star me-2"></i>ចំណាត់ថ្នាក់សិស្ស៖ {{ selected_class.name }} ({{ selected_term.name }})
             </h5>
             <span class="badge bg-light text-dark mt-1 border">{{ selected_class.get_track_display }} | ពិន្ទុសរុបពេញ៖ {{ total_class_max|floatformat:0 }} ពិន្ទុ</span>
+            {% if is_pure_subject_teacher %}
+            <span class="badge bg-warning text-dark mt-1 border"><i class="fa-solid fa-user-tag me-1"></i> បង្ហាញតែមុខវិជ្ជាដែលលោកគ្រូ-អ្នកគ្រូបង្រៀន (Teacher Assigned Subjects)</span>
+            {% endif %}
         </div>
         
+        {% if can_manage_class_reports %}
         <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'classroom_report_cards_moeys' selected_class.id %}?term_id={{ selected_term.id }}" target="_blank" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-xs" title="បោះពុម្ពព្រឹត្តិបត្រពិន្ទុសាលារដ្ឋ ៨ ជួរ (១ ទំព័រ) សម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់">
                 <i class="fa-solid fa-landmark me-1"></i> ព្រឹត្តិបត្រ (គំរូទី១)
@@ -76,6 +82,7 @@
                 <i class="fa-brands fa-telegram me-1"></i> ផ្ញើប័ណ្ណពិន្ទុទាំងមូល (PDF & Message)
             </button>
         </div>
+        {% endif %}
     </div>
 
     <div class="table-responsive">

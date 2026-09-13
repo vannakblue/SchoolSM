@@ -8,7 +8,7 @@ class ExamTermForm(forms.ModelForm):
             'name', 'academic_year', 'semester', 'term_type', 'scoring_mode',
             'is_counted_in_semester', 'start_date', 'end_date',
             'grading_start_datetime', 'grading_end_datetime', 'is_grading_locked',
-            'is_published'
+            'is_active_for_grading', 'is_published'
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ប្រឡងប្រចាំខែមករា / January Monthly Exam'}),
@@ -22,8 +22,15 @@ class ExamTermForm(forms.ModelForm):
             'grading_start_datetime': forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'grading_end_datetime': forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'class': 'form-control', 'type': 'datetime-local'}),
             'is_grading_locked': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active_for_grading': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        if commit and instance.is_active_for_grading:
+            ExamTerm.objects.filter(academic_year=instance.academic_year).exclude(id=instance.id).update(is_active_for_grading=False)
+        return instance
 
 
 class StandardizedExamForm(forms.ModelForm):

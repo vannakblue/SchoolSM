@@ -124,6 +124,11 @@
             <i class="fa-solid fa-sliders me-1 text-dark"></i> ⚙️ កំណត់កូតាម៉ោង (គ្រូទុតិយភូមិ=16h, ផ្សេងៗ=18h)
         </button>
 
+        <!-- Import Duty Excel Modal Trigger Button -->
+        <button type="button" class="btn btn-primary btn-sm fw-bold shadow-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#importDutyModal">
+            <i class="fa-solid fa-file-excel me-1"></i> 📥 នាំចូលបំណែងចែកភារកិច្ច (Excel)
+        </button>
+
         <!-- Auto Assign by Specialization -->
         <a href="{% url 'teacher_assignments_auto_assign' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-success btn-sm fw-bold shadow-sm px-3 py-2" onclick="return confirm('តើលោកអ្នកចង់ឱ្យប្រព័ន្ធចាត់តាំងគ្រូទៅតាមមុខវិជ្ជាឯកទេស និងកម្រិតបណ្តុះបណ្តាល (គ្រូទុតិយភូមិ = ១៦ ម៉ោង, គ្រូបឋមភូមិ/ផ្សេងៗ = ១៨ ម៉ោង) ដោយស្វ័យប្រវត្តិដែរឬទេ?')">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ✨ ចាត់តាំងស្វ័យប្រវត្តិតាមឯកទេស
@@ -691,6 +696,54 @@
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-primary btn-sm fw-bold px-3">
                         <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក & អនុវត្តទៅគ្រូទាំងអស់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Import Duty Assignments from Excel -->
+<div class="modal fade" id="importDutyModal" tabindex="-1" aria-labelledby="importDutyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="POST" action="{% url 'teacher_assignments_import_excel' %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-primary" id="importDutyModalLabel">
+                        <i class="fa-solid fa-file-excel text-success me-2"></i>នាំចូលបំណែងចែកភារកិច្ចគ្រូ (Excel)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-primary py-2 px-3 small mb-3 border-0 bg-primary-subtle text-dark">
+                        <i class="fa-solid fa-circle-check text-primary me-1"></i>
+                        <strong>ផ្ទៀងផ្ទាត់ឈ្មោះស្វ័យប្រវត្តិ៖</strong> ប្រព័ន្ធនឹងផ្ទៀងផ្ទាត់ឈ្មោះគ្រូក្នុងឯកសារ Excel ជាមួយឈ្មោះគ្រូក្នុង Web Browser Database (១០៤ នាក់) ព្រមទាំងរក្សាទុកទិន្នន័យជាអចិន្ត្រៃយ៍ក្នុង Database សម្រាប់ឆ្នាំសិក្សា <strong>{{ active_academic_year.name|default:"២០២៦-២០២៧" }}</strong>។
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small mb-1">
+                            ជ្រើសរើសឯកសារ Excel (.xlsx) ៖
+                        </label>
+                        <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls">
+                        <div class="form-text small text-muted mt-1">
+                            គាំទ្រឯកសារ <code>បំណែងចែកគ្រូ2027.xlsx</code> ឬ <code>data.xlsx</code>
+                        </div>
+                    </div>
+
+                    <div class="border rounded-3 p-3 bg-light mb-2">
+                        <div class="small fw-bold text-muted mb-2">
+                            <i class="fa-solid fa-server me-1"></i> ជម្រើសឯកសារប្រព័ន្ធដែលមានស្រាប់៖
+                        </div>
+                        <p class="small text-secondary mb-0">
+                            ប្រសិនបើលោកអ្នកមិនជ្រើសរើស File ថ្មីទេ ប្រព័ន្ធនឹងទាញយកទិន្នន័យពីឯកសារដើម <code>E:\SchoolSM\បំណែងចែកគ្រូ2027.xlsx</code> មកធ្វើបច្ចុប្បន្នភាពដោយស្វ័យប្រវត្តិ។
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-4">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> ចាប់ផ្តើមនាំចូល & រក្សាទុក
                     </button>
                 </div>
             </form>

@@ -115,26 +115,53 @@
         </div>
     </div>
 
+    {% if is_scan_disabled %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-3">
+        <div class="d-flex align-items-start gap-3">
+            <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold text-dark mb-1">ការស្កេន QR Code ត្រូវបានបិទ</h6>
+                <p class="small text-dark mb-1">{{ scan_disabled_reason }}</p>
+                <span class="badge bg-dark rounded-pill">
+                    វិធីសាស្ត្រសកម្មបច្ចុប្បន្ន៖ {{ config.get_active_daily_mode_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Live Scanner Box -->
     <div class="mobile-scan-card p-3 mb-4">
         
         <div class="scanner-viewport position-relative mb-3 d-flex flex-column align-items-center justify-content-center">
             <div id="scannerReader" style="width: 100%; min-height: 280px;"></div>
-            <div class="scanner-laser" id="scannerLaser"></div>
+            <div class="scanner-laser" id="scannerLaser" {% if is_scan_disabled %}style="display:none;"{% endif %}></div>
         </div>
 
         <div class="d-grid gap-2">
+            {% if is_scan_disabled %}
+            <button disabled class="btn btn-secondary btn-lg rounded-pill fw-bold">
+                <i class="fa-solid fa-ban me-2"></i> មិនអនុញ្ញាតឱ្យស្កេន QR ឡើយ
+            </button>
+            {% else %}
             <button id="btnStartScan" onclick="startScanner()" class="btn btn-primary btn-lg rounded-pill fw-bold">
                 <i class="fa-solid fa-camera me-2"></i> ចាប់ផ្តើមបើកកាមេរ៉ាស្កេន
             </button>
             <button id="btnStopScan" onclick="stopScanner()" class="btn btn-outline-secondary rounded-pill fw-bold d-none">
                 <i class="fa-solid fa-pause me-2"></i> បញ្ឈប់កាមេរ៉ា
             </button>
+            {% endif %}
         </div>
 
         <p class="text-muted small text-center mt-3 mb-0">
             <i class="fa-solid fa-circle-info text-info me-1"></i>
+            {% if is_scan_disabled %}
+            សូមទាក់ទង Admin ឬប្រើប្រាស់វិធីសាស្ត្រដែល Admin បានអនុញ្ញាតខាងលើ។
+            {% else %}
             សូមយកទូរស័ព្ទនេះទៅចង្អុលចំ <strong>QR Code លើអេក្រង់ Kiosk សាលា</strong> ដើម្បីកត់ត្រាវត្តមាន។
+            {% endif %}
         </p>
     </div>
 

@@ -126,6 +126,7 @@ urlpatterns = [
     path('teacher-assignments/auto-assign/', views.teacher_assignments_auto_assign, name='teacher_assignments_auto_assign'),
     path('teacher-assignments/reset-teacher/<int:teacher_id>/', views.teacher_assignments_reset_teacher, name='teacher_assignments_reset_teacher'),
     path('teacher-assignments/training-quotas/save/', views.teacher_assignments_training_quotas_save, name='teacher_assignments_training_quotas_save'),
+    path('teacher-assignments/import-excel/', views.teacher_assignments_import_excel, name='teacher_assignments_import_excel'),
 
     # Teacher & Office Staff Duty Allocation Manager
     path('duty-schedule/', views.teacher_duty_manager, name='teacher_duty_manager'),

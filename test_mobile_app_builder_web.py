@@ -52,9 +52,9 @@ class MobileAppBuilderWebTest(TestCase):
 
     def test_tool_download_mobile_apk(self):
         response = self.client.get(reverse('tool_download_mobile_apk'))
-        # If SchoolSM-Mobile.apk exists on disk, it should return 200 with APK MIME type
-        if os.path.exists('SchoolSM-Mobile.apk'):
-            self.assertEqual(response.status_code, 200)
+        # If SchoolSM-Mobile.apk exists on disk, it should return 200 or 302 (if custom cloud link set)
+        self.assertIn(response.status_code, [200, 302])
+        if response.status_code == 200:
             self.assertEqual(response['Content-Type'], 'application/vnd.android.package-archive')
             self.assertIn('SchoolSM-Mobile.apk', response['Content-Disposition'])
 

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/services/auth_service.dart';
 
 class StudentEnrollmentScreen extends StatefulWidget {
   const StudentEnrollmentScreen({super.key});
@@ -25,6 +27,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   List<dynamic> _scholarshipTypes = [];
   String _suggestedId = '';
   String _schoolName = 'SchoolSM';
+  bool _canEditStudentId = false;
 
   // Dynamic Grade Options
   List<dynamic> _gradeOptions = [];
@@ -79,6 +82,18 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   int? _selectedClassroomId;
   String _selectedScholarship = 'FULL_PAY';
 
+  // Administrative Location Selectors (ទីកន្លែងកំណើត MoEYS & Address Cascades)
+  List<dynamic> _pobProvinces = [];
+  List<dynamic> _pobDistricts = [];
+  List<dynamic> _pobCommunes = [];
+  int? _selectedPobProvinceId;
+  int? _selectedPobDistrictId;
+  int? _selectedPobCommuneId;
+  bool _isLoadingProvinces = false;
+  bool _isLoadingPobDistricts = false;
+  bool _isLoadingPobCommunes = false;
+  bool _isManualPobMode = false;
+
   // Uniqueness check state
   Timer? _debounceRomanize;
   Timer? _debounceCheckId;
@@ -130,6 +145,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       if (data['status'] == 'success') {
         setState(() {
           _suggestedId = data['suggested_id'] ?? '';
+          _canEditStudentId = data['can_edit_student_id'] == true;
           _customIdController.text = _suggestedId;
           _academicYears = data['academic_years'] ?? [];
           _classrooms = data['classrooms'] ?? [];
@@ -162,6 +178,9 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
         if (_selectedClassroomId != null) {
           _fetchGradeOptions();
         }
+
+        // Fetch official Cambodian provinces for POB selection
+        _fetchProvinces();
       }
     } catch (e) {
       setState(() => _isLoadingMeta = false);
@@ -213,6 +232,654 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       _gradeOptionValues.clear();
     });
     _fetchGradeOptions();
+  }
+
+  Future<void> _refreshSuggestedIdForYear(int? yearId) async {
+    if (yearId == null) return;
+    try {
+      final res = await ApiClient().dio.get(
+        ApiConstants.studentEnroll,
+        queryParameters: {'academic_year_id': yearId},
+      );
+      final data = res.data;
+      if (data['status'] == 'success' && data['suggested_id'] != null) {
+        setState(() {
+          _suggestedId = data['suggested_id'].toString();
+          final auth = Provider.of<AuthService>(context, listen: false);
+          if (!auth.isAdmin && !_canEditStudentId) {
+            _customIdController.text = _suggestedId;
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // ADMINISTRATIVE LOCATIONS (POB Cascading Dropdowns & Selectors)
+  // ---------------------------------------------------------------------------
+  Future<void> _fetchProvinces() async {
+    setState(() => _isLoadingProvinces = true);
+    try {
+      final res = await ApiClient().dio.get(ApiConstants.locationProvinces);
+      final data = res.data;
+      if (data['status'] == 'success' && data['data'] != null) {
+        setState(() {
+          _pobProvinces = data['data'] ?? [];
+          _isLoadingProvinces = false;
+        });
+      } else {
+        setState(() => _isLoadingProvinces = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingProvinces = false);
+    }
+  }
+
+  Future<void> _fetchPobDistricts(int provinceId) async {
+    setState(() {
+      _isLoadingPobDistricts = true;
+      _pobDistricts = [];
+      _selectedPobDistrictId = null;
+      _pobCommunes = [];
+      _selectedPobCommuneId = null;
+      _pobDistrictController.clear();
+      _pobCommuneController.clear();
+    });
+    _updatePobSummary();
+    try {
+      final res = await ApiClient().dio.get(
+        ApiConstants.locationDistricts,
+        queryParameters: {'province_id': provinceId},
+      );
+      final data = res.data;
+      if (data['status'] == 'success' && data['data'] != null) {
+        setState(() {
+          _pobDistricts = data['data'] ?? [];
+          _isLoadingPobDistricts = false;
+        });
+      } else {
+        setState(() => _isLoadingPobDistricts = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingPobDistricts = false);
+    }
+  }
+
+  Future<void> _fetchPobCommunes(int districtId) async {
+    setState(() {
+      _isLoadingPobCommunes = true;
+      _pobCommunes = [];
+      _selectedPobCommuneId = null;
+      _pobCommuneController.clear();
+    });
+    _updatePobSummary();
+    try {
+      final res = await ApiClient().dio.get(
+        ApiConstants.locationCommunes,
+        queryParameters: {'district_id': districtId},
+      );
+      final data = res.data;
+      if (data['status'] == 'success' && data['data'] != null) {
+        setState(() {
+          _pobCommunes = data['data'] ?? [];
+          _isLoadingPobCommunes = false;
+        });
+      } else {
+        setState(() => _isLoadingPobCommunes = false);
+      }
+    } catch (_) {
+      setState(() => _isLoadingPobCommunes = false);
+    }
+  }
+
+  void _onPobProvinceSelected(int? provId) {
+    if (provId == null) {
+      setState(() {
+        _selectedPobProvinceId = null;
+        _pobProvinceController.clear();
+        _pobDistricts = [];
+        _selectedPobDistrictId = null;
+        _pobDistrictController.clear();
+        _pobCommunes = [];
+        _selectedPobCommuneId = null;
+        _pobCommuneController.clear();
+      });
+      _updatePobSummary();
+      return;
+    }
+    final found = _pobProvinces.firstWhere((p) => p['id'] == provId, orElse: () => null);
+    setState(() {
+      _selectedPobProvinceId = provId;
+      _pobProvinceController.text = (found != null ? (found['name_kh'] ?? '') : '').toString();
+    });
+    _fetchPobDistricts(provId);
+  }
+
+  void _onPobDistrictSelected(int? distId) {
+    if (distId == null) {
+      setState(() {
+        _selectedPobDistrictId = null;
+        _pobDistrictController.clear();
+        _pobCommunes = [];
+        _selectedPobCommuneId = null;
+        _pobCommuneController.clear();
+      });
+      _updatePobSummary();
+      return;
+    }
+    final found = _pobDistricts.firstWhere((d) => d['id'] == distId, orElse: () => null);
+    setState(() {
+      _selectedPobDistrictId = distId;
+      _pobDistrictController.text = (found != null ? (found['name_kh'] ?? '') : '').toString();
+    });
+    _fetchPobCommunes(distId);
+  }
+
+  void _onPobCommuneSelected(int? commId) {
+    if (commId == null) {
+      setState(() {
+        _selectedPobCommuneId = null;
+        _pobCommuneController.clear();
+      });
+      _updatePobSummary();
+      return;
+    }
+    final found = _pobCommunes.firstWhere((c) => c['id'] == commId, orElse: () => null);
+    setState(() {
+      _selectedPobCommuneId = commId;
+      _pobCommuneController.text = (found != null ? (found['name_kh'] ?? '') : '').toString();
+    });
+    _updatePobSummary();
+  }
+
+  void _updatePobSummary() {
+    final comm = _pobCommuneController.text.trim();
+    final dist = _pobDistrictController.text.trim();
+    final prov = _pobProvinceController.text.trim();
+    final parts = <String>[];
+    if (comm.isNotEmpty) {
+      parts.add(comm.startsWith('ឃុំ') || comm.startsWith('សង្កាត់') ? comm : "ឃុំ/សង្កាត់$comm");
+    }
+    if (dist.isNotEmpty) {
+      parts.add(dist.startsWith('ស្រុក') || dist.startsWith('ខណ្ឌ') || dist.startsWith('ក្រុង') ? dist : "ស្រុក/ខណ្ឌ$dist");
+    }
+    if (prov.isNotEmpty) {
+      parts.add(prov.startsWith('ខេត្ត') || prov.startsWith('រាជធានី') ? prov : "ខេត្ត$prov");
+    }
+    setState(() {
+      _pobController.text = parts.join(", ");
+    });
+  }
+
+  Future<void> _openProvincePicker() async {
+    if (_pobProvinces.isEmpty) {
+      await _fetchProvinces();
+    }
+    if (!mounted) return;
+    final selected = await _showLocationSearchSheet(
+      title: "ជ្រើសរើសរាជធានី / ខេត្ត",
+      subtitle: "បញ្ជីឈ្មោះរាជធានី-ខេត្តទាំង ២៥ នៅកម្ពុជា",
+      items: _pobProvinces,
+      selectedId: _selectedPobProvinceId,
+    );
+    if (selected != null) {
+      _onPobProvinceSelected(selected['id'] as int?);
+    }
+  }
+
+  Future<void> _openDistrictPicker() async {
+    if (_selectedPobProvinceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("សូមជ្រើសរើសរាជធានី/ខេត្តជាមុនសិន!"),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+    final selected = await _showLocationSearchSheet(
+      title: "ជ្រើសរើសក្រុង / ស្រុក / ខណ្ឌ",
+      subtitle: "ក្នុង ${_pobProvinceController.text}",
+      items: _pobDistricts,
+      selectedId: _selectedPobDistrictId,
+    );
+    if (selected != null) {
+      _onPobDistrictSelected(selected['id'] as int?);
+    }
+  }
+
+  Future<void> _openCommunePicker() async {
+    if (_selectedPobDistrictId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("សូមជ្រើសរើសក្រុង/ស្រុក/ខណ្ឌជាមុនសិន!"),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+    final selected = await _showLocationSearchSheet(
+      title: "ជ្រើសរើសឃុំ / សង្កាត់",
+      subtitle: "ក្នុង ${_pobDistrictController.text}",
+      items: _pobCommunes,
+      selectedId: _selectedPobCommuneId,
+    );
+    if (selected != null) {
+      _onPobCommuneSelected(selected['id'] as int?);
+    }
+  }
+
+  Future<Map<String, dynamic>?> _showLocationSearchSheet({
+    required String title,
+    required String subtitle,
+    required List<dynamic> items,
+    required int? selectedId,
+  }) async {
+    return showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filtered = items.where((item) {
+              final nameKh = (item['name_kh'] ?? '').toString().toLowerCase();
+              final nameEn = (item['name_en'] ?? '').toString().toLowerCase();
+              final code = (item['code'] ?? '').toString().toLowerCase();
+              final q = searchQuery.toLowerCase().trim();
+              if (q.isEmpty) return true;
+              return nameKh.contains(q) || nameEn.contains(q) || code.contains(q);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.72,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              if (subtitle.isNotEmpty)
+                                Text(
+                                  subtitle,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      autofocus: false,
+                      onChanged: (val) => setModalState(() => searchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: "ស្វែងរក...",
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
+                        filled: true,
+                        fillColor: AppColors.bgLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(
+                            child: Text(
+                              "រកមិនឃើញទិន្នន័យ",
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final item = filtered[index];
+                              final isSelected = item['id'] == selectedId;
+                              final nameKh = item['name_kh']?.toString() ?? '';
+                              final nameEn = item['name_en']?.toString() ?? '';
+                              return ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                title: Text(
+                                  nameKh,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                  ),
+                                ),
+                                subtitle: nameEn.isNotEmpty
+                                    ? Text(
+                                        nameEn,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: isSelected
+                                              ? AppColors.primary.withValues(alpha: 0.8)
+                                              : AppColors.textSecondary,
+                                        ),
+                                      )
+                                    : null,
+                                trailing: isSelected
+                                    ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
+                                    : null,
+                                onTap: () => Navigator.pop(context, item as Map<String, dynamic>),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLocationSelectorTile({
+    required String label,
+    required String? selectedValue,
+    required String placeholder,
+    required IconData icon,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+    bool isLoading = false,
+    bool isEnabled = true,
+  }) {
+    final hasValue = selectedValue != null && selectedValue.isNotEmpty;
+    return InkWell(
+      onTap: isEnabled && !isLoading ? onTap : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isEnabled ? Colors.white : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasValue ? AppColors.primary.withValues(alpha: 0.6) : AppColors.borderLight,
+            width: hasValue ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isEnabled
+                  ? (hasValue ? AppColors.primary : AppColors.textSecondary)
+                  : Colors.grey.shade400,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isEnabled ? AppColors.textSecondary : Colors.grey.shade400,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasValue ? selectedValue : placeholder,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: hasValue ? FontWeight.bold : FontWeight.normal,
+                      color: hasValue
+                          ? AppColors.textPrimary
+                          : (isEnabled ? AppColors.textSecondary.withValues(alpha: 0.8) : Colors.grey.shade400),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (isLoading)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+              )
+            else if (hasValue && onClear != null)
+              InkWell(
+                onTap: onClear,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.cancel_rounded, size: 18, color: Colors.grey),
+                ),
+              )
+            else
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isEnabled ? AppColors.textSecondary : Colors.grey.shade400,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPobLocationSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.4)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.location_on_rounded, size: 18, color: AppColors.danger),
+                  SizedBox(width: 6),
+                  Text(
+                    "ទីកន្លែងកំណើត (៣ ជួរឈរ MoEYS):",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() => _isManualPobMode = !_isManualPobMode);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _isManualPobMode
+                        ? Colors.orange.shade50
+                        : AppColors.primaryLight.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isManualPobMode ? Colors.orange : AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isManualPobMode ? Icons.edit_note_rounded : Icons.storage_rounded,
+                        size: 13,
+                        color: _isManualPobMode ? Colors.orange.shade800 : AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isManualPobMode ? "បញ្ចូលដោយដៃ" : "ទាញពី Database",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _isManualPobMode ? Colors.orange.shade800 : AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          if (_isManualPobMode) ...[
+            _buildTextField(
+              controller: _pobCommuneController,
+              label: "ឃុំ/សង្កាត់កំណើត (POB Commune)",
+              hint: "ឧ. សង្កាត់វត្តភ្នំ",
+              icon: Icons.location_city_rounded,
+              onChanged: (_) => _updatePobSummary(),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    controller: _pobDistrictController,
+                    label: "ក្រុង/ស្រុក/ខណ្ឌកំណើត",
+                    hint: "ឧ. ខណ្ឌដូនពេញ",
+                    icon: Icons.map_outlined,
+                    onChanged: (_) => _updatePobSummary(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTextField(
+                    controller: _pobProvinceController,
+                    label: "រាជធានី/ខេត្តកំណើត",
+                    hint: "ឧ. រាជធានីភ្នំពេញ",
+                    icon: Icons.terrain_rounded,
+                    onChanged: (_) => _updatePobSummary(),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            _buildLocationSelectorTile(
+              label: "១. រាជធានី / ខេត្តកំណើត (Province) *",
+              selectedValue: _pobProvinceController.text,
+              placeholder: "-- ជ្រើសរើសខេត្ត/រាជធានី --",
+              icon: Icons.terrain_rounded,
+              isLoading: _isLoadingProvinces,
+              isEnabled: true,
+              onTap: _openProvincePicker,
+              onClear: () => _onPobProvinceSelected(null),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildLocationSelectorTile(
+                    label: "២. ក្រុង / ស្រុក / ខណ្ឌ *",
+                    selectedValue: _pobDistrictController.text,
+                    placeholder: _selectedPobProvinceId == null
+                        ? "-- ជ្រើសខេត្តមុន --"
+                        : "-- ជ្រើសរើសស្រុក --",
+                    icon: Icons.map_outlined,
+                    isLoading: _isLoadingPobDistricts,
+                    isEnabled: _selectedPobProvinceId != null,
+                    onTap: _openDistrictPicker,
+                    onClear: () => _onPobDistrictSelected(null),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildLocationSelectorTile(
+                    label: "៣. ឃុំ / សង្កាត់កំណើត *",
+                    selectedValue: _pobCommuneController.text,
+                    placeholder: _selectedPobDistrictId == null
+                        ? "-- ជ្រើសស្រុកមុន --"
+                        : "-- ជ្រើសរើសឃុំ --",
+                    icon: Icons.location_city_rounded,
+                    isLoading: _isLoadingPobCommunes,
+                    isEnabled: _selectedPobDistrictId != null,
+                    onTap: _openCommunePicker,
+                    onClear: () => _onPobCommuneSelected(null),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 15, color: AppColors.primary),
+                const SizedBox(width: 6),
+                const Text(
+                  "ទីកន្លែងកំណើតសរុប៖ ",
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                ),
+                Expanded(
+                  child: Text(
+                    _pobController.text.isNotEmpty ? _pobController.text : "...",
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onMoEYSNameChanged() {
@@ -313,7 +980,10 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       }
     }
 
-    if (_isIdAvailable == false) {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final isLocked = !auth.isAdmin && !_canEditStudentId;
+
+    if (!isLocked && _isIdAvailable == false) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("អត្តលេខជាន់គ្នា! សូមជ្រើសរើសអត្តលេខផ្សេង ឬទុកទទេ"),
@@ -327,7 +997,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
 
     final payload = <String, dynamic>{
       'enrollment_mode': _activeEnrollmentMode,
-      'student_id': _customIdController.text.trim(),
+      'student_id': isLocked ? '' : _customIdController.text.trim(),
       'khmer_name': khmerName,
       'latin_name': _latinNameController.text.trim(),
       'gender': _gender,
@@ -538,6 +1208,13 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     _moeysScholarship = 'មិនមាន';
     _moeysTrack = 'ទូទៅ';
     _isRepeatingGrade = false;
+
+    _selectedPobProvinceId = null;
+    _selectedPobDistrictId = null;
+    _selectedPobCommuneId = null;
+    _pobDistricts.clear();
+    _pobCommunes.clear();
+    _isManualPobMode = false;
 
     _gradeOptionValues.clear();
     _fetchEnrollmentMeta();
@@ -817,16 +1494,50 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: 14),
-          _buildTextField(
-            controller: _pobController,
-            label: "ទីកន្លែងកំណើត (Place of Birth)",
-            hint: "ភូមិ, ឃុំ/សង្កាត់, ស្រុក/ខណ្ឌ, ខេត្ត/រាជធានី",
-            icon: Icons.home_rounded,
-          ),
           const SizedBox(height: 14),
+          _buildPobLocationSection(),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "ទីលំនៅបច្ចុប្បន្ន (Current Address)",
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              if (_pobController.text.isNotEmpty)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _addressController.text = _pobController.text;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("បានចម្លងអាសយដ្ឋានពីទីកន្លែងកំណើត!"),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.copy_rounded, size: 13, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          "ដូចទីកន្លែងកំណើត",
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
           _buildTextField(
             controller: _addressController,
-            label: "ទីលំនៅបច្ចុប្បន្ន (Current Address)",
+            label: "អាសយដ្ឋានបច្ចុប្បន្ន (Current Address)",
             hint: "ផ្ទះលេខ, ផ្លូវ, ភូមិ, សង្កាត់, ខណ្ឌ",
             icon: Icons.pin_drop_rounded,
           ),
@@ -947,39 +1658,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           const SizedBox(height: 14),
           _buildDobPicker(),
           const SizedBox(height: 14),
-          const Text(
-            "ទីកន្លែងកំណើត (៣ ជួរឈរ MoEYS):",
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _pobCommuneController,
-            label: "ឃុំ/សង្កាត់កំណើត (POB Commune)",
-            hint: "ឧ. សង្កាត់វត្តភ្នំ",
-            icon: Icons.location_city_rounded,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _pobDistrictController,
-                  label: "ក្រុង/ស្រុក/ខណ្ឌកំណើត",
-                  hint: "ឧ. ខណ្ឌដូនពេញ",
-                  icon: Icons.map_outlined,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildTextField(
-                  controller: _pobProvinceController,
-                  label: "រាជធានី/ខេត្តកំណើត",
-                  hint: "ឧ. រាជធានីភ្នំពេញ",
-                  icon: Icons.terrain_rounded,
-                ),
-              ),
-            ],
-          ),
+          _buildPobLocationSection(),
           const SizedBox(height: 14),
           _buildStudentIdField(),
         ],
@@ -1459,37 +2138,70 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   }
 
   Widget _buildStudentIdField() {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final isLocked = !auth.isAdmin && !_canEditStudentId;
+
+    if (isLocked && _suggestedId.isNotEmpty && _customIdController.text != _suggestedId) {
+      _customIdController.text = _suggestedId;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTextField(
           controller: _customIdController,
+          readOnly: isLocked,
           label: "លេខសម្គាល់សិស្ស (Student ID)",
-          hint: "ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ ($_suggestedId)",
+          hint: isLocked ? "អត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា" : "ទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ ($_suggestedId)",
           icon: Icons.confirmation_number_outlined,
-          onChanged: _onCustomIdChanged,
-          suffix: _isCheckingId
-              ? const Padding(padding: EdgeInsets.all(12), child: SpinKitFadingCircle(color: AppColors.primary, size: 18))
-              : (_isIdAvailable != null
-                  ? Icon(
-                      _isIdAvailable! ? Icons.check_circle : Icons.cancel,
-                      color: _isIdAvailable! ? AppColors.success : AppColors.danger,
-                      size: 20,
-                    )
-                  : null),
+          onChanged: isLocked ? null : _onCustomIdChanged,
+          suffix: isLocked
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_rounded, color: AppColors.textSecondary, size: 15),
+                      SizedBox(width: 4),
+                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                    ],
+                  ),
+                )
+              : (_isCheckingId
+                  ? const Padding(padding: EdgeInsets.all(12), child: SpinKitFadingCircle(color: AppColors.primary, size: 18))
+                  : (_isIdAvailable != null
+                      ? Icon(
+                          _isIdAvailable! ? Icons.check_circle : Icons.cancel,
+                          color: _isIdAvailable! ? AppColors.success : AppColors.danger,
+                          size: 20,
+                        )
+                      : null)),
         ),
-        if (_idCheckMessage.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Text(
-              _idCheckMessage,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: _isIdAvailable == true ? AppColors.success : AppColors.danger,
-                fontWeight: FontWeight.w500,
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 4),
+          child: Row(
+            children: [
+              Icon(
+                isLocked ? Icons.verified_user_rounded : (_isIdAvailable == true ? Icons.check_circle_rounded : Icons.info_outline_rounded),
+                size: 14,
+                color: isLocked ? AppColors.success : (_isIdAvailable == true ? AppColors.success : AppColors.danger),
               ),
-            ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  isLocked
+                      ? "អត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា (បង្កើតបន្តដោយស្វ័យប្រវត្តិ)"
+                      : (_idCheckMessage.isNotEmpty ? _idCheckMessage : "អត្តលេខស្វ័យប្រវត្តិតាមឆ្នាំសិក្សា"),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isLocked ? AppColors.success : (_isIdAvailable == true ? AppColors.success : AppColors.danger),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -1506,6 +2218,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       }).toList(),
       onChanged: (v) {
         setState(() => _selectedYearId = v);
+        _refreshSuggestedIdForYear(v);
         if (_customIdController.text.isNotEmpty) {
           _onCustomIdChanged(_customIdController.text);
         }
@@ -1590,21 +2303,25 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     TextInputType keyboardType = TextInputType.text,
     ValueChanged<String>? onChanged,
     Widget? suffix,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return TextField(
       controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
       keyboardType: keyboardType,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        prefixIcon: Icon(icon, color: readOnly ? AppColors.textSecondary : AppColors.primary, size: 20),
         suffixIcon: suffix,
         filled: true,
-        fillColor: AppColors.bgLight,
+        fillColor: readOnly ? const Color(0xFFF1F5F9) : AppColors.bgLight,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.8)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: readOnly ? AppColors.borderLight : AppColors.primary, width: 1.8)),
       ),
     );
   }

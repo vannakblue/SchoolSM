@@ -62,7 +62,7 @@ def test_mobile_apis():
     # 4. Test QR Attendance Scan API
     print("\nTesting QR Attendance Scan API...")
     # Find any teacher or student
-    teacher = Teacher.objects.first()
+    teacher = Teacher.objects.filter(teacher_id__gt='').first()
     if teacher:
         resp = client.post('/api/v1/attendance/qr-scan/', {
             'qr_code': teacher.teacher_id,
@@ -71,7 +71,7 @@ def test_mobile_apis():
         print(f"Teacher QR Scan Response: {resp.json()}")
         assert resp.status_code == 200
 
-    student = Student.objects.first()
+    student = Student.objects.filter(student_id__gt='').first()
     if student:
         resp = client.post('/api/v1/attendance/qr-scan/', {
             'qr_code': student.student_id,

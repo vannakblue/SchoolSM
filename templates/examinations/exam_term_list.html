@@ -58,6 +58,11 @@
                     <td>{{ t.start_date|date:"d/m/Y" }} ដល់ {{ t.end_date|date:"d/m/Y" }}</td>
                     <td>
                         <div class="d-flex flex-column gap-1">
+                            {% if t.is_active_for_grading %}
+                            <span class="badge bg-success text-white py-1 px-2 border border-success shadow-xs">
+                                <i class="fa-solid fa-circle-check me-1"></i>កំពុងបើកបញ្ចូលពិន្ទុ (សកម្ម)
+                            </span>
+                            {% endif %}
                             {% if t.is_provisional_published %}
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="fa-solid fa-bullhorn me-1"></i>លទ្ធផលបណ្តោះអាសន្ន
@@ -76,6 +81,14 @@
                     </td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-1 align-items-center">
+                            {% if is_admin %}
+                            <a href="{% url 'exam_term_toggle_active_grading' t.id %}" 
+                               class="btn btn-sm {% if t.is_active_for_grading %}btn-success text-white shadow-xs{% else %}btn-outline-secondary{% endif %}" 
+                               title="{% if t.is_active_for_grading %}កំពុងបើកដំណើរការបញ្ចូលពិន្ទុសម្រាប់គ្រូ (Active Grading Term){% else %}ចុចដើម្បីកំណត់/បើកសម័យប្រឡងនេះឱ្យគ្រូបញ្ចូលពិន្ទុ (Set Active for Teachers){% endif %}">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span class="d-none d-xl-inline ms-1">{% if t.is_active_for_grading %}កំពុងបើក{% else %}បើកឱ្យគ្រូ{% endif %}</span>
+                            </a>
+                            {% endif %}
                             {% if t.scoring_mode == 'STANDARDIZED_ROOM' %}
                             <a href="{% url 'standardized_exam_list' %}" class="btn btn-sm btn-outline-warning" title="បញ្ចូលតាមបន្ទប់">
                                 <i class="fa-solid fa-door-open"></i>

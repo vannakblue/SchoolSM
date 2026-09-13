@@ -19,6 +19,10 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
   List<dynamic> _examTerms = [];
   List<dynamic> _classrooms = [];
   List<dynamic> _subjects = [];
+  List<dynamic> _allMetaSubjects = [];
+
+  bool _canSelectTerm = false;
+  String _activeTermName = '';
 
   int? _selectedTermId;
   int? _selectedClassroomId;
@@ -41,6 +45,33 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
     super.dispose();
   }
 
+  void _updateSubjectsForClass(int? classroomId) {
+    if (classroomId == null) {
+      _subjects = [];
+      _selectedSubjectId = null;
+      return;
+    }
+    final dynamic cls = _classrooms.firstWhere(
+      (c) => c['id'] == classroomId,
+      orElse: () => null,
+    );
+    if (cls != null && cls['subjects'] != null && (cls['subjects'] as List).isNotEmpty) {
+      _subjects = (cls['subjects'] as List).toList();
+    } else if (_allMetaSubjects.isNotEmpty) {
+      _subjects = List.from(_allMetaSubjects);
+    } else {
+      _subjects = [];
+    }
+
+    if (_subjects.isNotEmpty) {
+      if (!_subjects.any((s) => s['id'] == _selectedSubjectId)) {
+        _selectedSubjectId = _subjects.first['id'] as int?;
+      }
+    } else {
+      _selectedSubjectId = null;
+    }
+  }
+
   Future<void> _fetchMeta() async {
     setState(() => _isLoadingMeta = true);
     try {
@@ -50,15 +81,30 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
         final terms = (data['exam_terms'] as List?)?.toList() ?? [];
         final classes = (data['classrooms'] as List?)?.toList() ?? [];
         final subs = (data['subjects'] as List?)?.toList() ?? [];
+        final bool canSelect = data['can_select_term'] == true;
+        final String activeName = data['active_term_name']?.toString() ?? '';
+        final int? activeId = data['active_term_id'] as int?;
 
         setState(() {
           _examTerms = terms;
           _classrooms = classes;
-          _subjects = subs;
+          _allMetaSubjects = subs;
+          _canSelectTerm = canSelect;
+          _activeTermName = activeName;
 
-          if (_examTerms.isNotEmpty) _selectedTermId = _examTerms.first['id'] as int?;
-          if (_classrooms.isNotEmpty) _selectedClassroomId = _classrooms.first['id'] as int?;
-          if (_subjects.isNotEmpty) _selectedSubjectId = _subjects.first['id'] as int?;
+          if (activeId != null) {
+            _selectedTermId = activeId;
+          } else if (_examTerms.isNotEmpty) {
+            _selectedTermId = _examTerms.first['id'] as int?;
+          }
+          if (_classrooms.isNotEmpty) {
+            _selectedClassroomId = _classrooms.first['id'] as int?;
+            _updateSubjectsForClass(_selectedClassroomId);
+          } else {
+            _selectedClassroomId = null;
+            _subjects = [];
+            _selectedSubjectId = null;
+          }
 
           _isLoadingMeta = false;
         });
@@ -179,6 +225,12 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
         ? _selectedSubjectId
         : (_subjects.isNotEmpty ? _subjects.first['id'] as int? : null);
 
+    final String activeDisplayName = _activeTermName.isNotEmpty
+        ? _activeTermName
+        : (_examTerms.any((t) => t['id'] == safeTermId)
+            ? (_examTerms.firstWhere((t) => t['id'] == safeTermId)['name'] ?? '')
+            : (_examTerms.isNotEmpty ? (_examTerms.first['name'] ?? '') : ''));
+
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
@@ -202,26 +254,49 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<int>(
-                              initialValue: safeTermId,
-                              isExpanded: true,
-                              decoration: _dropDeco("សម័យប្រឡង"),
-                              items: _examTerms.map<DropdownMenuItem<int>>((t) {
-                                return DropdownMenuItem<int>(
-                                  value: t['id'] as int,
-                                  child: Text(t['name'] ?? '', overflow: TextOverflow.ellipsis),
-                                );
-                              }).toList(),
-                              onChanged: (v) {
-                                setState(() => _selectedTermId = v);
-                                _fetchSheet();
-                              },
-                            ),
+                            child: _canSelectTerm
+                                ? DropdownButtonFormField<int>(
+                                    initialValue: safeTermId,
+                                    isExpanded: true,
+                                    decoration: _dropDeco("សម័យប្រឡង"),
+                                    items: _examTerms.map<DropdownMenuItem<int>>((t) {
+                                      return DropdownMenuItem<int>(
+                                        value: t['id'] as int,
+                                        child: Text(t['name'] ?? '', overflow: TextOverflow.ellipsis),
+                                      );
+                                    }).toList(),
+                                    onChanged: (v) {
+                                      setState(() => _selectedTermId = v);
+                                      _fetchSheet();
+                                    },
+                                  )
+                                : DropdownButtonFormField<int>(
+                                    initialValue: safeTermId,
+                                    isExpanded: true,
+                                    decoration: _dropDeco("សម័យប្រឡង").copyWith(
+                                      filled: true,
+                                      fillColor: const Color(0xFFF1F5F9),
+                                      prefixIcon: const Icon(Icons.lock_rounded, size: 17, color: AppColors.primary),
+                                      helperText: "កំណត់ដោយ Admin (មិនអាចប្តូរបាន)",
+                                      helperStyle: const TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.w500),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<int>(
+                                        value: safeTermId,
+                                        child: Text(
+                                          activeDisplayName,
+                                          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: null, // Disabled: teacher can view but cannot change!
+                                  ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: DropdownButtonFormField<int>(
-                              initialValue: safeClassroomId,
+                              value: safeClassroomId,
                               isExpanded: true,
                               decoration: _dropDeco("ថ្នាក់រៀន"),
                               items: _classrooms.map<DropdownMenuItem<int>>((c) {
@@ -231,7 +306,10 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
                                 );
                               }).toList(),
                               onChanged: (v) {
-                                setState(() => _selectedClassroomId = v);
+                                setState(() {
+                                  _selectedClassroomId = v;
+                                  _updateSubjectsForClass(v);
+                                });
                                 _fetchSheet();
                               },
                             ),
@@ -240,13 +318,15 @@ class _TeacherGradeEntryScreenState extends State<TeacherGradeEntryScreen> {
                       ),
                       const SizedBox(height: 10),
                       DropdownButtonFormField<int>(
-                        initialValue: safeSubjectId,
+                        value: safeSubjectId,
                         isExpanded: true,
                         decoration: _dropDeco("មុខវិជ្ជា (Subject)"),
                         items: _subjects.map<DropdownMenuItem<int>>((s) {
+                          final name = s['name_kh'] ?? s['name'] ?? '';
+                          final code = s['code'] ?? '';
                           return DropdownMenuItem<int>(
                             value: s['id'] as int,
-                            child: Text("${s['name']} (${s['code'] ?? ''})", overflow: TextOverflow.ellipsis),
+                            child: Text(code.isNotEmpty ? "$name ($code)" : name, overflow: TextOverflow.ellipsis),
                           );
                         }).toList(),
                         onChanged: (v) {

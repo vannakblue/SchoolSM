@@ -38,6 +38,9 @@ class ApiConstants {
   static String get dashboard => "$baseUrl/api/v1/dashboard/";
   static String get qrScan => "$baseUrl/api/v1/attendance/qr-scan/";
   static String get attendanceHistory => "$baseUrl/api/v1/attendance/history/";
+  static String get hourlyAttendanceMeta => "$baseUrl/api/v1/attendance/hourly/meta/";
+  static String get hourlyAttendanceRoster => "$baseUrl/api/v1/attendance/hourly/roster/";
+  static String get hourlyAttendanceSave => "$baseUrl/api/v1/attendance/hourly/save/";
   static String get timetable => "$baseUrl/api/v1/timetable/";
   static String get grades => "$baseUrl/api/v1/grades/";
   static String get notifications => "$baseUrl/api/v1/notifications/";
@@ -48,6 +51,10 @@ class ApiConstants {
   static String get studentCheckId => "$baseUrl/api/v1/students/check-id/";
   static String get studentRomanize => "$baseUrl/api/v1/students/romanize/";
   static String get studentsList => "$baseUrl/api/v1/students/";
+  static String get locationProvinces => "$baseUrl/api/v1/locations/provinces/";
+  static String get locationDistricts => "$baseUrl/api/v1/locations/districts/";
+  static String get locationCommunes => "$baseUrl/api/v1/locations/communes/";
+  static String get locationVillages => "$baseUrl/api/v1/locations/villages/";
 
   // Student Promotion & Retention Matrix
   static String get studentPromotionMeta => "$baseUrl/api/v1/students/promotion/meta/";
@@ -73,4 +80,7 @@ class ApiConstants {
   static String onlineExamTake(int id) => "$baseUrl/api/v1/online-exams/$id/take/";
   static String onlineExamSubmit(int id) => "$baseUrl/api/v1/online-exams/$id/submit/";
   static String onlineExamResult(int subId) => "$baseUrl/api/v1/online-exams/submissions/$subId/result/";
+
+  // Teacher Attendance Config & Control (Admin)
+  static String get teacherAttendanceConfig => "$baseUrl/api/v1/attendance/teacher/config/";
 }

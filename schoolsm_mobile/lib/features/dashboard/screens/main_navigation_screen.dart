@@ -9,6 +9,8 @@ import '../../../core/services/auth_service.dart';
 // Screens
 import '../../attendance/screens/qr_scanner_screen.dart';
 import '../../attendance/screens/attendance_history_screen.dart';
+import '../../attendance/screens/student_hourly_attendance_screen.dart';
+import '../../attendance/screens/teacher_scan_control_screen.dart';
 import '../../academics/screens/timetable_screen.dart';
 import '../../examinations/screens/exam_grades_screen.dart';
 import '../../examinations/screens/teacher_grade_entry_screen.dart';
@@ -72,12 +74,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     } else if (auth.isAccountant) {
       screens = [
         const _HomeScreen(),
+        const StudentHourlyAttendanceScreen(),
         const StudentListScreen(),
         const StudentEnrollmentScreen(),
         const ProfileScreen(),
       ];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "ទំព័រដើម"),
+        BottomNavigationBarItem(icon: Icon(Icons.assignment_turned_in_rounded), label: "ស្រង់វត្តមាន"),
         BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: "បញ្ជីសិស្ស"),
         BottomNavigationBarItem(icon: Icon(Icons.person_add_alt_1_rounded), label: "ចុះឈ្មោះ"),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: "គណនី"),
@@ -391,6 +395,20 @@ class _HomeScreenState extends State<_HomeScreen> {
     if (auth.isAdmin) {
       features = [
         {
+          'title': 'គ្រប់គ្រងការស្កេនវត្តមានគ្រូ',
+          'subtitle': 'Teacher Scan Control',
+          'icon': Icons.admin_panel_settings_rounded,
+          'color': const Color(0xFFE11D48),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherScanControlScreen())),
+        },
+        {
+          'title': 'ស្រង់អវត្តមានសិស្សតាមម៉ោង',
+          'subtitle': 'Hourly Attendance',
+          'icon': Icons.assignment_turned_in_rounded,
+          'color': const Color(0xFF0D9488),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentHourlyAttendanceScreen())),
+        },
+        {
           'title': 'ចុះឈ្មោះសិស្សថ្មី',
           'subtitle': 'Student Admission',
           'icon': Icons.person_add_alt_1_rounded,
@@ -456,6 +474,13 @@ class _HomeScreenState extends State<_HomeScreen> {
       ];
     } else if (auth.isTeacher) {
       features = [
+        {
+          'title': 'ស្រង់អវត្តមានសិស្សតាមម៉ោង',
+          'subtitle': 'Hourly Attendance',
+          'icon': Icons.assignment_turned_in_rounded,
+          'color': const Color(0xFF0D9488),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentHourlyAttendanceScreen())),
+        },
         {
           'title': 'ស្កេន QR វត្តមាន',
           'subtitle': 'Check-In & Students',
@@ -575,6 +600,13 @@ class _HomeScreenState extends State<_HomeScreen> {
     } else {
       // Accountant
       features = [
+        {
+          'title': 'ស្រង់អវត្តមានសិស្សតាមម៉ោង',
+          'subtitle': 'Hourly Attendance',
+          'icon': Icons.assignment_turned_in_rounded,
+          'color': const Color(0xFF0D9488),
+          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentHourlyAttendanceScreen())),
+        },
         {
           'title': 'បញ្ជីសិស្ស & ថ្លៃសិក្សា',
           'subtitle': 'Student Tuition',

@@ -111,6 +111,73 @@ def get_teacher_privileges(user, request=None) -> Dict[str, Any]:
     }
 
 
+def get_teacher_allowed_classrooms(user, academic_year=None):
+    """
+    Returns QuerySet of Classrooms the user is permitted to see/access:
+    - Admin / Superuser: All classrooms (filtered by academic_year if provided)
+    - Teacher: Classrooms where teacher is homeroom teacher,
+      OR assigned via ClassSubject,
+      OR assigned via Timetable schedule.
+    - Others / Unauthenticated: Empty QuerySet.
+    """
+    is_admin = bool(getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN')
+    if is_admin:
+        qs = Classroom.objects.all()
+        if academic_year:
+            qs = qs.filter(academic_year=academic_year)
+        return qs.order_by('grade_level', 'code')
+
+    teacher = getattr(user, 'teacher_profile', None)
+    if not teacher:
+        return Classroom.objects.none()
+
+    # 1. Homeroom
+    hr_ids = set(Classroom.objects.filter(homeroom_teacher=teacher).values_list('id', flat=True))
+
+    # 2. ClassSubject
+    cs_qs = ClassSubject.objects.filter(teacher=teacher)
+    if academic_year:
+        cs_qs = cs_qs.filter(classroom__academic_year=academic_year)
+    cs_ids = set(cs_qs.values_list('classroom_id', flat=True))
+
+    # 3. Timetable
+    tt_qs = Timetable.objects.filter(teacher=teacher)
+    if academic_year:
+        tt_qs = tt_qs.filter(classroom__academic_year=academic_year)
+    tt_ids = set(tt_qs.values_list('classroom_id', flat=True))
+
+    allowed_ids = hr_ids | cs_ids | tt_ids
+    qs = Classroom.objects.filter(id__in=allowed_ids)
+    if academic_year:
+        qs = qs.filter(academic_year=academic_year)
+    return qs.order_by('grade_level', 'code')
+
+
+def get_teacher_classroom_subject_ids(user, classroom_id: int) -> Optional[set]:
+    """
+    Returns the set of subject IDs the teacher is allowed to see/grade in classroom_id:
+    - Returns None if user is Admin or Homeroom Teacher of classroom_id (unrestricted access to all subjects).
+    - Returns set of subject IDs if user is a Subject Teacher (from ClassSubject and Timetable).
+    - Returns set() (empty set) if teacher has no teaching assignments in classroom_id.
+    """
+    if getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN':
+        return None
+
+    teacher = getattr(user, 'teacher_profile', None)
+    if not teacher:
+        return set()
+
+    # Homeroom teacher can oversee all subjects in their homeroom class
+    if Classroom.objects.filter(id=classroom_id, homeroom_teacher=teacher).exists():
+        return None
+
+    # Gather assigned subjects for this classroom
+    cs_subs = set(ClassSubject.objects.filter(classroom_id=classroom_id, teacher=teacher).values_list('subject_id', flat=True))
+    tt_subs = set(Timetable.objects.filter(classroom_id=classroom_id, teacher=teacher).values_list('subject_id', flat=True))
+
+    return cs_subs | tt_subs
+
+
 def can_teacher_manage_homeroom(user, classroom_id: int) -> bool:
     """
     Returns True if user is Admin, or user is the Homeroom Teacher of classroom_id.
@@ -128,20 +195,8 @@ def can_teacher_grade_subject(user, classroom_id: int, subject_id: int) -> bool:
     Returns True if user is Admin, or Homeroom Teacher of classroom,
     or assigned Subject Teacher for this specific subject in this classroom.
     """
-    if getattr(user, 'is_superuser', False) or getattr(user, 'role', '') == 'ADMIN':
+    allowed_subs = get_teacher_classroom_subject_ids(user, classroom_id)
+    if allowed_subs is None:
         return True
-    teacher = getattr(user, 'teacher_profile', None)
-    if not teacher:
-        return False
+    return int(subject_id) in allowed_subs
 
-    # Homeroom teacher can oversee/grade their homeroom
-    if Classroom.objects.filter(id=classroom_id, homeroom_teacher=teacher).exists():
-        return True
-
-    # Subject teacher assigned to this classroom and subject
-    if ClassSubject.objects.filter(classroom_id=classroom_id, subject_id=subject_id, teacher=teacher).exists():
-        return True
-    if Timetable.objects.filter(classroom_id=classroom_id, subject_id=subject_id, teacher=teacher).exists():
-        return True
-
-    return False

@@ -308,6 +308,15 @@ def mobile_qr_scan_view(request):
     today_punches = TeacherPunchLog.objects.filter(teacher=teacher, date=today).order_by('-punch_time')
     today_att = TeacherAttendance.objects.filter(teacher=teacher, date=today).first()
 
+    is_scan_disabled = False
+    scan_disabled_reason = ""
+    if not config.enable_qr_checkin:
+        is_scan_disabled = True
+        scan_disabled_reason = "ការស្កេនវត្តមានតាម QR Code ត្រូវបានបិទដំណើរការជាបណ្តោះអាសន្នដោយ Admin។"
+    elif config.active_daily_mode not in [TeacherAttendanceConfig.DailyMode.ALL, TeacherAttendanceConfig.DailyMode.OPTION_1_QR]:
+        is_scan_disabled = True
+        scan_disabled_reason = f"Admin បានកំណត់ឱ្យប្រើវិធីសាស្ត្រ [{config.get_active_daily_mode_display()}] សម្រាប់ថ្ងៃនេះ។ ការស្កេនតាម QR Code មិនត្រូវបានអនុញ្ញាតឡើយ។"
+
     return render(request, 'teachers/mobile_qr_scan.html', {
         'config': config,
         'school_profile': school_profile,
@@ -315,6 +324,8 @@ def mobile_qr_scan_view(request):
         'bio_profile': bio_profile,
         'today_punches': today_punches,
         'today_att': today_att,
+        'is_scan_disabled': is_scan_disabled,
+        'scan_disabled_reason': scan_disabled_reason,
         'page_title': 'ស្កេនវត្តមានលើទូរស័ព្ទ (Teacher Mobile Check-in)'
     })
 

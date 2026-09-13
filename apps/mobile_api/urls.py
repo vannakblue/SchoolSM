@@ -14,10 +14,14 @@ urlpatterns = [
     path('profile/', views.UserProfileView.as_view(), name='mobile_api_profile'),
     path('dashboard/', views.MobileDashboardSummaryView.as_view(), name='mobile_api_dashboard'),
 
-    # 3. QR Attendance Scanning, Assembly & History
+    # 3. QR Attendance Scanning, Assembly, Hourly Attendance & History
     path('attendance/qr-scan/', views.QRAttendanceScanView.as_view(), name='mobile_api_qr_scan'),
     path('attendance/assembly/', views.AssemblyAttendanceAPIView.as_view(), name='mobile_api_assembly_attendance'),
     path('attendance/history/', views.AttendanceHistoryView.as_view(), name='mobile_api_attendance_history'),
+    path('attendance/hourly/meta/', views.MobileHourlyAttendanceMetaAPIView.as_view(), name='mobile_api_hourly_attendance_meta'),
+    path('attendance/hourly/roster/', views.MobileHourlyAttendanceRosterAPIView.as_view(), name='mobile_api_hourly_attendance_roster'),
+    path('attendance/hourly/save/', views.MobileHourlyAttendanceSaveAPIView.as_view(), name='mobile_api_hourly_attendance_save'),
+    path('attendance/teacher/config/', views.MobileTeacherAttendanceConfigAPIView.as_view(), name='mobile_api_teacher_attendance_config'),
 
     # 4. Timetable & Schedule
     path('timetable/', views.TimetableView.as_view(), name='mobile_api_timetable'),

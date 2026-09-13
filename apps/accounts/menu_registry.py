@@ -246,7 +246,7 @@ MENU_SECTIONS_CATALOG = [
         'name_en': 'Attendance Management',
         'icon': 'fa-solid fa-clipboard-user',
         'color': 'success',
-        'default_roles': ['ADMIN', 'TEACHER'],
+        'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
         'items': [
             {
                 'key': 'assembly_attendance',
@@ -261,7 +261,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្រង់វត្តមានសិស្សតាមម៉ោង',
                 'name_en': 'Student Hourly Attendance Sheet',
                 'icon': 'fa-solid fa-clipboard-check text-primary',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
                 'url_name': 'student_attendance_grid',
             },
             {
@@ -269,7 +269,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'របាយការណ៍វត្តមានប្រចាំខែ',
                 'name_en': 'Monthly Attendance Report',
                 'icon': 'fa-solid fa-chart-column text-info',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
                 'url_name': 'attendance_report',
             },
             {
@@ -285,7 +285,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'សិស្សអវត្តមានច្រើន',
                 'name_en': 'At-Risk Chronic Absentees',
                 'icon': 'fa-solid fa-triangle-exclamation text-danger',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
                 'url_name': 'at_risk_attendance',
             },
         ]

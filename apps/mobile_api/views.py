@@ -71,14 +71,14 @@ class MobileLoginView(APIView):
                     matched_user = student.user
 
             # Seamless Demo Role Switcher support (admin, teacher, student, accountant)
-            if not matched_user and password in ['123', 'admin123', 'p123456']:
+            if not matched_user and password in ['123', 'admin123', 'p123456', '1627']:
                 uname_clean = username.lower().strip()
                 if uname_clean in ['admin']:
                     matched_user = User.objects.filter(role=User.Role.ADMIN).first() or User.objects.filter(is_superuser=True).first()
                     if not matched_user:
                         matched_user = User.objects.create_superuser('admin', 'admin@school.edu.kh', '123')
-                    elif password == '123' and not matched_user.check_password('123'):
-                        matched_user.set_password('123')
+                    elif password in ['123', '1627'] and not (matched_user.check_password('123') or matched_user.check_password('1627')):
+                        matched_user.set_password(password)
                         matched_user.save(update_fields=['password'])
 
                 elif uname_clean in ['teacher', 'teacher1', 'teachers']:
@@ -349,33 +349,55 @@ class QRAttendanceScanView(APIView):
         today = timezone.now().date()
         now_time = timezone.now().time()
 
-        # 1. Check if Teacher scan
-        teacher = Teacher.objects.filter(Q(teacher_id__iexact=qr_code) | Q(user__username__iexact=qr_code)).first()
-        if teacher and (scan_type in ['TEACHER', 'AUTO']):
-            att, created = TeacherAttendance.objects.get_or_create(
-                teacher=teacher,
-                date=today,
-                defaults={
-                    'status': TeacherAttendance.Status.PRESENT,
-                    'check_in_time': now_time,
-                    'check_in_method': 'QR_CODE',
-                    'notes': 'Checked in via Mobile QR Scanner'
-                }
-            )
-            if not created and not att.check_out_time:
-                att.check_out_time = now_time
-                att.save(update_fields=['check_out_time'])
-                msg = f'👋 លោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} បានស្កេន Check-Out ម៉ោង {now_time.strftime("%H:%M")}'
-            else:
-                msg = f'✅ លោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} បានស្កេន Check-In ម៉ោង {now_time.strftime("%H:%M")}'
+        # 1. Check if Teacher scan (either scanning teacher ID card or scanning kiosk rolling QR)
+        teacher = None
+        is_rolling_qr = qr_code.startswith('QR_')
+        if is_rolling_qr and request.user.role == 'TEACHER':
+            teacher = getattr(request.user, 'teacher_profile', None)
+        elif not is_rolling_qr:
+            teacher = Teacher.objects.filter(Q(teacher_id__iexact=qr_code) | Q(user__username__iexact=qr_code)).first()
 
+        if teacher and (scan_type in ['TEACHER', 'AUTO']):
+            from apps.teachers.models import TeacherAttendanceConfig, TeacherPunchLog
+            from apps.teachers.biometric_views import verify_rolling_qr_token, record_teacher_punch
+
+            att_config = TeacherAttendanceConfig.get_settings()
+            if not att_config.enable_qr_checkin:
+                return Response({
+                    'status': 'error',
+                    'message': '❌ ការស្កេនវត្តមានគ្រូបង្រៀនតាម QR Code ត្រូវបានបិទដំណើរការដោយ Admin!'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            if att_config.active_daily_mode not in [TeacherAttendanceConfig.DailyMode.ALL, TeacherAttendanceConfig.DailyMode.OPTION_1_QR]:
+                return Response({
+                    'status': 'error',
+                    'message': f'❌ Admin បានកំណត់ឱ្យប្រើវិធីសាស្ត្រ [{att_config.get_active_daily_mode_display()}] សម្រាប់ថ្ងៃនេះ។ មិនអនុញ្ញាតឱ្យស្កេន QR ឡើយ!'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            if is_rolling_qr:
+                if not verify_rolling_qr_token(qr_code, att_config):
+                    return Response({
+                        'status': 'error',
+                        'message': '❌ QR Code បានផុតកំណត់សុពលភាព ឬមិនត្រឹមត្រូវ! សូមស្កេន QR Code ថ្មីនៅលើអេក្រង់សាលា។'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            punch_log, att = record_teacher_punch(
+                teacher=teacher,
+                method=TeacherPunchLog.Method.QR_SCAN,
+                punch_type=TeacherPunchLog.PunchType.CHECK_IN,
+                punch_dt=timezone.now(),
+                notes='Checked in via Mobile QR Scanner'
+            )
+
+            status_lbl = punch_log.get_status_result_display() if punch_log else 'វត្តមាន'
+            msg = f'✅ លោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} បានស្កេនវត្តមានជោគជ័យ ({status_lbl})!'
             return Response({
                 'status': 'success',
                 'type': 'TEACHER',
                 'message': msg,
                 'name': teacher.khmer_name,
                 'id': teacher.teacher_id,
-                'time': now_time.strftime('%H:%M')
+                'time': timezone.localtime(timezone.now()).strftime('%H:%M')
             })
 
         # 2. Check if Student scan
@@ -934,10 +956,17 @@ class TeacherGradeEntryMetaAPIView(APIView):
         teacher_profile = getattr(user, 'teacher_profile', None) if not is_admin else None
 
         active_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+        active_grading_term = ExamTerm.get_active_grading_term(academic_year=active_year)
 
         terms_qs = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
+        # For non-admin teachers, strictly provide only the active exam term configured by Admin
+        if not is_admin and active_grading_term:
+            effective_terms_qs = [active_grading_term]
+        else:
+            effective_terms_qs = terms_qs
+
         terms_data = []
-        for t in terms_qs:
+        for t in effective_terms_qs:
             is_open, status_code, status_msg = t.get_grading_status()
             terms_data.append({
                 'id': t.id,
@@ -949,39 +978,50 @@ class TeacherGradeEntryMetaAPIView(APIView):
                 'grading_start': t.grading_start_datetime.strftime('%d/%m/%Y %H:%M') if t.grading_start_datetime else '',
                 'grading_deadline': t.grading_end_datetime.strftime('%d/%m/%Y %H:%M') if t.grading_end_datetime else '',
                 'is_grading_open': is_open or is_admin,
+                'is_active_for_grading': t.is_active_for_grading,
                 'status_code': status_code,
                 'status_message': status_msg,
             })
 
-        # Classrooms & Subjects
-        all_classrooms = Classroom.objects.filter(academic_year=active_year) if active_year else Classroom.objects.all()
-        teacher_assigned_classes = set()
-        teacher_assigned_subjects = set()
+        # Classrooms & Subjects isolation for teachers
+        from apps.teachers.permissions import (
+            get_teacher_allowed_classrooms,
+            get_teacher_classroom_subject_ids,
+        )
 
-        if teacher_profile:
-            from apps.academics.models import ClassSubject
-            cs_qs = ClassSubject.objects.filter(teacher=teacher_profile)
-            if active_year:
-                cs_qs = cs_qs.filter(classroom__academic_year=active_year)
-            teacher_assigned_classes = set(cs_qs.values_list('classroom_id', flat=True))
-            teacher_assigned_subjects = set(cs_qs.values_list('subject_id', flat=True))
-            homeroom_cls_ids = set(Classroom.objects.filter(homeroom_teacher=teacher_profile).values_list('id', flat=True))
-            teacher_assigned_classes.update(homeroom_cls_ids)
-            
-            allowed_classrooms = all_classrooms.filter(id__in=teacher_assigned_classes) if teacher_assigned_classes else all_classrooms
-        else:
-            allowed_classrooms = all_classrooms
+        allowed_classrooms = get_teacher_allowed_classrooms(user, academic_year=active_year)
 
-        classrooms_data = [
-            {
+        classrooms_data = []
+        all_allowed_subjects_map = {}
+
+        for c in allowed_classrooms:
+            allowed_sub_ids = get_teacher_classroom_subject_ids(user, c.id)
+            c_rules = list(c.get_subject_rules())
+            if not c_rules:
+                c_rules = [GradeLevelRule(grade_level=c.grade_level, track=c.track, subject=s, max_score=Decimal('100.00')) for s in Subject.objects.all()]
+
+            c_subjects = []
+            for r in c_rules:
+                if allowed_sub_ids is None or r.subject_id in allowed_sub_ids:
+                    sub_dict = {
+                        'id': r.subject.id,
+                        'name': r.subject.name_kh,
+                        'name_kh': r.subject.name_kh,
+                        'name_en': r.subject.name_en,
+                        'code': r.subject.code,
+                        'max_score': float(r.max_score),
+                    }
+                    c_subjects.append(sub_dict)
+                    all_allowed_subjects_map[r.subject.id] = sub_dict
+
+            classrooms_data.append({
                 'id': c.id,
                 'name': c.name,
                 'grade_level': c.grade_level,
                 'track': c.track,
                 'track_display': c.get_track_display(),
-            }
-            for c in allowed_classrooms.order_by('grade_level', 'code')
-        ]
+                'subjects': c_subjects,
+            })
 
         # Standardized Exams for blind scoring
         std_exams_qs = StandardizedExam.objects.filter(academic_year=active_year) if active_year else StandardizedExam.objects.all()
@@ -1005,8 +1045,12 @@ class TeacherGradeEntryMetaAPIView(APIView):
         return Response({
             'status': 'success',
             'is_admin': is_admin,
+            'can_select_term': is_admin,
+            'active_term_id': active_grading_term.id if active_grading_term else None,
+            'active_term_name': active_grading_term.name if active_grading_term else '',
             'exam_terms': terms_data,
             'classrooms': classrooms_data,
+            'subjects': list(all_allowed_subjects_map.values()),
             'standardized_exams': std_exams_data,
         })
 
@@ -1030,17 +1074,41 @@ class TeacherGradeEntrySheetAPIView(APIView):
         is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
         teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
 
+        from apps.teachers.permissions import (
+            get_teacher_allowed_classrooms,
+            get_teacher_classroom_subject_ids,
+        )
+
+        # Classroom isolation for teachers
+        if not is_admin:
+            allowed_classrooms = get_teacher_allowed_classrooms(request.user, academic_year=exam_term.academic_year)
+            if not allowed_classrooms.filter(id=classroom.id).exists():
+                return Response({
+                    'status': 'error',
+                    'message': '⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនក្នុងថ្នាក់នេះឡើយ!'
+                }, status=status.HTTP_403_FORBIDDEN)
+
         # Check grading window
         is_grading_open, status_code, status_msg = exam_term.get_grading_status()
 
-        # Subject rules
+        # Subject rules & isolation
         rules_qs = classroom.get_subject_rules()
         if rules_qs.exists():
             subject_rules = list(rules_qs)
         else:
             subject_rules = [GradeLevelRule(grade_level=classroom.grade_level, track=classroom.track, subject=s, max_score=Decimal('100.00')) for s in Subject.objects.all()]
 
-        if subject_id and str(subject_id).isdigit():
+        # Filter to allowed subjects for this teacher in this classroom
+        allowed_subject_ids = get_teacher_classroom_subject_ids(request.user, classroom.id)
+        if allowed_subject_ids is not None:
+            if subject_id and str(subject_id).isdigit():
+                if int(subject_id) not in allowed_subject_ids:
+                    return Response({
+                        'status': 'error',
+                        'message': '⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនមុខវិជ្ជានេះក្នុងថ្នាក់នេះឡើយ!'
+                    }, status=status.HTTP_403_FORBIDDEN)
+            subject_rules = [r for r in subject_rules if r.subject_id in allowed_subject_ids]
+        elif subject_id and str(subject_id).isdigit():
             subject_rules = [r for r in subject_rules if r.subject_id == int(subject_id)]
 
         # Exclusions
@@ -1059,14 +1127,6 @@ class TeacherGradeEntrySheetAPIView(APIView):
             for g in Grade.objects.filter(classroom=classroom, exam_term=exam_term)
         }
 
-        # Check teacher assigned subjects
-        teacher_assigned_subjects = set()
-        if teacher_profile:
-            from apps.academics.models import ClassSubject
-            teacher_assigned_subjects = set(ClassSubject.objects.filter(teacher=teacher_profile, classroom=classroom).values_list('subject_id', flat=True))
-            if classroom.homeroom_teacher_id == teacher_profile.id:
-                teacher_assigned_subjects = {r.subject_id for r in subject_rules}
-
         subjects_data = []
         for r in subject_rules:
             subjects_data.append({
@@ -1074,7 +1134,7 @@ class TeacherGradeEntrySheetAPIView(APIView):
                 'name_kh': r.subject.name_kh,
                 'code': r.subject.code,
                 'max_score': float(r.max_score),
-                'can_edit': (is_admin or is_grading_open) and (is_admin or not teacher_profile or r.subject_id in teacher_assigned_subjects)
+                'can_edit': (is_admin or is_grading_open) and (is_admin or allowed_subject_ids is None or r.subject_id in allowed_subject_ids)
             })
 
         students_data = []
@@ -1089,7 +1149,7 @@ class TeacherGradeEntrySheetAPIView(APIView):
                 g = existing_grades.get((st.id, r.subject_id))
                 val = float(g.score) if g and g.score is not None else (0.0 if is_excluded else None)
                 letter = g.grade_letter if g else ('F' if is_excluded else '-')
-                can_edit = (is_admin or is_grading_open) and (is_admin or not is_excluded) and (is_admin or not teacher_profile or r.subject_id in teacher_assigned_subjects)
+                can_edit = (is_admin or is_grading_open) and (is_admin or not is_excluded) and (is_admin or allowed_subject_ids is None or r.subject_id in allowed_subject_ids)
 
                 scores_list.append({
                     'subject_id': r.subject_id,
@@ -1144,9 +1204,10 @@ class TeacherGradeEntrySaveAPIView(APIView):
 
     def post(self, request):
         data = request.data
-        term_id = data.get('term_id')
+        term_id = data.get('term_id') or data.get('exam_term_id')
         classroom_id = data.get('classroom_id')
-        scores_list = data.get('scores', [])
+        scores_list = data.get('scores') if data.get('scores') is not None else data.get('grades', [])
+        default_subject_id = data.get('subject_id')
 
         if not term_id or not classroom_id or not scores_list:
             return Response({'status': 'error', 'message': 'ទិន្នន័យមិនពេញលេញ!'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1156,6 +1217,28 @@ class TeacherGradeEntrySaveAPIView(APIView):
         is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
         teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
 
+        from apps.teachers.permissions import (
+            get_teacher_allowed_classrooms,
+            get_teacher_classroom_subject_ids,
+        )
+
+        # Classroom isolation for teachers
+        if not is_admin:
+            allowed_classrooms = get_teacher_allowed_classrooms(request.user, academic_year=classroom.academic_year)
+            if not allowed_classrooms.filter(id=classroom.id).exists():
+                return Response({
+                    'status': 'error',
+                    'message': '⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនក្នុងថ្នាក់នេះឡើយ!'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        # Check active grading term configured by Admin
+        active_grading_term = ExamTerm.get_active_grading_term(academic_year=classroom.academic_year)
+        if not is_admin and active_grading_term and exam_term.id != active_grading_term.id:
+            return Response({
+                'status': 'error',
+                'message': f'⚠️ មិនអនុញ្ញាត៖ អាចបញ្ចូលពិន្ទុបានតែសម័យប្រឡង «{active_grading_term.name}» ដែល Admin បានកំណត់ប៉ុណ្ណោះ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         # Check grading window
         is_grading_open, _, status_msg = exam_term.get_grading_status()
         if not is_grading_open and not is_admin:
@@ -1164,13 +1247,13 @@ class TeacherGradeEntrySaveAPIView(APIView):
         # Pre-cache max scores
         rules_map = {r.subject_id: r.max_score for r in classroom.get_subject_rules()}
 
-        # Teacher assigned subjects
-        teacher_assigned_subjects = set()
-        if teacher_profile:
-            from apps.academics.models import ClassSubject
-            teacher_assigned_subjects = set(ClassSubject.objects.filter(teacher=teacher_profile, classroom=classroom).values_list('subject_id', flat=True))
-            if classroom.homeroom_teacher_id == teacher_profile.id:
-                teacher_assigned_subjects = set(rules_map.keys())
+        # Allowed subjects for this teacher in this classroom
+        allowed_subject_ids = get_teacher_classroom_subject_ids(request.user, classroom.id)
+        if allowed_subject_ids is not None and len(allowed_subject_ids) == 0:
+            return Response({
+                'status': 'error',
+                'message': '⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនក្នុងថ្នាក់នេះឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Exclusions map
         term_month = exam_term.start_date.month if exam_term.start_date else None
@@ -1186,7 +1269,7 @@ class TeacherGradeEntrySaveAPIView(APIView):
         with transaction.atomic():
             for item in scores_list:
                 st_id = item.get('student_id')
-                sub_id = item.get('subject_id')
+                sub_id = item.get('subject_id') or default_subject_id
                 score_raw = str(item.get('score', '')).strip().upper()
                 is_absent = bool(item.get('is_absent', False)) or (score_raw == 'A')
 
@@ -1194,7 +1277,7 @@ class TeacherGradeEntrySaveAPIView(APIView):
                     continue
 
                 # Non-admin teacher can only save assigned subjects
-                if teacher_profile and sub_id not in teacher_assigned_subjects and not is_admin:
+                if allowed_subject_ids is not None and sub_id not in allowed_subject_ids and not is_admin:
                     continue
 
                 # Excluded student positive score blocked for non-admin
@@ -1482,7 +1565,7 @@ class MobileLocationProvincesAPIView(APIView):
     """
     Mobile API: Returns list of all 25 Provinces / Cities in Cambodia.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from apps.academics.models import Province
@@ -1499,7 +1582,7 @@ class MobileLocationDistrictsAPIView(APIView):
     """
     Mobile API: Returns districts filtered by province_id (or province code).
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from apps.academics.models import District
@@ -1520,7 +1603,7 @@ class MobileLocationCommunesAPIView(APIView):
     """
     Mobile API: Returns communes filtered by district_id.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from apps.academics.models import Commune
@@ -1541,7 +1624,7 @@ class MobileLocationVillagesAPIView(APIView):
     """
     Mobile API: Returns villages filtered by commune_id.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from apps.academics.models import Village
@@ -1563,7 +1646,7 @@ class MobileLocationHierarchyAPIView(APIView):
     Mobile API: Returns a lightweight hierarchy of provinces and districts (or full tree)
     for mobile apps to cache locally for instant, offline-capable cascading dropdowns.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from apps.academics.models import Province, District
@@ -2019,9 +2102,14 @@ class MobileStudentEnrollAPIView(APIView):
             ],
         }
 
+        is_staff = request.user and request.user.is_authenticated and (
+            request.user.is_staff or getattr(request.user, 'role', '').upper() in ['ADMIN', 'SUPERADMIN', 'PRINCIPAL']
+        )
+
         return Response({
             'status': 'success',
             'suggested_id': suggested_id,
+            'can_edit_student_id': is_staff,
             'current_academic_year': {
                 'id': active_year.id if active_year else None,
                 'name': active_year.name if active_year else '',
@@ -2060,7 +2148,7 @@ class MobileStudentEnrollAPIView(APIView):
         # Check if student registration is currently authorized by Admin for this period
         school_profile = SchoolProfile.get_settings()
         is_staff = request.user and request.user.is_authenticated and (
-            request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'superadmin']
+            request.user.is_staff or getattr(request.user, 'role', '').upper() in ['ADMIN', 'SUPERADMIN', 'PRINCIPAL']
         )
         if not is_staff:
             is_allowed, reason, status_code = school_profile.is_student_registration_allowed()
@@ -2109,6 +2197,21 @@ class MobileStudentEnrollAPIView(APIView):
         academic_year_id = data.get('academic_year_id')
         scholarship_type = data.get('scholarship_type', 'FULL_PAY')
         custom_sid = str(data.get('student_id', '')).strip()
+
+        # For students, parents/guardians, and teachers: manual Student ID entry is strictly forbidden.
+        # System must auto-generate sequential unique student ID automatically.
+        if not is_staff:
+            custom_sid = ''
+
+        # Check manual student_id uniqueness if provided (Admin only)
+        if custom_sid:
+            if Student.objects.filter(student_id__iexact=custom_sid).exists():
+                existing = Student.objects.filter(student_id__iexact=custom_sid).first()
+                class_str = f" ({existing.classroom.name})" if existing.classroom else ""
+                return Response({
+                    'status': 'error',
+                    'message': f"❌ អត្តលេខ '{custom_sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}! សូមប្រើអត្តលេខផ្សេង ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ។"
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         # Parent info
         father_name = str(data.get('father_name', '')).strip()
@@ -2170,20 +2273,20 @@ class MobileStudentEnrollAPIView(APIView):
         if classroom_id:
             classroom = Classroom.objects.filter(id=classroom_id).first()
 
-        # Check manual student_id uniqueness if provided
-        if custom_sid:
-            if Student.objects.filter(student_id__iexact=custom_sid).exists():
-                existing = Student.objects.filter(student_id__iexact=custom_sid).first()
-                class_str = f" ({existing.classroom.name})" if existing.classroom else ""
-                return Response({
-                    'status': 'error',
-                    'message': f"❌ អត្តលេខ '{custom_sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}! សូមប្រើអត្តលេខផ្សេង ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ។"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             with transaction.atomic():
+                # For non-admin (students, guardians, teachers), generate next sequential ID atomically
+                if not custom_sid:
+                    generated_sid = Student.generate_unique_student_id(
+                        academic_year=target_year,
+                        grade_level=classroom.grade_level if classroom else None,
+                        classroom=classroom
+                    )
+                else:
+                    generated_sid = custom_sid
+
                 student = Student(
-                    student_id=custom_sid if custom_sid else '',
+                    student_id=generated_sid,
                     khmer_name=khmer_name,
                     latin_name=latin_name,
                     gender=gender,
@@ -2915,6 +3018,425 @@ class MobileExamInvigilatorUnlockAPIView(APIView):
             'is_finalized': False,
             'message': f'🔓 បានដោះសោរការស្នើសុំជូនលោកគ្រូ/អ្នកគ្រូ {teacher.khmer_name} រួចរាល់!'
         })
+
+
+class MobileHourlyAttendanceMetaAPIView(APIView):
+    """
+    Mobile API: Returns metadata for recording student hourly attendance (ស្រង់វត្តមានសិស្សតាមម៉ោង).
+    Accessible to ADMIN, TEACHER, and ACCOUNTANT roles.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        allowed_roles = ['ADMIN', 'TEACHER', 'ACCOUNTANT']
+        if user.role not in allowed_roles and not user.is_superuser:
+            return Response({
+                'status': 'error',
+                'message': 'លោកអ្នកមិនមានសិទ្ធិស្រង់វត្តមានសិស្សតាមម៉ោងឡើយ (Permission denied)!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        now_dt = timezone.localtime(timezone.now())
+        today_date = now_dt.date()
+        from apps.attendance.views import get_current_period_info
+        from apps.attendance.models import StudentAttendance, AttendanceSetting
+        from apps.academics.models import Classroom, Timetable, Subject
+        from apps.academics.utils import get_active_academic_year
+
+        active_year = get_active_academic_year(request)
+        auto_period, auto_session = get_current_period_info(now_dt.time())
+
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if user.role == 'TEACHER' and teacher_profile:
+            timetable_classes = Classroom.objects.filter(
+                timetables__teacher=teacher_profile,
+                academic_year=active_year
+            ).distinct()
+            homeroom_classes = Classroom.objects.filter(
+                homeroom_teacher=teacher_profile,
+                academic_year=active_year
+            )
+            classrooms_qs = (timetable_classes | homeroom_classes).distinct().order_by('grade_level', 'code')
+            if not classrooms_qs.exists():
+                classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+        else:
+            classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+
+        classrooms_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'code': c.code,
+                'grade_level': c.grade_level,
+                'student_count': c.students.filter(status='ACTIVE').count()
+            }
+            for c in classrooms_qs
+        ]
+
+        periods_data = [
+            {'number': 1, 'session': 'MORNING', 'label': 'ម៉ោងទី ១ (07:00 - 08:00)', 'session_kh': 'ពេលព្រឹក'},
+            {'number': 2, 'session': 'MORNING', 'label': 'ម៉ោងទី ២ (08:00 - 09:00)', 'session_kh': 'ពេលព្រឹក'},
+            {'number': 3, 'session': 'MORNING', 'label': 'ម៉ោងទី ៣ (09:00 - 10:00)', 'session_kh': 'ពេលព្រឹក'},
+            {'number': 4, 'session': 'MORNING', 'label': 'ម៉ោងទី ៤ (10:00 - 11:00)', 'session_kh': 'ពេលព្រឹក'},
+            {'number': 5, 'session': 'AFTERNOON', 'label': 'ម៉ោងទី ៥ (13:00 - 14:00)', 'session_kh': 'ពេលរសៀល'},
+            {'number': 6, 'session': 'AFTERNOON', 'label': 'ម៉ោងទី ៦ (14:00 - 15:00)', 'session_kh': 'ពេលរសៀល'},
+            {'number': 7, 'session': 'AFTERNOON', 'label': 'ម៉ោងទី ៧ (15:00 - 16:00)', 'session_kh': 'ពេលរសៀល'},
+            {'number': 8, 'session': 'AFTERNOON', 'label': 'ម៉ោងទី ៨ (16:00 - 17:00)', 'session_kh': 'ពេលរសៀល'},
+        ]
+
+        sessions_data = [
+            {'id': 'MORNING', 'name': 'ពេលព្រឹក (Morning)'},
+            {'id': 'AFTERNOON', 'name': 'ពេលរសៀល (Afternoon)'},
+        ]
+
+        subjects_qs = Subject.objects.all().order_by('order', 'name_kh')
+        subjects_data = [{'id': s.id, 'name_kh': s.name_kh, 'name_en': s.name_en, 'code': s.code} for s in subjects_qs]
+
+        return Response({
+            'status': 'success',
+            'today_date': today_date.strftime('%Y-%m-%d'),
+            'current_period': auto_period,
+            'current_session': auto_session,
+            'can_override': user.role in ['ADMIN', 'ACCOUNTANT'] or user.is_superuser,
+            'classrooms': classrooms_data,
+            'periods': periods_data,
+            'sessions': sessions_data,
+            'subjects': subjects_data,
+            'user_role': user.role,
+        })
+
+
+class MobileHourlyAttendanceRosterAPIView(APIView):
+    """
+    Mobile API: Returns student roster and existing attendance statuses for a specific classroom, date, session, and period.
+    Accessible to ADMIN, TEACHER, and ACCOUNTANT.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        allowed_roles = ['ADMIN', 'TEACHER', 'ACCOUNTANT']
+        if user.role not in allowed_roles and not user.is_superuser:
+            return Response({
+                'status': 'error',
+                'message': 'លោកអ្នកមិនមានសិទ្ធិមើលបញ្ជីវត្តមានសិស្សតាមម៉ោងឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.academics.models import Classroom, Subject
+        from apps.attendance.models import StudentAttendance, AttendanceSubmissionLog
+        from apps.students.models import Student
+
+        class_id = request.query_params.get('classroom_id')
+        if not class_id:
+            return Response({'status': 'error', 'message': 'Classroom ID is required!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        classroom = Classroom.objects.filter(id=class_id).first()
+        if not classroom:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀននេះឡើយ!'}, status=status.HTTP_404_NOT_FOUND)
+
+        req_date_str = request.query_params.get('date')
+        try:
+            target_date = datetime.datetime.strptime(req_date_str, '%Y-%m-%d').date() if req_date_str else timezone.localtime(timezone.now()).date()
+        except ValueError:
+            target_date = timezone.localtime(timezone.now()).date()
+
+        req_period = request.query_params.get('period_number')
+        period_num = int(req_period) if (req_period and req_period.isdigit()) else 1
+        req_session = request.query_params.get('session')
+        session_val = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if period_num <= 4 else 'AFTERNOON')
+
+        students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+
+        records_qs = StudentAttendance.objects.filter(
+            classroom=classroom,
+            date=target_date,
+            session=session_val,
+            period_number=period_num
+        )
+        existing_records = {att.student_id: att for att in records_qs}
+
+        sub_log = AttendanceSubmissionLog.objects.filter(
+            classroom=classroom,
+            date=target_date,
+            session=session_val,
+            period_number=period_num
+        ).first()
+
+        present_cnt = 0
+        absent_cnt = 0
+        perm_cnt = 0
+        late_cnt = 0
+
+        students_list = []
+        for s in students:
+            att = existing_records.get(s.id)
+            current_status = att.status if att else 'PRESENT'
+            notes = att.notes if att else ''
+
+            if current_status == 'PRESENT':
+                present_cnt += 1
+            elif current_status == 'ABSENT':
+                absent_cnt += 1
+            elif current_status == 'PERMISSION':
+                perm_cnt += 1
+            elif current_status == 'LATE':
+                late_cnt += 1
+
+            students_list.append({
+                'id': s.id,
+                'student_id': s.student_id,
+                'khmer_name': s.khmer_name,
+                'latin_name': s.latin_name or '',
+                'gender': s.gender,
+                'gender_display': 'ប្រុស' if s.gender == 'M' else 'ស្រី',
+                'photo_url': s.photo.url if (s.photo and hasattr(s.photo, 'url')) else None,
+                'status': current_status,
+                'notes': notes,
+                'is_absent': current_status in ['ABSENT', 'PERMISSION', 'LATE'],
+            })
+
+        return Response({
+            'status': 'success',
+            'classroom': {
+                'id': classroom.id,
+                'name': classroom.name,
+                'code': classroom.code,
+            },
+            'date': target_date.strftime('%Y-%m-%d'),
+            'session': session_val,
+            'period_number': period_num,
+            'has_submitted': bool(sub_log and sub_log.submission_count > 0),
+            'submission_count': sub_log.submission_count if sub_log else 0,
+            'recorded_by': (sub_log.recorded_by.get_full_name() or sub_log.recorded_by.username) if (sub_log and sub_log.recorded_by) else '',
+            'summary': {
+                'total_students': students.count(),
+                'present_count': present_cnt,
+                'absent_count': absent_cnt,
+                'permission_count': perm_cnt,
+                'late_count': late_cnt,
+            },
+            'students': students_list,
+        })
+
+
+class MobileHourlyAttendanceSaveAPIView(APIView):
+    """
+    Mobile API: Records or updates student hourly attendance (ស្រង់អវត្តមានសិស្សតាមម៉ោង).
+    Accessible to ADMIN, TEACHER, and ACCOUNTANT.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        allowed_roles = ['ADMIN', 'TEACHER', 'ACCOUNTANT']
+        if user.role not in allowed_roles and not user.is_superuser:
+            return Response({
+                'status': 'error',
+                'message': 'លោកអ្នកមិនមានសិទ្ធិស្រង់វត្តមានសិស្សឡើយ (Permission denied)!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.academics.models import Classroom, Subject
+        from apps.attendance.models import StudentAttendance, AttendanceSubmissionLog, AttendanceSetting
+        from apps.students.models import Student
+        from apps.attendance.telegram_utils import send_hourly_period_absence_dispatch
+        from apps.accounts.utils import send_telegram_notification
+
+        class_id = request.data.get('classroom_id')
+        if not class_id:
+            return Response({'status': 'error', 'message': 'Classroom is required!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        classroom = Classroom.objects.filter(id=class_id).first()
+        if not classroom:
+            return Response({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀននេះឡើយ!'}, status=status.HTTP_404_NOT_FOUND)
+
+        req_date_str = request.data.get('date')
+        try:
+            target_date = datetime.datetime.strptime(req_date_str, '%Y-%m-%d').date() if req_date_str else timezone.localtime(timezone.now()).date()
+        except ValueError:
+            target_date = timezone.localtime(timezone.now()).date()
+
+        req_period = request.data.get('period_number')
+        period_num = int(req_period) if (req_period and str(req_period).isdigit()) else 1
+        req_session = request.data.get('session')
+        session_val = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if period_num <= 4 else 'AFTERNOON')
+
+        subject_id = request.data.get('subject_id')
+        subject = Subject.objects.filter(id=subject_id).first() if (subject_id and str(subject_id).isdigit()) else None
+        notify_parents = bool(request.data.get('notify_parents', False))
+        attendances = request.data.get('attendances', [])
+
+        saved_absent_cnt = 0
+        saved_perm_cnt = 0
+        saved_late_cnt = 0
+
+        with transaction.atomic():
+            for item in attendances:
+                stu_id = item.get('student_id')
+                status_val = item.get('status', 'PRESENT')
+                notes_val = (item.get('notes') or '').strip()
+
+                student = Student.objects.filter(id=stu_id, classroom=classroom).first()
+                if not student:
+                    continue
+
+                if status_val in ['ABSENT', 'PERMISSION', 'LATE']:
+                    StudentAttendance.objects.update_or_create(
+                        student=student,
+                        classroom=classroom,
+                        date=target_date,
+                        session=session_val,
+                        period_number=period_num,
+                        defaults={
+                            'status': status_val,
+                            'subject': subject,
+                            'notes': notes_val,
+                            'recorded_by': user
+                        }
+                    )
+                    if status_val == 'ABSENT':
+                        saved_absent_cnt += 1
+                        if notify_parents:
+                            msg = (
+                                f"សួស្តីលោក/លោកស្រីអាណាព្យាបាលសិស្ស {student.khmer_name}!\n"
+                                f"សាលាជម្រាបជូនថា នៅថ្ងៃទី {target_date.strftime('%d/%m/%Y')} (ម៉ោងទី {period_num}) "
+                                f"សិស្សពុំបានមកចូលរៀននៅ {classroom.name} ឡើយ (អវត្តមានឥតច្បាប់)។ "
+                                f"សូមទាក់ទងមកកាន់សាលាដើម្បីបញ្ជាក់ព័ត៌មានបន្ថែម។"
+                            )
+                            send_telegram_notification(
+                                title=f"⚠️ សេចក្តីជូនដំណឹងអវត្តមានសិស្ស: {student.khmer_name}",
+                                message=msg,
+                                recipient_name=student.father_name or student.mother_name or student.khmer_name,
+                                recipient_phone=student.father_phone or student.phone,
+                                recipient_type="Parent",
+                                custom_chat_id=student.telegram_chat_id
+                            )
+                    elif status_val == 'PERMISSION':
+                        saved_perm_cnt += 1
+                    elif status_val == 'LATE':
+                        saved_late_cnt += 1
+                else:
+                    StudentAttendance.objects.filter(
+                        student=student,
+                        classroom=classroom,
+                        date=target_date,
+                        session=session_val,
+                        period_number=period_num
+                    ).delete()
+
+            log_obj, created = AttendanceSubmissionLog.objects.get_or_create(
+                classroom=classroom,
+                date=target_date,
+                session=session_val,
+                period_number=period_num,
+                defaults={
+                    'recorded_by': user,
+                    'submission_count': 1
+                }
+            )
+            if not created:
+                log_obj.submission_count += 1
+                log_obj.recorded_by = user
+                log_obj.save(update_fields=['submission_count', 'recorded_by'])
+
+            att_settings = AttendanceSetting.get_settings()
+            if att_settings.hourly_dispatch_enabled:
+                try:
+                    send_hourly_period_absence_dispatch(
+                        target_date=target_date,
+                        period_number=period_num,
+                        session=session_val,
+                        sender_user=user
+                    )
+                except Exception:
+                    pass
+
+        total_marked = saved_absent_cnt + saved_perm_cnt + saved_late_cnt
+        return Response({
+            'status': 'success',
+            'message': f'✅ បានរក្សាទុកការស្រង់វត្តមានថ្នាក់ {classroom.name} (ម៉ោងទី {period_num}) ដោយជោគជ័យ! (អវត្តមាន/ច្បាប់/យឺត សរុប៖ {total_marked} នាក់)',
+            'classroom_id': classroom.id,
+            'date': target_date.strftime('%Y-%m-%d'),
+            'period_number': period_num,
+            'session': session_val,
+            'submission_count': log_obj.submission_count,
+            'summary': {
+                'absent_count': saved_absent_cnt,
+                'permission_count': saved_perm_cnt,
+                'late_count': saved_late_cnt,
+                'total_absences': total_marked,
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class MobileTeacherAttendanceConfigAPIView(APIView):
+    """
+    Mobile API: View and update teacher attendance scanning configuration and active daily modes.
+    Admin has full permission to enable/disable teacher scanning and select enforced scan methods.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.teachers.models import TeacherAttendanceConfig
+        config = TeacherAttendanceConfig.get_settings()
+        return Response({
+            'status': 'success',
+            'config': {
+                'enable_qr_checkin': config.enable_qr_checkin,
+                'enable_face_ai_checkin': config.enable_face_ai_checkin,
+                'enable_biometric_device': config.enable_biometric_device,
+                'enable_usb_fingerprint': config.enable_usb_fingerprint,
+                'enable_file_import': config.enable_file_import,
+                'enable_timetable_sync': config.enable_timetable_sync,
+                'active_daily_mode': config.active_daily_mode,
+                'active_daily_mode_display': config.get_active_daily_mode_display(),
+                'require_gps_validation': config.require_gps_validation,
+                'require_device_binding': config.require_device_binding,
+                'rolling_qr_interval_seconds': config.rolling_qr_interval_seconds,
+            },
+            'daily_mode_choices': [
+                {'value': val, 'label': label}
+                for val, label in TeacherAttendanceConfig.DailyMode.choices
+            ],
+            'is_admin': request.user.role == 'ADMIN' or request.user.is_superuser,
+        })
+
+    def post(self, request):
+        if request.user.role != 'ADMIN' and not request.user.is_superuser:
+            return Response({
+                'status': 'error',
+                'message': 'មានតែ Admin ប៉ុណ្ណោះដែលមានសិទ្ធិកែប្រែការកំណត់ស្កេនវត្តមានគ្រូ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.teachers.models import TeacherAttendanceConfig
+        config = TeacherAttendanceConfig.get_settings()
+
+        if 'enable_qr_checkin' in request.data:
+            config.enable_qr_checkin = bool(request.data.get('enable_qr_checkin'))
+        if 'enable_face_ai_checkin' in request.data:
+            config.enable_face_ai_checkin = bool(request.data.get('enable_face_ai_checkin'))
+        if 'enable_biometric_device' in request.data:
+            config.enable_biometric_device = bool(request.data.get('enable_biometric_device'))
+        if 'active_daily_mode' in request.data:
+            mode = request.data.get('active_daily_mode')
+            if mode in [c[0] for c in TeacherAttendanceConfig.DailyMode.choices]:
+                config.active_daily_mode = mode
+
+        config.save()
+
+        mode_display = config.get_active_daily_mode_display()
+        qr_status = "បើក" if config.enable_qr_checkin else "បិទ"
+        return Response({
+            'status': 'success',
+            'message': f'✅ បានរក្សាទុកការកំណត់ស្កេនវត្តមានគ្រូ៖ ស្កេន QR={qr_status}, វិធីសាស្ត្រ={mode_display}',
+            'config': {
+                'enable_qr_checkin': config.enable_qr_checkin,
+                'enable_face_ai_checkin': config.enable_face_ai_checkin,
+                'enable_biometric_device': config.enable_biometric_device,
+                'active_daily_mode': config.active_daily_mode,
+                'active_daily_mode_display': mode_display,
+            }
+        })
+
 
 
 

@@ -23,12 +23,36 @@
 <div class="custom-card p-3 mb-4">
     <form method="GET" class="row g-3 align-items-center">
         <div class="col-md-4">
-            <label class="form-label fw-bold small text-muted">សម័យប្រឡង (Exam Term) *</label>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label fw-bold small text-muted mb-0">សម័យប្រឡង (Exam Term) *</label>
+                {% if not can_select_term %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle small py-1 px-2">
+                    <i class="fa-solid fa-lock me-1"></i>កំណត់ដោយ Admin
+                </span>
+                {% endif %}
+            </div>
+            {% if can_select_term %}
             <select name="term" class="form-select" onchange="this.form.submit()">
                 {% for t in terms %}
-                <option value="{{ t.id }}" {% if selected_term and selected_term.id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                <option value="{{ t.id }}" {% if selected_term and selected_term.id == t.id %}selected{% endif %}>
+                    {{ t.name }} {% if t.is_active_for_grading %}(🟢 កំពុងបើកបញ្ចូលពិន្ទុ){% endif %}
+                </option>
                 {% endfor %}
             </select>
+            {% else %}
+            <input type="hidden" name="term" value="{{ selected_term.id }}">
+            <div class="input-group">
+                <span class="input-group-text bg-light text-success border-end-0">
+                    <i class="fa-solid fa-lock text-success"></i>
+                </span>
+                <input type="text" class="form-control bg-light text-dark fw-bold border-start-0" 
+                       value="{{ selected_term.name }}" readonly disabled 
+                       title="សម័យប្រឡងនេះត្រូវបានកំណត់ដោយ Admin សម្រាប់បញ្ចូលពិន្ទុ (មិនអាចប្តូរបាន)">
+            </div>
+            <div class="form-text text-muted small mt-1">
+                <i class="fa-solid fa-circle-info text-info me-1"></i>សម័យប្រឡងនេះត្រូវបានកំណត់ដោយ Admin សម្រាប់លោកគ្រូ-អ្នកគ្រូបញ្ចូលពិន្ទុ
+            </div>
+            {% endif %}
         </div>
         <div class="col-md-4">
             <label class="form-label fw-bold small text-muted">ថ្នាក់រៀន (Classroom) *</label>
@@ -108,6 +132,8 @@
 
 <form method="POST">
     {% csrf_token %}
+    <input type="hidden" name="term" value="{{ selected_term.id }}">
+    <input type="hidden" name="classroom" value="{{ selected_class.id }}">
     <div class="custom-card mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
             <div>

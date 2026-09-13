@@ -105,6 +105,18 @@ def exam_term_delete(request, term_id):
     return redirect('exam_term_list')
 
 
+@login_required
+@role_required(['ADMIN'])
+def exam_term_toggle_active_grading(request, term_id):
+    """
+    1-Click Admin action to set/open an exam term as the sole active grading term for teachers.
+    """
+    term = get_object_or_404(ExamTerm, id=term_id)
+    term.set_as_active_grading_term()
+    messages.success(request, f"🎉 បានបើកដំណើរការសម័យប្រឡង «{term.name}» ជាសម័យប្រឡងសកម្មសម្រាប់គ្រូបញ្ចូលពិន្ទុដោយជោគជ័យ!")
+    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or 'exam_term_list'
+    return redirect(next_url)
+
 
 @login_required
 @role_required(['ADMIN', 'TEACHER'])
@@ -113,41 +125,40 @@ def grade_entry_matrix(request):
     Rapid score entry grid for all students in a classroom across the exact subjects and max scores defined for that grade level & track.
     Strictly isolated per Academic Year!
     Enforces active student exam restrictions, Teacher Assigned Subject filters, and Admin grading deadline windows.
+    Teachers can ONLY enter grades for the exam term that Admin configured or opened.
     """
     from apps.academics.utils import get_active_academic_year
-    from apps.academics.models import ClassSubject
+    from apps.teachers.permissions import (
+        get_teacher_allowed_classrooms,
+        get_teacher_classroom_subject_ids,
+        can_teacher_grade_subject,
+    )
     active_year = get_active_academic_year(request)
     is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
     teacher_profile = getattr(request.user, 'teacher_profile', None) if not is_admin else None
 
     terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
-    all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    classrooms = get_teacher_allowed_classrooms(request.user, academic_year=active_year)
 
-    # Teacher assigned classes and subjects filtering
-    teacher_assigned_classes = set()
-    teacher_assigned_subjects = set()
-    homeroom_cls_ids = set()
-    if teacher_profile:
-        cs_qs = ClassSubject.objects.filter(teacher=teacher_profile)
-        if active_year:
-            cs_qs = cs_qs.filter(classroom__academic_year=active_year)
-        teacher_assigned_classes = set(cs_qs.values_list('classroom_id', flat=True))
-        teacher_assigned_subjects = set(cs_qs.values_list('subject_id', flat=True))
-        # Add homeroom classroom
-        homeroom_cls_ids = set(Classroom.objects.filter(homeroom_teacher=teacher_profile).values_list('id', flat=True))
-        teacher_assigned_classes.update(homeroom_cls_ids)
-        
-        # Filter classrooms list to only assigned classes for this teacher
-        classrooms = all_classrooms.filter(id__in=teacher_assigned_classes) if teacher_assigned_classes else all_classrooms
+    # Active grading term configured by Admin
+    active_grading_term = ExamTerm.get_active_grading_term(academic_year=active_year)
+
+    if not is_admin:
+        # Teachers can ONLY enter grades for the exam term that Admin configured or opened
+        selected_term = active_grading_term or terms.first()
+        selected_term_id = str(selected_term.id) if selected_term else ''
     else:
-        classrooms = all_classrooms
+        selected_term_id = request.GET.get('term') or request.POST.get('term') or str(active_grading_term.id if active_grading_term else (terms.first().id if terms.first() else ''))
+        selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else (active_grading_term or terms.first())
 
-    selected_term_id = request.GET.get('term') or request.POST.get('term') or str(terms.first().id if terms.first() else '')
-    selected_class_id = request.GET.get('classroom') or request.POST.get('classroom') or str(classrooms.first().id if classrooms.first() else '')
+    selected_class_id = request.GET.get('classroom') or request.POST.get('classroom') or ''
     selected_subject_id = request.GET.get('subject') or request.POST.get('subject') or ''
 
-    selected_term = ExamTerm.objects.filter(id=selected_term_id).first() if (selected_term_id and str(selected_term_id).isdigit()) else terms.first()
-    selected_class = Classroom.objects.filter(id=selected_class_id).first() if (selected_class_id and str(selected_class_id).isdigit()) else classrooms.first()
+    selected_class = None
+    if selected_class_id and str(selected_class_id).isdigit():
+        selected_class = classrooms.filter(id=int(selected_class_id)).first()
+    if not selected_class:
+        selected_class = classrooms.first()
 
     effective_year = selected_term.academic_year if selected_term else active_year
 
@@ -172,14 +183,16 @@ def grade_entry_matrix(request):
             include_non_tested=True
         )
 
-        total_tested_max = sum(r.max_score for r in subject_rules if getattr(r, 'is_tested', True))
+        # Restrict subject_rules to teacher's assigned subjects for this classroom
+        allowed_subject_ids = get_teacher_classroom_subject_ids(request.user, selected_class.id)
+        if allowed_subject_ids is not None:
+            subject_rules = [r for r in subject_rules if r.subject_id in allowed_subject_ids]
 
         # If a specific subject is filtered
         if selected_subject_id and str(selected_subject_id).isdigit():
             subject_rules = [r for r in subject_rules if r.subject_id == int(selected_subject_id)]
-        elif teacher_profile and teacher_assigned_subjects and not teacher_profile.current_duty.startswith('នាយក'):
-            # Highlight teacher's assigned subjects or filter if preferred
-            pass
+
+        total_tested_max = sum(r.max_score for r in subject_rules if getattr(r, 'is_tested', True))
 
         # Find all active exclusions for this term or month
         term_month = selected_term.start_date.month if selected_term.start_date else None
@@ -202,6 +215,21 @@ def grade_entry_matrix(request):
         }
 
         if request.method == 'POST':
+            # Teachers can only save in allowed classrooms
+            if not is_admin and (not selected_class or not classrooms.filter(id=selected_class.id).exists()):
+                messages.error(request, "⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនក្នុងថ្នាក់នេះឡើយ!")
+                return redirect("/examinations/matrix/")
+
+            # Teachers can ONLY save grades for the admin-configured active grading term
+            posted_term_id = request.POST.get('term')
+            if not is_admin and active_grading_term and posted_term_id and str(posted_term_id).isdigit() and int(posted_term_id) != active_grading_term.id:
+                messages.error(request, f"⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូអាចបញ្ចូលពិន្ទុបានតែសម័យប្រឡង «{active_grading_term.name}» ដែល Admin បានកំណត់ប៉ុណ្ណោះ!")
+                return redirect(f"/examinations/matrix/?classroom={selected_class.id}")
+
+            if not is_admin and active_grading_term and selected_term.id != active_grading_term.id:
+                messages.error(request, f"⚠️ មិនអនុញ្ញាត៖ លោកគ្រូ-អ្នកគ្រូអាចបញ្ចូលពិន្ទុបានតែសម័យប្រឡង «{active_grading_term.name}» ដែល Admin បានកំណត់ប៉ុណ្ណោះ!")
+                return redirect(f"/examinations/matrix/?classroom={selected_class.id}")
+
             # Block saving if grading window is closed for regular teachers
             if not is_grading_open and not is_admin:
                 messages.error(request, f"⚠️ មិនអាចរក្សាទុកបានទេ៖ {grading_status_msg}!")
@@ -311,6 +339,10 @@ def grade_entry_matrix(request):
 
     # All subjects for quick subject filter
     all_subjects = Subject.objects.exclude(code__in=['R', 'D']).order_by('order', 'id')
+    if selected_class:
+        allowed_subject_ids = get_teacher_classroom_subject_ids(request.user, selected_class.id)
+        if allowed_subject_ids is not None:
+            all_subjects = all_subjects.filter(id__in=allowed_subject_ids)
 
     return render(request, 'examinations/grade_matrix.html', {
         'terms': terms,
@@ -323,6 +355,8 @@ def grade_entry_matrix(request):
         'total_tested_max': total_tested_max,
         'matrix_data': matrix_data,
         'active_year': active_year,
+        'active_grading_term': active_grading_term,
+        'can_select_term': is_admin,
         'is_grading_open': is_grading_open,
         'grading_status_msg': grading_status_msg,
     })
@@ -333,13 +367,18 @@ def grade_summary_view(request):
     """
     Computes and ranks all students in a class based on Cambodian scoring rules:
     Total Score / Total Max Score, Percentage %, Letter Grade, and Class Rank.
-    Strictly isolated per Academic Year!
+    Strictly isolated per Academic Year and respects teacher assigned classrooms & subjects!
     """
     from apps.academics.utils import get_active_academic_year
+    from apps.teachers.permissions import (
+        get_teacher_allowed_classrooms,
+        get_teacher_classroom_subject_ids,
+    )
     active_year = get_active_academic_year(request)
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
 
     terms = ExamTerm.objects.filter(academic_year=active_year) if active_year else ExamTerm.objects.all()
-    classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    classrooms = get_teacher_allowed_classrooms(request.user, academic_year=active_year)
 
     selected_term_id = request.GET.get('term') or request.GET.get('term_id')
     selected_class_id = request.GET.get('classroom') or request.GET.get('classroom_id')
@@ -349,14 +388,16 @@ def grade_summary_view(request):
     else:
         selected_term = terms.first()
 
-    if selected_class_id:
-        selected_class = Classroom.objects.filter(id=selected_class_id).first()
-    else:
+    selected_class = None
+    if selected_class_id and str(selected_class_id).isdigit():
+        selected_class = classrooms.filter(id=int(selected_class_id)).first()
+    if not selected_class:
         selected_class = classrooms.first()
 
     subject_rules = []
     summary_results = []
     total_class_max = Decimal('0.00')
+    allowed_subject_ids = None
 
     if selected_term and selected_class:
         from .services import get_effective_term_subjects
@@ -365,6 +406,12 @@ def grade_summary_view(request):
             classroom=selected_class,
             include_non_tested=False
         )
+
+        # Restrict subject_rules to teacher's assigned subjects for this classroom
+        allowed_subject_ids = get_teacher_classroom_subject_ids(request.user, selected_class.id)
+        if allowed_subject_ids is not None:
+            subject_rules = [r for r in subject_rules if r.subject_id in allowed_subject_ids]
+
         total_class_max = sum(r.max_score for r in subject_rules)
 
         students = Student.objects.filter(classroom=selected_class, status='ACTIVE').order_by('student_id')
@@ -420,8 +467,15 @@ def grade_summary_view(request):
             item['rank'] = idx
             summary_results.append(item)
 
+    is_pure_subject_teacher = bool(selected_class and allowed_subject_ids is not None)
+    can_manage_class_reports = bool(not is_pure_subject_teacher)
+
     # Handle telegram alert broadcast
     if request.method == 'POST' and 'broadcast_results' in request.POST and selected_term and selected_class:
+        if is_pure_subject_teacher:
+            messages.error(request, "⚠️ មានតែលោកគ្រូ-អ្នកគ្រូទទួលបន្ទុកថ្នាក់ ឬ Admin ប៉ុណ្ណោះដែលអាចផ្ញើប័ណ្ណពិន្ទុរួមរបស់ថ្នាក់បាន!")
+            return redirect(f"/examinations/summary/?term={selected_term.id}&classroom={selected_class.id}")
+
         count = 0
         for item in summary_results:
             stu = item['student']
@@ -452,6 +506,8 @@ def grade_summary_view(request):
         'subject_rules': subject_rules,
         'total_class_max': total_class_max,
         'summary_results': summary_results,
+        'is_pure_subject_teacher': is_pure_subject_teacher,
+        'can_manage_class_reports': can_manage_class_reports,
     })
 
 

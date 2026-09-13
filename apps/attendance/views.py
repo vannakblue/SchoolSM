@@ -275,7 +275,7 @@ def evaluate_attendance_timing_window(teacher_profile, classroom, period_number,
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER'])
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
 def student_attendance_grid(request):
     """
     Absence-Focused Smart Attendance Recording View with Strict Timing Constraints
@@ -302,7 +302,7 @@ def student_attendance_grid(request):
         selected_date = today_date
 
     today_slots = []
-    if teacher_profile:
+    if teacher_profile and user.role == 'TEACHER':
         today_slots = Timetable.objects.filter(
             teacher=teacher_profile,
             day_of_week=selected_date.isoweekday(),
@@ -402,7 +402,7 @@ def student_attendance_grid(request):
                         'current_period_num': target_period,
                     }
 
-    if teacher_profile and today_slots.exists():
+    if user.role == 'TEACHER' and teacher_profile and today_slots.exists():
         matching_slot = None
         if req_period and req_class_id:
             matching_slot = today_slots.filter(period_number=int(req_period), classroom_id=int(req_class_id)).first()
@@ -444,12 +444,12 @@ def student_attendance_grid(request):
             selected_session = StudentAttendance.Session.MORNING if selected_period <= 4 else StudentAttendance.Session.AFTERNOON
 
     # 3. Evaluate Timing Window
-    if user.role == 'ADMIN':
+    if user.role in ['ADMIN', 'ACCOUNTANT']:
         timing_eval = {
             'can_submit': True,
             'status_code': 'ADMIN_OVERRIDE',
-            'status_label': 'សិទ្ធិ Admin (ពេញលេញ)',
-            'status_message': 'លោកអ្នកមានសិទ្ធិជា Admin អាចស្រង់វត្តមាន ឬកែប្រែបានគ្រប់ពេលវេលា។',
+            'status_label': 'សិទ្ធិ Admin (ពេញលេញ)' if user.role == 'ADMIN' else 'សិទ្ធិគណនេយ្យ (ពេញលេញ)',
+            'status_message': 'លោកអ្នកមានសិទ្ធិអាចស្រង់វត្តមាន ឬកែប្រែបានគ្រប់ពេលវេលា។',
             'badge_class': 'primary',
             'submission_log': AttendanceSubmissionLog.objects.filter(classroom=selected_class, date=selected_date, session=selected_session, period_number=selected_period).first() if selected_class else None,
             'start_time_str': '--:--',
@@ -462,7 +462,7 @@ def student_attendance_grid(request):
 
     # 4. Handle POST: Absence-First Saving & Enforcement
     if request.method == 'POST' and selected_class:
-        if user.role != 'ADMIN' and not timing_eval['can_submit']:
+        if user.role not in ['ADMIN', 'ACCOUNTANT'] and not timing_eval['can_submit']:
             messages.error(request, f"❌ បរាជ័យក្នុងការរក្សាទុក៖ {timing_eval['status_message']}")
             redirect_url = f"/attendance/?classroom={selected_class.id}&date={selected_date.strftime('%Y-%m-%d')}&session={selected_session}"
             if selected_period:
@@ -804,7 +804,7 @@ def attendance_report(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER'])
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
 def at_risk_attendance_view(request):
     """
     At-Risk Attendance & Chronic Absentee Warning Tracker.

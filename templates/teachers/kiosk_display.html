@@ -120,6 +120,27 @@
                         </div>
                     </div>
 
+                    {% if not config.enable_qr_checkin or config.active_daily_mode not in 'ALL,OPTION_1_QR' %}
+                    <div class="alert alert-warning border-0 rounded-4 p-3 mb-3 text-start shadow-sm">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                            <strong class="text-dark">ការស្កេន QR Code ត្រូវបានបិទ</strong>
+                        </div>
+                        <p class="text-dark small mb-2">
+                            {% if not config.enable_qr_checkin %}
+                            Admin បានបិទការស្កេន QR Code ជាបណ្តោះអាសន្ន។
+                            {% else %}
+                            Admin បានកំណត់ឱ្យប្រើវិធីសាស្ត្រ៖ <strong>{{ config.get_active_daily_mode_display }}</strong>។
+                            {% endif %}
+                        </p>
+                        {% if config.enable_face_ai_checkin and config.active_daily_mode in 'ALL,OPTION_2_FACE' %}
+                        <a href="{% url 'teacher_face_ai_kiosk' %}" class="btn btn-info btn-sm rounded-pill fw-bold w-100">
+                            <i class="fa-solid fa-camera me-1"></i> ចូលទៅកាន់ស្កេនផ្ទៃមុខ (Face AI)
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     <!-- QR Container Box -->
                     <div class="bg-white p-3 rounded-4 shadow-lg d-inline-block mx-auto mb-3" style="min-height: 280px; min-width: 280px;">
                         <div id="qrCodeContainer" class="d-flex align-items-center justify-content-center"></div>
