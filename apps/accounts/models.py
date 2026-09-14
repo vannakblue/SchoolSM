@@ -736,7 +736,7 @@ class SchoolProfile(models.Model):
     def report_font_css(self):
         font = self.report_header_font or 'Moul'
         if font == 'Moul':
-            return "'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', 'Kantumruy Pro', sans-serif"
+            return "'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', 'Kantumruy Pro', sans-serif"
         elif font == 'Khmer OS Siemreap':
             return "'Khmer OS Siemreap', 'Siemreap', sans-serif"
         elif font == 'Khmer OS Battambang':

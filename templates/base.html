@@ -47,6 +47,44 @@
 
     <!-- Dynamic Admin-Configured Fonts and Theme Palette -->
     <style>
+        /* Authentic Khmer OS Muol Light Definition */
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url('{% static "fonts/KhmerOSmuollight.ttf" %}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url('{% static "fonts/KhmerOSmuollight.ttf" %}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url('{% static "fonts/KhmerOSmuollight.ttf" %}') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'KhmerOSmuollight';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url('{% static "fonts/KhmerOSmuollight.ttf" %}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         :root {
             {% if school_info %}
             --font-khmer: {{ school_info.display_font_css|safe }} !important;

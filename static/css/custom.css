@@ -1,5 +1,52 @@
 @import url('https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Inter:wght@300;400;500;600;700;800&family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap');
 
+/* Authentic Khmer OS Muol Light Definition */
+@font-face {
+  font-family: 'Khmer OS Muol Light';
+  src: local('Khmer OS Muol Light'),
+       local('KhmerOSmuollight'),
+       url('../fonts/KhmerOSmuollight.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Khmer OS Muol Light';
+  src: local('Khmer OS Muol Light'),
+       local('KhmerOSmuollight'),
+       url('../fonts/KhmerOSmuollight.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Khmer OS Muol Light';
+  src: local('Khmer OS Muol Light'),
+       local('KhmerOSmuollight'),
+       url('../fonts/KhmerOSmuollight.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KhmerOSmuollight';
+  src: local('Khmer OS Muol Light'),
+       local('KhmerOSmuollight'),
+       url('../fonts/KhmerOSmuollight.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KhmerOSmuollight';
+  src: local('Khmer OS Muol Light'),
+       local('KhmerOSmuollight'),
+       url('../fonts/KhmerOSmuollight.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-khmer: 'Kantumruy Pro', 'Battambang', 'Inter', -apple-system, sans-serif;
   --font-base: 'Inter', 'Kantumruy Pro', sans-serif;
