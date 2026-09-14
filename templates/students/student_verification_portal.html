@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ផ្ទៀងផ្ទាត់ និងកែប្រែព័ត៌មានសិស្សដើមឆ្នាំ | SchoolSM</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Kantumruy Pro', 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #1e293b;
+        }
+        .portal-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+            color: #ffffff;
+            padding: 40px 20px 65px;
+            border-bottom-left-radius: 36px;
+            border-bottom-right-radius: 36px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+        }
+        .portal-main-container {
+            margin-top: -45px;
+            margin-bottom: 60px;
+        }
+        .card-custom {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            padding: 28px;
+        }
+        .section-title {
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 1.15rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .role-selector-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            background: #ffffff;
+        }
+        .role-selector-card:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: translateY(-2px);
+        }
+        .role-selector-card.selected {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        .confirmation-box {
+            background: #fffbeb;
+            border: 2px solid #fde68a;
+            border-radius: 16px;
+            padding: 22px;
+        }
+        .badge-round {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border-color: #cbd5e1;
+            padding: 10px 14px;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Banner -->
+    <header class="portal-header text-center">
+        <div class="container">
+            <div class="d-inline-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-white bg-opacity-20 text-white border border-white border-opacity-25 px-3 py-1 rounded-pill">
+                    <i class="fa-solid fa-graduation-cap me-1"></i> {{ school_profile.school_name|default:"School Management System" }}
+                </span>
+                {% if active_campaign %}
+                <span class="badge-round">
+                    <i class="fa-solid fa-sync me-1"></i> យុទ្ធនាការជុំទី {{ active_campaign.round_number }}
+                </span>
+                {% endif %}
+            </div>
+            <h1 class="fw-bold mb-2 fs-2">
+                {% if active_campaign %}{{ active_campaign.title }}{% else %}ផ្ទៀងផ្ទាត់ និងកែប្រែព័ត៌មានសិស្សដើមឆ្នាំ{% endif %}
+            </h1>
+            <p class="text-white-50 mb-0 max-w-700 mx-auto small">
+                ប្រព័ន្ធផ្ទៀងផ្ទាត់ទិន្នន័យសិស្សតាមកម្រិតថ្នាក់។ រាល់ការកែប្រែទិន្នន័យសិស្សចាស់ត្រូវមានការបញ្ជាក់ (Confirm) ដោយ សិស្ស អាណាព្យាបាល ឬ គ្រូបង្រៀន។
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container portal-main-container">
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm rounded-4 mb-4" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Lookup / Search Box -->
+        <div class="card-custom mb-4">
+            <div class="section-title">
+                <i class="fa-solid fa-magnifying-glass text-primary"></i> ស្វែងរកទិន្នន័យសិស្សដើមឆ្នាំ (Search Student)
+            </div>
+            <p class="text-muted small mb-3">
+                បញ្ចូល <strong>អត្តលេខសិស្ស (Student ID)</strong> ឬ <strong>ឈ្មោះជាភាសាខ្មែរ + ថ្ងៃខែឆ្នាំកំណើត</strong> ដើម្បីផ្ទៀងផ្ទាត់ទិន្នន័យ និងកែប្រែ៖
+            </p>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-semibold small text-muted">អត្តលេខសិស្ស (Student ID)</label>
+                    <input type="text" id="lookup_student_id" class="form-control" placeholder="ឧ. STU-2025-001" value="{{ student_id_query|default:matched_student.student_id }}">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label fw-semibold small text-muted">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</label>
+                    <input type="text" id="lookup_khmer_name" class="form-control" placeholder="ឧ. សុខ ចិន្តា" value="{{ khmer_name_query|default:matched_student.khmer_name }}">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label fw-semibold small text-muted">ថ្ងៃខែឆ្នាំកំណើត (DOB)</label>
+                    <input type="date" id="lookup_dob" class="form-control" value="{{ dob_query|default:matched_student.date_of_birth|date:'Y-m-d' }}">
+                </div>
+                <div class="col-12 col-md-2">
+                    <button type="button" id="btn_search_student" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-sm">
+                        <i class="fa-solid fa-search me-1"></i> ស្វែងរក
+                    </button>
+                </div>
+            </div>
+            <div id="lookup_status_alert" class="mt-3 d-none"></div>
+        </div>
+
+        <!-- Student Verification Form -->
+        <form method="post" action="{% url 'student_verification_submit' %}" id="studentVerificationForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="student_pk" id="hidden_student_pk" value="{{ matched_student.pk|default:'' }}">
+            <input type="hidden" name="form_mode" id="hidden_form_mode" value="{{ assigned_template|default:'GENERAL' }}">
+
+            <!-- Existing Student Detection Notice -->
+            <div id="existing_student_alert" class="card-custom mb-4 border-warning bg-warning-subtle bg-opacity-10 {% if not matched_student %}d-none{% endif %}">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="fs-2 text-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">
+                            សិស្សនេះមានទិន្នន័យស្រាប់ក្នុងប្រព័ន្ធ (Existing Student Record Detected)
+                        </h5>
+                        <p class="small text-muted mb-0">
+                            ទិន្នន័យខាងក្រោមត្រូវបានទាញយកពីមូលដ្ឋានទិន្នន័យសាលា។ ប្រសិនបើកែប្រែ ត្រូវតែមានការ <strong>បញ្ជាក់ (Confirmation)</strong> ដោយ សិស្ស អាណាព្យាបាល ឬ គ្រូបង្រៀន នៅផ្នែកខាងក្រោមទម្រង់នេះ។
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grade Template Badge Indicator -->
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div>
+                    <span class="text-muted small">បែបបទដែល Admin កំណត់សម្រាប់កម្រិតថ្នាក់នេះ៖</span>
+                    <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill" id="display_template_name">
+                        <i class="fa-solid fa-file-lines me-1"></i>
+                        {% if assigned_template == 'MOEYS_INDIVIDUAL' %}
+                            សម្រង់ព័ត៌មានបុគ្គល (MoEYS 35 Columns)
+                        {% elif assigned_template == 'CUSTOM_COMBINED' %}
+                            បែបបទរួម (Combined Custom Form)
+                        {% else %}
+                            បែបបទចុះឈ្មោះទូទៅ (Standard General Form)
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="small text-muted">
+                    <i class="fa-solid fa-database text-success me-1"></i> Database Updates Automatically on Submit
+                </div>
+            </div>
+
+            <!-- Form Content Box -->
+            <div class="card-custom mb-4">
+                <!-- General Form Section -->
+                <div id="section_general_form">
+                    <div class="section-title">
+                        <i class="fa-solid fa-id-card text-primary"></i> ព័ត៌មានផ្ទាល់ខ្លួនរបស់សិស្ស (Student Personal Information)
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">អត្តលេខសិស្ស (Student ID) <span class="text-danger">*</span></label>
+                            {{ form.student_id }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ឈ្មោះជាភាសាខ្មែរ (Khmer Name) <span class="text-danger">*</span></label>
+                            {{ form.khmer_name }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</label>
+                            {{ form.latin_name }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ភេទ (Gender) <span class="text-danger">*</span></label>
+                            {{ form.gender }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ថ្ងៃខែឆ្នាំកំណើត (DOB) <span class="text-danger">*</span></label>
+                            {{ form.date_of_birth }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">លេខទូរស័ព្ទសិស្ស (Phone)</label>
+                            {{ form.phone }}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">ទីកន្លែងកំណើត (Place of Birth)</label>
+                            {{ form.place_of_birth }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">អាសយដ្ឋានបច្ចុប្បន្ន (Current Address)</label>
+                            {{ form.current_address }}
+                        </div>
+                    </div>
+
+                    <div class="section-title">
+                        <i class="fa-solid fa-users text-primary"></i> ព័ត៌មានអាណាព្យាបាល / មាតាបិតា (Parents / Guardian Information)
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ឈ្មោះឪពុក (Father's Name)</label>
+                            {{ form.father_name }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">លេខទូរស័ព្ទឪពុក (Father's Phone)</label>
+                            {{ form.father_phone }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">ឈ្មោះម្តាយ (Mother's Name)</label>
+                            {{ form.mother_name }}
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold small">លេខទូរស័ព្ទម្តាយ (Mother's Phone)</label>
+                            {{ form.mother_phone }}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">ឈ្មោះអាណាព្យាបាលជំនួស (Guardian Name)</label>
+                            {{ form.guardian_name }}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">លេខទូរស័ព្ទទាក់ទងបន្ទាន់ (Emergency Phone)</label>
+                            {{ form.emergency_phone }}
+                        </div>
+                    </div>
+
+                    <div class="section-title">
+                        <i class="fa-solid fa-school text-primary"></i> ព័ត៌មានថ្នាក់រៀន និងការសិក្សា (Academic Information)
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">ថ្នាក់រៀន (Classroom) <span class="text-danger">*</span></label>
+                            {{ form.classroom }}
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">រូបថតសិស្ស (Student Photo)</label>
+                            {{ form.photo }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANDATORY Confirmation Card for Existing Student Edit -->
+            <div class="card-custom confirmation-box mb-4" id="confirmation_section">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-warning text-dark px-2 py-1 fs-6">
+                        <i class="fa-solid fa-shield-check me-1"></i> តម្រូវការបញ្ជាក់ (Mandatory Confirmation)
+                    </span>
+                    <h5 class="fw-bold text-dark mb-0">ការបញ្ជាក់ដោយ សិស្ស-អាណាព្យាបាល-គ្រូ</h5>
+                </div>
+                <p class="text-dark small mb-3">
+                    សូមជ្រើសរើសតួនាទីរបស់អ្នកដែលកំពុងបំពេញ/កែប្រែទិន្នន័យនេះ និងបញ្ជាក់ឈ្មោះពិត ដើម្បីធានាភាពសុក្រឹតក្នុងមូលដ្ឋានទិន្នន័យសាលារៀន៖
+                </p>
+
+                <!-- Confirmer Role Options -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-4">
+                        <div class="role-selector-card" data-role="STUDENT" onclick="selectRole('STUDENT')">
+                            <div class="fs-3 text-primary mb-1"><i class="fa-solid fa-user-graduate"></i></div>
+                            <div class="fw-bold text-dark">សិស្សផ្ទាល់</div>
+                            <div class="small text-muted">Student</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="role-selector-card" data-role="PARENT" onclick="selectRole('PARENT')">
+                            <div class="fs-3 text-warning mb-1"><i class="fa-solid fa-hands-holding-child"></i></div>
+                            <div class="fw-bold text-dark">អាណាព្យាបាល / មាតាបិតា</div>
+                            <div class="small text-muted">Parent / Guardian</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="role-selector-card" data-role="TEACHER" onclick="selectRole('TEACHER')">
+                            <div class="fs-3 text-purple mb-1"><i class="fa-solid fa-chalkboard-user"></i></div>
+                            <div class="fw-bold text-dark">គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់</div>
+                            <div class="small text-muted">Teacher / Class Advisor</div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="confirmed_by_role" id="confirmed_by_role" value="{{ form.confirmed_by_role.value|default:'' }}">
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold small text-dark">ឈ្មោះអ្នកបញ្ជាក់ (Confirmer Name) <span class="text-danger">*</span></label>
+                        {{ form.confirmed_by_name }}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold small text-dark">លេខទូរស័ព្ទអ្នកបញ្ជាក់ (Phone)</label>
+                        {{ form.confirmed_by_phone }}
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold small text-dark">ទំនាក់ទំនងជាមួយសិស្ស (Relationship)</label>
+                        {{ form.relationship_to_student }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold small text-dark">កំណត់សម្គាល់ការកែប្រែ (Notes / Reason for update)</label>
+                        {{ form.confirmation_notes }}
+                    </div>
+                </div>
+
+                <div class="form-check p-3 bg-white rounded-3 border border-warning">
+                    {{ form.confirm_edit }}
+                    <label class="form-check-label fw-bold text-dark ms-2" for="{{ form.confirm_edit.id_for_label }}">
+                        <i class="fa-solid fa-check text-success me-1"></i>
+                        ខ្ញុំបាទ/នាងខ្ញុំសូមបញ្ជាក់ថា ព័ត៌មានដែលបានកែប្រែខាងលើពិតជាត្រឹមត្រូវ និងយល់ព្រមធ្វើបច្ចុប្បន្នភាពក្នុងមូលដ្ឋានទិន្នន័យ (I confirm and authorize database update)
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <a href="{% url 'public_enroll' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ចុះឈ្មោះសិស្សថ្មី
+                </a>
+                <button type="submit" class="btn btn-success btn-lg rounded-pill px-5 fw-bold shadow">
+                    <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុក និងធ្វើបច្ចុប្បន្នភាពទិន្នន័យ (Save & Update DB)
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <footer class="mt-auto py-4 bg-white border-top text-center small text-muted">
+        <div class="container">
+            <div>&copy; 2026 {{ school_profile.school_name|default:"SchoolSM" }} - ប្រព័ន្ធគ្រប់គ្រងសាលារៀន & ផ្ទៀងផ្ទាត់ទិន្នន័យសិស្ស</div>
+            <div class="text-secondary mt-1">គាំទ្រការផ្ទៀងផ្ទាត់ទិន្នន័យទាំងលើ Web Portal និង Mobile App</div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Select Confirmer Role
+        function selectRole(roleCode) {
+            document.querySelectorAll('.role-selector-card').forEach(card => {
+                if (card.getAttribute('data-role') === roleCode) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            const roleInput = document.getElementById('confirmed_by_role');
+            if (roleInput) {
+                roleInput.value = roleCode;
+            }
+        }
+
+        // Initialize role selection on load if present
+        const currentRole = document.getElementById('confirmed_by_role')?.value;
+        if (currentRole) {
+            selectRole(currentRole);
+        }
+
+        // Student Lookup AJAX Handler
+        document.getElementById('btn_search_student')?.addEventListener('click', function() {
+            const sid = document.getElementById('lookup_student_id').value.trim();
+            const khName = document.getElementById('lookup_khmer_name').value.trim();
+            const dob = document.getElementById('lookup_dob').value.trim();
+            const alertBox = document.getElementById('lookup_status_alert');
+
+            if (!sid && (!khName || !dob)) {
+                alertBox.className = 'alert alert-warning mt-3';
+                alertBox.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i> សូមបញ្ចូល អត្តលេខសិស្ស ឬ (ឈ្មោះខ្មែរ + ថ្ងៃខែឆ្នាំកំណើត) ដើម្បីស្វែងរក';
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            alertBox.className = 'alert alert-info mt-3';
+            alertBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងស្វែងរកទិន្នន័យក្នុងប្រព័ន្ធ...';
+            alertBox.classList.remove('d-none');
+
+            const params = new URLSearchParams({
+                student_id: sid,
+                khmer_name: khName,
+                date_of_birth: dob
+            });
+
+            fetch("{% url 'api_verification_lookup_student' %}?" + params.toString())
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'found' && data.student) {
+                    const s = data.student;
+                    alertBox.className = 'alert alert-success mt-3';
+                    alertBox.innerHTML = `🎉 រកឃើញទិន្នន័យសិស្ស៖ <strong>${s.khmer_name}</strong> (អត្តលេខ: ${s.student_id}) - ថ្នាក់: ${s.classroom_name}`;
+                    
+                    // Pre-fill hidden PK
+                    document.getElementById('hidden_student_pk').value = s.id;
+
+                    // Pre-fill form fields
+                    const setVal = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el && val !== undefined && val !== null) el.value = val;
+                    };
+
+                    setVal('id_student_id', s.student_id);
+                    setVal('id_khmer_name', s.khmer_name);
+                    setVal('id_latin_name', s.latin_name);
+                    setVal('id_gender', s.gender);
+                    setVal('id_date_of_birth', s.date_of_birth);
+                    setVal('id_place_of_birth', s.place_of_birth);
+                    setVal('id_current_address', s.current_address);
+                    setVal('id_phone', s.phone);
+                    setVal('id_father_name', s.father_name);
+                    setVal('id_father_phone', s.father_phone);
+                    setVal('id_mother_name', s.mother_name);
+                    setVal('id_mother_phone', s.mother_phone);
+                    setVal('id_guardian_name', s.guardian_name);
+                    setVal('id_emergency_phone', s.emergency_phone);
+                    if (s.classroom_id) {
+                        setVal('id_classroom', s.classroom_id);
+                    }
+
+                    // Show existing alert and highlight confirmation section
+                    document.getElementById('existing_student_alert')?.classList.remove('d-none');
+                    document.getElementById('confirmation_section')?.scrollIntoView({ behavior: 'smooth' });
+
+                    // Update template badge if provided
+                    if (data.assigned_form_template_display) {
+                        const tBadge = document.getElementById('display_template_name');
+                        if (tBadge) tBadge.textContent = data.assigned_form_template_display;
+                        document.getElementById('hidden_form_mode').value = data.assigned_form_template || 'GENERAL';
+                    }
+                } else {
+                    alertBox.className = 'alert alert-secondary mt-3';
+                    alertBox.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> ' + (data.message || 'មិនមានទិន្នន័យសិស្សចាស់ក្នុងប្រព័ន្ធឡើយ (អាចចុះឈ្មោះថ្មីបាន)');
+                    document.getElementById('existing_student_alert')?.classList.add('d-none');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alertBox.className = 'alert alert-danger mt-3';
+                alertBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> មានបញ្ហាក្នុងការស្វែងរក សូមព្យាយាមម្តងទៀត';
+            });
+        });
+
+        // Form submission validation
+        document.getElementById('studentVerificationForm')?.addEventListener('submit', function(e) {
+            const hasExisting = !document.getElementById('existing_student_alert')?.classList.contains('d-none') || 
+                                document.getElementById('hidden_student_pk')?.value;
+            
+            if (hasExisting) {
+                const role = document.getElementById('confirmed_by_role')?.value;
+                const name = document.getElementById('id_confirmed_by_name')?.value?.trim();
+                const confirmBox = document.getElementById('id_confirm_edit')?.checked;
+
+                if (!role) {
+                    e.preventDefault();
+                    alert("⚠️ សូមជ្រើសរើសតួនាទីរបស់អ្នកដែលកំពុងបញ្ចូល (សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន)!");
+                    document.getElementById('confirmation_section')?.scrollIntoView({ behavior: 'smooth' });
+                    return false;
+                }
+                if (!name) {
+                    e.preventDefault();
+                    alert("⚠️ សូមបញ្ចូលឈ្មោះរបស់អ្នកដែលកំពុងបញ្ជាក់ (Confirmer Name)!");
+                    document.getElementById('id_confirmed_by_name')?.focus();
+                    return false;
+                }
+                if (!confirmBox) {
+                    e.preventDefault();
+                    alert("⚠️ សូមធីកប្រអប់បញ្ជាក់ភាពត្រឹមត្រូវ ដើម្បីធ្វើបច្ចុប្បន្នភាពទិន្នន័យក្នុងប្រព័ន្ធ!");
+                    document.getElementById('id_confirm_edit')?.focus();
+                    return false;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -72,11 +72,13 @@
         margin-bottom: 18px;
     }
     .tt-school-name {
-        font-size: 1.22rem;
-        font-weight: 800;
+        font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+        font-size: 12pt;
+        font-weight: 700;
+        text-align: left;
         color: #000000;
-        margin-bottom: 4px;
-        letter-spacing: -0.3px;
+        margin-bottom: 6px;
+        line-height: 1.4;
     }
     .tt-main-title {
         font-size: 1.42rem;
@@ -250,6 +252,12 @@
         }
         .timetable-sheet:last-child {
             page-break-after: auto !important;
+        }
+        .tt-school-name {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            text-align: left !important;
+            line-height: 1.4 !important;
         }
         .tt-table, .tt-table th, .tt-table td {
             border-color: #000000 !important;
@@ -465,8 +473,8 @@
                 <input type="text" class="form-control form-control-sm" id="inputLunarDate" value="{{ today_lunar_date|default:'ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០' }}" oninput="updateCustomDates()">
             </div>
             <div class="col-md-6">
-                <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសុរិយគតិ (ជួរទី ២)៖</label>
-                <input type="text" class="form-control form-control-sm" id="inputSolarDate" value="{{ school_info.province|default:'កំពង់កណ្តួត' }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}" oninput="updateCustomDates()">
+                <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសូរិយគតិ (ជួរទី ២)៖</label>
+                <input type="text" class="form-control form-control-sm" id="inputSolarDate" value="{% if today_solar_date %}{{ today_solar_date }}{% else %}{{ school_info.short_name|default:school_info.name_kh|default:'វិទ្យាល័យ កំពង់កន្ទួត' }} ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}{% endif %}" oninput="updateCustomDates()">
             </div>
         </div>
     </div>
@@ -481,8 +489,8 @@
         <div class="timetable-sheet sheet-class" data-class-id="{{ cls_item.classroom.id }}" id="sheet_cls_{{ cls_item.classroom.id }}">
             <!-- Header Matching User Screenshot -->
             <div class="tt-header">
-                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កណ្តួត" }}</div>
-                <div class="tt-main-title">{% if "ថ្នាក់" in cls_item.classroom.name %}កាលវិភាគសិក្សា {{ cls_item.classroom.name }}{% else %}កាលវិភាគសិក្សា ថ្នាក់ទី {{ cls_item.classroom.name }}{% endif %}</div>
+                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</div>
+                <div class="tt-main-title">កាលវិភាគសិក្សា {{ cls_item.classroom.clean_name|default:cls_item.classroom.name|cut:'ថ្នាក់ទី'|cut:'ថ្នាក់' }}</div>
                 <div class="tt-meta-line">ឆ្នាំសិក្សា៖ {{ cls_item.academic_year }}</div>
                 <div class="tt-meta-line">
                     ឈ្មោះគ្រូបន្ទុកថ្នាក់៖ 
@@ -565,14 +573,13 @@
                         <div style="height: 42px;"></div>
                         <div class="tt-sig-title">បានឃើញ និងឯកភាព</div>
                         <div class="tt-sig-role">នាយកសាលា</div>
-                        <div class="tt-sig-space"></div>
-                        <div class="tt-sig-name">{{ school_info.principal_name|default:"បណ្ឌិត សុខ ចាន់ថន" }}</div>
+                        <div class="tt-sig-space" style="height: 87px;"></div>
                     </div>
 
                     <!-- Right: Homeroom Teacher -->
                     <div class="tt-sig-col">
                         <div class="lbl-lunar-date">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
-                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
+                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{% if today_solar_date %}{{ today_solar_date }}{% else %}{{ school_info.short_name|default:school_info.name_kh|default:"វិទ្យាល័យ កំពង់កន្ទួត" }} ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}{% endif %}</div>
                         <div class="tt-sig-role">ហត្ថលេខាគ្រូបន្ទុកថ្នាក់</div>
                         <div class="tt-sig-space" style="height: 87px;"></div>
                         <div class="tt-sig-name">
@@ -599,7 +606,7 @@
         <div class="timetable-sheet sheet-teacher" data-teacher-id="{{ tch_item.teacher.id }}" id="sheet_tch_{{ tch_item.teacher.id }}">
             <!-- Header Matching Teacher Screenshot -->
             <div class="tt-header">
-                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កណ្តួត" }}</div>
+                <div class="tt-school-name">{{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</div>
                 <div class="tt-main-title">កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍</div>
                 <div class="tt-meta-line">ឈ្មោះគ្រូបង្រៀន៖ {{ tch_item.title }} {{ tch_item.teacher.khmer_name }}</div>
                 <div class="tt-meta-line">
@@ -686,14 +693,13 @@
                         <div style="height: 42px;"></div>
                         <div class="tt-sig-title">បានឃើញ និងឯកភាព</div>
                         <div class="tt-sig-role">នាយកសាលា</div>
-                        <div class="tt-sig-space"></div>
-                        <div class="tt-sig-name">{{ school_info.principal_name|default:"បណ្ឌិត សុខ ចាន់ថន" }}</div>
+                        <div class="tt-sig-space" style="height: 87px;"></div>
                     </div>
 
                     <!-- Right: Teacher -->
                     <div class="tt-sig-col">
                         <div class="lbl-lunar-date">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
-                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{{ school_info.province|default:"កំពង់កណ្តួត" }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
+                        <div class="lbl-solar-date" style="margin-bottom: 4px;">{% if today_solar_date %}{{ today_solar_date }}{% else %}{{ school_info.short_name|default:school_info.name_kh|default:"វិទ្យាល័យ កំពង់កន្ទួត" }} ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}{% endif %}</div>
                         <div class="tt-sig-role">ហត្ថលេខាគ្រូ</div>
                         <div class="tt-sig-space" style="height: 87px;"></div>
                         <div class="tt-sig-name">{{ tch_item.teacher.khmer_name }}</div>

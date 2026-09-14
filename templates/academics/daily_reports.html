@@ -241,7 +241,7 @@
 
         @page {
             size: A4 portrait;
-            margin: 14mm 10mm 10mm 10mm !important;
+            margin: 8mm 8mm 8mm 8mm !important;
         }
 
         html, body {
@@ -280,6 +280,10 @@
             break-after: auto !important;
         }
 
+        .duty-sheet-paper.d-print-none {
+            display: none !important;
+        }
+
         .duty-sheet-table {
             width: 100% !important;
             max-width: 100% !important;
@@ -291,8 +295,8 @@
         .duty-sheet-table th,
         .duty-sheet-table td {
             border: 1px solid #000 !important;
-            font-size: var(--report-table-font-size, 8.0pt) !important;
-            padding: 1.5px 2px !important;
+            font-size: 8pt !important;
+            padding: 1px 2px !important;
             line-height: 1.15 !important;
             vertical-align: middle !important;
             box-sizing: border-box !important;
@@ -302,17 +306,23 @@
         .duty-sheet-table th {
             background-color: #f0f0f0 !important;
             font-weight: 700 !important;
-            height: 24px !important;
+            height: 20px !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
 
         .duty-sheet-table td {
-            height: var(--report-row-height, 28px) !important;
+            height: 22px !important;
+            max-height: 24px !important;
         }
 
         .duty-sheet-header-block {
-            margin-bottom: 3px !important;
+            margin-bottom: 2px !important;
+        }
+
+        .duty-sheet-header-block img {
+            height: 40px !important;
+            width: 40px !important;
         }
 
         .duty-sheet-signatures {
@@ -322,8 +332,12 @@
             break-inside: avoid !important;
         }
 
+        .duty-sheet-signatures .sig-spacer {
+            height: 18px !important;
+        }
+
         .duty-sheet-footer-note {
-            margin-top: 3px !important;
+            margin-top: 2px !important;
             padding-top: 1px !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
@@ -549,7 +563,7 @@
                 <div class="col-md-6">
                     <label class="form-label small fw-bold text-muted mb-1">កាលបរិច្ឆេទសូរិយគតិ (ជួរទី ២)៖</label>
                     <input type="text" class="form-control form-control-sm" id="inputSolarDate"
-                        value="{{ school_info.province|default:'ខេត្តកណ្តាល' }}, ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}"
+                        value="{% if today_solar_date %}{{ today_solar_date }}{% else %}{{ school_info.short_name|default:school_info.name_kh|default:'វិទ្យាល័យ កំពង់កន្ទួត' }} ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}{% endif %}"
                         oninput="updateCustomDates()">
                 </div>
             </div>
@@ -571,6 +585,29 @@
             <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="openPrintConfigModal()">
                 <i class="fa-solid fa-sliders me-1"></i> កំណត់ទំព័រព្រីន
             </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary btn-sm fw-bold shadow-xs dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-print me-1"></i> ព្រីន (Print)
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item small fw-bold" href="javascript:void(0)" onclick="printSession('morning')">
+                            <i class="fa-solid fa-sun text-warning me-1.5"></i> ព្រីនតែវេនព្រឹក (២ ទំព័រ)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item small fw-bold" href="javascript:void(0)" onclick="printSession('afternoon')">
+                            <i class="fa-solid fa-cloud-sun text-info me-1.5"></i> ព្រីនតែវេនរសៀល (២ ទំព័រ)
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <a class="dropdown-item small fw-bold text-primary" href="javascript:void(0)" onclick="printSession('all')">
+                            <i class="fa-solid fa-print me-1.5"></i> ព្រីនទាំងអស់ (All)
+                        </a>
+                    </li>
+                </ul>
+            </div>
             <a href="{% url 'timetable_daily_reports_export_excel' %}?report_type=duty_sheets&day={{ selected_day }}&session={{ selected_session }}"
                 class="btn btn-warning btn-sm fw-bold text-white shadow-xs">
                 <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel បញ្ជីវត្តមាន (១២ ថស)
@@ -687,7 +724,7 @@
 
     {% for sheet in duty_sheets %}
         {% for subpage in sheet.subpages %}
-        <div class="duty-sheet-paper">
+        <div class="duty-sheet-paper" data-session="{{ sheet.session }}" data-day="{{ sheet.day_num }}">
             <!-- Visual Margin Guide Overlay -->
             <div class="margin-guide-overlay">
                 <div class="margin-line-top"><span class="margin-tag top-tag">លើ: 20mm</span></div>
@@ -708,20 +745,20 @@
                             <img src="{% static 'img/school_logo.png' %}" alt="Logo" style="height: 52px; width: 52px; object-fit: contain; border-radius: 50%;">
                             {% endif %}
                         </div>
-                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 10.5pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
                             {{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
                         </div>
-                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
                             {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែនកំពង់កណ្តួត" }}
                         </div>
                     </div>
 
                     <!-- Right Side: Royal Kingdom Motto & Page Badge -->
-                    <div class="text-center" style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 10px;">
-                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11.5pt; line-height: 1.4;">
+                    <div class="text-center" style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 5px;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
                             ព្រះរាជាណាចក្រកម្ពុជា
                         </div>
-                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', serif; font-size: 11pt; line-height: 1.4;">
+                        <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
                             ជាតិ សាសនា ព្រះមហាក្សត្រ
                         </div>
                         {% if subpage.total_pages > 1 %}
@@ -736,7 +773,7 @@
 
                 <!-- Center Title (Exact Match: បញ្ជីស្រង់វត្តមានប្រចាំថ្ងៃរបស់មន្ត្រីរាជការស៊ីវិល) -->
                 <div class="text-center mt-2">
-                    <div class="fw-bold text-dark mb-1" style="font-family: 'Khmer OS Muol Light', serif; font-size: 12.5pt; line-height: 1.3;">
+                    <div class="fw-bold text-dark mb-1" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
                         បញ្ជីស្រង់វត្តមានប្រចាំថ្ងៃរបស់មន្ត្រីរាជការស៊ីវិល
                     </div>
                     <div class="text-dark fw-bold" style="font-size: 9.5pt;">
@@ -845,17 +882,16 @@
             <div class="duty-sheet-signatures row mt-3 pt-1">
                 <!-- Left: Principal Signature -->
                 <div class="col-6 text-center">
-                    <div style="height: 30px;"></div>
-                    <div class="fw-bold" style="font-size: 0.92rem;">បានឃើញ និងឯកភាព</div>
-                    <div class="fw-bold" style="font-size: 0.92rem;">នាយកសាលា</div>
+                    <div class="sig-spacer" style="height: 25px;"></div>
+                    <div class="fw-bold" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">បានឃើញ និងឯកភាព</div>
+                    <div class="fw-bold" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">នាយកសាលា</div>
                 </div>
 
                 <!-- Right: Reporter Signature -->
                 <div class="col-6 text-center">
                     <div class="lbl-lunar-date text-dark small mb-0">{{ today_lunar_date|default:"ថ្ងៃព្រហស្បតិ៍ ១៣រោច ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០" }}</div>
-                    <div class="lbl-solar-date text-dark small mb-0">{{ school_info.province|default:"ខេត្តកណ្តាល" }},
-                        ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}</div>
-                    <div class="fw-bold" style="font-size: 0.92rem;">អ្នករៀបចំរបាយការណ៍</div>
+                    <div class="lbl-solar-date text-dark small mb-0">{% if today_solar_date %}{{ today_solar_date }}{% else %}{{ school_info.short_name|default:school_info.name_kh|default:"វិទ្យាល័យ កំពង់កន្ទួត" }} ថ្ងៃទី {{ today_kh_day }} ខែ {{ today_kh_month }} ឆ្នាំ {{ today_kh_year }}{% endif %}</div>
+                    <div class="fw-bold" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">អ្នករៀបចំរបាយការណ៍</div>
                 </div>
             </div>
             {% else %}
@@ -915,8 +951,7 @@
                         <td class="text-center font-monospace">{{ item.teacher.teacher_id }}</td>
                         <td class="fw-bold text-dark">{{ item.teacher.khmer_name }} ({{ item.teacher.latin_name }})</td>
                         <td>{{ item.teacher.specialization }}</td>
-                        <td class="text-center"><span class="badge bg-secondary-subtle text-dark border">{{ item.codes
-                                }}</span></td>
+                        <td class="text-center"><span class="badge bg-secondary-subtle text-dark border">{{ item.codes }}</span></td>
                         <td class="text-center fw-bold">{{ item.max_hours }} ម៉ោង</td>
                         <td class="text-center fw-bold text-primary">{{ item.assigned_hours }} ម៉ោង</td>
                         <td
@@ -984,7 +1019,7 @@
                         </td>
                         <td class="text-center fw-bold">{{ item.subject.name_kh }}</td>
                         <td class="text-center fw-bold text-dark">{{ item.teacher.khmer_name }}</td>
-                        <td class="text-start ps-3">{{ item.classes }}</td>
+                        <td class="text-start ps-3">{{ item.classes|cut:"ថ្នាក់ទី" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -1035,10 +1070,13 @@
                     {% for item in classrooms_summary %}
                     <tr>
                         <td class="text-center fw-bold">{{ forloop.counter }}</td>
-                        <td class="text-center fw-bold text-primary fs-7">{{ item.classroom.name }}</td>
-                        <td class="text-center">ថ្នាក់ទី {{ item.classroom.grade_level }}</td>
-                        <td class="text-center"><span class="badge bg-light text-dark border">{{
-                                item.classroom.get_track_display|default:item.classroom.track }}</span></td>
+                        <td class="text-center fw-bold text-primary fs-7">{{ item.classroom.clean_name|default:item.classroom.name|cut:'ថ្នាក់ទី' }}</td>
+                        <td class="text-center">{{ item.classroom.grade_level }}</td>
+                        <td class="text-center">
+                            <span class="badge {% if item.classroom.track == 'SCIENCE' %}bg-primary-subtle text-primary border border-primary-subtle{% elif item.classroom.track == 'SOCIAL' %}bg-purple-subtle text-purple border border-purple-subtle{% else %}bg-light text-dark border{% endif %} px-2 py-1">
+                                {% if item.classroom.track == 'SCIENCE' %}វិទ្យាសាស្ត្រ{% elif item.classroom.track == 'SOCIAL' %}វិទ្យាសាស្ត្រសង្គម{% else %}ទូទៅ{% endif %}
+                            </span>
+                        </td>
                         <td class="text-center">
                             {% if item.classroom.homeroom_teacher %}
                             {{ item.classroom.homeroom_teacher.khmer_name }}
@@ -1338,9 +1376,9 @@
     const STORAGE_KEY_COL_WIDTHS = 'daily_report_excel_col_widths_v5';
 
     const MARGIN_PRESETS = {
-        normal: { top: 14, bottom: 12, left: 10, right: 10, fontSize: '8.5pt', density: 'normal' },
-        narrow: { top: 11, bottom: 10, left: 8, right: 8, fontSize: '8.0pt', density: 'compact' },
-        wide:   { top: 20, bottom: 18, left: 15, right: 15, fontSize: '9.0pt', density: 'relaxed' },
+        normal: { top: 8, bottom: 8, left: 8, right: 8, fontSize: '8.0pt', density: 'normal' },
+        narrow: { top: 6, bottom: 6, left: 6, right: 6, fontSize: '7.8pt', density: 'compact' },
+        wide:   { top: 12, bottom: 12, left: 10, right: 10, fontSize: '8.5pt', density: 'relaxed' },
     };
 
     function toggleExcelMarginsMode() {
@@ -1449,6 +1487,38 @@
                     page-break-after: auto !important;
                     break-after: auto !important;
                 }
+                .duty-sheet-paper.d-print-none {
+                    display: none !important;
+                }
+                .duty-sheet-table th {
+                    height: 20px !important;
+                }
+                .duty-sheet-table td {
+                    height: 22px !important;
+                    max-height: 24px !important;
+                    font-size: ${fontSize} !important;
+                    padding: 1px 2px !important;
+                    line-height: 1.15 !important;
+                }
+                .duty-sheet-header-block {
+                    margin-bottom: 2px !important;
+                }
+                .duty-sheet-header-block img {
+                    height: 40px !important;
+                    width: 40px !important;
+                }
+                .duty-sheet-signatures {
+                    margin-top: 4px !important;
+                    page-break-inside: avoid !important;
+                }
+                .duty-sheet-signatures .sig-spacer {
+                    height: 18px !important;
+                }
+                .duty-sheet-footer-note {
+                    margin-top: 2px !important;
+                    padding-top: 1px !important;
+                    page-break-inside: avoid !important;
+                }
             }
         `;
 
@@ -1472,6 +1542,27 @@
         const defaultWidths = ['3.5%', '21%', '4.5%', '7%', '7%', '7%', '7%', '11.5%', '11.5%', '5%', '5%', '5%', '5%'];
         applyColumnWidths(defaultWidths);
     }
+
+    // Targeted Session Printer (Print only Morning 2 pages, only Afternoon 2 pages, or All)
+    window.printSession = function(sessionKey) {
+        const papers = document.querySelectorAll('.duty-sheet-paper');
+        papers.forEach(p => {
+            if (!sessionKey || sessionKey === 'all') {
+                p.classList.remove('d-print-none');
+            } else {
+                const paperSession = p.getAttribute('data-session');
+                if (paperSession === sessionKey) {
+                    p.classList.remove('d-print-none');
+                } else {
+                    p.classList.add('d-print-none');
+                }
+            }
+        });
+        window.print();
+        setTimeout(() => {
+            papers.forEach(p => p.classList.remove('d-print-none'));
+        }, 1200);
+    };
 
     // ==========================================
     // EXCEL DRAGGABLE COLUMN WIDTH RESIZER

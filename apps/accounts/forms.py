@@ -116,7 +116,7 @@ class SchoolProfileForm(forms.ModelForm):
             'latitude': forms.NumberInput(attrs={'class': 'form-control', 'id': 'input_latitude', 'step': 'any', 'placeholder': '11.5564'}),
             'longitude': forms.NumberInput(attrs={'class': 'form-control', 'id': 'input_longitude', 'step': 'any', 'placeholder': '104.9282'}),
             'google_maps_url': forms.URLInput(attrs={'class': 'form-control', 'id': 'input_google_maps_url', 'placeholder': 'https://maps.google.com/...'}),
-            'gps_radius_meters': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '100'}),
+            'gps_radius_meters': forms.NumberInput(attrs={'class': 'form-control', 'id': 'input_gps_radius_meters', 'placeholder': '100'}),
 
             'principal_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. លោកបណ្ឌិត សុខ ចាន់ថន'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. 023 888 999 / 012 345 678'}),

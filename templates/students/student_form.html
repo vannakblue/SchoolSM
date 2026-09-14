@@ -141,8 +141,16 @@
                             {{ form.date_of_birth }}
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស</label>
+                            <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស / ទំនាក់ទំនង</label>
                             {{ form.phone }}
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small text-dark d-flex align-items-center justify-content-between">
+                                <span><i class="fa-solid fa-school text-primary me-1"></i> ឆ្នាំសិក្សាចាស់មកពីសាលា (Previous School & Year)</span>
+                                <span class="badge bg-light text-muted border small fw-normal">ព័ត៌មានបឋមលំនាំដើម</span>
+                            </label>
+                            {{ form.previous_school }}
+                            <div class="form-text small text-muted">សាលារៀន ឬឆ្នាំសិក្សាចាស់ដែលសិស្សធ្លាប់បានរៀនពីមុន (Admin អាចកែប្រែ ឬជំនួសបានគ្រប់ពេលវេលា)</div>
                         </div>
                     </div>
 

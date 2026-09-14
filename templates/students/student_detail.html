@@ -88,6 +88,7 @@
                         <div class="mb-2"><strong>ភេទ៖</strong> {{ student.get_gender_display }}</div>
                         <div class="mb-2"><strong>ថ្ងៃកំណើត៖</strong> {{ student.date_of_birth|date:"d/m/Y" }}</div>
                         <div class="mb-2"><strong>ទូរស័ព្ទ៖</strong> {{ student.phone|default:"-" }}</div>
+                        <div class="mb-2"><strong>ឆ្នាំសិក្សាចាស់មកពីសាលា៖</strong> {{ student.previous_school|default:"-" }}</div>
                         <div class="mb-2"><strong>កម្រៃសិក្សា៖</strong> {{ student.get_scholarship_type_display }}</div>
                         <div class="mb-2 d-flex justify-content-between align-items-center">
                             <div><strong>ប្រភេទសិស្ស៖</strong> {% if student.is_repeating_grade %}<span class="badge bg-warning text-dark">ត្រួតថ្នាក់ (Repeater)</span>{% else %}<span class="badge bg-success-subtle text-success">សិស្សថ្មី (New)</span>{% endif %}</div>
@@ -164,7 +165,7 @@
                                         <span class="badge bg-secondary-soft text-muted"><i class="fa-solid fa-xmark me-1"></i> ទេ</span>
                                     {% endif %}
                                 {% else %}
-                                    {{ item.value|default:"-" }}
+                                    {{ item.value|default:item }}
                                 {% endif %}
                             </div>
                         </div>

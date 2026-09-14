@@ -6,17 +6,53 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
 <style>
+    .crop-circle-preview {
+        border-radius: 50% !important;
+        overflow: hidden !important;
+        background-color: #f8fafc;
+    }
+    .crop-square-preview {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        background-color: #f8fafc;
+    }
+    #logoCropperImage {
+        display: block;
+        max-width: 100%;
+    }
+    .cropper-container {
+        border-radius: 8px;
+    }
     #schoolMap {
-        height: 340px;
+        height: 380px;
         width: 100%;
         border-radius: 14px;
         border: 2px solid #e2e8f0;
         z-index: 1;
     }
     .leaflet-popup-content-wrapper {
-        border-radius: 10px;
+        border-radius: 12px;
         font-family: inherit;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .leaflet-control-layers {
+        border-radius: 12px !important;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+        border: 1px solid #cbd5e1 !important;
+        font-family: inherit !important;
+        font-size: 0.82rem !important;
+        padding: 8px 12px !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        backdrop-filter: blur(6px);
+    }
+    .leaflet-control-layers label {
+        margin-bottom: 5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
     .gps-badge {
         background: #eff6ff;
@@ -77,11 +113,16 @@
         <!-- Live Identity Card -->
         <div class="custom-card p-4 mb-4 text-center border-top border-4 border-primary position-relative shadow-sm rounded-4 bg-white">
             <div class="mb-3 d-flex justify-content-center">
-                {% if school_profile.logo_url %}
-                    <img id="livePreviewLogoCard" src="{{ school_profile.logo_url }}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
-                {% else %}
-                    <img id="livePreviewLogoCard" src="{% static 'img/school_logo.png' %}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 100px; height: 100px; object-fit: contain;">
-                {% endif %}
+                <div class="position-relative d-inline-block">
+                    {% if school_profile.logo_url %}
+                        <img id="livePreviewLogoCard" src="{{ school_profile.logo_url }}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 110px; height: 110px; object-fit: cover;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                    {% else %}
+                        <img id="livePreviewLogoCard" src="{% static 'img/school_logo.png' %}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 110px; height: 110px; object-fit: cover;">
+                    {% endif %}
+                    <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 shadow-sm d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; transform: translate(5%, 5%);" onclick="openCropModalForExistingOrNew()" title="កែសម្រួល & Zoom រូបភាពសាលា (Pinch to zoom / Crop)">
+                        <i class="fa-solid fa-camera" style="font-size: 0.85rem;"></i>
+                    </button>
+                </div>
             </div>
 
             <h5 class="fw-bold text-dark mb-1">{{ school_profile.name_kh }}</h5>
@@ -186,6 +227,7 @@
         <div class="custom-card shadow-sm p-4 rounded-4 bg-white">
             <form method="POST" enctype="multipart/form-data" id="schoolProfileForm">
                 {% csrf_token %}
+                <input type="hidden" name="cropped_logo_data" id="cropped_logo_data">
 
                 <!-- Form Tabs Navigation -->
                 <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="schoolSettingsTab" role="tablist">
@@ -400,16 +442,23 @@
                                 <div class="border rounded-4 p-3 bg-light">
                                     <div class="row align-items-center">
                                         <div class="col-md-3 text-center mb-3 mb-md-0">
-                                            {% if school_profile.logo_url %}
-                                                <img id="livePreviewLogoTab" src="{{ school_profile.logo_url }}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
-                                            {% else %}
-                                                <img id="livePreviewLogoTab" src="{% static 'img/school_logo.png' %}" alt="Logo" class="img-thumbnail bg-white" style="max-height: 100px; max-width: 100px; object-fit: contain;">
-                                            {% endif %}
+                                            <div class="position-relative d-inline-block">
+                                                {% if school_profile.logo_url %}
+                                                    <img id="livePreviewLogoTab" src="{{ school_profile.logo_url }}" alt="Logo" class="img-thumbnail rounded-circle bg-white shadow-xs border border-2 border-primary" style="width: 100px; height: 100px; object-fit: cover;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                                                {% else %}
+                                                    <img id="livePreviewLogoTab" src="{% static 'img/school_logo.png' %}" alt="Logo" class="img-thumbnail rounded-circle bg-white shadow-xs border border-2 border-primary" style="width: 100px; height: 100px; object-fit: cover;">
+                                                {% endif %}
+                                            </div>
                                         </div>
                                         <div class="col-md-9">
-                                            <label class="form-label fw-bold small">រូបសញ្ញាសាលា (School Logo)</label>
+                                            <label class="form-label fw-bold small">រូបសញ្ញាសាលា (School Logo / Profile Picture)</label>
                                             {{ form.logo }}
-                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG (Background ថ្លា), JPG ទំហំអតិបរមា 2MB។ នឹងបង្ហាញលើ Sidebar, ប័ណ្ណពិន្ទុ, វិក្កយបត្រ។</span>
+                                            <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs" onclick="openCropModalForExistingOrNew()">
+                                                    <i class="fa-solid fa-crop-simple me-1"></i> កែសម្រួល & Zoom រូបភាព (Crop/Zoom)
+                                                </button>
+                                                <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG, JPG។ អាច Pinch / Zoom ពង្រីក-បង្រួម និងរំកិលទីតាំងមុននឹងរក្សាទុក។</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -801,11 +850,132 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: School Profile Image Cropper & Pin-to-Zoom Editor -->
+<div class="modal fade" id="schoolLogoCropModal" tabindex="-1" aria-labelledby="schoolLogoCropModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header text-white border-0 py-3" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-white bg-opacity-20 p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i class="fa-solid fa-crop-simple fs-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0 text-white" id="schoolLogoCropModalLabel">
+                            កែសម្រួលរូបភាពសាលារៀន (Zoom, Pan & Crop School Profile)
+                        </h6>
+                        <small class="text-white-50">ពង្រីក-បង្រួម (Pinch/Zoom In-Out), អូសរំកិលទីតាំង, បង្វិល និងកាត់តម្រឹមរូបភាព</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-3">
+                    <!-- Left: Cropper Workspace -->
+                    <div class="col-lg-8">
+                        <div class="card border rounded-3 overflow-hidden shadow-xs bg-dark position-relative" style="height: 420px;">
+                            <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+                                <img id="logoCropperImage" src="" alt="Crop Target" style="max-width: 100%; display: block;">
+                            </div>
+                            
+                            <!-- Floating helper badge -->
+                            <div class="position-absolute top-0 start-0 m-2 badge bg-dark bg-opacity-75 text-white border border-secondary shadow-xs small d-none d-sm-inline-flex align-items-center gap-1">
+                                <i class="fa-solid fa-hand-pointer text-warning"></i> អូសរំកិលរូបភាព | <i class="fa-solid fa-magnifying-glass-plus text-info"></i> Pinch / Mouse Wheel Zoom
+                            </div>
+                        </div>
+
+                        <!-- Zoom Controls Bar -->
+                        <div class="d-flex align-items-center justify-content-between gap-2 mt-3 bg-white p-2.5 rounded-3 border shadow-xs">
+                            <span class="small fw-bold text-muted d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-magnifying-glass text-primary"></i> Zoom:
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(-0.1)" title="Zoom Out (បង្រួម)">
+                                <i class="fa-solid fa-minus"></i>
+                            </button>
+                            <input type="range" class="form-range flex-grow-1 mx-2" id="logoZoomSlider" min="0.1" max="3" step="0.05" value="1" oninput="onZoomSliderChange(this.value)">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(0.1)" title="Zoom In (ពង្រីក)">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light border rounded-pill px-2.5 small ms-1" onclick="resetCropper()" title="កំណត់ដូចដើម">
+                                <i class="fa-solid fa-arrow-rotate-left me-1"></i> កំណើតដើម
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Previews & Tool Controls -->
+                    <div class="col-lg-4">
+                        <div class="h-100 d-flex flex-column justify-content-between bg-white p-3 rounded-3 border shadow-xs">
+                            <!-- Previews Section -->
+                            <div>
+                                <h6 class="fw-bold small text-dark mb-2 pb-1 border-bottom">
+                                    <i class="fa-solid fa-eye text-primary me-1"></i> ទម្រង់បង្ហាញជាក់ស្តែង (Live Preview)
+                                </h6>
+                                
+                                <div class="d-flex align-items-center justify-content-around my-3 p-2 bg-light rounded-3 border">
+                                    <div class="text-center">
+                                        <div class="crop-circle-preview rounded-circle border border-2 border-primary shadow-sm mx-auto" style="width: 90px; height: 90px; overflow: hidden;"></div>
+                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">រង្វង់ Profile</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="crop-square-preview rounded-3 border border-2 border-secondary shadow-sm mx-auto" style="width: 70px; height: 70px; overflow: hidden;"></div>
+                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">ការ៉េ 1:1</span>
+                                    </div>
+                                </div>
+
+                                <!-- Aspect Ratio Options -->
+                                <label class="form-label fw-bold small text-muted mb-1">សមាមាត្ររូបភាព (Aspect Ratio)</label>
+                                <div class="btn-group w-100 mb-3" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary active" id="btnRatio1_1" onclick="changeCropRatio(1, this)">1:1 (រង្វង់/ការ៉េ)</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRatio4_3" onclick="changeCropRatio(4/3, this)">4:3</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRatioFree" onclick="changeCropRatio(NaN, this)">សេរី</button>
+                                </div>
+
+                                <!-- Rotate & Flip Controls -->
+                                <label class="form-label fw-bold small text-muted mb-1">បង្វិលរូបភាព (Rotate & Flip)</label>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(-90)" title="បង្វិលឆ្វេង 90 ដឺក្រេ">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> -90°
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(90)" title="បង្វិលស្តាំ 90 ដឺក្រេ">
+                                        <i class="fa-solid fa-rotate-right me-1"></i> +90°
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="flipCropperX()" title="ត្រឡប់ផ្តេក">
+                                        <i class="fa-solid fa-arrows-left-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Upload Alternative File -->
+                            <div class="pt-2 border-top">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-100 rounded-pill mb-1" onclick="document.getElementById('id_logo').click()">
+                                    <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសរូបភាពផ្សេង...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer bg-white border-top py-2.5 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-light rounded-pill px-4 border" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" onclick="applyCroppedLogo()">
+                        <i class="fa-solid fa-check me-1"></i> កាត់ & យល់ព្រម (Crop & Apply)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
 <script>
     let map = null;
@@ -821,28 +991,78 @@
 
         const latInput = document.getElementById('input_latitude');
         const lngInput = document.getElementById('input_longitude');
+        const radiusInput = document.getElementById('input_gps_radius_meters') || document.querySelector('input[name="gps_radius_meters"]');
 
         const initialLat = parseFloat(latInput ? latInput.value : DEFAULT_LAT) || DEFAULT_LAT;
         const initialLng = parseFloat(lngInput ? lngInput.value : DEFAULT_LNG) || DEFAULT_LNG;
+        const initialRadius = parseFloat(radiusInput ? radiusInput.value : 100) || 100;
 
-        map = L.map('schoolMap').setView([initialLat, initialLng], 15);
+        map = L.map('schoolMap', {
+            center: [initialLat, initialLng],
+            zoom: 16,
+            zoomControl: true
+        });
 
-        // OpenStreetMap Layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // 1. Google Maps Roadmap (Standard - High-speed, Khmer Labels, No 403 blocks)
+        const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        });
+
+        // 2. Google Maps Hybrid (High-Res Satellite Imagery + Roads & Landmark Labels)
+        const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+        });
+
+        // 3. CartoDB Voyager (Clean OpenStreetMap CDN - High-Speed & 100% Free)
+        const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
+            subdomains: 'abcd',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        });
+
+        // 4. Esri World Imagery (Professional Satellite)
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri'
+        });
+
+        // Set Google Streets as default active layer
+        googleStreets.addTo(map);
+
+        // Add Layer Switcher Control (Top-Right)
+        const baseMaps = {
+            "🗺️ Google Maps (ស្តង់ដារ)": googleStreets,
+            "🛰️ Google Maps (ផ្កាយរណប)": googleHybrid,
+            "🌐 ផែនទីច្បាស់ (Carto Voyager)": cartoVoyager,
+            "🛰️ ផ្កាយរណប Esri": esriSatellite
+        };
+        L.control.layers(baseMaps, null, { position: 'topright', collapsed: true }).addTo(map);
 
         // Draggable Marker
         marker = L.marker([initialLat, initialLng], {
             draggable: true
         }).addTo(map);
 
-        marker.bindPopup(`<b>${SCHOOL_NAME}</b><br><small>ទីតាំងសាលា</small>`).openPopup();
+        marker.bindPopup(`<b>${SCHOOL_NAME}</b><br><small>ទីតាំងសាលា (អាចអូស Pin ទៅទីតាំងជាក់ស្តែង)</small>`).openPopup();
+
+        // Geofencing Radius Circle (Visual boundary for attendance)
+        circle = L.circle([initialLat, initialLng], {
+            radius: initialRadius,
+            color: '#2563eb',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.15,
+            weight: 2,
+            dashArray: '5, 5'
+        }).addTo(map);
 
         // Marker drag event
         marker.on('dragend', function(e) {
             const position = marker.getLatLng();
+            if (circle) circle.setLatLng(position);
             updateLatLngInputs(position.lat, position.lng);
         });
 
@@ -851,6 +1071,7 @@
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
             marker.setLatLng([lat, lng]);
+            if (circle) circle.setLatLng([lat, lng]);
             updateLatLngInputs(lat, lng);
         });
     }
@@ -863,6 +1084,10 @@
 
         if (latInput) latInput.value = lat.toFixed(6);
         if (lngInput) lngInput.value = lng.toFixed(6);
+
+        if (circle) {
+            circle.setLatLng([lat, lng]);
+        }
 
         const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
         if (gmapsBtn) gmapsBtn.href = mapsUrl;
@@ -896,6 +1121,7 @@
                     if (map && marker) {
                         map.setView([lat, lng], 17);
                         marker.setLatLng([lat, lng]);
+                        if (circle) circle.setLatLng([lat, lng]);
                         marker.bindPopup(`<b>${SCHOOL_NAME}</b><br><small>ទីតាំងបច្ចុប្បន្នត្រូវបានកំណត់</small>`).openPopup();
                     }
                     updateLatLngInputs(lat, lng);
@@ -976,9 +1202,17 @@
             });
         }
 
+        // Auto init map if location tab is initially active
+        const locationTabPane = document.getElementById('tab-location');
+        if (locationTabPane && (locationTabPane.classList.contains('active') || locationTabPane.classList.contains('show'))) {
+            initSchoolMap();
+            setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+        }
+
         // Live input listeners for manual typing in lat/lng
         const latInput = document.getElementById('input_latitude');
         const lngInput = document.getElementById('input_longitude');
+        const radiusInput = document.getElementById('input_gps_radius_meters') || document.querySelector('input[name="gps_radius_meters"]');
 
         function onManualLatLngChange() {
             const lat = parseFloat(latInput.value);
@@ -986,12 +1220,22 @@
             if (!isNaN(lat) && !isNaN(lng) && map && marker) {
                 map.setView([lat, lng], map.getZoom());
                 marker.setLatLng([lat, lng]);
+                if (circle) circle.setLatLng([lat, lng]);
                 updateLatLngInputs(lat, lng);
             }
         }
 
         if (latInput) latInput.addEventListener('change', onManualLatLngChange);
         if (lngInput) lngInput.addEventListener('change', onManualLatLngChange);
+
+        if (radiusInput) {
+            const onRadiusChange = function() {
+                const r = parseFloat(radiusInput.value) || 100;
+                if (circle) circle.setRadius(r);
+            };
+            radiusInput.addEventListener('input', onRadiusChange);
+            radiusInput.addEventListener('change', onRadiusChange);
+        }
 
         // ==========================================================
         // 🌟 STUDENT ID PATTERN SETTINGS & LIVE PREVIEW CONTROLLER
@@ -1151,6 +1395,238 @@
         // ==========================================================
         // 🖼️ LIVE IMAGE PREVIEW (School Logo, Seal, Signature)
         // ==========================================================
+        // ==========================================================
+        // 🌟 SCHOOL LOGO CROPPER & PIN-TO-ZOOM CONTROLLER
+        // ==========================================================
+        let logoCropper = null;
+        let currentFlipX = 1;
+
+        function initLogoCropper() {
+            if (logoCropper) {
+                logoCropper.destroy();
+                logoCropper = null;
+            }
+            const img = document.getElementById('logoCropperImage');
+            currentFlipX = 1;
+
+            logoCropper = new Cropper(img, {
+                aspectRatio: 1, // Default 1:1 for circular avatar profile
+                viewMode: 1,
+                dragMode: 'move', // Allows pan / dragging
+                autoCropArea: 0.9,
+                responsive: true,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                zoomable: true,
+                zoomOnWheel: true, // Mouse wheel zoom in/out
+                zoomOnTouch: true, // Touch pinch to zoom in/out on phone / tablet
+                preview: '.crop-circle-preview, .crop-square-preview',
+                ready: function() {
+                    const slider = document.getElementById('logoZoomSlider');
+                    if (slider) slider.value = 1;
+                },
+                zoom: function(e) {
+                    const slider = document.getElementById('logoZoomSlider');
+                    if (slider && e.detail && e.detail.ratio) {
+                        slider.value = Math.min(Math.max(e.detail.ratio, 0.1), 3);
+                    }
+                }
+            });
+        }
+
+        window.zoomCropper = function(delta) {
+            if (!logoCropper) return;
+            logoCropper.zoom(delta);
+        };
+
+        window.onZoomSliderChange = function(val) {
+            if (!logoCropper) return;
+            logoCropper.zoomTo(parseFloat(val));
+        };
+
+        window.rotateCropper = function(deg) {
+            if (!logoCropper) return;
+            logoCropper.rotate(deg);
+        };
+
+        window.flipCropperX = function() {
+            if (!logoCropper) return;
+            currentFlipX = currentFlipX === 1 ? -1 : 1;
+            logoCropper.scaleX(currentFlipX);
+        };
+
+        window.resetCropper = function() {
+            if (!logoCropper) return;
+            logoCropper.reset();
+            currentFlipX = 1;
+            const slider = document.getElementById('logoZoomSlider');
+            if (slider) slider.value = 1;
+        };
+
+        window.changeCropRatio = function(ratio, btn) {
+            if (!logoCropper) return;
+            document.querySelectorAll('#btnRatio1_1, #btnRatio4_3, #btnRatioFree').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            logoCropper.setAspectRatio(ratio);
+        };
+
+        window.loadImgIntoCropper = function(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('logoCropperImage');
+                img.src = e.target.result;
+
+                const modalEl = document.getElementById('schoolLogoCropModal');
+                let modal = bootstrap.Modal.getInstance(modalEl);
+                if (!modal) modal = new bootstrap.Modal(modalEl);
+                modal.show();
+
+                const onShown = function() {
+                    modalEl.removeEventListener('shown.bs.modal', onShown);
+                    initLogoCropper();
+                };
+                modalEl.addEventListener('shown.bs.modal', onShown);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.loadImgUrlIntoCropper = function(url) {
+            const img = document.getElementById('logoCropperImage');
+            img.crossOrigin = "anonymous";
+            img.src = url;
+
+            const modalEl = document.getElementById('schoolLogoCropModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            const onShown = function() {
+                modalEl.removeEventListener('shown.bs.modal', onShown);
+                initLogoCropper();
+            };
+            modalEl.addEventListener('shown.bs.modal', onShown);
+        };
+
+        window.openCropModalForExistingOrNew = function() {
+            const logoInput = document.getElementById('id_logo');
+            if (logoInput && logoInput.files && logoInput.files[0]) {
+                loadImgIntoCropper(logoInput.files[0]);
+            } else {
+                const existingUrl = "{{ school_profile.logo_url }}";
+                if (existingUrl && !existingUrl.includes('school_logo.png')) {
+                    loadImgUrlIntoCropper(existingUrl);
+                } else {
+                    if (logoInput) logoInput.click();
+                }
+            }
+        };
+
+        window.applyCroppedLogo = function() {
+            if (!logoCropper) return;
+
+            const canvas = logoCropper.getCroppedCanvas({
+                width: 600,
+                height: 600,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+
+            if (!canvas) {
+                alert('មិនអាចកាត់រូបភាពបានទេ! សូមព្យាយាមម្តងទៀត។');
+                return;
+            }
+
+            // Get Base64
+            const base64Data = canvas.toDataURL('image/png', 0.95);
+            const hiddenInput = document.getElementById('cropped_logo_data');
+            if (hiddenInput) {
+                hiddenInput.value = base64Data;
+            }
+
+            // Convert canvas to Blob & assign to file input via DataTransfer
+            canvas.toBlob(function(blob) {
+                if (blob) {
+                    try {
+                        const croppedFile = new File([blob], 'school_logo_cropped.png', { type: 'image/png' });
+                        const dt = new DataTransfer();
+                        dt.items.add(croppedFile);
+                        const logoInput = document.getElementById('id_logo');
+                        if (logoInput) {
+                            logoInput.files = dt.files;
+                        }
+                    } catch (err) {
+                        console.warn('DataTransfer not supported, falling back to base64 input:', err);
+                    }
+                }
+
+                // Update Live Previews on page
+                const cardImg = document.getElementById('livePreviewLogoCard');
+                if (cardImg) {
+                    cardImg.src = base64Data;
+                    cardImg.classList.add('border-success');
+                }
+                const tabImg = document.getElementById('livePreviewLogoTab');
+                if (tabImg) {
+                    tabImg.src = base64Data;
+                    tabImg.classList.add('border-success');
+                }
+
+                // Close Modal
+                const modalEl = document.getElementById('schoolLogoCropModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) modalInstance.hide();
+
+                // Alert user
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'កាត់តម្រឹមរូបភាពជោគជ័យ!',
+                        text: 'សូមចុចប៊ូតុង "រក្សាទុកព័ត៌មាន" នៅខាងក្រោម ដើម្បីបញ្ចប់ការកែប្រែ។',
+                        timer: 3500,
+                        showConfirmButton: true,
+                        confirmButtonText: 'យល់ព្រម',
+                        confirmButtonColor: '#1e3a8a'
+                    });
+                } else {
+                    alert('កាត់តម្រឹមរូបភាពជោគជ័យ! សូមចុចប៊ូតុង "រក្សាទុកព័ត៌មាន" ដើម្បីបញ្ចប់ការកែប្រែ។');
+                }
+            }, 'image/png', 0.95);
+        };
+
+        // Modal hidden cleanup
+        const cropModalEl = document.getElementById('schoolLogoCropModal');
+        if (cropModalEl) {
+            cropModalEl.addEventListener('hidden.bs.modal', function() {
+                if (logoCropper) {
+                    logoCropper.destroy();
+                    logoCropper = null;
+                }
+            });
+        }
+
+        // When user selects a new image file in id_logo, directly open Cropper modal!
+        const logoFileInput = document.getElementById('id_logo');
+        if (logoFileInput) {
+            logoFileInput.addEventListener('change', function(e) {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) {
+                        alert('សូមជ្រើសរើសឯកសារជារូបភាព (JPG, PNG, WEBP, etc.)');
+                        return;
+                    }
+                    loadImgIntoCropper(file);
+                }
+            });
+        }
+
+        // ==========================================================
+        // 🖼️ LIVE IMAGE PREVIEW (Seal, Signature)
+        // ==========================================================
         function setupImageLivePreview(inputId, imgTabId, placeholderTabId, imgCardId, placeholderCardId) {
             const inputEl = document.getElementById(inputId);
             if (!inputEl) return;
@@ -1194,7 +1670,6 @@
             });
         }
 
-        setupImageLivePreview('id_logo', 'livePreviewLogoTab', null, 'livePreviewLogoCard', null);
         setupImageLivePreview('id_seal', 'livePreviewSealTab', 'livePreviewSealTabPlaceholder', 'livePreviewSealCard', 'livePreviewSealCardPlaceholder');
         setupImageLivePreview('id_principal_signature', 'livePreviewSigTab', 'livePreviewSigTabPlaceholder', 'livePreviewSigCard', 'livePreviewSigCardPlaceholder');
 

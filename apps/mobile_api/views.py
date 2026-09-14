@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User, SchoolProfile
 from apps.teachers.models import Teacher, TeacherAttendance
-from apps.students.models import Student
+from apps.students.models import Student, StudentVerificationCampaign, GradeVerificationFormConfig, StudentVerificationLog
 from apps.attendance.models import StudentAttendance
 from apps.academics.models import Timetable, Classroom, Subject, AcademicYear, GradeLevelRule, GradeEnrollmentOption, GradeLevel
 from apps.examinations.models import (
@@ -2045,7 +2045,69 @@ class MobileStudentEnrollAPIView(APIView):
             'MOEYS_INDIVIDUAL': 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ MoEYS (Individual 35 Columns)',
             'BOTH': 'អនុញ្ញាតជម្រើសទាំងពីរ (Both Modes Available)',
         }
+        available_modes = ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL'] if reg_mode == 'BOTH' else [reg_mode]
+        default_mode = 'MOEYS_INDIVIDUAL' if reg_mode == 'MOEYS_INDIVIDUAL' else 'ADMIN_CUSTOM'
+
         is_reg_allowed, reg_reason, reg_status = school_profile.is_student_registration_allowed()
+
+        # Grade-level form template configs & dynamic options configured by Admin
+        grade_levels = GradeLevel.objects.prefetch_related('enrollment_options').all().order_by('order', 'grade_number')
+        grade_form_configs = []
+        grade_options_by_grade = {}
+
+        for gl in grade_levels:
+            tpl = GradeVerificationFormConfig.get_template_for_grade(gl, academic_year=active_year)
+            cfg_obj = GradeVerificationFormConfig.objects.filter(grade_level=gl, is_active=True).first()
+            grade_form_configs.append({
+                'grade_id': gl.id,
+                'grade_number': gl.grade_number,
+                'grade_name': gl.name,
+                'form_template': tpl,
+                'form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(tpl, tpl),
+                'custom_instructions': cfg_obj.custom_instructions if cfg_obj and cfg_obj.custom_instructions else '',
+            })
+
+            opts_for_grade = []
+            for opt in gl.enrollment_options.filter(is_active=True).order_by('order', 'id'):
+                opts_for_grade.append({
+                    'id': opt.id,
+                    'field_name': opt.field_name,
+                    'label': opt.label,
+                    'field_type': opt.field_type,
+                    'field_type_display': opt.get_field_type_display(),
+                    'is_required': opt.is_required,
+                    'placeholder': opt.placeholder or '',
+                    'choices': opt.get_choices_list(),
+                    'form_category': opt.form_category,
+                    'col_width': getattr(opt, 'col_width', 6),
+                    'order': opt.order,
+                })
+            grade_options_by_grade[str(gl.grade_number)] = opts_for_grade
+            grade_options_by_grade[str(gl.id)] = opts_for_grade
+
+        # Specific classroom / grade resolution if query params provided
+        target_cls_id = request.GET.get('classroom_id')
+        target_gl_num = request.GET.get('grade_level') or request.GET.get('grade_number')
+        active_target_gl = None
+        if target_cls_id:
+            cls_found = Classroom.objects.filter(id=target_cls_id).first()
+            if cls_found:
+                active_target_gl = GradeLevel.objects.filter(grade_number=cls_found.grade_level, track=cls_found.track).first() or GradeLevel.objects.filter(grade_number=cls_found.grade_level).first()
+        elif target_gl_num:
+            if str(target_gl_num).isdigit():
+                active_target_gl = GradeLevel.objects.filter(grade_number=int(target_gl_num)).first()
+            else:
+                active_target_gl = GradeLevel.objects.filter(name__icontains=str(target_gl_num)).first()
+
+        active_grade_template = None
+        active_grade_instructions = ''
+        active_grade_options = []
+        if active_target_gl:
+            active_grade_template = GradeVerificationFormConfig.get_template_for_grade(active_target_gl, academic_year=active_year)
+            active_cfg = GradeVerificationFormConfig.objects.filter(grade_level=active_target_gl, is_active=True).first()
+            if active_cfg and active_cfg.custom_instructions:
+                active_grade_instructions = active_cfg.custom_instructions
+            active_grade_options = grade_options_by_grade.get(str(active_target_gl.grade_number), [])
 
         moeys_choices = {
             'orphan_status': [
@@ -2132,6 +2194,21 @@ class MobileStudentEnrollAPIView(APIView):
             'school_code': school_profile.school_code,
             'registration_mode': reg_mode,
             'registration_mode_display': reg_mode_display_map.get(reg_mode, reg_mode),
+            'available_modes': available_modes,
+            'default_mode': default_mode,
+            'grade_form_configs': grade_form_configs,
+            'grade_options_by_grade': grade_options_by_grade,
+            'active_grade_template': active_grade_template,
+            'active_grade_instructions': active_grade_instructions,
+            'active_grade_options': active_grade_options,
+            'default_basic_fields': [
+                {'field_name': 'khmer_name', 'label': 'ឈ្មោះជាភាសាខ្មែរ', 'is_required': True, 'field_type': 'TEXT', 'placeholder': 'ឧ. សុខ ពិសិដ្ឋ'},
+                {'field_name': 'latin_name', 'label': 'ឈ្មោះជាអក្សរឡាតាំង', 'is_required': True, 'field_type': 'TEXT', 'placeholder': 'ឧ. SOK PISETH'},
+                {'field_name': 'gender', 'label': 'ភេទ', 'is_required': True, 'field_type': 'SELECT', 'choices': ['M', 'F']},
+                {'field_name': 'date_of_birth', 'label': 'ថ្ងៃខែឆ្នាំកំណើត', 'is_required': True, 'field_type': 'DATE'},
+                {'field_name': 'previous_school', 'label': 'ឆ្នាំសិក្សាចាស់មកពីសាលា', 'is_required': False, 'field_type': 'TEXT', 'placeholder': 'ឧ. បឋមសិក្សា ហ៊ុន សែន (ឆ្នាំសិក្សា ២០២៤-២០២៥)'},
+                {'field_name': 'phone', 'label': 'លេខទូរស័ព្ទ', 'is_required': False, 'field_type': 'PHONE', 'placeholder': '012 345 678'},
+            ],
             'registration_period': {
                 'is_allowed': is_reg_allowed,
                 'status_code': reg_status,
@@ -2167,9 +2244,26 @@ class MobileStudentEnrollAPIView(APIView):
                 }, status=status.HTTP_403_FORBIDDEN)
 
         data = request.data
-        enrollment_mode = str(data.get('enrollment_mode', 'ADMIN_CUSTOM')).strip().upper()
-        if enrollment_mode not in ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL']:
-            enrollment_mode = 'ADMIN_CUSTOM'
+        enrollment_mode = str(data.get('enrollment_mode', '')).strip().upper()
+        classroom_id = data.get('classroom_id')
+        grade_val = data.get('grade_level') or data.get('grade_number')
+        academic_year_id = data.get('academic_year_id')
+
+        # Flexibly resolve enrollment mode from grade template or school profile if omitted
+        if enrollment_mode not in ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL', 'CUSTOM_COMBINED']:
+            target_gl_lookup = None
+            if classroom_id:
+                cls_obj = Classroom.objects.filter(id=classroom_id).first()
+                if cls_obj:
+                    target_gl_lookup = GradeLevel.objects.filter(grade_number=cls_obj.grade_level, track=cls_obj.track).first() or GradeLevel.objects.filter(grade_number=cls_obj.grade_level).first()
+            elif grade_val and str(grade_val).isdigit():
+                target_gl_lookup = GradeLevel.objects.filter(grade_number=int(grade_val)).first()
+
+            if target_gl_lookup:
+                enrollment_mode = GradeVerificationFormConfig.get_template_for_grade(target_gl_lookup)
+            if not enrollment_mode or enrollment_mode not in ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL', 'CUSTOM_COMBINED']:
+                cfg_mode = getattr(school_profile, 'registration_mode', 'BOTH') or 'BOTH'
+                enrollment_mode = 'MOEYS_INDIVIDUAL' if cfg_mode == 'MOEYS_INDIVIDUAL' else 'ADMIN_CUSTOM'
 
         surname = str(data.get('surname', '')).strip()
         given_name = str(data.get('given_name', '')).strip()
@@ -2197,20 +2291,60 @@ class MobileStudentEnrollAPIView(APIView):
         academic_year_id = data.get('academic_year_id')
         scholarship_type = data.get('scholarship_type', 'FULL_PAY')
         custom_sid = str(data.get('student_id', '')).strip()
+        confirm_edit = bool(data.get('confirm_edit', False))
+
+        if custom_sid:
+            existing_with_sid = Student.objects.filter(student_id__iexact=custom_sid).first()
+            if existing_with_sid and not confirm_edit:
+                return Response({
+                    'status': 'error',
+                    'message': f"❌ អត្តលេខ '{custom_sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing_with_sid.khmer_name}! សូមជ្រើសរើសអត្តលេខផ្សេង ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ។"
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         # For students, parents/guardians, and teachers: manual Student ID entry is strictly forbidden.
         # System must auto-generate sequential unique student ID automatically.
         if not is_staff:
             custom_sid = ''
 
-        # Check manual student_id uniqueness if provided (Admin only)
+        # Confirmation fields for existing student data verification & editing
+        confirmed_by_role = str(data.get('confirmed_by_role', '')).strip().upper()
+        confirmed_by_name = str(data.get('confirmed_by_name', '')).strip()
+        confirmed_by_phone = str(data.get('confirmed_by_phone', '')).strip()
+        relationship_to_student = str(data.get('relationship_to_student', '')).strip()
+        confirmation_notes = str(data.get('confirmation_notes', '')).strip()
+
+        # Resolve existing student if any (by student_id or khmer_name + DOB)
+        existing_student = None
         if custom_sid:
-            if Student.objects.filter(student_id__iexact=custom_sid).exists():
-                existing = Student.objects.filter(student_id__iexact=custom_sid).first()
-                class_str = f" ({existing.classroom.name})" if existing.classroom else ""
+            existing_student = Student.objects.filter(student_id__iexact=custom_sid).first()
+        if not existing_student and khmer_name and dob_str:
+            try:
+                chk_dob = datetime.datetime.strptime(dob_str, '%Y-%m-%d').date()
+                existing_student = Student.objects.filter(khmer_name__iexact=khmer_name, date_of_birth=chk_dob).first()
+            except Exception:
+                pass
+
+        if existing_student:
+            if not confirm_edit or confirmed_by_role not in ['STUDENT', 'PARENT', 'TEACHER'] or not confirmed_by_name:
+                class_str = f" ({existing_student.classroom.name})" if existing_student.classroom else ""
                 return Response({
                     'status': 'error',
-                    'message': f"❌ អត្តលេខ '{custom_sid}' ត្រូវបានប្រើប្រាស់រួចហើយដោយសិស្ស {existing.khmer_name}{class_str}! សូមប្រើអត្តលេខផ្សេង ឬទុកទទេដើម្បីបង្កើតស្វ័យប្រវត្តិ។"
+                    'status_code': 'CONFIRMATION_REQUIRED',
+                    'require_confirmation': True,
+                    'message': f"⚠️ សិស្សឈ្មោះ «{existing_student.khmer_name}» (អត្តលេខ: {existing_student.student_id}){class_str} មានទិន្នន័យស្រាប់ក្នុងប្រព័ន្ធរួចហើយ! "
+                               f"តម្រូវឱ្យមានការបញ្ជាក់ (Confirmation) ដោយ សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន ដែលកំពុងបញ្ចូលដើម្បីអនុញ្ញាតឱ្យកែប្រែ។",
+                    'existing_student': {
+                        'id': existing_student.id,
+                        'student_id': existing_student.student_id,
+                        'khmer_name': existing_student.khmer_name,
+                        'classroom': existing_student.classroom.name if existing_student.classroom else 'គ្មានថ្នាក់'
+                    },
+                    'confirmation_fields_required': ['confirm_edit', 'confirmed_by_role', 'confirmed_by_name'],
+                    'available_roles': [
+                        {'code': 'STUDENT', 'label': 'សិស្សផ្ទាល់ (Student)'},
+                        {'code': 'PARENT', 'label': 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'},
+                        {'code': 'TEACHER', 'label': 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'}
+                    ]
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         # Parent info
@@ -2231,6 +2365,7 @@ class MobileStudentEnrollAPIView(APIView):
         # Enforce mutual exclusivity (only one previous school can be active)
         if primary_school and secondary_school:
             secondary_school = ''
+        previous_school = str(data.get('previous_school') or primary_school or secondary_school or '').strip()
         ethnic_minority = str(data.get('ethnic_minority', 'មិនមែន')).strip()
         disability_physical = str(data.get('disability_physical', 'មិនមាន')).strip()
         disability_sight = str(data.get('disability_sight', 'មិនមាន')).strip()
@@ -2275,47 +2410,106 @@ class MobileStudentEnrollAPIView(APIView):
 
         try:
             with transaction.atomic():
-                # For non-admin (students, guardians, teachers), generate next sequential ID atomically
-                if not custom_sid:
-                    generated_sid = Student.generate_unique_student_id(
-                        academic_year=target_year,
-                        grade_level=classroom.grade_level if classroom else None,
-                        classroom=classroom
-                    )
+                if existing_student:
+                    student = existing_student
+                    student.khmer_name = khmer_name
+                    if latin_name:
+                        student.latin_name = latin_name
+                    student.gender = gender
+                    student.date_of_birth = dob
+                    if pob:
+                        student.place_of_birth = pob
+                    if current_address:
+                        student.current_address = current_address
+                    if phone:
+                        student.phone = phone
+                    if previous_school:
+                        student.previous_school = previous_school
+                    if classroom:
+                        student.classroom = classroom
+                    if target_year:
+                        student.academic_year = target_year
+                    if scholarship_type:
+                        student.scholarship_type = scholarship_type
+                    if father_name:
+                        student.father_name = father_name
+                    if father_phone:
+                        student.father_phone = father_phone
+                    if father_job:
+                        student.father_job = father_job
+                    if mother_name:
+                        student.mother_name = mother_name
+                    if mother_phone:
+                        student.mother_phone = mother_phone
+                    if mother_job:
+                        student.mother_job = mother_job
+                    if guardian_name:
+                        student.guardian_name = guardian_name
+                    if emergency_phone:
+                        student.emergency_phone = emergency_phone
+                    student.is_repeating_grade = is_repeating_grade
+                    student.is_verified = True
+                    student.last_verified_at = timezone.now()
+                    student.last_verified_by_role = confirmed_by_role
+                    student.last_verified_by_name = confirmed_by_name
                 else:
-                    generated_sid = custom_sid
+                    # For non-admin (students, guardians, teachers), generate next sequential ID atomically
+                    if not custom_sid:
+                        generated_sid = Student.generate_unique_student_id(
+                            academic_year=target_year,
+                            grade_level=classroom.grade_level if classroom else None,
+                            classroom=classroom
+                        )
+                    else:
+                        generated_sid = custom_sid
 
-                student = Student(
-                    student_id=generated_sid,
-                    khmer_name=khmer_name,
-                    latin_name=latin_name,
-                    gender=gender,
-                    date_of_birth=dob,
-                    place_of_birth=pob,
-                    current_address=current_address,
-                    phone=phone,
-                    classroom=classroom,
-                    academic_year=target_year,
-                    status=Student.Status.ACTIVE,
-                    scholarship_type=scholarship_type,
-                    father_name=father_name,
-                    father_phone=father_phone,
-                    father_job=father_job,
-                    mother_name=mother_name,
-                    mother_phone=mother_phone,
-                    mother_job=mother_job,
-                    guardian_name=guardian_name,
-                    emergency_phone=emergency_phone,
-                    is_repeating_grade=is_repeating_grade,
-                )
+                    student = Student(
+                        student_id=generated_sid,
+                        khmer_name=khmer_name,
+                        latin_name=latin_name,
+                        gender=gender,
+                        date_of_birth=dob,
+                        place_of_birth=pob,
+                        current_address=current_address,
+                        phone=phone,
+                        previous_school=previous_school,
+                        classroom=classroom,
+                        academic_year=target_year,
+                        status=Student.Status.ACTIVE,
+                        scholarship_type=scholarship_type,
+                        father_name=father_name,
+                        father_phone=father_phone,
+                        father_job=father_job,
+                        mother_name=mother_name,
+                        mother_phone=mother_phone,
+                        mother_job=mother_job,
+                        guardian_name=guardian_name,
+                        emergency_phone=emergency_phone,
+                        is_repeating_grade=is_repeating_grade,
+                    )
 
                 enrollment_data = {}
-                if enrollment_mode == 'MOEYS_INDIVIDUAL':
+                has_moeys_fields = any([
+                    orphan_status != 'មិនមែន',
+                    primary_school, secondary_school,
+                    ethnic_minority != 'មិនមែន',
+                    disability_physical != 'មិនមាន',
+                    disability_sight != 'មិនមាន',
+                    disability_hearing != 'មិនមាន',
+                    equity_card_1 != 'មិនមាន',
+                    equity_card_2 != 'មិនមាន',
+                    risk_card != 'មិនមាន',
+                    moeys_scholarship != 'មិនមាន',
+                    track != 'ទូទៅ',
+                    is_repeating_grade,
+                    pob_commune, pob_district, pob_province
+                ])
+                if enrollment_mode in ['MOEYS_INDIVIDUAL', 'CUSTOM_COMBINED'] or has_moeys_fields:
                     is_sc = ('វិទ្យាសាស្ត្រ' in track and 'សង្គម' not in track)
                     is_ss = ('សង្គម' in track)
                     is_voc = ('វិជ្ជាជីវៈ' in track)
                     enrollment_data.update({
-                        'enrollment_mode': 'MOEYS_INDIVIDUAL',
+                        'enrollment_mode': enrollment_mode if enrollment_mode in ['MOEYS_INDIVIDUAL', 'CUSTOM_COMBINED'] else 'MOEYS_INDIVIDUAL',
                         'surname': surname,
                         'given_name': given_name,
                         'pob_commune': pob_commune,
@@ -2347,7 +2541,7 @@ class MobileStudentEnrollAPIView(APIView):
                         'enrollment_mode': 'ADMIN_CUSTOM',
                     })
 
-                # Merge dynamic grade options passed in request data
+                # Merge dynamic grade options passed in request data (dict or prefixed keys)
                 grade_opts_input = data.get('grade_options')
                 if isinstance(grade_opts_input, dict):
                     for k, v in grade_opts_input.items():
@@ -2358,27 +2552,64 @@ class MobileStudentEnrollAPIView(APIView):
                         clean_k = k.replace('grade_opt_', '')
                         enrollment_data[clean_k] = v
 
+                # Also match any active GradeEnrollmentOption field names directly from root payload
+                target_gl_opt = None
+                if classroom:
+                    target_gl_opt = GradeLevel.objects.filter(grade_number=classroom.grade_level, track=classroom.track).first() or GradeLevel.objects.filter(grade_number=classroom.grade_level).first()
+                elif grade_val and str(grade_val).isdigit():
+                    target_gl_opt = GradeLevel.objects.filter(grade_number=int(grade_val)).first()
+
+                if target_gl_opt:
+                    for opt in target_gl_opt.enrollment_options.filter(is_active=True):
+                        if opt.field_name in data and opt.field_name not in enrollment_data:
+                            enrollment_data[opt.field_name] = data[opt.field_name]
+                        elif f"grade_opt_{opt.field_name}" in data and opt.field_name not in enrollment_data:
+                            enrollment_data[opt.field_name] = data[f"grade_opt_{opt.field_name}"]
+
+                if not student.previous_school and student.enrollment_data:
+                    for k in ['previous_school', 'primary_school', 'secondary_school']:
+                        if k in student.enrollment_data:
+                            val = student.enrollment_data[k]
+                            student.previous_school = val.get('value', val) if isinstance(val, dict) else str(val)
+                            break
+
                 student.enrollment_data = enrollment_data
                 student.save()
 
-                # Create user account for student login
-                username = student.student_id.lower().replace('-', '_')
-                user = User.objects.filter(username=username).first()
-                if not user:
-                    user = User.objects.create_user(
-                        username=username,
-                        password='p123456',
-                        role=User.Role.STUDENT,
-                        khmer_name=student.khmer_name,
-                        latin_name=student.latin_name,
-                        phone=student.phone or student.father_phone or ''
+                if existing_student:
+                    StudentVerificationLog.objects.create(
+                        student=student,
+                        academic_year=student.academic_year,
+                        confirmed_by_role=confirmed_by_role or 'STUDENT',
+                        confirmed_by_name=confirmed_by_name or student.khmer_name,
+                        confirmed_by_phone=confirmed_by_phone or student.phone or '',
+                        relationship_to_student=relationship_to_student,
+                        is_existing_student=True,
+                        confirmation_notes=confirmation_notes or 'កែប្រែ និងផ្ទៀងផ្ទាត់ព័ត៌មានសិស្សតាម Mobile App',
+                        channel=StudentVerificationLog.Channel.MOBILE_APP,
+                        changes_diff={'updated_fields': list(data.keys())},
+                        user=request.user if request.user and request.user.is_authenticated else None
                     )
-                student.user = user
-                student.save(update_fields=['user'])
+                else:
+                    # Create user account for student login
+                    username = student.student_id.lower().replace('-', '_')
+                    user = User.objects.filter(username=username).first()
+                    if not user:
+                        user = User.objects.create_user(
+                            username=username,
+                            password='p123456',
+                            role=User.Role.STUDENT,
+                            khmer_name=student.khmer_name,
+                            latin_name=student.latin_name,
+                            phone=student.phone or student.father_phone or ''
+                        )
+                    student.user = user
+                    student.save(update_fields=['user'])
 
             return Response({
                 'status': 'success',
-                'message': f"🎉 បានចុះឈ្មោះសិស្ស {student.khmer_name} (ID: {student.student_id}) ដោយជោគជ័យ!",
+                'is_updated': bool(existing_student),
+                'message': f"🎉 បាន{'កែប្រែ និងផ្ទៀងផ្ទាត់' if existing_student else 'ចុះឈ្មោះ'}សិស្ស {student.khmer_name} (ID: {student.student_id}) ដោយជោគជ័យ!",
                 'enrollment_mode': enrollment_mode,
                 'student': {
                     'id': student.id,
@@ -2391,10 +2622,11 @@ class MobileStudentEnrollAPIView(APIView):
                     'classroom_name': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
                     'academic_year': student.academic_year.name if student.academic_year else '',
                     'status': student.status,
+                    'is_verified': student.is_verified,
                     'enrollment_mode': enrollment_mode,
                     'enrollment_data': student.enrollment_data,
                 }
-            }, status=status.HTTP_201_CREATED)
+            }, status=status.HTTP_200_OK if existing_student else status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response({
@@ -2431,7 +2663,7 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
 
     def post(self, request):
         if not (request.user and request.user.is_authenticated and (
-            request.user.is_staff or getattr(request.user, 'role', '') in ['admin', 'superadmin']
+            request.user.is_staff or getattr(request.user, 'role', '').upper() in ['ADMIN', 'SUPERADMIN', 'PRINCIPAL']
         )):
             return Response({
                 'status': 'error',
@@ -2474,6 +2706,11 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
             else:
                 profile.registration_end_date = None
 
+        if 'registration_mode' in data:
+            mode = str(data.get('registration_mode')).strip().upper()
+            if mode in [SchoolProfile.RegistrationMode.ADMIN_CUSTOM, SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL, SchoolProfile.RegistrationMode.BOTH]:
+                profile.registration_mode = mode
+
         if 'registration_closed_message' in data:
             profile.registration_closed_message = str(data.get('registration_closed_message', '')).strip()
 
@@ -2485,7 +2722,10 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
             'message': 'បានកែប្រែនិងកំណត់កាលបរិច្ឆេទចុះឈ្មោះសិស្សដោយជោគជ័យ!',
             'is_allowed': is_allowed,
             'status_code': status_code,
+            'registration_mode': profile.registration_mode,
+            'registration_mode_display': profile.get_registration_mode_display(),
             'registration_period': {
+                'registration_mode': profile.registration_mode,
                 'is_allowed': is_allowed,
                 'status_code': status_code,
                 'is_registration_open': profile.is_registration_open,
@@ -2499,64 +2739,237 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
 class MobileGradeOptionsAPIView(APIView):
     """
     Mobile API: Dynamic Grade-Level Enrollment Options Endpoint.
-    Returns custom fields configured for the classroom's grade level,
-    strictly separated by form_category ('GENERAL' vs 'MOEYS_INDIVIDUAL').
-    GET /api/v1/students/grade-options/?classroom_id=...&form_category=...
+    Returns custom fields configured for classroom or grade level,
+    supports categories ('GENERAL', 'MOEYS_INDIVIDUAL', 'ALL'/'BOTH'/'CUSTOM_COMBINED'),
+    resolves grade-level assigned form templates and custom instructions.
+    GET /api/v1/students/grade-options/?classroom_id=...&grade_level=...&form_category=...
+    POST /api/v1/students/grade-options/ (Admin: Update template, save option, toggle active)
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         classroom_id = request.GET.get('classroom_id')
+        grade_param = request.GET.get('grade_level') or request.GET.get('grade_number') or request.GET.get('grade_id')
         form_category = str(request.GET.get('form_category', GradeEnrollmentOption.FormCategory.GENERAL)).strip().upper()
-        if form_category not in [GradeEnrollmentOption.FormCategory.GENERAL, GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL]:
+        if form_category not in [GradeEnrollmentOption.FormCategory.GENERAL, GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL, 'ALL', 'BOTH', 'CUSTOM_COMBINED']:
             form_category = GradeEnrollmentOption.FormCategory.GENERAL
 
-        if not classroom_id:
-            return Response({
-                'status': 'success',
-                'classroom_id': None,
-                'form_category': form_category,
-                'options': []
-            })
+        classroom = None
+        gl = None
+        if classroom_id:
+            classroom = Classroom.objects.filter(id=classroom_id).first()
+            if classroom:
+                gl = GradeLevel.objects.filter(grade_number=classroom.grade_level, track=classroom.track).first() or GradeLevel.objects.filter(grade_number=classroom.grade_level).first()
 
-        classroom = Classroom.objects.filter(id=classroom_id).first()
-        if not classroom:
-            return Response({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀន!'}, status=status.HTTP_404_NOT_FOUND)
+        if not gl and grade_param:
+            if str(grade_param).isdigit():
+                gl = GradeLevel.objects.filter(grade_number=int(grade_param)).first() or GradeLevel.objects.filter(id=int(grade_param)).first()
+            else:
+                gl = GradeLevel.objects.filter(name__icontains=str(grade_param)).first()
 
-        gl = GradeLevel.objects.filter(grade_number=classroom.grade_level, track=classroom.track).first()
-        if not gl:
-            gl = GradeLevel.objects.filter(grade_number=classroom.grade_level).first()
+        if not classroom and not gl:
+            if not classroom_id and not grade_param:
+                return Response({
+                    'status': 'success',
+                    'classroom_id': None,
+                    'grade_level': None,
+                    'form_category': form_category,
+                    'options': [],
+                    'general_options': [],
+                    'moeys_options': []
+                })
+            return Response({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀន ឬកម្រិតថ្នាក់ដែលបានជ្រើសរើស!'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not gl:
-            return Response({
-                'status': 'success',
-                'classroom_id': classroom.id,
-                'grade_level': classroom.grade_level,
-                'form_category': form_category,
-                'options': []
-            })
+        # Template resolution from GradeVerificationFormConfig
+        target_year = classroom.academic_year if classroom else AcademicYear.objects.filter(is_current=True).first()
+        assigned_template = GradeVerificationFormConfig.get_template_for_grade(gl, academic_year=target_year) if gl else 'GENERAL'
+        cfg_obj = GradeVerificationFormConfig.objects.filter(grade_level=gl, is_active=True).first() if gl else None
+        custom_instructions = cfg_obj.custom_instructions if cfg_obj and cfg_obj.custom_instructions else ''
 
-        qs = gl.enrollment_options.filter(is_active=True, form_category=form_category).order_by('order', 'id')
-        options_data = []
-        for opt in qs:
-            options_data.append({
+        all_opts_qs = gl.enrollment_options.filter(is_active=True).order_by('order', 'id') if gl else []
+        general_opts = []
+        moeys_opts = []
+
+        for opt in all_opts_qs:
+            item = {
                 'id': opt.id,
                 'field_name': opt.field_name,
                 'label': opt.label,
                 'field_type': opt.field_type,
+                'field_type_display': opt.get_field_type_display(),
                 'is_required': opt.is_required,
                 'placeholder': opt.placeholder or '',
                 'choices': opt.get_choices_list(),
                 'form_category': opt.form_category,
-            })
+                'col_width': getattr(opt, 'col_width', 6),
+                'order': opt.order,
+            }
+            if opt.form_category == GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL:
+                moeys_opts.append(item)
+            else:
+                general_opts.append(item)
+
+        if form_category in ['ALL', 'BOTH', 'CUSTOM_COMBINED']:
+            filtered_opts = [
+                {
+                    'id': opt.id,
+                    'field_name': opt.field_name,
+                    'label': opt.label,
+                    'field_type': opt.field_type,
+                    'field_type_display': opt.get_field_type_display(),
+                    'is_required': opt.is_required,
+                    'placeholder': opt.placeholder or '',
+                    'choices': opt.get_choices_list(),
+                    'form_category': opt.form_category,
+                    'col_width': getattr(opt, 'col_width', 6),
+                    'order': opt.order,
+                }
+                for opt in all_opts_qs
+            ]
+        elif form_category == GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL:
+            filtered_opts = moeys_opts
+        else:
+            filtered_opts = general_opts
 
         return Response({
             'status': 'success',
-            'classroom_id': classroom.id,
-            'grade_level': classroom.grade_level,
+            'classroom_id': classroom.id if classroom else None,
+            'classroom_name': classroom.name if classroom else '',
+            'grade_level': gl.grade_number if gl else (classroom.grade_level if classroom else None),
+            'grade_id': gl.id if gl else None,
+            'grade_name': gl.name if gl else '',
             'form_category': form_category,
-            'options': options_data
+            'assigned_template': assigned_template,
+            'assigned_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(assigned_template, assigned_template),
+            'custom_instructions': custom_instructions,
+            'options': filtered_opts,
+            'general_options': general_opts,
+            'moeys_options': moeys_opts,
+            'total_options': len(filtered_opts)
         })
+
+    def post(self, request):
+        if not (request.user and request.user.is_authenticated and (
+            request.user.is_staff or getattr(request.user, 'role', '').upper() in ['ADMIN', 'SUPERADMIN', 'PRINCIPAL']
+        )):
+            return Response({
+                'status': 'error',
+                'message': 'ការអនុញ្ញាតត្រូវបានបដិសេធ! មានតែ Admin ប៉ុណ្ណោះដែលអាចផ្លាស់ប្តូរបែបបទ និងជម្រើសចុះឈ្មោះតាមកម្រិតថ្នាក់បាន។'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        action = data.get('action', 'update_template' if 'form_template' in data else 'save_option')
+
+        # 1. Update grade-level template configuration (បែបបទតាមកម្រិតថ្នាក់)
+        if action == 'update_template' or 'form_template' in data:
+            grade_number = data.get('grade_number') or data.get('grade_level')
+            gl = GradeLevel.objects.filter(grade_number=grade_number).first() if grade_number else None
+            if not gl and data.get('grade_id'):
+                gl = GradeLevel.objects.filter(id=data.get('grade_id')).first()
+            if not gl:
+                return Response({'status': 'error', 'message': 'សូមជ្រើសរើសកម្រិតថ្នាក់ឱ្យបានត្រឹមត្រូវ!'}, status=status.HTTP_400_BAD_REQUEST)
+
+            tpl = str(data.get('form_template', GradeVerificationFormConfig.FormTemplate.GENERAL)).strip().upper()
+            if tpl not in [GradeVerificationFormConfig.FormTemplate.GENERAL, GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL, GradeVerificationFormConfig.FormTemplate.CUSTOM_COMBINED]:
+                tpl = GradeVerificationFormConfig.FormTemplate.GENERAL
+
+            instructions = str(data.get('custom_instructions', '')).strip()
+            cfg, _ = GradeVerificationFormConfig.objects.update_or_create(
+                grade_level=gl,
+                campaign__isnull=True,
+                academic_year__isnull=True,
+                defaults={'form_template': tpl, 'custom_instructions': instructions, 'is_active': True}
+            )
+            return Response({
+                'status': 'success',
+                'message': f"🎉 បានកំណត់បែបបទសម្រាប់ {gl.name} ជា {cfg.get_form_template_display()} ដោយជោគជ័យ!",
+                'grade_id': gl.id,
+                'grade_number': gl.grade_number,
+                'form_template': cfg.form_template,
+                'form_template_display': cfg.get_form_template_display(),
+                'custom_instructions': cfg.custom_instructions
+            })
+
+        # 2. Add or edit GradeEnrollmentOption (ជម្រើសចុះឈ្មោះតាមកម្រិតថ្នាក់)
+        elif action == 'save_option':
+            opt_id = data.get('id') or data.get('option_id')
+            opt = GradeEnrollmentOption.objects.filter(id=opt_id).first() if opt_id else None
+
+            grade_number = data.get('grade_number') or data.get('grade_level')
+            gl = GradeLevel.objects.filter(grade_number=grade_number).first() if grade_number else None
+            if not gl and data.get('grade_id'):
+                gl = GradeLevel.objects.filter(id=data.get('grade_id')).first()
+            if not gl and opt:
+                gl = opt.grade_level
+            if not gl:
+                return Response({'status': 'error', 'message': 'សូមបញ្ជាក់កម្រិតថ្នាក់ (grade_level)!'}, status=status.HTTP_400_BAD_REQUEST)
+
+            label = str(data.get('label', '')).strip()
+            if not label and not opt:
+                return Response({'status': 'error', 'message': 'សូមបញ្ចូលឈ្មោះជម្រើស (label)!'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not opt:
+                opt = GradeEnrollmentOption(grade_level=gl)
+
+            if label:
+                opt.label = label
+            if 'field_name' in data:
+                opt.field_name = str(data.get('field_name')).strip()
+            if 'field_type' in data:
+                opt.field_type = str(data.get('field_type')).strip().upper()
+            if 'form_category' in data:
+                opt.form_category = str(data.get('form_category')).strip().upper()
+            if 'choices' in data:
+                choices_val = data.get('choices')
+                if isinstance(choices_val, list):
+                    opt.choices = ", ".join([str(c).strip() for c in choices_val])
+                else:
+                    opt.choices = str(choices_val).strip()
+            if 'placeholder' in data:
+                opt.placeholder = str(data.get('placeholder', '')).strip()
+            if 'is_required' in data:
+                opt.is_required = bool(data.get('is_required'))
+            if 'is_active' in data:
+                opt.is_active = bool(data.get('is_active'))
+            if 'col_width' in data:
+                opt.col_width = int(data.get('col_width', 6))
+            if 'order' in data:
+                opt.order = int(data.get('order', 1))
+
+            opt.save()
+            return Response({
+                'status': 'success',
+                'message': f"🎉 បានរក្សាទុកជម្រើស '{opt.label}' សម្រាប់ {opt.grade_level.name} ជោគជ័យ!",
+                'option': {
+                    'id': opt.id,
+                    'field_name': opt.field_name,
+                    'label': opt.label,
+                    'field_type': opt.field_type,
+                    'field_type_display': opt.get_field_type_display(),
+                    'form_category': opt.form_category,
+                    'is_required': opt.is_required,
+                    'is_active': opt.is_active,
+                    'choices': opt.get_choices_list(),
+                }
+            })
+
+        # 3. Toggle option active state
+        elif action == 'toggle_active':
+            opt_id = data.get('option_id') or data.get('id')
+            opt = GradeEnrollmentOption.objects.filter(id=opt_id).first()
+            if not opt:
+                return Response({'status': 'error', 'message': 'រកមិនឃើញជម្រើសនេះទេ!'}, status=status.HTTP_404_NOT_FOUND)
+            opt.is_active = not opt.is_active
+            opt.save(update_fields=['is_active'])
+            return Response({
+                'status': 'success',
+                'message': f"បាន{'បើក' if opt.is_active else 'បិទ'}ជម្រើស '{opt.label}' ជោគជ័យ!",
+                'option_id': opt.id,
+                'is_active': opt.is_active
+            })
+
+        return Response({'status': 'error', 'message': 'សកម្មភាពមិនត្រឹមត្រូវ (Invalid action)'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class MobileStudentRomanizeAPIView(APIView):
@@ -2659,6 +3072,480 @@ class MobileStudentListView(APIView):
             'total_count': total_count,
             'students': data,
             'classrooms': list(classrooms),
+        })
+
+
+# ==============================================================================
+# 9.1 Student Beginning-of-Year Verification & Confirmation APIs
+# ==============================================================================
+
+class MobileVerificationCampaignsAPIView(APIView):
+    """
+    Mobile API: Returns active beginning-of-year verification campaigns,
+    current round number, and grade-level form template configurations.
+    GET /api/v1/students/verification/campaigns/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        current_year = AcademicYear.objects.filter(is_current=True).first()
+        active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+        campaigns = StudentVerificationCampaign.objects.all().order_by('-round_number', '-created_at')
+
+        campaigns_data = []
+        for c in campaigns:
+            campaigns_data.append({
+                'id': c.id,
+                'title': c.title,
+                'round_number': c.round_number,
+                'academic_year': c.academic_year.name if c.academic_year else '',
+                'is_active': c.is_active,
+                'is_open': c.is_open(),
+                'status_kh': c.get_status_display_kh(),
+                'start_date': c.start_date.isoformat() if c.start_date else None,
+                'end_date': c.end_date.isoformat() if c.end_date else None,
+                'require_confirmation_for_existing': c.require_confirmation_for_existing,
+                'instructions': c.instructions or '',
+                'verified_percentage': c.get_verification_percentage(),
+                'verified_count': c.get_verified_students_count(),
+                'total_count': c.get_total_students_count(),
+            })
+
+        grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
+        grade_configs = []
+        for gl in grade_levels:
+            template = GradeVerificationFormConfig.get_template_for_grade(gl, academic_year=current_year, campaign=active_campaign)
+            grade_configs.append({
+                'grade_level_id': gl.id,
+                'grade_number': gl.grade_number,
+                'grade_name': gl.name,
+                'track': gl.track,
+                'form_template': template,
+                'form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(template, template),
+            })
+
+        return Response({
+            'status': 'success',
+            'current_academic_year': {
+                'id': current_year.id if current_year else None,
+                'name': current_year.name if current_year else '',
+            } if current_year else None,
+            'active_campaign': {
+                'id': active_campaign.id,
+                'title': active_campaign.title,
+                'round_number': active_campaign.round_number,
+                'is_open': active_campaign.is_open(),
+                'status_kh': active_campaign.get_status_display_kh(),
+                'require_confirmation_for_existing': active_campaign.require_confirmation_for_existing,
+                'instructions': active_campaign.instructions or '',
+            } if active_campaign else None,
+            'campaigns': campaigns_data,
+            'grade_configs': grade_configs,
+            'grade_form_configs': grade_configs,
+            'confirmation_roles': [
+                {'code': 'STUDENT', 'label': 'សិស្សផ្ទាល់ (Student)'},
+                {'code': 'PARENT', 'label': 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'},
+                {'code': 'TEACHER', 'label': 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'},
+            ]
+        })
+
+
+class MobileVerificationStudentLookupAPIView(APIView):
+    """
+    Mobile API: Student Information Verification Lookup.
+    Allows searching by student_id or (khmer_name + date_of_birth).
+    Returns existing student information, assigned grade form template, and confirmation requirements.
+    GET /api/v1/students/verification/lookup/?student_id=...&khmer_name=...&date_of_birth=...
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        student_id = request.GET.get('student_id', '').strip()
+        khmer_name = request.GET.get('khmer_name', '').strip()
+        dob_str = request.GET.get('date_of_birth', '').strip()
+
+        student = None
+        if student_id:
+            student = Student.objects.select_related('classroom', 'academic_year', 'user').filter(student_id__iexact=student_id).first()
+        elif khmer_name and dob_str:
+            student = Student.objects.select_related('classroom', 'academic_year', 'user').filter(khmer_name__iexact=khmer_name, date_of_birth=dob_str).first()
+
+        if not student:
+            return Response({
+                'status': 'success',
+                'is_existing_student': False,
+                'message': 'មិនមានទិន្នន័យសិស្សចាស់ក្នុងប្រព័ន្ធឡើយ (អាចចុះឈ្មោះថ្មីបាន)'
+            })
+
+        target_grade_level = None
+        if student.classroom:
+            target_grade_level = GradeLevel.objects.filter(grade_number=student.classroom.grade_level, track=student.classroom.track).first()
+            if not target_grade_level:
+                target_grade_level = GradeLevel.objects.filter(grade_number=student.classroom.grade_level).first()
+
+        active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+        assigned_template = GradeVerificationFormConfig.get_template_for_grade(target_grade_level, academic_year=student.academic_year, campaign=active_campaign)
+
+        # Dynamic grade options for this grade level
+        grade_options = []
+        if target_grade_level:
+            cat_filter = GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL if assigned_template == 'MOEYS_INDIVIDUAL' else GradeEnrollmentOption.FormCategory.GENERAL
+            opts = target_grade_level.enrollment_options.filter(is_active=True, form_category=cat_filter).order_by('order', 'id')
+            for opt in opts:
+                grade_options.append({
+                    'id': opt.id,
+                    'field_name': opt.field_name,
+                    'label': opt.label,
+                    'field_type': opt.field_type,
+                    'is_required': opt.is_required,
+                    'choices': opt.get_choices_list(),
+                    'col_width': opt.col_width,
+                })
+
+        return Response({
+            'status': 'success',
+            'is_existing_student': True,
+            'student': {
+                'id': student.id,
+                'student_id': student.student_id,
+                'khmer_name': student.khmer_name,
+                'latin_name': student.latin_name or '',
+                'gender': student.gender,
+                'gender_display': student.get_gender_display(),
+                'date_of_birth': str(student.date_of_birth) if student.date_of_birth else '',
+                'place_of_birth': student.place_of_birth or '',
+                'current_address': student.current_address or '',
+                'phone': student.phone or '',
+                'classroom_id': student.classroom.id if student.classroom else None,
+                'classroom_name': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
+                'grade_level': student.classroom.grade_level if student.classroom else None,
+                'academic_year': student.academic_year.name if student.academic_year else '',
+                'scholarship_type': student.scholarship_type,
+                'status': student.status,
+                'father_name': student.father_name or '',
+                'father_phone': student.father_phone or '',
+                'father_job': student.father_job or '',
+                'mother_name': student.mother_name or '',
+                'mother_phone': student.mother_phone or '',
+                'mother_job': student.mother_job or '',
+                'guardian_name': student.guardian_name or '',
+                'emergency_phone': student.emergency_phone or '',
+                'is_repeating_grade': student.is_repeating_grade,
+                'is_verified': student.is_verified,
+                'last_verified_at': student.last_verified_at.isoformat() if student.last_verified_at else None,
+                'last_verified_by_role': student.last_verified_by_role or '',
+                'last_verified_by_name': student.last_verified_by_name or '',
+                'enrollment_data': student.enrollment_data or {},
+            },
+            'assigned_form_template': assigned_template,
+            'assigned_form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(assigned_template, assigned_template),
+            'grade_options': grade_options,
+            'confirmation_required': True,
+            'confirmation_message': f"⚠️ សិស្សឈ្មោះ «{student.khmer_name}» មានទិន្នន័យស្រាប់ក្នុងប្រព័ន្ធ! ដើម្បីកែប្រែទិន្នន័យ តម្រូវឱ្យមានការបញ្ជាក់ដោយ សិស្ស អាណាព្យាបាល ឬគ្រូ។",
+            'confirmation_roles': [
+                {'code': 'STUDENT', 'label': 'សិស្សផ្ទាល់ (Student)'},
+                {'code': 'PARENT', 'label': 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'},
+                {'code': 'TEACHER', 'label': 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'},
+            ]
+        })
+
+
+class MobileVerificationSubmitAPIView(APIView):
+    """
+    Mobile API: Submit Student Information Verification & Editing.
+    If student already exists:
+    - Enforces confirmation by Student, Parent, or Teacher who is submitting.
+    - If confirmation is missing: returns 400 with CONFIRMATION_REQUIRED.
+    - If confirmed: automatically updates Student record in DB, merges enrollment_data,
+      and records StudentVerificationLog with channel='MOBILE_APP'.
+    POST /api/v1/students/verification/submit/
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        data = request.data
+        student_id = str(data.get('student_id', '')).strip()
+        student_pk = data.get('student_pk') or data.get('id')
+        khmer_name = str(data.get('khmer_name', '')).strip()
+        dob_str = data.get('date_of_birth')
+
+        dob = None
+        if dob_str:
+            try:
+                dob = datetime.datetime.strptime(dob_str, '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+        # Resolve existing student
+        existing_student = None
+        if student_pk and str(student_pk).isdigit():
+            existing_student = Student.objects.filter(pk=int(student_pk)).first()
+        if not existing_student and student_id:
+            existing_student = Student.objects.filter(student_id__iexact=student_id).first()
+        if not existing_student and khmer_name and dob:
+            existing_student = Student.objects.filter(khmer_name__iexact=khmer_name, date_of_birth=dob).first()
+
+        confirm_edit = bool(data.get('confirm_edit', False))
+        confirmed_by_role = str(data.get('confirmed_by_role', '')).strip().upper()
+        confirmed_by_name = str(data.get('confirmed_by_name', '')).strip()
+        confirmed_by_phone = str(data.get('confirmed_by_phone', '')).strip()
+        relationship_to_student = str(data.get('relationship_to_student', '')).strip()
+        confirmation_notes = str(data.get('confirmation_notes', '')).strip()
+
+        if existing_student:
+            if not confirm_edit or confirmed_by_role not in ['STUDENT', 'PARENT', 'TEACHER'] or not confirmed_by_name:
+                class_str = f" ({existing_student.classroom.name})" if existing_student.classroom else ""
+                return Response({
+                    'status': 'error',
+                    'error': 'CONFIRMATION_REQUIRED',
+                    'status_code': 'CONFIRMATION_REQUIRED',
+                    'require_confirmation': True,
+                    'message': f"⚠️ សិស្សឈ្មោះ «{existing_student.khmer_name}» (អត្តលេខ: {existing_student.student_id}){class_str} មានទិន្នន័យស្រាប់ក្នុងប្រព័ន្ធរួចហើយ! "
+                               f"តម្រូវឱ្យមានការបញ្ជាក់ (Confirmation) ដោយ សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន ដែលកំពុងបញ្ចូលដើម្បីកែប្រែទិន្នន័យ។",
+                    'existing_student': {
+                        'id': existing_student.id,
+                        'student_id': existing_student.student_id,
+                        'khmer_name': existing_student.khmer_name,
+                        'classroom': existing_student.classroom.name if existing_student.classroom else 'គ្មានថ្នាក់'
+                    },
+                    'confirmation_fields_required': ['confirm_edit', 'confirmed_by_role', 'confirmed_by_name'],
+                    'available_roles': [
+                        {'code': 'STUDENT', 'label': 'សិស្សផ្ទាល់ (Student)'},
+                        {'code': 'PARENT', 'label': 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'},
+                        {'code': 'TEACHER', 'label': 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'}
+                    ]
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+
+        try:
+            with transaction.atomic():
+                if existing_student:
+                    student = existing_student
+                else:
+                    target_year = AcademicYear.objects.filter(is_current=True).first()
+                    generated_sid = Student.generate_unique_student_id(academic_year=target_year)
+                    student = Student(student_id=generated_sid)
+
+                # Update core fields if provided
+                if khmer_name:
+                    student.khmer_name = khmer_name
+                latin_name = str(data.get('latin_name', '')).strip()
+                if latin_name:
+                    student.latin_name = latin_name
+                gender = data.get('gender')
+                if gender:
+                    student.gender = gender
+                if dob:
+                    student.date_of_birth = dob
+                pob = data.get('place_of_birth')
+                if pob:
+                    student.place_of_birth = pob
+                current_address = data.get('current_address')
+                if current_address:
+                    student.current_address = current_address
+                phone = data.get('phone')
+                if phone:
+                    student.phone = phone
+
+                classroom_id = data.get('classroom_id')
+                if classroom_id:
+                    cls = Classroom.objects.filter(id=classroom_id).first()
+                    if cls:
+                        student.classroom = cls
+                        if cls.academic_year:
+                            student.academic_year = cls.academic_year
+
+                academic_year_id = data.get('academic_year_id')
+                if academic_year_id:
+                    ay = AcademicYear.objects.filter(id=academic_year_id).first()
+                    if ay:
+                        student.academic_year = ay
+
+                scholarship_type = data.get('scholarship_type')
+                if scholarship_type:
+                    student.scholarship_type = scholarship_type
+
+                for parent_field in ['father_name', 'father_phone', 'father_job', 'mother_name',
+                                     'mother_phone', 'mother_job', 'guardian_name', 'emergency_phone']:
+                    if parent_field in data:
+                        setattr(student, parent_field, str(data.get(parent_field, '')).strip())
+
+                if 'is_repeating_grade' in data:
+                    student.is_repeating_grade = bool(data.get('is_repeating_grade'))
+
+                # Dynamic enrollment_data JSON
+                ed = dict(student.enrollment_data or {})
+                grade_opts = data.get('grade_options')
+                if isinstance(grade_opts, dict):
+                    for k, v in grade_opts.items():
+                        clean_k = k.replace('grade_opt_', '')
+                        ed[clean_k] = v
+
+                for k, v in data.items():
+                    if k.startswith('grade_opt_'):
+                        clean_k = k.replace('grade_opt_', '')
+                        ed[clean_k] = v
+
+                # MoEYS specific fields
+                for moeys_k in ['orphan_status', 'primary_school', 'secondary_school', 'ethnic_minority',
+                                'disability_physical', 'disability_sight', 'disability_hearing',
+                                'equity_card_1', 'equity_card_2', 'risk_card', 'scholarship', 'track']:
+                    if moeys_k in data:
+                        ed[moeys_k] = data[moeys_k]
+
+                student.enrollment_data = ed
+                student.is_verified = True
+                student.last_verified_at = timezone.now()
+                student.last_verified_by_role = confirmed_by_role or 'STUDENT'
+                student.last_verified_by_name = confirmed_by_name or student.khmer_name
+                if active_campaign:
+                    student.verification_round = active_campaign.round_number
+                student.save()
+
+                # Audit verification log
+                StudentVerificationLog.objects.create(
+                    student=student,
+                    campaign=active_campaign,
+                    academic_year=student.academic_year,
+                    confirmed_by_role=confirmed_by_role or 'STUDENT',
+                    confirmed_by_name=confirmed_by_name or student.khmer_name,
+                    confirmed_by_phone=confirmed_by_phone or student.phone or '',
+                    relationship_to_student=relationship_to_student,
+                    is_existing_student=bool(existing_student),
+                    confirmation_notes=confirmation_notes or 'ផ្ទៀងផ្ទាត់ និងកែប្រែព័ត៌មានសិស្សតាម Mobile App',
+                    channel=StudentVerificationLog.Channel.MOBILE_APP,
+                    changes_diff={'updated_fields': list(data.keys())},
+                    user=request.user if request.user and request.user.is_authenticated else None
+                )
+
+            return Response({
+                'status': 'success',
+                'is_updated': bool(existing_student),
+                'verified': student.is_verified,
+                'message': f"🎉 បាន{'កែប្រែ និងផ្ទៀងផ្ទាត់' if existing_student else 'ចុះឈ្មោះ'}សិស្ស {student.khmer_name} (ID: {student.student_id}) ក្នុងមូលដ្ឋានទិន្នន័យដោយជោគជ័យ!",
+                'student': {
+                    'id': student.id,
+                    'student_id': student.student_id,
+                    'khmer_name': student.khmer_name,
+                    'latin_name': student.latin_name,
+                    'gender': student.gender,
+                    'date_of_birth': str(student.date_of_birth),
+                    'classroom_id': student.classroom.id if student.classroom else None,
+                    'classroom_name': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
+                    'academic_year': student.academic_year.name if student.academic_year else '',
+                    'status': student.status,
+                    'is_verified': student.is_verified,
+                    'last_verified_at': student.last_verified_at.isoformat() if student.last_verified_at else None,
+                    'last_verified_by_role': student.last_verified_by_role,
+                    'last_verified_by_name': student.last_verified_by_name,
+                    'enrollment_data': student.enrollment_data,
+                },
+                'confirmation': {
+                    'confirmed_by_role': confirmed_by_role,
+                    'confirmed_by_name': confirmed_by_name,
+                    'confirmed_by_phone': confirmed_by_phone,
+                    'verified_at': student.last_verified_at.isoformat() if student.last_verified_at else None,
+                }
+            }, status=status.HTTP_200_OK if existing_student else status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MobileGradeFormConfigsAPIView(APIView):
+    """
+    Mobile API: Grade-Level Form Configurations.
+    GET: Returns current form template for all grade levels.
+    POST: (Staff only) Admin can update form template for a grade level.
+    """
+    def get(self, request):
+        current_year = AcademicYear.objects.filter(is_current=True).first()
+        active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+        grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
+
+        configs = []
+        for gl in grade_levels:
+            template = GradeVerificationFormConfig.get_template_for_grade(gl, academic_year=current_year, campaign=active_campaign)
+            configs.append({
+                'grade_level_id': gl.id,
+                'grade_number': gl.grade_number,
+                'grade_name': gl.name,
+                'track': gl.track,
+                'form_template': template,
+                'form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(template, template),
+            })
+        return Response({'status': 'success', 'grade_configs': configs})
+
+    def post(self, request):
+        if not (request.user and request.user.is_authenticated and (request.user.is_staff or getattr(request.user, 'role', '') in ['ADMIN', 'SUPERADMIN'])):
+            return Response({'status': 'error', 'message': 'សិទ្ធិមិនគ្រប់គ្រាន់ (Admin only)'}, status=status.HTTP_403_FORBIDDEN)
+
+        gl_id = request.data.get('grade_level_id')
+        template = str(request.data.get('form_template', 'GENERAL')).strip().upper()
+        if template not in [GradeVerificationFormConfig.FormTemplate.GENERAL, GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL, GradeVerificationFormConfig.FormTemplate.CUSTOM_COMBINED]:
+            template = GradeVerificationFormConfig.FormTemplate.GENERAL
+
+        gl = get_object_or_404(GradeLevel, pk=gl_id)
+        config, _ = GradeVerificationFormConfig.objects.update_or_create(
+            grade_level=gl,
+            campaign=None,
+            defaults={'form_template': template, 'is_active': True}
+        )
+        return Response({
+            'status': 'success',
+            'grade_level_id': gl.id,
+            'grade_name': gl.name,
+            'form_template': template,
+            'form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(template, template),
+            'message': f"បានកំណត់បែបបទសម្រាប់ {gl.name} ជា {dict(GradeVerificationFormConfig.FormTemplate.choices).get(template, template)} ជោគជ័យ!"
+        })
+
+
+class MobileVerificationLogsAPIView(APIView):
+    """
+    Mobile API: Returns student verification audit logs.
+    Filterable by student_id or campaign_id.
+    GET /api/v1/students/verification/logs/?student_id=...
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        student_id = request.GET.get('student_id')
+        campaign_id = request.GET.get('campaign_id')
+        role = request.GET.get('role')
+
+        qs = StudentVerificationLog.objects.select_related('student', 'campaign', 'academic_year').all()
+        if student_id:
+            qs = qs.filter(student__student_id__iexact=student_id)
+        if campaign_id and campaign_id.isdigit():
+            qs = qs.filter(campaign_id=int(campaign_id))
+        if role:
+            qs = qs.filter(confirmed_by_role=role)
+
+        logs = qs.order_by('-verified_at')[:50]
+        logs_data = []
+        for l in logs:
+            logs_data.append({
+                'id': l.id,
+                'student_id': l.student.student_id,
+                'student_name': l.student.khmer_name,
+                'confirmed_by_role': l.confirmed_by_role,
+                'confirmed_by_role_display': l.get_confirmed_by_role_display(),
+                'confirmed_by_name': l.confirmed_by_name,
+                'confirmed_by_phone': l.confirmed_by_phone or '',
+                'relationship_to_student': l.relationship_to_student or '',
+                'channel': l.channel,
+                'channel_display': l.get_channel_display(),
+                'confirmation_notes': l.confirmation_notes or '',
+                'verified_at': l.verified_at.isoformat(),
+            })
+
+        return Response({
+            'status': 'success',
+            'count': len(logs_data),
+            'total_count': qs.count(),
+            'logs': logs_data
         })
 
 

@@ -217,6 +217,13 @@ class Student(models.Model):
     place_of_birth = models.CharField(max_length=255, blank=True, null=True, verbose_name="ទីកន្លែងកំណើត / Place of Birth")
     current_address = models.TextField(blank=True, null=True, verbose_name="អាសយដ្ឋានបច្ចុប្បន្ន / Current Address")
     phone = models.CharField(max_length=30, blank=True, null=True, verbose_name="លេខទូរស័ព្ទសិស្ស / Student Phone")
+    previous_school = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="ឆ្នាំសិក្សាចាស់មកពីសាលា / Previous School & Academic Year",
+        help_text="សាលារៀន និងឆ្នាំសិក្សាចាស់ដែលសិស្សបានរៀនពីមុន (ឧ. បឋមសិក្សា ហ៊ុន សែន ២០២៤-២០២៥)"
+    )
     photo = models.ImageField(upload_to='students/photos/', blank=True, null=True, verbose_name="រូបថតសិស្ស (៤x៦) / Student Photo")
     photo_drive_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="រូបថតលើ Google Drive (URL) / Google Drive Photo URL")
     birth_certificate = models.FileField(upload_to='students/docs/', blank=True, null=True, verbose_name="សំបុត្រកំណើត / Birth Certificate")
@@ -281,6 +288,33 @@ class Student(models.Model):
     guardian_name = models.CharField(max_length=150, blank=True, null=True, verbose_name="ឈ្មោះអាណាព្យាបាលជំនួស / Guardian Name")
     emergency_phone = models.CharField(max_length=30, blank=True, null=True, verbose_name="លេខទាក់ទងបន្ទាន់ / Emergency Phone")
     telegram_chat_id = models.CharField(max_length=50, blank=True, null=True, verbose_name="Telegram Chat ID អាណាព្យាបាល")
+
+    # Student Verification & Beginning-of-Year Confirmation Tracking
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name="បានផ្ទៀងផ្ទាត់ព័ត៌មាន / Is Verified"
+    )
+    last_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទផ្ទៀងផ្ទាត់ចុងក្រោយ / Last Verified At"
+    )
+    last_verified_by_role = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        verbose_name="តួនាទីអ្នកផ្ទៀងផ្ទាត់ចុងក្រោយ / Last Verified By Role"
+    )
+    last_verified_by_name = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        verbose_name="ឈ្មោះអ្នកផ្ទៀងផ្ទាត់ចុងក្រោយ / Last Verified By Name"
+    )
+    verification_round = models.PositiveIntegerField(
+        default=0,
+        verbose_name="ជុំផ្ទៀងផ្ទាត់ / Verification Round"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -715,4 +749,333 @@ class AcademicYearStudentArchive(models.Model):
 
     def __str__(self):
         return f"ប័ណ្ណសារ {self.academic_year_name} ({self.students_count} នាក់) - {self.archived_at.strftime('%d/%m/%Y %H:%M')}"
+
+
+class StudentVerificationCampaign(models.Model):
+    """
+    Beginning-of-Year or Periodic Student Information Filling & Verification Campaign.
+    Configurable by Admin. Allows multiple rounds (ជុំទី១, ជុំទី២...) to verify/cross-check student data.
+    """
+    title = models.CharField(
+        max_length=200,
+        verbose_name="ឈ្មោះយុទ្ធនាការ / ជុំផ្ទៀងផ្ទាត់ (Campaign Title)",
+        help_text="ឧ. ការបំពេញ និងផ្ទៀងផ្ទាត់ព័ត៌មានសិស្សដើមឆ្នាំ ២០២៦-២០២៧ (ជុំទី១)"
+    )
+    round_number = models.PositiveIntegerField(
+        default=1,
+        verbose_name="ជុំទី / Round Number",
+        help_text="លេខជុំ (១, ២, ៣...) អនុញ្ញាតឱ្យធ្វើច្រើនដងដើម្បីផ្ទៀងផ្ទាត់ព័ត៌មានសិស្ស"
+    )
+    academic_year = models.ForeignKey(
+        'academics.AcademicYear',
+        on_delete=models.CASCADE,
+        related_name='verification_campaigns',
+        verbose_name="ឆ្នាំសិក្សា / Academic Year"
+    )
+    start_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទចាប់ផ្តើម / Start Date & Time"
+    )
+    end_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="កាលបរិច្ឆេទផុតកំណត់ / End Date & Time"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការ / Active Status"
+    )
+    require_confirmation_for_existing = models.BooleanField(
+        default=True,
+        verbose_name="ទាមទារការបញ្ជាក់ពេលកែប្រែសិស្សចាស់ / Require Confirmation for Existing Students",
+        help_text="តម្រូវឱ្យសិស្ស អាណាព្យាបាល ឬគ្រូដែលកំពុងបញ្ចូល ធ្វើការបញ្ជាក់ (Confirm) មុនពេលកែប្រែទិន្នន័យ"
+    )
+    allow_student_self_confirm = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យសិស្សបញ្ជាក់ / Allow Student Confirmation"
+    )
+    allow_parent_confirm = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យអាណាព្យាបាលបញ្ជាក់ / Allow Parent Confirmation"
+    )
+    allow_teacher_confirm = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យគ្រូបង្រៀនបញ្ជាក់ / Allow Teacher Confirmation"
+    )
+    target_grades = models.ManyToManyField(
+        'academics.GradeLevel',
+        blank=True,
+        related_name='verification_campaigns',
+        verbose_name="កម្រិតថ្នាក់គោលដៅ / Target Grade Levels",
+        help_text="ទុកទទេដើម្បីអនុវត្តចំពោះគ្រប់កម្រិតថ្នាក់ទាំងអស់"
+    )
+    instructions = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="សេចក្តីណែនាំ / Instructions",
+        help_text="សេចក្តីណែនាំបង្ហាញដល់សិស្ស អាណាព្យាបាល និងគ្រូពេលបំពេញទិន្នន័យ"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_verification_campaigns',
+        verbose_name="បង្កើតដោយ / Created By"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-academic_year__start_date', '-round_number', '-created_at']
+        verbose_name = "យុទ្ធនាការផ្ទៀងផ្ទាត់ព័ត៌មានសិស្ស / Student Verification Campaign"
+        verbose_name_plural = "យុទ្ធនាការផ្ទៀងផ្ទាត់ព័ត៌មានសិស្សទាំងអស់ / Student Verification Campaigns"
+
+    def is_open(self):
+        if not self.is_active:
+            return False
+        from django.utils import timezone
+        now = timezone.now()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        return True
+
+    def get_status_display_kh(self):
+        if not self.is_active:
+            return "បានបិទ (Inactive)"
+        from django.utils import timezone
+        now = timezone.now()
+        if self.start_date and now < self.start_date:
+            return "មិនទាន់ដល់ពេល (Upcoming)"
+        if self.end_date and now > self.end_date:
+            return "ផុតកំណត់ (Expired)"
+        return "កំពុងដំណើរការ (Active)"
+
+    def get_total_students_count(self):
+        qs = Student.objects.filter(academic_year=self.academic_year)
+        target_grades = self.target_grades.all()
+        if target_grades.exists():
+            grade_nums = target_grades.values_list('grade_number', flat=True)
+            qs = qs.filter(classroom__grade_level__in=grade_nums)
+        return qs.count()
+
+    def get_verified_students_count(self):
+        qs = Student.objects.filter(academic_year=self.academic_year, is_verified=True)
+        target_grades = self.target_grades.all()
+        if target_grades.exists():
+            grade_nums = target_grades.values_list('grade_number', flat=True)
+            qs = qs.filter(classroom__grade_level__in=grade_nums)
+        return qs.count()
+
+    def get_verification_percentage(self):
+        total = self.get_total_students_count()
+        if total == 0:
+            return 0
+        verified = self.get_verified_students_count()
+        return round((verified / total) * 100, 1)
+
+    def __str__(self):
+        return f"{self.title} [ជុំទី {self.round_number}] ({self.academic_year.name})"
+
+
+class GradeVerificationFormConfig(models.Model):
+    """
+    Form Template Configuration per Grade Level.
+    Allows Admin to choose which form format/template (បែបបទ) students of each grade level must fill.
+    Options:
+    - GENERAL: Standard Admin-configured enrollment form (with dynamic GradeEnrollmentOptions)
+    - MOEYS_INDIVIDUAL: MoEYS 35-Column Census Individual Extract Form
+    - CUSTOM_COMBINED: Combined form containing both General and MoEYS fields
+    """
+    class FormTemplate(models.TextChoices):
+        GENERAL = 'GENERAL', 'បែបបទចុះឈ្មោះទូទៅ (Admin កំណត់) / General Form'
+        MOEYS_INDIVIDUAL = 'MOEYS_INDIVIDUAL', 'បែបបទសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS Census 35 Columns)'
+        CUSTOM_COMBINED = 'CUSTOM_COMBINED', 'បែបបទរួមបញ្ចូល (General + MoEYS Census)'
+
+    grade_level = models.ForeignKey(
+        'academics.GradeLevel',
+        on_delete=models.CASCADE,
+        related_name='form_configurations',
+        verbose_name="កម្រិតថ្នាក់ / Grade Level"
+    )
+    campaign = models.ForeignKey(
+        StudentVerificationCampaign,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='grade_form_configs',
+        verbose_name="យុទ្ធនាការ / Campaign (ទុកទទេសម្រាប់ទូទៅ)"
+    )
+    academic_year = models.ForeignKey(
+        'academics.AcademicYear',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="ឆ្នាំសិក្សា / Academic Year"
+    )
+    form_template = models.CharField(
+        max_length=30,
+        choices=FormTemplate.choices,
+        default=FormTemplate.GENERAL,
+        verbose_name="បែបបទតម្រូវឱ្យសិស្សបំពេញ / Required Form Template",
+        help_text="ជ្រើសរើសបែបបទដែលត្រូវឱ្យសិស្សកម្រិតថ្នាក់នេះបំពេញ"
+    )
+    custom_instructions = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="សេចក្តីណែនាំបន្ថែមសម្រាប់កម្រិតនេះ / Grade Instructions"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="សកម្ម / Active"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['grade_level__order', 'grade_level__grade_number']
+        verbose_name = "ការកំណត់បែបបទតាមកម្រិតថ្នាក់ / Grade Form Configuration"
+        verbose_name_plural = "ការកំណត់បែបបទតាមកម្រិតថ្នាក់ទាំងអស់ / Grade Form Configurations"
+
+    @classmethod
+    def get_template_for_grade(cls, grade_level, academic_year=None, campaign=None):
+        """
+        Resolves the configured form template for a given grade level.
+        Fallback to GENERAL or SchoolProfile registration_mode.
+        """
+        if not grade_level:
+            return cls.FormTemplate.GENERAL
+
+        # 1. Look for campaign specific config
+        if campaign:
+            cfg = cls.objects.filter(grade_level=grade_level, campaign=campaign, is_active=True).first()
+            if cfg:
+                return cfg.form_template
+
+        # 2. Look for academic year specific config
+        if academic_year:
+            cfg = cls.objects.filter(grade_level=grade_level, academic_year=academic_year, campaign__isnull=True, is_active=True).first()
+            if cfg:
+                return cfg.form_template
+
+        # 3. Look for general grade config
+        cfg = cls.objects.filter(grade_level=grade_level, campaign__isnull=True, is_active=True).first()
+        if cfg:
+            return cfg.form_template
+
+        return cls.FormTemplate.GENERAL
+
+    def __str__(self):
+        camp_str = f" [{self.campaign.title}]" if self.campaign else ""
+        return f"{self.grade_level.name} ➡️ {self.get_form_template_display()}{camp_str}"
+
+
+class StudentVerificationLog(models.Model):
+    """
+    Audit Trail & Confirmation Log for Student Information Entry & Verification.
+    Tracks edits by Student, Parent/Guardian, or Teacher, especially when existing student data is confirmed.
+    """
+    class ConfirmerRole(models.TextChoices):
+        STUDENT = 'STUDENT', 'សិស្ស (Student)'
+        PARENT = 'PARENT', 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'
+        TEACHER = 'TEACHER', 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'
+        ADMIN = 'ADMIN', 'រដ្ឋបាលសាលា (School Admin)'
+
+    class Channel(models.TextChoices):
+        PORTAL = 'PORTAL', 'គេហទំព័រ / Web Portal'
+        MOBILE_APP = 'MOBILE_APP', 'កម្មវិធីទូរស័ព្ទ / Mobile App'
+
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='verification_logs',
+        verbose_name="សិស្ស / Student"
+    )
+    campaign = models.ForeignKey(
+        StudentVerificationCampaign,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verification_logs',
+        verbose_name="យុទ្ធនាការ / Verification Campaign"
+    )
+    academic_year = models.ForeignKey(
+        'academics.AcademicYear',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="ឆ្នាំសិក្សា / Academic Year"
+    )
+    confirmed_by_role = models.CharField(
+        max_length=20,
+        choices=ConfirmerRole.choices,
+        default=ConfirmerRole.STUDENT,
+        verbose_name="អ្នកបញ្ជាក់ / Confirmed By Role",
+        help_text="តួនាទីអ្នកដែលបានបញ្ជាក់ការកែប្រែទិន្នន័យ (សិស្ស, អាណាព្យាបាល, ឬ គ្រូ)"
+    )
+    confirmed_by_name = models.CharField(
+        max_length=150,
+        verbose_name="ឈ្មោះអ្នកបញ្ជាក់ / Confirmer Name"
+    )
+    confirmed_by_phone = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        verbose_name="លេខទូរស័ព្ទអ្នកបញ្ជាក់ / Confirmer Phone"
+    )
+    relationship_to_student = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="ទំនាក់ទំនង / មុខងារ (Relationship / Role)",
+        help_text="ឧ. ខ្លួនឯង (សិស្ស), ឪពុក, ម្តាយ, អាណាព្យាបាល, គ្រូបន្ទុកថ្នាក់"
+    )
+    is_existing_student = models.BooleanField(
+        default=True,
+        verbose_name="ជាសិស្សមានទិន្នន័យស្រាប់ / Is Existing Student"
+    )
+    confirmation_notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="កំណត់សម្គាល់ការកែប្រែ / Confirmation Notes / Reason"
+    )
+    channel = models.CharField(
+        max_length=20,
+        choices=Channel.choices,
+        default=Channel.PORTAL,
+        verbose_name="មធ្យោបាយបញ្ចូល / Channel (Portal / Mobile App)"
+    )
+    changes_diff = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="សង្ខេបទិន្នន័យកែប្រែ / Changes Diff (JSON)"
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name="អាសយដ្ឋាន IP / IP Address"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_verification_confirmations',
+        verbose_name="គណនីអ្នកបញ្ចូល / Logged-in User"
+    )
+    verified_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="កាលបរិច្ឆេទ & ម៉ោង / Verified At"
+    )
+
+    class Meta:
+        ordering = ['-verified_at', '-id']
+        verbose_name = "កំណត់ត្រាបញ្ជាក់ព័ត៌មានសិស្ស / Student Verification Log"
+        verbose_name_plural = "កំណត់ត្រាបញ្ជាក់ព័ត៌មានសិស្សទាំងអស់ / Student Verification Logs"
+
+    def __str__(self):
+        return f"បញ្ជាក់សិស្ស {self.student.khmer_name} ដោយ {self.get_confirmed_by_role_display()} ({self.confirmed_by_name}) - {self.verified_at.strftime('%d/%m/%Y %H:%M')}"
+
 

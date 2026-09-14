@@ -7,12 +7,14 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.db import transaction
+from django.utils import timezone
 from apps.accounts.decorators import role_required
 from apps.accounts.models import User
 from .models import Student, ScholarshipType, StudentStatusConfig
@@ -246,6 +248,12 @@ def student_enroll(request):
                         existing_data=student.enrollment_data,
                         form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
                     )
+                    if not student.previous_school and student.enrollment_data:
+                        for k in ['previous_school', 'primary_school', 'secondary_school']:
+                            if k in student.enrollment_data:
+                                item = student.enrollment_data[k]
+                                student.previous_school = item.get('value', item) if isinstance(item, dict) else str(item)
+                                break
                     student.save()
 
                     username = student.student_id.lower().replace('-', '_')
@@ -279,6 +287,12 @@ def student_enroll(request):
                         existing_data=student.enrollment_data,
                         form_category=GradeEnrollmentOption.FormCategory.GENERAL
                     )
+                    if not student.previous_school and student.enrollment_data:
+                        for k in ['previous_school', 'primary_school', 'secondary_school']:
+                            if k in student.enrollment_data:
+                                item = student.enrollment_data[k]
+                                student.previous_school = item.get('value', item) if isinstance(item, dict) else str(item)
+                                break
                     student.save()
                     
                     username = student.student_id.lower().replace('-', '_')
@@ -410,6 +424,12 @@ def public_student_enroll(request):
                         existing_data=student.enrollment_data,
                         form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
                     )
+                    if not student.previous_school and student.enrollment_data:
+                        for k in ['previous_school', 'primary_school', 'secondary_school']:
+                            if k in student.enrollment_data:
+                                item = student.enrollment_data[k]
+                                student.previous_school = item.get('value', item) if isinstance(item, dict) else str(item)
+                                break
                     student.save()
 
                     # Create user account for student login
@@ -445,6 +465,12 @@ def public_student_enroll(request):
                         existing_data=student.enrollment_data,
                         form_category=GradeEnrollmentOption.FormCategory.GENERAL
                     )
+                    if not student.previous_school and student.enrollment_data:
+                        for k in ['previous_school', 'primary_school', 'secondary_school']:
+                            if k in student.enrollment_data:
+                                item = student.enrollment_data[k]
+                                student.previous_school = item.get('value', item) if isinstance(item, dict) else str(item)
+                                break
                     student.save()
 
                     # Create user account for student login
@@ -5408,3 +5434,512 @@ def moeys_individual_student_roster_print(request):
     """
     data = _get_moeys_individual_student_roster_data(request)
     return render(request, 'students/moeys_individual_student_roster_print.html', data)
+
+
+# ==============================================================================
+# Beginning-of-Year Student Information Filling & Verification Campaigns
+# ==============================================================================
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def verification_campaigns_list(request):
+    """
+    Admin & Staff management interface for Student Information Verification Campaigns & Rounds.
+    Admin can configure multiple rounds (ជុំទី១, ជុំទី២...) to verify/cross-check student records,
+    choose form templates by grade level ('បែបបទតាមកម្រិតថ្នាក់'), and track confirmation logs.
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import GradeLevel, AcademicYear, Classroom
+    from apps.accounts.models import SchoolProfile
+    from .models import StudentVerificationCampaign, GradeVerificationFormConfig, StudentVerificationLog, Student
+    from .forms import StudentVerificationCampaignForm
+
+    current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+    school_profile = SchoolProfile.get_settings()
+
+    campaigns = StudentVerificationCampaign.objects.select_related('academic_year').prefetch_related('target_grades').all()
+    active_campaign = campaigns.filter(is_active=True).first()
+
+    # Form to create new campaign
+    campaign_form = StudentVerificationCampaignForm(initial={'academic_year': current_year})
+
+    # Grade-Level Form Configurations ("បែបបទតាមកម្រិតថ្នាក់")
+    # Admin can choose form template (GENERAL / MOEYS_INDIVIDUAL / CUSTOM_COMBINED) for each grade level
+    grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
+    
+    # Pre-fetch existing configs
+    existing_configs = {
+        cfg.grade_level_id: cfg
+        for cfg in GradeVerificationFormConfig.objects.filter(is_active=True)
+    }
+
+    grade_configs_display = []
+    for gl in grade_levels:
+        cfg = existing_configs.get(gl.id)
+        current_template = cfg.form_template if cfg else GradeVerificationFormConfig.FormTemplate.GENERAL
+        grade_configs_display.append({
+            'grade_level': gl,
+            'config': cfg,
+            'current_template': current_template,
+            'template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(current_template, current_template),
+            'student_count': Student.objects.filter(classroom__grade_level=gl.grade_number, academic_year=current_year).count() if current_year else 0,
+            'verified_count': Student.objects.filter(classroom__grade_level=gl.grade_number, academic_year=current_year, is_verified=True).count() if current_year else 0,
+        })
+
+    # Verification Statistics
+    total_students = Student.objects.filter(academic_year=current_year).count() if current_year else 0
+    verified_students = Student.objects.filter(academic_year=current_year, is_verified=True).count() if current_year else 0
+    pending_students = max(0, total_students - verified_students)
+    verification_rate = round((verified_students / total_students * 100), 1) if total_students > 0 else 0
+
+    # Verification Confirmation Logs (Latest 50 entries)
+    role_filter = request.GET.get('role', '').strip()
+    search_q = request.GET.get('search', '').strip()
+    campaign_filter = request.GET.get('campaign', '').strip()
+
+    logs_qs = StudentVerificationLog.objects.select_related('student', 'campaign', 'academic_year', 'user').all()
+    if role_filter:
+        logs_qs = logs_qs.filter(confirmed_by_role=role_filter)
+    if campaign_filter and campaign_filter.isdigit():
+        logs_qs = logs_qs.filter(campaign_id=int(campaign_filter))
+    if search_q:
+        logs_qs = logs_qs.filter(
+            Q(student__khmer_name__icontains=search_q) |
+            Q(student__student_id__icontains=search_q) |
+            Q(confirmed_by_name__icontains=search_q) |
+            Q(confirmed_by_phone__icontains=search_q)
+        )
+
+    recent_logs = logs_qs.order_by('-verified_at')[:50]
+
+    return render(request, 'students/verification_campaigns.html', {
+        'campaigns': campaigns,
+        'active_campaign': active_campaign,
+        'campaign_form': campaign_form,
+        'grade_configs_display': grade_configs_display,
+        'current_year': current_year,
+        'school_profile': school_profile,
+        'total_students': total_students,
+        'verified_students': verified_students,
+        'pending_students': pending_students,
+        'verification_rate': verification_rate,
+        'recent_logs': recent_logs,
+        'role_filter': role_filter,
+        'search_q': search_q,
+        'campaign_filter': campaign_filter,
+        'template_choices': GradeVerificationFormConfig.FormTemplate.choices,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def verification_campaign_save(request, pk=None):
+    from .models import StudentVerificationCampaign
+    from .forms import StudentVerificationCampaignForm
+
+    instance = get_object_or_404(StudentVerificationCampaign, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = StudentVerificationCampaignForm(request.POST, instance=instance)
+        if form.is_valid():
+            camp = form.save(commit=False)
+            if not pk and not camp.created_by:
+                camp.created_by = request.user
+            camp.save()
+            form.save_m2m()
+            messages.success(request, f"🎉 បានរក្សាទុកយុទ្ធនាការ «{camp.title} (ជុំទី {camp.round_number})» ដោយជោគជ័យ!")
+        else:
+            for f, errs in form.errors.items():
+                for e in errs:
+                    messages.error(request, f"កំហុស [{f}]: {e}")
+    return redirect('verification_campaigns_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def verification_campaign_delete(request, pk):
+    from .models import StudentVerificationCampaign
+    camp = get_object_or_404(StudentVerificationCampaign, pk=pk)
+    if request.method == 'POST':
+        title = camp.title
+        camp.delete()
+        messages.success(request, f"🗑️ បានលុបយុទ្ធនាការ «{title}» ដោយជោគជ័យ!")
+    return redirect('verification_campaigns_list')
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_verification_campaign(request, pk):
+    from .models import StudentVerificationCampaign
+    camp = get_object_or_404(StudentVerificationCampaign, pk=pk)
+    camp.is_active = not camp.is_active
+    camp.save(update_fields=['is_active'])
+    return JsonResponse({
+        'status': 'success',
+        'is_active': camp.is_active,
+        'message': f"បាន{'បើក' if camp.is_active else 'បិទ'}យុទ្ធនាការ «{camp.title}» ជោគជ័យ!"
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_save_grade_form_config(request):
+    """
+    Admin AJAX / POST endpoint to choose/assign form template for a grade level.
+    Database updates automatically!
+    """
+    from apps.academics.models import GradeLevel
+    from .models import GradeVerificationFormConfig
+    import json
+
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
+            grade_level_id = data.get('grade_level_id')
+            form_template = str(data.get('form_template', 'GENERAL')).strip().upper()
+            campaign_id = data.get('campaign_id') or None
+
+            valid_templates = [
+                GradeVerificationFormConfig.FormTemplate.GENERAL,
+                GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL,
+                GradeVerificationFormConfig.FormTemplate.CUSTOM_COMBINED,
+            ]
+            if form_template not in valid_templates:
+                form_template = GradeVerificationFormConfig.FormTemplate.GENERAL
+
+            gl = get_object_or_404(GradeLevel, pk=grade_level_id)
+
+            config, created = GradeVerificationFormConfig.objects.update_or_create(
+                grade_level=gl,
+                campaign_id=campaign_id,
+                defaults={
+                    'form_template': form_template,
+                    'is_active': True,
+                }
+            )
+
+            template_display = dict(GradeVerificationFormConfig.FormTemplate.choices).get(form_template, form_template)
+
+            return JsonResponse({
+                'status': 'success',
+                'grade_level_id': gl.id,
+                'grade_name': gl.name,
+                'form_template': form_template,
+                'form_template_display': template_display,
+                'message': f"✅ បានកំណត់បែបបទសម្រាប់ «{gl.name}» ជា៖ {template_display} និងបានធ្វើបច្ចុប្បន្នភាពមូលដ្ឋានទិន្នន័យស្វ័យប្រវត្តិ!"
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+def student_verification_portal(request):
+    """
+    Public & authenticated Student Beginning-of-Year Information Verification Portal.
+    Allows Students, Parents, and Teachers to:
+    1. Look up student by Student ID or (Khmer Name + DOB).
+    2. Auto-load form pre-filled with existing data.
+    3. Dynamically apply the Admin-chosen form template for that student's grade level.
+    4. Provide mandatory confirmation for editing if student data already exists.
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom, GradeLevel, GradeEnrollmentOption
+    from .models import StudentVerificationCampaign, GradeVerificationFormConfig, Student
+    from .forms import StudentEnrollmentForm, MoeysIndividualStudentForm
+
+    current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+    school_profile = SchoolProfile.get_settings()
+    active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+
+    student_id_query = request.GET.get('student_id', '').strip()
+    khmer_name_query = request.GET.get('khmer_name', '').strip()
+    dob_query = request.GET.get('date_of_birth', '').strip()
+
+    matched_student = None
+    if request.user.is_authenticated and getattr(request.user, 'role', '') == 'STUDENT':
+        matched_student = getattr(request.user, 'student_profile', None)
+    elif student_id_query:
+        matched_student = Student.objects.filter(student_id__iexact=student_id_query).first()
+    elif khmer_name_query and dob_query:
+        matched_student = Student.objects.filter(khmer_name__iexact=khmer_name_query, date_of_birth=dob_query).first()
+
+    target_grade_level = None
+    if matched_student and matched_student.classroom:
+        target_grade_level = GradeLevel.objects.filter(grade_number=matched_student.classroom.grade_level, track=matched_student.classroom.track).first()
+        if not target_grade_level:
+            target_grade_level = GradeLevel.objects.filter(grade_number=matched_student.classroom.grade_level).first()
+
+    assigned_template = GradeVerificationFormConfig.get_template_for_grade(target_grade_level, academic_year=current_year, campaign=active_campaign)
+
+    form = StudentEnrollmentForm(instance=matched_student, academic_year=current_year) if matched_student else StudentEnrollmentForm(academic_year=current_year)
+    moeys_form = MoeysIndividualStudentForm(instance=matched_student, academic_year=current_year) if matched_student else MoeysIndividualStudentForm(academic_year=current_year)
+
+    classrooms = Classroom.objects.filter(academic_year=current_year).order_by('grade_level', 'name') if current_year else Classroom.objects.none()
+
+    return render(request, 'students/student_verification_portal.html', {
+        'current_year': current_year,
+        'school_profile': school_profile,
+        'active_campaign': active_campaign,
+        'matched_student': matched_student,
+        'assigned_template': assigned_template,
+        'form': form,
+        'moeys_form': moeys_form,
+        'classrooms': classrooms,
+        'student_id_query': student_id_query,
+        'khmer_name_query': khmer_name_query,
+        'dob_query': dob_query,
+    })
+
+
+def api_verification_lookup_student(request):
+    """
+    AJAX Live Lookup for Student Information Verification.
+    Searches by student_id or (khmer_name + date_of_birth).
+    Returns existing student information, assigned grade form template, and confirmation requirements.
+    """
+    from apps.academics.models import GradeLevel
+    from .models import StudentVerificationCampaign, GradeVerificationFormConfig, Student
+
+    student_id = request.GET.get('student_id', '').strip()
+    khmer_name = request.GET.get('khmer_name', '').strip()
+    dob_str = request.GET.get('date_of_birth', '').strip()
+
+    student = None
+    if student_id:
+        student = Student.objects.select_related('classroom', 'academic_year').filter(student_id__iexact=student_id).first()
+    elif khmer_name and dob_str:
+        student = Student.objects.select_related('classroom', 'academic_year').filter(khmer_name__iexact=khmer_name, date_of_birth=dob_str).first()
+
+    if not student:
+        return JsonResponse({
+            'status': 'not_found',
+            'is_existing': False,
+            'message': 'មិនមានទិន្នន័យសិស្សចាស់ក្នុងប្រព័ន្ធឡើយ (អាចចុះឈ្មោះថ្មីបាន)'
+        })
+
+    target_grade_level = None
+    if student.classroom:
+        target_grade_level = GradeLevel.objects.filter(grade_number=student.classroom.grade_level, track=student.classroom.track).first()
+        if not target_grade_level:
+            target_grade_level = GradeLevel.objects.filter(grade_number=student.classroom.grade_level).first()
+
+    active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+    assigned_template = GradeVerificationFormConfig.get_template_for_grade(target_grade_level, academic_year=student.academic_year, campaign=active_campaign)
+
+    return JsonResponse({
+        'status': 'found',
+        'is_existing': True,
+        'student': {
+            'id': student.id,
+            'student_id': student.student_id,
+            'khmer_name': student.khmer_name,
+            'latin_name': student.latin_name or '',
+            'gender': student.gender,
+            'gender_display': student.get_gender_display(),
+            'date_of_birth': str(student.date_of_birth) if student.date_of_birth else '',
+            'place_of_birth': student.place_of_birth or '',
+            'current_address': student.current_address or '',
+            'phone': student.phone or '',
+            'classroom_id': student.classroom.id if student.classroom else None,
+            'classroom_name': student.classroom.name if student.classroom else 'គ្មានថ្នាក់',
+            'grade_level': student.classroom.grade_level if student.classroom else None,
+            'academic_year': student.academic_year.name if student.academic_year else '',
+            'father_name': student.father_name or '',
+            'father_phone': student.father_phone or '',
+            'mother_name': student.mother_name or '',
+            'mother_phone': student.mother_phone or '',
+            'guardian_name': student.guardian_name or '',
+            'emergency_phone': student.emergency_phone or '',
+            'is_verified': student.is_verified,
+            'last_verified_at': student.last_verified_at.strftime('%d/%m/%Y %H:%M') if student.last_verified_at else None,
+            'last_verified_by_role': student.last_verified_by_role or '',
+            'last_verified_by_name': student.last_verified_by_name or '',
+            'enrollment_data': student.enrollment_data or {},
+        },
+        'assigned_form_template': assigned_template,
+        'assigned_form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(assigned_template, assigned_template),
+        'confirmation_required': True,
+        'confirmation_roles': [
+            {'code': 'STUDENT', 'label': 'សិស្សផ្ទាល់ (Student)'},
+            {'code': 'PARENT', 'label': 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'},
+            {'code': 'TEACHER', 'label': 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'},
+        ]
+    })
+
+
+def student_verification_submit(request):
+    """
+    Handles submission of student beginning-of-year information filling and verification.
+    If student already exists:
+    - Enforces confirmation by Student, Parent, or Teacher who is entering/submitting.
+    - If confirmation is missing: blocks update and requests confirmation.
+    - If confirmation is provided: automatically updates student record and dynamic fields in DB,
+      logs audit trail in StudentVerificationLog, and marks student as verified.
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom, GradeLevel, GradeEnrollmentOption
+    from .models import StudentVerificationCampaign, GradeVerificationFormConfig, Student, StudentVerificationLog
+    from .forms import StudentEnrollmentForm, MoeysIndividualStudentForm
+
+    if request.method != 'POST':
+        return redirect('student_verification_portal')
+
+    current_year = get_active_academic_year(request) or AcademicYear.objects.filter(is_current=True).first()
+    active_campaign = StudentVerificationCampaign.objects.filter(is_active=True).first()
+
+    student_pk = request.POST.get('student_pk')
+    existing_student = None
+    if student_pk and str(student_pk).isdigit():
+        existing_student = Student.objects.filter(pk=int(student_pk)).first()
+
+    if not existing_student:
+        sid = request.POST.get('student_id', '').strip()
+        if sid:
+            existing_student = Student.objects.filter(student_id__iexact=sid).first()
+
+    if not existing_student:
+        kh_name = request.POST.get('khmer_name', '').strip()
+        dob_raw = request.POST.get('date_of_birth', '').strip()
+        if kh_name and dob_raw:
+            existing_student = Student.objects.filter(khmer_name__iexact=kh_name, date_of_birth=dob_raw).first()
+
+    form_mode = request.POST.get('form_mode', 'GENERAL').strip().upper()
+
+    confirm_edit = request.POST.get('confirm_edit') in ['on', 'true', '1', True]
+    confirmed_by_role = str(request.POST.get('confirmed_by_role', '')).strip()
+    confirmed_by_name = str(request.POST.get('confirmed_by_name', '')).strip()
+    confirmed_by_phone = str(request.POST.get('confirmed_by_phone', '')).strip()
+    relationship_to_student = str(request.POST.get('relationship_to_student', '')).strip()
+    confirmation_notes = str(request.POST.get('confirmation_notes', '')).strip()
+
+    if existing_student:
+        if not confirm_edit or confirmed_by_role not in ['STUDENT', 'PARENT', 'TEACHER'] or not confirmed_by_name:
+            messages.error(
+                request,
+                "⚠️ សិស្សនេះមានទិន្នន័យស្រាប់ក្នុងប្រព័ន្ធរួចហើយ! "
+                "តម្រូវឱ្យមានការបញ្ជាក់ (Confirmation) ដោយ សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន ដែលកំពុងបញ្ចូល "
+                "រួមទាំងជ្រើសរើសតួនាទី បញ្ចូលឈ្មោះ និងធីកប្រអប់បញ្ជាក់ភាពត្រឹមត្រូវ ដើម្បីកែប្រែទិន្នន័យ។"
+            )
+            return redirect(f"{reverse('student_verification_portal')}?student_id={existing_student.student_id}")
+
+    with transaction.atomic():
+        if form_mode == 'MOEYS_INDIVIDUAL':
+            form = MoeysIndividualStudentForm(request.POST, request.FILES, instance=existing_student, academic_year=current_year)
+            if form.is_valid():
+                student = form.save(commit=False)
+                if not student.academic_year:
+                    student.academic_year = current_year
+                student.enrollment_data = _extract_grade_options(
+                    request, student.classroom,
+                    existing_data=student.enrollment_data,
+                    form_category=GradeEnrollmentOption.FormCategory.MOEYS_INDIVIDUAL
+                )
+                student.is_verified = True
+                student.last_verified_at = timezone.now()
+                student.last_verified_by_role = confirmed_by_role or 'STUDENT'
+                student.last_verified_by_name = confirmed_by_name or student.khmer_name
+                if active_campaign:
+                    student.verification_round = active_campaign.round_number
+                student.save()
+
+                StudentVerificationLog.objects.create(
+                    student=student,
+                    campaign=active_campaign,
+                    academic_year=student.academic_year,
+                    confirmed_by_role=confirmed_by_role or 'STUDENT',
+                    confirmed_by_name=confirmed_by_name or student.khmer_name,
+                    confirmed_by_phone=confirmed_by_phone or student.phone or '',
+                    relationship_to_student=relationship_to_student,
+                    is_existing_student=bool(existing_student),
+                    confirmation_notes=confirmation_notes or 'ផ្ទៀងផ្ទាត់ និងកែប្រែតាមសម្រង់ព័ត៌មាន MoEYS',
+                    channel=StudentVerificationLog.Channel.PORTAL,
+                    changes_diff={'form_mode': 'MOEYS_INDIVIDUAL', 'updated_fields': list(form.changed_data)},
+                    user=request.user if request.user.is_authenticated else None
+                )
+                messages.success(request, f"🎉 បានផ្ទៀងផ្ទាត់ និងធ្វើបច្ចុប្បន្នភាពទិន្នន័យសិស្ស «{student.khmer_name}» (អត្តលេខ: {student.student_id}) ក្នុងមូលដ្ឋានទិន្នន័យដោយជោគជ័យ!")
+                return redirect('public_enroll_success', pk=student.pk)
+            else:
+                for f, errs in form.errors.items():
+                    for e in errs:
+                        messages.error(request, f"កំហុស [{f}]: {e}")
+                return redirect(f"{reverse('student_verification_portal')}?student_id={existing_student.student_id if existing_student else ''}")
+        else:
+            form = StudentEnrollmentForm(request.POST, request.FILES, instance=existing_student, academic_year=current_year)
+            if form.is_valid():
+                student = form.save(commit=False)
+                if not student.academic_year:
+                    student.academic_year = current_year
+                student.enrollment_data = _extract_grade_options(
+                    request, student.classroom,
+                    existing_data=student.enrollment_data,
+                    form_category=GradeEnrollmentOption.FormCategory.GENERAL
+                )
+                student.is_verified = True
+                student.last_verified_at = timezone.now()
+                student.last_verified_by_role = confirmed_by_role or 'STUDENT'
+                student.last_verified_by_name = confirmed_by_name or student.khmer_name
+                if active_campaign:
+                    student.verification_round = active_campaign.round_number
+                student.save()
+
+                StudentVerificationLog.objects.create(
+                    student=student,
+                    campaign=active_campaign,
+                    academic_year=student.academic_year,
+                    confirmed_by_role=confirmed_by_role or 'STUDENT',
+                    confirmed_by_name=confirmed_by_name or student.khmer_name,
+                    confirmed_by_phone=confirmed_by_phone or student.phone or '',
+                    relationship_to_student=relationship_to_student,
+                    is_existing_student=bool(existing_student),
+                    confirmation_notes=confirmation_notes or 'ផ្ទៀងផ្ទាត់ និងកែប្រែទិន្នន័យទូទៅ',
+                    channel=StudentVerificationLog.Channel.PORTAL,
+                    changes_diff={'form_mode': 'GENERAL', 'updated_fields': list(form.changed_data)},
+                    user=request.user if request.user.is_authenticated else None
+                )
+                messages.success(request, f"🎉 បានផ្ទៀងផ្ទាត់ និងធ្វើបច្ចុប្បន្នភាពទិន្នន័យសិស្ស «{student.khmer_name}» (អត្តលេខ: {student.student_id}) ក្នុងមូលដ្ឋានទិន្នន័យដោយជោគជ័យ!")
+                return redirect('public_enroll_success', pk=student.pk)
+            else:
+                for f, errs in form.errors.items():
+                    for e in errs:
+                        messages.error(request, f"កំហុស [{f}]: {e}")
+                return redirect(f"{reverse('student_verification_portal')}?student_id={existing_student.student_id if existing_student else ''}")
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+def student_verification_logs(request):
+    """View and export student verification and confirmation history logs"""
+    from .models import StudentVerificationLog, StudentVerificationCampaign
+
+    logs_qs = StudentVerificationLog.objects.select_related('student', 'campaign', 'academic_year', 'user').all()
+    campaign_id = request.GET.get('campaign')
+    role = request.GET.get('role')
+    search = request.GET.get('search')
+
+    if campaign_id and campaign_id.isdigit():
+        logs_qs = logs_qs.filter(campaign_id=int(campaign_id))
+    if role:
+        logs_qs = logs_qs.filter(confirmed_by_role=role)
+    if search:
+        logs_qs = logs_qs.filter(
+            Q(student__khmer_name__icontains=search) |
+            Q(student__student_id__icontains=search) |
+            Q(confirmed_by_name__icontains=search) |
+            Q(confirmed_by_phone__icontains=search)
+        )
+
+    logs = logs_qs.order_by('-verified_at')[:200]
+    campaigns = StudentVerificationCampaign.objects.all().order_by('-created_at')
+
+    return render(request, 'students/student_verification_logs.html', {
+        'logs': logs,
+        'campaigns': campaigns,
+        'selected_campaign': campaign_id,
+        'selected_role': role,
+        'search': search,
+    })

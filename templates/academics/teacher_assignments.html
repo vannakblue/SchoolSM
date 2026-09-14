@@ -199,7 +199,13 @@
                             <span class="badge {% if item.is_over %}bg-warning text-dark border border-warning{% elif item.assigned_hours > 0 %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size: 0.72rem;">
                                 {{ item.assigned_hours }}/{{ item.max_weekly_hours|default:18 }} ម៉ោង
                             </span>
-                            <div class="text-muted" style="font-size: 0.68rem;">{{ item.assigned_count }} ថ្នាក់</div>
+                            <div class="text-muted d-flex align-items-center justify-content-end gap-1 mt-0.5" style="font-size: 0.68rem;">
+                                <span>{{ item.assigned_count }} ថ្នាក់</span>
+                                <span class="text-secondary">•</span>
+                                <span class="{% if item.scheduled_hours > 0 %}text-info fw-bold{% else %}text-muted{% endif %}" title="ម៉ោងរៀបចំក្នុងកាលវិភាគជាក់ស្តែង">
+                                    <i class="fa-solid fa-calendar-day" style="font-size: 0.62rem;"></i> {{ item.scheduled_hours }} ម៉ោង
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </a>
@@ -245,6 +251,13 @@
 
                     <!-- Top Action Buttons -->
                     <div class="d-flex align-items-center gap-2">
+                        <!-- View Teacher Detailed Timetable Button -->
+                        <button type="button" class="btn btn-info text-white fw-bold shadow-sm px-3 py-2 btn-sm d-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#teacherTimetableModal" id="btnViewTeacherTimetable" title="ចុចមើលម៉ោងកាលវិភាគលម្អិតរបស់គ្រូដែលកំពុងជ្រើសរើស">
+                            <i class="fa-solid fa-calendar-week"></i>
+                            <span>មើលកាលវិភាគលម្អិត</span>
+                            <span class="badge bg-white text-info font-monospace ms-1" id="btnBadgeScheduledHours">{{ selected_teacher_timetable_data.total_hours|default:0 }} ម៉ោង</span>
+                        </button>
+
                         <!-- Reset This Teacher Button -->
                         <a href="{% url 'teacher_assignments_reset_teacher' selected_teacher.id %}{% if active_academic_year %}?year={{ active_academic_year.id }}{% endif %}" class="btn btn-outline-danger fw-bold shadow-sm px-3 py-2 btn-sm" onclick="return confirm('តើលោកអ្នកចង់សម្អាតការចាត់តាំងថ្នាក់របស់គ្រូ {{ selected_teacher.khmer_name|default:selected_teacher.latin_name }} ទាំងអស់ឱ្យទៅជា 0 ថ្នាក់មែនទេ?')">
                             <i class="fa-solid fa-rotate-left me-1"></i> សម្អាតគ្រូនេះ
@@ -278,6 +291,12 @@
                         <span class="badge bg-white text-dark border px-3 py-2 fs-6 shadow-sm" id="badgeAssignedHoursSummary">
                             <i class="fa-solid fa-calculator text-primary me-1"></i> សរុបបច្ចុប្បន្ន៖ <strong id="valAssignedHours" class="text-primary">{{ selected_assigned_hours }}</strong> / <span id="valMaxHours">{{ selected_max_hours }}</span> ម៉ោង
                         </span>
+                        <!-- Clickable Scheduled Timetable Hours Badge -->
+                        <button type="button" class="btn btn-sm btn-white text-info border border-info-subtle shadow-xs px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#teacherTimetableModal" title="ចុចដើម្បីមើលម៉ោងកាលវិភាគលម្អិតរបស់គ្រូនេះ">
+                            <i class="fa-solid fa-calendar-check text-info"></i>
+                            <span>កាលវិភាគជាក់ស្តែង៖ <strong id="badgeScheduledHoursCount">{{ selected_teacher_timetable_data.total_hours|default:0 }}</strong> ម៉ោង</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square small ms-1 opacity-75"></i>
+                        </button>
                         <span id="badgeOverWarning" class="badge bg-warning text-dark border border-warning px-2.5 py-2 fs-7 {% if selected_assigned_hours <= selected_max_hours %}d-none{% endif %}">
                             <i class="fa-solid fa-triangle-exclamation me-1 text-danger"></i> លើស <strong id="valOverDiff">0</strong> ម៉ោង!
                         </span>
@@ -760,4 +779,346 @@
         </div>
     </div>
 </div>
+<!-- ========================================================================= -->
+<!-- MODAL: DETAILED TEACHER TIMETABLE SCHEDULE (ម៉ោងកាលវិភាគលម្អិតរបស់គ្រូ) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="teacherTimetableModal" tabindex="-1" aria-labelledby="teacherTimetableModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-3 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white p-3 px-4">
+                <div class="d-flex align-items-center gap-3 w-100 justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center shadow-sm" style="width: 46px; height: 46px; font-size: 1.4rem;">
+                            <i class="fa-solid fa-calendar-week"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2" id="teacherTimetableModalLabel">
+                                <span>កាលវិភាគលម្អិតរបស់គ្រូ៖ <strong id="modalTeacherName">{{ selected_teacher.khmer_name|default:selected_teacher.latin_name }}</strong></span>
+                                {% if selected_teacher.subject_code %}
+                                <span class="badge bg-white text-primary font-monospace shadow-xs px-2 py-1" style="font-size: 0.8rem;" id="modalTeacherCode">{{ selected_teacher.subject_code }}</span>
+                                {% endif %}
+                            </h5>
+                            <div class="small text-white-50 mt-1 d-flex flex-wrap align-items-center gap-2">
+                                <span><i class="fa-solid fa-id-card me-1"></i> អត្តលេខ៖ <strong class="text-white" id="modalTeacherId">{{ selected_teacher.teacher_id|default:"-" }}</strong></span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-book-open me-1"></i> ឯកទេស៖ <strong class="text-white" id="modalTeacherSpec">{{ selected_teacher.specialization|default:"-" }}</strong></span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-graduation-cap me-1"></i> កម្រិត៖ <strong class="text-white" id="modalTeacherLevel">{{ selected_teacher.training_level|default:"-" }}</strong></span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-calendar me-1"></i> ឆ្នាំសិក្សា៖ <strong class="text-white">{{ active_academic_year.name|default:"២០២៦-២០២៧" }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <!-- Modal Sub-Header: Comparison Stats Strip -->
+            <div class="bg-light border-bottom px-4 py-2.5 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-white text-dark border px-2.5 py-1.5">
+                        <i class="fa-solid fa-clock-rotate-left text-muted me-1"></i> ម៉ោងកំណត់គោល៖ <strong>{{ selected_max_hours }}</strong> ម៉ោង/សប្តាហ៍
+                    </span>
+                    <span class="badge bg-white text-primary border px-2.5 py-1.5">
+                        <i class="fa-solid fa-user-check text-primary me-1"></i> ម៉ោងចាត់តាំង៖ <strong>{{ selected_assigned_hours }}</strong> ម៉ោង ({{ selected_assigned_count }} ថ្នាក់)
+                    </span>
+                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2.5 py-1.5">
+                        <i class="fa-solid fa-calendar-check text-info me-1"></i> រៀបចំក្នុងកាលវិភាគ៖ <strong id="modalScheduledTotal">{{ selected_teacher_timetable_data.total_hours|default:0 }}</strong> ម៉ោង
+                    </span>
+                </div>
+                <div>
+                    {% with sched=selected_teacher_timetable_data.total_hours|default:0 max_h=selected_max_hours|default:18 %}
+                        {% if sched > max_h %}
+                        <span class="badge bg-warning text-dark border border-warning px-2.5 py-1.5">
+                            <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> លើសកាលវិភាគ {{ sched|add:"-"|add:max_h }} ម៉ោង
+                        </span>
+                        {% elif sched == max_h and sched > 0 %}
+                        <span class="badge bg-success text-white px-2.5 py-1.5">
+                            <i class="fa-solid fa-circle-check me-1"></i> គ្រប់ម៉ោងតាមការកំណត់ (100%)
+                        </span>
+                        {% elif sched < max_h and sched > 0 %}
+                        <span class="badge bg-info text-dark px-2.5 py-1.5">
+                            <i class="fa-solid fa-circle-info me-1"></i> ខ្វះ {{ max_h|add:"-"|add:sched }} ម៉ោង
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary text-white px-2.5 py-1.5">
+                            <i class="fa-solid fa-hourglass-start me-1"></i> មិនទាន់មានម៉ោងក្នុងកាលវិភាគ
+                        </span>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+
+            <!-- Modal Body with View Tabs -->
+            <div class="modal-body p-4">
+                <!-- Nav Tabs for Matrix vs Breakdown -->
+                <ul class="nav nav-pills mb-3 gap-2" id="teacherTimetableTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold small px-3 py-1.5" id="tab-matrix-btn" data-bs-toggle="pill" data-bs-target="#tab-matrix-pane" type="button" role="tab">
+                            <i class="fa-solid fa-table-cells me-1.5"></i> ក្រឡាកាលវិភាគប្រចាំសប្តាហ៍ (Weekly Grid)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small px-3 py-1.5" id="tab-breakdown-btn" data-bs-toggle="pill" data-bs-target="#tab-breakdown-pane" type="button" role="tab">
+                            <i class="fa-solid fa-list-check me-1.5"></i> ស្ថិតិតាមថ្នាក់ & បញ្ជីម៉ោងលម្អិត
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="teacherTimetableTabContent">
+                    <!-- Tab 1: Weekly Grid Matrix -->
+                    <div class="tab-pane fade show active" id="tab-matrix-pane" role="tabpanel">
+                        <div class="table-responsive border rounded-3 shadow-xs">
+                            <table class="table table-bordered align-middle text-center mb-0 small" id="tableTeacherTimetableModal">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 130px;" class="text-center align-middle bg-light">ម៉ោង / វេន</th>
+                                        {% for d in days_of_week %}
+                                        <th class="text-center align-middle py-2.5">
+                                            <div class="fw-bold fs-7 text-dark">{{ d.name_kh }}</div>
+                                            <div class="text-muted" style="font-size: 0.68rem;">{{ d.name_en }}</div>
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- MORNING SESSION HEADER -->
+                                    <tr class="table-primary border-primary-subtle text-primary fw-bold" style="font-size: 0.76rem;">
+                                        <td colspan="7" class="py-1 text-start ps-3 bg-primary-subtle">
+                                            <i class="fa-solid fa-sun text-warning me-1.5"></i> វេនព្រឹក (MORNING SESSION: 07:00 - 10:50)
+                                        </td>
+                                    </tr>
+                                    {% for row in selected_teacher_timetable_data.morning_rows %}
+                                    <tr>
+                                        <td class="bg-light fw-bold text-muted py-2">
+                                            <div class="text-dark">ម៉ោងទី {{ row.period }}</div>
+                                            <div class="font-monospace text-muted" style="font-size: 0.7rem;">{{ row.time_str }}</div>
+                                        </td>
+                                        {% for slot in row.slots %}
+                                        <td class="p-2 align-middle {% if slot %}bg-white{% else %}bg-light-subtle{% endif %}" style="height: 52px; min-width: 110px;">
+                                            {% if slot %}
+                                                {% if slot.is_duty %}
+                                                <div class="badge bg-warning-subtle text-dark border border-warning px-2 py-1.5 w-100 shadow-xs">
+                                                    <div class="fw-bold text-truncate"><i class="fa-solid fa-shield-halved me-1 text-warning"></i>{{ slot.duty_name }}</div>
+                                                    <div style="font-size: 0.65rem;" class="text-muted">ប្រចាំការ</div>
+                                                </div>
+                                                {% else %}
+                                                <div class="p-1.5 rounded-2 text-white shadow-xs" style="background-color: {{ slot.subject_color|default:'#4f46e5' }};">
+                                                    <div class="fw-bold text-truncate" style="font-size: 0.82rem;">{{ slot.subject_name }}</div>
+                                                    <div class="d-flex align-items-center justify-content-center gap-1 mt-0.5" style="font-size: 0.72rem;">
+                                                        <span class="badge bg-white text-dark fw-bold px-1.5 py-0">{{ slot.classroom_name }}</span>
+                                                        {% if slot.room %}
+                                                        <span class="badge bg-black bg-opacity-25 px-1 py-0"><i class="fa-solid fa-door-open me-0.5"></i>{{ slot.room }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted opacity-25">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+
+                                    <!-- MIDDAY SEPARATOR -->
+                                    <tr class="table-secondary text-muted" style="font-size: 0.72rem;">
+                                        <td colspan="7" class="py-1 text-center bg-light">
+                                            <i class="fa-solid fa-utensils me-1 text-secondary"></i> សម្រាកថ្ងៃត្រង់ (Lunch Break: 10:50 - 13:00)
+                                        </td>
+                                    </tr>
+
+                                    <!-- AFTERNOON SESSION HEADER -->
+                                    <tr class="table-warning border-warning-subtle text-warning-emphasis fw-bold" style="font-size: 0.76rem;">
+                                        <td colspan="7" class="py-1 text-start ps-3 bg-warning-subtle">
+                                            <i class="fa-solid fa-cloud-sun text-warning me-1.5"></i> វេនរសៀល (AFTERNOON SESSION: 13:00 - 16:50)
+                                        </td>
+                                    </tr>
+                                    {% for row in selected_teacher_timetable_data.afternoon_rows %}
+                                    <tr>
+                                        <td class="bg-light fw-bold text-muted py-2">
+                                            <div class="text-dark">ម៉ោងទី {{ row.period }}</div>
+                                            <div class="font-monospace text-muted" style="font-size: 0.7rem;">{{ row.time_str }}</div>
+                                        </td>
+                                        {% for slot in row.slots %}
+                                        <td class="p-2 align-middle {% if slot %}bg-white{% else %}bg-light-subtle{% endif %}" style="height: 52px; min-width: 110px;">
+                                            {% if slot %}
+                                                {% if slot.is_duty %}
+                                                <div class="badge bg-warning-subtle text-dark border border-warning px-2 py-1.5 w-100 shadow-xs">
+                                                    <div class="fw-bold text-truncate"><i class="fa-solid fa-shield-halved me-1 text-warning"></i>{{ slot.duty_name }}</div>
+                                                    <div style="font-size: 0.65rem;" class="text-muted">ប្រចាំការ</div>
+                                                </div>
+                                                {% else %}
+                                                <div class="p-1.5 rounded-2 text-white shadow-xs" style="background-color: {{ slot.subject_color|default:'#4f46e5' }};">
+                                                    <div class="fw-bold text-truncate" style="font-size: 0.82rem;">{{ slot.subject_name }}</div>
+                                                    <div class="d-flex align-items-center justify-content-center gap-1 mt-0.5" style="font-size: 0.72rem;">
+                                                        <span class="badge bg-white text-dark fw-bold px-1.5 py-0">{{ slot.classroom_name }}</span>
+                                                        {% if slot.room %}
+                                                        <span class="badge bg-black bg-opacity-25 px-1 py-0"><i class="fa-solid fa-door-open me-0.5"></i>{{ slot.room }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted opacity-25">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Breakdown & List -->
+                    <div class="tab-pane fade" id="tab-breakdown-pane" role="tabpanel">
+                        <!-- Summary by Classroom Cards -->
+                        <h6 class="fw-bold text-primary mb-2.5">
+                            <i class="fa-solid fa-school me-1.5"></i> បំណែងចែកម៉ោងជាក់ស្តែងតាមបន្ទប់ថ្នាក់ និងមុខវិជ្ជា
+                        </h6>
+                        <div class="row g-2 mb-4" id="modalClassBreakdownContainer">
+                            {% for b in selected_teacher_timetable_data.breakdown_list %}
+                            <div class="col-md-3 col-sm-6">
+                                <div class="card border border-primary-subtle shadow-xs rounded-2 p-2.5 bg-light">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="badge bg-primary fs-7 px-2 py-1">{{ b.classroom }}</span>
+                                        <span class="fw-bold text-dark fs-7">{{ b.hours }} ម៉ោង</span>
+                                    </div>
+                                    <div class="text-muted small mt-1 text-truncate">
+                                        <i class="fa-solid fa-book-bookmark text-primary me-1"></i> {{ b.subject }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12">
+                                <div class="alert alert-light border text-muted small py-3 text-center mb-0">
+                                    ពុំទាន់មានម៉ោងបង្រៀនត្រូវបានរៀបចំក្នុងកាលវិភាគនៅឡើយទេ។
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- All Scheduled Slots Table -->
+                        <h6 class="fw-bold text-dark mb-2.5">
+                            <i class="fa-solid fa-calendar-day text-info me-1.5"></i> តារាងលម្អិតគ្រប់ម៉ោងដែលបានរៀបចំ ({{ selected_teacher_timetable_data.scheduled_slots_list|length }} ម៉ោង)
+                        </h6>
+                        <div class="table-responsive border rounded-3 shadow-xs">
+                            <table class="table table-hover table-striped align-middle mb-0 small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50px;" class="text-center">ល.រ</th>
+                                        <th style="width: 110px;" class="text-center">ថ្ងៃ</th>
+                                        <th style="width: 140px;" class="text-center">ម៉ោងសិក្សា</th>
+                                        <th style="width: 110px;" class="text-center">ថ្នាក់រៀន</th>
+                                        <th>មុខវិជ្ជា / ភារកិច្ច</th>
+                                        <th style="width: 110px;" class="text-center">បន្ទប់</th>
+                                        <th style="width: 100px;" class="text-center">ប្រភេទ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for slot in selected_teacher_timetable_data.scheduled_slots_list %}
+                                    <tr>
+                                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                                        <td class="text-center fw-bold text-primary">{{ slot.day_name }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark border">ម៉ោងទី {{ slot.period }}</span>
+                                            <span class="text-muted ms-1 font-monospace" style="font-size: 0.72rem;">{{ slot.time_str }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if slot.classroom_name %}
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{ slot.classroom_name }}</span>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="fw-bold text-dark">{{ slot.subject_name }}</td>
+                                        <td class="text-center">
+                                            {% if slot.room %}
+                                            <span class="badge bg-secondary-subtle text-dark border">{{ slot.room }}</span>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if slot.is_duty %}
+                                            <span class="badge bg-warning text-dark">ប្រចាំការ</span>
+                                            {% else %}
+                                            <span class="badge bg-success text-white">បង្រៀន</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">
+                                            មិនទាន់មានម៉ោងត្រូវបានរៀបចំក្នុងកាលវិភាគនៅឡើយទេ។
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light p-3 px-4 d-flex justify-content-between align-items-center">
+                <div class="small text-muted">
+                    <i class="fa-solid fa-circle-info text-primary me-1"></i> ទិន្នន័យនេះឆ្លុះបញ្ចាំងពីកាលវិភាគផ្លូវការដែលបាននិងកំពុងរៀបចំក្នុងប្រព័ន្ធ។
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'timetable_view' %}?teacher={{ selected_teacher.id }}{% if active_academic_year %}&academic_year={{ active_academic_year.id }}{% endif %}" target="_blank" class="btn btn-outline-primary btn-sm fw-bold shadow-xs">
+                        <i class="fa-solid fa-up-right-from-square me-1"></i> បើកក្នុងកាលវិភាគរួម (Master Timetable)
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary btn-sm fw-bold shadow-xs" onclick="printTeacherModalSchedule()">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">បិទ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function printTeacherModalSchedule() {
+    const tableEl = document.getElementById('tableTeacherTimetableModal');
+    if (!tableEl) return;
+    const teacherName = document.getElementById('modalTeacherName')?.innerText || '';
+    const teacherSpec = document.getElementById('modalTeacherSpec')?.innerText || '';
+    const teacherCode = document.getElementById('modalTeacherCode')?.innerText || '';
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>កាលវិភាគបង្រៀន - ${teacherName}</title>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+                <style>
+                    body { font-family: 'Khmer OS Siemreap', sans-serif; padding: 25px; color: #111; }
+                    h3, h4 { font-family: 'Khmer OS Muol Light', serif; }
+                    table { font-size: 8.5pt !important; width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #999 !important; padding: 4px !important; text-align: center; }
+                    .badge { border: 1px solid #ccc; font-weight: normal; }
+                    @media print {
+                        @page { size: A4 landscape; margin: 10mm; }
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                <div class="text-center mb-3">
+                    <h4 class="mb-1">ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
+                    <h5 class="mb-1">កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍របស់គ្រូ</h5>
+                    <div class="fw-bold fs-6 text-primary">${teacherName} (${teacherCode}) - ឯកទេស៖ ${teacherSpec}</div>
+                </div>
+                ${tableEl.outerHTML}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+</script>
 {% endblock %}

@@ -1,0 +1,551 @@
+{% extends 'base.html' %}
+
+{% block title %}ការកំណត់ផ្ទៀងផ្ទាត់ទិន្នន័យសិស្សដើមឆ្នាំ | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-radius: 16px;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: #ffffff;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px -5px rgba(15, 23, 42, 0.08);
+    }
+    .badge-portal {
+        background-color: #eff6ff;
+        color: #2563eb;
+        border: 1px solid #bfdbfe;
+    }
+    .badge-mobile {
+        background-color: #fdf2f8;
+        color: #db2777;
+        border: 1px solid #fbcfe8;
+    }
+    .badge-role-student {
+        background-color: #ecfdf5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+    .badge-role-parent {
+        background-color: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+    .badge-role-teacher {
+        background-color: #f5f3ff;
+        color: #7c3aed;
+        border: 1px solid #ddd6fe;
+    }
+    .badge-role-admin {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .grade-config-row {
+        transition: background-color 0.15s ease;
+    }
+    .grade-config-row:hover {
+        background-color: #f8fafc;
+    }
+    .campaign-active-pill {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header Section -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-user-check me-1"></i> Student Information Verification
+                </span>
+                {% if active_campaign %}
+                <span class="badge campaign-active-pill px-3 py-1 rounded-pill shadow-sm">
+                    <i class="fa-solid fa-circle-dot me-1"></i> កំពុងដំណើរការ ជុំទី {{ active_campaign.round_number }}
+                </span>
+                {% else %}
+                <span class="badge bg-secondary-subtle text-secondary px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-pause me-1"></i> គ្មានយុទ្ធនាការសកម្ម
+                </span>
+                {% endif %}
+            </div>
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="fa-solid fa-clipboard-check text-primary me-2"></i>ការកំណត់ការបំពេញ និងផ្ទៀងផ្ទាត់ទិន្នន័យសិស្សដើមឆ្នាំ
+            </h2>
+            <p class="text-muted mb-0">
+                រៀបចំយុទ្ធនាការផ្ទៀងផ្ទាត់ជាច្រើនជុំ កំណត់បែបបទតាមកម្រិតថ្នាក់ (Form Template by Grade) និងតាមដានការ Confirm ដោយ សិស្ស-អាណាព្យាបាល-គ្រូ ទាំងលើ Portal និង Mobile App
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'student_verification_portal' %}" target="_blank" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> បើកទំព័រ Portal ផ្ទៀងផ្ទាត់
+            </a>
+            <button type="button" class="btn btn-outline-secondary shadow-sm" onclick="copyPortalLink()">
+                <i class="fa-solid fa-link me-1"></i> ចម្លង Link Portal
+            </button>
+            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#newCampaignModal">
+                <i class="fa-solid fa-plus me-1"></i> បង្កើតជុំផ្ទៀងផ្ទាត់ថ្មី
+            </button>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Statistics Overview Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">សិស្សសរុប (Academic Year)</span>
+                    <h3 class="fw-bold text-dark mb-0 mt-1">{{ total_students }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                </div>
+                <div class="rounded-circle bg-primary-subtle text-primary p-3 fs-4">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">បានផ្ទៀងផ្ទាត់ជោគជ័យ (Verified)</span>
+                    <h3 class="fw-bold text-success mb-0 mt-1">{{ verified_students }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                </div>
+                <div class="rounded-circle bg-success-subtle text-success p-3 fs-4">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">មិនទាន់ផ្ទៀងផ្ទាត់ (Pending)</span>
+                    <h3 class="fw-bold text-warning mb-0 mt-1">{{ pending_students }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                </div>
+                <div class="rounded-circle bg-warning-subtle text-warning p-3 fs-4">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-card p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">អត្រាផ្ទៀងផ្ទាត់ (Rate)</span>
+                    <h3 class="fw-bold text-info mb-0 mt-1">{{ verification_rate }}%</h3>
+                </div>
+                <div class="rounded-circle bg-info-subtle text-info p-3 fs-4">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content: Tabs / Columns -->
+    <div class="row g-4">
+        <!-- Left: Grade Level Form Configuration (បែបបទតាមកម្រិតថ្នាក់) -->
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark">
+                            <i class="fa-solid fa-sliders text-primary me-2"></i>កំណត់បែបបទតាមកម្រិតថ្នាក់ (Grade-level Form Config)
+                        </h5>
+                        <p class="text-muted small mb-0">Admin អាចជ្រើសបែបបទដែលត្រូវឱ្យសិស្សបំពេញតាមកម្រិតថ្នាក់ ហើយប្រព័ន្ធនឹង Update DB ស្វ័យប្រវត្តិ</p>
+                    </div>
+                    <span class="badge bg-light text-secondary border">Auto-Save Enabled</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">កម្រិតថ្នាក់ (Grade)</th>
+                                    <th>ចំនួនសិស្ស (សរុប/ផ្ទៀងផ្ទាត់)</th>
+                                    <th style="min-width: 250px;">បែបបទត្រូវបំពេញ (Form Template)</th>
+                                    <th class="text-end pe-3">ស្ថានភាព DB</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in grade_configs_display %}
+                                <tr class="grade-config-row" id="row-grade-{{ item.grade_level.id }}">
+                                    <td class="ps-3">
+                                        <div class="fw-bold text-dark">{{ item.grade_level.name }}</div>
+                                        <div class="small text-muted">ថ្នាក់ទី {{ item.grade_level.grade_number }} {% if item.grade_level.track %}({{ item.grade_level.get_track_display }}){% endif %}</div>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <span class="fw-bold text-success">{{ item.verified_count }}</span> / {{ item.student_count }}
+                                        </div>
+                                        <div class="progress" style="height: 5px; width: 100px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {% if item.student_count > 0 %}{% widthratio item.verified_count item.student_count 100 %}{% else %}0{% endif %}%"></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm grade-template-select" 
+                                                data-grade-id="{{ item.grade_level.id }}" 
+                                                data-grade-name="{{ item.grade_level.name }}">
+                                            {% for code, label in template_choices %}
+                                            <option value="{{ code }}" {% if item.current_template == code %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 db-status-badge" id="status-badge-{{ item.grade_level.id }}">
+                                            <i class="fa-solid fa-circle-check me-1"></i> រួចរាល់
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-circle-info me-2"></i> មិនទាន់មានទិន្នន័យកម្រិតថ្នាក់ (Grade Level) នៅក្នុងឆ្នាំសិក្សានេះទេ
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-light py-2 px-3 small text-muted d-flex justify-content-between">
+                    <span><i class="fa-solid fa-bolt text-warning me-1"></i> រាល់ការផ្លាស់ប្តូរត្រូវបានរក្សាទុកក្នុង Database ភ្លាមៗ (AJAX Realtime)</span>
+                    <a href="{% url 'grade_level_list' %}" class="text-decoration-none">គ្រប់គ្រងកម្រិតថ្នាក់ &rarr;</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Verification Campaigns / Multiple Rounds (យុទ្ធនាការ & ជុំផ្ទៀងផ្ទាត់) -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark">
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>ជុំផ្ទៀងផ្ទាត់ដើមឆ្នាំ (Rounds)
+                        </h5>
+                        <p class="text-muted small mb-0">អាចបង្កើតច្រើនជុំ (ជុំទី១, ជុំទី២...) ដើម្បីផ្ទៀងផ្ទាត់ឡើងវិញ</p>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#newCampaignModal">
+                        <i class="fa-solid fa-plus me-1"></i> បន្ថែមជុំ
+                    </button>
+                </div>
+                <div class="card-body p-3">
+                    <div class="list-group list-group-flush gap-2">
+                        {% for camp in campaigns %}
+                        <div class="list-group-item border rounded-3 p-3 position-relative {% if camp.is_active %}border-primary bg-primary-subtle bg-opacity-10{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-primary rounded-pill px-2 py-1">ជុំទី {{ camp.round_number }}</span>
+                                        <h6 class="fw-bold mb-0 text-dark">{{ camp.title }}</h6>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <i class="fa-regular fa-calendar me-1"></i> {{ camp.start_date|date:"d/m/Y" }} ដល់ {{ camp.end_date|date:"d/m/Y" }}
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch ms-2" title="បើក/បិទ យុទ្ធនាការនេះ">
+                                    <input class="form-check-input campaign-toggle-switch" type="checkbox" role="switch" 
+                                           data-campaign-id="{{ camp.id }}" {% if camp.is_active %}checked{% endif %}>
+                                </div>
+                            </div>
+                            {% if camp.instructions %}
+                            <p class="small text-secondary mb-2 bg-light p-2 rounded">{{ camp.instructions|truncatewords:25 }}</p>
+                            {% endif %}
+                            <div class="d-flex align-items-center justify-content-between pt-2 border-top small text-muted">
+                                <div>
+                                    <i class="fa-solid fa-bullseye me-1"></i> កម្រិតថ្នាក់គោលដៅ: 
+                                    <span class="fw-semibold text-dark">
+                                        {% if camp.target_grades.all %}
+                                            {{ camp.target_grades.all|join:", " }}
+                                        {% else %}
+                                            គ្រប់កម្រិតថ្នាក់ទាំងអស់
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <form method="post" action="{% url 'verification_campaign_delete' camp.id %}" onsubmit="return confirm('តើអ្នកពិតជាចង់លុបយុទ្ធនាការនេះមែនទេ?');" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="លុប"><i class="fa-solid fa-trash-can"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-folder-open fs-2 mb-2 d-block text-secondary"></i>
+                            មិនទាន់មានជុំផ្ទៀងផ្ទាត់ណាមួយត្រូវបានបង្កើតនៅឡើយទេ។<br>
+                            សូមចុចប៊ូតុង <strong>«បង្កើតជុំផ្ទៀងផ្ទាត់ថ្មី»</strong> ដើម្បីចាប់ផ្តើម។
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Recent Verification and Confirmation Logs (កំណត់ត្រាបញ្ជាក់ការកែប្រែ) -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-1 text-dark">
+                    <i class="fa-solid fa-file-signature text-primary me-2"></i>កំណត់ត្រាបញ្ជាក់ និងកែប្រែទិន្នន័យ (Confirmation & Edit Audit Logs)
+                </h5>
+                <p class="text-muted small mb-0">តាមដានរាល់ការបញ្ជាក់ទិន្នន័យដោយ សិស្ស-អាណាព្យាបាល-គ្រូ ទាំង Portal និង Mobile App</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'student_verification_logs' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fa-solid fa-list-ul me-1"></i> មើលកំណត់ត្រាទាំងអស់
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">កាលបរិច្ឆេទ & ម៉ោង</th>
+                            <th>សិស្ស</th>
+                            <th>អ្នកបញ្ជាក់ (Confirmed By)</th>
+                            <th>តួនាទី (Role)</th>
+                            <th>មធ្យោបាយ (Channel)</th>
+                            <th>ព័ត៌មានលម្អិត & កំណត់សម្គាល់</th>
+                            <th class="text-end pe-3">ស្ថានភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_logs %}
+                        <tr>
+                            <td class="ps-3 text-nowrap">
+                                <div class="fw-semibold text-dark">{{ log.verified_at|date:"d/m/Y H:i" }}</div>
+                                <div class="small text-muted">{{ log.verified_at|timesince }} មុន</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ log.student.khmer_name }}</div>
+                                <div class="small text-muted">អត្តលេខ: <code>{{ log.student.student_id }}</code> | {{ log.student.classroom.name|default:"-" }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">{{ log.confirmed_by_name }}</div>
+                                <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i>{{ log.confirmed_by_phone|default:"-" }}</div>
+                            </td>
+                            <td>
+                                {% if log.confirmed_by_role == 'STUDENT' %}
+                                    <span class="badge badge-role-student px-2 py-1 rounded-pill"><i class="fa-solid fa-user-graduate me-1"></i> សិស្ស</span>
+                                {% elif log.confirmed_by_role == 'PARENT' %}
+                                    <span class="badge badge-role-parent px-2 py-1 rounded-pill"><i class="fa-solid fa-hands-holding-child me-1"></i> អាណាព្យាបាល</span>
+                                {% elif log.confirmed_by_role == 'TEACHER' %}
+                                    <span class="badge badge-role-teacher px-2 py-1 rounded-pill"><i class="fa-solid fa-chalkboard-user me-1"></i> គ្រូបង្រៀន</span>
+                                {% else %}
+                                    <span class="badge badge-role-admin px-2 py-1 rounded-pill"><i class="fa-solid fa-user-gear me-1"></i> រដ្ឋបាល</span>
+                                {% endif %}
+                                {% if log.relationship_to_student %}
+                                <div class="small text-muted mt-1">{{ log.relationship_to_student }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.channel == 'MOBILE_APP' %}
+                                    <span class="badge badge-mobile px-2 py-1 rounded-pill"><i class="fa-solid fa-mobile-screen-button me-1"></i> Mobile App</span>
+                                {% else %}
+                                    <span class="badge badge-portal px-2 py-1 rounded-pill"><i class="fa-solid fa-globe me-1"></i> Web Portal</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">
+                                <div class="text-secondary">{{ log.confirmation_notes|default:"ផ្ទៀងផ្ទាត់ និងកែប្រែទិន្នន័យ" }}</div>
+                                {% if log.changes_diff and log.changes_diff.updated_fields %}
+                                <div class="text-muted mt-1">កែប្រែ: <span class="badge bg-light text-dark border">{{ log.changes_diff.updated_fields|join:", " }}</span></div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="fa-solid fa-check-double me-1"></i> Updated in DB
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-info-circle me-1"></i> មិនទាន់មានកំណត់ត្រាផ្ទៀងផ្ទាត់ណាមួយនៅឡើយទេ
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create / Edit Verification Campaign Round -->
+<div class="modal fade" id="newCampaignModal" tabindex="-1" aria-labelledby="newCampaignModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form method="post" action="{% url 'verification_campaign_save' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-light border-bottom">
+                    <h5 class="modal-title fw-bold" id="newCampaignModalLabel">
+                        <i class="fa-solid fa-circle-plus text-primary me-2"></i>បង្កើតជុំផ្ទៀងផ្ទាត់ទិន្នន័យថ្មី (New Round)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">ចំណងជើងយុទ្ធនាការ / ជុំ <span class="text-danger">*</span></label>
+                        {{ campaign_form.title }}
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">ជុំទី (Round Number) <span class="text-danger">*</span></label>
+                            {{ campaign_form.round_number }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">ឆ្នាំសិក្សា</label>
+                            {{ campaign_form.academic_year }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">កាលបរិច្ឆេទចាប់ផ្តើម <span class="text-danger">*</span></label>
+                            {{ campaign_form.start_date }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">កាលបរិច្ឆេទបញ្ចប់ <span class="text-danger">*</span></label>
+                            {{ campaign_form.end_date }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">កម្រិតថ្នាក់គោលដៅ (Target Grades)</label>
+                        {{ campaign_form.target_grades }}
+                        <div class="form-text small">ទុកចោលប្រសិនបើអនុវត្តចំពោះគ្រប់កម្រិតថ្នាក់ទាំងអស់</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">ការណែនាំសិស្ស/អាណាព្យាបាល/គ្រូ</label>
+                        {{ campaign_form.instructions }}
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        {{ campaign_form.is_active }}
+                        <label class="form-check-label fw-semibold ms-2" for="{{ campaign_form.is_active.id_for_label }}">
+                            បើកដំណើរការយុទ្ធនាការនេះភ្លាមៗ (Active Campaign)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                        <i class="fa-solid fa-save me-1"></i> រក្សាទុកយុទ្ធនាការ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Copy Portal Link
+    function copyPortalLink() {
+        const portalUrl = window.location.origin + "{% url 'student_verification_portal' %}";
+        navigator.clipboard.writeText(portalUrl).then(() => {
+            alert("📋 បានចម្លងតំណភ្ជាប់ Portal ផ្ទៀងផ្ទាត់រួចរាល់៖\n" + portalUrl);
+        }).catch(() => {
+            prompt("ចម្លងតំណភ្ជាប់ Portal នេះ៖", portalUrl);
+        });
+    }
+
+    // Auto-Save Grade Form Configuration on change
+    document.querySelectorAll('.grade-template-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const gradeId = this.getAttribute('data-grade-id');
+            const gradeName = this.getAttribute('data-grade-name');
+            const templateCode = this.value;
+            const statusBadge = document.getElementById('status-badge-' + gradeId);
+
+            if (statusBadge) {
+                statusBadge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle py-1 px-2';
+                statusBadge.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុង Update...';
+            }
+
+            fetch("{% url 'api_save_grade_form_config' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    grade_level_id: gradeId,
+                    form_template: templateCode
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle py-1 px-2';
+                        statusBadge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> រក្សាទុកស្វ័យប្រវត្តិ';
+                        setTimeout(() => {
+                            statusBadge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> រួចរាល់';
+                        }, 2500);
+                    }
+                } else {
+                    alert('កំហុសក្នុងការកែប្រែ៖ ' + (data.message || 'មិនអាចរក្សាទុកបាន'));
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle py-1 px-2';
+                        statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> បរាជ័យ';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('មានបញ្ហាបណ្តាញពេលកំពុងរក្សាទុក');
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle py-1 px-2';
+                    statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> បរាជ័យ';
+                }
+            });
+        });
+    });
+
+    // Toggle Campaign Status
+    document.querySelectorAll('.campaign-toggle-switch').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const campaignId = this.getAttribute('data-campaign-id');
+            const isChecked = this.checked;
+
+            fetch(`/students/verification-campaigns/${campaignId}/toggle/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('មិនអាចផ្លាស់ប្តូរស្ថានភាពយុទ្ធនាការបានទេ');
+                    this.checked = !isChecked;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                this.checked = !isChecked;
+            });
+        });
+    });
+</script>
+{% endblock %}

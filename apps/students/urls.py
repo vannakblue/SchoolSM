@@ -71,5 +71,19 @@ urlpatterns = [
     path('archives/<int:pk>/restore/', views.api_restore_student_archive, name='api_restore_student_archive'),
     path('api/academic-year-purge-preview/', views.api_get_academic_year_purge_preview, name='api_get_academic_year_purge_preview'),
     path('api/academic-year-purge-execute/', views.api_execute_academic_year_purge, name='api_execute_academic_year_purge'),
+
+    # Beginning-of-Year Student Info Verification & Confirmation
+    path('verification-campaigns/', views.verification_campaigns_list, name='verification_campaigns_list'),
+    path('verification-campaigns/save/', views.verification_campaign_save, name='verification_campaign_save'),
+    path('verification-campaigns/save/', views.verification_campaign_save, name='verification_campaign_create'),
+    path('verification-campaigns/<int:pk>/save/', views.verification_campaign_save, name='verification_campaign_edit'),
+    path('verification-campaigns/<int:pk>/delete/', views.verification_campaign_delete, name='verification_campaign_delete'),
+    path('verification-campaigns/<int:pk>/toggle/', views.api_toggle_verification_campaign, name='api_toggle_verification_campaign'),
+    path('verification-campaigns/grade-config/save/', views.api_save_grade_form_config, name='api_save_grade_form_config'),
+    path('verify/', views.student_verification_portal, name='student_verification_portal'),
+    path('verify/submit/', views.student_verification_submit, name='student_verification_submit'),
+    path('verify/api/lookup/', views.api_verification_lookup_student, name='api_verification_lookup_student'),
+    path('verify/logs/', views.student_verification_logs, name='student_verification_logs'),
 ]
+
 

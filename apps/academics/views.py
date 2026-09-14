@@ -4447,6 +4447,10 @@ def student_teacher_timetable_view(request):
     today_kh_dow = kh_days_name[now.weekday()]
     from apps.accounts.khmer_lunar import get_khmer_lunar_date
     today_lunar_date = get_khmer_lunar_date(now.date(), with_space=False)
+    from apps.accounts.models import SchoolProfile
+    school_info_obj = getattr(SchoolProfile, 'get_settings', lambda: None)()
+    school_short = (school_info_obj.short_name or school_info_obj.name_kh if school_info_obj else '') or 'វិទ្យាល័យ កំពង់កន្ទួត'
+    today_solar_date = f"{school_short} ថ្ងៃទី {today_kh_day} ខែ {today_kh_month} ឆ្នាំ {today_kh_year}"
 
     context = {
         'classrooms': classrooms,
@@ -4461,6 +4465,7 @@ def student_teacher_timetable_view(request):
         'today_kh_year': today_kh_year,
         'today_kh_dow': today_kh_dow,
         'today_lunar_date': today_lunar_date,
+        'today_solar_date': today_solar_date,
         'days': DAYS_OF_WEEK,
     }
     return render(request, 'academics/student_teacher_timetable.html', context)
@@ -4858,6 +4863,13 @@ def student_teacher_timetable_export_excel(request):
     return response
 
 
+_KHMER_DIGITS_TRANS = str.maketrans('០១២៣៤៥៦៧៨៩', '0123456789')
+
+def _classroom_sort_key(s):
+    s_norm = str(s).translate(_KHMER_DIGITS_TRANS).replace('ថ្នាក់ទី', '').strip()
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s_norm)]
+
+
 @login_required
 def timetable_daily_reports_view(request):
     """
@@ -4923,7 +4935,8 @@ def timetable_daily_reports_view(request):
             cs_by_teacher[cs.teacher_id].append(cs)
             cs_pairs_set.add((cs.subject_id, cs.teacher_id))
             if cs.classroom:
-                teacher_subject_classes_map[(cs.subject_id, cs.teacher_id)].append(cs.classroom.name)
+                clean_cls = (cs.classroom.name or '').replace('ថ្នាក់ទី', '').strip() or cs.classroom.code or str(cs.classroom)
+                teacher_subject_classes_map[(cs.subject_id, cs.teacher_id)].append(clean_cls)
 
     distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0] or 0, x[1] or 0))
 
@@ -5123,6 +5136,8 @@ def timetable_daily_reports_view(request):
             code for (s_id, t_id), code in teacher_subject_code_map.items() 
             if t_id == t.id and (s_id, t_id) in cs_pairs_set
         ]
+        if not t_codes and teacher_direct_code.get(t.id):
+            t_codes = [teacher_direct_code.get(t.id)]
 
         if t_total_actual > t_max:
             status_text = f"លើសម៉ោងកំណត់ ({t_total_actual - t_max} ម៉ោង)"
@@ -5139,7 +5154,7 @@ def timetable_daily_reports_view(request):
 
         teacher_load_report.append({
             'teacher': t,
-            'codes': ", ".join(t_codes) or "-",
+            'codes': ", ".join(sorted(list(set(t_codes)), key=_classroom_sort_key)) or "-",
             'max_hours': t_max,
             'assigned_hours': t_assigned_sum,
             'scheduled_hours': t_slots_count,
@@ -5157,7 +5172,13 @@ def timetable_daily_reports_view(request):
             sub = subjects_by_id.get(s_id)
             tch = next((t for t in teachers if t.id == t_id), None)
             if sub and tch:
-                assigned_classes = sorted(list(set(teacher_subject_classes_map.get((s_id, t_id), []))))
+                raw_classes = teacher_subject_classes_map.get((s_id, t_id), [])
+                cleaned_set = set(
+                    str(c).replace('ថ្នាក់ទី', '').strip()
+                    for c in raw_classes
+                    if str(c).replace('ថ្នាក់ទី', '').strip()
+                )
+                assigned_classes = sorted(list(cleaned_set), key=_classroom_sort_key)
                 cls_names = ", ".join(assigned_classes) or "-"
                 teacher_code_directory.append({
                     'code': code,
@@ -5199,6 +5220,10 @@ def timetable_daily_reports_view(request):
     today_kh_dow = kh_days_name[now.weekday()]
     from apps.accounts.khmer_lunar import get_khmer_lunar_date
     today_lunar_date = get_khmer_lunar_date(now.date(), with_space=False)
+    from apps.accounts.models import SchoolProfile
+    school_info_obj = getattr(SchoolProfile, 'get_settings', lambda: None)()
+    school_short = (school_info_obj.short_name or school_info_obj.name_kh if school_info_obj else '') or 'វិទ្យាល័យ កំពង់កន្ទួត'
+    today_solar_date = f"{school_short} ថ្ងៃទី {today_kh_day} ខែ {today_kh_month} ឆ្នាំ {today_kh_year}"
 
     context = {
         'days': DAYS_OF_WEEK,
@@ -5215,6 +5240,7 @@ def timetable_daily_reports_view(request):
         'today_kh_year': today_kh_year,
         'today_kh_dow': today_kh_dow,
         'today_lunar_date': today_lunar_date,
+        'today_solar_date': today_solar_date,
     }
     return render(request, 'academics/daily_reports.html', context)
 
@@ -5387,20 +5413,17 @@ def timetable_daily_reports_export_excel(request):
         if cs.teacher_id:
             cs_by_teacher[cs.teacher_id].append(cs)
             if cs.subject_id and cs.classroom:
-                teacher_subject_classes_map[(cs.subject_id, cs.teacher_id)].append(cs.classroom.code or cs.classroom.name)
+                clean_cls = (cs.classroom.name or '').replace('ថ្នាក់ទី', '').strip() or cs.classroom.code or str(cs.classroom)
+                teacher_subject_classes_map[(cs.subject_id, cs.teacher_id)].append(clean_cls)
 
     # Teacher subject code map
-    distinct_assignments = sorted(list(cs_pairs_set), key=lambda x: (x[0], x[1]))
-    teacher_subject_code_map = {}
-    subject_teacher_counters = {}
-    for s_id, t_id in distinct_assignments:
-        sub = subjects_by_id.get(s_id)
-        sub_code = sub.code if sub else 'S'
-        if s_id not in subject_teacher_counters:
-            subject_teacher_counters[s_id] = 1
-        else:
-            subject_teacher_counters[s_id] += 1
-        teacher_subject_code_map[(s_id, t_id)] = f"{sub_code}{subject_teacher_counters[s_id]}"
+    from .utils import get_teacher_subject_duty_code_map
+    teacher_subject_code_map, teacher_direct_code = get_teacher_subject_duty_code_map(
+        academic_year=academic_year,
+        subjects=subjects,
+        teachers=teachers,
+        class_subjects=list(cs_query)
+    )
 
     # Requirements map
     requirements_map = {}
@@ -5525,7 +5548,9 @@ def timetable_daily_reports_export_excel(request):
                 code for (s_id, t_id), code in teacher_subject_code_map.items() 
                 if t_id == t.id and (s_id, t_id) in cs_pairs_set
             ]
-            codes_str = ", ".join(t_codes) or "-"
+            if not t_codes and teacher_direct_code.get(t.id):
+                t_codes = [teacher_direct_code.get(t.id)]
+            codes_str = ", ".join(sorted(list(set(t_codes)), key=_classroom_sort_key)) or "-"
             diff = t_total_actual - t_max
 
             if t_total_actual > t_max:
@@ -5621,7 +5646,13 @@ def timetable_daily_reports_export_excel(request):
                 sub = subjects_by_id.get(s_id)
                 tch = next((t for t in teachers if t.id == t_id), None)
                 if sub and tch:
-                    assigned_classes = sorted(list(set(teacher_subject_classes_map.get((s_id, t_id), []))))
+                    raw_classes = teacher_subject_classes_map.get((s_id, t_id), [])
+                    cleaned_set = set(
+                        str(c).replace('ថ្នាក់ទី', '').strip()
+                        for c in raw_classes
+                        if str(c).replace('ថ្នាក់ទី', '').strip()
+                    )
+                    assigned_classes = sorted(list(cleaned_set), key=_classroom_sort_key)
                     cls_names = ", ".join(assigned_classes) or "-"
                     tch_name = f"{tch.khmer_name} ({tch.latin_name})" if tch.latin_name else tch.khmer_name
 
@@ -6531,6 +6562,28 @@ def teacher_assignments_manager(request):
             for cls_id, sub_id in ClassSubject.objects.filter(classroom__in=classrooms).values_list('classroom_id', 'subject_id'):
                 cls_assigned_subs_map[cls_id].add(sub_id)
 
+        timetables_active = list(
+            Timetable.objects.filter(classroom__academic_year=active_year).select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name')
+            if active_year else Timetable.objects.select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name').all()
+        )
+        tt_slot_count_map = defaultdict(int)
+        tt_teacher_map = {}
+        scheduled_hours_by_teacher = defaultdict(int)
+        for t_entry in timetables_active:
+            tt_slot_count_map[(t_entry.classroom_id, t_entry.subject_id)] += 1
+            if t_entry.teacher_id:
+                scheduled_hours_by_teacher[t_entry.teacher_id] += 1
+            if t_entry.teacher:
+                tt_teacher_map[(t_entry.classroom_id, t_entry.subject_id)] = t_entry.teacher.khmer_name
+
+        duties_active = list(
+            TeacherDutySchedule.objects.filter(academic_year=active_year)
+            if active_year else TeacherDutySchedule.objects.all()
+        )
+        for d in duties_active:
+            if d.teacher_id:
+                scheduled_hours_by_teacher[d.teacher_id] += 1
+
         teacher_stats = []
         for t in teachers:
             assigned_cs = teacher_assigned_map.get(t.id, [])
@@ -6544,25 +6597,16 @@ def teacher_assignments_manager(request):
                 t_hours += (h or 0)
 
             t_max = t.max_weekly_hours or 18
+            t_scheduled = scheduled_hours_by_teacher.get(t.id, 0)
             teacher_stats.append({
                 'teacher': t,
                 'assigned_count': len(assigned_cs),
                 'assigned_hours': t_hours,
+                'scheduled_hours': t_scheduled,
                 'max_weekly_hours': t_max,
                 'is_selected': bool(selected_teacher and t.id == selected_teacher.id),
                 'is_over': t_hours > t_max,
             })
-
-        timetables_active = list(
-            Timetable.objects.filter(classroom__academic_year=active_year).select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name')
-            if active_year else Timetable.objects.select_related('teacher').only('id', 'classroom_id', 'subject_id', 'teacher__id', 'teacher__khmer_name').all()
-        )
-        tt_slot_count_map = defaultdict(int)
-        tt_teacher_map = {}
-        for t_entry in timetables_active:
-            tt_slot_count_map[(t_entry.classroom_id, t_entry.subject_id)] += 1
-            if t_entry.teacher:
-                tt_teacher_map[(t_entry.classroom_id, t_entry.subject_id)] = t_entry.teacher.khmer_name
 
         matrix_grid = []
         selected_subject_hours = {sub.id: 0 for sub in subjects}
@@ -6663,6 +6707,121 @@ def teacher_assignments_manager(request):
                 'count': teacher_levels_count.get(lvl, 0),
             })
 
+        # Detailed Timetable Data for Selected Teacher
+        selected_teacher_timetable_data = {
+            'teaching_hours': 0,
+            'duty_hours': 0,
+            'total_hours': 0,
+            'morning_rows': [],
+            'afternoon_rows': [],
+            'breakdown_list': [],
+            'scheduled_slots_list': [],
+            'has_schedule': False,
+        }
+        if selected_teacher:
+            sel_tt_entries = list(
+                Timetable.objects.filter(
+                    teacher=selected_teacher,
+                    classroom__academic_year=active_year
+                ).select_related('classroom', 'subject')
+                if active_year else
+                Timetable.objects.filter(
+                    teacher=selected_teacher
+                ).select_related('classroom', 'subject')
+            )
+            
+            sel_duty_entries = list(
+                TeacherDutySchedule.objects.filter(
+                    teacher=selected_teacher,
+                    academic_year=active_year
+                )
+                if active_year else
+                TeacherDutySchedule.objects.filter(
+                    teacher=selected_teacher
+                )
+            )
+            
+            raw_duty_types = TeacherDutyType.get_all_duty_types()
+            duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+            
+            slots_map = {}
+            for e in sel_tt_entries:
+                cls_clean = (e.classroom.name or '').replace('ថ្នាក់ទី', '').strip() if e.classroom else ''
+                slots_map[(e.day_of_week, e.period_number)] = {
+                    'subject_name': e.subject.name_kh if e.subject else '',
+                    'subject_code': e.subject.code if e.subject else '',
+                    'subject_color': getattr(e.subject, 'color_code', '#4f46e5') or '#4f46e5',
+                    'classroom_name': cls_clean,
+                    'classroom_code': e.classroom.code if e.classroom else cls_clean,
+                    'room': getattr(e, 'room', '') or (e.classroom.room_number if e.classroom else ''),
+                    'is_duty': False,
+                }
+            
+            for d in sel_duty_entries:
+                k = (d.day_of_week, d.period_number)
+                if k not in slots_map:
+                    duty_name = duty_types_dict.get(d.duty_type, d.duty_type)
+                    slots_map[k] = {
+                        'is_duty': True,
+                        'duty_name': duty_name,
+                        'duty_code': d.duty_type,
+                        'duty_notes': d.notes or '',
+                        'is_auto': d.is_auto_assigned,
+                    }
+            
+            morning_rows = []
+            for p in [1, 2, 3, 4]:
+                st_time, et_time = STANDARD_PERIOD_TIMES.get(p, (None, None))
+                time_str = f"{st_time.strftime('%H:%M')} - {et_time.strftime('%H:%M')}" if st_time else ""
+                p_slots = [slots_map.get((d['num'], p)) for d in DAYS_OF_WEEK]
+                morning_rows.append({'period': p, 'time_str': time_str, 'slots': p_slots})
+
+            afternoon_rows = []
+            for p in [5, 6, 7, 8]:
+                st_time, et_time = STANDARD_PERIOD_TIMES.get(p, (None, None))
+                time_str = f"{st_time.strftime('%H:%M')} - {et_time.strftime('%H:%M')}" if st_time else ""
+                p_slots = [slots_map.get((d['num'], p)) for d in DAYS_OF_WEEK]
+                afternoon_rows.append({'period': p, 'time_str': time_str, 'slots': p_slots})
+
+            # Breakdown by class and subject
+            class_subject_breakdown = defaultdict(int)
+            for e in sel_tt_entries:
+                cls_clean = (e.classroom.name or '').replace('ថ្នាក់ទី', '').strip() if e.classroom else 'មិនបញ្ជាក់'
+                sub_name = e.subject.name_kh if e.subject else 'មិនបញ្ជាក់'
+                class_subject_breakdown[(cls_clean, sub_name)] += 1
+
+            breakdown_list = [
+                {'classroom': k[0], 'subject': k[1], 'hours': h}
+                for k, h in sorted(class_subject_breakdown.items(), key=lambda x: _classroom_sort_key(x[0][0]))
+            ]
+
+            days_map = {d['num']: d['name_kh'] for d in DAYS_OF_WEEK}
+            scheduled_slots_list = []
+            for (d_num, p_num), s_data in sorted(slots_map.items(), key=lambda x: (x[0][0], x[0][1])):
+                st_time, et_time = STANDARD_PERIOD_TIMES.get(p_num, (None, None))
+                time_str = f"{st_time.strftime('%H:%M')} - {et_time.strftime('%H:%M')}" if st_time else ""
+                scheduled_slots_list.append({
+                    'day_num': d_num,
+                    'day_name': days_map.get(d_num, f"ថ្ងៃ {d_num}"),
+                    'period': p_num,
+                    'time_str': time_str,
+                    'is_duty': s_data.get('is_duty', False),
+                    'subject_name': s_data.get('subject_name') or s_data.get('duty_name', ''),
+                    'classroom_name': s_data.get('classroom_name', ''),
+                    'room': s_data.get('room', ''),
+                })
+
+            selected_teacher_timetable_data = {
+                'teaching_hours': len(sel_tt_entries),
+                'duty_hours': len(sel_duty_entries),
+                'total_hours': len(sel_tt_entries) + len(sel_duty_entries),
+                'morning_rows': morning_rows,
+                'afternoon_rows': afternoon_rows,
+                'breakdown_list': breakdown_list,
+                'scheduled_slots_list': scheduled_slots_list,
+                'has_schedule': (len(sel_tt_entries) + len(sel_duty_entries)) > 0,
+            }
+
         return render(request, 'academics/teacher_assignments.html', {
             'teachers': teachers,
             'teacher_stats': teacher_stats,
@@ -6677,6 +6836,9 @@ def teacher_assignments_manager(request):
             'selected_max_hours': selected_teacher.max_weekly_hours if (selected_teacher and selected_teacher.max_weekly_hours) else 18,
             'training_level_settings': training_level_settings,
             'training_quotas': training_quotas,
+            'selected_teacher_timetable_data': selected_teacher_timetable_data,
+            'days_of_week': DAYS_OF_WEEK,
+            'active_academic_year': active_year,
         })
     except Exception as e:
         messages.error(request, f"កំហុសក្នុងការទាញយកទិន្នន័យចាត់តាំងគ្រូ៖ {str(e)}")
@@ -6702,6 +6864,107 @@ def teacher_assignments_manager(request):
                 status=200,
                 content_type="text/html; charset=utf-8"
             )
+
+
+@login_required
+def api_teacher_timetable_detail(request, teacher_id):
+    """
+    JSON API returning weekly timetable schedule and breakdown for a given teacher.
+    Isolated per active academic year.
+    """
+    from .utils import get_active_academic_year
+    active_year = get_active_academic_year(request)
+    selected_year = request.GET.get('year') or request.GET.get('academic_year')
+    if selected_year:
+        if str(selected_year).strip().isdigit():
+            found_year = AcademicYear.objects.filter(id=int(str(selected_year).strip())).first()
+        else:
+            found_year = AcademicYear.objects.filter(name=str(selected_year).strip()).first()
+        if found_year:
+            active_year = found_year
+
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+
+    tt_entries = list(
+        Timetable.objects.filter(
+            teacher=teacher,
+            classroom__academic_year=active_year
+        ).select_related('classroom', 'subject')
+        if active_year else
+        Timetable.objects.filter(
+            teacher=teacher
+        ).select_related('classroom', 'subject')
+    )
+
+    duty_entries = list(
+        TeacherDutySchedule.objects.filter(
+            teacher=teacher,
+            academic_year=active_year
+        )
+        if active_year else
+        TeacherDutySchedule.objects.filter(
+            teacher=teacher
+        )
+    )
+
+    raw_duty_types = TeacherDutyType.get_all_duty_types()
+    duty_types_dict = {dt.code: dt.name for dt in raw_duty_types}
+
+    slots_map = {}
+    for e in tt_entries:
+        cls_clean = (e.classroom.name or '').replace('ថ្នាក់ទី', '').strip() if e.classroom else ''
+        slots_map[f"{e.day_of_week}_{e.period_number}"] = {
+            'subject_name': e.subject.name_kh if e.subject else '',
+            'subject_code': e.subject.code if e.subject else '',
+            'subject_color': getattr(e.subject, 'color_code', '#4f46e5') or '#4f46e5',
+            'classroom_name': cls_clean,
+            'classroom_code': e.classroom.code if e.classroom else cls_clean,
+            'room': getattr(e, 'room', '') or (e.classroom.room_number if e.classroom else ''),
+            'is_duty': False,
+        }
+
+    for d in duty_entries:
+        k = f"{d.day_of_week}_{d.period_number}"
+        if k not in slots_map:
+            duty_name = duty_types_dict.get(d.duty_type, d.duty_type)
+            slots_map[k] = {
+                'is_duty': True,
+                'duty_name': duty_name,
+                'duty_code': d.duty_type,
+                'duty_notes': d.notes or '',
+                'is_auto': d.is_auto_assigned,
+            }
+
+    class_breakdown = defaultdict(int)
+    for e in tt_entries:
+        cls_clean = (e.classroom.name or '').replace('ថ្នាក់ទី', '').strip() if e.classroom else 'មិនបញ្ជាក់'
+        sub_name = e.subject.name_kh if e.subject else 'មិនបញ្ជាក់'
+        class_breakdown[(cls_clean, sub_name)] += 1
+
+    breakdown_list = [
+        {'classroom': k[0], 'subject': k[1], 'hours': h}
+        for k, h in sorted(class_breakdown.items(), key=lambda x: _classroom_sort_key(x[0][0]))
+    ]
+
+    return JsonResponse({
+        'status': 'success',
+        'teacher': {
+            'id': teacher.id,
+            'khmer_name': teacher.khmer_name,
+            'latin_name': teacher.latin_name,
+            'teacher_id': teacher.teacher_id,
+            'specialization': teacher.specialization,
+            'training_level': teacher.training_level,
+            'subject_code': teacher.subject_code,
+            'max_weekly_hours': teacher.max_weekly_hours or 18,
+        },
+        'teaching_hours': len(tt_entries),
+        'duty_hours': len(duty_entries),
+        'total_hours': len(tt_entries) + len(duty_entries),
+        'slots_map': slots_map,
+        'breakdown_list': breakdown_list,
+        'academic_year': active_year.name if active_year else '',
+    })
 
 
 @login_required

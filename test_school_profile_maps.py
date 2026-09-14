@@ -75,6 +75,7 @@ def run_tests():
         'body_bg_color': '#fff5f5',
         'student_id_pattern': 'YEAR_END_4D',
         'student_id_digits': 4,
+        'registration_mode': 'ADMIN_CUSTOM',
     }
 
     res_post = client.post(reverse('school_profile_settings'), data=post_data, follow=True)

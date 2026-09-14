@@ -604,7 +604,20 @@ def school_profile_settings_view(request):
     school_profile = SchoolProfile.get_settings()
 
     if request.method == 'POST':
-        form = SchoolProfileForm(request.POST, request.FILES, instance=school_profile)
+        files = request.FILES.copy()
+        cropped_logo = request.POST.get('cropped_logo_data')
+        if cropped_logo and ';base64,' in cropped_logo:
+            import base64
+            from django.core.files.base import ContentFile
+            try:
+                format_part, imgstr = cropped_logo.split(';base64,')
+                ext = format_part.split('/')[-1].split(';')[0] or 'png'
+                decoded_file = base64.b64decode(imgstr)
+                files['logo'] = ContentFile(decoded_file, name=f"school_logo_cropped.{ext}")
+            except Exception:
+                pass
+
+        form = SchoolProfileForm(request.POST, files, instance=school_profile)
         if form.is_valid():
             form.save()
             messages.success(request, "បានរក្សាទុក និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានសាលារៀនជោគជ័យ!")

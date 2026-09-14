@@ -70,5 +70,12 @@ urlpatterns = [
     path('online-exams/<int:exam_id>/take/', online_exam_views.MobileOnlineExamTakeView.as_view(), name='mobile_api_online_exam_take'),
     path('online-exams/<int:exam_id>/submit/', online_exam_views.MobileOnlineExamSubmitView.as_view(), name='mobile_api_online_exam_submit'),
     path('online-exams/submissions/<int:submission_id>/result/', online_exam_views.MobileOnlineExamResultView.as_view(), name='mobile_api_online_exam_result'),
+
+    # 12. Student Verification & Beginning-of-Year Confirmation APIs (ផ្ទៀងផ្ទាត់ និងកែប្រែទិន្នន័យដើមឆ្នាំ)
+    path('students/verification/campaigns/', views.MobileVerificationCampaignsAPIView.as_view(), name='mobile_api_verification_campaigns'),
+    path('students/verification/lookup/', views.MobileVerificationStudentLookupAPIView.as_view(), name='mobile_api_verification_lookup'),
+    path('students/verification/submit/', views.MobileVerificationSubmitAPIView.as_view(), name='mobile_api_verification_submit'),
+    path('students/verification/grade-configs/', views.MobileGradeFormConfigsAPIView.as_view(), name='mobile_api_grade_form_configs'),
+    path('students/verification/logs/', views.MobileVerificationLogsAPIView.as_view(), name='mobile_api_verification_logs'),
 ]
 

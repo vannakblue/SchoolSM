@@ -1,7 +1,11 @@
 from django import forms
 from django.db.models import Q
-from .models import Student, ScholarshipType, StudentStatusConfig
-from apps.academics.models import Classroom, AcademicYear
+from django.utils import timezone
+from .models import (
+    Student, ScholarshipType, StudentStatusConfig,
+    StudentVerificationCampaign, GradeVerificationFormConfig, StudentVerificationLog
+)
+from apps.academics.models import Classroom, AcademicYear, GradeLevel
 
 class StudentEnrollmentForm(forms.ModelForm):
     student_id = forms.CharField(
@@ -20,6 +24,44 @@ class StudentEnrollmentForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
         required=True,
         label="ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍"
+    )
+
+    # Confirmation fields for existing student data verification & editing
+    confirm_edit = forms.BooleanField(
+        required=False,
+        label="បញ្ជាក់ការកែប្រែព័ត៌មានសិស្ស / Confirm Editing",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_confirm_edit'})
+    )
+    confirmed_by_role = forms.ChoiceField(
+        required=False,
+        label="តួនាទីអ្នកបញ្ជាក់ / Confirmed By Role",
+        choices=[
+            ('', '-- ជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ --'),
+            ('STUDENT', 'សិស្សផ្ទាល់ (Student)'),
+            ('PARENT', 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'),
+            ('TEACHER', 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_confirmed_by_role'})
+    )
+    confirmed_by_name = forms.CharField(
+        required=False,
+        label="ឈ្មោះអ្នកបញ្ជាក់ / Confirmer Name",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ឈ្មោះសិស្ស, ឈ្មោះឪពុកម្តាយ, ឈ្មោះគ្រូ', 'id': 'id_confirmed_by_name'})
+    )
+    confirmed_by_phone = forms.CharField(
+        required=False,
+        label="លេខទូរស័ព្ទអ្នកបញ្ជាក់ / Confirmer Phone",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '012 345 678', 'id': 'id_confirmed_by_phone'})
+    )
+    relationship_to_student = forms.CharField(
+        required=False,
+        label="ទំនាក់ទំនង / Role Details",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ខ្លួនឯង, ឪពុក, ម្តាយ, អាណាព្យាបាល, គ្រូបន្ទុកថ្នាក់', 'id': 'id_relationship_to_student'})
+    )
+    confirmation_notes = forms.CharField(
+        required=False,
+        label="កំណត់សម្គាល់កែប្រែ / Edit Notes",
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'បញ្ជាក់អំពីចំណុចដែលបានកែប្រែ...', 'id': 'id_confirmation_notes'})
     )
 
     def __init__(self, *args, academic_year=None, **kwargs):
@@ -70,6 +112,11 @@ class StudentEnrollmentForm(forms.ModelForm):
         if not self.instance.pk and status_choices:
             self.initial.setdefault('status', 'ACTIVE')
 
+        if self.instance and self.instance.pk:
+            self.fields['scholarship_type'].required = False
+            self.fields['status'].required = False
+            self.fields['classroom'].required = False
+
     def clean_student_id(self):
         sid = self.cleaned_data.get('student_id')
         if sid:
@@ -95,12 +142,31 @@ class StudentEnrollmentForm(forms.ModelForm):
         if not academic_year and classroom:
             academic_year = classroom.academic_year
 
+        if self.instance and self.instance.pk:
+            self.matched_existing_student = self.instance
+            if not cleaned_data.get('scholarship_type'):
+                cleaned_data['scholarship_type'] = self.instance.scholarship_type or 'NONE'
+            if not cleaned_data.get('status'):
+                cleaned_data['status'] = self.instance.status or 'ACTIVE'
+            if not cleaned_data.get('classroom') and self.instance.classroom:
+                cleaned_data['classroom'] = self.instance.classroom
+
         father_name = (cleaned_data.get('father_name') or '').strip()
         mother_name = (cleaned_data.get('mother_name') or '').strip()
         father_phone = (cleaned_data.get('father_phone') or '').strip().replace(' ', '').replace('-', '')
         mother_phone = (cleaned_data.get('mother_phone') or '').strip().replace(' ', '').replace('-', '')
         student_phone = (cleaned_data.get('phone') or '').strip().replace(' ', '').replace('-', '')
         emergency_phone = (cleaned_data.get('emergency_phone') or '').strip().replace(' ', '').replace('-', '')
+
+        confirm_edit = cleaned_data.get('confirm_edit')
+        confirmed_by_role = cleaned_data.get('confirmed_by_role')
+        confirmed_by_name = (cleaned_data.get('confirmed_by_name') or '').strip()
+
+        if confirm_edit:
+            if not confirmed_by_role or confirmed_by_role not in ['STUDENT', 'PARENT', 'TEACHER']:
+                self.add_error('confirmed_by_role', '⚠️ សូមជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ការកែប្រែ (សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន)!')
+            if not confirmed_by_name:
+                self.add_error('confirmed_by_name', '⚠️ សូមបញ្ចូលឈ្មោះអ្នកបញ្ជាក់ការកែប្រែ!')
 
         if khmer_name and dob:
             # Combined Rule 1 (Name + DOB) & Rule 2 (Guardian / Phone)
@@ -144,17 +210,70 @@ class StudentEnrollmentForm(forms.ModelForm):
 
                 reason_text = f" (ផ្ទៀងផ្ទាត់ឃើញ៖ {', '.join(detail_reasons)})" if detail_reasons else ""
 
-                raise forms.ValidationError(
-                    f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! ដើម្បីការពារទិន្នន័យស្ទួន សូមកុំចុះឈ្មោះឡើងវិញ។"
-                )
+                if confirm_edit:
+                    self.matched_existing_student = existing
+                else:
+                    self.matched_existing_student = existing
+                    raise forms.ValidationError(
+                        f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! "
+                        f"ប្រសិនបើលោកអ្នកជាសិស្ស អាណាព្យាបាល ឬគ្រូដែលចង់កែប្រែ/ផ្ទៀងផ្ទាត់ទិន្នន័យនេះ សូមជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ និងធីកប្រអប់បញ្ជាក់ការកែប្រែ。"
+                    )
 
         return cleaned_data
+
+    def save(self, commit=True):
+        existing_target = getattr(self, 'matched_existing_student', None) or (self.instance if self.instance and self.instance.pk else None)
+        if existing_target:
+            student = existing_target
+            cleaned_data = self.cleaned_data
+            
+            for f in ['khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
+                      'current_address', 'phone', 'previous_school', 'classroom', 'academic_year', 'scholarship_type', 'status',
+                      'fee_start_month', 'fee_end_month', 'father_name', 'father_phone', 'father_job',
+                      'mother_name', 'mother_phone', 'mother_job', 'guardian_name', 'emergency_phone',
+                      'telegram_chat_id', 'is_repeating_grade', 'is_exam_suspended',
+                      'exam_suspension_reason', 'exam_suspension_notes']:
+                if f in cleaned_data:
+                    val = cleaned_data.get(f)
+                    if val is not None and val != '':
+                        setattr(student, f, val)
+                    elif f in ['father_phone', 'mother_phone', 'emergency_phone', 'phone', 'previous_school'] and val == '':
+                        setattr(student, f, '')
+
+            if cleaned_data.get('photo'):
+                student.photo = cleaned_data['photo']
+            if cleaned_data.get('birth_certificate'):
+                student.birth_certificate = cleaned_data['birth_certificate']
+
+            student.is_verified = True
+            student.last_verified_at = timezone.now()
+            if cleaned_data.get('confirmed_by_role'):
+                student.last_verified_by_role = cleaned_data.get('confirmed_by_role')
+            if cleaned_data.get('confirmed_by_name'):
+                student.last_verified_by_name = cleaned_data.get('confirmed_by_name')
+
+            if commit:
+                student.save()
+                StudentVerificationLog.objects.create(
+                    student=student,
+                    academic_year=student.academic_year,
+                    confirmed_by_role=cleaned_data.get('confirmed_by_role') or 'STUDENT',
+                    confirmed_by_name=cleaned_data.get('confirmed_by_name') or student.khmer_name,
+                    confirmed_by_phone=cleaned_data.get('confirmed_by_phone') or student.phone or '',
+                    relationship_to_student=cleaned_data.get('relationship_to_student') or '',
+                    is_existing_student=True,
+                    confirmation_notes=cleaned_data.get('confirmation_notes') or 'កែប្រែ និងផ្ទៀងផ្ទាត់ព័ត៌មានសិស្ស',
+                    channel=StudentVerificationLog.Channel.PORTAL,
+                    changes_diff={'updated_fields': list(self.changed_data)}
+                )
+            return student
+        return super().save(commit=commit)
 
     class Meta:
         model = Student
         fields = [
             'student_id', 'khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
-            'current_address', 'phone', 'photo', 'birth_certificate',
+            'current_address', 'phone', 'previous_school', 'photo', 'birth_certificate',
             'classroom', 'academic_year', 'status', 'scholarship_type', 'fee_start_month', 'fee_end_month',
             'is_repeating_grade',
             'is_exam_suspended', 'exam_suspension_reason', 'exam_suspension_notes',
@@ -171,6 +290,7 @@ class StudentEnrollmentForm(forms.ModelForm):
             'place_of_birth': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'រាជធានីភ្នំពេញ'}),
             'current_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ផ្ទះលេខ..., ផ្លូវ..., សង្កាត់...'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '012 345 678'}),
+            'previous_school': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. បឋមសិក្សា ហ៊ុន សែន (ឆ្នាំសិក្សា ២០២៤-២០២៥)'}),
             'photo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'birth_certificate': forms.FileInput(attrs={'class': 'form-control'}),
             
@@ -306,6 +426,7 @@ class MoeysIndividualStudentForm(forms.ModelForm):
     )
     primary_school = forms.CharField(required=False, label="សាលាបឋមសិក្សាពីមុន", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. បឋមសិក្សា ហ៊ុន សែន...', 'id': 'moeys_primary_school'}))
     secondary_school = forms.CharField(required=False, label="គ្រឹះស្ថានមធ្យមសិក្សាពីមុន", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. អនុវិទ្យាល័យ / វិទ្យាល័យ...', 'id': 'moeys_secondary_school'}))
+    previous_school = forms.CharField(required=False, label="ឆ្នាំសិក្សាចាស់មកពីសាលា / Previous School", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. បឋមសិក្សា ហ៊ុន សែន (ឆ្នាំសិក្សា ២០២៤-២០២៥)', 'id': 'moeys_previous_school'}))
     ethnic_minority = forms.ChoiceField(
         choices=[('មិនមែន', 'មិនមែន'), ('ជនជាតិដើមភាគតិច', 'ជនជាតិដើមភាគតិច'), ('ផ្សេងៗ', 'ផ្សេងៗ')],
         required=False,
@@ -359,6 +480,44 @@ class MoeysIndividualStudentForm(forms.ModelForm):
     birth_certificate = forms.FileField(required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'id': 'moeys_birth_certificate'}), label="សំបុត្រកំណើត / សៀវភៅគ្រួសារ")
     scholarship_type = forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class': 'form-select', 'id': 'moeys_scholarship_type'}), required=False, label="ប្រភេទកម្រៃសិក្សា")
     status = forms.ChoiceField(choices=[], widget=forms.Select(attrs={'class': 'form-select', 'id': 'moeys_status'}), required=False, label="ស្ថានភាពសិក្សា")
+
+    # Confirmation fields for existing student data verification & editing
+    confirm_edit = forms.BooleanField(
+        required=False,
+        label="បញ្ជាក់ការកែប្រែព័ត៌មានសិស្ស / Confirm Editing",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'moeys_confirm_edit'})
+    )
+    confirmed_by_role = forms.ChoiceField(
+        required=False,
+        label="តួនាទីអ្នកបញ្ជាក់ / Confirmed By Role",
+        choices=[
+            ('', '-- ជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ --'),
+            ('STUDENT', 'សិស្សផ្ទាល់ (Student)'),
+            ('PARENT', 'អាណាព្យាបាល / មាតាបិតា (Parent/Guardian)'),
+            ('TEACHER', 'គ្រូបង្រៀន / គ្រូបន្ទុកថ្នាក់ (Teacher)'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'moeys_confirmed_by_role'})
+    )
+    confirmed_by_name = forms.CharField(
+        required=False,
+        label="ឈ្មោះអ្នកបញ្ជាក់ / Confirmer Name",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ឈ្មោះសិស្ស, ឈ្មោះឪពុកម្តាយ, ឈ្មោះគ្រូ', 'id': 'moeys_confirmed_by_name'})
+    )
+    confirmed_by_phone = forms.CharField(
+        required=False,
+        label="លេខទូរស័ព្ទអ្នកបញ្ជាក់ / Confirmer Phone",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '012 345 678', 'id': 'moeys_confirmed_by_phone'})
+    )
+    relationship_to_student = forms.CharField(
+        required=False,
+        label="ទំនាក់ទំនង / Role Details",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ខ្លួនឯង, ឪពុក, ម្តាយ, អាណាព្យាបាល, គ្រូបន្ទុកថ្នាក់', 'id': 'moeys_relationship_to_student'})
+    )
+    confirmation_notes = forms.CharField(
+        required=False,
+        label="កំណត់សម្គាល់កែប្រែ / Edit Notes",
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'បញ្ជាក់អំពីចំណុចដែលបានកែប្រែ...', 'id': 'moeys_confirmation_notes'})
+    )
 
     def __init__(self, *args, academic_year=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -514,9 +673,22 @@ class MoeysIndividualStudentForm(forms.ModelForm):
                     detail_reasons.append("លេខទូរស័ព្ទដូចគ្នា")
                 reason_text = f" (ផ្ទៀងផ្ទាត់ឃើញ៖ {', '.join(detail_reasons)})" if detail_reasons else ""
 
-                raise forms.ValidationError(
-                    f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! ដើម្បីការពារទិន្នន័យស្ទួន សូមកុំចុះឈ្មោះឡើងវិញ។"
-                )
+                confirm_edit = cleaned_data.get('confirm_edit')
+                confirmed_by_role = cleaned_data.get('confirmed_by_role')
+                confirmed_by_name = (cleaned_data.get('confirmed_by_name') or '').strip()
+
+                if confirm_edit:
+                    if not confirmed_by_role or confirmed_by_role not in ['STUDENT', 'PARENT', 'TEACHER']:
+                        self.add_error('confirmed_by_role', '⚠️ សូមជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ការកែប្រែ (សិស្ស, អាណាព្យាបាល, ឬ គ្រូបង្រៀន)!')
+                    if not confirmed_by_name:
+                        self.add_error('confirmed_by_name', '⚠️ សូមបញ្ចូលឈ្មោះអ្នកបញ្ជាក់ការកែប្រែ!')
+                    self.matched_existing_student = existing
+                else:
+                    self.matched_existing_student = existing
+                    raise forms.ValidationError(
+                        f"⚠️ សិស្សឈ្មោះ «{khmer_name}» កើតថ្ងៃទី {dob_str} បានចុះឈ្មោះចូលរៀនរួចហើយក្នុង{class_str} (អត្តលេខ: {existing.student_id}){reason_text}! "
+                        f"ប្រសិនបើលោកអ្នកជាសិស្ស អាណាព្យាបាល ឬគ្រូដែលចង់កែប្រែ/ផ្ទៀងផ្ទាត់ទិន្នន័យនេះ សូមជ្រើសរើសតួនាទីអ្នកបញ្ជាក់ និងធីកប្រអប់បញ្ជាក់ការកែប្រែ។"
+                    )
 
         # Enforce mutual exclusivity: only one IDPoor card can be selected (ក្រ១ ឬ ក្រ២)
         eq1 = (cleaned_data.get('equity_card_1') or '').strip()
@@ -589,10 +761,57 @@ class MoeysIndividualStudentForm(forms.ModelForm):
             'is_ss': is_ss,
             'is_voc': is_voc,
         }
+
+        # Sync previous_school from previous_school, primary_school, or secondary_school
+        prev_sch = (self.cleaned_data.get('previous_school') or self.cleaned_data.get('primary_school') or self.cleaned_data.get('secondary_school') or '').strip()
+        if prev_sch:
+            student.previous_school = prev_sch
+            moeys_dict['previous_school'] = prev_sch
+
         ed.update(moeys_dict)
         student.enrollment_data = ed
 
         if commit:
+            if hasattr(self, 'matched_existing_student') and self.matched_existing_student:
+                existing = self.matched_existing_student
+                # Copy updated fields onto existing student
+                for attr in ['khmer_name', 'latin_name', 'gender', 'date_of_birth', 'place_of_birth',
+                             'current_address', 'phone', 'previous_school', 'classroom', 'academic_year', 'scholarship_type',
+                             'father_name', 'father_phone', 'father_job', 'mother_name', 'mother_phone',
+                             'mother_job', 'guardian_name', 'emergency_phone', 'is_repeating_grade']:
+                    val = getattr(student, attr, None)
+                    if val is not None and val != '':
+                        setattr(existing, attr, val)
+
+                if student.photo:
+                    existing.photo = student.photo
+                if student.birth_certificate:
+                    existing.birth_certificate = student.birth_certificate
+
+                existing_ed = dict(existing.enrollment_data or {})
+                existing_ed.update(moeys_dict)
+                existing.enrollment_data = existing_ed
+
+                existing.is_verified = True
+                existing.last_verified_at = timezone.now()
+                existing.last_verified_by_role = self.cleaned_data.get('confirmed_by_role')
+                existing.last_verified_by_name = self.cleaned_data.get('confirmed_by_name')
+                existing.save()
+
+                StudentVerificationLog.objects.create(
+                    student=existing,
+                    academic_year=existing.academic_year,
+                    confirmed_by_role=self.cleaned_data.get('confirmed_by_role') or 'STUDENT',
+                    confirmed_by_name=self.cleaned_data.get('confirmed_by_name') or existing.khmer_name,
+                    confirmed_by_phone=self.cleaned_data.get('confirmed_by_phone') or existing.phone or '',
+                    relationship_to_student=self.cleaned_data.get('relationship_to_student') or '',
+                    is_existing_student=True,
+                    confirmation_notes=self.cleaned_data.get('confirmation_notes') or 'កែប្រែ និងផ្ទៀងផ្ទាត់សម្រង់ព័ត៌មាន MoEYS',
+                    channel=StudentVerificationLog.Channel.PORTAL,
+                    changes_diff={'updated_fields': list(self.changed_data)}
+                )
+                return existing
+
             student.save()
         return student
 
@@ -634,4 +853,53 @@ class StudentStatusConfigForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'order': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
         }
+
+
+class StudentVerificationCampaignForm(forms.ModelForm):
+    class Meta:
+        model = StudentVerificationCampaign
+        fields = [
+            'title', 'round_number', 'academic_year', 'start_date', 'end_date',
+            'is_active', 'require_confirmation_for_existing',
+            'allow_student_self_confirm', 'allow_parent_confirm', 'allow_teacher_confirm',
+            'target_grades', 'instructions'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ការបំពេញ និងផ្ទៀងផ្ទាត់ព័ត៌មានសិស្សដើមឆ្នាំ ២០២៦-២០២៧ (ជុំទី១)'}),
+            'round_number': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'academic_year': forms.Select(attrs={'class': 'form-select'}),
+            'start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'require_confirmation_for_existing': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'allow_student_self_confirm': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'allow_parent_confirm': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'allow_teacher_confirm': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'target_grades': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '5'}),
+            'instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'សេចក្តីណែនាំសម្រាប់សិស្ស អាណាព្យាបាល និងគ្រូ...'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['target_grades'].queryset = GradeLevel.objects.all().order_by('order', 'grade_number')
+        self.fields['academic_year'].queryset = AcademicYear.objects.all().order_by('-start_date')
+        if not self.instance.pk:
+            curr_y = AcademicYear.objects.filter(is_current=True).first()
+            if curr_y:
+                self.initial['academic_year'] = curr_y
+
+
+class GradeVerificationFormConfigForm(forms.ModelForm):
+    class Meta:
+        model = GradeVerificationFormConfig
+        fields = ['grade_level', 'academic_year', 'campaign', 'form_template', 'custom_instructions', 'is_active']
+        widgets = {
+            'grade_level': forms.Select(attrs={'class': 'form-select'}),
+            'academic_year': forms.Select(attrs={'class': 'form-select'}),
+            'campaign': forms.Select(attrs={'class': 'form-select'}),
+            'form_template': forms.Select(attrs={'class': 'form-select'}),
+            'custom_instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'សេចក្តីណែនាំបន្ថែម...'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
 

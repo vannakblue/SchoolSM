@@ -141,6 +141,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'grade_options_manager',
             },
             {
+                'key': 'verification_campaigns_list',
+                'name_kh': 'ផ្ទៀងផ្ទាត់ព័ត៌មានដើមឆ្នាំ',
+                'name_en': 'Student Info Verification',
+                'icon': 'fa-solid fa-user-check text-success',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'verification_campaigns_list',
+            },
+            {
                 'key': 'student_promotion',
                 'name_kh': 'ផ្ទេរ/ឡើងថ្នាក់',
                 'name_en': 'Student Promotion & Transfer',

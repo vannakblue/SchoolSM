@@ -33,12 +33,16 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   List<dynamic> _gradeOptions = [];
   final Map<String, dynamic> _gradeOptionValues = {};
   bool _isLoadingGradeOptions = false;
+  List<dynamic> _gradeFormConfigs = [];
+  String? _activeGradeTemplate;
+  String _activeGradeInstructions = '';
 
   // General & Shared Form Controllers
   final _khmerNameController = TextEditingController();
   final _latinNameController = TextEditingController();
   final _customIdController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _previousSchoolController = TextEditingController();
   final _pobController = TextEditingController();
   final _addressController = TextEditingController();
 
@@ -115,6 +119,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     _latinNameController.dispose();
     _customIdController.dispose();
     _phoneController.dispose();
+    _previousSchoolController.dispose();
     _pobController.dispose();
     _addressController.dispose();
     _fatherNameController.dispose();
@@ -153,7 +158,15 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           _schoolName = data['school_name'] ?? 'SchoolSM';
 
           _registrationMode = data['registration_mode'] ?? 'BOTH';
+          _gradeFormConfigs = data['grade_form_configs'] ?? [];
+          _activeGradeTemplate = data['active_grade_template'];
+          _activeGradeInstructions = data['active_grade_instructions'] ?? '';
+
           if (_registrationMode == 'MOEYS_INDIVIDUAL') {
+            _activeEnrollmentMode = 'MOEYS_INDIVIDUAL';
+          } else if (_registrationMode == 'ADMIN_CUSTOM') {
+            _activeEnrollmentMode = 'ADMIN_CUSTOM';
+          } else if (_activeGradeTemplate == 'MOEYS_INDIVIDUAL') {
             _activeEnrollmentMode = 'MOEYS_INDIVIDUAL';
           } else {
             _activeEnrollmentMode = 'ADMIN_CUSTOM';
@@ -201,12 +214,38 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       return;
     }
 
+    int? gradeNum;
+    for (final c in _classrooms) {
+      if (c['id'] == _selectedClassroomId) {
+        gradeNum = c['grade_level'] as int?;
+        break;
+      }
+    }
+
+    // Immediately pre-apply Admin's configured grade-level template from _gradeFormConfigs
+    if (gradeNum != null && _gradeFormConfigs.isNotEmpty) {
+      for (final cfg in _gradeFormConfigs) {
+        if (cfg['grade_number'] == gradeNum || cfg['grade_id'] == gradeNum) {
+          final tpl = cfg['form_template'];
+          if (_registrationMode == 'BOTH' && tpl != null) {
+            if (tpl == 'MOEYS_INDIVIDUAL' && _activeEnrollmentMode != 'MOEYS_INDIVIDUAL') {
+              setState(() => _activeEnrollmentMode = 'MOEYS_INDIVIDUAL');
+            } else if (tpl == 'GENERAL' && _activeEnrollmentMode != 'ADMIN_CUSTOM') {
+              setState(() => _activeEnrollmentMode = 'ADMIN_CUSTOM');
+            }
+          }
+          break;
+        }
+      }
+    }
+
     setState(() => _isLoadingGradeOptions = true);
     try {
       final res = await ApiClient().dio.get(
         ApiConstants.studentGradeOptions,
         queryParameters: {
           'classroom_id': _selectedClassroomId,
+          if (gradeNum != null) 'grade_level': gradeNum,
           'form_category': _activeEnrollmentMode,
         },
       );
@@ -214,7 +253,18 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       if (data['status'] == 'success') {
         setState(() {
           _gradeOptions = data['options'] ?? [];
+          _activeGradeTemplate = data['assigned_template'];
+          _activeGradeInstructions = data['custom_instructions'] ?? '';
           _isLoadingGradeOptions = false;
+
+          // Adapt active form mode if Admin configured a specific template for this grade level
+          if (_registrationMode == 'BOTH' && _activeGradeTemplate != null) {
+            if (_activeGradeTemplate == 'MOEYS_INDIVIDUAL' && _activeEnrollmentMode != 'MOEYS_INDIVIDUAL') {
+              _activeEnrollmentMode = 'MOEYS_INDIVIDUAL';
+            } else if (_activeGradeTemplate == 'GENERAL' && _activeEnrollmentMode != 'ADMIN_CUSTOM') {
+              _activeEnrollmentMode = 'ADMIN_CUSTOM';
+            }
+          }
         });
       } else {
         setState(() => _isLoadingGradeOptions = false);
@@ -993,6 +1043,24 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       return;
     }
 
+    // Validate required dynamic grade options configured by Admin
+    for (final opt in _gradeOptions) {
+      if (opt['is_required'] == true && opt['field_type'] != 'SECTION') {
+        final fName = opt['field_name']?.toString() ?? '';
+        final fLabel = opt['label']?.toString() ?? fName;
+        final val = _gradeOptionValues[fName];
+        if (val == null || val.toString().trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("សូមបំពេញព័ត៌មានបន្ថែម៖ $fLabel"),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return;
+        }
+      }
+    }
+
     setState(() => _isSubmitting = true);
 
     final payload = <String, dynamic>{
@@ -1003,6 +1071,11 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       'gender': _gender,
       'date_of_birth': DateFormat('yyyy-MM-dd').format(_dateOfBirth),
       'phone': _phoneController.text.trim(),
+      'previous_school': _previousSchoolController.text.trim().isNotEmpty
+          ? _previousSchoolController.text.trim()
+          : (_primarySchoolController.text.trim().isNotEmpty
+              ? _primarySchoolController.text.trim()
+              : _secondarySchoolController.text.trim()),
       'place_of_birth': _pobController.text.trim(),
       'current_address': _addressController.text.trim(),
       'classroom_id': _selectedClassroomId,
@@ -1235,6 +1308,18 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           "ចុះឈ្មោះចូលរៀនថ្មី (Admission)",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 22, color: AppColors.primary),
+            tooltip: "ផ្ទុកទម្រង់ឡើងវិញ",
+            onPressed: () {
+              _fetchEnrollmentMeta();
+              if (_selectedClassroomId != null) {
+                _fetchGradeOptions();
+              }
+            },
+          ),
+        ],
       ),
       body: _isLoadingMeta
           ? const Center(child: SpinKitFadingCircle(color: AppColors.primary, size: 40))
@@ -1443,7 +1528,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   // ---------------------------------------------------------------------------
   List<Widget> _buildGeneralFormSections() {
     return [
-      _buildSectionHeader("១. ព័ត៌មានអត្តសញ្ញាណសិស្ស (Identity)", Icons.person_rounded),
+      _buildSectionHeader("១. ព័ត៌មានបឋមសិស្ស (Basic Info)", Icons.person_rounded),
       const SizedBox(height: 10),
       _buildCard(
         children: [
@@ -1466,6 +1551,21 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           const SizedBox(height: 14),
           _buildDobPicker(),
           const SizedBox(height: 14),
+          _buildTextField(
+            controller: _previousSchoolController,
+            label: "ឆ្នាំសិក្សាចាស់មកពីសាលា (Previous School)",
+            hint: "ឧ. បឋមសិក្សា ហ៊ុន សែន (ឆ្នាំសិក្សា ២០២៤-២០២៥)",
+            icon: Icons.school_outlined,
+          ),
+          const SizedBox(height: 14),
+          _buildTextField(
+            controller: _phoneController,
+            label: "លេខទូរស័ព្ទសិស្ស / ទំនាក់ទំនង (Phone)",
+            hint: "ឧ. 012 345 678",
+            icon: Icons.phone_android_rounded,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 14),
           _buildStudentIdField(),
         ],
       ),
@@ -1482,19 +1582,10 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
         ],
       ),
       const SizedBox(height: 20),
-      _buildSectionHeader("៣. ទំនាក់ទំនង និងទីលំនៅ", Icons.location_on_rounded),
+      _buildSectionHeader("៣. ទីលំនៅ និងទីកន្លែងកំណើត", Icons.location_on_rounded),
       const SizedBox(height: 10),
       _buildCard(
         children: [
-          _buildTextField(
-            controller: _phoneController,
-            label: "លេខទូរស័ព្ទផ្ទាល់ខ្លួនសិស្ស (Phone)",
-            hint: "ឧ. 012 345 678",
-            icon: Icons.phone_android_rounded,
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 14),
-          const SizedBox(height: 14),
           _buildPobLocationSection(),
           const SizedBox(height: 14),
           Row(
@@ -1799,7 +1890,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _equityCard1,
+                  initialValue: _equityCard1,
                   decoration: _inputDecoration("ប័ណ្ណសមធម៌ក្រ១", Icons.credit_card_rounded),
                   items: ['មិនមាន', 'មាន'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() {
@@ -1813,7 +1904,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _equityCard2,
+                  initialValue: _equityCard2,
                   decoration: _inputDecoration("ប័ណ្ណសមធម៌ក្រ២", Icons.credit_card_rounded),
                   items: ['មិនមាន', 'មាន'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() {
@@ -1964,7 +2055,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       );
     }
 
-    if (_gradeOptions.isEmpty) {
+    if (_gradeOptions.isEmpty && _activeGradeInstructions.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -1977,105 +2068,335 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       children: [
         _buildSectionHeader(headerTitle, Icons.dynamic_form_rounded),
         const SizedBox(height: 10),
-        _buildCard(
-          children: _gradeOptions.map<Widget>((opt) {
-            final fieldName = opt['field_name']?.toString() ?? '';
-            final label = opt['label']?.toString() ?? '';
-            final fieldType = opt['field_type']?.toString() ?? 'TEXT';
-            final isRequired = opt['is_required'] == true;
-            final choices = (opt['choices'] as List<dynamic>?) ?? [];
-            final placeholder = opt['placeholder']?.toString() ?? '';
 
-            final displayLabel = "$label${isRequired ? ' *' : ''}";
-
-            if (fieldType == 'CHECKBOX') {
-              final currentVal = _gradeOptionValues[fieldName] == true;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.bgLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.borderLight),
+        if (_activeGradeInstructions.isNotEmpty) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFF59E0B)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _activeGradeInstructions,
+                    style: const TextStyle(fontSize: 12.5, color: Color(0xFF92400E), height: 1.4),
                   ),
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: currentVal,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) {
-                          setState(() {
-                            _gradeOptionValues[fieldName] = v ?? false;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          displayLabel,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        if (_gradeOptions.isNotEmpty)
+          _buildCard(
+            children: _gradeOptions.map<Widget>((opt) {
+              final fieldName = opt['field_name']?.toString() ?? '';
+              final label = opt['label']?.toString() ?? '';
+              final fieldType = opt['field_type']?.toString() ?? 'TEXT';
+              final isRequired = opt['is_required'] == true;
+              final choices = (opt['choices'] as List<dynamic>?) ?? [];
+              final placeholder = opt['placeholder']?.toString() ?? '';
+
+              final displayLabel = "$label${isRequired ? ' *' : ''}";
+
+              // SECTION HEADER / FRAME DIVIDER
+              if (fieldType == 'SECTION') {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bookmark_added_rounded, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // CHECKBOX
+              if (fieldType == 'CHECKBOX') {
+                final currentVal = _gradeOptionValues[fieldName] == true || _gradeOptionValues[fieldName] == 'true';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: currentVal,
+                          activeColor: AppColors.primary,
+                          onChanged: (v) {
+                            setState(() {
+                              _gradeOptionValues[fieldName] = v ?? false;
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            displayLabel,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // MULTISELECT CHECKBOXES / CHIPS
+              if (fieldType == 'MULTISELECT') {
+                final rawVal = _gradeOptionValues[fieldName];
+                final selectedItems = <String>{};
+                if (rawVal is List) {
+                  selectedItems.addAll(rawVal.map((e) => e.toString()));
+                } else if (rawVal is String && rawVal.isNotEmpty) {
+                  selectedItems.addAll(rawVal.split(',').map((e) => e.trim()));
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayLabel,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: choices.map<Widget>((choice) {
+                          final cStr = choice.toString();
+                          final isSelected = selectedItems.contains(cStr);
+                          return FilterChip(
+                            label: Text(cStr),
+                            selected: isSelected,
+                            selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                            checkmarkColor: AppColors.primary,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  selectedItems.add(cStr);
+                                } else {
+                                  selectedItems.remove(cStr);
+                                }
+                                _gradeOptionValues[fieldName] = selectedItems.join(', ');
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
                     ],
                   ),
-                ),
-              );
-            }
+                );
+              }
 
-            if (fieldType == 'SELECT' || fieldType == 'RADIO') {
-              final currentVal = _gradeOptionValues[fieldName]?.toString();
+              // SELECT OR RADIO
+              if (fieldType == 'SELECT' || fieldType == 'RADIO') {
+                final currentVal = _gradeOptionValues[fieldName]?.toString();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: choices.contains(currentVal) ? currentVal : null,
+                    decoration: _inputDecoration(displayLabel, Icons.arrow_drop_down_circle_outlined),
+                    hint: Text(placeholder.isNotEmpty ? placeholder : "-- ជ្រើសរើស --"),
+                    items: choices.map<DropdownMenuItem<String>>((c) {
+                      return DropdownMenuItem<String>(
+                        value: c.toString(),
+                        child: Text(c.toString()),
+                      );
+                    }).toList(),
+                    onChanged: (v) {
+                      setState(() {
+                        _gradeOptionValues[fieldName] = v;
+                      });
+                    },
+                  ),
+                );
+              }
+
+              // DATE PICKER
+              if (fieldType == 'DATE') {
+                final dateStr = _gradeOptionValues[fieldName]?.toString() ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: InkWell(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: now,
+                        firstDate: DateTime(1980),
+                        lastDate: DateTime(2050),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _gradeOptionValues[fieldName] = DateFormat('yyyy-MM-dd').format(picked);
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(displayLabel, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                Text(
+                                  dateStr.isNotEmpty ? dateStr : (placeholder.isNotEmpty ? placeholder : "ជ្រើសរើសកាលបរិច្ឆេទ"),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: dateStr.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                                    color: dateStr.isNotEmpty ? AppColors.textPrimary : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              // TIME PICKER
+              if (fieldType == 'TIME') {
+                final timeStr = _gradeOptionValues[fieldName]?.toString() ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          final hour = picked.hour.toString().padLeft(2, '0');
+                          final minute = picked.minute.toString().padLeft(2, '0');
+                          _gradeOptionValues[fieldName] = "$hour:$minute";
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderLight),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(displayLabel, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                Text(
+                                  timeStr.isNotEmpty ? timeStr : (placeholder.isNotEmpty ? placeholder : "ជ្រើសរើសម៉ោង"),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: timeStr.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                                    color: timeStr.isNotEmpty ? AppColors.textPrimary : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              // TEXT, NUMBER, PHONE, EMAIL, TEXTAREA
+              TextInputType keyboardType = TextInputType.text;
+              IconData fieldIcon = Icons.edit_note_rounded;
+              if (fieldType == 'NUMBER') {
+                keyboardType = TextInputType.number;
+                fieldIcon = Icons.tag_rounded;
+              } else if (fieldType == 'PHONE') {
+                keyboardType = TextInputType.phone;
+                fieldIcon = Icons.phone_rounded;
+              } else if (fieldType == 'EMAIL') {
+                keyboardType = TextInputType.emailAddress;
+                fieldIcon = Icons.email_rounded;
+              } else if (fieldType == 'TEXTAREA') {
+                keyboardType = TextInputType.multiline;
+                fieldIcon = Icons.notes_rounded;
+              }
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: DropdownButtonFormField<String>(
-                  initialValue: choices.contains(currentVal) ? currentVal : null,
-                  decoration: _inputDecoration(displayLabel, Icons.arrow_drop_down_circle_outlined),
-                  hint: Text(placeholder.isNotEmpty ? placeholder : "-- ជ្រើសរើស --"),
-                  items: choices.map<DropdownMenuItem<String>>((c) {
-                    return DropdownMenuItem<String>(
-                      value: c.toString(),
-                      child: Text(c.toString()),
-                    );
-                  }).toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _gradeOptionValues[fieldName] = v;
-                    });
-                  },
+                child: TextField(
+                  keyboardType: keyboardType,
+                  maxLines: fieldType == 'TEXTAREA' ? 3 : 1,
+                  onChanged: (v) => _gradeOptionValues[fieldName] = v.trim(),
+                  decoration: InputDecoration(
+                    labelText: displayLabel,
+                    hintText: placeholder.isNotEmpty ? placeholder : label,
+                    prefixIcon: Icon(fieldIcon, color: AppColors.primary, size: 20),
+                    filled: true,
+                    fillColor: AppColors.bgLight,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.8)),
+                  ),
                 ),
               );
-            }
-
-            // Default Text/Number/Date input
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: TextField(
-                keyboardType: fieldType == 'NUMBER'
-                    ? TextInputType.number
-                    : (fieldType == 'PHONE' ? TextInputType.phone : TextInputType.text),
-                maxLines: fieldType == 'TEXTAREA' ? 3 : 1,
-                onChanged: (v) => _gradeOptionValues[fieldName] = v.trim(),
-                decoration: InputDecoration(
-                  labelText: displayLabel,
-                  hintText: placeholder.isNotEmpty ? placeholder : label,
-                  prefixIcon: const Icon(Icons.edit_note_rounded, color: AppColors.primary, size: 20),
-                  filled: true,
-                  fillColor: AppColors.bgLight,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderLight)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.8)),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+            }).toList(),
+          ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // REUSABLE SUB-WIDGETS & INPUT FIELDS
-  // ---------------------------------------------------------------------------
   Widget _buildGenderSelector() {
     return Row(
       children: [
