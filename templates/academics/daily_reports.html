@@ -342,6 +342,15 @@
             page-break-inside: avoid !important;
             break-inside: avoid !important;
         }
+
+        .font-muol-12,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Moul"] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            line-height: 1.35 !important;
+        }
     }
 </style>
 {% endblock %}
@@ -749,7 +758,7 @@
                             {{ school_info.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
                         </div>
                         <div class="fw-bold text-dark text-center" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 12pt; line-height: 1.35;">
-                            {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែនកំពង់កណ្តួត" }}
+                            {{ school_info.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}
                         </div>
                     </div>
 
