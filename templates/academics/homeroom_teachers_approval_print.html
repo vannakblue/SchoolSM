@@ -29,9 +29,29 @@
             print-color-adjust: exact;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
-            font-weight: normal;
+        .moul-font,
+        .font-muol,
+        .font-moul,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
+        }
+        .title-block h1.moul-font {
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-synthesis: none !important;
         }
 
         .print-sheet {
@@ -205,11 +225,11 @@
             <div class="header-left">
                 <div class="small fw-semibold">{{ school.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
                 <div class="small fw-bold">{{ school.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា" }}</div>
-                <div class="moul-font mt-1" style="font-size: 11pt;">{{ school.name_kh|default:"វិទ្យាល័យ" }}</div>
+                <div class="moul-font mt-1" style="font-size: 12pt; font-weight: normal;">{{ school.name_kh|default:"វិទ្យាល័យ" }}</div>
             </div>
             <div class="header-right">
-                <div class="moul-font" style="font-size: 11pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="moul-font" style="font-size: 10.5pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
                 <div style="letter-spacing: 2px; font-size: 8pt; margin-top: 2px;">***</div>
             </div>
         </div>
@@ -287,7 +307,7 @@
             <div class="signature-box">
                 <div class="fw-semibold">បានឃើញ និងពិនិត្យត្រឹមត្រូវ</div>
                 <div class="small text-muted mb-1">ថ្ងៃទី........ ខែ............... ឆ្នាំ២០២...</div>
-                <div class="moul-font" style="font-size: 10pt;">ការិយាល័យសិក្សា / ជំនួយការនាយក</div>
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">ការិយាល័យសិក្សា / ជំនួយការនាយក</div>
                 <div style="min-height: 85px;"></div>
                 <div class="fw-bold" style="border-top: 1px dotted #888888; width: 65%; margin: 0 auto; padding-top: 4px;">
                     ហត្ថលេខា
@@ -300,7 +320,7 @@
                     {{ school.province|default:"រាជធានីភ្នំពេញ" }}, ថ្ងៃទី {{ sign_day_kh }} ខែ {{ sign_month_kh }} ឆ្នាំ {{ sign_year_kh }}
                 </div>
                 <div class="fw-semibold">បានឃើញ និងសម្រេចអនុម័ត</div>
-                <div class="moul-font" style="font-size: 10.5pt; margin-top: 2px;">
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal; margin-top: 2px;">
                     {{ sign_role|default:"នាយកសាលា" }}
                 </div>
                 
@@ -313,7 +333,7 @@
                     {% endif %}
                 </div>
 
-                <div class="fw-bold moul-font" style="font-size: 10pt;">
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">
                     {{ sign_name|default:school.short_name|default:"គណៈគ្រប់គ្រងសាលា" }}
                 </div>
             </div>

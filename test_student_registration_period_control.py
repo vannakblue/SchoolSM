@@ -170,8 +170,8 @@ def run_tests():
     acad_year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
     cls = Classroom.objects.filter(academic_year=acad_year).first()
     if not cls:
-        gl, _ = GradeLevel.objects.get_or_create(code='10', defaults={'name': 'ថ្នាក់ទី ១០'})
-        cls = Classroom.objects.create(name='10A', grade_level=gl, academic_year=acad_year)
+        gl, _ = GradeLevel.objects.get_or_create(grade_number=10, defaults={'name': 'ថ្នាក់ទី ១០'})
+        cls = Classroom.objects.create(name='10A', grade_level=10, academic_year=acad_year)
 
     mobile_student_payload.update({
         'academic_year_id': acad_year.id if acad_year else None,

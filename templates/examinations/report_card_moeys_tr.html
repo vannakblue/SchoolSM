@@ -16,7 +16,7 @@
     <style>
         :root {
             --khmer-font-body: 'Siemreap', 'Battambang', Arial, sans-serif;
-            --khmer-font-muol: 'Moul', 'Khmer OS Muol Light', serif;
+            --khmer-font-muol: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
         }
 
         * {
@@ -34,8 +34,24 @@
             padding: 20px 10px;
         }
 
-        .font-muol {
-            font-family: var(--khmer-font-muol);
+        .font-muol,
+        .font-moul,
+        .moul-font,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: var(--khmer-font-muol) !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         .font-bold-kh {

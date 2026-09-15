@@ -18,13 +18,14 @@ class StudentEnrollmentScreen extends StatefulWidget {
 class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   bool _isLoadingMeta = true;
   bool _isSubmitting = false;
+  bool _isRegistrationAllowed = true;
+  String _registrationClosedMessage = '';
 
   // Metadata & Modes from backend
   String _registrationMode = 'BOTH'; // 'ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL', 'BOTH'
   String _activeEnrollmentMode = 'ADMIN_CUSTOM'; // Active selected mode
   List<dynamic> _academicYears = [];
   List<dynamic> _classrooms = [];
-  List<dynamic> _scholarshipTypes = [];
   String _suggestedId = '';
   String _schoolName = 'SchoolSM';
   bool _canEditStudentId = false;
@@ -84,7 +85,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   DateTime _dateOfBirth = DateTime(DateTime.now().year - 14, 1, 1);
   int? _selectedYearId;
   int? _selectedClassroomId;
-  String _selectedScholarship = 'FULL_PAY';
+  final String _selectedScholarship = 'FULL_PAY';
 
   // Administrative Location Selectors (ទីកន្លែងកំណើត MoEYS & Address Cascades)
   List<dynamic> _pobProvinces = [];
@@ -154,7 +155,6 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           _customIdController.text = _suggestedId;
           _academicYears = data['academic_years'] ?? [];
           _classrooms = data['classrooms'] ?? [];
-          _scholarshipTypes = data['scholarship_types'] ?? [];
           _schoolName = data['school_name'] ?? 'SchoolSM';
 
           _registrationMode = data['registration_mode'] ?? 'BOTH';
@@ -180,6 +180,12 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
 
           if (_classrooms.isNotEmpty) {
             _selectedClassroomId = _classrooms.first['id'];
+          }
+
+          final regPeriod = data['registration_period'];
+          if (regPeriod != null) {
+            _isRegistrationAllowed = regPeriod['is_allowed'] == true;
+            _registrationClosedMessage = regPeriod['closed_message'] ?? regPeriod['message'] ?? 'ការចុះឈ្មោះត្រូវបានបិទដោយ Admin';
           }
 
           _isLoadingMeta = false;
@@ -1061,6 +1067,20 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       }
     }
 
+    if (!auth.isAdmin && !_isRegistrationAllowed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _registrationClosedMessage.isNotEmpty
+                ? _registrationClosedMessage
+                : "ការចុះឈ្មោះត្រូវបានបិទដោយ Admin មិនអាចដាក់ពាក្យបានទេ។",
+          ),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final payload = <String, dynamic>{
@@ -1323,11 +1343,17 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       ),
       body: _isLoadingMeta
           ? const Center(child: SpinKitFadingCircle(color: AppColors.primary, size: 40))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          : Builder(
+              builder: (ctx) {
+                final auth = Provider.of<AuthService>(ctx);
+                final bool isStaffOrAdmin = auth.isAdmin;
+                final bool canSubmit = isStaffOrAdmin || _isRegistrationAllowed;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   // School Info Banner
                   Container(
                     width: double.infinity,
@@ -1377,6 +1403,91 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Registration Closed Banner for Non-Admin / Public
+                  if (!canSubmit) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFDA4AF)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withValues(alpha: 0.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE4E6),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.lock_clock_rounded, color: AppColors.danger, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "ការចុះឈ្មោះចូលរៀនត្រូវបានបិទ (Registration Closed)",
+                                  style: TextStyle(
+                                    color: Color(0xFF9F1239),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _registrationClosedMessage.isNotEmpty
+                                      ? _registrationClosedMessage
+                                      : "Admin បានបិទដំណើរការទទួលពាក្យចុះឈ្មោះសិស្សថ្មីជាបណ្តោះអាសន្ន។",
+                                  style: const TextStyle(
+                                    color: Color(0xFF881337),
+                                    fontSize: 12.5,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // Notice for Admin when Registration is Closed for Public
+                  if (isStaffOrAdmin && !_isRegistrationAllowed) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.admin_panel_settings_rounded, color: Colors.amber.shade800, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "សម្គាល់៖ ការចុះឈ្មោះជាសាធារណៈត្រូវបានបិទ (ប៉ុន្តែ Admin មានសិទ្ធិចុះឈ្មោះសិស្សបាន)",
+                              style: TextStyle(fontSize: 12, color: Colors.amber.shade900, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   // Mode Switcher Tabs (Rendered if Admin allowed BOTH)
                   if (_registrationMode == 'BOTH') ...[
                     _buildModeSwitcher(),
@@ -1399,23 +1510,25 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
                     height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: canSubmit ? AppColors.primary : Colors.grey.shade400,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 3,
+                        elevation: canSubmit ? 3 : 0,
                       ),
-                      onPressed: _isSubmitting ? null : _submitEnrollment,
+                      onPressed: (_isSubmitting || !canSubmit) ? null : _submitEnrollment,
                       child: _isSubmitting
                           ? const SpinKitThreeBounce(color: Colors.white, size: 24)
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.check_circle_outline, size: 22),
+                                Icon(canSubmit ? Icons.check_circle_outline : Icons.lock_outline_rounded, size: 22),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _activeEnrollmentMode == 'MOEYS_INDIVIDUAL'
-                                      ? "រក្សាទុកសម្រង់ព័ត៌មានសិស្ស MoEYS"
-                                      : "ចុះឈ្មោះសិស្សឥឡូវនេះ (Submit)",
+                                  !canSubmit
+                                      ? "ការចុះឈ្មោះត្រូវបានបិទដោយ Admin"
+                                      : (_activeEnrollmentMode == 'MOEYS_INDIVIDUAL'
+                                          ? "រក្សាទុកសម្រង់ព័ត៌មានសិស្ស MoEYS"
+                                          : "ចុះឈ្មោះសិស្សឥឡូវនេះ (Submit)"),
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -1425,7 +1538,9 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
                   const SizedBox(height: 24),
                 ],
               ),
-            ),
+            );
+          },
+        ),
     );
   }
 
@@ -1577,8 +1692,6 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
           _buildYearDropdown(),
           const SizedBox(height: 14),
           _buildClassroomDropdown(),
-          const SizedBox(height: 14),
-          _buildScholarshipDropdown(),
         ],
       ),
       const SizedBox(height: 20),
@@ -1800,8 +1913,6 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          _buildScholarshipDropdown(),
         ],
       ),
       const SizedBox(height: 20),
@@ -2561,20 +2672,6 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
         setState(() => _selectedClassroomId = v);
         _fetchGradeOptions();
       },
-    );
-  }
-
-  Widget _buildScholarshipDropdown() {
-    return DropdownButtonFormField<String>(
-      initialValue: _selectedScholarship,
-      decoration: _inputDecoration("ប្រភេទថ្លៃសិក្សា / អាហារូបករណ៍", Icons.card_giftcard_rounded),
-      items: _scholarshipTypes.map<DropdownMenuItem<String>>((s) {
-        return DropdownMenuItem<String>(
-          value: s['code'],
-          child: Text(s['label'] ?? s['code']),
-        );
-      }).toList(),
-      onChanged: (v) => setState(() => _selectedScholarship = v ?? 'FULL_PAY'),
     );
   }
 

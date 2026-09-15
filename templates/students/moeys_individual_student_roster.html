@@ -16,8 +16,24 @@
         font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
     }
 
-    .font-muol {
-        font-family: 'Moul', 'Khmer OS Muol Light', serif;
+    .font-muol,
+    .font-moul,
+    .moul-font,
+    .khmer-font-muol,
+    [style*="Khmer OS Muol Light"],
+    [style*="KhmerOSmuollight"],
+    [style*="Khmer OS Muol"],
+    [style*="font-family: 'Moul'"],
+    [style*="font-family:'Moul'"],
+    [style*='font-family: "Moul"'] {
+        font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+        font-size: 12pt !important;
+        font-weight: normal !important;
+        font-weight: 400 !important;
+        font-synthesis: none !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        line-height: 1.35 !important;
     }
     .font-siemreap {
         font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
@@ -218,7 +234,7 @@
                 <i class="fas fa-file-invoice fa-2x"></i>
             </div>
             <div>
-                <h4 class="mb-1 font-muol text-primary" style="font-size: 1.25rem;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
+                <h4 class="mb-1 font-muol text-primary" style="font-size: 12pt; font-weight: normal; font-synthesis: none;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
                 <div class="text-muted small">
                     <span class="badge bg-secondary me-1">គំរូផ្លូវការក្រសួង MoEYS ៣៥ជួរឈរ</span>
                     <span>ឆ្នាំសិក្សា <strong>{{ active_year.name|default:"២០២៦-២០២៧" }}</strong></span>
@@ -411,17 +427,17 @@
         <!-- Ministry Document Header -->
         <div class="row mb-3">
             <div class="col-6">
-                <div class="font-muol text-primary" style="font-size: 1rem;">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                <div class="font-muol text-primary">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
                 <div class="fw-bold small text-muted">នាយកដ្ឋានមធ្យមសិក្សាចំណេះទូទៅ</div>
             </div>
             <div class="col-6 text-end">
-                <div class="font-muol text-dark" style="font-size: 0.95rem;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="font-muol text-dark" style="font-size: 0.85rem;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="font-muol text-dark">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="font-muol text-dark">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
             </div>
         </div>
 
         <div class="text-center my-3">
-            <h4 class="font-muol text-primary mb-1" style="font-size: 1.35rem; letter-spacing: 0.5px;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
+            <h4 class="font-muol text-primary mb-1" style="font-size: 12pt; font-weight: normal; font-synthesis: none; letter-spacing: 0.5px;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h4>
             <div class="fw-bold small text-secondary">
                 {% if grade_filter != 'ALL' %}កម្រិតថ្នាក់ទី {{ grade_filter }}{% else %}គ្រប់កម្រិតថ្នាក់{% endif %} 
                 - ឆ្នាំសិក្សា {{ active_year.name|default:"២០២៦-២០២៧" }}

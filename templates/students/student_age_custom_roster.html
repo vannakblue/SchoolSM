@@ -21,8 +21,24 @@
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
 
-    .font-muol {
-        font-family: 'Moul', 'Khmer OS Muol Light', serif;
+    .font-muol,
+    .font-moul,
+    .moul-font,
+    .khmer-font-muol,
+    [style*="Khmer OS Muol Light"],
+    [style*="KhmerOSmuollight"],
+    [style*="Khmer OS Muol"],
+    [style*="font-family: 'Moul'"],
+    [style*="font-family:'Moul'"],
+    [style*='font-family: "Moul"'] {
+        font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+        font-size: 12pt !important;
+        font-weight: normal !important;
+        font-weight: 400 !important;
+        font-synthesis: none !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        line-height: 1.35 !important;
     }
     .font-siemreap {
         font-family: 'Siemreap', 'Kantumruy Pro', sans-serif;
@@ -414,15 +430,15 @@
         <!-- Document Header: Top Right Kingdom + Top Left School Name -->
         <div class="row align-items-start mb-4">
             <div class="col-6 text-start">
-                <div class="font-muol text-dark" style="font-size: 1.05rem;">
+                <div class="font-muol text-dark">
                     {{ school_name }}
                 </div>
             </div>
             <div class="col-6 text-end">
-                <div class="font-muol text-dark" style="font-size: 1.05rem; line-height: 1.5;">
+                <div class="font-muol text-dark" style="line-height: 1.5;">
                     ព្រះរាជាណាចក្រកម្ពុជា
                 </div>
-                <div class="font-muol text-dark" style="font-size: 0.95rem; line-height: 1.4;">
+                <div class="font-muol text-dark" style="line-height: 1.4;">
                     ជាតិ សាសនា ព្រះមហាក្សត្រ
                 </div>
             </div>
@@ -430,7 +446,7 @@
 
         <!-- Document Center Title -->
         <div class="text-center my-4">
-            <h4 class="font-muol fw-bold text-dark mb-1" style="font-size: 1.28rem; letter-spacing: 0.5px;">
+            <h4 class="font-muol text-dark mb-1" style="font-size: 12pt; font-weight: normal; font-synthesis: none; letter-spacing: 0.5px;">
                 {{ title }}
             </h4>
             <div class="small text-muted font-siemreap">

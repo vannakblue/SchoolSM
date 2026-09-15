@@ -41,8 +41,24 @@
             padding: 10px;
         }
 
-        .font-muol {
-            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+        .font-muol,
+        .font-moul,
+        .moul-font,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         /* Screen Control Toolbar */
@@ -306,8 +322,10 @@
             width: 28%;
         }
         .sig-title {
-            font-family: 'Moul', serif;
-            font-size: 8.5pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+            font-size: 12pt;
+            font-weight: normal;
+            font-synthesis: none;
             margin: 6px 0 50px 0;
         }
 
@@ -551,18 +569,18 @@
         <!-- Ministry Document Header -->
         <div class="doc-header">
             <div class="header-left">
-                <div class="font-muol" style="font-size: 9.5pt;">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
+                <div class="font-muol">ក្រសួងអប់រំ យុវជន និងកីឡា</div>
                 <div style="font-size: 8.5pt; font-weight: bold;">នាយកដ្ឋានមធ្យមសិក្សាចំណេះទូទៅ</div>
             </div>
             <div class="header-right">
-                <div class="font-muol" style="font-size: 9.5pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="font-muol" style="font-size: 8.5pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="font-muol">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="font-muol">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
             </div>
         </div>
 
         <!-- Title -->
         <div class="doc-title">
-            <h2 class="font-muol" style="font-size: 13pt; margin-bottom: 2px;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h2>
+            <h2 class="font-muol" style="font-size: 12pt; font-weight: normal; font-synthesis: none; margin-bottom: 2px;">សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ</h2>
             <div style="font-size: 8.5pt; font-weight: bold;">
                 {% if grade_filter != 'ALL' %}កម្រិតថ្នាក់ទី {{ grade_filter }}{% else %}គ្រប់កម្រិតថ្នាក់{% endif %} 
                 - ឆ្នាំសិក្សា {{ active_year.name|default:"២០២៦-២០២៧" }}

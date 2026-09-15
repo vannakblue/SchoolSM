@@ -31,9 +31,24 @@
             print-color-adjust: exact;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
-            font-weight: normal;
+        .moul-font,
+        .font-muol,
+        .font-moul,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         .kantumruy-font {
@@ -514,7 +529,7 @@
     </div>
     {% empty %}
     <div class="print-sheet text-center py-5">
-        <h5 class="fw-bold text-muted moul-font mb-3">មិនទាន់មានបន្ទប់ប្រឡងត្រូវបានបង្កើតនៅឡើយទេ</h5>
+        <h5 class="text-muted moul-font mb-3">មិនទាន់មានបន្ទប់ប្រឡងត្រូវបានបង្កើតនៅឡើយទេ</h5>
         <p class="text-muted">សូមត្រឡប់ទៅផ្তখনគ្រប់គ្រងសម័យប្រឡង រួចចុច <strong>«ចែកបន្ទប់ ២៥ នាក់/បន្ទប់»</strong> ជាមុនសិន។</p>
     </div>
     {% endfor %}

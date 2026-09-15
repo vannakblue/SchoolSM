@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --font-moul: 'Moul', cursive;
+            --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
             --font-body: 'Kantumruy Pro', 'Battambang', sans-serif;
         }
         body {
@@ -31,8 +31,24 @@
             position: relative;
             page-break-after: always;
         }
-        .font-moul {
-            font-family: var(--font-moul);
+        .font-moul,
+        .font-muol,
+        .moul-font,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: var(--font-moul) !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
         .photo-frame {
             width: 90px;
@@ -111,13 +127,13 @@
     <!-- Header -->
     <div class="row align-items-center mb-2">
         <div class="col-6 text-center">
-            <div class="font-moul text-primary" style="font-size: 12px;">{{ dossier.school_profile.ministry_name_kh|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
-            <div class="font-moul text-dark mt-0.5" style="font-size: 12px;">{{ dossier.school_name }}</div>
+            <div class="font-moul text-primary">{{ dossier.school_profile.ministry_name_kh|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
+            <div class="font-moul text-dark mt-0.5">{{ dossier.school_name }}</div>
             <div class="text-muted" style="font-size: 9px;">កូដសាលា៖ {{ dossier.school_profile.school_code|default:"080101" }}</div>
         </div>
         <div class="col-6 text-center">
-            <div class="font-moul text-primary" style="font-size: 13px;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-            <div class="font-moul text-danger" style="font-size: 11px;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            <div class="font-moul text-primary">ព្រះរាជាណាចក្រកម្ពុជា</div>
+            <div class="font-moul text-danger">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
             <div style="letter-spacing: 2px; font-size: 10px;">***</div>
         </div>
     </div>
@@ -262,7 +278,7 @@
     <div class="row mt-4 pt-2">
         <div class="col-4 text-center">
             <div class="fw-bold">បានឃើញ និងបញ្ជាក់ត្រឹមត្រូវ</div>
-            <div class="fw-bold font-moul text-primary mt-1">នាយកសាលា</div>
+            <div class="font-moul text-primary mt-1">នាយកសាលា</div>
             <div style="height: 55px;"></div>
             <div class="fw-bold">{{ dossier.school_profile.director_name_kh|default:".........................................." }}</div>
         </div>
@@ -273,7 +289,7 @@
         </div>
         <div class="col-4 text-center">
             <div>ថ្ងៃ....................ខែ.............ឆ្នាំ..............</div>
-            <div class="fw-bold font-moul mt-1">គ្រូទទួលបន្ទុកថ្នាក់</div>
+            <div class="font-moul mt-1">គ្រូទទួលបន្ទុកថ្នាក់</div>
             <div style="height: 55px;"></div>
             <div class="fw-bold">{{ dossier.current_classroom.homeroom_teacher.khmer_name|default:".........................................." }}</div>
         </div>

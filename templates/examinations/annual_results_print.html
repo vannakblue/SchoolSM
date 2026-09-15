@@ -35,9 +35,24 @@
             padding: 20px 0;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
-            font-weight: normal;
+        .moul-font,
+        .font-muol,
+        .font-moul,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         .kantumruy-font {
@@ -87,9 +102,10 @@
             text-align: left;
             width: 48%;
             line-height: 1.4;
-            font-size: 8.5pt;
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-size: 12pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif;
             font-weight: normal;
+            font-synthesis: none;
         }
 
         .kingdom-block {
@@ -99,13 +115,15 @@
         }
 
         .kingdom-title {
-            font-size: 10.5pt;
+            font-size: 12pt;
             letter-spacing: 0.3px;
+            font-weight: normal;
         }
 
         .motto-title {
-            font-size: 10pt;
+            font-size: 12pt;
             letter-spacing: 0.3px;
+            font-weight: normal;
         }
 
         /* Center Main Title */
@@ -116,16 +134,18 @@
         }
 
         .main-title {
-            font-size: 11pt;
+            font-size: 12pt;
             letter-spacing: 0.2px;
             margin-bottom: 2px;
+            font-weight: normal;
         }
 
         .sub-title {
-            font-size: 10pt;
+            font-size: 12pt;
             letter-spacing: 0.2px;
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif;
             font-weight: normal;
+            font-synthesis: none;
         }
 
         /* The Main Table */

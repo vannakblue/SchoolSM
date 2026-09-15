@@ -618,13 +618,21 @@ class MobileDashboardSummaryView(APIView):
                 'role_badge': 'គណនេយ្យករ (Finance)',
             }
         else:
-            # Admin stats
             data['stats'] = {
                 'total_students': Student.objects.filter(status='ACTIVE').count(),
                 'total_teachers': Teacher.objects.filter(status='ACTIVE').count(),
                 'today_teacher_attendance': TeacherAttendance.objects.filter(date=today, status='PRESENT').count(),
                 'today_student_attendance': StudentAttendance.objects.filter(date=today, status='PRESENT').count(),
             }
+
+        profile = SchoolProfile.get_settings()
+        is_allowed, reason, status_code = profile.is_student_registration_allowed()
+        data['registration_period'] = {
+            'is_allowed': is_allowed,
+            'status_code': status_code,
+            'message': reason,
+            'is_open': profile.is_registration_open,
+        }
 
         return Response({'status': 'success', 'dashboard': data})
 
@@ -3067,12 +3075,22 @@ class MobileStudentListView(APIView):
 
         classrooms = Classroom.objects.filter(academic_year__is_current=True).values('id', 'name', 'grade_level').order_by('grade_level', 'name')
 
+        school_profile = SchoolProfile.get_settings()
+        is_reg_allowed, reg_reason, reg_status = school_profile.is_student_registration_allowed()
+
         return Response({
             'status': 'success',
             'total_count': total_count,
             'students': data,
             'classrooms': list(classrooms),
+            'registration_period': {
+                'is_allowed': is_reg_allowed,
+                'status_code': reg_status,
+                'message': reg_reason,
+                'is_open': school_profile.is_registration_open,
+            },
         })
+
 
 
 # ==============================================================================

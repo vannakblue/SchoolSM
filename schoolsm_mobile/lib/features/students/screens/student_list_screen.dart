@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/services/auth_service.dart';
 import 'student_enrollment_screen.dart';
 
 class StudentListScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   Timer? _debounceTimer;
 
   bool _isLoading = true;
+  bool _isRegistrationAllowed = false;
   List<dynamic> _students = [];
   List<dynamic> _classrooms = [];
   int _totalCount = 0;
@@ -58,6 +61,9 @@ class _StudentListScreenState extends State<StudentListScreen> {
           _students = data['students'] ?? [];
           _classrooms = data['classrooms'] ?? [];
           _totalCount = data['total_count'] ?? _students.length;
+          if (data['registration_period'] != null) {
+            _isRegistrationAllowed = data['registration_period']['is_allowed'] == true;
+          }
           _isLoading = false;
         });
       }
@@ -203,15 +209,21 @@ class _StudentListScreenState extends State<StudentListScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textPrimary),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
-            tooltip: "ចុះឈ្មោះសិស្សថ្មី",
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen()),
+          Consumer<AuthService>(
+            builder: (context, auth, _) {
+              final canAdd = auth.isAdmin || _isRegistrationAllowed;
+              if (!canAdd) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
+                tooltip: "ចុះឈ្មោះសិស្សថ្មី",
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen()),
+                  );
+                  _fetchStudents();
+                },
               );
-              _fetchStudents();
             },
           ),
         ],

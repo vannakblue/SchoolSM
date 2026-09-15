@@ -37,8 +37,11 @@
             padding: 15px;
         }
         .font-muol {
-            font-family: 'Moul', 'Khmer OS Muol Light', serif;
-            font-weight: normal;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-synthesis: none !important;
+            line-height: 1.35 !important;
         }
         .font-battambang {
             font-family: 'Battambang', sans-serif;
@@ -447,6 +450,13 @@
             .roster-footer {
                 page-break-inside: avoid;
             }
+            .font-muol {
+                font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+                font-size: 12pt !important;
+                font-weight: normal !important;
+                font-synthesis: none !important;
+                line-height: 1.35 !important;
+            }
             @page {
                 size: A3 landscape;
                 margin: 1.2cm; /* ចន្លោះពី ១ ទៅ 1.5cm ជុំវិញ (Default 1.2cm) */
@@ -623,13 +633,13 @@
         <table style="width: 100%; border: none; margin-bottom: 8px;">
             <tr style="border: none;">
                 <td style="border: none; text-align: left; vertical-align: top; width: 45%;">
-                    <div class="font-muol" style="font-size: 9.5pt;">ស្រុកកណ្ដាលស្ទឹង</div>
-                    <div class="font-muol" style="font-size: 9.5pt;">ការិយាល័យអប់រំ យុវជន និងកីឡា</div>
-                    <div class="font-muol" style="font-size: 9.5pt;">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត</div>
+                    <div class="font-muol">ស្រុកកណ្ដាលស្ទឹង</div>
+                    <div class="font-muol">ការិយាល័យអប់រំ យុវជន និងកីឡា</div>
+                    <div class="font-muol">វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត</div>
                 </td>
                 <td style="border: none; text-align: center; vertical-align: top; width: 55%;">
-                    <div class="font-muol" style="font-size: 10.5pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                    <div class="font-muol" style="font-size: 10.5pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <div class="font-muol">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div class="font-muol">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
                     <div style="letter-spacing: 4px; font-size: 9pt;">3 3 3</div>
                 </td>
             </tr>
@@ -637,7 +647,7 @@
 
         <!-- Main Title -->
         <div style="text-align: center; margin-bottom: 10px;">
-            <div class="font-muol" style="font-size: 11pt; letter-spacing: 0.5px;">
+            <div class="font-muol" style="letter-spacing: 0.5px;">
                 បញ្ជីគ្រប់គ្រងបុគ្គលិក មន្ត្រីរាជការ ឆ្នាំសិក្សា ២០២៦-២០២៧
             </div>
         </div>
@@ -794,16 +804,16 @@
                         <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>នាយកសាលា</span> <span class="sub-block-pos">(0, 0)</span></div>
                         <div class="lunar-sig-line" id="lunarSigPrincipal" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទចន្ទគតិ" style="font-size: 7.5pt;">ថ្ងៃសៅរ៍ ១១កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
                         <div class="solar-sig-line" id="solarSigPrincipal" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទសុរិយគតិ" style="font-weight: bold; margin-bottom: 2px;">កំពង់កន្ទួត ថ្ងៃទី០១ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
-                        <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">នាយកសាលា</div>
+                        <div class="font-muol" style="margin-top: 3px;">នាយកសាលា</div>
                     </div>
 
                     <!-- Sub-block 5: District Officer Approval -->
                     <div class="movable-sub-block" id="blockSigDistrict" data-block-id="blockSigDistrict" data-block-name="ហត្ថលេខាប្រធានការិយាល័យ" style="margin-top: 25px; padding: 4px;">
                         <div class="sub-block-drag-handle"><i class="fa-solid fa-arrows-up-down-left-right"></i> <span>ប្រធានការិយាល័យ</span> <span class="sub-block-pos">(0, 0)</span></div>
-                        <div class="font-muol" style="font-size: 9pt;">បានឃើញ និងឯកភាព</div>
+                        <div class="font-muol">បានឃើញ និងឯកភាព</div>
                         <div class="lunar-sig-line" id="lunarSigDistrict" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទចន្ទគតិ" style="font-size: 7.5pt;">ថ្ងៃចន្ទ ១៣កើត ខែកត្តិក ឆ្នាំម្សាញ់ សប្តស័ក ព.ស.២៥៦៩</div>
                         <div class="solar-sig-line" id="solarSigDistrict" contenteditable="true" spellcheck="false" title="ចុចដើម្បីកែប្រែកាលបរិច្ឆេទសុរិយគតិ" style="font-weight: bold; margin-bottom: 2px;">ថ្ងៃទី ០៣ ខែ វិច្ឆិកា ឆ្នាំ ២០២៥</div>
-                        <div class="font-muol" style="font-size: 9.5pt; margin-top: 3px;">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡាស្រុក</div>
+                        <div class="font-muol" style="margin-top: 3px;">ប្រធានការិយាល័យអប់រំ យុវជន និងកីឡាស្រុក</div>
                     </div>
                 </div>
             </div>

@@ -85,6 +85,55 @@
             font-display: swap;
         }
 
+        /* Standard Khmer OS Muol Light Typography for All Reports */
+        .font-muol,
+        .font-moul,
+        .moul-font,
+        .khmer-font-muol,
+        .font-muol-12,
+        .khmer-muol-12,
+        .khmer-moul,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
+        }
+
+        @media print {
+            .font-muol,
+            .font-moul,
+            .moul-font,
+            .khmer-font-muol,
+            .font-muol-12,
+            .khmer-muol-12,
+            .khmer-moul,
+            [style*="Khmer OS Muol Light"],
+            [style*="KhmerOSmuollight"],
+            [style*="Khmer OS Muol"],
+            [style*="font-family: 'Moul'"],
+            [style*="font-family:'Moul'"],
+            [style*='font-family: "Moul"'] {
+                font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+                font-size: 12pt !important;
+                font-weight: normal !important;
+                font-weight: 400 !important;
+                font-synthesis: none !important;
+                -webkit-font-smoothing: antialiased !important;
+                -moz-osx-font-smoothing: grayscale !important;
+                line-height: 1.35 !important;
+            }
+        }
+
         :root {
             {% if school_info %}
             --font-khmer: {{ school_info.display_font_css|safe }} !important;

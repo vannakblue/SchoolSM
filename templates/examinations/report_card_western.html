@@ -37,8 +37,24 @@
             margin: 0;
         }
 
-        .font-muol {
-            font-family: 'Moul', 'Khmer OS Muol Light', serif;
+        .font-muol,
+        .font-moul,
+        .moul-font,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         .font-battambang {
@@ -75,15 +91,19 @@
 
         /* Kingdom & School Header */
         .national-motto-kh {
-            font-family: 'Moul', serif;
-            font-size: 9pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+            font-size: 12pt;
+            font-weight: normal;
+            font-synthesis: none;
             color: #000000;
             text-align: right;
             margin-bottom: 2px;
         }
         .national-motto-sub {
-            font-family: 'Moul', serif;
-            font-size: 8.5pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+            font-size: 12pt;
+            font-weight: normal;
+            font-synthesis: none;
             color: #000000;
             text-align: right;
             margin-bottom: 4px;
@@ -96,8 +116,10 @@
         }
 
         .school-title-kh {
-            font-family: 'Moul', serif;
-            font-size: 9.5pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+            font-size: 12pt;
+            font-weight: normal;
+            font-synthesis: none;
             color: var(--primary-navy);
             margin-bottom: 2px;
         }
@@ -113,8 +135,10 @@
             margin: 10px 0 14px 0;
         }
         .report-main-title h4 {
-            font-family: 'Moul', serif;
-            font-size: 11pt;
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif;
+            font-size: 12pt;
+            font-weight: normal;
+            font-synthesis: none;
             color: #000000;
             margin: 0 0 2px 0;
         }

@@ -3,6 +3,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/services/auth_service.dart';
 import '../../dashboard/screens/main_navigation_screen.dart';
 import '../../students/screens/student_enrollment_screen.dart';
@@ -92,6 +93,27 @@ class _LoginScreenState extends State<LoginScreen> {
       badgeColor: Color(0xFFD97706),
     ),
   ];
+
+  bool _isRegistrationAllowed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRegistrationPeriod();
+  }
+
+  Future<void> _checkRegistrationPeriod() async {
+    try {
+      final res = await ApiClient().dio.get(ApiConstants.registrationPeriod);
+      if (res.data != null && res.data['status'] == 'success') {
+        if (mounted) {
+          setState(() {
+            _isRegistrationAllowed = res.data['is_allowed'] == true;
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -686,41 +708,42 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-
-                      // Student Self-Enrollment / Admission Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.secondary,
-                            side: const BorderSide(color: AppColors.secondary, width: 1.5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen()),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.person_add_alt_1_rounded, size: 20, color: AppColors.secondary),
-                              SizedBox(width: 8),
-                              Text(
-                                "📝 ចុះឈ្មោះចូលរៀនថ្មី (Student Admission)",
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.secondary,
+                      // Student Self-Enrollment / Admission Button (Available ONLY when admin permits registration)
+                      if (_isRegistrationAllowed) ...[
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.secondary,
+                              side: const BorderSide(color: AppColors.secondary, width: 1.5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen()),
+                              );
+                            },
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.person_add_alt_1_rounded, size: 20, color: AppColors.secondary),
+                                SizedBox(width: 8),
+                                Text(
+                                  "📝 ចុះឈ្មោះចូលរៀនថ្មី (Student Admission)",
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.secondary,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

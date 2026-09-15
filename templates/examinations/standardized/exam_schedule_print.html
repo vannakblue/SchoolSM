@@ -30,9 +30,24 @@
             print-color-adjust: exact;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', 'Khmer OS Muol', cursive;
-            font-weight: normal;
+        .moul-font,
+        .font-muol,
+        .font-moul,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', 'Khmer OS Muol', cursive, serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         .print-sheet {
@@ -77,20 +92,23 @@
         }
 
         .title-line-1 {
-            font-size: 15pt;
+            font-size: 12pt;
             letter-spacing: 0.5px;
             margin-bottom: 6px;
+            font-weight: normal;
         }
 
         .title-line-2 {
-            font-size: 12.5pt;
+            font-size: 12pt;
             margin-bottom: 6px;
             line-height: 1.5;
+            font-weight: normal;
         }
 
         .title-line-3 {
-            font-size: 12.5pt;
+            font-size: 12pt;
             margin-bottom: 0;
+            font-weight: normal;
         }
 
         /* Timetable Schedule Section */
@@ -285,8 +303,8 @@
                 <div class="fw-bold" style="font-size: 10.5pt;">{{ school.short_name|default:school.name_kh|default:"វិ.ច.ប.តេជោសែនកោះកុង" }}</div>
             </div>
             <div class="header-center">
-                <div class="moul-font" style="font-size: 11pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="moul-font" style="font-size: 11pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="moul-font" style="font-size: 12pt; font-weight: normal;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
             </div>
         </div>
 

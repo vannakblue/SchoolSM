@@ -41,9 +41,24 @@
             padding: 0;
         }
 
-        .moul-font {
-            font-family: 'Moul', 'Khmer OS Muol Light', sans-serif;
-            font-weight: normal;
+        .moul-font,
+        .font-muol,
+        .font-moul,
+        .khmer-font-muol,
+        [style*="Khmer OS Muol Light"],
+        [style*="KhmerOSmuollight"],
+        [style*="Khmer OS Muol"],
+        [style*="font-family: 'Moul'"],
+        [style*="font-family:'Moul'"],
+        [style*='font-family: "Moul"'] {
+            font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', sans-serif, serif !important;
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            font-weight: 400 !important;
+            font-synthesis: none !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+            line-height: 1.35 !important;
         }
 
         /* Interactive On-Screen Floating Control Bar */
@@ -329,11 +344,12 @@
         }
 
         .school-header {
-            font-size: 11pt;
+            font-size: 12pt;
             letter-spacing: 0.3px;
             line-height: 1.4;
             text-align: left;
             padding-top: 2px;
+            font-weight: normal;
         }
 
         .kingdom-header {
@@ -341,15 +357,17 @@
         }
 
         .kingdom-title {
-            font-size: 11.5pt;
+            font-size: 12pt;
             letter-spacing: 0.5px;
             margin-bottom: 2px;
+            font-weight: normal;
         }
 
         .kingdom-motto {
-            font-size: 10pt;
+            font-size: 12pt;
             letter-spacing: 0.3px;
             margin-bottom: 2px;
+            font-weight: normal;
         }
 
         .divider-flourish {
@@ -366,9 +384,10 @@
         }
 
         .main-title {
-            font-size: 13.5pt;
+            font-size: 12pt;
             letter-spacing: 0.5px;
             margin-bottom: 2px;
+            font-weight: normal;
         }
 
         .exam-date-khmer {

@@ -390,6 +390,7 @@ class _HomeScreenState extends State<_HomeScreen> {
   }
 
   Widget _buildAllFeaturesGrid(BuildContext context, AuthService auth) {
+    final bool isRegAllowed = _dashboardData?['registration_period']?['is_allowed'] == true;
     List<Map<String, dynamic>> features = [];
 
     if (auth.isAdmin) {
@@ -509,13 +510,14 @@ class _HomeScreenState extends State<_HomeScreen> {
           'color': const Color(0xFF06B6D4),
           'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamInvigilatorScreen())),
         },
-        {
-          'title': 'ចុះឈ្មោះសិស្សថ្មី',
-          'subtitle': 'Student Admission',
-          'icon': Icons.person_add_alt_1_rounded,
-          'color': const Color(0xFFF59E0B),
-          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen())),
-        },
+        if (auth.isAdmin || isRegAllowed)
+          {
+            'title': 'ចុះឈ្មោះសិស្សថ្មី',
+            'subtitle': 'Student Admission',
+            'icon': Icons.person_add_alt_1_rounded,
+            'color': const Color(0xFFF59E0B),
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen())),
+          },
         {
           'title': 'បញ្ជីសិស្សតាមថ្នាក់',
           'subtitle': 'Class Students',
@@ -614,13 +616,14 @@ class _HomeScreenState extends State<_HomeScreen> {
           'color': const Color(0xFF4F46E5),
           'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentListScreen())),
         },
-        {
-          'title': 'ចុះឈ្មោះសិស្សថ្មី',
-          'subtitle': 'Student Admission',
-          'icon': Icons.person_add_alt_1_rounded,
-          'color': const Color(0xFF10B981),
-          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen())),
-        },
+        if (auth.isAdmin || isRegAllowed)
+          {
+            'title': 'ចុះឈ្មោះសិស្សថ្មី',
+            'subtitle': 'Student Admission',
+            'icon': Icons.person_add_alt_1_rounded,
+            'color': const Color(0xFF10B981),
+            'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentEnrollmentScreen())),
+          },
         {
           'title': 'ស្កេនផ្ទៀងផ្ទាត់កាតសិស្ស',
           'subtitle': 'Verify Student ID',
