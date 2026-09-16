@@ -1234,41 +1234,77 @@ def enrollment_qr_code(request):
     else:
         base_url = request.build_absolute_uri('/students/enroll/online/')
 
-    # 1. Build Grade Level Data (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១-វិទ្យាសាស្ត្រ, ១១-សង្គម...)
+    # 1. Build Grade Level Data (ថ្នាក់ទី ៧, ៨, ៩, ១០, ១១-វិទ្យាសាស្ត្រ, ១១-សង្គម, ១២...)
     grade_data = []
-    grade_tracks = classrooms.values('grade_level', 'track').distinct().order_by('grade_level', 'track')
-    for gt in grade_tracks:
-        g_num = gt['grade_level']
-        g_track = gt['track']
-        track_name = ""
-        if g_track == 'SCIENCE':
-            track_name = " វិទ្យាសាស្ត្រ (Science)"
-        elif g_track == 'SOCIAL':
-            track_name = " វិទ្យាសាស្ត្រសង្គម (Social)"
-        
-        name_kh = f"ថ្នាក់ទី {g_num}{track_name}"
-        direct_url = f"{base_url}?grade={g_num}" + (f"&track={g_track}" if g_track != 'GENERAL' else "")
-        
-        classes_in_grade = classrooms.filter(grade_level=g_num, track=g_track)
-        class_codes = ", ".join(classes_in_grade.values_list('code', flat=True))
+    configured_grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track'))
+    if configured_grade_levels:
+        for gl_obj in configured_grade_levels:
+            g_num = gl_obj.grade_number
+            g_track = gl_obj.track or 'GENERAL'
+            track_name = ""
+            if g_track == 'SCIENCE':
+                track_name = " វិទ្យាសាស្ត្រ (Science)"
+            elif g_track == 'SOCIAL':
+                track_name = " វិទ្យាសាស្ត្រសង្គម (Social)"
+            
+            name_kh = gl_obj.name if gl_obj.name else f"ថ្នាក់ទី {g_num}{track_name}"
+            direct_url = f"{base_url}?grade={g_num}" + (f"&track={g_track}" if g_track != 'GENERAL' else "")
+            
+            classes_in_grade = classrooms.filter(grade_level=g_num)
+            if g_track != 'GENERAL':
+                classes_in_grade = classes_in_grade.filter(track=g_track)
+            class_codes = ", ".join(classes_in_grade.values_list('code', flat=True))
 
-        gl_obj = GradeLevel.objects.filter(grade_number=g_num, track=g_track).first() or GradeLevel.objects.filter(grade_number=g_num).first()
-        is_gl_open = gl_obj.is_registration_open if gl_obj else True
-        gl_closed_msg = gl_obj.registration_closed_message if gl_obj else ""
-        gl_id = gl_obj.id if gl_obj else None
+            is_gl_open = gl_obj.is_registration_open
+            gl_closed_msg = gl_obj.registration_closed_message or ""
+            gl_id = gl_obj.id
 
-        grade_data.append({
-            'grade_level': g_num,
-            'track': g_track,
-            'name': name_kh,
-            'class_codes': class_codes,
-            'classes_count': classes_in_grade.count(),
-            'url': direct_url,
-            'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
-            'is_registration_open': is_gl_open,
-            'registration_closed_message': gl_closed_msg,
-            'grade_level_id': gl_id,
-        })
+            grade_data.append({
+                'grade_level': g_num,
+                'track': g_track,
+                'name': name_kh,
+                'class_codes': class_codes,
+                'classes_count': classes_in_grade.count(),
+                'url': direct_url,
+                'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
+                'is_registration_open': is_gl_open,
+                'registration_closed_message': gl_closed_msg,
+                'grade_level_id': gl_id,
+            })
+    else:
+        grade_tracks = classrooms.values('grade_level', 'track').distinct().order_by('grade_level', 'track')
+        for gt in grade_tracks:
+            g_num = gt['grade_level']
+            g_track = gt['track']
+            track_name = ""
+            if g_track == 'SCIENCE':
+                track_name = " វិទ្យាសាស្ត្រ (Science)"
+            elif g_track == 'SOCIAL':
+                track_name = " វិទ្យាសាស្ត្រសង្គម (Social)"
+            
+            name_kh = f"ថ្នាក់ទី {g_num}{track_name}"
+            direct_url = f"{base_url}?grade={g_num}" + (f"&track={g_track}" if g_track != 'GENERAL' else "")
+            
+            classes_in_grade = classrooms.filter(grade_level=g_num, track=g_track)
+            class_codes = ", ".join(classes_in_grade.values_list('code', flat=True))
+
+            gl_obj = GradeLevel.objects.filter(grade_number=g_num, track=g_track).first() or GradeLevel.objects.filter(grade_number=g_num).first()
+            is_gl_open = gl_obj.is_registration_open if gl_obj else True
+            gl_closed_msg = gl_obj.registration_closed_message if gl_obj else ""
+            gl_id = gl_obj.id if gl_obj else None
+
+            grade_data.append({
+                'grade_level': g_num,
+                'track': g_track,
+                'name': name_kh,
+                'class_codes': class_codes,
+                'classes_count': classes_in_grade.count(),
+                'url': direct_url,
+                'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
+                'is_registration_open': is_gl_open,
+                'registration_closed_message': gl_closed_msg,
+                'grade_level_id': gl_id,
+            })
 
     # 2. Build Specific Classroom Data (7A, 7B, 10A...)
     classroom_data = []
