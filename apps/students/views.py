@@ -425,6 +425,9 @@ def public_student_enroll(request):
                 classrooms = classrooms.exclude(grade_level=cgl.grade_number, track=cgl.track)
             else:
                 classrooms = classrooms.exclude(grade_level=cgl.grade_number)
+        available_grade_levels = GradeLevel.objects.filter(is_registration_open=True).order_by('order', 'grade_number', 'track')
+    else:
+        available_grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
 
     # Active mode is strictly determined by Admin (Grade-level template or School registration mode)
     # Students cannot choose their own registration method on Portal or Mobile
@@ -460,6 +463,12 @@ def public_student_enroll(request):
             submitted_gl = target_gl
 
         if submitted_gl:
+            # If admin does not allow this grade level, reject immediately for non-staff
+            if not submitted_gl.is_registration_open and not is_staff_preview:
+                closed_msg = submitted_gl.registration_closed_message.strip() if submitted_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់ {submitted_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+                messages.error(request, closed_msg)
+                return redirect('public_student_enroll')
+
             cls_tpl = GradeVerificationFormConfig.get_template_for_grade(submitted_gl, academic_year=current_year)
             if cls_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
                 active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
@@ -570,7 +579,11 @@ def public_student_enroll(request):
         'moeys_form': moeys_form,
         'current_year': current_year,
         'classrooms': classrooms,
+        'available_grade_levels': available_grade_levels,
+        'selected_grade_number': target_gl.grade_number if target_gl else (int(grade_param) if (grade_param and grade_param.isdigit()) else None),
+        'selected_grade_track': target_gl.track if target_gl else (track_param or ''),
         'target_classroom': target_classroom,
+        'selected_classroom_id': target_classroom.id if target_classroom else (int(classroom_id) if (classroom_id and classroom_id.isdigit()) else None),
         'target_grade_name': target_grade_name,
         'school_profile': school_profile,
         'configured_mode': configured_mode,

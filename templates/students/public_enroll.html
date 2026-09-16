@@ -339,10 +339,30 @@
                             <span>២. ព័ត៌មានការសិក្សា (Academic Information)</span>
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold small">ជ្រើសរើសថ្នាក់រៀន <span class="text-danger">*</span></label>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-primary d-flex align-items-center justify-content-between">
+                                    <span><i class="fa-solid fa-layer-group me-1"></i> ជំហានទី ១៖ ជ្រើសរើសកម្រិតថ្នាក់ <span class="text-danger">*</span></span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                </label>
+                                <select id="portal_grade_level" class="form-select fw-semibold border-primary shadow-xs" required>
+                                    <option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>
+                                    {% for gl in available_grade_levels %}
+                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% endif %}>
+                                            {{ gl.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text small text-muted">
+                                    <i class="fa-solid fa-shield-check text-success me-1"></i>បង្ហាញតែកម្រិតថ្នាក់ដែល Admin អនុញ្ញាតឱ្យចុះឈ្មោះ
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark d-flex align-items-center justify-content-between">
+                                    <span><i class="fa-solid fa-chalkboard-user me-1"></i> ជំហានទី ២៖ ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន <span class="text-danger">*</span></span>
+                                    <span class="badge bg-light text-muted border px-1.5 py-0.5" style="font-size: 0.7rem;">Classroom</span>
+                                </label>
                                 {{ form.classroom }}
-                                <div class="form-text small">ប្រព័ន្ធនឹងបង្ហាញប្រអប់បំពេញបន្ថែមស្របតាមកម្រិតថ្នាក់ដែលបានជ្រើសរើស</div>
+                                <div class="form-text small" id="general_classroom_hint">ជ្រើសរើសបន្ទប់រៀនក្នុងកម្រិតថ្នាក់ខាងលើ</div>
                             </div>
                         </div>
                     </div>
@@ -479,11 +499,25 @@
                             <span>៣. ព័ត៌មានការសិក្សា & ថ្នាក់រៀន</span>
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">ថ្នាក់រៀនដែលត្រូវចុះឈ្មោះ <span class="text-danger">*</span></label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-info d-flex align-items-center justify-content-between">
+                                    <span><i class="fa-solid fa-layer-group me-1"></i> ជំហាន ១៖ កម្រិតថ្នាក់ <span class="text-danger">*</span></span>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                </label>
+                                <select id="moeys_portal_grade_level" class="form-select fw-semibold border-info shadow-xs" required>
+                                    <option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>
+                                    {% for gl in available_grade_levels %}
+                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% endif %}>
+                                            {{ gl.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">ជំហាន ២៖ ថ្នាក់រៀនដែលត្រូវចុះឈ្មោះ <span class="text-danger">*</span></label>
                                 {{ moeys_form.classroom }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
                                 {{ moeys_form.track }}
                             </div>
@@ -845,9 +879,141 @@
             });
     }
 
+    <!-- Allowed Classrooms JSON Data embedded for dynamic cascading filter -->
+    <script id="portalClassroomsData" type="application/json">
+    [
+        {% for c in classrooms %}
+        {
+            "id": {{ c.id }},
+            "name": "{{ c.name|escapejs }}",
+            "code": "{{ c.code|default:''|escapejs }}",
+            "grade_level": {{ c.grade_level }},
+            "track": "{{ c.track|default:'GENERAL'|escapejs }}",
+            "room_number": "{{ c.room_number|default:''|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+
+    <script>
+    const rawClassroomsEl = document.getElementById('portalClassroomsData');
+    const allAvailableClassrooms = rawClassroomsEl ? JSON.parse(rawClassroomsEl.textContent || '[]') : [];
+
+    function updatePortalClassroomsForGrade(selectedGradeNum, targetClassroomId) {
+        const genSelect = document.getElementById('id_classroom') || document.querySelector('#publicGeneralSection [name="classroom"]');
+        const moeysSelect = document.getElementById('moeys_classroom');
+        const selects = [genSelect, moeysSelect].filter(Boolean);
+
+        if (!selectedGradeNum) {
+            selects.forEach(sel => {
+                sel.innerHTML = '<option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>';
+                sel.disabled = true;
+            });
+            return;
+        }
+
+        const filtered = allAvailableClassrooms.filter(c => c.grade_level === parseInt(selectedGradeNum));
+
+        selects.forEach(sel => {
+            sel.innerHTML = '';
+            if (filtered.length === 0) {
+                sel.innerHTML = '<option value="">-- មិនទាន់មានថ្នាក់រៀនសម្រាប់កម្រិតថ្នាក់នេះទេ --</option>';
+                sel.disabled = true;
+            } else {
+                sel.disabled = false;
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = '-- ជ្រើសរើសថ្នាក់រៀន / Select Classroom --';
+                sel.appendChild(defaultOpt);
+
+                let matchedId = null;
+                filtered.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    const codeStr = c.code ? ` (${c.code})` : '';
+                    const roomStr = c.room_number ? ` [${c.room_number}]` : '';
+                    opt.textContent = `${c.name}${codeStr}${roomStr}`;
+                    if (targetClassroomId && parseInt(targetClassroomId) === c.id) {
+                        opt.selected = true;
+                        matchedId = c.id;
+                    }
+                    sel.appendChild(opt);
+                });
+
+                if (matchedId) {
+                    sel.value = matchedId;
+                } else if (filtered.length === 1) {
+                    sel.value = filtered[0].id;
+                }
+            }
+        });
+
+        // Trigger dynamic options if a classroom is selected
+        const activeClsId = genSelect && genSelect.value ? genSelect.value : (moeysSelect && moeysSelect.value ? moeysSelect.value : null);
+        if (activeClsId) {
+            const curMode = document.getElementById('publicEnrollmentMode')?.value || 'ADMIN_CUSTOM';
+            if (curMode === 'MOEYS_INDIVIDUAL') {
+                loadPublicGradeOptions(activeClsId, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'moeysGradeSpecificCard', 'moeysGradeNameBadge');
+            } else {
+                loadPublicGradeOptions(activeClsId, 'GENERAL', 'gradeOptionsContainer', 'gradeSpecificCard', 'gradeNameBadge');
+            }
+        }
+    }
+
+    function onPortalGradeChange(newGradeVal) {
+        const genGradeSelect = document.getElementById('portal_grade_level');
+        const moeysGradeSelect = document.getElementById('moeys_portal_grade_level');
+
+        if (genGradeSelect && genGradeSelect.value !== newGradeVal) genGradeSelect.value = newGradeVal;
+        if (moeysGradeSelect && moeysGradeSelect.value !== newGradeVal) moeysGradeSelect.value = newGradeVal;
+
+        updatePortalClassroomsForGrade(newGradeVal, null);
+
+        // Check if grade has configured template
+        if (newGradeVal) {
+            fetch(`/students/api/grade-options/?grade_level_id=${newGradeVal}&form_category=ALL`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res && res.assigned_template) {
+                        if (res.assigned_template === 'MOEYS_INDIVIDUAL') {
+                            setPublicMode('MOEYS_INDIVIDUAL');
+                        } else if (res.assigned_template === 'GENERAL') {
+                            setPublicMode('ADMIN_CUSTOM');
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const initialMode = '{{ active_mode|default:"ADMIN_CUSTOM" }}';
         setPublicMode(initialMode);
+
+        const genGradeSelect = document.getElementById('portal_grade_level');
+        const moeysGradeSelect = document.getElementById('moeys_portal_grade_level');
+
+        if (genGradeSelect) {
+            genGradeSelect.addEventListener('change', function() {
+                onPortalGradeChange(this.value);
+            });
+        }
+        if (moeysGradeSelect) {
+            moeysGradeSelect.addEventListener('change', function() {
+                onPortalGradeChange(this.value);
+            });
+        }
+
+        // Initialize grade and classroom cascading
+        const initialGrade = '{{ selected_grade_number|default:"" }}' || (genGradeSelect ? genGradeSelect.value : '') || (moeysGradeSelect ? moeysGradeSelect.value : '');
+        const initialClassId = '{{ selected_classroom_id|default:"" }}' || '{{ target_classroom.id|default:"" }}';
+        if (initialGrade) {
+            if (genGradeSelect) genGradeSelect.value = initialGrade;
+            if (moeysGradeSelect) moeysGradeSelect.value = initialGrade;
+            updatePortalClassroomsForGrade(initialGrade, initialClassId);
+        } else {
+            updatePortalClassroomsForGrade('', null);
+        }
 
         // General Classroom selection
         const generalClassroomSelect = document.getElementById('id_classroom') || document.querySelector('#publicGeneralSection [name="classroom"]');
@@ -876,6 +1042,30 @@
             if (moeysClassroomSelect.value && initialMode === 'MOEYS_INDIVIDUAL') {
                 loadPublicGradeOptions(moeysClassroomSelect.value, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'moeysGradeSpecificCard', 'moeysGradeNameBadge');
             }
+        }
+
+        // Form submission validation: Ensure Grade Level AND Classroom are selected
+        const enrollForm = document.getElementById('publicEnrollForm');
+        if (enrollForm) {
+            enrollForm.addEventListener('submit', function(e) {
+                const currentMode = document.getElementById('publicEnrollmentMode')?.value || 'ADMIN_CUSTOM';
+                const activeGradeSel = (currentMode === 'MOEYS_INDIVIDUAL') ? moeysGradeSelect : genGradeSelect;
+                const activeClsSel = (currentMode === 'MOEYS_INDIVIDUAL') ? moeysClassroomSelect : generalClassroomSelect;
+
+                if (activeGradeSel && !activeGradeSel.value) {
+                    e.preventDefault();
+                    alert('សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន!');
+                    activeGradeSel.focus();
+                    return false;
+                }
+
+                if (activeClsSel && (!activeClsSel.value || activeClsSel.disabled)) {
+                    e.preventDefault();
+                    alert('សូមជ្រើសរើសបន្ទប់/ថ្នាក់រៀន!');
+                    activeClsSel.focus();
+                    return false;
+                }
+            });
         }
 
         // Photo preview

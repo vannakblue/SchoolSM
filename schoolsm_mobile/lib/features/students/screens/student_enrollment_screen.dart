@@ -26,9 +26,32 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
   String _activeEnrollmentMode = 'ADMIN_CUSTOM'; // Active selected mode
   List<dynamic> _academicYears = [];
   List<dynamic> _classrooms = [];
+  List<dynamic> _gradeLevels = [];
+  int? _selectedGradeNumber;
   String _suggestedId = '';
   String _schoolName = 'SchoolSM';
   bool _canEditStudentId = false;
+
+  List<dynamic> get _availableGradeLevels {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    if (auth.isAdmin || auth.isTeacher) {
+      return _gradeLevels;
+    }
+    return _gradeLevels.where((g) => g['is_registration_open'] != false).toList();
+  }
+
+  List<dynamic> get _filteredClassrooms {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    return _classrooms.where((c) {
+      if (_selectedGradeNumber != null && c['grade_level'] != _selectedGradeNumber) {
+        return false;
+      }
+      if (!auth.isAdmin && !auth.isTeacher && c['is_registration_open'] == false) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
 
   // Dynamic Grade Options
   List<dynamic> _gradeOptions = [];
@@ -178,8 +201,30 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
             _selectedYearId = _academicYears.first['id'];
           }
 
-          if (_classrooms.isNotEmpty) {
-            _selectedClassroomId = _classrooms.first['id'];
+          _gradeLevels = data['grade_levels'] ?? data['available_grade_levels'] ?? [];
+          if (_gradeLevels.isEmpty && _gradeFormConfigs.isNotEmpty) {
+            _gradeLevels = _gradeFormConfigs.map((cfg) => {
+              'id': cfg['grade_id'],
+              'name': cfg['grade_name'],
+              'grade_number': cfg['grade_number'],
+              'track': cfg['track'] ?? 'GENERAL',
+              'is_registration_open': cfg['is_registration_open'] ?? true,
+              'registration_closed_message': cfg['registration_closed_message'] ?? '',
+            }).toList();
+          }
+
+          final availableGrades = _availableGradeLevels;
+          if (availableGrades.isNotEmpty) {
+            _selectedGradeNumber = availableGrades.first['grade_number'] as int?;
+          } else {
+            _selectedGradeNumber = null;
+          }
+
+          final filtered = _filteredClassrooms;
+          if (filtered.isNotEmpty) {
+            _selectedClassroomId = filtered.first['id'];
+          } else {
+            _selectedClassroomId = null;
           }
 
           final regPeriod = data['registration_period'];
@@ -1081,6 +1126,40 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       return;
     }
 
+    if (_selectedGradeNumber == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន!"),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
+    if (!auth.isAdmin && !auth.isTeacher) {
+      final availableGrades = _availableGradeLevels;
+      final isAllowed = availableGrades.any((g) => g['grade_number'] == _selectedGradeNumber);
+      if (!isAllowed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("កម្រិតថ្នាក់ដែលបានជ្រើសរើសត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ!"),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (_selectedClassroomId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("សូមជ្រើសរើសបន្ទប់/ថ្នាក់រៀន!"),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final payload = <String, dynamic>{
@@ -1098,6 +1177,7 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
               : _secondarySchoolController.text.trim()),
       'place_of_birth': _pobController.text.trim(),
       'current_address': _addressController.text.trim(),
+      'grade_level': _selectedGradeNumber,
       'classroom_id': _selectedClassroomId,
       'academic_year_id': _selectedYearId,
       'scholarship_type': _selectedScholarship,
@@ -1778,6 +1858,8 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
         children: [
           _buildYearDropdown(),
           const SizedBox(height: 14),
+          _buildGradeLevelDropdown(),
+          const SizedBox(height: 14),
           _buildClassroomDropdown(),
         ],
       ),
@@ -1961,6 +2043,8 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       _buildCard(
         children: [
           _buildYearDropdown(),
+          const SizedBox(height: 14),
+          _buildGradeLevelDropdown(),
           const SizedBox(height: 14),
           _buildClassroomDropdown(),
           const SizedBox(height: 14),
@@ -2745,14 +2829,110 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     );
   }
 
-  Widget _buildClassroomDropdown() {
+  Widget _buildGradeLevelDropdown() {
+    final available = _availableGradeLevels;
+
+    if (available.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.lock_rounded, color: AppColors.danger, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "បច្ចុប្បន្នគ្មានកម្រិតថ្នាក់ណាមួយត្រូវបានបើកឱ្យចុះឈ្មោះឡើយ។",
+                style: TextStyle(fontSize: 12.5, color: AppColors.danger, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final safeGradeNumber = available.any((g) => g['grade_number'] == _selectedGradeNumber)
+        ? _selectedGradeNumber
+        : null;
+
     return DropdownButtonFormField<int>(
-      initialValue: _selectedClassroomId,
-      decoration: _inputDecoration("ជ្រើសរើសថ្នាក់រៀន (Classroom)", Icons.meeting_room_rounded),
-      items: _classrooms.map<DropdownMenuItem<int>>((c) {
+      key: ValueKey('grade_select_${safeGradeNumber}_${available.length}'),
+      initialValue: safeGradeNumber,
+      decoration: _inputDecoration("១. ជ្រើសរើសកម្រិតថ្នាក់ (Grade Level) *", Icons.auto_stories_rounded),
+      hint: const Text("-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --"),
+      items: available.map<DropdownMenuItem<int>>((gl) {
+        return DropdownMenuItem<int>(
+          value: gl['grade_number'] as int,
+          child: Text(
+            "${gl['grade_name'] ?? gl['name'] ?? 'ថ្នាក់ទី ${gl['grade_number']}'}",
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        );
+      }).toList(),
+      onChanged: (v) {
+        setState(() {
+          _selectedGradeNumber = v;
+          final classrooms = _filteredClassrooms;
+          _selectedClassroomId = classrooms.isNotEmpty ? classrooms.first['id'] : null;
+        });
+        _fetchGradeOptions();
+      },
+    );
+  }
+
+  Widget _buildClassroomDropdown() {
+    final classrooms = _filteredClassrooms;
+
+    if (_selectedGradeNumber == null) {
+      return DropdownButtonFormField<int>(
+        items: const [],
+        onChanged: null,
+        decoration: _inputDecoration("២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *", Icons.meeting_room_rounded),
+        hint: const Text("-- សូមជ្រើសរើសកម្រិតថ្នាក់ខាងលើជាមុនសិន --"),
+      );
+    }
+
+    if (classrooms.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: Colors.grey, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "មិនទាន់មានបន្ទប់រៀនសម្រាប់កម្រិតថ្នាក់នេះនៅឡើយទេ",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final safeClassroomId = classrooms.any((c) => c['id'] == _selectedClassroomId)
+        ? _selectedClassroomId
+        : classrooms.first['id'];
+
+    return DropdownButtonFormField<int>(
+      key: ValueKey('classroom_select_${_selectedGradeNumber}_${safeClassroomId}_${classrooms.length}'),
+      initialValue: safeClassroomId,
+      decoration: _inputDecoration("២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *", Icons.meeting_room_rounded),
+      hint: const Text("-- ជ្រើសរើសបន្ទប់រៀន --"),
+      items: classrooms.map<DropdownMenuItem<int>>((c) {
+        final code = (c['code'] != null && c['code'].toString().isNotEmpty) ? " (${c['code']})" : "";
         return DropdownMenuItem<int>(
           value: c['id'],
-          child: Text("${c['name']} (ថ្នាក់ទី ${c['grade_level']})"),
+          child: Text("${c['name']}$code"),
         );
       }).toList(),
       onChanged: (v) {

@@ -2211,7 +2211,42 @@ class MobileStudentEnrollAPIView(APIView):
             'can_student_choose_mode': False,
             'admin_enforced_mode': default_mode,
             'available_modes': available_modes,
-            'default_mode': default_mode,
+            'grade_levels': [
+                {
+                    'id': gl.id,
+                    'name': gl.name,
+                    'grade_number': gl.grade_number,
+                    'track': gl.track,
+                    'order': gl.order,
+                    'is_registration_open': gl.is_registration_open,
+                    'registration_closed_message': gl.registration_closed_message,
+                }
+                for gl in grade_levels
+            ],
+            'available_grade_levels': [
+                {
+                    'id': gl.id,
+                    'name': gl.name,
+                    'grade_number': gl.grade_number,
+                    'track': gl.track,
+                    'order': gl.order,
+                    'is_registration_open': gl.is_registration_open,
+                    'registration_closed_message': gl.registration_closed_message,
+                }
+                for gl in grade_levels
+                if gl.is_registration_open
+            ] if not is_staff else [
+                {
+                    'id': gl.id,
+                    'name': gl.name,
+                    'grade_number': gl.grade_number,
+                    'track': gl.track,
+                    'order': gl.order,
+                    'is_registration_open': gl.is_registration_open,
+                    'registration_closed_message': gl.registration_closed_message,
+                }
+                for gl in grade_levels
+            ],
             'grade_form_configs': grade_form_configs,
             'grade_options_by_grade': grade_options_by_grade,
             'active_grade_template': active_grade_template,
