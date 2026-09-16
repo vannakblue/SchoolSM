@@ -24,172 +24,272 @@
 </div>
 
 <!-- Admin Registration Period Control Card (No-print) -->
-<div class="custom-card mb-4 p-3 no-print border-start border-4 {% if reg_status == 'OPEN' %}border-success{% elif reg_status == 'NOT_STARTED' %}border-warning{% elif reg_status == 'EXPIRED' %}border-danger{% else %}border-secondary{% endif %}" id="regPeriodControlCard" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+<div class="custom-card mb-3 p-3 no-print border-start border-4 {% if reg_status == 'OPEN' %}border-success{% elif reg_status == 'NOT_STARTED' %}border-warning{% elif reg_status == 'EXPIRED' %}border-danger{% else %}border-secondary{% endif %}" id="regPeriodControlCard" style="background: #ffffff; border-radius: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.04);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
         <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+            <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
                 <i class="fa-solid fa-user-clock fs-5"></i>
             </div>
             <div>
-                <h5 class="fw-bold mb-0 text-dark">ការអនុញ្ញាត និងកំណត់កាលបរិច្ឆេទចុះឈ្មោះសិស្ស (Portal & Mobile App)</h5>
-                <p class="text-muted small mb-0">គ្រប់គ្រងការអនុញ្ញាតឱ្យសិស្ស/មាតាបិតាចុះឈ្មោះតាម Online Portal និងកម្មវិធីទូរស័ព្ទ (Mobile App)</p>
+                <h5 class="fw-bold mb-0 text-dark">ការអនុញ្ញាតចុះឈ្មោះសិស្សទូទៅ (Portal & Mobile App)</h5>
+                <p class="text-muted small mb-0">បើក ឬបិទការទទួលពាក្យចុះឈ្មោះសិស្សចូលរៀនទូទាំងសាលា</p>
             </div>
         </div>
-        <div id="regStatusBadgeWrapper">
-            {% if reg_status == 'OPEN' %}
-            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)">
-                <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)
-            </button>
-            {% elif reg_status == 'NOT_STARTED' %}
-            <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
-                <i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)
-            </button>
-            {% elif reg_status == 'EXPIRED' %}
-            <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
-                <i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)
-            </button>
-            {% else %}
-            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)">
-                <i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)
-            </button>
-            {% endif %}
+        
+        <!-- Master Status Toggle & Badge -->
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch fs-5 mb-0 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="inputIsRegOpen" name="is_registration_open" {% if school_profile.is_registration_open %}checked{% endif %} style="cursor: pointer; width: 2.6em; height: 1.3em;">
+                <label class="form-check-label visually-hidden" for="inputIsRegOpen" id="labelIsRegOpen">
+                    {% if school_profile.is_registration_open %}អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN){% else %}បិទការចុះឈ្មោះ (CLOSED){% endif %}
+                </label>
+            </div>
+            <div id="regStatusBadgeWrapper">
+                {% if reg_status == 'OPEN' %}
+                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)">
+                    <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)
+                </button>
+                {% elif reg_status == 'NOT_STARTED' %}
+                <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
+                    <i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)
+                </button>
+                {% elif reg_status == 'EXPIRED' %}
+                <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
+                    <i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)">
+                    <i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Form Inputs for Registration Period -->
-    <form id="regPeriodForm">
-        {% csrf_token %}
-        <div class="row g-3 align-items-end">
-            <!-- Toggle Open/Close -->
-            <div class="col-md-3">
-                <label class="form-label fw-bold small text-muted">ស្ថានភាពបើក/បិទ (Status)</label>
-                <div class="form-check form-switch p-2 bg-light rounded border ps-5">
-                    <input class="form-check-input" type="checkbox" role="switch" id="inputIsRegOpen" name="is_registration_open" {% if school_profile.is_registration_open %}checked{% endif %}>
-                    <label class="form-check-label fw-bold" for="inputIsRegOpen" id="labelIsRegOpen">
-                        {% if school_profile.is_registration_open %}អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN){% else %}បិទការចុះឈ្មោះ (CLOSED){% endif %}
-                    </label>
-                </div>
-            </div>
-
-            <!-- Start Date & Time -->
-            <div class="col-md-3">
-                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទចាប់ផ្តើម (Start Date & Time)</label>
-                <input type="datetime-local" class="form-control" id="inputRegStartDate" name="registration_start_date" value="{{ school_profile.registration_start_date|date:'Y-m-d\TH:i' }}">
-            </div>
-
-            <!-- End Date & Time -->
-            <div class="col-md-3">
-                <label class="form-label fw-bold small text-muted">កាលបរិច្ឆេទបញ្ចប់/ផុតកំណត់ (End Date & Time)</label>
-                <input type="datetime-local" class="form-control" id="inputRegEndDate" name="registration_end_date" value="{{ school_profile.registration_end_date|date:'Y-m-d\TH:i' }}">
-            </div>
-
-            <!-- Save Button -->
-            <div class="col-md-3">
-                <button type="button" id="btnSaveRegPeriod" class="btn btn-primary w-100 fw-bold py-2">
-                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)
-                </button>
-            </div>
-
-            <!-- Closed Message & Presets -->
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
-                    <label class="form-label fw-bold small text-muted mb-0">សារជូនដំណឹងពេលបិទ ឬផុតកំណត់ (Closed Notice Message)</label>
-                    <!-- Quick Presets -->
-                    <div class="d-flex align-items-center gap-1">
-                        <span class="text-muted small me-1">កំណត់រហ័ស៖</span>
-                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('1week')">១ សប្តាហ៍</button>
-                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('2weeks')">២ សប្តាហ៍</button>
-                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('1month')">១ ខែ</button>
-                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="setRegPreset('unlimited')">គ្មានកំណត់ (Unlimited)</button>
-                    </div>
-                </div>
-                <input type="text" class="form-control form-control-sm" id="inputRegClosedMessage" name="registration_closed_message" value="{{ school_profile.registration_closed_message|default:'ការចុះឈ្មោះសិស្សថ្មីត្រូវបានបិទជាបណ្តោះអាសន្ន ឬផុតកំណត់កាលបរិច្ឆេទកំណត់ដោយរដ្ឋបាលសាលា។ សូមទាក់ទងរដ្ឋបាលសាលាសម្រាប់ព័ត៌មានបន្ថែម។' }}">
+    <!-- Quick 1-Click Period Controls & Schedule -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <span class="text-muted small">
+                <i class="fa-regular fa-calendar-check text-primary me-1"></i>សុពលភាព៖
+            </span>
+            <span id="periodSummaryBadge" class="badge bg-light text-dark border px-2 py-1 small">
+                {% if school_profile.registration_start_date or school_profile.registration_end_date %}
+                    {% if school_profile.registration_start_date %}{{ school_profile.registration_start_date|date:"d/m/Y H:i" }}{% else %}ឥឡូវនេះ{% endif %} ដល់ {% if school_profile.registration_end_date %}{{ school_profile.registration_end_date|date:"d/m/Y H:i" }}{% else %}គ្មានកំណត់{% endif %}
+                {% else %}
+                    គ្មានកំណត់ (រហូត)
+                {% endif %}
+            </span>
+            <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Quick Presets">
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" onclick="applyAndSaveRegPreset('unlimited')" title="បើកការចុះឈ្មោះរហូតដោយគ្មានកំណត់កាលបរិច្ឆេទ"><i class="fa-solid fa-infinity me-1"></i>គ្មានកំណត់</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" onclick="applyAndSaveRegPreset('1week')">១ សប្តាហ៍</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" onclick="applyAndSaveRegPreset('2weeks')">២ សប្តាហ៍</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" onclick="applyAndSaveRegPreset('1month')">១ ខែ</button>
             </div>
         </div>
-    </form>
+
+        <button type="button" class="btn btn-sm btn-link text-decoration-none text-muted p-0" data-bs-toggle="collapse" data-bs-target="#advancedRegCollapse" aria-expanded="false" title="កំណត់ម៉ោងចាប់ផ្តើម បញ្ចប់ ឬសារពេលបិទ">
+            <i class="fa-solid fa-sliders me-1"></i> កំណត់ម៉ោង & សារពេលបិទ <i class="fa-solid fa-chevron-down ms-1 small"></i>
+        </button>
+    </div>
+
+    <!-- Collapsible Advanced Date/Time & Custom Message Form -->
+    <div class="collapse mt-3 pt-2 border-top" id="advancedRegCollapse">
+        <form id="regPeriodForm">
+            {% csrf_token %}
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted mb-1">កាលបរិច្ឆេទចាប់ផ្តើម (Start Date & Time)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="inputRegStartDate" name="registration_start_date" value="{{ school_profile.registration_start_date|date:'Y-m-d\TH:i' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted mb-1">កាលបរិច្ឆេទបញ្ចប់/ផុតកំណត់ (End Date & Time)</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="inputRegEndDate" name="registration_end_date" value="{{ school_profile.registration_end_date|date:'Y-m-d\TH:i' }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="button" id="btnSaveRegPeriod" class="btn btn-sm btn-primary w-100 fw-bold py-1">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)
+                    </button>
+                </div>
+                <div class="col-12 mt-2">
+                    <label class="form-label fw-bold small text-muted mb-1">សារជូនដំណឹងពេលបិទ ឬផុតកំណត់ (Closed Notice Message)</label>
+                    <input type="text" class="form-control form-control-sm" id="inputRegClosedMessage" name="registration_closed_message" value="{{ school_profile.registration_closed_message|default:'ការចុះឈ្មោះសិស្សថ្មីត្រូវបានបិទជាបណ្តោះអាសន្ន ឬផុតកំណត់កាលបរិច្ឆេទកំណត់ដោយរដ្ឋបាលសាលា។ សូមទាក់ទងរដ្ឋបាលសាលាសម្រាប់ព័ត៌មានបន្ថែម។' }}">
+                </div>
+            </div>
+        </form>
+    </div>
     <div id="regSaveAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
 </div>
 
 <!-- Admin Grade-Level Registration Control Card (No-print) -->
-<div class="custom-card mb-4 p-3 no-print border-start border-4 border-info" id="gradeRegControlCard" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+<div class="custom-card mb-4 p-3 no-print border-start border-4 border-info" id="gradeRegControlCard" style="background: #ffffff; border-radius: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.04);">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle p-2 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+            <div class="rounded-circle p-2 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
                 <i class="fa-solid fa-layer-group fs-5"></i>
             </div>
             <div>
-                <h5 class="fw-bold mb-0 text-dark">កំណត់ការបើក/បិទការចុះឈ្មោះតាមកម្រិតថ្នាក់នីមួយៗ (Grade-Level Registration Controls)</h5>
-                <p class="text-muted small mb-0">Admin មានសិទ្ធិកំណត់កម្រិតថ្នាក់ណាខ្លះបើក ឬបិទមិនឱ្យចុះឈ្មោះចូលរៀន (Online Portal & Mobile App)</p>
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="fw-bold mb-0 text-dark">កំណត់ការចុះឈ្មោះតាមកម្រិតថ្នាក់ (Grade-Level Controls)</h5>
+                    <span id="gradeOpenCountBadge" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small"></span>
+                </div>
+                <p class="text-muted small mb-0">ចុចលើកុងតាក់ដើម្បី បើក ឬបិទ ការចុះឈ្មោះតាមកម្រិតថ្នាក់នីមួយៗ (1-Click Instant Toggle)</p>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <!-- View Mode Switcher -->
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-secondary active" id="btnViewGrid" onclick="setGradeViewMode('grid')" title="ទិដ្ឋភាពកាត (Grid View)">
+                    <i class="fa-solid fa-grip"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnViewTable" onclick="setGradeViewMode('table')" title="ទិដ្ឋភាពតារាង (Table View)">
+                    <i class="fa-solid fa-list"></i>
+                </button>
+            </div>
             <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="bulkToggleGrades('open_all')">
-                <i class="fa-solid fa-check-double me-1"></i> បើកទាំងអស់ (Open All)
+                <i class="fa-solid fa-check-double me-1"></i> បើកទាំងអស់
             </button>
             <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="bulkToggleGrades('close_all')">
-                <i class="fa-solid fa-ban me-1"></i> បិទទាំងអស់ (Close All)
+                <i class="fa-solid fa-ban me-1"></i> បិទទាំងអស់
             </button>
         </div>
     </div>
 
-    <!-- Table of Grade Levels -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="tableGradeReg">
+    <!-- 1. Grid View (Default: Fast, Visual & Compact) -->
+    <div id="gradeGridView" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2 mb-2">
+        {% for gl in all_grade_levels %}
+        <div class="col" id="col-grade-{{ gl.id }}">
+            <div class="card h-100 shadow-sm border transition-all grade-card {% if gl.is_registration_open %}border-success bg-white{% else %}border-secondary-subtle bg-light text-muted{% endif %}" id="cardGrade_{{ gl.id }}" style="border-radius: 10px;">
+                <div class="card-body p-2 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="fw-bold text-dark fs-6">{{ gl.name }}</span>
+                            {% if gl.track and gl.track != 'GENERAL' %}
+                            <span class="badge bg-secondary-subtle text-dark ms-1 small" style="font-size: 0.72rem;">{{ gl.track }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="form-check form-switch p-0 m-0">
+                            <input class="form-check-input ms-0 grade-toggle-switch" type="checkbox" role="switch" id="switchGrade_{{ gl.id }}" data-grade-id="{{ gl.id }}" {% if gl.is_registration_open %}checked{% endif %} onchange="toggleGradeReg({{ gl.id }}, this.checked)" style="cursor: pointer; width: 2.2em; height: 1.1em;">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-1 border-top" style="font-size: 0.8rem;">
+                        <span id="badgeGrade_{{ gl.id }}">
+                            {% if gl.is_registration_open %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i> បើក</span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-ban me-1"></i> បិទ</span>
+                            {% endif %}
+                        </span>
+                        <button type="button" class="btn btn-link btn-xs text-muted p-0 text-decoration-none" onclick="openGradeNoticeModal({{ gl.id }}, '{{ gl.name|escapejs }}')" title="កែសម្រួលសារពេលបិទ">
+                            <i class="fa-regular fa-comment-dots"></i> <span id="labelMsgGrade_{{ gl.id }}" class="small">{% if gl.registration_closed_message %}សារពិសេស{% else %}សារ{% endif %}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center text-muted py-3">មិនទាន់មានកម្រិតថ្នាក់ត្រូវបានបង្កើតនៅឡើយទេ។</div>
+        {% endfor %}
+    </div>
+
+    <!-- 2. Table View (Streamlined alternative) -->
+    <div id="gradeTableView" class="table-responsive" style="display: none;">
+        <table class="table table-sm table-hover align-middle mb-0" id="tableGradeReg">
             <thead class="table-light">
                 <tr class="small text-muted text-uppercase">
-                    <th style="width: 50px;">ល.រ</th>
-                    <th style="min-width: 180px;">កម្រិតថ្នាក់ (Grade Level)</th>
-                    <th style="width: 120px;">ជំនាញ (Track)</th>
-                    <th style="width: 180px;" class="text-center">ស្ថានភាពចុះឈ្មោះ (Status)</th>
-                    <th style="min-width: 250px;">សារជូនដំណឹងពេលបិទ (Notice When Closed)</th>
-                    <th style="width: 80px;" class="text-end">សកម្មភាព</th>
+                    <th style="width: 40px;">ល.រ</th>
+                    <th style="min-width: 150px;">កម្រិតថ្នាក់</th>
+                    <th style="width: 100px;">ជំនាញ</th>
+                    <th style="width: 140px;" class="text-center">ស្ថានភាពចុះឈ្មោះ</th>
+                    <th style="min-width: 200px;">សារជូនដំណឹងពេលបិទ</th>
                 </tr>
             </thead>
             <tbody>
                 {% for gl in all_grade_levels %}
                 <tr id="row-grade-{{ gl.id }}">
-                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td class="fw-bold text-muted small">{{ forloop.counter }}</td>
                     <td>
                         <span class="fw-bold text-dark">{{ gl.name }}</span>
                         <span class="badge bg-light text-muted border ms-1">ថ្នាក់ទី {{ gl.grade_number }}</span>
                     </td>
                     <td>
-                        <span class="badge bg-secondary-subtle text-dark">{{ gl.track }}</span>
+                        <span class="badge bg-secondary-subtle text-dark small">{{ gl.track }}</span>
                     </td>
                     <td class="text-center">
-                        <div class="form-check form-switch d-inline-block ps-0">
-                            <input class="form-check-input ms-0 grade-toggle-switch" type="checkbox" role="switch" id="switchGrade_{{ gl.id }}" data-grade-id="{{ gl.id }}" {% if gl.is_registration_open %}checked{% endif %} onchange="toggleGradeReg({{ gl.id }}, this.checked)">
-                        </div>
-                        <div class="mt-1" id="badgeGrade_{{ gl.id }}">
-                            {% if gl.is_registration_open %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">
-                                <i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ
+                        <div class="d-inline-flex align-items-center gap-2">
+                            <input class="form-check-input grade-toggle-switch-table" type="checkbox" role="switch" id="switchGradeTable_{{ gl.id }}" data-grade-id="{{ gl.id }}" {% if gl.is_registration_open %}checked{% endif %} onchange="toggleGradeReg({{ gl.id }}, this.checked)">
+                            <span id="badgeGradeTable_{{ gl.id }}">
+                                {% if gl.is_registration_open %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">បើក</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small">បិទ</span>
+                                {% endif %}
                             </span>
-                            {% else %}
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small">
-                                <i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ
-                            </span>
-                            {% endif %}
                         </div>
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm" id="msgGrade_{{ gl.id }}" value="{{ gl.registration_closed_message }}" placeholder="សារជូនដំណឹងពេលបិទ..." onchange="saveGradeNotice({{ gl.id }})">
-                    </td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveGradeNotice({{ gl.id }})" title="រក្សាទុកសារ">
-                            <i class="fa-solid fa-floppy-disk"></i>
-                        </button>
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <span class="text-muted small text-truncate" id="tableMsgPreview_{{ gl.id }}" style="max-width: 350px;">
+                                {% if gl.registration_closed_message %}{{ gl.registration_closed_message }}{% else %}<em class="text-muted opacity-75">(ប្រើសារស្ដង់ដារសាលា)</em>{% endif %}
+                            </span>
+                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" onclick="openGradeNoticeModal({{ gl.id }}, '{{ gl.name|escapejs }}')" title="កែសម្រួលសារពេលបិទ">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-3">មិនទាន់មានកម្រិតថ្នាក់ត្រូវបានបង្កើតនៅឡើយទេ។</td>
+                    <td colspan="5" class="text-center text-muted py-3">មិនទាន់មានកម្រិតថ្នាក់ត្រូវបានបង្កើតនៅឡើយទេ។</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <!-- Hidden / Virtual notice inputs for backwards compatibility -->
+    {% for gl in all_grade_levels %}
+    <input type="hidden" id="msgGrade_{{ gl.id }}" value="{{ gl.registration_closed_message }}">
+    {% endfor %}
+
     <div id="gradeRegAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
+</div>
+
+<!-- Modal for editing grade closed notice message -->
+<div class="modal fade" id="modalGradeNotice" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header py-2 bg-light">
+                <h6 class="modal-title fw-bold text-dark" id="modalGradeNoticeTitle">
+                    <i class="fa-solid fa-comment-dots text-primary me-2"></i>សារជូនដំណឹងពេលបិទ
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <input type="hidden" id="modalGradeId" value="">
+                <label class="form-label small text-muted fw-bold mb-1">សារជូនដំណឹងពេលសិស្សចុះឈ្មោះចូលរៀនកម្រិតថ្នាក់នេះ (ស្រេចចិត្ត)៖</label>
+                <textarea class="form-control" id="modalGradeMessage" rows="3" placeholder="ឧ. ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់នេះបានពេញហើយ... (ទុកទទេដើម្បីប្រើសារស្ដង់ដារសាលា)"></textarea>
+                <div class="form-text small text-muted">ប្រសិនបើទុកទទេ ប្រព័ន្ធនឹងប្រើប្រាស់សារជូនដំណឹងស្ដង់ដាររបស់សាលា។</div>
+            </div>
+            <div class="modal-footer py-2 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="saveGradeNoticeFromModal()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុក
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+    <div id="quickToast" class="toast align-items-center text-white bg-dark border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2 py-2" id="quickToastText">
+                <i class="fa-solid fa-circle-check text-success"></i> បានរក្សាទុកជោគជ័យ!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
 </div>
 
 <!-- Selection Controls Card (No-print) -->
@@ -564,8 +664,24 @@ function copyLink() {
     }, 2000);
 }
 
-// Registration Period Presets & AJAX
-function setRegPreset(preset) {
+// Toast Notification Helper
+function showToast(message, isError = false) {
+    const toastEl = document.getElementById('quickToast');
+    const toastText = document.getElementById('quickToastText');
+    if (!toastEl || !toastText) return;
+
+    toastText.innerHTML = isError 
+        ? `<i class="fa-solid fa-circle-exclamation text-danger fs-5"></i> ${message}`
+        : `<i class="fa-solid fa-circle-check text-success fs-5"></i> ${message}`;
+    
+    if (window.bootstrap && bootstrap.Toast) {
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 });
+        toast.show();
+    }
+}
+
+// 1-Click Registration Period Presets with Auto-Save
+function applyAndSaveRegPreset(preset) {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const formatDT = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -573,29 +689,40 @@ function setRegPreset(preset) {
     const inputStart = document.getElementById('inputRegStartDate');
     const inputEnd = document.getElementById('inputRegEndDate');
     const switchOpen = document.getElementById('inputIsRegOpen');
+    const labelOpen = document.getElementById('labelIsRegOpen');
     
     if (switchOpen) {
         switchOpen.checked = true;
-        document.getElementById('labelIsRegOpen').textContent = 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)';
+        if (labelOpen) labelOpen.textContent = 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)';
     }
-    if (inputStart) inputStart.value = formatDT(now);
 
-    let end = new Date(now);
-    if (inputEnd) {
+    let presetLabel = '';
+    if (preset === 'unlimited') {
+        if (inputStart) inputStart.value = '';
+        if (inputEnd) inputEnd.value = '';
+        presetLabel = 'គ្មានកំណត់ (រហូត)';
+    } else {
+        if (inputStart) inputStart.value = formatDT(now);
+        let end = new Date(now);
         if (preset === '1week') {
             end.setDate(end.getDate() + 7);
-            inputEnd.value = formatDT(end);
+            presetLabel = '១ សប្តាហ៍';
         } else if (preset === '2weeks') {
             end.setDate(end.getDate() + 14);
-            inputEnd.value = formatDT(end);
+            presetLabel = '២ សប្តាហ៍';
         } else if (preset === '1month') {
             end.setMonth(end.getMonth() + 1);
-            inputEnd.value = formatDT(end);
-        } else if (preset === 'unlimited') {
-            if (inputStart) inputStart.value = '';
-            inputEnd.value = '';
+            presetLabel = '១ ខែ';
         }
+        if (inputEnd) inputEnd.value = formatDT(end);
     }
+
+    // Auto-save immediately
+    executeSaveRegPeriod(`បានកំណត់សុពលភាពចុះឈ្មោះ៖ ${presetLabel}`);
+}
+
+function setRegPreset(preset) {
+    applyAndSaveRegPreset(preset);
 }
 
 let isSavingRegPeriod = false;
@@ -609,21 +736,21 @@ function updateStatusBadge(statusCode) {
     }
 
     if (statusCode === 'OPEN') {
-        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)</button>`;
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)</button>`;
         if (card) card.classList.add('border-success');
     } else if (statusCode === 'NOT_STARTED') {
-        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)</button>`;
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)</button>`;
         if (card) card.classList.add('border-warning');
     } else if (statusCode === 'EXPIRED') {
-        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)</button>`;
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)</button>`;
         if (card) card.classList.add('border-danger');
     } else {
-        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)"><i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)</button>`;
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)"><i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)</button>`;
         if (card) card.classList.add('border-secondary');
     }
 }
 
-function executeSaveRegPeriod() {
+function executeSaveRegPeriod(customSuccessMsg = null) {
     if (isSavingRegPeriod) return;
     const form = document.getElementById('regPeriodForm');
     if (!form) return;
@@ -656,15 +783,30 @@ function executeSaveRegPeriod() {
         }
 
         if (data.success) {
+            const successText = customSuccessMsg || data.message;
+            showToast(successText);
+
             if (alertBox) {
                 alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
                 alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message} (${data.status_reason})`;
                 alertBox.classList.remove('d-none');
-                setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
             }
 
             // Update Status Badge
             updateStatusBadge(data.status_code);
+
+            // Update Summary Badge in Card 1
+            const summaryBadge = document.getElementById('periodSummaryBadge');
+            if (summaryBadge) {
+                if (data.start_date || data.end_date) {
+                    const sStr = data.start_date_display || 'ឥឡូវនេះ';
+                    const eStr = data.end_date_display || 'គ្មានកំណត់';
+                    summaryBadge.textContent = `${sStr} ដល់ ${eStr}`;
+                } else {
+                    summaryBadge.textContent = 'គ្មានកំណត់ (រហូត)';
+                }
+            }
 
             // Update Poster Badge
             const posterBadge = document.getElementById('posterPeriodBadge');
@@ -679,10 +821,13 @@ function executeSaveRegPeriod() {
                     posterBadge.style.display = 'none';
                 }
             }
-        } else if (alertBox) {
-            alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
-            alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.error || 'មានបញ្ហាក្នុងការរក្សាទុក'}`;
-            alertBox.classList.remove('d-none');
+        } else {
+            showToast(data.error || 'មានបញ្ហាក្នុងការរក្សាទុក', true);
+            if (alertBox) {
+                alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.error || 'មានបញ្ហាក្នុងការរក្សាទុក'}`;
+                alertBox.classList.remove('d-none');
+            }
         }
     })
     .catch(err => {
@@ -691,11 +836,7 @@ function executeSaveRegPeriod() {
             btnSave.disabled = false;
             btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
         }
-        if (alertBox) {
-            alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
-            alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> Connection error: ${err}`;
-            alertBox.classList.remove('d-none');
-        }
+        showToast('Connection error: ' + err, true);
     });
 }
 
@@ -707,35 +848,65 @@ function toggleRegStatusShortcut() {
         if (labelOpen) {
             labelOpen.textContent = switchOpen.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
         }
-        executeSaveRegPeriod();
+        const stateMsg = switchOpen.checked ? 'បានបើកការចុះឈ្មោះទូទៅ (OPEN)' : 'បានបិទការចុះឈ្មោះទូទៅ (CLOSED)';
+        executeSaveRegPeriod(stateMsg);
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const switchOpen = document.getElementById('inputIsRegOpen');
-    const labelOpen = document.getElementById('labelIsRegOpen');
-    const btnSave = document.getElementById('btnSaveRegPeriod');
-
-    if (switchOpen && labelOpen) {
-        switchOpen.addEventListener('change', function() {
-            labelOpen.textContent = this.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
-            // Auto-save immediately on switch toggle
-            executeSaveRegPeriod();
-        });
+// Update Grade Open Count Badge
+function updateGradeOpenCount() {
+    const switches = document.querySelectorAll('.grade-toggle-switch');
+    const totalCount = switches.length;
+    let openCount = 0;
+    switches.forEach(sw => {
+        if (sw.checked) openCount++;
+    });
+    const badge = document.getElementById('gradeOpenCountBadge');
+    if (badge) {
+        badge.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> បើក ${openCount} / ${totalCount} កម្រិតថ្នាក់`;
+        badge.className = openCount > 0 
+            ? 'badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small' 
+            : 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small';
     }
-
-    if (btnSave) {
-        btnSave.addEventListener('click', function() {
-            executeSaveRegPeriod();
-        });
-    }
-});
+}
 
 // AJAX Toggle Single Grade Registration Status
 function toggleGradeReg(gradeId, isOpen) {
     const alertBox = document.getElementById('gradeRegAlert');
     const badgeEl = document.getElementById(`badgeGrade_${gradeId}`);
+    const badgeTableEl = document.getElementById(`badgeGradeTable_${gradeId}`);
+    const cardEl = document.getElementById(`cardGrade_${gradeId}`);
+    const switchGrid = document.getElementById(`switchGrade_${gradeId}`);
+    const switchTable = document.getElementById(`switchGradeTable_${gradeId}`);
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    // Sync switch states between grid and table
+    if (switchGrid) switchGrid.checked = isOpen;
+    if (switchTable) switchTable.checked = isOpen;
+
+    // Visual card update immediately
+    if (cardEl) {
+        if (isOpen) {
+            cardEl.classList.remove('border-secondary-subtle', 'bg-light', 'text-muted');
+            cardEl.classList.add('border-success', 'bg-white');
+        } else {
+            cardEl.classList.remove('border-success', 'bg-white');
+            cardEl.classList.add('border-secondary-subtle', 'bg-light', 'text-muted');
+        }
+    }
+
+    // Badge update immediately
+    const badgeHtml = isOpen 
+        ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i> បើក</span>`
+        : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-ban me-1"></i> បិទ</span>`;
+    if (badgeEl) badgeEl.innerHTML = badgeHtml;
+    if (badgeTableEl) {
+        badgeTableEl.innerHTML = isOpen 
+            ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">បើក</span>`
+            : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small">បិទ</span>`;
+    }
+
+    updateGradeOpenCount();
 
     const formData = new FormData();
     formData.append('grade_id', gradeId);
@@ -750,13 +921,7 @@ function toggleGradeReg(gradeId, isOpen) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            if (badgeEl) {
-                if (data.is_registration_open) {
-                    badgeEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ</span>`;
-                } else {
-                    badgeEl.innerHTML = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ</span>`;
-                }
-            }
+            showToast(data.message);
             if (alertBox) {
                 alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
                 alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message}`;
@@ -764,12 +929,62 @@ function toggleGradeReg(gradeId, isOpen) {
                 setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
             }
         } else {
-            alert('កំហុស៖ ' + (data.error || 'មិនអាចផ្លាស់ប្តូរស្ថានភាពបានឡើយ'));
+            showToast('កំហុស៖ ' + (data.error || 'មិនអាចផ្លាស់ប្តូរស្ថានភាពបានឡើយ'), true);
         }
     })
     .catch(err => {
-        alert('Connection error: ' + err);
+        showToast('Connection error: ' + err, true);
     });
+}
+
+// Grade Notice Modal Functions
+function openGradeNoticeModal(gradeId, gradeName) {
+    const modalId = document.getElementById('modalGradeId');
+    const modalTitle = document.getElementById('modalGradeNoticeTitle');
+    const modalMsg = document.getElementById('modalGradeMessage');
+    const currentHiddenMsg = document.getElementById(`msgGrade_${gradeId}`);
+
+    if (modalId) modalId.value = gradeId;
+    if (modalTitle) modalTitle.innerHTML = `<i class="fa-solid fa-comment-dots text-primary me-2"></i>សារជូនដំណឹងពេលបិទ - ${gradeName}`;
+    if (modalMsg) modalMsg.value = currentHiddenMsg ? currentHiddenMsg.value : '';
+
+    const modalEl = document.getElementById('modalGradeNotice');
+    if (modalEl && window.bootstrap && bootstrap.Modal) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+function saveGradeNoticeFromModal() {
+    const modalId = document.getElementById('modalGradeId');
+    const modalMsg = document.getElementById('modalGradeMessage');
+    if (!modalId) return;
+
+    const gradeId = modalId.value;
+    const noticeText = modalMsg ? modalMsg.value.trim() : '';
+
+    const hiddenInput = document.getElementById(`msgGrade_${gradeId}`);
+    if (hiddenInput) hiddenInput.value = noticeText;
+
+    // Update label in Card View
+    const cardMsgLabel = document.getElementById(`labelMsgGrade_${gradeId}`);
+    if (cardMsgLabel) {
+        cardMsgLabel.textContent = noticeText ? 'សារពិសេស' : 'សារ';
+    }
+
+    // Update preview in Table View
+    const tablePreview = document.getElementById(`tableMsgPreview_${gradeId}`);
+    if (tablePreview) {
+        tablePreview.innerHTML = noticeText ? noticeText : '<em class="text-muted opacity-75">(ប្រើសារស្ដង់ដារសាលា)</em>';
+    }
+
+    // Close modal
+    const modalEl = document.getElementById('modalGradeNotice');
+    if (modalEl && window.bootstrap && bootstrap.Modal) {
+        bootstrap.Modal.getInstance(modalEl).hide();
+    }
+
+    saveGradeNotice(gradeId);
 }
 
 // AJAX Save Notice Message for Single Grade
@@ -792,11 +1007,15 @@ function saveGradeNotice(gradeId) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success && alertBox) {
-            alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
-            alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> បានរក្សាទុកសារជូនដំណឹងសម្រាប់ ${data.grade_name} ជោគជ័យ!`;
-            alertBox.classList.remove('d-none');
-            setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
+        if (data.success) {
+            const successMsg = `បានរក្សាទុកសារជូនដំណឹងសម្រាប់ ${data.grade_name} ជោគជ័យ!`;
+            showToast(successMsg);
+            if (alertBox) {
+                alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${successMsg}`;
+                alertBox.classList.remove('d-none');
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
+            }
         }
     })
     .catch(err => console.error(err));
@@ -804,10 +1023,7 @@ function saveGradeNotice(gradeId) {
 
 // AJAX Bulk Toggle All Grades
 function bulkToggleGrades(action) {
-    if (!confirm(action === 'open_all' ? 'តើលោកអ្នកច្បាស់ទេថាចង់បើកការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់?' : 'តើលោកអ្នកច្បាស់ទេថាចង់បិទការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់?')) {
-        return;
-    }
-
+    const isOpening = action === 'open_all';
     const alertBox = document.getElementById('gradeRegAlert');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
     const formData = new FormData();
@@ -823,28 +1039,96 @@ function bulkToggleGrades(action) {
     .then(data => {
         if (data.success) {
             const isAllOpen = data.is_registration_open;
-            document.querySelectorAll('.grade-toggle-switch').forEach(sw => {
-                sw.checked = isAllOpen;
-                const gId = sw.getAttribute('data-grade-id');
-                const badgeEl = document.getElementById(`badgeGrade_${gId}`);
-                if (badgeEl) {
-                    if (isAllOpen) {
-                        badgeEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ</span>`;
-                    } else {
-                        badgeEl.innerHTML = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ</span>`;
-                    }
+            
+            // Sync all switches in grid and table
+            document.querySelectorAll('.grade-toggle-switch').forEach(sw => sw.checked = isAllOpen);
+            document.querySelectorAll('.grade-toggle-switch-table').forEach(sw => sw.checked = isAllOpen);
+
+            // Update all cards and badges
+            document.querySelectorAll('.grade-card').forEach(card => {
+                if (isAllOpen) {
+                    card.classList.remove('border-secondary-subtle', 'bg-light', 'text-muted');
+                    card.classList.add('border-success', 'bg-white');
+                } else {
+                    card.classList.remove('border-success', 'bg-white');
+                    card.classList.add('border-secondary-subtle', 'bg-light', 'text-muted');
                 }
             });
+
+            document.querySelectorAll('[id^="badgeGrade_"]').forEach(badge => {
+                badge.innerHTML = isAllOpen 
+                    ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i> បើក</span>`
+                    : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 rounded-pill"><i class="fa-solid fa-ban me-1"></i> បិទ</span>`;
+            });
+
+            document.querySelectorAll('[id^="badgeGradeTable_"]').forEach(badge => {
+                badge.innerHTML = isAllOpen 
+                    ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">បើក</span>`
+                    : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small">បិទ</span>`;
+            });
+
+            updateGradeOpenCount();
+            showToast(data.message);
 
             if (alertBox) {
                 alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
                 alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message}`;
                 alertBox.classList.remove('d-none');
-                setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
             }
         }
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => showToast('Error: ' + err, true));
 }
+
+// View Mode Toggle (Grid / Table)
+function setGradeViewMode(mode) {
+    const gridView = document.getElementById('gradeGridView');
+    const tableView = document.getElementById('gradeTableView');
+    const btnGrid = document.getElementById('btnViewGrid');
+    const btnTable = document.getElementById('btnViewTable');
+
+    if (mode === 'grid') {
+        if (gridView) gridView.style.display = 'flex';
+        if (tableView) tableView.style.display = 'none';
+        if (btnGrid) btnGrid.classList.add('active');
+        if (btnTable) btnTable.classList.remove('active');
+    } else {
+        if (gridView) gridView.style.display = 'none';
+        if (tableView) tableView.style.display = 'block';
+        if (btnTable) btnTable.classList.add('active');
+        if (btnGrid) btnGrid.classList.remove('active');
+    }
+    try { localStorage.setItem('gradeViewMode', mode); } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const switchOpen = document.getElementById('inputIsRegOpen');
+    const labelOpen = document.getElementById('labelIsRegOpen');
+    const btnSave = document.getElementById('btnSaveRegPeriod');
+
+    if (switchOpen) {
+        switchOpen.addEventListener('change', function() {
+            if (labelOpen) {
+                labelOpen.textContent = this.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
+            }
+            const stateMsg = this.checked ? 'បានបើកការចុះឈ្មោះទូទៅ (OPEN)' : 'បានបិទការចុះឈ្មោះទូទៅ (CLOSED)';
+            executeSaveRegPeriod(stateMsg);
+        });
+    }
+
+    if (btnSave) {
+        btnSave.addEventListener('click', function() {
+            executeSaveRegPeriod();
+        });
+    }
+
+    // Initial counts and view mode restore
+    updateGradeOpenCount();
+    try {
+        const savedMode = localStorage.getItem('gradeViewMode');
+        if (savedMode) setGradeViewMode(savedMode);
+    } catch (e) {}
+});
 </script>
 {% endblock %}
