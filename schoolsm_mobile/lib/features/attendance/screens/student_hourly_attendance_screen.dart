@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
@@ -36,6 +37,12 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
   bool _notifyParents = false;
   String _searchQuery = '';
 
+  // Teacher Schedule & Permissions
+  bool _canRecord = true;
+  bool _isTeacherScheduled = true;
+  Map<String, dynamic>? _scheduleAlert;
+  List<dynamic> _teacherTodaySlots = [];
+
   // Roster & State
   bool _hasSubmitted = false;
   int _submissionCount = 0;
@@ -68,7 +75,6 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
         final classrooms = (data['classrooms'] as List<dynamic>?) ?? [];
         final periods = (data['periods'] as List<dynamic>?) ?? [];
         final currentPeriod = (data['current_period'] as int?) ?? 1;
-
         setState(() {
           _classrooms = classrooms;
           _periods = periods;
@@ -165,13 +171,30 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
           parsedStudents.add(stuMap);
         }
 
+        final canRec = (data['can_record'] as bool?) ?? true;
+        final isScheduled = (data['is_teacher_scheduled'] as bool?) ?? true;
+        final schedAlert = data['schedule_alert'] != null
+            ? Map<String, dynamic>.from(data['schedule_alert'] as Map)
+            : null;
+        final todaySlots = (data['teacher_today_slots'] as List<dynamic>?) ?? [];
+
         setState(() {
           _students = parsedStudents;
           _hasSubmitted = (data['has_submitted'] as bool?) ?? false;
           _submissionCount = (data['submission_count'] as int?) ?? 0;
           _recordedByName = (data['recorded_by'] as String?) ?? '';
+          _canRecord = canRec;
+          _isTeacherScheduled = isScheduled;
+          _scheduleAlert = schedAlert;
+          _teacherTodaySlots = todaySlots;
           _isLoadingRoster = false;
         });
+
+        if (!canRec && schedAlert != null && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showScheduleAlertModal(schedAlert);
+          });
+        }
       } else {
         _useFallbackRoster();
       }
@@ -233,6 +256,15 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
   }
 
   void _markAllPresent() {
+    if (!_canRecord) {
+      if (_scheduleAlert != null) {
+        _showScheduleAlertModal(_scheduleAlert!);
+      } else {
+        _onSaveError('ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled) ព្រោះលោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ!');
+      }
+      return;
+    }
+
     setState(() {
       for (final s in _students) {
         s['status'] = 'PRESENT';
@@ -252,7 +284,160 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
     );
   }
 
+  void _showScheduleAlertModal(Map<String, dynamic> alert) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 54),
+        title: Text(
+          alert['title'] ?? 'គ្មានម៉ោងបង្រៀនចំម៉ោងនេះទេ',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              alert['message'] ?? 'លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            if (_teacherTodaySlots.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ម៉ោងបង្រៀនរបស់លោកគ្រូ-អ្នកគ្រូថ្ងៃនេះ៖',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: _teacherTodaySlots.map<Widget>((slot) {
+                        final pNum = slot['period_number'];
+                        final cName = slot['classroom_name'] ?? slot['classroom_code'] ?? '';
+                        final sName = slot['subject_name'] ?? '';
+                        return InkWell(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            final targetClassId = slot['classroom_id'] as int?;
+                            setState(() {
+                              _selectedPeriod = pNum as int;
+                              if (targetClassId != null) {
+                                _selectedClassroomId = targetClassId;
+                              }
+                            });
+                            _fetchRoster();
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'ម៉ោងទី $pNum ($cName${sName.isNotEmpty ? " • $sName" : ""})',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('យល់ព្រម / OK', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleAlertBanner() {
+    if ((_canRecord && _isTeacherScheduled) || _scheduleAlert == null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_clock_rounded, color: AppColors.danger, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _scheduleAlert!['title'] ?? 'គ្មានម៉ោងបង្រៀនចំម៉ោងនេះទេ',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.danger,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _scheduleAlert!['message'] ?? 'ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF991B1B)),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 20),
+            onPressed: () => _showScheduleAlertModal(_scheduleAlert!),
+            tooltip: 'ព័ត៌មានលម្អិត',
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _saveAttendance() async {
+    if (!_canRecord) {
+      if (_scheduleAlert != null) {
+        _showScheduleAlertModal(_scheduleAlert!);
+      } else {
+        _onSaveError('ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled) ព្រោះលោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ!');
+      }
+      return;
+    }
+
     if (_selectedClassroomId == null || _students.isEmpty) return;
 
     setState(() => _isSaving = true);
@@ -323,6 +508,32 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
         }
       } else {
         _onSaveError(data['message'] ?? 'បរាជ័យក្នុងការរក្សាទុក');
+      }
+    } on DioException catch (e) {
+      setState(() => _isSaving = false);
+      final errorMsg = (e.response?.data is Map && e.response?.data['message'] != null)
+          ? e.response?.data['message']
+          : 'បរាជ័យក្នុងការរក្សាទុក (Status: ${e.response?.statusCode ?? "Error"})';
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            icon: const Icon(Icons.block_rounded, color: AppColors.danger, size: 54),
+            title: const Text('មិនអាចរក្សាទុកបានទេ', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: Text(
+              errorMsg.toString(),
+              style: const TextStyle(fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('យល់ព្រម / OK', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
       }
     } catch (e) {
       // Offline / Demo fallback handling
@@ -435,6 +646,9 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
               children: [
                 // Filter Header Card
                 _buildFilterHeader(),
+
+                // Teacher Schedule Alert Warning Banner
+                _buildScheduleAlertBanner(),
 
                 // Summary Counters & Actions Bar
                 _buildSummaryBar(
@@ -602,7 +816,9 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
                       const Icon(Icons.check_circle_rounded, size: 12, color: AppColors.success),
                       const SizedBox(width: 4),
                       Text(
-                        'បានស្រង់រួច (លើកទី $_submissionCount)',
+                        _recordedByName.isNotEmpty
+                            ? 'បានស្រង់រួច (លើកទី $_submissionCount ដោយ $_recordedByName)'
+                            : 'បានស្រង់រួច (លើកទី $_submissionCount)',
                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.success),
                       ),
                     ],
@@ -629,7 +845,7 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: List.generate(8, (idx) {
+              children: List.generate(_periods.isNotEmpty ? _periods.length : 8, (idx) {
                 final pNum = idx + 1;
                 final isSelected = _selectedPeriod == pNum;
                 final isMorning = pNum <= 4;
@@ -852,29 +1068,49 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
     final isSelected = currentStatus == statusCode;
     return Expanded(
       child: InkWell(
-        onTap: () => _setStudentStatus(studentId, statusCode),
+        onTap: _canRecord
+            ? () => _setStudentStatus(studentId, statusCode)
+            : () {
+                if (_scheduleAlert != null) {
+                  _showScheduleAlertModal(_scheduleAlert!);
+                } else {
+                  _onSaveError('ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled) ព្រោះលោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ!');
+                }
+              },
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 7),
           decoration: BoxDecoration(
-            color: isSelected ? color : color.withOpacity(0.06),
+            color: !_canRecord
+                ? (isSelected ? Colors.grey.shade400 : Colors.grey.shade100)
+                : (isSelected ? color : color.withOpacity(0.06)),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? color : color.withOpacity(0.2),
+              color: !_canRecord
+                  ? (isSelected ? Colors.grey.shade500 : Colors.grey.shade300)
+                  : (isSelected ? color : color.withOpacity(0.2)),
               width: isSelected ? 1.5 : 1,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 14, color: isSelected ? Colors.white : color),
+              Icon(
+                icon,
+                size: 14,
+                color: !_canRecord
+                    ? (isSelected ? Colors.white : Colors.grey.shade500)
+                    : (isSelected ? Colors.white : color),
+              ),
               const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected ? Colors.white : color,
+                  color: !_canRecord
+                      ? (isSelected ? Colors.white : Colors.grey.shade600)
+                      : (isSelected ? Colors.white : color),
                 ),
               ),
             ],
@@ -942,9 +1178,19 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
               width: double.infinity,
               height: 48,
               child: FilledButton(
-                onPressed: _isSaving ? null : _saveAttendance,
+                onPressed: _isSaving
+                    ? null
+                    : (!_canRecord
+                        ? () {
+                            if (_scheduleAlert != null) {
+                              _showScheduleAlertModal(_scheduleAlert!);
+                            } else {
+                              _onSaveError('ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled) ព្រោះលោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ!');
+                            }
+                          }
+                        : _saveAttendance),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: _canRecord ? AppColors.primary : const Color(0xFFEF4444).withOpacity(0.85),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _isSaving
@@ -952,11 +1198,17 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.save_rounded, size: 18),
+                          Icon(!_canRecord ? Icons.lock_outline_rounded : Icons.save_rounded, size: 18, color: Colors.white),
                           const SizedBox(width: 8),
                           Text(
-                            'រក្សាទុកវត្តមាន (ម៉ោងទី $_selectedPeriod) • អវត្តមាន: $totalAbsences',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            !_canRecord
+                                ? 'គ្មានម៉ោងបង្រៀន (ចុចមើលព័ត៌មាន / Disabled)'
+                                : 'រក្សាទុកវត្តមាន (ម៉ោងទី $_selectedPeriod) • អវត្តមាន: $totalAbsences',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ),

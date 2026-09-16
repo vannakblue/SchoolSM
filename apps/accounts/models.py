@@ -436,18 +436,18 @@ class SchoolProfile(models.Model):
         verbose_name="បញ្ចូលលេខកម្រិតថ្នាក់ក្នុងអត្តលេខ / Include Grade Level in ID"
     )
 
-    # Student Registration Mode Configuration (Admin Defined vs MoEYS Individual Profile)
+    # Student Registration Mode Configuration (Admin Enforced Control)
     class RegistrationMode(models.TextChoices):
         ADMIN_CUSTOM = 'ADMIN_CUSTOM', 'ចុះឈ្មោះតាមដែល Admin បានកំណត់ (ទូទៅ / Standard)'
         MOEYS_INDIVIDUAL = 'MOEYS_INDIVIDUAL', 'ចុះឈ្មោះតាមសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS Census 35 Columns)'
-        BOTH = 'BOTH', 'បើកជម្រើសទាំង២ (អនុញ្ញាតឱ្យជ្រើសរើសវិធីណាក៏បាន)'
+        BOTH = 'BOTH', 'តាមការកំណត់របស់ Admin តាមកម្រិតថ្នាក់ (Admin Grade-Level Config)'
 
     registration_mode = models.CharField(
         max_length=30,
         choices=RegistrationMode.choices,
-        default=RegistrationMode.BOTH,
+        default=RegistrationMode.ADMIN_CUSTOM,
         verbose_name="វិធីសាស្ត្រចុះឈ្មោះសិស្ស / Student Registration Mode",
-        help_text="កំណត់វិធីចុះឈ្មោះសិស្ស៖ តាមទម្រង់ Admin កំណត់ ឬ តាមសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ ឬ បើកទាំងពីរ"
+        help_text="កំណត់វិធីចុះឈ្មោះសិស្ស៖ តាមទម្រង់ Admin កំណត់ ឬ តាមសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ ឬ តាមកម្រិតថ្នាក់ (សិស្សមិនអាចជ្រើសរើសនៅលើ Portal ឬ Mobile បានទេ គឺ Admin ជាអ្នកកំណត់)"
     )
 
     # Student Registration Allowance & Period Configuration (Admin Control for Portal & Mobile App)

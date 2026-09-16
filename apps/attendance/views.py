@@ -317,96 +317,23 @@ def student_attendance_grid(request):
     detected_slot_info = None
 
     teacher_schedule_alert = None
-    if teacher_profile and user.role == 'TEACHER':
-        khmer_days = {
-            1: 'ច័ន្ទ',
-            2: 'អង្គារ',
-            3: 'ពុធ',
-            4: 'ព្រហស្បតិ៍',
-            5: 'សុក្រ',
-            6: 'សៅរ៍',
-            7: 'អាទិត្យ',
-        }
-        day_name = khmer_days.get(selected_date.isoweekday(), '')
-        date_slots = today_slots
-
-        if not date_slots.exists():
-            # Scenario 1: No classes for the entire day (1 ថ្ងៃ)
-            teacher_schedule_alert = {
-                'show_modal': True,
-                'alert_type': 'NO_CLASS_TODAY',
-                'badge_text': 'គ្មានកាលវិភាគពេញមួយថ្ងៃ',
-                'title': 'លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនក្នុងថ្ងៃនេះទេ',
-                'message': f'លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀននៅក្នុងថ្ងៃ{day_name} ទី {selected_date.strftime("%d/%m/%Y")} ឡើយ។ សូមពិនិត្យមើលកាលវិភាគបង្រៀនរួម ឬកាលវិភាគប្រចាំសប្តាហ៍។',
-                'icon': 'fa-calendar-xmark',
-                'icon_color': 'text-danger',
-                'bg_color': 'bg-danger-subtle',
-                'has_classes_today': False,
-                'other_slots': [],
-            }
-        else:
-            # Has classes today. Check session and period
-            target_period = int(req_period) if (req_period and req_period.isdigit()) else auto_period_num
-            target_session = req_session if req_session else (
-                StudentAttendance.Session.AFTERNOON if target_period > 4 else StudentAttendance.Session.MORNING
-            )
-
-            session_slots = [
-                s for s in date_slots
-                if (s.period_number <= 4 and target_session == StudentAttendance.Session.MORNING) or
-                   (s.period_number > 4 and target_session == StudentAttendance.Session.AFTERNOON)
-            ]
-            current_period_slot = next((s for s in date_slots if s.period_number == target_period), None)
-            is_explicit_valid_slot = (
-                req_period and req_class_id and
-                date_slots.filter(period_number=int(req_period), classroom_id=int(req_class_id)).exists()
-            )
-
-            if not is_explicit_valid_slot:
-                if len(session_slots) == 0:
-                    # Scenario 2: No classes in this session (1 ពេល - ពេលព្រឹក ឬ ពេលរសៀល)
-                    session_kh = 'ពេលព្រឹក (Morning)' if target_session == StudentAttendance.Session.MORNING else 'ពេលរសៀល (Afternoon)'
-                    other_session_kh = 'ពេលរសៀល (Afternoon)' if target_session == StudentAttendance.Session.MORNING else 'ពេលព្រឹក (Morning)'
-                    other_periods_text = ', '.join([f"ម៉ោងទី {s.period_number} ({s.classroom.code} - {s.subject.name_kh})" for s in date_slots])
-                    
-                    teacher_schedule_alert = {
-                        'show_modal': True,
-                        'alert_type': 'NO_CLASS_THIS_SESSION',
-                        'badge_text': f'គ្មានកាលវិភាគក្នុង{session_kh}',
-                        'title': f'ពុំមានម៉ោងបង្រៀនក្នុង{session_kh}នេះទេ',
-                        'message': f'នៅ{session_kh}នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ។ លោកគ្រូ-អ្នកគ្រូមានម៉ោងបង្រៀននៅ{other_session_kh}៖ {other_periods_text}។',
-                        'icon': 'fa-cloud-sun',
-                        'icon_color': 'text-warning',
-                        'bg_color': 'bg-warning-subtle',
-                        'has_classes_today': True,
-                        'other_slots': date_slots,
-                    }
-                elif current_period_slot is None:
-                    # Scenario 3: Has classes in this session, but NOT at this specific period/hour (1 ម៉ោង)
-                    next_slot = next((s for s in date_slots if s.period_number > target_period), None)
-                    next_slot_text = (
-                        f"ម៉ោងបង្រៀនបន្ទាប់របស់លោកគ្រូ-អ្នកគ្រូគឺ <strong>ម៉ោងទី {next_slot.period_number}</strong> ({next_slot.classroom.code} - {next_slot.subject.name_kh})។"
-                        if next_slot else "លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់រាល់ម៉ោងបង្រៀនសម្រាប់វេននេះហើយ។"
-                    )
-                    teacher_schedule_alert = {
-                        'show_modal': True,
-                        'alert_type': 'NO_CLASS_THIS_PERIOD',
-                        'badge_text': f'គ្មានកាលវិភាគនៅម៉ោងទី {target_period}',
-                        'title': f'ពុំមានម៉ោងបង្រៀននៅម៉ោងទី {target_period} នេះទេ',
-                        'message': f'នៅម៉ោងទី {target_period} នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ។ {next_slot_text}',
-                        'icon': 'fa-hourglass-start',
-                        'icon_color': 'text-info',
-                        'bg_color': 'bg-info-subtle',
-                        'has_classes_today': True,
-                        'other_slots': date_slots,
-                        'current_period_num': target_period,
-                    }
+    teacher_schedule_alert = None
+    khmer_days = {
+        1: 'ច័ន្ទ',
+        2: 'អង្គារ',
+        3: 'ពុធ',
+        4: 'ព្រហស្បតិ៍',
+        5: 'សុក្រ',
+        6: 'សៅរ៍',
+        7: 'អាទិត្យ',
+    }
+    day_name = khmer_days.get(selected_date.isoweekday(), '')
 
     if user.role == 'TEACHER' and teacher_profile and today_slots.exists():
         matching_slot = None
         if req_period and req_class_id:
             matching_slot = today_slots.filter(period_number=int(req_period), classroom_id=int(req_class_id)).first()
-        elif selected_date == today_date:
+        elif selected_date == today_date and not req_period and not req_class_id:
             matching_slot = today_slots.filter(period_number=auto_period_num).first()
 
         if matching_slot:
@@ -415,7 +342,6 @@ def student_attendance_grid(request):
             selected_subject = matching_slot.subject
             selected_session = StudentAttendance.Session.MORNING if matching_slot.period_number <= 4 else StudentAttendance.Session.AFTERNOON
             is_timetable_locked = True
-            teacher_schedule_alert = None
             detected_slot_info = {
                 'classroom': selected_class,
                 'period': selected_period,
@@ -423,25 +349,113 @@ def student_attendance_grid(request):
                 'session_name': 'ពេលព្រឹក (Morning)' if matching_slot.period_number <= 4 else 'ពេលរសៀល (Afternoon)',
             }
 
-
-
-    # Fallback for Admin or Teacher without timetable match
+    # Fallback for Admin or Teacher without exact timetable match
     if not selected_class:
         if req_class_id:
             selected_class = classrooms.filter(id=req_class_id).first() or Classroom.objects.filter(id=req_class_id).first()
+        elif teacher_profile and user.role == 'TEACHER' and today_slots.exists():
+            first_slot = today_slots.first()
+            selected_class = first_slot.classroom
+            selected_period = first_slot.period_number
+            selected_subject = first_slot.subject
+            selected_session = StudentAttendance.Session.MORNING if first_slot.period_number <= 4 else StudentAttendance.Session.AFTERNOON
+            is_timetable_locked = True
+            detected_slot_info = {
+                'classroom': selected_class,
+                'period': selected_period,
+                'subject': selected_subject,
+                'session_name': 'ពេលព្រឹក (Morning)' if first_slot.period_number <= 4 else 'ពេលរសៀល (Afternoon)',
+            }
         elif teacher_profile:
             teacher_class = Classroom.objects.filter(homeroom_teacher=teacher_profile, academic_year=active_year).first()
             selected_class = teacher_class or classrooms.first()
         else:
             selected_class = classrooms.first()
 
+    if selected_period is None:
         if req_period and req_period.isdigit():
             selected_period = int(req_period)
         else:
             selected_period = auto_period_num
 
-        if not selected_session:
-            selected_session = StudentAttendance.Session.MORNING if selected_period <= 4 else StudentAttendance.Session.AFTERNOON
+    if not selected_session:
+        selected_session = StudentAttendance.Session.MORNING if selected_period <= 4 else StudentAttendance.Session.AFTERNOON
+
+    # Verify Teacher Schedule for the Selected Classroom & Period
+    if user.role == 'TEACHER' and teacher_profile:
+        is_scheduled = today_slots.filter(period_number=selected_period, classroom=selected_class).exists() if selected_class else False
+        if not is_scheduled:
+            if not today_slots.exists():
+                teacher_schedule_alert = {
+                    'show_modal': True,
+                    'alert_type': 'NO_CLASS_TODAY',
+                    'badge_text': 'គ្មានកាលវិភាគពេញមួយថ្ងៃ',
+                    'title': 'លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនក្នុងថ្ងៃនេះទេ',
+                    'message': f'លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀននៅក្នុងថ្ងៃ{day_name} ទី {selected_date.strftime("%d/%m/%Y")} ឡើយ។ សូមពិនិត្យមើលកាលវិភាគបង្រៀនរួម ឬកាលវិភាគប្រចាំសប្តាហ៍។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                    'icon': 'fa-calendar-xmark',
+                    'icon_color': 'text-danger',
+                    'bg_color': 'bg-danger-subtle',
+                    'has_classes_today': False,
+                    'other_slots': [],
+                }
+            else:
+                current_period_slot = today_slots.filter(period_number=selected_period).first()
+                session_slots = [
+                    s for s in today_slots
+                    if (s.period_number <= 4 and selected_session == StudentAttendance.Session.MORNING) or
+                       (s.period_number > 4 and selected_session == StudentAttendance.Session.AFTERNOON)
+                ]
+                if current_period_slot:
+                    other_room = current_period_slot.classroom
+                    sub_name = current_period_slot.subject.name_kh if current_period_slot.subject else ''
+                    teacher_schedule_alert = {
+                        'show_modal': True,
+                        'alert_type': 'CLASS_MISMATCH',
+                        'badge_text': 'ខុសបន្ទប់ ឬគ្មានម៉ោងក្នុងថ្នាក់នេះ',
+                        'title': f'ពុំមានម៉ោងបង្រៀនក្នុងថ្នាក់ {selected_class.name if selected_class else ""} នៅម៉ោងទី {selected_period} ទេ',
+                        'message': f'នៅម៉ោងទី {selected_period} នេះ លោកគ្រូ-អ្នកគ្រូមានម៉ោងបង្រៀននៅថ្នាក់ <strong>{other_room.name}</strong> ({sub_name}) មិនមែនថ្នាក់ {selected_class.name if selected_class else ""} ឡើយ។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                        'icon': 'fa-school-circle-xmark',
+                        'icon_color': 'text-danger',
+                        'bg_color': 'bg-danger-subtle',
+                        'has_classes_today': True,
+                        'other_slots': today_slots,
+                        'current_period_num': selected_period,
+                    }
+                elif len(session_slots) == 0:
+                    sess_kh = 'ពេលព្រឹក (Morning)' if selected_session == StudentAttendance.Session.MORNING else 'ពេលរសៀល (Afternoon)'
+                    other_sess_kh = 'ពេលរសៀល (Afternoon)' if selected_session == StudentAttendance.Session.MORNING else 'ពេលព្រឹក (Morning)'
+                    other_periods_text = ', '.join([f"ម៉ោងទី {s.period_number} ({s.classroom.code} - {s.subject.name_kh if s.subject else ''})" for s in today_slots])
+                    teacher_schedule_alert = {
+                        'show_modal': True,
+                        'alert_type': 'NO_CLASS_THIS_SESSION',
+                        'badge_text': f'គ្មានកាលវិភាគក្នុង{sess_kh}',
+                        'title': f'ពុំមានម៉ោងបង្រៀនក្នុង{sess_kh}នេះទេ',
+                        'message': f'នៅ{sess_kh}នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ។ លោកគ្រូ-អ្នកគ្រូមានម៉ោងបង្រៀននៅ{other_sess_kh}៖ {other_periods_text}។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                        'icon': 'fa-cloud-sun',
+                        'icon_color': 'text-warning',
+                        'bg_color': 'bg-warning-subtle',
+                        'has_classes_today': True,
+                        'other_slots': today_slots,
+                    }
+                else:
+                    next_slot = next((s for s in today_slots if s.period_number > selected_period), None)
+                    next_slot_text = (
+                        f"ម៉ោងបង្រៀនបន្ទាប់របស់លោកគ្រូ-អ្នកគ្រូគឺ <strong>ម៉ោងទី {next_slot.period_number}</strong> ({next_slot.classroom.code} - {next_slot.subject.name_kh if next_slot.subject else ''})។"
+                        if next_slot else "លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់រាល់ម៉ោងបង្រៀនសម្រាប់វេននេះហើយ។"
+                    )
+                    teacher_schedule_alert = {
+                        'show_modal': True,
+                        'alert_type': 'NO_CLASS_THIS_PERIOD',
+                        'badge_text': f'គ្មានកាលវិភាគនៅម៉ោងទី {selected_period}',
+                        'title': f'ពុំមានម៉ោងបង្រៀននៅម៉ោងទី {selected_period} នេះទេ',
+                        'message': f'នៅម៉ោងទី {selected_period} នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ។ {next_slot_text} ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                        'icon': 'fa-hourglass-start',
+                        'icon_color': 'text-info',
+                        'bg_color': 'bg-info-subtle',
+                        'has_classes_today': True,
+                        'other_slots': today_slots,
+                        'current_period_num': selected_period,
+                    }
 
     # 3. Evaluate Timing Window
     if user.role in ['ADMIN', 'ACCOUNTANT']:
@@ -458,10 +472,33 @@ def student_attendance_grid(request):
         is_form_disabled = False
     else:
         timing_eval = evaluate_attendance_timing_window(teacher_profile, selected_class, selected_period, selected_date, current_dt=now_dt)
-        is_form_disabled = not timing_eval['can_submit']
+        is_form_disabled = (not timing_eval['can_submit']) or (teacher_schedule_alert is not None)
 
     # 4. Handle POST: Absence-First Saving & Enforcement
     if request.method == 'POST' and selected_class:
+        post_period = request.POST.get('period')
+        period_num_save = int(post_period) if post_period and post_period.isdigit() else (selected_period or 1)
+
+        # Enforce Teacher Timetable Schedule for POST
+        if user.role == 'TEACHER' and teacher_profile:
+            is_post_scheduled = Timetable.objects.filter(
+                teacher=teacher_profile,
+                classroom=selected_class,
+                period_number=period_num_save,
+                day_of_week=selected_date.isoweekday(),
+                classroom__academic_year=active_year
+            ).exists()
+            if not is_post_scheduled:
+                messages.error(
+                    request,
+                    f"❌ បរាជ័យក្នុងការរក្សាទុក៖ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀននៅថ្នាក់ {selected_class.name} "
+                    f"ក្នុងម៉ោងទី {period_num_save} (ថ្ងៃ{day_name}) ឡើយ! ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។"
+                )
+                redirect_url = f"/attendance/?classroom={selected_class.id}&date={selected_date.strftime('%Y-%m-%d')}&session={selected_session}"
+                if selected_period:
+                    redirect_url += f"&period={selected_period}"
+                return redirect(redirect_url)
+
         if user.role not in ['ADMIN', 'ACCOUNTANT'] and not timing_eval['can_submit']:
             messages.error(request, f"❌ បរាជ័យក្នុងការរក្សាទុក៖ {timing_eval['status_message']}")
             redirect_url = f"/attendance/?classroom={selected_class.id}&date={selected_date.strftime('%Y-%m-%d')}&session={selected_session}"
@@ -470,7 +507,6 @@ def student_attendance_grid(request):
             return redirect(redirect_url)
 
         notify_parents = request.POST.get('notify_parents') == '1'
-        post_period = request.POST.get('period')
         post_subject_id = request.POST.get('subject')
         
         period_num_save = int(post_period) if post_period and post_period.isdigit() else selected_period

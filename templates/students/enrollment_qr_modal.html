@@ -37,21 +37,21 @@
         </div>
         <div id="regStatusBadgeWrapper">
             {% if reg_status == 'OPEN' %}
-            <span class="badge bg-success px-3 py-2 rounded-pill fs-6">
+            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)">
                 <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)
-            </span>
+            </button>
             {% elif reg_status == 'NOT_STARTED' %}
-            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6">
+            <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
                 <i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)
-            </span>
+            </button>
             {% elif reg_status == 'EXPIRED' %}
-            <span class="badge bg-danger px-3 py-2 rounded-pill fs-6">
+            <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព">
                 <i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)
-            </span>
+            </button>
             {% else %}
-            <span class="badge bg-secondary px-3 py-2 rounded-pill fs-6">
+            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)">
                 <i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)
-            </span>
+            </button>
             {% endif %}
         </div>
     </div>
@@ -110,6 +110,88 @@
     <div id="regSaveAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
 </div>
 
+<!-- Admin Grade-Level Registration Control Card (No-print) -->
+<div class="custom-card mb-4 p-3 no-print border-start border-4 border-info" id="gradeRegControlCard" style="background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle p-2 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-layer-group fs-5"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">កំណត់ការបើក/បិទការចុះឈ្មោះតាមកម្រិតថ្នាក់នីមួយៗ (Grade-Level Registration Controls)</h5>
+                <p class="text-muted small mb-0">Admin មានសិទ្ធិកំណត់កម្រិតថ្នាក់ណាខ្លះបើក ឬបិទមិនឱ្យចុះឈ្មោះចូលរៀន (Online Portal & Mobile App)</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="bulkToggleGrades('open_all')">
+                <i class="fa-solid fa-check-double me-1"></i> បើកទាំងអស់ (Open All)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="bulkToggleGrades('close_all')">
+                <i class="fa-solid fa-ban me-1"></i> បិទទាំងអស់ (Close All)
+            </button>
+        </div>
+    </div>
+
+    <!-- Table of Grade Levels -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="tableGradeReg">
+            <thead class="table-light">
+                <tr class="small text-muted text-uppercase">
+                    <th style="width: 50px;">ល.រ</th>
+                    <th style="min-width: 180px;">កម្រិតថ្នាក់ (Grade Level)</th>
+                    <th style="width: 120px;">ជំនាញ (Track)</th>
+                    <th style="width: 180px;" class="text-center">ស្ថានភាពចុះឈ្មោះ (Status)</th>
+                    <th style="min-width: 250px;">សារជូនដំណឹងពេលបិទ (Notice When Closed)</th>
+                    <th style="width: 80px;" class="text-end">សកម្មភាព</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gl in all_grade_levels %}
+                <tr id="row-grade-{{ gl.id }}">
+                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td>
+                        <span class="fw-bold text-dark">{{ gl.name }}</span>
+                        <span class="badge bg-light text-muted border ms-1">ថ្នាក់ទី {{ gl.grade_number }}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary-subtle text-dark">{{ gl.track }}</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block ps-0">
+                            <input class="form-check-input ms-0 grade-toggle-switch" type="checkbox" role="switch" id="switchGrade_{{ gl.id }}" data-grade-id="{{ gl.id }}" {% if gl.is_registration_open %}checked{% endif %} onchange="toggleGradeReg({{ gl.id }}, this.checked)">
+                        </div>
+                        <div class="mt-1" id="badgeGrade_{{ gl.id }}">
+                            {% if gl.is_registration_open %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small">
+                                <i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small">
+                                <i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" id="msgGrade_{{ gl.id }}" value="{{ gl.registration_closed_message }}" placeholder="សារជូនដំណឹងពេលបិទ..." onchange="saveGradeNotice({{ gl.id }})">
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveGradeNotice({{ gl.id }})" title="រក្សាទុកសារ">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-3">មិនទាន់មានកម្រិតថ្នាក់ត្រូវបានបង្កើតនៅឡើយទេ។</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div id="gradeRegAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
+</div>
+
 <!-- Selection Controls Card (No-print) -->
 <div class="custom-card mb-4 p-3 no-print" id="selectorControls">
     <div class="row g-3 align-items-center">
@@ -134,8 +216,10 @@
                         data-classes="{{ g.class_codes }}"
                         data-count="{{ g.classes_count }}"
                         data-url="{{ g.url }}"
-                        data-qr="{{ g.qr_src }}">
-                    {{ g.name }} {% if g.class_codes %}(ថ្នាក់៖ {{ g.class_codes }}){% endif %}
+                        data-qr="{{ g.qr_src }}"
+                        data-is-open="{{ g.is_registration_open|yesno:'1,0' }}"
+                        data-closed-msg="{{ g.registration_closed_message }}">
+                    {{ g.name }} {% if not g.is_registration_open %}[🔴 បិទការចុះឈ្មោះ]{% endif %} {% if g.class_codes %}(ថ្នាក់៖ {{ g.class_codes }}){% endif %}
                 </option>
                 {% endfor %}
             </select>
@@ -514,92 +598,253 @@ function setRegPreset(preset) {
     }
 }
 
+let isSavingRegPeriod = false;
+
+function updateStatusBadge(statusCode) {
+    const badgeWrapper = document.getElementById('regStatusBadgeWrapper');
+    const card = document.getElementById('regPeriodControlCard');
+    if (!badgeWrapper) return;
+    if (card) {
+        card.classList.remove('border-success', 'border-warning', 'border-danger', 'border-secondary');
+    }
+
+    if (statusCode === 'OPEN') {
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបិទការចុះឈ្មោះ (Click to Turn Off)"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)</button>`;
+        if (card) card.classList.add('border-success');
+    } else if (statusCode === 'NOT_STARTED') {
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)</button>`;
+        if (card) card.classList.add('border-warning');
+    } else if (statusCode === 'EXPIRED') {
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីផ្លាស់ប្តូរស្ថានភាព"><i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)</button>`;
+        if (card) card.classList.add('border-danger');
+    } else {
+        badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleRegStatusShortcut()" title="ចុចត្រង់នេះដើម្បីបើកការចុះឈ្មោះឡើងវិញ (Click to Turn On)"><i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)</button>`;
+        if (card) card.classList.add('border-secondary');
+    }
+}
+
+function executeSaveRegPeriod() {
+    if (isSavingRegPeriod) return;
+    const form = document.getElementById('regPeriodForm');
+    if (!form) return;
+    const formData = new FormData(form);
+    const switchOpen = document.getElementById('inputIsRegOpen');
+    formData.set('is_registration_open', switchOpen && switchOpen.checked ? 'true' : 'false');
+
+    const btnSave = document.getElementById('btnSaveRegPeriod');
+    const alertBox = document.getElementById('regSaveAlert');
+
+    isSavingRegPeriod = true;
+    if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
+    }
+
+    fetch("{% url 'api_save_registration_period' %}", {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        isSavingRegPeriod = false;
+        if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
+        }
+
+        if (data.success) {
+            if (alertBox) {
+                alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message} (${data.status_reason})`;
+                alertBox.classList.remove('d-none');
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
+            }
+
+            // Update Status Badge
+            updateStatusBadge(data.status_code);
+
+            // Update Poster Badge
+            const posterBadge = document.getElementById('posterPeriodBadge');
+            const posterText = document.getElementById('posterPeriodText');
+            if (posterBadge && posterText) {
+                if (data.start_date || data.end_date) {
+                    posterBadge.style.display = 'block';
+                    const sStr = data.start_date_display || 'ឥឡូវនេះ';
+                    const eStr = data.end_date_display || 'គ្មានកំណត់';
+                    posterText.textContent = `${sStr} ដល់ ${eStr}`;
+                } else {
+                    posterBadge.style.display = 'none';
+                }
+            }
+        } else if (alertBox) {
+            alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
+            alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.error || 'មានបញ្ហាក្នុងការរក្សាទុក'}`;
+            alertBox.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        isSavingRegPeriod = false;
+        if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
+        }
+        if (alertBox) {
+            alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
+            alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> Connection error: ${err}`;
+            alertBox.classList.remove('d-none');
+        }
+    });
+}
+
+function toggleRegStatusShortcut() {
+    const switchOpen = document.getElementById('inputIsRegOpen');
+    const labelOpen = document.getElementById('labelIsRegOpen');
+    if (switchOpen) {
+        switchOpen.checked = !switchOpen.checked;
+        if (labelOpen) {
+            labelOpen.textContent = switchOpen.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
+        }
+        executeSaveRegPeriod();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const switchOpen = document.getElementById('inputIsRegOpen');
     const labelOpen = document.getElementById('labelIsRegOpen');
     const btnSave = document.getElementById('btnSaveRegPeriod');
-    const alertBox = document.getElementById('regSaveAlert');
 
     if (switchOpen && labelOpen) {
         switchOpen.addEventListener('change', function() {
             labelOpen.textContent = this.checked ? 'អនុញ្ញាតឱ្យចុះឈ្មោះ (OPEN)' : 'បិទការចុះឈ្មោះ (CLOSED)';
+            // Auto-save immediately on switch toggle
+            executeSaveRegPeriod();
         });
     }
 
     if (btnSave) {
         btnSave.addEventListener('click', function() {
-            const formData = new FormData(document.getElementById('regPeriodForm'));
-            btnSave.disabled = true;
-            btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងរក្សាទុក...`;
-
-            fetch("{% url 'api_save_registration_period' %}", {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                btnSave.disabled = false;
-                btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
-
-                if (data.success) {
-                    alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
-                    alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message} (${data.status_reason})`;
-                    alertBox.classList.remove('d-none');
-
-                    // Update Status Badge
-                    const badgeWrapper = document.getElementById('regStatusBadgeWrapper');
-                    const card = document.getElementById('regPeriodControlCard');
-                    if (card) {
-                        card.classList.remove('border-success', 'border-warning', 'border-danger', 'border-secondary');
-
-                        if (data.status_code === 'OPEN') {
-                            badgeWrapper.innerHTML = `<span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើកដំណើរការ (OPEN)</span>`;
-                            card.classList.add('border-success');
-                        } else if (data.status_code === 'NOT_STARTED') {
-                            badgeWrapper.innerHTML = `<span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-clock me-1"></i> មិនទាន់ចាប់ផ្តើម (NOT STARTED)</span>`;
-                            card.classList.add('border-warning');
-                        } else if (data.status_code === 'EXPIRED') {
-                            badgeWrapper.innerHTML = `<span class="badge bg-danger px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-calendar-xmark me-1"></i> ផុតកំណត់កាលបរិច្ឆេទ (EXPIRED)</span>`;
-                            card.classList.add('border-danger');
-                        } else {
-                            badgeWrapper.innerHTML = `<span class="badge bg-secondary px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ (DISABLED)</span>`;
-                            card.classList.add('border-secondary');
-                        }
-                    }
-
-                    // Update Poster Badge
-                    const posterBadge = document.getElementById('posterPeriodBadge');
-                    const posterText = document.getElementById('posterPeriodText');
-                    if (posterBadge && posterText) {
-                        if (data.start_date || data.end_date) {
-                            posterBadge.style.display = 'block';
-                            const sStr = data.start_date_display || 'ឥឡូវនេះ';
-                            const eStr = data.end_date_display || 'គ្មានកំណត់';
-                            posterText.textContent = `${sStr} ដល់ ${eStr}`;
-                        } else {
-                            posterBadge.style.display = 'none';
-                        }
-                    }
-
-                    setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
-                } else {
-                    alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
-                    alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.error || 'មានបញ្ហាក្នុងការរក្សាទុក'}`;
-                    alertBox.classList.remove('d-none');
-                }
-            })
-            .catch(err => {
-                btnSave.disabled = false;
-                btnSave.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកកាលបរិច្ឆេទ (Save)`;
-                alertBox.className = 'alert alert-danger mt-2 py-2 small mb-0';
-                alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> Connection error: ${err}`;
-                alertBox.classList.remove('d-none');
-            });
+            executeSaveRegPeriod();
         });
     }
 });
+
+// AJAX Toggle Single Grade Registration Status
+function toggleGradeReg(gradeId, isOpen) {
+    const alertBox = document.getElementById('gradeRegAlert');
+    const badgeEl = document.getElementById(`badgeGrade_${gradeId}`);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    const formData = new FormData();
+    formData.append('grade_id', gradeId);
+    formData.append('is_registration_open', isOpen ? 'true' : 'false');
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    fetch("{% url 'api_toggle_grade_registration' %}", {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            if (badgeEl) {
+                if (data.is_registration_open) {
+                    badgeEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ</span>`;
+                } else {
+                    badgeEl.innerHTML = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ</span>`;
+                }
+            }
+            if (alertBox) {
+                alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message}`;
+                alertBox.classList.remove('d-none');
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
+            }
+        } else {
+            alert('កំហុស៖ ' + (data.error || 'មិនអាចផ្លាស់ប្តូរស្ថានភាពបានឡើយ'));
+        }
+    })
+    .catch(err => {
+        alert('Connection error: ' + err);
+    });
+}
+
+// AJAX Save Notice Message for Single Grade
+function saveGradeNotice(gradeId) {
+    const alertBox = document.getElementById('gradeRegAlert');
+    const msgInput = document.getElementById(`msgGrade_${gradeId}`);
+    const switchEl = document.getElementById(`switchGrade_${gradeId}`);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    const formData = new FormData();
+    formData.append('grade_id', gradeId);
+    formData.append('is_registration_open', switchEl && switchEl.checked ? 'true' : 'false');
+    formData.append('registration_closed_message', msgInput ? msgInput.value.trim() : '');
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    fetch("{% url 'api_toggle_grade_registration' %}", {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && alertBox) {
+            alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+            alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> បានរក្សាទុកសារជូនដំណឹងសម្រាប់ ${data.grade_name} ជោគជ័យ!`;
+            alertBox.classList.remove('d-none');
+            setTimeout(() => { alertBox.classList.add('d-none'); }, 3000);
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+// AJAX Bulk Toggle All Grades
+function bulkToggleGrades(action) {
+    if (!confirm(action === 'open_all' ? 'តើលោកអ្នកច្បាស់ទេថាចង់បើកការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់?' : 'តើលោកអ្នកច្បាស់ទេថាចង់បិទការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់?')) {
+        return;
+    }
+
+    const alertBox = document.getElementById('gradeRegAlert');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+    const formData = new FormData();
+    formData.append('action', action);
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    fetch("{% url 'api_bulk_grade_registration' %}", {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const isAllOpen = data.is_registration_open;
+            document.querySelectorAll('.grade-toggle-switch').forEach(sw => {
+                sw.checked = isAllOpen;
+                const gId = sw.getAttribute('data-grade-id');
+                const badgeEl = document.getElementById(`badgeGrade_${gId}`);
+                if (badgeEl) {
+                    if (isAllOpen) {
+                        badgeEl.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-circle-check me-1"></i> បើកចុះឈ្មោះ</span>`;
+                    } else {
+                        badgeEl.innerHTML = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill small"><i class="fa-solid fa-ban me-1"></i> បិទការចុះឈ្មោះ</span>`;
+                    }
+                }
+            });
+
+            if (alertBox) {
+                alertBox.className = 'alert alert-success mt-2 py-2 small mb-0';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message}`;
+                alertBox.classList.remove('d-none');
+                setTimeout(() => { alertBox.classList.add('d-none'); }, 4000);
+            }
+        }
+    })
+    .catch(err => alert('Error: ' + err));
+}
 </script>
 {% endblock %}

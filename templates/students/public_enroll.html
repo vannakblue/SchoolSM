@@ -135,42 +135,37 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- If School Allows BOTH Modes: Render Selection Cards for the Applicant -->
-            {% if configured_mode == 'BOTH' %}
-            <div class="mb-4">
-                <label class="form-label fw-bold text-dark mb-2">
-                    <i class="fa-solid fa-shuffle text-primary me-1"></i> សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ៖
-                </label>
-                <div class="row g-3">
-                    <div class="col-sm-6">
-                        <div class="card p-3 rounded-3 mode-select-card {% if active_mode != 'MOEYS_INDIVIDUAL' %}active-admin{% else %}bg-light border{% endif %}" id="cardSelectGeneral" onclick="setPublicMode('ADMIN_CUSTOM')">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-circle bg-primary text-white p-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
-                                    <i class="fa-solid fa-clipboard-list fs-5"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-dark">ទម្រង់ទូទៅ (Admin កំណត់)</h6>
-                                    <small class="text-muted">បំពេញព័ត៌មានសំខាន់ៗ និងជម្រើសតាមកម្រិតថ្នាក់</small>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Admin Enforced Registration Mode Indicator (សិស្សមិនអាចជ្រើសរើសដោយខ្លួនឯងបានទេ គឺ Admin ជាអ្នកកំណត់) -->
+            <div class="alert alert-light border d-flex align-items-center justify-content-between p-3 rounded-4 mb-4 shadow-xs bg-white" id="adminModeIndicatorBox">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle {% if active_mode == 'MOEYS_INDIVIDUAL' %}bg-info text-dark{% else %}bg-primary text-white{% endif %} p-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;" id="activeModeIconBox">
+                        {% if active_mode == 'MOEYS_INDIVIDUAL' %}
+                            <i class="fa-solid fa-id-card-clip fs-5" id="activeModeIcon"></i>
+                        {% else %}
+                            <i class="fa-solid fa-clipboard-list fs-5" id="activeModeIcon"></i>
+                        {% endif %}
                     </div>
-                    <div class="col-sm-6">
-                        <div class="card p-3 rounded-3 mode-select-card {% if active_mode == 'MOEYS_INDIVIDUAL' %}active-moeys{% else %}bg-light border{% endif %}" id="cardSelectMoeys" onclick="setPublicMode('MOEYS_INDIVIDUAL')">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-circle bg-info text-dark p-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
-                                    <i class="fa-solid fa-id-card-clip fs-5"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-dark">សម្រង់ព័ត៌មាន MoEYS</h6>
-                                    <small class="text-muted">ទម្រង់សម្រង់ព័ត៌មានសិស្ស ៣៥ ជួរឈររបស់ក្រសួង</small>
-                                </div>
-                            </div>
+                    <div>
+                        <div class="small text-muted fw-semibold">
+                            <i class="fa-solid fa-shield-halved text-success me-1"></i> វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយរដ្ឋបាលសាលា (Admin Enforced Method)៖
                         </div>
+                        <h6 class="fw-bold mb-0 text-dark" id="activeModeNameDisplay">
+                            {% if active_mode == 'MOEYS_INDIVIDUAL' %}
+                                ទម្រង់សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS Census 35 Columns)
+                            {% else %}
+                                ទម្រង់បែបបទ Admin បានកំណត់ (General Form)
+                            {% endif %}
+                        </h6>
                     </div>
                 </div>
+                <span class="badge {% if active_mode == 'MOEYS_INDIVIDUAL' %}bg-info text-dark{% else %}bg-primary{% endif %} px-3 py-2 rounded-pill fw-bold" id="activeModeBadge">
+                    {% if active_mode == 'MOEYS_INDIVIDUAL' %}
+                        <i class="fa-solid fa-check me-1"></i> MoEYS Form
+                    {% else %}
+                        <i class="fa-solid fa-check me-1"></i> Standard Form
+                    {% endif %}
+                </span>
             </div>
-            {% endif %}
 
             {% if target_classroom %}
             <div class="alert alert-primary border-primary d-flex align-items-center gap-3 py-3 px-4 rounded-3 mb-4 shadow-sm bg-primary bg-opacity-10">
@@ -665,9 +660,11 @@
         const generalSec = document.getElementById('publicGeneralSection');
         const moeysSec = document.getElementById('publicMoeysSection');
         const modeInput = document.getElementById('publicEnrollmentMode');
-        const cardGen = document.getElementById('cardSelectGeneral');
-        const cardMoeys = document.getElementById('cardSelectMoeys');
         const submitBtn = document.getElementById('submitBtn');
+        const nameDisplay = document.getElementById('activeModeNameDisplay');
+        const badge = document.getElementById('activeModeBadge');
+        const iconBox = document.getElementById('activeModeIconBox');
+        const icon = document.getElementById('activeModeIcon');
 
         if (mode === 'MOEYS_INDIVIDUAL') {
             modeInput.value = 'MOEYS_INDIVIDUAL';
@@ -677,8 +674,14 @@
             generalSec.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
             moeysSec.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
 
-            if (cardGen) { cardGen.className = 'card p-3 rounded-3 mode-select-card bg-light border'; }
-            if (cardMoeys) { cardMoeys.className = 'card p-3 rounded-3 mode-select-card active-moeys'; }
+            if (nameDisplay) nameDisplay.textContent = 'ទម្រង់សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS Census 35 Columns)';
+            if (badge) {
+                badge.className = 'badge bg-info text-dark px-3 py-2 rounded-pill fw-bold';
+                badge.innerHTML = '<i class="fa-solid fa-check me-1"></i> MoEYS Form';
+            }
+            if (iconBox) iconBox.className = 'rounded-circle bg-info text-dark p-3 d-flex align-items-center justify-content-center flex-shrink-0';
+            if (icon) icon.className = 'fa-solid fa-id-card-clip fs-5';
+
             if (submitBtn) {
                 submitBtn.className = 'btn btn-info w-100 py-3 fw-bold text-dark shadow';
                 submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> ដាក់ពាក្យចុះឈ្មោះតាមសម្រង់ MoEYS (Submit MoEYS Profile)';
@@ -696,8 +699,14 @@
             moeysSec.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
             generalSec.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
 
-            if (cardGen) { cardGen.className = 'card p-3 rounded-3 mode-select-card active-admin'; }
-            if (cardMoeys) { cardMoeys.className = 'card p-3 rounded-3 mode-select-card bg-light border'; }
+            if (nameDisplay) nameDisplay.textContent = 'ទម្រង់បែបបទ Admin បានកំណត់ (General Form)';
+            if (badge) {
+                badge.className = 'badge bg-primary px-3 py-2 rounded-pill fw-bold';
+                badge.innerHTML = '<i class="fa-solid fa-check me-1"></i> Standard Form';
+            }
+            if (iconBox) iconBox.className = 'rounded-circle bg-primary text-white p-3 d-flex align-items-center justify-content-center flex-shrink-0';
+            if (icon) icon.className = 'fa-solid fa-clipboard-list fs-5';
+
             if (submitBtn) {
                 submitBtn.className = 'btn btn-primary w-100 py-3 fw-bold shadow';
                 submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> ដាក់ពាក្យចុះឈ្មោះ (Submit Enrollment)';
@@ -724,6 +733,24 @@
         fetch(`/students/api/grade-options/?classroom_id=${classroomId}&form_category=${category}`)
             .then(res => res.json())
             .then(res => {
+                // If Admin configured a specific template for this grade, automatically switch to it
+                if (res.assigned_template) {
+                    if (res.assigned_template === 'MOEYS_INDIVIDUAL' && category !== 'MOEYS_INDIVIDUAL') {
+                        setPublicMode('MOEYS_INDIVIDUAL');
+                        const moeysCls = document.getElementById('moeys_classroom');
+                        if (moeysCls && moeysCls.value !== classroomId) {
+                            moeysCls.value = classroomId;
+                        }
+                        return;
+                    } else if (res.assigned_template === 'GENERAL' && category !== 'GENERAL') {
+                        setPublicMode('ADMIN_CUSTOM');
+                        const genCls = document.getElementById('id_classroom') || document.querySelector('#publicGeneralSection [name="classroom"]');
+                        if (genCls && genCls.value !== classroomId) {
+                            genCls.value = classroomId;
+                        }
+                        return;
+                    }
+                }
                 if (res.status === 'success' && res.data && res.data.length > 0) {
                     if (gradeNameBadge) gradeNameBadge.textContent = res.grade_name || `ថ្នាក់ទី ${res.grade_number}`;
                     if (gradeContainer) gradeContainer.innerHTML = '';
@@ -824,8 +851,13 @@
 
         // General Classroom selection
         const generalClassroomSelect = document.getElementById('id_classroom') || document.querySelector('#publicGeneralSection [name="classroom"]');
+        const moeysClassroomSelect = document.getElementById('moeys_classroom');
+
         if (generalClassroomSelect) {
             generalClassroomSelect.addEventListener('change', function() {
+                if (moeysClassroomSelect && moeysClassroomSelect.value !== this.value) {
+                    moeysClassroomSelect.value = this.value;
+                }
                 loadPublicGradeOptions(this.value, 'GENERAL', 'gradeOptionsContainer', 'gradeSpecificCard', 'gradeNameBadge');
             });
             if (generalClassroomSelect.value && initialMode === 'ADMIN_CUSTOM') {
@@ -834,9 +866,11 @@
         }
 
         // MoEYS Classroom selection
-        const moeysClassroomSelect = document.getElementById('moeys_classroom');
         if (moeysClassroomSelect) {
             moeysClassroomSelect.addEventListener('change', function() {
+                if (generalClassroomSelect && generalClassroomSelect.value !== this.value) {
+                    generalClassroomSelect.value = this.value;
+                }
                 loadPublicGradeOptions(this.value, 'MOEYS_INDIVIDUAL', 'moeysGradeOptionsContainer', 'moeysGradeSpecificCard', 'moeysGradeNameBadge');
             });
             if (moeysClassroomSelect.value && initialMode === 'MOEYS_INDIVIDUAL') {

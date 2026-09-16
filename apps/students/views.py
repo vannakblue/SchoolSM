@@ -389,14 +389,56 @@ def public_student_enroll(request):
         except (ValueError, TypeError):
             pass
 
-    # Active mode
-    requested_mode = request.GET.get('mode') or request.POST.get('enrollment_mode')
-    if configured_mode == SchoolProfile.RegistrationMode.ADMIN_CUSTOM:
+    from apps.academics.models import GradeLevel
+    target_gl = None
+    if target_classroom:
+        target_gl = GradeLevel.objects.filter(grade_number=target_classroom.grade_level, track=target_classroom.track).first() or GradeLevel.objects.filter(grade_number=target_classroom.grade_level).first()
+    elif grade_param:
+        try:
+            g_num = int(grade_param)
+            if track_param:
+                target_gl = GradeLevel.objects.filter(grade_number=g_num, track=track_param).first()
+            if not target_gl:
+                target_gl = GradeLevel.objects.filter(grade_number=g_num).first()
+        except (ValueError, TypeError):
+            pass
+
+    if target_gl and not target_gl.is_registration_open and not is_staff_preview:
+        closed_msg = target_gl.registration_closed_message.strip() if target_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់ {target_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+        if request.method == 'POST':
+            messages.error(request, closed_msg)
+            return redirect('public_student_enroll')
+        return render(request, 'students/registration_closed.html', {
+            'school_profile': school_profile,
+            'reason': closed_msg,
+            'status_code': 'GRADE_CLOSED',
+            'grade_name': target_gl.name,
+            'current_year': current_year,
+            'start_date': school_profile.registration_start_date,
+            'end_date': school_profile.registration_end_date,
+        })
+
+    # Filter out closed grade classrooms for non-staff public users
+    if not is_staff_preview:
+        for cgl in GradeLevel.objects.filter(is_registration_open=False):
+            if cgl.track and cgl.track != 'GENERAL':
+                classrooms = classrooms.exclude(grade_level=cgl.grade_number, track=cgl.track)
+            else:
+                classrooms = classrooms.exclude(grade_level=cgl.grade_number)
+
+    # Active mode is strictly determined by Admin (Grade-level template or School registration mode)
+    # Students cannot choose their own registration method on Portal or Mobile
+    from .models import GradeVerificationFormConfig
+    assigned_grade_tpl = None
+    if target_gl:
+        assigned_grade_tpl = GradeVerificationFormConfig.get_template_for_grade(target_gl, academic_year=current_year)
+
+    if assigned_grade_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
+        active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+    elif assigned_grade_tpl == GradeVerificationFormConfig.FormTemplate.GENERAL:
         active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
     elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
         active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
-    elif requested_mode in [SchoolProfile.RegistrationMode.ADMIN_CUSTOM, SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL]:
-        active_mode = requested_mode
     else:
         active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
 
@@ -407,12 +449,36 @@ def public_student_enroll(request):
             initial_data['academic_year'] = target_classroom.academic_year
 
     if request.method == 'POST':
-        submitted_mode = request.POST.get('enrollment_mode') or active_mode
-        active_mode = submitted_mode
+        # Resolve target classroom or grade submitted to enforce Admin's configured mode
+        submitted_cls_id = request.POST.get('classroom')
+        submitted_gl = None
+        if submitted_cls_id:
+            sub_cls = Classroom.objects.filter(id=submitted_cls_id).first()
+            if sub_cls:
+                submitted_gl = GradeLevel.objects.filter(grade_number=sub_cls.grade_level, track=sub_cls.track).first() or GradeLevel.objects.filter(grade_number=sub_cls.grade_level).first()
+        elif target_gl:
+            submitted_gl = target_gl
+
+        if submitted_gl:
+            cls_tpl = GradeVerificationFormConfig.get_template_for_grade(submitted_gl, academic_year=current_year)
+            if cls_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
+                active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+            elif cls_tpl == GradeVerificationFormConfig.FormTemplate.GENERAL:
+                active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+            elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+                active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+            else:
+                active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+        elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
+            active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+        else:
+            active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+
+        submitted_mode = active_mode
 
         if submitted_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
-            moeys_form = MoeysIndividualStudentForm(request.POST, request.FILES, academic_year=current_year)
-            form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year)
+            moeys_form = MoeysIndividualStudentForm(request.POST, request.FILES, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
+            form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
             if moeys_form.is_valid():
                 with transaction.atomic():
                     student = moeys_form.save(commit=False)
@@ -452,8 +518,8 @@ def public_student_enroll(request):
             else:
                 messages.error(request, "សូមពិនិត្យព័ត៌មានសម្រង់ព័ត៌មានដែលបានបំពេញឡើងវិញ!")
         else:
-            form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year)
-            moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year)
+            form = StudentEnrollmentForm(request.POST, request.FILES, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
+            moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
             if form.is_valid():
                 with transaction.atomic():
                     student = form.save(commit=False)
@@ -493,8 +559,8 @@ def public_student_enroll(request):
             else:
                 messages.error(request, "សូមពិនិត្យព័ត៌មានដែលបានបំពេញឡើងវិញ!")
     else:
-        form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year)
-        moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year)
+        form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
+        moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
         if grade_param:
             form.fields['classroom'].queryset = classrooms
             moeys_form.fields['classroom'].queryset = classrooms
@@ -557,11 +623,15 @@ def api_get_grade_options(request):
             'order': opt.order
         })
         
+    from .models import GradeVerificationFormConfig
+    assigned_tpl = GradeVerificationFormConfig.get_template_for_grade(gl)
+
     return JsonResponse({
         'status': 'success',
         'grade_name': gl.name,
         'grade_number': gl.grade_number,
         'track': gl.track,
+        'assigned_template': assigned_tpl,
         'form_category': form_category or 'ALL',
         'data': data
     })
@@ -1127,6 +1197,7 @@ def enrollment_qr_code(request):
     from urllib.parse import quote as url_quote
     
     from apps.academics.utils import get_active_academic_year
+    from apps.academics.models import GradeLevel
     active_year = get_active_academic_year(request)
     current_year = active_year or AcademicYear.objects.filter(is_current=True).first()
     classrooms = Classroom.objects.filter(academic_year=current_year).select_related('academic_year').order_by('grade_level', 'code') if current_year else Classroom.objects.select_related('academic_year').order_by('grade_level', 'code')
@@ -1168,6 +1239,11 @@ def enrollment_qr_code(request):
         classes_in_grade = classrooms.filter(grade_level=g_num, track=g_track)
         class_codes = ", ".join(classes_in_grade.values_list('code', flat=True))
 
+        gl_obj = GradeLevel.objects.filter(grade_number=g_num, track=g_track).first() or GradeLevel.objects.filter(grade_number=g_num).first()
+        is_gl_open = gl_obj.is_registration_open if gl_obj else True
+        gl_closed_msg = gl_obj.registration_closed_message if gl_obj else ""
+        gl_id = gl_obj.id if gl_obj else None
+
         grade_data.append({
             'grade_level': g_num,
             'track': g_track,
@@ -1176,12 +1252,16 @@ def enrollment_qr_code(request):
             'classes_count': classes_in_grade.count(),
             'url': direct_url,
             'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
+            'is_registration_open': is_gl_open,
+            'registration_closed_message': gl_closed_msg,
+            'grade_level_id': gl_id,
         })
 
     # 2. Build Specific Classroom Data (7A, 7B, 10A...)
     classroom_data = []
     for c in classrooms:
         direct_url = f"{base_url}?classroom={c.id}"
+        gl_for_cls = GradeLevel.objects.filter(grade_number=c.grade_level, track=c.track).first() or GradeLevel.objects.filter(grade_number=c.grade_level).first()
         classroom_data.append({
             'id': c.id,
             'code': c.code,
@@ -1191,7 +1271,11 @@ def enrollment_qr_code(request):
             'room_number': c.room_number or '',
             'url': direct_url,
             'qr_src': f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data={url_quote(direct_url)}",
+            'is_registration_open': gl_for_cls.is_registration_open if gl_for_cls else True,
+            'registration_closed_message': gl_for_cls.registration_closed_message if gl_for_cls else '',
         })
+
+    all_grade_levels = list(GradeLevel.objects.all().order_by('order', 'grade_number'))
 
     from apps.accounts.models import SchoolProfile
     school_profile = SchoolProfile.get_settings()
@@ -1205,6 +1289,7 @@ def enrollment_qr_code(request):
         'classrooms': classrooms,
         'grade_data': grade_data,
         'classroom_data': classroom_data,
+        'all_grade_levels': all_grade_levels,
         'school_profile': school_profile,
         'is_reg_allowed': is_reg_allowed,
         'reg_reason': reg_reason,
@@ -1233,10 +1318,12 @@ def api_save_registration_period(request):
     try:
         sp = SchoolProfile.get_settings()
         
-        # Parse is_open
+        # Parse is_open: In HTML form submissions, an unchecked checkbox is omitted from POST
         is_open_val = request.POST.get('is_registration_open')
         if is_open_val is not None:
             sp.is_registration_open = str(is_open_val).lower() in ['true', '1', 'on', 'yes']
+        else:
+            sp.is_registration_open = False
 
         # Parse start_date
         start_str = request.POST.get('registration_start_date', '').strip()
@@ -1282,6 +1369,76 @@ def api_save_registration_period(request):
             'end_date': sp.registration_end_date.isoformat() if sp.registration_end_date else None,
             'start_date_display': start_formatted,
             'end_date_display': end_formatted,
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_toggle_grade_registration(request):
+    """
+    AJAX endpoint for Admin to toggle or update registration open/closed status
+    and notice message for a specific GradeLevel.
+    """
+    from apps.academics.models import GradeLevel
+    from django.http import JsonResponse
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        grade_id = request.POST.get('grade_id')
+        gl = get_object_or_404(GradeLevel, pk=grade_id)
+
+        is_open_val = request.POST.get('is_registration_open')
+        if is_open_val is not None:
+            gl.is_registration_open = str(is_open_val).lower() in ['true', '1', 'on', 'yes']
+
+        if 'registration_closed_message' in request.POST:
+            gl.registration_closed_message = request.POST.get('registration_closed_message', '').strip()
+
+        gl.save()
+
+        status_text = "បើកឱ្យចុះឈ្មោះ (OPEN)" if gl.is_registration_open else "បិទការចុះឈ្មោះ (CLOSED)"
+        return JsonResponse({
+            'success': True,
+            'status': 'success',
+            'grade_id': gl.id,
+            'grade_number': gl.grade_number,
+            'grade_name': gl.name,
+            'is_registration_open': gl.is_registration_open,
+            'registration_closed_message': gl.registration_closed_message,
+            'message': f"បានផ្លាស់ប្តូរស្ថានភាពកម្រិតថ្នាក់ '{gl.name}' ទៅជា '{status_text}' ដោយជោគជ័យ!",
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_bulk_grade_registration(request):
+    """
+    AJAX endpoint for Admin to Open All or Close All grade levels registration.
+    """
+    from apps.academics.models import GradeLevel
+    from django.http import JsonResponse
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    try:
+        action = request.POST.get('action', 'open_all')  # 'open_all' or 'close_all'
+        set_open = (action == 'open_all')
+        GradeLevel.objects.all().update(is_registration_open=set_open)
+
+        msg = "បានបើកការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់ជោគជ័យ!" if set_open else "បានបិទការចុះឈ្មោះសម្រាប់គ្រប់កម្រិតថ្នាក់ទាំងអស់ជោគជ័យ!"
+        return JsonResponse({
+            'success': True,
+            'status': 'success',
+            'action': action,
+            'is_registration_open': set_open,
+            'message': msg
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

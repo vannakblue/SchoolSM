@@ -2035,6 +2035,7 @@ class MobileStudentEnrollAPIView(APIView):
         suggested_id = Student.generate_unique_student_id(active_year)
 
         cls_qs = Classroom.objects.select_related('academic_year').filter(academic_year=active_year).order_by('grade_level', 'name') if active_year else Classroom.objects.none()
+        gl_lookup_map = {(gl.grade_number, gl.track): gl for gl in GradeLevel.objects.all()}
         classrooms_data = [
             {
                 'id': c.id,
@@ -2042,16 +2043,18 @@ class MobileStudentEnrollAPIView(APIView):
                 'grade_level': c.grade_level,
                 'academic_year_id': c.academic_year_id,
                 'code': getattr(c, 'code', '') or '',
+                'is_registration_open': (gl_lookup_map.get((c.grade_level, c.track)) or gl_lookup_map.get((c.grade_level, 'GENERAL')) or GradeLevel()).is_registration_open if (gl_lookup_map.get((c.grade_level, c.track)) or gl_lookup_map.get((c.grade_level, 'GENERAL'))) else True,
+                'registration_closed_message': (gl_lookup_map.get((c.grade_level, c.track)) or gl_lookup_map.get((c.grade_level, 'GENERAL')) or GradeLevel()).registration_closed_message if (gl_lookup_map.get((c.grade_level, c.track)) or gl_lookup_map.get((c.grade_level, 'GENERAL'))) else '',
             }
             for c in cls_qs
         ]
 
         school_profile = SchoolProfile.get_settings()
-        reg_mode = getattr(school_profile, 'registration_mode', 'BOTH') or 'BOTH'
+        reg_mode = getattr(school_profile, 'registration_mode', 'ADMIN_CUSTOM') or 'ADMIN_CUSTOM'
         reg_mode_display_map = {
             'ADMIN_CUSTOM': 'បែបបទចុះឈ្មោះ Admin បានកំណត់ (General Form)',
             'MOEYS_INDIVIDUAL': 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ MoEYS (Individual 35 Columns)',
-            'BOTH': 'អនុញ្ញាតជម្រើសទាំងពីរ (Both Modes Available)',
+            'BOTH': 'តាមការកំណត់របស់ Admin តាមកម្រិតថ្នាក់ (Admin Grade-Level Config)',
         }
         available_modes = ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL'] if reg_mode == 'BOTH' else [reg_mode]
         default_mode = 'MOEYS_INDIVIDUAL' if reg_mode == 'MOEYS_INDIVIDUAL' else 'ADMIN_CUSTOM'
@@ -2070,6 +2073,9 @@ class MobileStudentEnrollAPIView(APIView):
                 'grade_id': gl.id,
                 'grade_number': gl.grade_number,
                 'grade_name': gl.name,
+                'track': gl.track,
+                'is_registration_open': gl.is_registration_open,
+                'registration_closed_message': gl.registration_closed_message,
                 'form_template': tpl,
                 'form_template_display': dict(GradeVerificationFormConfig.FormTemplate.choices).get(tpl, tpl),
                 'custom_instructions': cfg_obj.custom_instructions if cfg_obj and cfg_obj.custom_instructions else '',
@@ -2202,6 +2208,8 @@ class MobileStudentEnrollAPIView(APIView):
             'school_code': school_profile.school_code,
             'registration_mode': reg_mode,
             'registration_mode_display': reg_mode_display_map.get(reg_mode, reg_mode),
+            'can_student_choose_mode': False,
+            'admin_enforced_mode': default_mode,
             'available_modes': available_modes,
             'default_mode': default_mode,
             'grade_form_configs': grade_form_configs,
@@ -2256,6 +2264,26 @@ class MobileStudentEnrollAPIView(APIView):
         classroom_id = data.get('classroom_id')
         grade_val = data.get('grade_level') or data.get('grade_number')
         academic_year_id = data.get('academic_year_id')
+
+        # Check if the specific requested classroom/grade level registration is closed
+        target_gl_check = None
+        if classroom_id:
+            cls_chk = Classroom.objects.filter(id=classroom_id).first()
+            if cls_chk:
+                target_gl_check = GradeLevel.objects.filter(grade_number=cls_chk.grade_level, track=cls_chk.track).first() or GradeLevel.objects.filter(grade_number=cls_chk.grade_level).first()
+        elif grade_val and str(grade_val).isdigit():
+            target_gl_check = GradeLevel.objects.filter(grade_number=int(grade_val)).first()
+
+        if target_gl_check and not target_gl_check.is_registration_open and not is_staff:
+            closed_msg = target_gl_check.registration_closed_message.strip() if target_gl_check.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់ {target_gl_check.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+            return Response({
+                'status': 'error',
+                'status_code': 'GRADE_CLOSED',
+                'message': closed_msg,
+                'grade_id': target_gl_check.id,
+                'grade_number': target_gl_check.grade_number,
+                'grade_name': target_gl_check.name,
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # Flexibly resolve enrollment mode from grade template or school profile if omitted
         if enrollment_mode not in ['ADMIN_CUSTOM', 'MOEYS_INDIVIDUAL', 'CUSTOM_COMBINED']:
@@ -2654,6 +2682,18 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
     def get(self, request):
         profile = SchoolProfile.get_settings()
         is_allowed, reason, status_code = profile.is_student_registration_allowed()
+        grade_levels = [
+            {
+                'id': gl.id,
+                'name': gl.name,
+                'grade_number': gl.grade_number,
+                'track': gl.track,
+                'order': gl.order,
+                'is_registration_open': gl.is_registration_open,
+                'registration_closed_message': gl.registration_closed_message,
+            }
+            for gl in GradeLevel.objects.all().order_by('order', 'grade_number')
+        ]
         return Response({
             'status': 'success',
             'is_allowed': is_allowed,
@@ -2667,6 +2707,7 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
             'phone': profile.phone,
             'email': profile.email,
             'server_time': timezone.now().isoformat(),
+            'grade_levels': grade_levels,
         })
 
     def post(self, request):
@@ -2724,6 +2765,33 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
 
         profile.save()
 
+        # Update grade-level specific open/closed statuses if provided
+        if 'grade_levels' in data and isinstance(data['grade_levels'], list):
+            for gl_item in data['grade_levels']:
+                gl_id = gl_item.get('id') or gl_item.get('grade_id')
+                if gl_id:
+                    gl_obj = GradeLevel.objects.filter(id=gl_id).first()
+                    if gl_obj:
+                        if 'is_registration_open' in gl_item:
+                            val = gl_item['is_registration_open']
+                            gl_obj.is_registration_open = val if isinstance(val, bool) else str(val).lower() in ['true', '1', 'yes']
+                        if 'registration_closed_message' in gl_item:
+                            gl_obj.registration_closed_message = str(gl_item['registration_closed_message']).strip()
+                        gl_obj.save()
+
+        grade_levels = [
+            {
+                'id': gl.id,
+                'name': gl.name,
+                'grade_number': gl.grade_number,
+                'track': gl.track,
+                'order': gl.order,
+                'is_registration_open': gl.is_registration_open,
+                'registration_closed_message': gl.registration_closed_message,
+            }
+            for gl in GradeLevel.objects.all().order_by('order', 'grade_number')
+        ]
+
         is_allowed, reason, status_code = profile.is_student_registration_allowed()
         return Response({
             'status': 'success',
@@ -2732,6 +2800,7 @@ class MobileStudentRegistrationPeriodAPIView(APIView):
             'status_code': status_code,
             'registration_mode': profile.registration_mode,
             'registration_mode_display': profile.get_registration_mode_display(),
+            'grade_levels': grade_levels,
             'registration_period': {
                 'registration_mode': profile.registration_mode,
                 'is_allowed': is_allowed,
@@ -3952,6 +4021,7 @@ class MobileHourlyAttendanceMetaAPIView(APIView):
         auto_period, auto_session = get_current_period_info(now_dt.time())
 
         teacher_profile = getattr(user, 'teacher_profile', None)
+        teacher_schedules = []
         if user.role == 'TEACHER' and teacher_profile:
             timetable_classes = Classroom.objects.filter(
                 timetables__teacher=teacher_profile,
@@ -3964,6 +4034,20 @@ class MobileHourlyAttendanceMetaAPIView(APIView):
             classrooms_qs = (timetable_classes | homeroom_classes).distinct().order_by('grade_level', 'code')
             if not classrooms_qs.exists():
                 classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+
+            # Populate teacher's timetable slots
+            slots_qs = Timetable.objects.filter(
+                teacher=teacher_profile,
+                classroom__academic_year=active_year
+            ).select_related('classroom', 'subject').order_by('day_of_week', 'period_number')
+            for sl in slots_qs:
+                teacher_schedules.append({
+                    'classroom_id': sl.classroom_id,
+                    'classroom_name': sl.classroom.name,
+                    'day_of_week': sl.day_of_week,
+                    'period_number': sl.period_number,
+                    'subject_name': sl.subject.name_kh if sl.subject else (sl.subject.name_en if sl.subject else ''),
+                })
         else:
             classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
@@ -4007,6 +4091,7 @@ class MobileHourlyAttendanceMetaAPIView(APIView):
             'periods': periods_data,
             'sessions': sessions_data,
             'subjects': subjects_data,
+            'teacher_schedules': teacher_schedules,
             'user_role': user.role,
         })
 
@@ -4067,6 +4152,91 @@ class MobileHourlyAttendanceRosterAPIView(APIView):
             period_number=period_num
         ).first()
 
+        can_record = True
+        is_teacher_scheduled = True
+        schedule_alert = None
+        teacher_today_slots = []
+
+        if user.role == 'TEACHER':
+            teacher_profile = getattr(user, 'teacher_profile', None)
+            from apps.academics.models import Timetable
+            day_of_week = target_date.isoweekday()
+
+            today_slots_qs = Timetable.objects.filter(
+                teacher=teacher_profile,
+                day_of_week=day_of_week,
+                classroom__academic_year=classroom.academic_year
+            ).select_related('classroom', 'subject').order_by('period_number')
+
+            teacher_today_slots = [
+                {
+                    'period_number': s.period_number,
+                    'classroom_id': s.classroom_id,
+                    'classroom_name': s.classroom.name,
+                    'classroom_code': s.classroom.code,
+                    'subject_name': s.subject.name_kh if s.subject else (s.subject.name_en if s.subject else ''),
+                }
+                for s in today_slots_qs
+            ]
+
+            matching_slot = today_slots_qs.filter(classroom=classroom, period_number=period_num).first()
+            if not matching_slot:
+                can_record = False
+                is_teacher_scheduled = False
+
+                khmer_days = {
+                    1: 'ច័ន្ទ', 2: 'អង្គារ', 3: 'ពុធ', 4: 'ព្រហស្បតិ៍', 5: 'សុក្រ', 6: 'សៅរ៍', 7: 'អាទិត្យ'
+                }
+                day_name = khmer_days.get(day_of_week, '')
+
+                if not today_slots_qs.exists():
+                    schedule_alert = {
+                        'alert_type': 'NO_CLASS_TODAY',
+                        'title': 'លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនក្នុងថ្ងៃនេះទេ',
+                        'message': f'លោកគ្រូ-អ្នកគ្រូមិនមានម៉ោងបង្រៀននៅក្នុងថ្ងៃ{day_name} ទី {target_date.strftime("%d/%m/%Y")} ឡើយ។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                        'has_classes_today': False,
+                        'other_slots': [],
+                    }
+                else:
+                    current_period_slot = today_slots_qs.filter(period_number=period_num).first()
+                    session_slots = [
+                        s for s in today_slots_qs
+                        if (s.period_number <= 4 and session_val == 'MORNING') or
+                           (s.period_number > 4 and session_val == 'AFTERNOON')
+                    ]
+                    if current_period_slot:
+                        other_room = current_period_slot.classroom
+                        sub_name = current_period_slot.subject.name_kh if current_period_slot.subject else ''
+                        schedule_alert = {
+                            'alert_type': 'CLASS_MISMATCH',
+                            'title': f'ពុំមានម៉ោងបង្រៀនក្នុងថ្នាក់ {classroom.name} នៅម៉ោងទី {period_num} ទេ',
+                            'message': f'នៅម៉ោងទី {period_num} នេះ លោកគ្រូ-អ្នកគ្រូមានម៉ោងបង្រៀននៅថ្នាក់ {other_room.name} ({sub_name}) មិនមែនថ្នាក់ {classroom.name} ឡើយ។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                            'has_classes_today': True,
+                            'target_classroom_id': other_room.id,
+                            'target_period_number': period_num,
+                            'other_slots': teacher_today_slots,
+                        }
+                    elif len(session_slots) == 0:
+                        sess_kh = 'ពេលព្រឹក' if session_val == 'MORNING' else 'ពេលរសៀល'
+                        other_sess_kh = 'ពេលរសៀល' if session_val == 'MORNING' else 'ពេលព្រឹក'
+                        schedule_alert = {
+                            'alert_type': 'NO_CLASS_THIS_SESSION',
+                            'title': f'ពុំមានម៉ោងបង្រៀនក្នុង{sess_kh}នេះទេ',
+                            'message': f'នៅ{sess_kh}នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ។ លោកគ្រូ-អ្នកគ្រូមានម៉ោងបង្រៀននៅ{other_sess_kh}។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                            'has_classes_today': True,
+                            'other_slots': teacher_today_slots,
+                        }
+                    else:
+                        next_slot = next((s for s in today_slots_qs if s.period_number > period_num), None)
+                        next_text = f'ម៉ោងបង្រៀនបន្ទាប់គឺ ម៉ោងទី {next_slot.period_number} ({next_slot.classroom.code})' if next_slot else 'លោកគ្រូ-អ្នកគ្រូបានបញ្ចប់រាល់ម៉ោងបង្រៀនសម្រាប់វេននេះហើយ'
+                        schedule_alert = {
+                            'alert_type': 'NO_CLASS_THIS_PERIOD',
+                            'title': f'ពុំមានម៉ោងបង្រៀននៅម៉ោងទី {period_num} នេះទេ',
+                            'message': f'នៅម៉ោងទី {period_num} នេះ លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនឡើយ ({next_text})។ ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។',
+                            'has_classes_today': True,
+                            'other_slots': teacher_today_slots,
+                        }
+
         present_cnt = 0
         absent_cnt = 0
         perm_cnt = 0
@@ -4110,6 +4280,10 @@ class MobileHourlyAttendanceRosterAPIView(APIView):
             'date': target_date.strftime('%Y-%m-%d'),
             'session': session_val,
             'period_number': period_num,
+            'can_record': can_record,
+            'is_teacher_scheduled': is_teacher_scheduled,
+            'schedule_alert': schedule_alert,
+            'teacher_today_slots': teacher_today_slots,
             'has_submitted': bool(sub_log and sub_log.submission_count > 0),
             'submission_count': sub_log.submission_count if sub_log else 0,
             'recorded_by': (sub_log.recorded_by.get_full_name() or sub_log.recorded_by.username) if (sub_log and sub_log.recorded_by) else '',
@@ -4164,6 +4338,24 @@ class MobileHourlyAttendanceSaveAPIView(APIView):
         period_num = int(req_period) if (req_period and str(req_period).isdigit()) else 1
         req_session = request.data.get('session')
         session_val = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if period_num <= 4 else 'AFTERNOON')
+
+        # Enforce Teacher Timetable Schedule
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if user.role == 'TEACHER' and teacher_profile:
+            from apps.academics.models import Timetable
+            is_scheduled = Timetable.objects.filter(
+                teacher=teacher_profile,
+                classroom=classroom,
+                period_number=period_num,
+                day_of_week=target_date.isoweekday(),
+                classroom__academic_year=classroom.academic_year
+            ).exists()
+            if not is_scheduled:
+                return Response({
+                    'status': 'error',
+                    'error_code': 'TEACHER_NOT_SCHEDULED',
+                    'message': f'លោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀននៅថ្នាក់ {classroom.name} (ម៉ោងទី {period_num}) ក្នុងថ្ងៃនេះឡើយ! ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled)។'
+                }, status=status.HTTP_403_FORBIDDEN)
 
         subject_id = request.data.get('subject_id')
         subject = Subject.objects.filter(id=subject_id).first() if (subject_id and str(subject_id).isdigit()) else None

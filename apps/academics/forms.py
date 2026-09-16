@@ -34,12 +34,14 @@ class AcademicYearForm(forms.ModelForm):
 class GradeLevelForm(forms.ModelForm):
     class Meta:
         model = GradeLevel
-        fields = ['name', 'grade_number', 'track', 'order']
+        fields = ['name', 'grade_number', 'track', 'order', 'is_registration_open', 'registration_closed_message']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រ, ថ្នាក់ទី ១០ វិទ្យាសាស្ត្រសង្គម'}),
             'grade_number': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 12, 'placeholder': 'e.g. 10'}),
             'track': forms.Select(attrs={'class': 'form-select'}),
             'order': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'e.g. 4'}),
+            'is_registration_open': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'registration_closed_message': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'សារជូនដំណឹងនៅពេលបិទការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់នេះ...'}),
         }
 
     def __init__(self, *args, **kwargs):

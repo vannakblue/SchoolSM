@@ -64,8 +64,10 @@ class StudentEnrollmentForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'បញ្ជាក់អំពីចំណុចដែលបានកែប្រែ...', 'id': 'id_confirmation_notes'})
     )
 
-    def __init__(self, *args, academic_year=None, **kwargs):
+    def __init__(self, *args, academic_year=None, filter_closed_grades=False, is_staff=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.filter_closed_grades = filter_closed_grades
+        self.is_staff = is_staff
         
         # 1. Filter classrooms strictly by the specified or active academic year
         if academic_year:
@@ -78,6 +80,14 @@ class StudentEnrollmentForm(forms.ModelForm):
                 self.fields['classroom'].queryset = Classroom.objects.filter(academic_year=active_year).select_related('academic_year').order_by('grade_level', 'code')
             else:
                 self.fields['classroom'].queryset = Classroom.objects.select_related('academic_year').order_by('grade_level', 'code')
+
+        if filter_closed_grades and not is_staff:
+            from apps.academics.models import GradeLevel
+            for cgl in GradeLevel.objects.filter(is_registration_open=False):
+                if cgl.track and cgl.track != 'GENERAL':
+                    self.fields['classroom'].queryset = self.fields['classroom'].queryset.exclude(grade_level=cgl.grade_number, track=cgl.track)
+                else:
+                    self.fields['classroom'].queryset = self.fields['classroom'].queryset.exclude(grade_level=cgl.grade_number)
 
         self.fields['classroom'].empty_label = "-- ជ្រើសរើសថ្នាក់រៀន / Select Classroom --"
 
@@ -150,6 +160,14 @@ class StudentEnrollmentForm(forms.ModelForm):
                 cleaned_data['status'] = self.instance.status or 'ACTIVE'
             if not cleaned_data.get('classroom') and self.instance.classroom:
                 cleaned_data['classroom'] = self.instance.classroom
+
+        # Validate that selected classroom belongs to an open grade level for non-staff
+        if classroom and not getattr(self, 'is_staff', False):
+            from apps.academics.models import GradeLevel
+            target_gl = GradeLevel.objects.filter(grade_number=classroom.grade_level, track=classroom.track).first() or GradeLevel.objects.filter(grade_number=classroom.grade_level).first()
+            if target_gl and not target_gl.is_registration_open:
+                msg = target_gl.registration_closed_message.strip() if target_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់ {target_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+                self.add_error('classroom', msg)
 
         father_name = (cleaned_data.get('father_name') or '').strip()
         mother_name = (cleaned_data.get('mother_name') or '').strip()
@@ -519,8 +537,10 @@ class MoeysIndividualStudentForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'បញ្ជាក់អំពីចំណុចដែលបានកែប្រែ...', 'id': 'moeys_confirmation_notes'})
     )
 
-    def __init__(self, *args, academic_year=None, **kwargs):
+    def __init__(self, *args, academic_year=None, filter_closed_grades=False, is_staff=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.filter_closed_grades = filter_closed_grades
+        self.is_staff = is_staff
         import re
 
         # Classrooms filtered by academic year
@@ -534,6 +554,14 @@ class MoeysIndividualStudentForm(forms.ModelForm):
                 self.fields['classroom'].queryset = Classroom.objects.filter(academic_year=active_year).select_related('academic_year').order_by('grade_level', 'code')
             else:
                 self.fields['classroom'].queryset = Classroom.objects.select_related('academic_year').order_by('grade_level', 'code')
+
+        if filter_closed_grades and not is_staff:
+            from apps.academics.models import GradeLevel
+            for cgl in GradeLevel.objects.filter(is_registration_open=False):
+                if cgl.track and cgl.track != 'GENERAL':
+                    self.fields['classroom'].queryset = self.fields['classroom'].queryset.exclude(grade_level=cgl.grade_number, track=cgl.track)
+                else:
+                    self.fields['classroom'].queryset = self.fields['classroom'].queryset.exclude(grade_level=cgl.grade_number)
 
         # Populate dynamic scholarship types
         db_scholarships = list(ScholarshipType.objects.filter(is_active=True).order_by('order', 'id'))
@@ -629,6 +657,14 @@ class MoeysIndividualStudentForm(forms.ModelForm):
         classroom = cleaned_data.get('classroom')
         if not academic_year and classroom:
             academic_year = classroom.academic_year
+
+        # Validate that selected classroom belongs to an open grade level for non-staff
+        if classroom and not getattr(self, 'is_staff', False):
+            from apps.academics.models import GradeLevel
+            target_gl = GradeLevel.objects.filter(grade_number=classroom.grade_level, track=classroom.track).first() or GradeLevel.objects.filter(grade_number=classroom.grade_level).first()
+            if target_gl and not target_gl.is_registration_open:
+                msg = target_gl.registration_closed_message.strip() if target_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់ {target_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+                self.add_error('classroom', msg)
 
         father_name = (cleaned_data.get('father_name') or '').strip()
         mother_name = (cleaned_data.get('mother_name') or '').strip()

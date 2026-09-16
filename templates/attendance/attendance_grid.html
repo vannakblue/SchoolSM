@@ -431,9 +431,15 @@
                 </label>
             </div>
             {% if is_form_disabled %}
-            <button type="button" class="btn btn-secondary btn-lg px-4 fw-bold shadow-sm" disabled>
-                <i class="fa-solid fa-lock me-2"></i> បានចាក់សោ (Locked)
-            </button>
+                {% if teacher_schedule_alert %}
+                <button type="button" class="btn btn-danger btn-lg px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#teacherScheduleModal">
+                    <i class="fa-solid fa-ban me-2"></i> គ្មានម៉ោងបង្រៀន (ចុចមើលព័ត៌មាន)
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-secondary btn-lg px-4 fw-bold shadow-sm" disabled>
+                    <i class="fa-solid fa-lock me-2"></i> បានចាក់សោ (Locked)
+                </button>
+                {% endif %}
             {% else %}
             <div class="d-flex align-items-center gap-2">
                 {% if has_already_submitted %}
@@ -506,7 +512,6 @@
 </div>
 {% endif %}
 
-{% block extra_js %}
 <script>
     function toggleStudentRow(studentId) {
         const chk = document.getElementById(`chk_${studentId}`);
@@ -808,6 +813,5 @@
     </div>
 </div>
 {% endif %}
-{% endblock %}
 {% endblock %}
 

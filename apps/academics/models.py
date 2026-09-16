@@ -73,6 +73,18 @@ class GradeLevel(models.Model):
     grade_number = models.IntegerField(verbose_name="កម្រិតថ្នាក់លេខ / Grade Number (e.g. 7, 8, 9, 10, 11, 12)")
     track = models.CharField(max_length=50, default='GENERAL', verbose_name="ជំនាញសិក្សា / Track (GENERAL, SCIENCE, SOCIAL...)")
     order = models.IntegerField(default=1, verbose_name="លំដាប់លំដោយ / Sort Order")
+    is_registration_open = models.BooleanField(
+        default=True,
+        verbose_name="បើកឱ្យចុះឈ្មោះ / Registration Open",
+        help_text="កំណត់បើក ឬបិទការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់នេះ"
+    )
+    registration_closed_message = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        verbose_name="សារជូនដំណឹងពេលបិទការចុះឈ្មោះ / Registration Closed Notice",
+        help_text="សារជូនដំណឹងទៅកាន់សិស្ស/អាណាព្យាបាលនៅពេលកម្រិតថ្នាក់នេះត្រូវបានបិទមិនឱ្យចុះឈ្មោះ"
+    )
 
     class Meta:
         ordering = ['order', 'grade_number', 'track', 'id']
@@ -97,6 +109,18 @@ class GradeLevel(models.Model):
     @property
     def moeys_enrollment_options(self):
         return [o for o in self.enrollment_options.all() if getattr(o, 'form_category', 'GENERAL') == 'MOEYS_INDIVIDUAL']
+
+    @property
+    def is_admission_allowed(self):
+        """Returns True if registration is currently open for this grade level."""
+        return bool(self.is_registration_open)
+
+    def get_admission_status(self):
+        """Returns tuple (is_allowed: bool, closed_message: str)"""
+        if not self.is_registration_open:
+            msg = self.registration_closed_message.strip() if self.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់ {self.name} ត្រូវបានបិទជាបណ្ដោះអាសន្ន។"
+            return False, msg
+        return True, ""
 
     def __str__(self):
         return self.name
