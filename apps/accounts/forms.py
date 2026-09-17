@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserChangeForm
-from .models import User, TelegramConfig, SchoolProfile
+from .models import User, TelegramConfig, SchoolProfile, GeminiAiConfig
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(
@@ -124,5 +124,31 @@ class SchoolProfileForm(forms.ModelForm):
             'website': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://schoolsm.edu.kh'}),
             'facebook_page': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://facebook.com/schoolsm'}),
             'telegram_channel': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://t.me/school_channel'}),
+        }
+
+
+class GeminiAiConfigForm(forms.ModelForm):
+    class Meta:
+        model = GeminiAiConfig
+        fields = ['api_keys', 'model_name', 'thinking_level', 'is_active', 'rotation_enabled']
+        widgets = {
+            'api_keys': forms.Textarea(attrs={
+                'class': 'form-control font-monospace small',
+                'rows': 5,
+                'placeholder': 'AIzaSyKey1_xxxxxxxxxxxx\nAIzaSyKey2_yyyyyyyyyyyy\nAIzaSyKey3_zzzzzzzzzzzz'
+            }),
+            'model_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. gemini-3.8-flash'
+            }),
+            'thinking_level': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'rotation_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
         }
 

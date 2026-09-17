@@ -8,7 +8,10 @@
         <h2 class="fw-bold mb-1">ផ្ទាំងគ្រប់គ្រងទូទៅ (Super Admin Dashboard)</h2>
         <p class="text-muted small mb-0">ទិដ្ឋភាពទូទៅនៃដំណើរការសាលារៀន ស្ថិតិសិស្ស វត្តមាន និងហិរញ្ញវត្ថុ</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'gemini_settings' %}" class="btn btn-outline-info">
+            <i class="fa-solid fa-robot me-1"></i> កំណត់ Gemini AI
+        </a>
         <a href="{% url 'school_profile_settings' %}" class="btn btn-outline-secondary">
             <i class="fa-solid fa-school-flag me-1"></i> កំណត់ព័ត៌មានសាលា
         </a>

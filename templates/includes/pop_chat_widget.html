@@ -86,6 +86,11 @@
                             </li>
                         </ul>
                     </div>
+                    {% if is_admin %}
+                    <a href="{% url 'gemini_settings' %}" target="_blank" class="btn btn-sm btn-link text-white text-decoration-none p-1" title="កំណត់ Gemini API Keys តាម Web Browser">
+                        <i class="fa-solid fa-gear"></i>
+                    </a>
+                    {% endif %}
                     <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1" onclick="clearAiChatHistory()" title="ជម្រះការជជែក (Clear Chat)">
                         <i class="fa-solid fa-rotate-right"></i>
                     </button>
@@ -115,13 +120,18 @@
                 <!-- Welcome Bot Card -->
                 <div class="pop-chat-msg pop-chat-msg-bot mb-3">
                     <div class="pop-chat-msg-bubble p-3 rounded-4 shadow-xs">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
-                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
-                            </span>
-                            <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
+                                </span>
+                                <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                                <i class="fa-regular fa-copy"></i> <span style="font-size: 0.68rem;">ចម្លង</span>
+                            </button>
                         </div>
-                        <div class="small line-height-relaxed">
+                        <div class="small line-height-relaxed pop-chat-msg-text">
                             សួស្តី <strong>{{ user_display_name }}</strong>! 👋 ខ្ញុំជា <strong>SchoolSM AI Agent</strong>។ លោកអ្នកអាចសួរនាំអំពី៖
                             <ul class="mb-2 mt-1 ps-3">
                                 <li>ការគ្រប់គ្រងសាលា ស្ថិតិសិស្ស និងគ្រូ</li>
@@ -348,8 +358,6 @@
     right: 24px;
     z-index: 1040;
     font-family: inherit;
-    user-select: none;
-    touch-action: none;
 }
 
 .pop-chat-tab-btn {
@@ -397,6 +405,9 @@
 
 .pop-chat-bubble-container {
     transition: transform 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
 }
 
 .pop-chat-bubble {
@@ -412,6 +423,8 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: relative;
     outline: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .pop-chat-bubble:hover {
@@ -434,6 +447,8 @@
 
 .pop-chat-dock-btn {
     transition: all 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .pop-chat-dock-btn:hover {
@@ -489,6 +504,79 @@
     border: 1px solid rgba(0, 0, 0, 0.08);
     animation: popChatSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    touch-action: auto !important;
+}
+
+.pop-chat-messages,
+.pop-chat-msg,
+.pop-chat-msg-bubble,
+.pop-chat-msg-text,
+.pop-chat-ai-markdown,
+.pop-chat-ai-markdown * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+}
+
+.pop-chat-msg-bubble {
+    cursor: text;
+}
+
+.pop-chat-msg-bubble button,
+.pop-chat-msg-bubble a,
+.pop-chat-copy-btn {
+    cursor: pointer !important;
+}
+
+.pop-chat-copy-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: #64748b;
+    text-decoration: none;
+    opacity: 0.85;
+}
+
+.pop-chat-copy-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.07);
+    color: #1e293b;
+}
+
+[data-bs-theme="dark"] .pop-chat-msg-bot .pop-chat-msg-bubble {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] .pop-chat-copy-btn {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .pop-chat-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+}
+
+.pop-chat-msg-user .pop-chat-copy-btn {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pop-chat-msg-user .pop-chat-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
 }
 
 @keyframes popChatSlideUp {
@@ -770,13 +858,18 @@ function clearAiChatHistory() {
         container.innerHTML = `
             <div class="pop-chat-msg pop-chat-msg-bot mb-3">
                 <div class="pop-chat-msg-bubble p-3 rounded-4 shadow-xs">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
-                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
-                        </span>
-                        <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gemini AI
+                            </span>
+                            <span class="small text-muted fw-bold">ជំនួយការសាលារៀន</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                            <i class="fa-regular fa-copy"></i> <span style="font-size: 0.68rem;">ចម្លង</span>
+                        </button>
                     </div>
-                    <div class="small text-muted">
+                    <div class="small text-muted pop-chat-msg-text">
                         🔄 បានជម្រះប្រវត្តិជជែករួចរាល់។ តើខ្ញុំអាចជួយអ្វីលោកអ្នកបន្ថែមទៀតបានទេ?
                     </div>
                 </div>
@@ -794,14 +887,19 @@ function appendAiMessage(sender, text, provider) {
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     let contentHtml = isMe ? escapeHtmlPopChat(text) : renderSimpleMarkdown(text);
-    let badgeHtml = '';
+    let headerHtml = '';
     if (!isMe) {
-        badgeHtml = `
-            <div class="d-flex align-items-center gap-1 mb-1">
-                <span class="badge bg-primary text-white rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
-                    <i class="fa-solid fa-robot me-1"></i> ${escapeHtmlPopChat(provider || 'Gemini AI')}
-                </span>
-                <span class="text-muted" style="font-size: 0.65rem;">${timeStr}</span>
+        headerHtml = `
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                <div class="d-flex align-items-center gap-1">
+                    <span class="badge bg-primary text-white rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                        <i class="fa-solid fa-robot me-1"></i> ${escapeHtmlPopChat(provider || 'Gemini AI')}
+                    </span>
+                    <span class="text-muted" style="font-size: 0.65rem;">${timeStr}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                    <i class="fa-regular fa-copy"></i> <span style="font-size: 0.68rem;">ចម្លង</span>
+                </button>
             </div>
         `;
     }
@@ -809,9 +907,15 @@ function appendAiMessage(sender, text, provider) {
     const msgHtml = `
         <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
             <div class="pop-chat-msg-bubble ${isMe ? '' : 'pop-chat-ai-markdown'}">
-                ${badgeHtml}
-                <div>${contentHtml}</div>
-                ${isMe ? `<div class="text-white-50 text-end mt-1" style="font-size: 0.65rem;">${timeStr}</div>` : ''}
+                ${headerHtml}
+                <div class="pop-chat-msg-text">${contentHtml}</div>
+                ${isMe ? `
+                <div class="d-flex align-items-center justify-content-between mt-1 gap-2">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លង (Copy)">
+                        <i class="fa-regular fa-copy"></i> <span style="font-size: 0.68rem;">ចម្លង</span>
+                    </button>
+                    <div class="text-white-50 text-end" style="font-size: 0.65rem;">${timeStr}</div>
+                </div>` : ''}
             </div>
         </div>
     `;
@@ -1443,10 +1547,15 @@ function renderMessages(container, messages, isAdminView) {
         container.innerHTML = `
             <div class="pop-chat-msg pop-chat-msg-bot mb-3">
                 <div class="pop-chat-msg-bubble">
-                    <div class="fw-bold small text-primary mb-1">
-                        <i class="fa-solid fa-robot me-1"></i> ជំនួយការស្វ័យប្រវត្តិ
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                        <div class="fw-bold small text-primary">
+                            <i class="fa-solid fa-robot me-1"></i> ជំនួយការស្វ័យប្រវត្តិ
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                            <i class="fa-regular fa-copy"></i> <span style="font-size:0.68rem;">ចម្លង</span>
+                        </button>
                     </div>
-                    <div>
+                    <div class="pop-chat-msg-text">
                         ${isAdminView ? 'មិនទាន់មានសារសន្ទនានៅឡើយទេ។ Admin អាចវាយសារ ឬថតសំឡេងផ្ញើទៅកាន់គ្រូបាន!' : 'សួស្តី! 👋 តើលោកអ្នកមានព័ត៌មានអ្វីចង់ <strong>ស្នើសុំកែប្រែ</strong> ឬសាកសួរ Admin ដែរឬទេ?'}
                     </div>
                 </div>
@@ -1474,8 +1583,13 @@ function renderMessages(container, messages, isAdminView) {
         html += `
             <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
                 <div class="pop-chat-msg-bubble">
-                    ${!isMe ? `<div class="fw-bold small ${m.is_from_admin ? 'text-primary' : 'text-success'} mb-1"><i class="${m.is_from_admin ? 'fa-solid fa-shield-halved' : 'fa-solid fa-user-tie'} me-1"></i> ${escapeHtmlPopChat(m.sender_name)}</div>` : ''}
-                    <div>${escapeHtmlPopChat(m.message)}</div>
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                        ${!isMe ? `<div class="fw-bold small ${m.is_from_admin ? 'text-primary' : 'text-success'}"><i class="${m.is_from_admin ? 'fa-solid fa-shield-halved' : 'fa-solid fa-user-tie'} me-1"></i> ${escapeHtmlPopChat(m.sender_name)}</div>` : '<div></div>'}
+                        <button type="button" class="btn btn-sm btn-link ${isMe ? 'text-white-50' : 'text-muted'} p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                            <i class="fa-regular fa-copy"></i> <span style="font-size:0.68rem;">ចម្លង</span>
+                        </button>
+                    </div>
+                    <div class="pop-chat-msg-text">${escapeHtmlPopChat(m.message)}</div>
                     ${voiceHtml}
                     <div class="${isMe ? 'text-white-50 text-end' : 'text-muted'} mt-1" style="font-size: 0.65rem;">
                         ${escapeHtmlPopChat(m.created_at)}
@@ -1492,7 +1606,13 @@ function appendSingleMsg(container, text, isMe, timeStr) {
     const html = `
         <div class="pop-chat-msg ${isMe ? 'pop-chat-msg-user' : 'pop-chat-msg-bot'} mb-3">
             <div class="pop-chat-msg-bubble">
-                <div>${escapeHtmlPopChat(text)}</div>
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                    <div></div>
+                    <button type="button" class="btn btn-sm btn-link ${isMe ? 'text-white-50' : 'text-muted'} p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                        <i class="fa-regular fa-copy"></i> <span style="font-size:0.68rem;">ចម្លង</span>
+                    </button>
+                </div>
+                <div class="pop-chat-msg-text">${escapeHtmlPopChat(text)}</div>
                 <div class="${isMe ? 'text-white-50 text-end' : 'text-muted'} mt-1" style="font-size: 0.65rem;">
                     ${timeStr}
                 </div>
@@ -1527,16 +1647,83 @@ function appendBotAlertReply(container, replyText, timeStr) {
     const html = `
         <div class="pop-chat-msg pop-chat-msg-bot mb-3">
             <div class="pop-chat-msg-bubble">
-                <div class="fw-bold small text-success mb-1">
-                    <i class="fa-solid fa-circle-check me-1"></i> បញ្ជូន Alert ទៅ Admin ជោគជ័យ
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                    <div class="fw-bold small text-success">
+                        <i class="fa-solid fa-circle-check me-1"></i> បញ្ជូន Alert ទៅ Admin ជោគជ័យ
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none pop-chat-copy-btn" onclick="copyPopChatText(this)" title="ចម្លងអត្ថបទ (Copy)">
+                        <i class="fa-regular fa-copy"></i> <span style="font-size:0.68rem;">ចម្លង</span>
+                    </button>
                 </div>
-                <div class="small">${escapeHtmlPopChat(replyText)}</div>
+                <div class="small pop-chat-msg-text">${escapeHtmlPopChat(replyText)}</div>
                 <div class="text-muted mt-1" style="font-size: 0.65rem;">${timeStr || 'ទើបផ្ញើ'}</div>
             </div>
         </div>
     `;
     container.insertAdjacentHTML('beforeend', html);
     container.scrollTop = container.scrollHeight;
+}
+
+// ---------------- CLIPBOARD COPY LOGIC ----------------
+function copyPopChatText(btn) {
+    if (!btn) return;
+    const bubble = btn.closest('.pop-chat-msg-bubble');
+    if (!bubble) return;
+
+    let textToCopy = '';
+    const textEl = bubble.querySelector('.pop-chat-msg-text');
+    if (textEl) {
+        const clone = textEl.cloneNode(true);
+        clone.querySelectorAll('button, .pop-chat-copy-btn, .pop-chat-voice-player').forEach(el => el.remove());
+        textToCopy = clone.innerText.trim();
+    } else {
+        const clone = bubble.cloneNode(true);
+        clone.querySelectorAll('button, .badge, .pop-chat-copy-btn, .pop-chat-voice-player').forEach(el => el.remove());
+        textToCopy = clone.innerText.trim();
+    }
+
+    if (!textToCopy) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showCopySuccessFeedback(btn);
+        }).catch(() => {
+            fallbackCopyText(textToCopy, btn);
+        });
+    } else {
+        fallbackCopyText(textToCopy, btn);
+    }
+}
+
+function fallbackCopyText(text, btn) {
+    try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '-9999px';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (success) {
+            showCopySuccessFeedback(btn);
+        }
+    } catch (err) {
+        console.error('Fallback copy error:', err);
+    }
+}
+
+function showCopySuccessFeedback(btn) {
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check text-success"></i> <span class="text-success fw-bold" style="font-size:0.68rem;">បានចម្លង!</span>';
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }, 1800);
 }
 
 function escapeHtmlPopChat(text) {

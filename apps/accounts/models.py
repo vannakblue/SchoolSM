@@ -178,6 +178,86 @@ class GoogleSheetsConfig(models.Model):
         return f"Google Sheets Config [{status}] - Admin: {self.admin_email or 'None'}"
 
 
+class GeminiAiConfig(models.Model):
+    """
+    Google Gemini AI Agent & Key Rotation Configuration (Admin Configurable directly from Web Browser):
+    - Multi-Key storage (comma or newline separated)
+    - Primary Model selection
+    - Thinking level selection
+    - Rotation toggle & test logs
+    """
+    api_keys = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="បញ្ជី Gemini API Keys (១ Key ក្នុងមួយបន្ទាត់ ឬខណ្ឌដោយក្បៀស)",
+        help_text="បញ្ចូល API Key មួយ ឬច្រើន (៣ ទៅ ៥ Keys សម្រាប់ Free Tier)។ ប្រព័ន្ធនឹងធ្វើ Auto Key Rotation ដោយស្វ័យប្រវត្តិ។"
+    )
+    model_name = models.CharField(
+        max_length=100,
+        default="gemini-3.8-flash",
+        verbose_name="ម៉ូដែល Gemini AI ចម្បង (Primary Model)",
+        help_text="ឧទាហរណ៍៖ gemini-3.8-flash, gemini-2.5-flash, gemini-flash-latest"
+    )
+    thinking_level = models.CharField(
+        max_length=20,
+        choices=[('low', '⚡ Low (លឿនរហ័ស)'), ('medium', '⚖️ Medium (លំនឹងស្តង់ដារ)'), ('high', '🧠 High (ស៊ីជម្រៅបំផុត)')],
+        default='medium',
+        verbose_name="កម្រិតគិតពិចារណា (Thinking Level)"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការ Generative AI ក្នុងប្រព័ន្ធ"
+    )
+    rotation_enabled = models.BooleanField(
+        default=True,
+        verbose_name="បើកដំណើរការ Multi-Key Rotation (ចែកវេនគ្នាស្មើៗ & Auto Failover)"
+    )
+    last_tested_at = models.DateTimeField(null=True, blank=True, verbose_name="កាលបរិច្ឆេទតេស្តចុងក្រោយ")
+    last_test_status = models.CharField(max_length=50, blank=True, default="", verbose_name="ស្ថានភាពតេស្ត")
+    last_test_message = models.TextField(blank=True, default="", verbose_name="លទ្ធផលតេស្ត")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "ការកំណត់ Gemini AI / Gemini AI Config"
+        verbose_name_plural = "ការកំណត់ Gemini AI / Gemini AI Configs"
+
+    @classmethod
+    def get_config(cls):
+        config = cls.objects.first()
+        if not config:
+            from django.conf import settings
+            import os
+            initial_keys = (
+                getattr(settings, 'GEMINI_API_KEYS', '')
+                or getattr(settings, 'GEMINI_API_KEY', '')
+                or os.environ.get('GEMINI_API_KEYS', '')
+                or os.environ.get('GEMINI_API_KEY', '')
+            )
+            initial_model = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+            initial_level = getattr(settings, 'GEMINI_THINKING_LEVEL', '') or os.environ.get('GEMINI_THINKING_LEVEL', 'medium')
+            config = cls.objects.create(
+                api_keys=initial_keys or '',
+                model_name=initial_model,
+                thinking_level=initial_level
+            )
+        return config
+
+    def get_keys_list(self):
+        """Returns clean list of unique API keys from stored text."""
+        keys = []
+        if self.api_keys:
+            raw = self.api_keys.replace('\r', '\n').replace(',', '\n').replace(';', '\n')
+            for line in raw.split('\n'):
+                line = line.strip()
+                if line and line not in keys:
+                    keys.append(line)
+        return keys
+
+    def __str__(self):
+        k_count = len(self.get_keys_list())
+        return f"Gemini AI Config ({'Active' if self.is_active else 'Disabled'}) - {k_count} Keys"
+
+
 class NotificationLog(models.Model):
     class Channel(models.TextChoices):
         TELEGRAM = 'TELEGRAM', 'Telegram Bot'

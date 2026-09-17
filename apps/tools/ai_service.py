@@ -33,7 +33,8 @@ class ToolAiService:
         user_role = user.get_role_display() if user and hasattr(user, 'get_role_display') else "លោកគ្រូ-អ្នកគ្រូ"
         user_name = user.display_name if user and hasattr(user, 'display_name') else "អ្នកប្រើប្រាស់"
 
-        api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
+        from apps.tools.gemini_rotator import gemini_rotator
+        api_key = gemini_rotator.get_available_key() or getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
         model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
         
         # Determine thinking level
@@ -77,6 +78,7 @@ class ToolAiService:
 
                     resp = requests.post(url, json=payload, timeout=25)
                     if resp.status_code == 200:
+                        gemini_rotator.mark_success(api_key)
                         result_json = resp.json()
                         candidate = result_json.get('candidates', [{}])[0]
                         parts = candidate.get('content', {}).get('parts', [])
@@ -94,6 +96,10 @@ class ToolAiService:
                             "thinking_level": thinking_level,
                             "action": action
                         }
+                    elif resp.status_code == 429:
+                        gemini_rotator.mark_rate_limited(api_key)
+                    elif resp.status_code in [401, 403]:
+                        gemini_rotator.mark_invalid(api_key)
                 except Exception:
                     continue
                 pass

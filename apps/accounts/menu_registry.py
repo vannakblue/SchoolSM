@@ -816,6 +816,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'telegram_settings',
             },
             {
+                'key': 'gemini_settings',
+                'name_kh': 'ការកំណត់ Gemini AI & Keys',
+                'name_en': 'Gemini AI & Keys Configuration',
+                'icon': 'fa-solid fa-robot text-primary',
+                'default_roles': ['ADMIN'],
+                'url_name': 'gemini_settings',
+            },
+            {
                 'key': 'user_management',
                 'name_kh': 'គ្រប់គ្រងគណនីប្រើប្រាស់',
                 'name_en': 'User Accounts Management',

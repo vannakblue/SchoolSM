@@ -240,6 +240,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Google Gemini AI Agent Configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_KEYS = os.environ.get('GEMINI_API_KEYS', '')  # Comma-separated keys for auto-rotation
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
 GEMINI_THINKING_LEVEL = os.environ.get('GEMINI_THINKING_LEVEL', 'medium')
 

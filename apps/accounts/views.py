@@ -2,9 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.utils import timezone
 from django.http import JsonResponse
-from .forms import LoginForm, UserProfileForm, TelegramConfigForm, SchoolProfileForm
-from .models import User, TelegramConfig, NotificationLog, SchoolProfile, MenuSection, MenuItem, RoleMenuPermission, DirectChatMessage
+from .forms import LoginForm, UserProfileForm, TelegramConfigForm, SchoolProfileForm, GeminiAiConfigForm
+from .models import User, TelegramConfig, NotificationLog, SchoolProfile, MenuSection, MenuItem, RoleMenuPermission, DirectChatMessage, GeminiAiConfig
 from .decorators import role_required
 from .utils import send_telegram_notification
 
@@ -494,7 +495,7 @@ def api_pop_chat_history(request):
             'created_at': m.created_at.strftime('%d-%m-%Y %H:%M')
         })
 
-    return JsonResponse({'status': 'success', 'messages': msg_list})
+    return JsonResponse({'status': 'success', 'messages': msg_list, 'history': msg_list})
 
 
 @login_required
@@ -593,6 +594,121 @@ def telegram_settings_view(request):
 
     logs = NotificationLog.objects.all()[:20]
     return render(request, 'accounts/telegram_settings.html', {'form': form, 'config': config, 'logs': logs})
+
+
+@login_required
+@role_required(['ADMIN'])
+def gemini_settings_view(request):
+    """
+    Web-based configuration for Google Gemini API Keys and Auto-Rotation.
+    Allows administrators to add, update, and manage multiple Gemini API Keys directly in the web browser.
+    """
+    from apps.tools.gemini_rotator import gemini_rotator
+    config = GeminiAiConfig.get_config()
+
+    if request.method == 'POST':
+        form = GeminiAiConfigForm(request.POST, instance=config)
+        if form.is_valid():
+            saved_config = form.save()
+            new_keys = saved_config.get_keys_list()
+            gemini_rotator.set_keys(new_keys)
+            messages.success(request, f"🎉 បានរក្សាទុកការកំណត់ Gemini AI & {len(new_keys)} API Keys ដោយជោគជ័យ!")
+            return redirect('gemini_settings')
+    else:
+        form = GeminiAiConfigForm(instance=config)
+
+    rotator_status = gemini_rotator.get_status_report()
+
+    return render(request, 'accounts/gemini_settings.html', {
+        'form': form,
+        'config': config,
+        'keys_list': config.get_keys_list(),
+        'rotator_status': rotator_status,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_gemini_test_key(request):
+    """
+    AJAX endpoint to test connection with Google Gemini API directly from the web browser.
+    """
+    import time
+    import requests
+    from apps.tools.gemini_rotator import gemini_rotator
+
+    config = GeminiAiConfig.get_config()
+    test_key = request.POST.get('api_key', '').strip() or request.GET.get('api_key', '').strip()
+
+    if not test_key:
+        test_key = gemini_rotator.get_available_key()
+
+    if not test_key:
+        return JsonResponse({
+            'status': 'error',
+            'message': '❌ មិនមាន API Key សម្រាប់ធ្វើតេស្តឡើយ! សូមវាយបញ្ចូល API Key ក្នុងប្រអប់ខាងលើសិន។'
+        }, status=400)
+
+    model_name = request.POST.get('model_name', '').strip() or config.model_name or 'gemini-3.8-flash'
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={test_key}"
+
+    prompt_text = "ឆ្លើយជាភាសាខ្មែរមួយឃ្លាខ្លីថា៖ «ការតភ្ជាប់ជាមួយប្រព័ន្ធ Gemini AI ដំណើរការជោគជ័យ!»"
+    payload = {
+        "contents": [{"parts": [{"text": prompt_text}]}],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 100}
+    }
+
+    start_time = time.time()
+    try:
+        resp = requests.post(url, json=payload, timeout=15)
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        if resp.status_code == 200:
+            gemini_rotator.mark_success(test_key)
+            result_json = resp.json()
+            candidate = result_json.get('candidates', [{}])[0]
+            parts = candidate.get('content', {}).get('parts', [])
+            reply_text = "".join([p.get('text', '') for p in parts]).strip() or "ជោគជ័យ"
+
+            config.last_tested_at = timezone.now()
+            config.last_test_status = "SUCCESS"
+            masked = f"{test_key[:4]}...{test_key[-4:]}" if len(test_key) > 8 else "******"
+            config.last_test_message = f"Latency: {latency_ms}ms | Model: {model_name} | Key: {masked}"
+            config.save(update_fields=['last_tested_at', 'last_test_status', 'last_test_message'])
+
+            return JsonResponse({
+                'status': 'success',
+                'message': f'✅ ការតភ្ជាប់ជោគជ័យ! (Latency: {latency_ms}ms, ម៉ូដែល: {model_name})',
+                'reply': reply_text,
+                'latency_ms': latency_ms,
+                'masked_key': masked
+            })
+        elif resp.status_code == 429:
+            gemini_rotator.mark_rate_limited(test_key)
+            return JsonResponse({
+                'status': 'warning',
+                'message': '⚠️ Key នេះបានដល់កម្រិតកំណត់ (HTTP 429 Rate Limit / Quota Exceeded)។ ប្រព័ន្ធនឹងដាក់វាចូល Cooldown ស្វ័យប្រវត្តិ។',
+                'code': 429
+            }, status=429)
+        elif resp.status_code in [400, 401, 403]:
+            gemini_rotator.mark_invalid(test_key)
+            return JsonResponse({
+                'status': 'error',
+                'message': f'❌ API Key មិនត្រឹមត្រូវ ឬត្រូវបានបិទ (HTTP {resp.status_code})! សូមពិនិត្យមើល Key ក្នុង Google AI Studio។',
+                'details': resp.text[:200]
+            }, status=400)
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'⚠️ ម៉ាស៊ីនបម្រើ Gemini ឆ្លើយតបកូដ {resp.status_code}៖ {resp.text[:150]}'
+            }, status=resp.status_code)
+    except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        return JsonResponse({
+            'status': 'error',
+            'message': f'❌ បរាជ័យក្នុងការតភ្ជាប់ទៅ Google Gemini API៖ {str(e)}',
+            'latency_ms': latency_ms
+        }, status=500)
 
 
 @login_required
@@ -1446,7 +1562,8 @@ def api_ai_chat(request):
         f"5. For Students: Explain lesson concepts step-by-step in clear Khmer."
     )
 
-    api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
+    from apps.tools.gemini_rotator import gemini_rotator
+    api_key = gemini_rotator.get_available_key() or getattr(settings, 'GEMINI_API_KEY', '') or os.environ.get('GEMINI_API_KEY', '')
     model_name = getattr(settings, 'GEMINI_MODEL', '') or os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
     
     # Check if thinking_level is explicitly requested by client/admin in the chat widget
@@ -1495,6 +1612,7 @@ def api_ai_chat(request):
 
             resp = requests.post(url, json=payload, timeout=25)
             if resp.status_code == 200:
+                gemini_rotator.mark_success(api_key)
                 result_json = resp.json()
                 candidate = result_json.get('candidates', [{}])[0]
                 parts = candidate.get('content', {}).get('parts', [])
@@ -1511,6 +1629,10 @@ def api_ai_chat(request):
                     'thinking_level': thinking_level
                 })
             else:
+                if resp.status_code == 429:
+                    gemini_rotator.mark_rate_limited(api_key)
+                elif resp.status_code in [401, 403]:
+                    gemini_rotator.mark_invalid(api_key)
                 reply_text = get_smart_local_ai_response(user_message, user, school_name, active_year, students_count, teachers_count)
                 return JsonResponse({
                     'status': 'success',
@@ -1548,7 +1670,7 @@ def get_smart_local_ai_response(user_message, user, school_name, active_year, st
             f"- 📝 **ជំនួយការគ្រូ**: បង្កើតសំណួរវិញ្ញាសា MCQs, កិច្ចតែងការបង្រៀន\n"
             f"- ⚖️ **ច្បាប់ពិន្ទុ & វត្តមាន**: ពន្យល់រូបមន្តគណនាពិន្ទុឆមាស និងការកំណត់ MoEYS\n"
             f"- 💡 **ការកំណត់ប្រព័ន្ធ**: ណែនាំអំពីការប្រើប្រាស់ទំព័រផ្សេងៗ\n\n"
-            f"*(💡 ចំណាំ៖ ដើម្បីឱ្យខ្ញុំអាចឆ្លើយគ្រប់សំណួរទូទៅ និងស្រាវជ្រាវកម្រិតខ្ពស់តាម Google Gemini សូមបញ្ចូល `GEMINI_API_KEY` ក្នុង `.env`)*"
+            f"*(💡 ចំណាំ៖ ដើម្បីឱ្យខ្ញុំអាចឆ្លើយគ្រប់សំណួរទូទៅ និងស្រាវជ្រាវកម្រិតខ្ពស់តាម Google Gemini សូមចូលទៅកាន់ [ការកំណត់ Gemini AI តាម Web Browser](/settings/gemini-ai/) ឬបញ្ចូល `GEMINI_API_KEYS` ក្នុង `.env`)*"
         )
 
     if any(k in msg for k in ['ពិន្ទុ', 'និទ្ទេស', 'grade', 'moeys']):
@@ -1581,22 +1703,17 @@ def get_smart_local_ai_response(user_message, user, school_name, active_year, st
         return (
             f"🤖 **របៀបភ្ជាប់ Gemini 3.8 Flash API ពេញលេញទៅក្នុង SchoolSM**:\n\n"
             f"1. ចូលទៅកាន់ [Google AI Studio](https://aistudio.google.com/) រួចចុច **Get API Key** (ឥតគិតថ្លៃ 100%)\n"
-            f"2. បើកឯកសារ `.env` ក្នុង Folder គម្រោង SchoolSM\n"
-            f"3. បន្ថែមបន្ទាត់កំណត់រចនាសម្ព័ន្ធ៖\n"
-            f"   ```bash\n"
-            f"   GEMINI_API_KEY=AIzaSyYourGeneratedApiKeyHere\n"
-            f"   GEMINI_MODEL=gemini-3.8-flash\n"
-            f"   GEMINI_THINKING_LEVEL=medium\n"
-            f"   ```\n"
-            f"   *(ជម្រើស Thinking Level: `low` (ល្បឿនលឿន), `medium` (លំនឹង), `high` (វិភាគស៊ីជម្រៅ))*\n\n"
-            f"4. រួច Save ជាការស្រេច! AI នឹងដំណើរការ Generative Intelligence ឆ្លាតវៃភ្លាមៗ។"
+            f"2. ចូលទៅកាន់ទំព័រ **[ការកំណត់ Gemini AI តាម Web Browser](/settings/gemini-ai/)**\n"
+            f"3. បិទភ្ជាប់ (Paste) API Key មួយ ឬច្រើន (៣ ទៅ ៥ Keys សម្រាប់ Free Tier Auto-Rotation)\n"
+            f"4. ចុចប៊ូតុង **រក្សាទុកការកំណត់** និង **តេស្តការតភ្ជាប់ផ្ទាល់** ជាការស្រេច!\n\n"
+            f"*(លោកអ្នកក៏អាចកំណត់តាម `.env` ដោយប្រើ `GEMINI_API_KEYS=key1,key2,key3` បានដូចគ្នា)*"
         )
 
     return (
         f"🤖 **SchoolSM AI Assistant**:\n\n"
         f"អរគុណសម្រាប់សំណួររបស់លោកអ្នក៖ *«{user_message}»*。\n\n"
         f"បច្ចុប្បន្ន ប្រព័ន្ធ SchoolSM កំពុងគ្រប់គ្រងសិស្សសរុប **{students_count} នាក់** ក្នុងឆ្នាំសិក្សា **{ay_name}**។\n"
-        f"ដើម្បីឱ្យខ្ញុំអាចឆ្លើយតប និងបង្កើតខ្លឹមសារលម្អិតកាន់តែស៊ីជម្រៅតាមរយៈ Generative AI សូមបញ្ចូល **`GEMINI_API_KEY`** ក្នុងឯកសារ `.env`។\n\n"
+        f"ដើម្បីឱ្យខ្ញុំអាចឆ្លើយតប និងបង្កើតខ្លឹមសារលម្អិតកាន់តែស៊ីជម្រៅតាមរយៈ Generative AI សូមបញ្ចូល **`GEMINI_API_KEYS`** ក្នុង [ការកំណត់តាម Web Browser](/settings/gemini-ai/) ឬឯកសារ `.env`។\n\n"
         f"ទន្ទឹមនឹងនេះ ប្រសិនបើអ្នកចង់ផ្ញើសំណើ ឬសារផ្ទាល់ទៅកាន់ Admin ឬលោកគ្រូ-អ្នកគ្រូ សូមចុចលើ Tab **«💬 សារ Admin/គ្រូ»** ខាងលើ!"
     )
 
