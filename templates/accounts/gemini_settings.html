@@ -97,17 +97,17 @@
 
                         <!-- Antigravity-Style Quick-Selection Pills -->
                         <div class="d-flex flex-wrap gap-1 mt-2">
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-2.0-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-2.0-flash')">
+                                ⚡ Gemini 2.0 Flash
+                            </button>
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-1.5-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-1.5-flash')">
+                                🚀 Gemini 1.5 Flash
+                            </button>
                             <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-3.8-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-3.8-flash')">
                                 ⚡ Gemini 3.8 Flash
                             </button>
-                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-3.5-pro' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-3.5-pro')">
-                                🧠 Gemini 3.5 Pro
-                            </button>
                             <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-2.5-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-2.5-flash')">
                                 ⚡ Gemini 2.5 Flash
-                            </button>
-                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-2.5-pro' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-2.5-pro')">
-                                🧠 Gemini 2.5 Pro
                             </button>
                             <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-flash-latest' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-flash-latest')">
                                 🔄 Flash Latest
@@ -155,11 +155,11 @@
         <!-- Live Connection Test Card -->
         <div class="custom-card shadow-sm border-0">
             <h5 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-vial-virus text-info me-2"></i>{% lang_switch 'តេស្តសាកល្បងការតភ្ជាប់' 'Live Connection Test' %}</h5>
-            <p class="text-muted small mb-3">{% lang_switch 'ផ្ញើសំណួរសាកល្បងទៅកាន់ Google Gemini API ភ្លាមៗ ដើម្បីបញ្ជាក់ថាសោ និងបណ្ដាញដំណើរការត្រឹមត្រូវ' 'Send an instant test request to Google Gemini API to verify keys and network connectivity' %}</p>
+            <p class="text-muted small mb-3">{% lang_switch 'ផ្ញើសំណើតេស្ត (Test Request) ទៅកាន់ Google Gemini API ភ្លាមៗ ដើម្បីបញ្ជាក់ថាសោ API Key និងបណ្ដាញដំណើរការត្រឹមត្រូវ' 'Send an instant test request to Google Gemini API to verify API keys and network connectivity' %}</p>
 
             <div class="input-group mb-3">
                 <span class="input-group-text bg-light text-muted small font-monospace"><i class="fa-solid fa-key"></i></span>
-                <input type="text" id="manualTestKeyInput" class="form-control font-monospace small" placeholder="{% if current_lang == 'km' %}ទុកទំនេរដើម្បីតេស្តសោក្នុងប្រព័ន្ធ ឬបិទភ្ជាប់សោជាក់លាក់ដើម្បីតេស្ត...{% else %}Leave empty to test system key or paste specific key to test...{% endif %}">
+                <input type="text" id="manualTestKeyInput" class="form-control font-monospace small" placeholder="{% if current_lang == 'km' %}ទុកប្រអប់នេះទំនេរដើម្បីតេស្តសោក្នុងប្រព័ន្ធ ឬបិទភ្ជាប់ API Key (AIzaSy...){% else %}Leave empty to test system keys or paste specific API Key (AIzaSy...){% endif %}">
                 <button type="button" id="btnRunTest" class="btn btn-info text-white fw-bold px-3" onclick="runLiveKeyTest(document.getElementById('manualTestKeyInput').value)">
                     <i class="fa-solid fa-paper-plane me-1" id="testIcon"></i> <span id="testBtnText">{% lang_switch 'តេស្តឥឡូវនេះ' 'Test Now' %}</span>
                 </button>
@@ -345,10 +345,26 @@ function runLiveKeyTest(specificKey) {
     icon.className = 'fa-solid fa-circle-notch fa-spin me-1';
     btnText.innerText = isKhmer ? 'កំពុងតេស្ត...' : 'Testing...';
 
+    const trimmedKey = (specificKey || '').trim();
+    // Validate if user mistakenly entered a question, text with spaces, or Khmer characters instead of an API Key
+    if (trimmedKey && (trimmedKey.includes(' ') || /[\u1780-\u17FF]/.test(trimmedKey) || (!trimmedKey.startsWith('AIzaSy') && trimmedKey.length < 30))) {
+        btn.disabled = false;
+        icon.className = 'fa-solid fa-paper-plane me-1';
+        btnText.innerText = isKhmer ? 'តេស្តឥឡូវនេះ' : 'Test Now';
+        resultBox.className = 'p-3 rounded-3 border bg-warning-subtle border-warning d-block';
+        resultTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>' + (isKhmer ? 'មិនមែនជា Google Gemini API Key ឡើយ' : 'Invalid API Key Format');
+        resultBadge.className = 'badge bg-warning text-dark';
+        resultBadge.innerText = 'INVALID FORMAT';
+        resultMessage.innerHTML = isKhmer
+            ? '⚠️ អត្ថបទដែលលោកអ្នកបានបញ្ចូល <strong>មិនមែនជា API Key ឡើយ</strong>! (Google Gemini API Key ត្រូវតែជាកូដដែលចម្លងចេញពី <a href="https://aistudio.google.com/app/apikey" target="_blank" class="fw-bold text-decoration-underline text-primary">Google AI Studio</a> ដោយផ្តើមឡើងដោយអក្សរ <code>AIzaSy...</code>)។<br><br>💡 <strong>ការណែនាំ៖</strong> ប្រសិនបើលោកអ្នកចង់តេស្ត សូម<strong>ទុកប្រអប់នេះឱ្យនៅទំនេរ (កុំវាយអ្វីទាំងអស់)</strong> រួចចុចប៊ូតុង <strong>«តេស្តឥឡូវនេះ»</strong> ដើម្បីឱ្យប្រព័ន្ធតេស្តសោដែលបានរក្សាទុកស្រាប់!'
+            : '⚠️ The text entered is <strong>not a valid API Key</strong>! Google Gemini API keys start with <code>AIzaSy...</code> from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.<br><br>💡 <strong>Tip:</strong> Leave this field blank to test your saved system keys!';
+        return;
+    }
+
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const formData = new FormData();
-    if (specificKey && !specificKey.includes('...')) {
-        formData.append('api_key', specificKey);
+    if (trimmedKey && !trimmedKey.includes('...')) {
+        formData.append('api_key', trimmedKey);
     }
     
     // Resolve model name (Antigravity-style select or custom)

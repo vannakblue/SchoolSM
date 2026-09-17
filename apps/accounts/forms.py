@@ -166,24 +166,22 @@ class SchoolProfileForm(forms.ModelForm):
 
 
 AVAILABLE_GEMINI_MODELS_KM = [
-    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (លឿនរហ័ស & ឆ្លាតវៃ - ណែនាំ)'),
-    ('gemini-3.5-pro', '🧠 Gemini 3.5 Pro (ការគិតកម្រិតខ្ពស់ជំនាន់ថ្មី)'),
-    ('gemini-2.5-flash', '⚡ Gemini 2.5 Flash (ល្បឿនលឿន & លំនឹងស្តង់ដារ)'),
-    ('gemini-2.5-pro', '🧠 Gemini 2.5 Pro (ការគិតស៊ីជម្រៅ & សរសេរកូដ)'),
+    ('gemini-2.0-flash', '⚡ Gemini 2.0 Flash (លឿនបំផុត & លំនឹងខ្ពស់ - ណែនាំ)'),
+    ('gemini-1.5-flash', '🚀 Gemini 1.5 Flash (ស្តង់ដារសកល & មិនងាយកកស្ទះ)'),
+    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (ជំនាន់ថ្មី)'),
+    ('gemini-2.5-flash', '⚡ Gemini 2.5 Flash (ល្បឿនលឿន & លំនឹង)'),
     ('gemini-flash-latest', '🔄 Gemini Flash Latest (បច្ចុប្បន្នភាពស្វ័យប្រវត្តិ)'),
-    ('gemini-1.5-flash', '📦 Gemini 1.5 Flash (ម៉ូដែល Flash ជំនាន់មុន)'),
-    ('gemini-1.5-pro', '📦 Gemini 1.5 Pro (ម៉ូដែល Pro ជំនាន់មុន)'),
+    ('gemini-1.5-pro', '🧠 Gemini 1.5 Pro (ការគិតស៊ីជម្រៅ)'),
     ('custom', '✏️ ផ្សេងទៀត (បញ្ចូលឈ្មោះម៉ូដែលផ្ទាល់)...'),
 ]
 
 AVAILABLE_GEMINI_MODELS_EN = [
-    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (Fast & Smart - Recommended)'),
-    ('gemini-3.5-pro', '🧠 Gemini 3.5 Pro (Next-Gen Advanced Reasoning)'),
-    ('gemini-2.5-flash', '⚡ Gemini 2.5 Flash (High Speed & Balanced Standard)'),
-    ('gemini-2.5-pro', '🧠 Gemini 2.5 Pro (Deep Reasoning & Complex Coding)'),
+    ('gemini-2.0-flash', '⚡ Gemini 2.0 Flash (Fastest & High Stability - Recommended)'),
+    ('gemini-1.5-flash', '🚀 Gemini 1.5 Flash (Global Standard & Reliable)'),
+    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (Next-Gen)'),
+    ('gemini-2.5-flash', '⚡ Gemini 2.5 Flash (High Speed & Balanced)'),
     ('gemini-flash-latest', '🔄 Gemini Flash Latest (Always Latest Version)'),
-    ('gemini-1.5-flash', '📦 Gemini 1.5 Flash (Legacy Flash Model)'),
-    ('gemini-1.5-pro', '📦 Gemini 1.5 Pro (Legacy Pro Model)'),
+    ('gemini-1.5-pro', '🧠 Gemini 1.5 Pro (Deep Reasoning)'),
     ('custom', '✏️ Custom (Enter custom model name)...'),
 ]
 

@@ -51,6 +51,8 @@ OFFLINE_DICTIONARY = {
     "អំពីសាលា": "About School",
     "កម្មវិធីសិក្សា": "Academics",
     "ស្វែងយល់បន្ថែម": "Learn More",
+    "ឈ្វេងយល់បន្ថែម": "Learn More",
+    "ឈ្វេងយល់": "Learn More",
     "ចូលប្រព័ន្ធ": "Portal Login",
     "ផ្ទាំងគ្រប់គ្រង": "Dashboard",
     "ប្រព័ន្ធគ្រប់គ្រងសាលា": "School Management System",
@@ -58,6 +60,29 @@ OFFLINE_DICTIONARY = {
     "ខេត្តកណ្ដាល": "Kandal Province",
     "ស្រុកកណ្ដាលស្ទឹង": "Kandal Stueng District",
     "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត": "Hun Sen Kampong Kantuot High School",
+    "វិ. ហ៊ុន សែន កំពង់កន្ទួត": "Hun Sen Kampong Kantuot HS",
+    "វិ. ហស កំពង់កន្ទួត": "Hun Sen Kampong Kantuot HS",
+    "លោក ថេង រិទ្ធីយ៉ា": "Mr. Theng Rithya",
+    "ថេង រិទ្ធីយ៉ា": "Theng Rithya",
+    "ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល": "Street 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal Province",
+    "ផ្លូវលេខ១០៥": "Street 105",
+    "ភូមិស្វាយមីង": "Svay Ming Village",
+    "ឃុំបារគូ": "Barkou Commune",
+    "ស្រុកកណ្តាលស្ទឹង": "Kandal Stueng District",
+    "ខេត្តកណ្តាល": "Kandal Province",
+    "យើងខ្ញុំបណ្តុះបណ្តាលសិស្សឱ្យមានទាំងចំណេះដឹងទូទៅ ជំនាញបច្ចេកវិទ្យា វិន័យ សីលធម៌ល្អ និងស្មារតីទទួលខុសត្រូវខ្ពស់។": "We educate students with comprehensive knowledge, technology skills, strong discipline, good morality, and a high sense of responsibility.",
+    "ពិធីបើកបវេសនកាលឆ្នាំសិក្សាថ្មី ២០២៦-២០២៧": "Opening Ceremony of the New Academic Year 2026-2027",
+    "ពិធីបើកបវេសនកាលឆ្នាំសិក្សាថ្មី": "Opening Ceremony of the New Academic Year",
+    "ពិធីបើកបវេសនកាល": "School Opening Ceremony",
+    "បវេសនកាល": "New Academic Year Commencement",
+    "ឆ្នាំសិក្សាថ្មី": "New Academic Year",
+    "គណៈគ្រប់គ្រងសាលា": "School Management Board",
+    "ទិវាគ្រូបង្រៀន": "Teachers' Day",
+    "ពិធីអបអរសាទរទិវាគ្រូបង្រៀន": "Teachers' Day Celebration",
+    "ពិធីអបអរសាទរ": "Celebration Ceremony",
+    "ការលើកទឹកចិត្ត": "Recognition and Appreciation",
+    "លោកគ្រូ-អ្នកគ្រូឆ្នើម": "Outstanding Teachers",
+    "ប្រចាំឆ្នាំ": "Annual",
     "វិទ្យាល័យចំណេះទូទៅ": "General High School",
     "កម្មវិធី MoEYS & ទ្វេភាសា": "MoEYS & Bilingual Curriculum",
     "បន្ទប់ពិសោធន៍ STEM & IT": "STEM & IT Science Labs",
@@ -271,23 +296,32 @@ class AiTranslationService:
         """
         Rule-based and dictionary-driven offline translation fallback.
         """
+        if not text:
+            return ""
+
         # 1. Exact match in dictionary
         if text in OFFLINE_DICTIONARY:
             return OFFLINE_DICTIONARY[text]
 
-        # 2. Phrase substitutions
+        # 2. Phrase substitutions sorted by phrase length (longest first)
         translated = text
-        for kh_phrase, en_phrase in OFFLINE_DICTIONARY.items():
+        for kh_phrase, en_phrase in sorted(OFFLINE_DICTIONARY.items(), key=lambda x: len(x[0]), reverse=True):
             if kh_phrase in translated:
                 translated = translated.replace(kh_phrase, en_phrase)
 
-        # 3. If mostly replaced or contains English words, clean up
-        if any(c.isalpha() for c in translated):
-            # Clean consecutive spaces
+        # 3. If no Khmer characters remain, return clean English
+        if not re.search(r'[\u1780-\u17FF]', translated):
             return re.sub(r'\s+', ' ', translated).strip()
 
-        # Fallback: Romanized or generic indicator
-        return f"{text} (Khmer)"
+        # 4. If mostly English (less than 25% Khmer), return cleaned
+        khmer_count = len(re.findall(r'[\u1780-\u17FF]', translated))
+        if khmer_count / max(len(translated), 1) < 0.25:
+            # Strip out dangling Khmer characters
+            cleaned = re.sub(r'[\u1780-\u17FF]+', '', translated)
+            return re.sub(r'\s+', ' ', cleaned).strip()
+
+        # Fallback to general educational title
+        return re.sub(r'\s+', ' ', translated).strip()
 
     # ==========================================================================
     # MODEL AUTO-TRANSLATION HELPERS

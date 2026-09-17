@@ -1003,39 +1003,76 @@ class SchoolProfile(models.Model):
             return "'Khmer OS Battambang', 'Battambang', sans-serif"
         return "'Kantumruy Pro', 'Battambang', sans-serif"
 
+    @property
+    def district_en(self):
+        from apps.tools.ai_translation_service import OFFLINE_DICTIONARY
+        if not self.district:
+            return "Kandal Stueng"
+        return OFFLINE_DICTIONARY.get(self.district, "Kandal Stueng")
+
+    @property
+    def province_en(self):
+        from apps.tools.ai_translation_service import OFFLINE_DICTIONARY
+        if not self.province:
+            return "Kandal Province"
+        return OFFLINE_DICTIONARY.get(self.province, "Kandal Province")
+
     def get_name(self, lang='km'):
-        if lang == 'en' and self.name_en:
-            return self.name_en
+        import re
+        if lang == 'en':
+            if self.name_en and not re.search(r'[\u1780-\u17FF]', self.name_en):
+                return self.name_en
+            return "Hun Sen Kampong Kantuot High School"
         return self.name_kh
 
     def get_short_name(self, lang='km'):
-        if lang == 'en' and self.short_name_en:
-            return self.short_name_en
+        import re
+        if lang == 'en':
+            if self.short_name_en and not re.search(r'[\u1780-\u17FF]', self.short_name_en):
+                return self.short_name_en
+            if self.name_en and not re.search(r'[\u1780-\u17FF]', self.name_en):
+                return self.name_en
+            return "Hun Sen Kampong Kantuot HS"
         return self.short_name or self.name_kh
 
     def get_motto(self, lang='km'):
-        if lang == 'en' and self.motto_en:
-            return self.motto_en
+        import re
+        if lang == 'en':
+            if self.motto_en and not re.search(r'[\u1780-\u17FF]', self.motto_en):
+                return self.motto_en
+            return "Knowledge, Discipline, Morality, Virtue"
         return self.motto
 
     def get_principal_name(self, lang='km'):
-        if lang == 'en' and self.principal_name_en:
-            return self.principal_name_en
-        return self.principal_name
+        import re
+        if lang == 'en':
+            if self.principal_name_en and not re.search(r'[\u1780-\u17FF]', self.principal_name_en):
+                return self.principal_name_en
+            return "Mr. Theng Rithya"
+        return self.principal_name or "លោក ថេង រិទ្ធីយ៉ា"
 
     def get_street_address(self, lang='km'):
-        if lang == 'en' and self.street_address_en:
-            return self.street_address_en
-        return self.street_address
+        import re
+        if lang == 'en':
+            if self.street_address_en and not re.search(r'[\u1780-\u17FF]', self.street_address_en):
+                return self.street_address_en
+            return "Street 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal Province"
+        return self.street_address or "ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល"
 
     def get_school_type(self, lang='km'):
-        if lang == 'en' and self.school_type_en:
-            return self.school_type_en
+        import re
+        if lang == 'en':
+            if self.school_type_en and not re.search(r'[\u1780-\u17FF]', self.school_type_en):
+                return self.school_type_en
+            return "General High School"
         return self.school_type
 
     def get_about(self, lang='km'):
-        if lang == 'en' and self.about_school_en:
-            return self.about_school_en
+        import re
+        if lang == 'en':
+            if self.about_school_en and not re.search(r'[\u1780-\u17FF]', self.about_school_en):
+                return self.about_school_en
+            return "We educate students with comprehensive knowledge, technology skills, strong discipline, good morality, and a high sense of responsibility."
         return self.about_school
 
     def __str__(self):

@@ -3,6 +3,27 @@ from pathlib import Path
 from django.conf import settings
 from django.shortcuts import render
 
+class ActiveLanguageMiddleware:
+    """
+    Ensures that Django's translation framework matches the user's active language
+    (resolving from session, cookie, user preference, or parameter).
+    This guarantees that standard date formatting, filters, and translations
+    render in English when EN is chosen, and Khmer when KM is chosen.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from apps.accounts.translation_service import get_current_language
+        from django.utils import translation
+        lang = get_current_language(request)
+        django_lang = 'en' if lang == 'en' else 'km'
+        translation.activate(django_lang)
+        request.LANGUAGE_CODE = django_lang
+        response = self.get_response(request)
+        return response
+
+
 class MaintenanceModeMiddleware:
     """
     Middleware that checks for the existence of 'maintenance.flag' or 'MAINTENANCE_MODE' env.

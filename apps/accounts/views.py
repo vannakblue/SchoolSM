@@ -624,8 +624,8 @@ def gemini_settings_view(request):
 
     rotator_status = gemini_rotator.get_status_report()
     standard_models = [
-        'gemini-3.8-flash', 'gemini-3.5-pro', 'gemini-2.5-flash',
-        'gemini-2.5-pro', 'gemini-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'
+        'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash',
+        'gemini-flash-latest', 'gemini-1.5-pro'
     ]
     is_custom_model = bool(config.model_name and config.model_name not in standard_models)
 
@@ -675,6 +675,40 @@ def api_gemini_test_key(request):
         resp = requests.post(url, json=payload, timeout=15)
         latency_ms = int((time.time() - start_time) * 1000)
 
+        # Auto-Fallback if primary model experiences 503 (High Demand) or 404
+        if resp.status_code in [503, 404]:
+            fallback_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']
+            for fb_model in fallback_models:
+                if fb_model == model_name:
+                    continue
+                fb_url = f"https://generativelanguage.googleapis.com/v1beta/models/{fb_model}:generateContent?key={test_key}"
+                try:
+                    time.sleep(0.5)
+                    fb_resp = requests.post(fb_url, json=payload, timeout=12)
+                    if fb_resp.status_code == 200:
+                        gemini_rotator.mark_success(test_key)
+                        fb_result = fb_resp.json()
+                        candidate = fb_result.get('candidates', [{}])[0]
+                        parts = candidate.get('content', {}).get('parts', [])
+                        reply_text = "".join([p.get('text', '') for p in parts]).strip() or "ជោគជ័យ"
+                        latency_ms = int((time.time() - start_time) * 1000)
+
+                        config.last_tested_at = timezone.now()
+                        config.last_test_status = "SUCCESS"
+                        masked = f"{test_key[:4]}...{test_key[-4:]}" if len(test_key) > 8 else "******"
+                        config.last_test_message = f"Latency: {latency_ms}ms | Model: {fb_model} (Fallback from {model_name}) | Key: {masked}"
+                        config.save(update_fields=['last_tested_at', 'last_test_status', 'last_test_message'])
+
+                        return JsonResponse({
+                            'status': 'success',
+                            'message': f'✅ ការតភ្ជាប់ជោគជ័យ! (ម៉ូដែល {model_name} មានអ្នកប្រើច្រើន 503 ប្រព័ន្ធបានប្តូរទៅកាន់ {fb_model} ដោយជោគជ័យ, Latency: {latency_ms}ms)',
+                            'reply': reply_text,
+                            'latency_ms': latency_ms,
+                            'masked_key': masked
+                        })
+                except Exception:
+                    pass
+
         if resp.status_code == 200:
             gemini_rotator.mark_success(test_key)
             result_json = resp.json()
@@ -709,6 +743,12 @@ def api_gemini_test_key(request):
                 'message': f'❌ API Key មិនត្រឹមត្រូវ ឬត្រូវបានបិទ (HTTP {resp.status_code})! សូមពិនិត្យមើល Key ក្នុង Google AI Studio។',
                 'details': resp.text[:200]
             }, status=400)
+        elif resp.status_code == 503:
+            return JsonResponse({
+                'status': 'warning',
+                'message': '⚠️ ម៉ាស៊ីនបម្រើ Google Gemini កំពុងជួបប្រទះចរាចរណ៍អ្នកប្រើប្រាស់កើនឡើងខ្ពស់បណ្តោះអាសន្ន (High Demand - HTTP 503)។ API Key របស់លោកអ្នកត្រឹមត្រូវ ១០០% ហើយ! សូមរង់ចាំ ៥-១០ វិនាទី រួចចុច «តេស្តម្តងទៀត» ឬជ្រើសរើសម៉ូដែល Gemini 2.0 Flash / Gemini 1.5 Flash។',
+                'details': resp.text[:200]
+            }, status=503)
         else:
             return JsonResponse({
                 'status': 'error',
@@ -793,7 +833,8 @@ def api_ai_translate_text(request):
         return JsonResponse({
             'status': 'success',
             'original': text,
-            'translated': translated
+            'translated': translated,
+            'translated_text': translated,
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

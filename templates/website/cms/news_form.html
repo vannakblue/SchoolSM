@@ -7,12 +7,12 @@
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">
-            <i class="fa-solid fa-pen-nib text-primary me-2"></i>{{ title }}
+            <i class="fa-solid fa-newspaper text-primary me-2"></i>{{ title }}
         </h2>
-        <p class="text-muted small mb-0">{% lang_switch "សរសេរ និងផ្សព្វផ្សាយព័ត៌មានលើគេហទំព័រសាលារៀន (គាំទ្រ ២ ភាសា & AI Auto-Translate)" "Publish news articles on school portal (Bilingual & AI Auto-Translate)" %}</p>
+        <p class="text-muted small mb-0">{% lang_switch "សរសេរ និងផ្សព្វផ្សាយព័ត៌មាន (ផ្ទាំងបកប្រែស្វ័យប្រវត្តិដោយ AI Agent & Admin អាចកែប្រែបានសេរី)" "Publish news articles (Dual-panel AI Auto-Translation Studio & Admin Editable)" %}</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary rounded-pill shadow-xs" onclick="autoTranslateNews()" id="btnAiTranslateNews">
+        <button type="button" class="btn btn-outline-primary rounded-pill shadow-xs" onclick="translateAllFields(true)" id="btnAiTranslateNewsHeader">
             <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {% lang_switch "⚡ បកប្រែជាភាសាអង់គ្លេសស្វ័យប្រវត្តដោយ AI" "⚡ Auto-Translate to English via AI" %}
         </button>
         <a href="{% url 'website_news_manager' %}" class="btn btn-outline-secondary rounded-pill">
@@ -21,147 +21,432 @@
     </div>
 </div>
 
-<div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-md-5">
-    <form method="post" enctype="multipart/form-data" id="newsArticleForm">
-        {% csrf_token %}
-        <div class="row g-4">
-            
-            <!-- Category & Featured Flag -->
-            <div class="col-md-6">
-                <label class="form-label fw-bold">{% lang_switch "ប្រភេទព័ត៌មាន *" "Category *" %}</label>
-                {{ form.category }}
-                {% if form.category.errors %}<div class="text-danger small">{{ form.category.errors }}</div>{% endif %}
+<form method="post" enctype="multipart/form-data" id="newsArticleForm">
+    {% csrf_token %}
+    
+    <!-- Top Configuration Card: Category, Cover Image & Flags -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                <span class="fw-bold text-dark small text-uppercase tracking-wider">
+                    <i class="fa-solid fa-sliders text-primary me-2"></i>{% lang_switch "ការកំណត់ទូទៅ និងរូបភាពតំណាង" "General Settings & Featured Image" %}
+                </span>
+                <span class="badge bg-light text-secondary border rounded-pill px-3 py-1 small">
+                    <i class="fa-solid fa-check-double text-success me-1"></i> {% lang_switch "ជំហានទី ១" "Step 1" %}
+                </span>
             </div>
-
-            <!-- Cover Image -->
-            <div class="col-md-6">
-                <label class="form-label fw-bold">{% lang_switch "រូបភាព Cover (Featured Image)" "Cover Image" %}</label>
-                {{ form.cover_image }}
-                {% if article and article.cover_image %}
-                <div class="mt-2">
-                    <small class="text-muted d-block mb-1">{% lang_switch "រូបភាពបច្ចុប្បន្ន៖" "Current Image:" %}</small>
-                    <img src="{{ article.cover_image.url }}" class="rounded shadow-xs border" style="max-height: 80px;" alt="current cover">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-dark">{% lang_switch "ប្រភេទព័ត៌មាន *" "Category *" %}</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}<div class="text-danger small mt-1">{{ form.category.errors }}</div>{% endif %}
                 </div>
-                {% endif %}
-                {% if form.cover_image.errors %}<div class="text-danger small">{{ form.cover_image.errors }}</div>{% endif %}
-            </div>
-
-            <!-- Title KH & EN -->
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ចំណងជើងព័ត៌មាន (ភាសាខ្មែរ) *" "News Title (Khmer) *" %}</label>
-                {{ form.title }}
-                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ចំណងជើងជាភាសាអង់គ្លេស (News Title - English)" "News Title (English)" %}</label>
-                {{ form.title_en }}
-                <div class="form-text small text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI Agent នឹងបកប្រែដោយស្វ័យប្រវត្តពេលរក្សាទុក" "Leave blank to auto-translate by AI Agent on save" %}</div>
-                {% if form.title_en.errors %}<div class="text-danger small">{{ form.title_en.errors }}</div>{% endif %}
-            </div>
-
-            <!-- Excerpt KH & EN -->
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារសង្ខេប (ខ្មែរ) — បង្ហាញលើកាតព័ត៌មាន" "Excerpt (Khmer)" %}</label>
-                {{ form.excerpt }}
-                <small class="text-muted">{% lang_switch "សរសេរខ្លីៗប្រហែល ២-៣ ឃ្លា ដើម្បីទាក់ទាញអ្នកអាន" "Brief overview for card teaser" %}</small>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារសង្ខេបជាភាសាអង់គ្លេស (Excerpt - English)" "Excerpt (English)" %}</label>
-                {{ form.excerpt_en }}
-                <small class="text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
-            </div>
-
-            <!-- Full Content KH & EN -->
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារលម្អិតនៃអត្ថបទ (ភាសាខ្មែរ) *" "Full Content (Khmer) *" %}</label>
-                {{ form.content }}
-                {% if form.content.errors %}<div class="text-danger small">{{ form.content.errors }}</div>{% endif %}
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារលម្អិតជាភាសាអង់គ្លេស (Full Content - English)" "Full Content (English)" %}</label>
-                {{ form.content_en }}
-                <small class="text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
-                {% if form.content_en.errors %}<div class="text-danger small">{{ form.content_en.errors }}</div>{% endif %}
-            </div>
-
-            <!-- Options -->
-            <div class="col-md-6">
-                <div class="form-check form-switch p-3 bg-light rounded-3 border">
-                    {{ form.is_featured }}
-                    <label class="form-check-label fw-semibold ms-2" for="{{ form.is_featured.id_for_label }}">
-                        <i class="fa-solid fa-star text-warning me-1"></i>{% lang_switch "កំណត់ជាព័ត៌មានលេចធ្លោ (Featured / Hero)" "Featured Article on Homepage" %}
-                    </label>
+                <div class="col-md-5">
+                    <label class="form-label fw-bold small text-dark">{% lang_switch "រូបភាព Cover (Featured Image)" "Cover Image" %}</label>
+                    {{ form.cover_image }}
+                    {% if article and article.cover_image %}
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <small class="text-muted">{% lang_switch "រូបភាពបច្ចុប្បន្ន៖" "Current Image:" %}</small>
+                        <img src="{{ article.cover_image.url }}" class="rounded shadow-xs border" style="max-height: 48px;" alt="current cover">
+                    </div>
+                    {% endif %}
+                    {% if form.cover_image.errors %}<div class="text-danger small mt-1">{{ form.cover_image.errors }}</div>{% endif %}
+                </div>
+                <div class="col-md-3 d-flex flex-column justify-content-center gap-2">
+                    <div class="form-check form-switch p-2 bg-light rounded-3 border mb-0">
+                        {{ form.is_featured }}
+                        <label class="form-check-label fw-semibold small ms-2" for="{{ form.is_featured.id_for_label }}">
+                            <i class="fa-solid fa-star text-warning me-1"></i>{% lang_switch "ព័ត៌មានលេចធ្លោ (Featured)" "Featured Article" %}
+                        </label>
+                    </div>
+                    <div class="form-check form-switch p-2 bg-light rounded-3 border mb-0">
+                        {{ form.is_published }}
+                        <label class="form-check-label fw-semibold small ms-2" for="{{ form.is_published.id_for_label }}">
+                            <i class="fa-solid fa-globe text-primary me-1"></i>{% lang_switch "ផ្សព្វផ្សាយលើគេហទំព័រ" "Publish Online" %}
+                        </label>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="col-md-6">
-                <div class="form-check form-switch p-3 bg-light rounded-3 border">
-                    {{ form.is_published }}
-                    <label class="form-check-label fw-semibold ms-2" for="{{ form.is_published.id_for_label }}">
-                        <i class="fa-solid fa-globe text-primary me-1"></i>{% lang_switch "ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រភ្លាមៗ" "Publish immediately on website" %}
-                    </label>
+    <!-- DUAL-PANEL BILINGUAL AI STUDIO -->
+    <div class="row g-4 align-items-stretch">
+        
+        <!-- LEFT PANEL: Khmer Original Content -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white d-flex flex-column">
+                <div class="card-header bg-light bg-opacity-50 border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <span class="fs-5">🇰🇭</span>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">{% lang_switch "ផ្ទាំងបញ្ចូលអត្ថបទជាភាសាខ្មែរ" "Khmer Content Input" %}</h5>
+                            <small class="text-muted">{% lang_switch "បញ្ចូលអត្ថបទដើមជាភាសាខ្មែរនៅទីនេះ" "Enter original Khmer content here" %}</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-white text-secondary border px-3 py-1 rounded-pill small shadow-2xs">
+                        <i class="fa-solid fa-keyboard text-primary me-1"></i> {% lang_switch "អត្ថបទដើម" "Original Source" %}
+                    </span>
+                </div>
+
+                <div class="card-body p-4 d-flex flex-column gap-3 flex-grow-1">
+                    <!-- Title KH -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small text-dark mb-0">
+                                {% lang_switch "ចំណងជើងព័ត៌មាន (ភាសាខ្មែរ) *" "News Title (Khmer) *" %}
+                            </label>
+                            <small class="text-muted" id="count_title_kh">0 {% lang_switch "តួអក្សរ" "chars" %}</small>
+                        </div>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Excerpt KH -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small text-dark mb-0">
+                                {% lang_switch "ខ្លឹមសារសង្ខេប (ភាសាខ្មែរ)" "Excerpt (Khmer)" %}
+                            </label>
+                            <small class="text-muted" id="count_excerpt_kh">0 {% lang_switch "តួអក្សរ" "chars" %}</small>
+                        </div>
+                        {{ form.excerpt }}
+                        <small class="text-muted d-block mt-1">{% lang_switch "សង្ខេប ២-៣ ឃ្លា សម្រាប់បង្ហាញលើកាតព័ត៌មាន" "2-3 short sentences for teaser card" %}</small>
+                        {% if form.excerpt.errors %}<div class="text-danger small mt-1">{{ form.excerpt.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Content KH -->
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold small text-dark mb-0">
+                                {% lang_switch "ខ្លឹមសារលម្អិតនៃអត្ថបទ (ភាសាខ្មែរ) *" "Full Content (Khmer) *" %}
+                            </label>
+                            <small class="text-muted" id="count_content_kh">0 {% lang_switch "តួអក្សរ" "chars" %}</small>
+                        </div>
+                        <div class="flex-grow-1 d-flex flex-column">
+                            {{ form.content }}
+                        </div>
+                        {% if form.content.errors %}<div class="text-danger small mt-1">{{ form.content.errors }}</div>{% endif %}
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Submit Buttons -->
-            <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                <a href="{% url 'website_news_manager' %}" class="btn btn-light border px-4 rounded-pill">{% lang_switch "បោះបង់" "Cancel" %}</a>
+        <!-- RIGHT PANEL: English AI Studio (Editable by Admin) -->
+        <div class="col-lg-6">
+            <div class="card border border-primary border-opacity-50 shadow-sm rounded-4 h-100 bg-white d-flex flex-column" style="border-width: 2px !important;">
+                <div class="card-header bg-primary bg-opacity-10 border-bottom border-primary border-opacity-25 py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center shadow-xs" style="width: 36px; height: 36px;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="fw-bold mb-0 text-dark">{% lang_switch "ផ្ទាំងបកប្រែជាភាសាអង់គ្លេស" "AI English Translation Studio" %}</h5>
+                                <span class="badge bg-success text-white rounded-pill px-2 py-1 small" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-sparkles me-1"></i> AI Active
+                                </span>
+                            </div>
+                            <small class="text-muted">{% lang_switch "បកប្រែស្វ័យប្រវត្តដោយ AI • Admin អាចត្រួតពិនិត្យ & កែប្រែបានសេរី" "AI Auto-Translated • Fully Editable by Admin" %}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="form-check form-switch me-1 mb-0" title="{% lang_switch 'បកប្រែស្វ័យប្រវត្តពេលវាយអក្សរខ្មែរ' 'Auto-translate when typing Khmer' %}">
+                            <input class="form-check-input cursor-pointer" type="checkbox" id="autoSyncToggle" checked>
+                            <label class="form-check-label small fw-semibold text-secondary user-select-none" for="autoSyncToggle">
+                                {% lang_switch "ស្វ័យប្រវត្តិ" "Auto-Sync" %}
+                            </label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs" onclick="translateAllFields(true)" id="btnAiTranslateAll">
+                            <i class="fa-solid fa-bolt me-1"></i> {% lang_switch "បកប្រែទាំងអស់" "Translate All" %}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-body p-4 d-flex flex-column gap-3 flex-grow-1">
+                    
+                    <!-- Title EN -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="form-label fw-bold small text-dark mb-0">
+                                    {% lang_switch "ចំណងជើងជាភាសាអង់គ្លេស (Title EN)" "News Title (English)" %}
+                                </label>
+                                <span id="badge_id_title_en" class="badge bg-secondary-subtle text-secondary small rounded-pill">
+                                    {% lang_switch "រង់ចាំការបកប្រែ" "Waiting" %}
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm text-primary p-0 text-decoration-none small" onclick="translateSingleField('id_title', 'id_title_en', 'News Headline', true)">
+                                <i class="fa-solid fa-rotate me-1"></i>{% lang_switch "⚡ បកប្រែឡើងវិញ" "Re-translate" %}
+                            </button>
+                        </div>
+                        <div class="position-relative">
+                            {{ form.title_en }}
+                            <div class="spinner-border spinner-border-sm text-primary position-absolute end-0 top-50 translate-middle-y me-3 d-none" id="spinner_id_title_en" role="status"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            <i class="fa-solid fa-circle-check text-success me-1"></i>{% lang_switch "Admin អាចកែប្រែដោយផ្ទាល់តាមចិត្ត ប្រព័ន្ធនឹងមិន overwrite ការកែប្រែរបស់អ្នកឡើយ" "Admin can edit directly; custom edits are permanently protected." %}
+                        </small>
+                        {% if form.title_en.errors %}<div class="text-danger small mt-1">{{ form.title_en.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Excerpt EN -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="form-label fw-bold small text-dark mb-0">
+                                    {% lang_switch "ខ្លឹមសារសង្ខេបជាភាសាអង់គ្លេស (Excerpt EN)" "Excerpt (English)" %}
+                                </label>
+                                <span id="badge_id_excerpt_en" class="badge bg-secondary-subtle text-secondary small rounded-pill">
+                                    {% lang_switch "រង់ចាំការបកប្រែ" "Waiting" %}
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm text-primary p-0 text-decoration-none small" onclick="translateSingleField('id_excerpt', 'id_excerpt_en', 'News Excerpt', true)">
+                                <i class="fa-solid fa-rotate me-1"></i>{% lang_switch "⚡ បកប្រែឡើងវិញ" "Re-translate" %}
+                            </button>
+                        </div>
+                        <div class="position-relative">
+                            {{ form.excerpt_en }}
+                            <div class="spinner-border spinner-border-sm text-primary position-absolute end-0 top-50 translate-middle-y me-3 d-none" id="spinner_id_excerpt_en" role="status"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">{% lang_switch "ខ្លឹមសារសង្ខេបភាសាអង់គ្លេស បកប្រែដោយ AI & អាចកែប្រែដោយ Admin" "Short English excerpt, auto-translated & admin-editable" %}</small>
+                        {% if form.excerpt_en.errors %}<div class="text-danger small mt-1">{{ form.excerpt_en.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Content EN -->
+                    <div class="flex-grow-1 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="form-label fw-bold small text-dark mb-0">
+                                    {% lang_switch "ខ្លឹមសារលម្អិតជាភាសាអង់គ្លេស (Content EN)" "Full Content (English)" %}
+                                </label>
+                                <span id="badge_id_content_en" class="badge bg-secondary-subtle text-secondary small rounded-pill">
+                                    {% lang_switch "រង់ចាំការបកប្រែ" "Waiting" %}
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm text-primary p-0 text-decoration-none small" onclick="translateSingleField('id_content', 'id_content_en', 'News Article Content', true)">
+                                <i class="fa-solid fa-rotate me-1"></i>{% lang_switch "⚡ បកប្រែឡើងវិញ" "Re-translate" %}
+                            </button>
+                        </div>
+                        <div class="position-relative flex-grow-1 d-flex flex-column">
+                            {{ form.content_en }}
+                            <div class="spinner-border spinner-border-sm text-primary position-absolute end-0 top-0 mt-3 me-3 d-none" id="spinner_id_content_en" role="status"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1">{% lang_switch "អត្ថបទពេញលេញជាភាសាអង់គ្លេស Admin អាចពិនិត្យកែលម្អបន្ថែមបានសេរី" "Full English article body, editable by Admin at any time" %}</small>
+                        {% if form.content_en.errors %}<div class="text-danger small mt-1">{{ form.content_en.errors }}</div>{% endif %}
+                    </div>
+
+                    <!-- Notice Banner -->
+                    <div class="alert alert-light border border-primary border-opacity-25 rounded-3 py-2 px-3 mb-0 d-flex align-items-center gap-2 small text-dark bg-primary-subtle bg-opacity-10">
+                        <i class="fa-solid fa-lightbulb text-primary fs-5"></i>
+                        <div>
+                            <strong>{% lang_switch "គន្លឹះ៖" "Tip:" %}</strong>
+                            {% lang_switch "នៅពេលលោកអ្នកបញ្ចូលអក្សរខ្មែរ ប្រព័ន្ធ AI នឹងបកប្រែមកផ្ទាំងស្តាំនេះភ្លាមៗ។ ប្រសិនបើ Admin វាយកែប្រែដោយផ្ទាល់ ប្រព័ន្ធនឹងចងចាំ ហើយរក្សាទុកពាក្យពេចន៍របស់អ្នកយ៉ាងសុវត្ថិភាព។" "As you type in Khmer, AI translates into this panel automatically. Any manual edits by Admin will be preserved securely." %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Actions Card -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4 bg-white">
+        <div class="card-body p-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="text-muted small d-flex align-items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-success"></i>
+                <span>{% lang_switch "ប្រព័ន្ធរក្សាទុកទាំង ២ ភាសា (ខ្មែរ & អង់គ្លេស) ដោយស្វ័យប្រវត្តក្នុង Database" "Saves both Khmer & English content simultaneously to database" %}</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'website_news_manager' %}" class="btn btn-light border px-4 rounded-pill">
+                    {% lang_switch "បោះបង់" "Cancel" %}
+                </a>
                 <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm">
-                    <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch "រក្សាទុកព័ត៌មាន" "Save News Article" %}
+                    <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch "រក្សាទុកព័ត៌មាន (Save)" "Save News Article" %}
                 </button>
             </div>
         </div>
-    </form>
-</div>
+    </div>
+</form>
 
 <script>
-function autoTranslateNews() {
-    const btn = document.getElementById('btnAiTranslateNews');
-    if (!btn) return;
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែដោយ AI...';
+// Translation State & Tracking
+const fieldPairs = [
+    { src: 'id_title', tgt: 'id_title_en', ctx: 'News Headline' },
+    { src: 'id_excerpt', tgt: 'id_excerpt_en', ctx: 'News Excerpt' },
+    { src: 'id_content', tgt: 'id_content_en', ctx: 'News Article Content' }
+];
 
-    const pairs = [
-        { src: 'id_title', tgt: 'id_title_en', ctx: 'News Headline' },
-        { src: 'id_excerpt', tgt: 'id_excerpt_en', ctx: 'News Excerpt' },
-        { src: 'id_content', tgt: 'id_content_en', ctx: 'News Article Content' }
-    ];
+const debounceTimers = {};
+
+function updateCharCounts() {
+    ['title', 'excerpt', 'content'].forEach(name => {
+        const el = document.getElementById('id_' + name);
+        const countEl = document.getElementById('count_' + name + '_kh');
+        if (el && countEl) {
+            countEl.textContent = el.value.length + ' ' + ('{{ current_language }}' === 'en' ? 'chars' : 'តួអក្សរ');
+        }
+    });
+}
+
+function updateBadgeStatus(tgtId, status) {
+    const badge = document.getElementById('badge_' + tgtId);
+    if (!badge) return;
+
+    if (status === 'translating') {
+        badge.className = 'badge bg-primary-subtle text-primary small rounded-pill';
+        badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> ' + ('{{ current_language }}' === 'en' ? 'Translating...' : 'កំពុងបកប្រែ...');
+    } else if (status === 'ai_done') {
+        badge.className = 'badge bg-info-subtle text-info small rounded-pill border border-info-subtle';
+        badge.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles me-1"></i> ' + ('{{ current_language }}' === 'en' ? 'AI Translated' : 'AI បានបកប្រែ');
+    } else if (status === 'admin_edited') {
+        badge.className = 'badge bg-warning-subtle text-dark small rounded-pill border border-warning-subtle';
+        badge.innerHTML = '<i class="fa-solid fa-user-pen me-1"></i> ' + ('{{ current_language }}' === 'en' ? 'Admin Edited' : 'Admin បានកែប្រែផ្ទាល់');
+    } else if (status === 'ready') {
+        badge.className = 'badge bg-success-subtle text-success small rounded-pill border border-success-subtle';
+        badge.innerHTML = '<i class="fa-solid fa-check me-1"></i> ' + ('{{ current_language }}' === 'en' ? 'Ready' : 'រួចរាល់');
+    } else {
+        badge.className = 'badge bg-secondary-subtle text-secondary small rounded-pill';
+        badge.innerHTML = '{{ current_language }}' === 'en' ? 'Waiting' : 'រង់ចាំការបកប្រែ';
+    }
+}
+
+function translateSingleField(srcId, tgtId, context, force = false) {
+    const srcEl = document.getElementById(srcId);
+    const tgtEl = document.getElementById(tgtId);
+    const spinner = document.getElementById('spinner_' + tgtId);
+
+    if (!srcEl || !tgtEl) return Promise.resolve();
+    const text = srcEl.value.trim();
+    if (!text) return Promise.resolve();
+
+    // If already modified by admin and not a forced request, do not overwrite!
+    if (!force && tgtEl.dataset.adminModified === 'true' && tgtEl.value.trim()) {
+        return Promise.resolve();
+    }
+
+    if (spinner) spinner.classList.remove('d-none');
+    updateBadgeStatus(tgtId, 'translating');
 
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
 
-    const reqs = pairs.map(p => {
-        const srcEl = document.getElementById(p.src);
-        const tgtEl = document.getElementById(p.tgt);
-        if (!srcEl || !tgtEl || !srcEl.value.trim()) return Promise.resolve();
-
-        return fetch('/accounts/api/ai-translate/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                text: srcEl.value.trim(),
-                context: p.ctx
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success' && data.translated_text) {
-                tgtEl.value = data.translated_text;
-                tgtEl.classList.add('is-valid');
-                setTimeout(() => tgtEl.classList.remove('is-valid'), 3500);
-            }
-        })
-        .catch(err => console.error('AI translation error:', err));
-    });
-
-    Promise.all(reqs).then(() => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែដោយ AI ជោគជ័យ!';
-        setTimeout(() => { btn.innerHTML = origHtml; }, 3000);
+    return fetch('/accounts/api/ai-translate/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ text: text, context: context })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const translatedText = data.translated_text || data.translated;
+        if (data.status === 'success' && translatedText) {
+            tgtEl.value = translatedText;
+            tgtEl.dataset.adminModified = 'false'; // Reset because AI just filled it
+            updateBadgeStatus(tgtId, 'ai_done');
+            
+            // Visual feedback highlight
+            tgtEl.classList.add('border-success', 'bg-success-subtle', 'bg-opacity-10');
+            setTimeout(() => {
+                tgtEl.classList.remove('border-success', 'bg-success-subtle', 'bg-opacity-10');
+            }, 2500);
+        } else {
+            updateBadgeStatus(tgtId, 'ready');
+        }
+    })
+    .catch(err => {
+        console.error('Translation error for ' + tgtId + ':', err);
+        updateBadgeStatus(tgtId, 'ready');
+    })
+    .finally(() => {
+        if (spinner) spinner.classList.add('d-none');
     });
 }
+
+function translateAllFields(force = true) {
+    const btn = document.getElementById('btnAiTranslateAll');
+    const headerBtn = document.getElementById('btnAiTranslateNewsHeader');
+    const origHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែ...';
+    }
+    if (headerBtn) {
+        headerBtn.disabled = true;
+        headerBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែ...';
+    }
+
+    const promises = fieldPairs.map(p => translateSingleField(p.src, p.tgt, p.ctx, force));
+
+    Promise.all(promises).then(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែរួច!';
+            setTimeout(() => { btn.innerHTML = origHtml; }, 2500);
+        }
+        if (headerBtn) {
+            headerBtn.disabled = false;
+            headerBtn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែរួច!';
+            setTimeout(() => {
+                headerBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> ' + ('{{ current_language }}' === 'en' ? '⚡ Auto-Translate to English via AI' : '⚡ បកប្រែជាភាសាអង់គ្លេសស្វ័យប្រវត្តដោយ AI');
+            }, 2500);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateCharCounts();
+
+    // Initialize English fields state
+    fieldPairs.forEach(p => {
+        const srcEl = document.getElementById(p.src);
+        const tgtEl = document.getElementById(p.tgt);
+        if (!tgtEl) return;
+
+        // If English field already has content on load, mark it
+        if (tgtEl.value.trim()) {
+            tgtEl.dataset.adminModified = 'true';
+            updateBadgeStatus(p.tgt, 'ready');
+        } else {
+            updateBadgeStatus(p.tgt, 'waiting');
+        }
+
+        // Detect Admin manual typing/edits on English field
+        tgtEl.addEventListener('input', function() {
+            tgtEl.dataset.adminModified = 'true';
+            updateBadgeStatus(p.tgt, 'admin_edited');
+        });
+
+        // Watch Khmer field for real-time changes
+        if (srcEl) {
+            srcEl.addEventListener('input', function() {
+                updateCharCounts();
+                
+                const autoSync = document.getElementById('autoSyncToggle');
+                if (!autoSync || !autoSync.checked) return;
+
+                // Debounce auto-translation (1200ms)
+                clearTimeout(debounceTimers[p.src]);
+                debounceTimers[p.src] = setTimeout(() => {
+                    if (!tgtEl.dataset.adminModified || tgtEl.dataset.adminModified === 'false' || !tgtEl.value.trim()) {
+                        translateSingleField(p.src, p.tgt, p.ctx, false);
+                    }
+                }, 1200);
+            });
+
+            srcEl.addEventListener('blur', function() {
+                const autoSync = document.getElementById('autoSyncToggle');
+                if (!autoSync || !autoSync.checked) return;
+                if (!tgtEl.dataset.adminModified || tgtEl.dataset.adminModified === 'false' || !tgtEl.value.trim()) {
+                    translateSingleField(p.src, p.tgt, p.ctx, false);
+                }
+            });
+        }
+    });
+});
 </script>
 {% endblock %}
+

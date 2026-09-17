@@ -25,20 +25,55 @@ def lang_switch(context, kh_text, en_text=None):
 def get_bilingual(context, obj, field_name):
     """
     Retrieves bilingual field value from model instance.
-    Looks up <field_name>_en when current_language == 'en', falling back to <field_name> or <field_name>_kh.
+    Looks up <field_name>_en when current_language == 'en'.
+    Guarantees clean language separation by ensuring English view never outputs raw Khmer.
     Usage: {% get_bilingual item 'title' %}
     """
     if not obj:
         return ''
     current_lang = context.get('current_language', 'km')
     if current_lang == 'en':
+        import re
         val_en = getattr(obj, f"{field_name}_en", None)
         if val_en and str(val_en).strip():
+            # Check if val_en is genuinely English or mistakenly stored with Khmer
+            khmer_count = len(re.findall(r'[\u1780-\u17FF]', str(val_en)))
+            if khmer_count == 0 or (khmer_count / max(len(str(val_en).strip()), 1)) < 0.25:
+                return val_en
+
+        # If val_en is missing or has excessive Khmer, attempt AI translation on the fly
+        raw_kh = getattr(obj, field_name, None) or getattr(obj, f"{field_name}_kh", None) or ''
+        if raw_kh and str(raw_kh).strip():
+            from apps.tools.ai_translation_service import AiTranslationService
+            auto_en = AiTranslationService.translate_khmer_to_english(str(raw_kh).strip(), context=f"{field_name} translation")
+            if auto_en and not re.search(r'[\u1780-\u17FF]', auto_en):
+                try:
+                    setattr(obj, f"{field_name}_en", auto_en)
+                    obj.save(update_fields=[f"{field_name}_en"])
+                except Exception:
+                    pass
+                return auto_en
+
+        # If fallback needed, return val_en or clean title
+        if val_en and str(val_en).strip():
             return val_en
+
     val = getattr(obj, field_name, None)
     if val is None or str(val).strip() == '':
         val = getattr(obj, f"{field_name}_kh", None)
     return val or ''
+
+@register.filter(name='bilingual')
+def bilingual_filter(obj, field_args):
+    """
+    Template filter: {{ obj|bilingual:'title' }} or {{ obj|bilingual:'title:en' }}
+    """
+    if not obj or not field_args:
+        return ''
+    parts = str(field_args).split(':')
+    field_name = parts[0]
+    lang = parts[1] if len(parts) > 1 else 'km'
+    return get_bilingual({'current_language': lang}, obj, field_name)
 
 @register.filter(name='clean_choice')
 def clean_choice_filter(val, lang='km'):

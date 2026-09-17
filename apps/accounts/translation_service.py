@@ -176,7 +176,22 @@ def get_current_language(request) -> str:
     if not request:
         return DEFAULT_LANGUAGE
 
-    # 1. Check Session
+    # 1. Check Request GET / POST Parameter
+    if hasattr(request, 'GET') and request.GET.get('lang'):
+        lang = str(request.GET.get('lang')).lower().strip()
+        if lang in SUPPORTED_LANGUAGES:
+            if hasattr(request, 'session'):
+                request.session['django_language'] = lang
+            return lang
+
+    if hasattr(request, 'POST') and request.POST.get('lang'):
+        lang = str(request.POST.get('lang')).lower().strip()
+        if lang in SUPPORTED_LANGUAGES:
+            if hasattr(request, 'session'):
+                request.session['django_language'] = lang
+            return lang
+
+    # 2. Check Session
     if hasattr(request, 'session') and request.session.get('django_language'):
         lang = str(request.session.get('django_language')).lower().strip()
         if lang in SUPPORTED_LANGUAGES:

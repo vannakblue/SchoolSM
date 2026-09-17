@@ -28,6 +28,24 @@
     <!-- Animate.css for smooth entrance effects -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
+    <!-- Anti-FOUC Synchronous Theme Initialization -->
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('app_theme');
+                if (!savedTheme) {
+                    savedTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-bs-theme', savedTheme);
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark-theme');
+                } else {
+                    document.documentElement.classList.remove('dark-theme');
+                }
+            } catch(e) {}
+        })();
+    </script>
+
     <style>
         :root {
             --primary-color: {{ school_profile.theme_primary_color|default:"#1e40af" }};
@@ -40,6 +58,278 @@
             --light-bg: {{ school_profile.body_bg_color|default:"#f8fafc" }};
             --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
             --card-hover-shadow: 0 20px 30px -10px rgba(30, 64, 175, 0.15);
+        }
+
+        /* Smooth Global Theme Transition */
+        body, .web-navbar, .topbar-utility, .card, .card-custom, article, .stat-box, .web-footer, .form-control, .form-select {
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Sleek Theme Toggle Pill Button (Topbar) */
+        .theme-pill-btn {
+            background: rgba(255, 255, 255, 0.16) !important;
+            border: 1px solid rgba(255, 255, 255, 0.35) !important;
+            color: #ffffff !important;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            font-size: 0.85rem;
+            padding: 0;
+            line-height: 1;
+        }
+        .theme-pill-btn:hover {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            transform: translateY(-1px) rotate(15deg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Desktop Navbar Theme Toggle Button */
+        .btn-theme-nav {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+            font-size: 0.95rem;
+            padding: 0;
+        }
+        .btn-theme-nav:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+            transform: translateY(-1px) rotate(15deg);
+        }
+
+        /* Mobile Theme Toggle Button */
+        .btn-theme-mobile {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 0.85rem;
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+
+        /* Theme Icon Visibility */
+        .theme-icon-sun {
+            display: none;
+            color: #f59e0b;
+        }
+        .theme-icon-moon {
+            display: inline-block;
+        }
+
+        /* ==========================================================================
+           ULTRA-PREMIUM SLEEK DARK MODE (Modern Web App Aesthetics)
+           ========================================================================== */
+        html[data-bs-theme="dark"],
+        [data-bs-theme="dark"] {
+            --light-bg: #090e1a;
+            --dark-surface: #060a14;
+            --footer-bg: #04070d;
+            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+            --card-hover-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+            color-scheme: dark;
+        }
+
+        html[data-bs-theme="dark"] body {
+            background-color: #090e1a !important;
+            color: #cbd5e1 !important;
+        }
+
+        html[data-bs-theme="dark"] .theme-icon-moon {
+            display: none !important;
+        }
+        html[data-bs-theme="dark"] .theme-icon-sun {
+            display: inline-block !important;
+        }
+
+        html[data-bs-theme="dark"] .btn-theme-nav {
+            background: #141d33 !important;
+            border-color: #24324f !important;
+            color: #f59e0b !important;
+        }
+        html[data-bs-theme="dark"] .btn-theme-nav:hover {
+            background: #1c2947 !important;
+            border-color: #3b82f6 !important;
+            color: #fbbf24 !important;
+        }
+
+        html[data-bs-theme="dark"] .btn-theme-mobile {
+            background: #141d33 !important;
+            border-color: #24324f !important;
+            color: #f59e0b !important;
+        }
+
+        html[data-bs-theme="dark"] .topbar-utility {
+            background-color: #060a14 !important;
+            border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+            color: #94a3b8 !important;
+        }
+
+        html[data-bs-theme="dark"] .web-navbar {
+            background: rgba(9, 14, 26, 0.92) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+        }
+        html[data-bs-theme="dark"] .navbar-brand .text-dark,
+        html[data-bs-theme="dark"] .navbar-brand span.fw-bold {
+            color: #f8fafc !important;
+        }
+        html[data-bs-theme="dark"] .nav-link {
+            color: #cbd5e1 !important;
+        }
+        html[data-bs-theme="dark"] .nav-link:hover,
+        html[data-bs-theme="dark"] .nav-link.active {
+            color: #60a5fa !important;
+            background-color: rgba(59, 130, 246, 0.14) !important;
+        }
+
+        /* Dropdown Menus in Dark Mode */
+        html[data-bs-theme="dark"] .dropdown-menu {
+            background: #111a2e !important;
+            border: 1px solid #24324f !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+        }
+        html[data-bs-theme="dark"] .dropdown-item {
+            color: #cbd5e1 !important;
+        }
+        html[data-bs-theme="dark"] .dropdown-item:hover {
+            background-color: #17233d !important;
+            color: #60a5fa !important;
+        }
+        html[data-bs-theme="dark"] .dropdown-item.active {
+            background-color: rgba(59, 130, 246, 0.22) !important;
+            color: #93c5fd !important;
+        }
+        html[data-bs-theme="dark"] .dropdown-header {
+            color: #64748b !important;
+        }
+
+        /* Cards, Containers & Surfaces */
+        html[data-bs-theme="dark"] .card,
+        html[data-bs-theme="dark"] .card-custom,
+        html[data-bs-theme="dark"] article.bg-white,
+        html[data-bs-theme="dark"] .stat-box {
+            background-color: #111a2e !important;
+            border-color: #202c44 !important;
+            color: #cbd5e1 !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+        }
+        html[data-bs-theme="dark"] .card-custom:hover {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5) !important;
+        }
+        html[data-bs-theme="dark"] .stat-number {
+            color: #60a5fa !important;
+        }
+
+        /* Background utilities */
+        html[data-bs-theme="dark"] .bg-white {
+            background-color: #111a2e !important;
+            color: #f1f5f9 !important;
+        }
+        html[data-bs-theme="dark"] .bg-light {
+            background-color: #0c1424 !important;
+            color: #cbd5e1 !important;
+        }
+        html[data-bs-theme="dark"] .border-bottom,
+        html[data-bs-theme="dark"] .border-top,
+        html[data-bs-theme="dark"] .border-start,
+        html[data-bs-theme="dark"] .border-end,
+        html[data-bs-theme="dark"] .border {
+            border-color: #202c44 !important;
+        }
+
+        /* Typography */
+        html[data-bs-theme="dark"] h1,
+        html[data-bs-theme="dark"] h2,
+        html[data-bs-theme="dark"] h3,
+        html[data-bs-theme="dark"] h4,
+        html[data-bs-theme="dark"] h5,
+        html[data-bs-theme="dark"] h6,
+        html[data-bs-theme="dark"] .section-title,
+        html[data-bs-theme="dark"] .card-title,
+        html[data-bs-theme="dark"] .text-dark {
+            color: #f8fafc !important;
+        }
+        html[data-bs-theme="dark"] .text-secondary {
+            color: #94a3b8 !important;
+        }
+        html[data-bs-theme="dark"] .text-muted {
+            color: #94a3b8 !important;
+        }
+
+        /* Form Controls */
+        html[data-bs-theme="dark"] .form-control,
+        html[data-bs-theme="dark"] .form-select {
+            background-color: #0c1424 !important;
+            border-color: #24324f !important;
+            color: #f8fafc !important;
+        }
+        html[data-bs-theme="dark"] .form-control:focus,
+        html[data-bs-theme="dark"] .form-select:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+            background-color: #0c1424 !important;
+            color: #f8fafc !important;
+        }
+        html[data-bs-theme="dark"] .form-control::placeholder {
+            color: #64748b !important;
+        }
+        html[data-bs-theme="dark"] .input-group-text {
+            background-color: #111a2e !important;
+            border-color: #24324f !important;
+            color: #94a3b8 !important;
+        }
+
+        /* Badges & Alerts */
+        html[data-bs-theme="dark"] .badge.bg-light {
+            background-color: #17233d !important;
+            border-color: #24324f !important;
+            color: #cbd5e1 !important;
+        }
+        html[data-bs-theme="dark"] .alert-light {
+            background-color: #111a2e !important;
+            border-color: #24324f !important;
+            color: #cbd5e1 !important;
+        }
+        html[data-bs-theme="dark"] .section-badge {
+            background-color: rgba(59, 130, 246, 0.16) !important;
+            color: #60a5fa !important;
+        }
+
+        /* Sticky Sidebar & Article Detail elements */
+        html[data-bs-theme="dark"] .sticky-top {
+            background-color: #111a2e !important;
+        }
+        html[data-bs-theme="dark"] .article-content {
+            color: #cbd5e1 !important;
+        }
+
+        /* Footer */
+        html[data-bs-theme="dark"] .web-footer {
+            background-color: #04070d !important;
+            border-top-color: #1e3a8a !important;
         }
 
         body {
@@ -59,14 +349,110 @@
             color: #cbd5e1;
             font-size: 0.85rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1050 !important; /* Float above sticky navbar (1020) so dropdown is never blocked */
         }
-        .topbar-utility a {
+        .topbar-utility a:not(.dropdown-item) {
             color: #e2e8f0;
             text-decoration: none;
             transition: color 0.2s;
         }
-        .topbar-utility a:hover {
+        .topbar-utility a:not(.dropdown-item):hover {
             color: var(--accent-gold);
+        }
+
+        /* Dedicated Language Switcher Pill Button (High contrast, crystal clear on hover) */
+        .lang-pill-btn {
+            background: rgba(255, 255, 255, 0.16) !important;
+            border: 1px solid rgba(255, 255, 255, 0.35) !important;
+            color: #ffffff !important;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.3rem 0.9rem;
+            border-radius: 50px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            text-decoration: none !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        }
+        .lang-pill-btn.dropdown-toggle::after {
+            display: none !important; /* Hide duplicate bootstrap caret */
+        }
+        .lang-pill-btn * {
+            color: inherit !important;
+        }
+        .lang-pill-btn:hover,
+        .lang-pill-btn:focus,
+        .lang-pill-btn.show,
+        .lang-pill-btn[aria-expanded="true"] {
+            background: #ffffff !important;
+            border-color: #ffffff !important;
+            color: #0f172a !important; /* Crystal clear dark text on white hover */
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            transform: translateY(-1px);
+        }
+        .lang-pill-btn:hover *,
+        .lang-pill-btn:focus *,
+        .lang-pill-btn.show *,
+        .lang-pill-btn[aria-expanded="true"] * {
+            color: #0f172a !important;
+        }
+        .lang-pill-btn .dropdown-arrow {
+            font-size: 0.7rem;
+            transition: transform 0.2s ease;
+        }
+        .lang-pill-btn.show .dropdown-arrow,
+        .lang-pill-btn[aria-expanded="true"] .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        /* Language Dropdown Menus */
+        .topbar-utility .dropdown-menu,
+        .web-navbar .dropdown-menu {
+            border-radius: 14px !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22) !important;
+            padding: 8px !important;
+            background: #ffffff !important;
+            min-width: 215px !important;
+            z-index: 9999 !important;
+            margin-top: 8px !important;
+        }
+        .topbar-utility .dropdown-item,
+        .web-navbar .dropdown-item {
+            color: #1e293b !important; /* Force high-contrast dark text on white background */
+            font-weight: 600 !important;
+            font-size: 0.86rem !important;
+            padding: 10px 14px !important;
+            border-radius: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            transition: all 0.15s ease !important;
+            text-decoration: none !important;
+            background: transparent !important;
+            cursor: pointer !important;
+            user-select: none;
+        }
+        .topbar-utility .dropdown-item:hover,
+        .web-navbar .dropdown-item:hover {
+            background-color: #f1f5f9 !important;
+            color: #1d4ed8 !important;
+            transform: translateX(3px);
+        }
+        .topbar-utility .dropdown-item.active,
+        .web-navbar .dropdown-item.active {
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+            font-weight: 700 !important;
+        }
+        .topbar-utility .dropdown-item .check-icon,
+        .web-navbar .dropdown-item .check-icon {
+            color: #10b981;
+            font-size: 0.85rem;
         }
 
         /* Glassmorphic Navbar */
@@ -292,7 +678,7 @@
                 <span>
                     <i class="fa-solid fa-location-dot text-danger me-1"></i>
                     {% if is_english %}
-                        {{ school_profile.district|default:"Kandal Stueng" }}, {{ school_profile.province|default:"Kandal Province" }}
+                        {{ school_profile.district_en|default:"Kandal Stueng" }}, {{ school_profile.province_en|default:"Kandal Province" }}
                     {% else %}
                         {{ school_profile.district|default:"កណ្ដាលស្ទឹង" }}, {{ school_profile.province|default:"ខេត្តកណ្ដាល" }}
                     {% endif %}
@@ -305,26 +691,44 @@
                 </span>
 
                 <!-- Language Switcher in Top Bar -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-light dropdown-toggle px-2 py-1 rounded-pill d-flex align-items-center gap-1 text-light border-light-subtle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem;">
+                <div class="dropdown position-relative">
+                    <button class="lang-pill-btn dropdown-toggle" type="button" id="topbarLangDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
                         <span>{{ current_language_flag|default:"🇰🇭" }}</span>
-                        <span class="fw-semibold">{{ current_language_name|default:"ភាសាខ្មែរ" }}</span>
+                        <span>{{ current_language_name|default:"ភាសាខ្មែរ" }}</span>
+                        <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3 py-1 border-0">
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="topbarLangDropdown">
                         <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 {% if is_khmer %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}">
-                                <span>🇰🇭</span>
-                                <span>ភាសាខ្មែរ (Khmer)</span>
+                            <h6 class="dropdown-header small text-muted px-2 py-1 mb-1" style="font-size: 0.72rem;">
+                                {% lang_switch "ជ្រើសរើសភាសា / Language" "Select Language / ភាសា" %}
+                            </h6>
+                        </li>
+                        <li>
+                            <a class="dropdown-item {% if is_khmer %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('km')">
+                                <span class="d-flex align-items-center gap-2">
+                                    <span class="fs-6">🇰🇭</span>
+                                    <span>ភាសាខ្មែរ (Khmer)</span>
+                                </span>
+                                {% if is_khmer %}<i class="fa-solid fa-circle-check check-icon"></i>{% endif %}
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 {% if is_english %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}">
-                                <span>🇬🇧</span>
-                                <span>English (EN)</span>
+                            <a class="dropdown-item {% if is_english %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('en')">
+                                <span class="d-flex align-items-center gap-2">
+                                    <span class="fs-6">🇬🇧</span>
+                                    <span>English (EN)</span>
+                                </span>
+                                {% if is_english %}<i class="fa-solid fa-circle-check check-icon"></i>{% endif %}
                             </a>
                         </li>
                     </ul>
                 </div>
+
+                <!-- Theme Toggle in Top Bar -->
+                <button class="theme-pill-btn" type="button" id="topbarThemeToggle" onclick="toggleAppTheme()" title="{% lang_switch 'ប្តូរ Theme (Light / Dark)' 'Toggle Theme (Light / Dark)' %}" aria-label="Toggle dark mode">
+                    <i class="fa-solid fa-moon theme-icon-moon"></i>
+                    <i class="fa-solid fa-sun theme-icon-sun"></i>
+                </button>
 
                 {% if user.is_authenticated %}
                 <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
@@ -356,15 +760,30 @@
                 </div>
             </a>
 
-            <!-- Mobile Actions: Language Switch + Hamburger Toggle -->
+            <!-- Mobile Actions: Theme Toggle + Language Switch + Hamburger Toggle -->
             <div class="d-flex align-items-center gap-2 d-lg-none">
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-light border dropdown-toggle px-2 py-1 rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem;">
-                        {{ current_language_flag|default:"🇰🇭" }}
+                <button class="btn btn-sm btn-outline-secondary btn-theme-mobile rounded-circle shadow-none" type="button" onclick="toggleAppTheme()" title="Toggle Theme" aria-label="Toggle theme">
+                    <i class="fa-solid fa-moon theme-icon-moon"></i>
+                    <i class="fa-solid fa-sun theme-icon-sun"></i>
+                </button>
+                <div class="dropdown position-relative">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle px-2.5 py-1 rounded-pill d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.82rem;">
+                        <span>{{ current_language_flag|default:"🇰🇭" }}</span>
+                        <span class="small fw-bold">{{ current_language|upper }}</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1">
-                        <li><a class="dropdown-item {% if is_khmer %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}">🇰🇭 ភាសាខ្មែរ</a></li>
-                        <li><a class="dropdown-item {% if is_english %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}">🇬🇧 English</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-1">
+                        <li>
+                            <a class="dropdown-item {% if is_khmer %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('km')">
+                                <span>🇰🇭 ភាសាខ្មែរ</span>
+                                {% if is_khmer %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item {% if is_english %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('en')">
+                                <span>🇬🇧 English</span>
+                                {% if is_english %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -417,8 +836,36 @@
                     </li>
                 </ul>
 
-                <!-- Portal Action Buttons -->
+                <!-- Portal Action Buttons + Navbar Language Switcher -->
                 <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+                    <!-- Desktop Navbar Language Switcher -->
+                    <div class="dropdown d-none d-lg-block position-relative me-1">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5 shadow-none" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.83rem;">
+                            <span>{{ current_language_flag|default:"🇰🇭" }}</span>
+                            <span>{{ current_language_name|default:"ភាសាខ្មែរ" }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-1">
+                            <li>
+                                <a class="dropdown-item {% if is_khmer %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('km')">
+                                    <span>🇰🇭 ភាសាខ្មែរ (Khmer)</span>
+                                    {% if is_khmer %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if is_english %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('en')">
+                                    <span>🇬🇧 English (EN)</span>
+                                    {% if is_english %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Desktop Navbar Theme Toggle -->
+                    <button class="btn-theme-nav d-none d-lg-inline-flex me-1" type="button" id="navThemeToggle" onclick="toggleAppTheme()" title="{% lang_switch 'ប្តូរ Theme (Light / Dark)' 'Toggle Theme (Light / Dark)' %}" aria-label="Toggle theme">
+                        <i class="fa-solid fa-moon theme-icon-moon"></i>
+                        <i class="fa-solid fa-sun theme-icon-sun"></i>
+                    </button>
+
                     {% if user.is_authenticated %}
                         <a href="{% url 'dashboard_redirect' %}" class="btn-portal-dashboard">
                             <i class="fa-solid fa-gauge-high"></i>
@@ -509,7 +956,7 @@
                         {% if school_profile.doe_name %}
                         <li><i class="fa-solid fa-city text-secondary me-2"></i>{{ school_profile.doe_name }}</li>
                         {% endif %}
-                        <li><i class="fa-solid fa-user-tie text-success me-2"></i>{% lang_switch "នាយកសាលា៖" "Principal:" %} {% if is_english %}{{ school_profile.principal_name_en|default:school_profile.principal_name }}{% else %}{{ school_profile.principal_name|default:"លោក ផេង វ៉ូយ៉ា" }}{% endif %}</li>
+                        <li><i class="fa-solid fa-user-tie text-success me-2"></i>{% lang_switch "នាយកសាលា៖" "Principal:" %} {% if is_english %}{{ school_profile.principal_name_en|default:school_profile.principal_name|default:"Mr. Theng Rithya" }}{% else %}{{ school_profile.principal_name|default:"លោក ថេង រិទ្ធីយ៉ា" }}{% endif %}</li>
                         <li class="mt-2">
                             <a href="{% url 'login' %}" class="badge bg-primary text-decoration-none py-2 px-3 rounded-pill">
                                 <i class="fa-solid fa-lock me-1"></i>{% lang_switch "ច្រកចូលគ្រប់គ្រង (Admin Login)" "Admin Portal Login" %}
@@ -525,9 +972,9 @@
                         <li>
                             <i class="fa-solid fa-location-dot text-danger me-2"></i>
                             {% if is_english %}
-                                {{ school_profile.street_address_en|default:school_profile.street_address }}, {{ school_profile.district|default:"Kandal Stueng" }}, {{ school_profile.province|default:"Kandal Province" }}
+                                {{ school_profile.street_address_en|default:"Street 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal Province" }}
                             {% else %}
-                                {{ school_profile.street_address|default:"ផ្លូវលេខ២០៤ ភូមិស្វាយមីង ឃុំបារគូ" }}, {{ school_profile.district|default:"ស្រុកកណ្ដាលស្ទឹង" }}, {{ school_profile.province|default:"ខេត្តកណ្ដាល" }}
+                                {{ school_profile.street_address|default:"ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល" }}
                             {% endif %}
                         </li>
                         <li><i class="fa-solid fa-phone text-warning me-2"></i>{{ school_profile.phone|default:"093 995 947 / 089 995 947" }}</li>
@@ -574,6 +1021,41 @@
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+
+        // Initialize Bootstrap dropdowns reliably
+        document.addEventListener('DOMContentLoaded', function () {
+            const dropdownElementList = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            dropdownElementList.forEach(function (dropdownToggleEl) {
+                if (window.bootstrap && window.bootstrap.Dropdown) {
+                    bootstrap.Dropdown.getOrCreateInstance(dropdownToggleEl);
+                }
+            });
+        });
+
+        // Instant client-side cookie writer for language switching
+        function switchLangImmediate(lang) {
+            document.cookie = "django_language=" + lang + "; path=/; max-age=31536000; SameSite=Lax";
+        }
+
+        // Universal Theme Toggle and State Synchronization
+        function toggleAppTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            } else {
+                document.documentElement.classList.remove('dark-theme');
+            }
+
+            try {
+                localStorage.setItem('app_theme', newTheme);
+                document.cookie = "app_theme=" + newTheme + ";path=/;max-age=31536000;SameSite=Lax";
+            } catch(e) {}
+
+            window.dispatchEvent(new CustomEvent('appThemeChanged', { detail: { theme: newTheme } }));
+        }
     </script>
     {% block extra_js %}{% endblock %}
 </body>

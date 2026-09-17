@@ -1,15 +1,16 @@
 {% extends 'website/base_website.html' %}
+{% load i18n_extras %}
 
-{% block title %}{{ announcement.title }} | សេចក្តីជូនដំណឹង{% endblock %}
+{% block title %}{% get_bilingual announcement 'title' %} | {% lang_switch "សេចក្តីជូនដំណឹង" "Announcement" %}{% endblock %}
 
 {% block content %}
 <div class="bg-light py-3 border-bottom">
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0 small">
-                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">ទំព័រដើម</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'website_announcement_list' %}" class="text-decoration-none">សេចក្តីជូនដំណឹង</a></li>
-                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{{ announcement.title }}</li>
+                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">{% lang_switch "ទំព័រដើម" "Home" %}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'website_announcement_list' %}" class="text-decoration-none">{% lang_switch "សេចក្តីជូនដំណឹង" "Announcements" %}</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{% get_bilingual announcement 'title' %}</li>
             </ol>
         </nav>
     </div>
@@ -24,29 +25,29 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge {% if announcement.priority == 'URGENT' %}bg-danger{% elif announcement.priority == 'IMPORTANT' %}bg-warning text-dark{% else %}bg-primary{% endif %} px-3 py-2 rounded-pill">
-                                {{ announcement.get_priority_display }}
+                                {{ announcement.get_priority_display|clean_choice:current_language }}
                             </span>
                             <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
-                                {{ announcement.get_category_display }}
+                                {{ announcement.get_category_display|clean_choice:current_language }}
                             </span>
                         </div>
-                        <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>កាលបរិច្ឆេទផ្សាយ៖ {{ announcement.created_at|date:"d-m-Y H:i" }}</small>
+                        <small class="text-muted"><i class="fa-regular fa-clock me-1"></i>{% lang_switch "កាលបរិច្ឆេទផ្សាយ៖" "Published Date:" %} {{ announcement.created_at|date:"d-m-Y H:i" }}</small>
                     </div>
 
                     <!-- Title -->
                     <h2 class="fw-bold mb-4 text-dark" style="line-height: 1.4;">
-                        {{ announcement.title }}
+                        {% get_bilingual announcement 'title' %}
                     </h2>
 
                     <!-- Audience Info -->
                     <div class="alert alert-light border p-3 rounded-3 mb-4 d-flex align-items-center gap-2">
                         <i class="fa-solid fa-users text-primary fs-5"></i>
-                        <span class="small fw-semibold">ក្រុមគោលដៅ៖ {{ announcement.get_target_audience_display }}</span>
+                        <span class="small fw-semibold">{% lang_switch "ក្រុមគោលដៅ៖" "Target Audience:" %} {{ announcement.get_target_audience_display|clean_choice:current_language }}</span>
                     </div>
 
                     <!-- Content -->
                     <div class="article-content text-secondary mb-4" style="font-size: 1.05rem; line-height: 1.8; white-space: pre-line;">
-                        {{ announcement.content }}
+                        {% get_bilingual announcement 'content' %}
                     </div>
 
                     <!-- Attachment if any -->
@@ -55,12 +56,12 @@
                         <div class="d-flex align-items-center gap-2">
                             <i class="fa-solid fa-file-pdf text-danger fs-3"></i>
                             <div>
-                                <h6 class="mb-0 fw-semibold">ឯកសារភ្ជាប់ផ្លូវការ</h6>
-                                <small class="text-muted">ទាញយកឯកសារលម្អិត</small>
+                                <h6 class="mb-0 fw-semibold">{% lang_switch "ឯកសារភ្ជាប់ផ្លូវការ" "Official Attachment" %}</h6>
+                                <small class="text-muted">{% lang_switch "ទាញយកឯកសារលម្អិត" "Download document" %}</small>
                             </div>
                         </div>
                         <a href="{{ announcement.attachment.url }}" download class="btn btn-outline-danger btn-sm rounded-pill px-3">
-                            <i class="fa-solid fa-download me-1"></i>ទាញយកឯកសារ
+                            <i class="fa-solid fa-download me-1"></i>{% lang_switch "ទាញយកឯកសារ" "Download Attachment" %}
                         </a>
                     </div>
                     {% endif %}
@@ -70,7 +71,7 @@
                     <!-- Footer Back Button -->
                     <div class="text-end">
                         <a href="{% url 'website_announcement_list' %}" class="btn btn-secondary rounded-pill px-4">
-                            <i class="fa-solid fa-arrow-left me-2"></i>ត្រឡប់ក្រោយ
+                            <i class="fa-solid fa-arrow-left me-2"></i>{% lang_switch "ត្រឡប់ក្រោយ" "Back" %}
                         </a>
                     </div>
                 </div>

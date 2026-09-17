@@ -95,7 +95,7 @@ class WebsiteBanner(models.Model):
     badge_text = models.CharField(max_length=100, blank=True, null=True, verbose_name="ស្លាកចំណាំ (Badge) / Badge Text")
     badge_text_en = models.CharField(max_length=100, blank=True, null=True, verbose_name="ស្លាកចំណាំ (Badge - English)")
     image = models.ImageField(upload_to='website/banners/', blank=True, null=True, verbose_name="រូបភាពបដា / Banner Background Image")
-    primary_btn_text = models.CharField(max_length=100, default="ស្វែងយល់បន្ថែម", blank=True, verbose_name="ប៊ូតុងទី១ / Primary Button Text")
+    primary_btn_text = models.CharField(max_length=100, default="ឈ្វេងយល់បន្ថែម", blank=True, verbose_name="ប៊ូតុងទី១ / Primary Button Text")
     primary_btn_text_en = models.CharField(max_length=100, default="Learn More", blank=True, verbose_name="ប៊ូតុងទី១ (English)")
     primary_btn_url = models.CharField(max_length=255, default="#about", blank=True, verbose_name="តំណភ្ជាប់ប៊ូតុងទី១ / Primary Button URL")
     secondary_btn_text = models.CharField(max_length=100, default="ចូលប្រព័ន្ធគ្រប់គ្រង", blank=True, verbose_name="ប៊ូតុងទី២ / Secondary Button Text")
