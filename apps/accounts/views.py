@@ -624,8 +624,7 @@ def gemini_settings_view(request):
 
     rotator_status = gemini_rotator.get_status_report()
     standard_models = [
-        'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash',
-        'gemini-flash-latest', 'gemini-1.5-pro'
+        'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'
     ]
     is_custom_model = bool(config.model_name and config.model_name not in standard_models)
 
@@ -661,7 +660,7 @@ def api_gemini_test_key(request):
             'message': '❌ មិនមាន API Key សម្រាប់ធ្វើតេស្តឡើយ! សូមវាយបញ្ចូល API Key ក្នុងប្រអប់ខាងលើសិន។'
         }, status=400)
 
-    model_name = request.POST.get('model_name', '').strip() or config.model_name or 'gemini-3.8-flash'
+    model_name = request.POST.get('model_name', '').strip() or config.model_name or 'gemini-3.5-flash'
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={test_key}"
 
     prompt_text = "ឆ្លើយជាភាសាខ្មែរមួយឃ្លាខ្លីថា៖ «ការតភ្ជាប់ជាមួយប្រព័ន្ធ Gemini AI ដំណើរការជោគជ័យ!»"
@@ -675,9 +674,9 @@ def api_gemini_test_key(request):
         resp = requests.post(url, json=payload, timeout=15)
         latency_ms = int((time.time() - start_time) * 1000)
 
-        # Auto-Fallback if primary model experiences 503 (High Demand) or 404
+        # Auto-Fallback if primary model experiences 503 (High Demand) or 404 (Deprecated model)
         if resp.status_code in [503, 404]:
-            fallback_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash']
+            fallback_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash']
             for fb_model in fallback_models:
                 if fb_model == model_name:
                     continue

@@ -204,9 +204,9 @@ class GeminiAiConfig(models.Model):
     )
     model_name = models.CharField(
         max_length=100,
-        default="gemini-3.8-flash",
+        default="gemini-3.5-flash",
         verbose_name="ម៉ូដែល Gemini AI ចម្បង (Primary Model)",
-        help_text="ឧទាហរណ៍៖ gemini-3.8-flash, gemini-2.5-flash, gemini-flash-latest"
+        help_text="ឧទាហរណ៍៖ gemini-3.5-flash, gemini-3.5-flash-lite, gemini-flash-latest"
     )
     thinking_level = models.CharField(
         max_length=20,
