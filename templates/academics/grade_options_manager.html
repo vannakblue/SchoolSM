@@ -69,13 +69,13 @@
             <span class="small text-muted fw-bold me-1">ប្តូរវិធីចុះឈ្មោះរហ័ស៖</span>
             <div class="btn-group shadow-xs" role="group">
                 <button type="button" class="btn btn-sm btn-outline-primary {% if school_profile.registration_mode == 'ADMIN_CUSTOM' %}active fw-bold{% endif %}" onclick="switchRegistrationMode('ADMIN_CUSTOM')">
-                    <i class="fa-solid fa-clipboard-list me-1"></i> ១. Admin កំណត់
+                    <i class="fa-solid fa-clipboard-list me-1"></i> ១. Admin កំណត់{% if school_profile.registration_mode == 'ADMIN_CUSTOM' %} <i class="fa-solid fa-circle-check ms-1"></i>{% endif %}
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-info {% if school_profile.registration_mode == 'MOEYS_INDIVIDUAL' %}active fw-bold{% endif %}" onclick="switchRegistrationMode('MOEYS_INDIVIDUAL')">
-                    <i class="fa-solid fa-id-card-clip me-1"></i> ២. សម្រង់ MoEYS
+                    <i class="fa-solid fa-id-card-clip me-1"></i> ២. សម្រង់ MoEYS{% if school_profile.registration_mode == 'MOEYS_INDIVIDUAL' %} <i class="fa-solid fa-circle-check ms-1"></i>{% endif %}
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-success {% if school_profile.registration_mode == 'BOTH' %}active fw-bold{% endif %}" onclick="switchRegistrationMode('BOTH')">
-                    <i class="fa-solid fa-sliders me-1"></i> ៣. តាមកម្រិតថ្នាក់
+                    <i class="fa-solid fa-sliders me-1"></i> ៣. តាមកម្រិតថ្នាក់{% if school_profile.registration_mode == 'BOTH' %} <i class="fa-solid fa-circle-check ms-1"></i>{% endif %}
                 </button>
             </div>
             <a href="{% url 'school_profile_settings' %}" class="btn btn-sm btn-light border text-muted" title="ការកំណត់សាលាពេញលេញ">

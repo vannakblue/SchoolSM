@@ -11,15 +11,36 @@
         <p class="text-muted small mb-0">គ្រប់គ្រងកម្រិតថ្នាក់ និងកំណត់ពិន្ទុអតិបរមាតាម ១៤ មុខវិជ្ជាផ្លូវការ (MoEYS Standard)</p>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
-        <!-- Export Excel Button -->
-        <a href="{% url 'grade_rules_export_excel' %}" class="btn btn-success fw-bold shadow-sm" title="ទាញយកជាឯកសារ Excel (.xlsx)">
-            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
-        </a>
-
-        <!-- Export CSV Button -->
-        <a href="{% url 'grade_rules_export_csv' %}" class="btn btn-outline-success fw-bold shadow-sm bg-white" title="ទាញយកជាឯកសារ CSV (.csv)">
-            <i class="fa-solid fa-file-csv me-1"></i> Export CSV
-        </a>
+        <!-- Export Dropdown (Excel Default + CSV Option) -->
+        <div class="btn-group shadow-sm" role="group">
+            <a href="{% url 'grade_rules_export_excel' %}" class="btn btn-success fw-bold" title="ទាញយកជាឯកសារ Excel (.xlsx) - លំនាំដើម">
+                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+            </a>
+            <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="ជម្រើស Export ផ្សេងទៀត">
+                <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-success active bg-light" href="{% url 'grade_rules_export_excel' %}">
+                        <i class="fa-solid fa-file-excel fs-5 text-success"></i>
+                        <div>
+                            <div class="fw-bold">Export Excel (.xlsx)</div>
+                            <small class="text-muted fw-normal" style="font-size: 0.75rem;">លំនាំដើម (Default) • មាន Formats & Styling ស្អាត</small>
+                        </div>
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-dark" href="{% url 'grade_rules_export_csv' %}">
+                        <i class="fa-solid fa-file-csv fs-5 text-muted"></i>
+                        <div>
+                            <div class="fw-semibold">Export CSV (.csv)</div>
+                            <small class="text-muted fw-normal" style="font-size: 0.75rem;">ឯកសារអត្ថបទ Raw Text (សម្រាប់ IT & ប្រព័ន្ធ)</small>
+                        </div>
+                    </a>
+                </li>
+            </ul>
+        </div>
 
         <!-- Import Excel/CSV Button -->
         <button type="button" class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#importRulesModal">
