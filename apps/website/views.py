@@ -267,6 +267,8 @@ def cms_news_create(request):
             article = form.save(commit=False)
             article.author = request.user
             article.save()
+            from apps.tools.ai_translation_service import AiTranslationService
+            AiTranslationService.auto_translate_news(article)
             messages.success(request, f"បានបង្កើតអត្ថបទព័ត៌មាន '{article.title}' ជោគជ័យ!")
             return redirect('website_news_manager')
     else:
@@ -289,7 +291,9 @@ def cms_news_edit(request, pk):
     if request.method == 'POST':
         form = NewsArticleForm(request.POST, request.FILES, instance=article)
         if form.is_valid():
-            form.save()
+            article = form.save()
+            from apps.tools.ai_translation_service import AiTranslationService
+            AiTranslationService.auto_translate_news(article)
             messages.success(request, f"បានកែប្រែព័ត៌មាន '{article.title}' ជោគជ័យ!")
             return redirect('website_news_manager')
     else:

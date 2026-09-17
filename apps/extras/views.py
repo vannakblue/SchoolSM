@@ -165,6 +165,9 @@ def announcement_create(request):
             ann.created_by = request.user
             ann.save()
 
+            from apps.tools.ai_translation_service import AiTranslationService
+            AiTranslationService.auto_translate_announcement(ann)
+
             if form.cleaned_data.get('broadcast_telegram'):
                 telegram_text = f"📢 *{ann.title}*\n\n{ann.content[:300]}..."
                 send_telegram_notification(

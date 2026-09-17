@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load i18n_extras %}
 
-{% block title %}គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់ (User Management) | SchoolSM{% endblock %}
+{% block title %}{% lang_switch "គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់" "User Management" %} | SchoolSM{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -98,19 +99,19 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="badge bg-primary px-3 py-1 rounded-pill"><i class="fa-solid fa-shield-halved me-1"></i> Admin Portal</span>
-                <span class="text-muted small">| ការគ្រប់គ្រងប្រព័ន្ធ</span>
+                <span class="text-muted small">| {% lang_switch "ការគ្រប់គ្រងប្រព័ន្ធ" "System Management" %}</span>
             </div>
             <h2 class="fw-bold mb-1 text-dark">
-                <i class="fa-solid fa-users-gear text-primary me-2"></i>គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់ (User Management)
+                <i class="fa-solid fa-users-gear text-primary me-2"></i>{% lang_switch "គ្រប់គ្រងគណនីអ្នកប្រើប្រាស់" "User Management" %}
             </h2>
-            <p class="text-muted small mb-0">បង្កើតគណនីថ្មី កែប្រែ Username កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password) និងចាក់សោ/បើកដំណើរការគណនី</p>
+            <p class="text-muted small mb-0">{% lang_switch "បង្កើតគណនីថ្មី កែប្រែ Username កំណត់ពាក្យសម្ងាត់ថ្មី និងចាក់សោ/បើកដំណើរការគណនី" "Create accounts, edit usernames, reset passwords, and lock/unlock accounts" %}</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'menu_permissions' %}" class="btn btn-outline-secondary fw-bold rounded-pill shadow-sm">
-                <i class="fa-solid fa-user-shield me-1 text-danger"></i> កំណត់សិទ្ធិ Menu
+                <i class="fa-solid fa-user-shield me-1 text-danger"></i> {% lang_switch "កំណត់សិទ្ធិ Menu" "Menu Permissions" %}
             </a>
             <button type="button" class="btn btn-primary fw-bold rounded-pill shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                <i class="fa-solid fa-user-plus me-1"></i> បង្កើតគណនីថ្មី (Add User)
+                <i class="fa-solid fa-user-plus me-1"></i> {% lang_switch "បង្កើតគណនីថ្មី" "Add New User" %}
             </button>
         </div>
     </div>
@@ -120,78 +121,78 @@
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">គណនីសរុប</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "គណនីសរុប" "Total Users" %}</span>
                     <div class="user-stat-icon-wrap bg-primary-subtle text-primary">
                         <i class="fa-solid fa-users"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-0 text-dark">{{ total_users_count }}</h3>
-                <span class="text-muted" style="font-size: 0.75rem;">ក្នុងប្រព័ន្ធទាំងមូល</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{% lang_switch "ក្នុងប្រព័ន្ធទាំងមូល" "System-wide" %}</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">គ្រូបង្រៀន</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "គ្រូបង្រៀន" "Teachers" %}</span>
                     <div class="user-stat-icon-wrap bg-warning-subtle text-warning">
                         <i class="fa-solid fa-chalkboard-user"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-0 text-dark">{{ teacher_count }}</h3>
-                <span class="text-muted" style="font-size: 0.75rem;">Teacher Accounts</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{% lang_switch "គណនីគ្រូបង្រៀន" "Teacher Accounts" %}</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">សិស្ស-អាណាព្យាបាល</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "សិស្ស-អាណាព្យាបាល" "Students & Parents" %}</span>
                     <div class="user-stat-icon-wrap bg-info-subtle text-info">
                         <i class="fa-solid fa-user-graduate"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-0 text-dark">{{ student_count }}</h3>
-                <span class="text-muted" style="font-size: 0.75rem;">Student Accounts</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{% lang_switch "គណនីសិស្ស" "Student Accounts" %}</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">គណនេយ្យករ</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "គណនេយ្យករ" "Accountants" %}</span>
                     <div class="user-stat-icon-wrap bg-success-subtle text-success">
                         <i class="fa-solid fa-wallet"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-0 text-dark">{{ accountant_count }}</h3>
-                <span class="text-muted" style="font-size: 0.75rem;">Accountants</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{% lang_switch "គណនីគណនេយ្យករ" "Accountant Accounts" %}</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">Admin / រដ្ឋបាល</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "អ្នកគ្រប់គ្រង" "Super Admins" %}</span>
                     <div class="user-stat-icon-wrap bg-danger-subtle text-danger">
                         <i class="fa-solid fa-user-shield"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold mb-0 text-dark">{{ admin_count }}</h3>
-                <span class="text-muted" style="font-size: 0.75rem;">Super Admins</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{% lang_switch "គណនីរដ្ឋបាល" "Admin Accounts" %}</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="user-stat-card p-3 h-100">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold">ស្ថានភាពគណនី</span>
+                    <span class="text-muted small fw-bold">{% lang_switch "ស្ថានភាពគណនី" "Account Status" %}</span>
                     <div class="user-stat-icon-wrap bg-secondary-subtle text-secondary">
                         <i class="fa-solid fa-toggle-on"></i>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>{{ active_count }} សកម្ម</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1"></i>{{ active_count }} {% lang_switch "សកម្ម" "Active" %}</span>
                     {% if inactive_count > 0 %}
-                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-lock me-1"></i>{{ inactive_count }} ចាក់សោ</span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-solid fa-lock me-1"></i>{{ inactive_count }} {% lang_switch "ចាក់សោ" "Inactive" %}</span>
                     {% endif %}
                 </div>
-                <span class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Active / Inactive Status</span>
+                <span class="text-muted mt-1 d-block" style="font-size: 0.75rem;">{% lang_switch "ស្ថានភាពដំណើរការ" "Active / Inactive Status" %}</span>
             </div>
         </div>
     </div>
@@ -204,51 +205,51 @@
                 <div class="col-12 col-lg-3">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-                        <input type="text" name="q" value="{{ search_query }}" class="form-control bg-light border-start-0" placeholder="ស្វែងរកតាម Username, ឈ្មោះ, ទូរស័ព្ទ, Email...">
+                        <input type="text" name="q" value="{{ search_query }}" class="form-control bg-light border-start-0" placeholder="{% lang_switch 'ស្វែងរកតាម Username, ឈ្មោះ, ទូរស័ព្ទ, Email...' 'Search by username, name, phone, email...' %}">
                     </div>
                 </div>
                 <!-- Role Filter -->
                 <div class="col-6 col-sm-4 col-lg-2">
                     <select name="role" class="form-select bg-light">
-                        <option value="">-- តួនាទីទាំងអស់ --</option>
+                        <option value="">-- {% lang_switch "តួនាទីទាំងអស់" "All Roles" %} --</option>
                         {% for r_val, r_label in role_choices %}
-                        <option value="{{ r_val }}" {% if role_filter == r_val %}selected{% endif %}>{{ r_label }}</option>
+                        <option value="{{ r_val }}" {% if role_filter == r_val %}selected{% endif %}>{{ r_label|clean_choice:current_language }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <!-- Status Filter -->
                 <div class="col-6 col-sm-4 col-lg-2">
                     <select name="status" class="form-select bg-light">
-                        <option value="">-- ស្ថានភាពទាំងអស់ --</option>
-                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>🟢 សកម្ម (Active)</option>
-                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>🔴 ចាក់សោ (Inactive)</option>
+                        <option value="">-- {% lang_switch "ស្ថានភាពទាំងអស់" "All Status" %} --</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>🟢 {% lang_switch "សកម្ម" "Active" %}</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>🔴 {% lang_switch "ចាក់សោ" "Inactive" %}</option>
                     </select>
                 </div>
                 <!-- Sort Filter -->
                 <div class="col-6 col-sm-4 col-lg-2">
                     <select name="sort" class="form-select bg-light">
-                        <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>កាលបរិច្ឆេទបង្កើត</option>
-                        <option value="username" {% if sort_by == 'username' %}selected{% endif %}>ឈ្មោះគណនី (Username)</option>
-                        <option value="khmer_name" {% if sort_by == 'khmer_name' %}selected{% endif %}>ឈ្មោះខ្មែរ (Name)</option>
-                        <option value="role" {% if sort_by == 'role' %}selected{% endif %}>តួនាទី (Role)</option>
-                        <option value="last_login" {% if sort_by == 'last_login' %}selected{% endif %}>ចូលប្រើចុងក្រោយ</option>
+                        <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>{% lang_switch "កាលបរិច្ឆេទបង្កើត" "Date Created" %}</option>
+                        <option value="username" {% if sort_by == 'username' %}selected{% endif %}>{% lang_switch "ឈ្មោះគណនី" "Username" %}</option>
+                        <option value="khmer_name" {% if sort_by == 'khmer_name' %}selected{% endif %}>{% lang_switch "ឈ្មោះ" "Name" %}</option>
+                        <option value="role" {% if sort_by == 'role' %}selected{% endif %}>{% lang_switch "តួនាទី" "Role" %}</option>
+                        <option value="last_login" {% if sort_by == 'last_login' %}selected{% endif %}>{% lang_switch "ចូលប្រើចុងក្រោយ" "Last Login" %}</option>
                     </select>
                 </div>
                 <!-- Per Page Filter -->
                 <div class="col-6 col-sm-4 col-lg-1">
-                    <select name="per_page" class="form-select bg-light fw-semibold" title="ចំនួនបង្ហាញក្នុង ១ ទំព័រ">
+                    <select name="per_page" class="form-select bg-light fw-semibold" title="{% lang_switch 'ចំនួនបង្ហាញក្នុង ១ ទំព័រ' 'Items per page' %}">
                         {% for opt in per_page_options %}
-                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}/ទំព័រ</option>
+                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}/{% lang_switch "ទំព័រ" "page" %}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <!-- Submit & Clear -->
                 <div class="col-12 col-sm-8 col-lg-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary fw-bold flex-grow-1">
-                        <i class="fa-solid fa-filter me-1"></i> ច្រោះ
+                        <i class="fa-solid fa-filter me-1"></i> {% lang_switch "ច្រោះ" "Filter" %}
                     </button>
                     {% if search_query or role_filter or status_filter or sort_by != 'date_joined' or per_page != 25 %}
-                    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary" title="សម្អាតការច្រោះ">
+                    <a href="{% url 'user_management' %}" class="btn btn-outline-secondary" title="{% lang_switch 'សម្អាតការច្រោះ' 'Clear filter' %}">
                         <i class="fa-solid fa-rotate-left"></i>
                     </a>
                     {% endif %}
@@ -261,10 +262,10 @@
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
-                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-list-check text-primary me-2"></i>បញ្ជីគណនីអ្នកប្រើប្រាស់</h5>
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5">{{ total_filtered_count }} គណនី</span>
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-list-check text-primary me-2"></i>{% lang_switch "បញ្ជីគណនីអ្នកប្រើប្រាស់" "User Accounts List" %}</h5>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5">{{ total_filtered_count }} {% lang_switch "គណនី" "Accounts" %}</span>
             </div>
-            <span class="text-muted small">ទំព័រទី {{ page_obj.number }} នៃ {{ page_obj.paginator.num_pages }}</span>
+            <span class="text-muted small">{% lang_switch "ទំព័រទី" "Page" %} {{ page_obj.number }} {% lang_switch "នៃ" "of" %} {{ page_obj.paginator.num_pages }}</span>
         </div>
         
         <div class="table-responsive">
@@ -272,12 +273,12 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4" style="width: 50px;">#</th>
-                        <th>គណនី (Username & Identity)</th>
-                        <th>តួនាទី (Role)</th>
-                        <th>ទំនាក់ទំនង (Phone & Email)</th>
-                        <th>កាលបរិច្ឆេទ (Date Joined)</th>
-                        <th class="text-center">ស្ថានភាព (Status)</th>
-                        <th class="text-end pe-4" style="min-width: 180px;">សកម្មភាព (Actions)</th>
+                        <th>{% lang_switch "គណនី" "Username & Identity" %}</th>
+                        <th>{% lang_switch "តួនាទី" "Role" %}</th>
+                        <th>{% lang_switch "ទំនាក់ទំនង" "Phone & Email" %}</th>
+                        <th>{% lang_switch "កាលបរិច្ឆេទ" "Date Joined" %}</th>
+                        <th class="text-center">{% lang_switch "ស្ថានភាព" "Status" %}</th>
+                        <th class="text-end pe-4" style="min-width: 180px;">{% lang_switch "សកម្មភាព" "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -297,13 +298,13 @@
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="fw-bold text-dark user-username-text" id="username-display-{{ u.id }}">{{ u.username }}</span>
                                         {% if u.id == request.user.id %}
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2" style="font-size: 0.7rem;">(គណនីលោកអ្នក / You)</span>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2" style="font-size: 0.7rem;">{% lang_switch "គណនីលោកអ្នក" "You" %}</span>
                                         {% endif %}
                                     </div>
                                     <div class="text-muted small user-fullname-text" id="fullname-display-{{ u.id }}">
                                         {% if u.khmer_name %}{{ u.khmer_name }}{% endif %}
                                         {% if u.latin_name %}<span class="text-secondary">({{ u.latin_name }})</span>{% endif %}
-                                        {% if not u.khmer_name and not u.latin_name %}<span class="text-muted fst-italic">គ្មានឈ្មោះ</span>{% endif %}
+                                        {% if not u.khmer_name and not u.latin_name %}<span class="text-muted fst-italic">{% lang_switch "គ្មានឈ្មោះ" "No Name" %}</span>{% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -311,7 +312,7 @@
                         <td>
                             <span class="badge rounded-pill px-2.5 py-1.5 fw-bold user-role-badge {% if u.role == 'ADMIN' %}badge-role-admin{% elif u.role == 'TEACHER' %}badge-role-teacher{% elif u.role == 'STUDENT' %}badge-role-student{% else %}badge-role-accountant{% endif %}" id="role-display-{{ u.id }}">
                                 {% if u.role == 'ADMIN' %}<i class="fa-solid fa-user-shield me-1"></i>{% elif u.role == 'TEACHER' %}<i class="fa-solid fa-chalkboard-user me-1"></i>{% elif u.role == 'STUDENT' %}<i class="fa-solid fa-user-graduate me-1"></i>{% else %}<i class="fa-solid fa-wallet me-1"></i>{% endif %}
-                                {{ u.get_role_display }}
+                                {{ u.get_role_display|clean_choice:current_language }}
                             </span>
                         </td>
                         <td>
@@ -330,17 +331,17 @@
                             <div class="small">
                                 <div class="text-dark"><i class="fa-regular fa-calendar text-muted me-1"></i> {{ u.date_joined|date:"d-m-Y" }}</div>
                                 <div class="text-muted" style="font-size: 0.75rem;">
-                                    {% if u.last_login %}ចូលចុងក្រោយ៖ {{ u.last_login|date:"d-m-Y H:i" }}{% else %}មិនទាន់ធ្លាប់ចូលប្រើ{% endif %}
+                                    {% if u.last_login %}{% lang_switch "ចូលចុងក្រោយ៖" "Last login:" %} {{ u.last_login|date:"d-m-Y H:i" }}{% else %}{% lang_switch "មិនទាន់ធ្លាប់ចូលប្រើ" "Never logged in" %}{% endif %}
                                 </div>
                             </div>
                         </td>
                         <td class="text-center">
                             <div class="d-flex flex-column align-items-center gap-1">
                                 <span class="badge rounded-pill px-2 py-1 user-status-badge {% if u.is_active %}badge-status-active{% else %}badge-status-inactive{% endif %}" id="status-badge-{{ u.id }}">
-                                    {% if u.is_active %}🟢 សកម្ម{% else %}🔴 ចាក់សោ{% endif %}
+                                    {% if u.is_active %}🟢 {% lang_switch "សកម្ម" "Active" %}{% else %}🔴 {% lang_switch "ចាក់សោ" "Inactive" %}{% endif %}
                                 </span>
                                 {% if u.id != request.user.id %}
-                                <div class="form-check form-switch form-switch-lg mt-1 mb-0" title="ចុចដើម្បីបើក/បិទគណនី">
+                                <div class="form-check form-switch form-switch-lg mt-1 mb-0" title="{% lang_switch 'ចុចដើម្បីបើក/បិទគណនី' 'Toggle active/inactive status' %}">
                                     <input class="form-check-input toggle-active-switch" type="checkbox" role="switch"
                                            data-user-id="{{ u.id }}" data-username="{{ u.username }}"
                                            {% if u.is_active %}checked{% endif %}>
@@ -352,7 +353,7 @@
                             <div class="action-btn-group d-inline-flex gap-1">
                                 <!-- Reset Password Button -->
                                 <button type="button" class="btn btn-outline-warning text-dark btn-reset-password"
-                                        title="កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password)"
+                                        title="{% lang_switch 'កំណត់ពាក្យសម្ងាត់ថ្មី' 'Reset Password' %}"
                                         data-user-id="{{ u.id }}"
                                         data-username="{{ u.username }}"
                                         data-fullname="{{ u.display_name }}"
@@ -362,7 +363,7 @@
                                 
                                 <!-- Edit User Button -->
                                 <button type="button" class="btn btn-outline-primary btn-edit-user"
-                                        title="កែប្រែ Username និងព័ត៌មាន (Edit User)"
+                                        title="{% lang_switch 'កែប្រែព័ត៌មានគណនី' 'Edit User' %}"
                                         data-user-id="{{ u.id }}"
                                         data-username="{{ u.username }}"
                                         data-khmer-name="{{ u.khmer_name|default:'' }}"
@@ -377,7 +378,7 @@
                                 <!-- Delete User Button -->
                                 {% if u.id != request.user.id %}
                                 <button type="button" class="btn btn-outline-danger btn-delete-user"
-                                        title="លុបគណនី (Delete User)"
+                                        title="{% lang_switch 'លុបគណនី' 'Delete User' %}"
                                         data-user-id="{{ u.id }}"
                                         data-username="{{ u.username }}"
                                         data-fullname="{{ u.display_name }}">
@@ -485,7 +486,7 @@
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header bg-primary text-white py-3 px-4 rounded-top-4">
                 <h5 class="modal-title fw-bold" id="createUserModalLabel">
-                    <i class="fa-solid fa-user-plus me-2"></i>បង្កើតគណនីថ្មី (Create New User)
+                    <i class="fa-solid fa-user-plus me-2"></i>{% lang_switch "បង្កើតគណនីថ្មី" "Create New User" %}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -495,40 +496,40 @@
                     <div class="row g-3">
                         <!-- Username -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះគណនី (Username) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះគណនី" "Username" %} <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-at text-muted"></i></span>
-                                <input type="text" name="username" id="create_username" class="form-control" placeholder="ឧ. t_2024_001 ឬ sokha" required autocomplete="off">
+                                <input type="text" name="username" id="create_username" class="form-control" placeholder="{% lang_switch 'ឧ. t_2024_001 ឬ sokha' 'e.g. t_2024_001 or sokha' %}" required autocomplete="off">
                             </div>
-                            <small class="text-muted">ប្រើអក្សរតូច លេខ ឬសញ្ញា _ (Unique)</small>
+                            <small class="text-muted">{% lang_switch "ប្រើអក្សរតូច លេខ ឬសញ្ញា _ (មិនស្ទួន)" "Use lowercase letters, numbers or _ (unique)" %}</small>
                         </div>
                         <!-- Role -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">តួនាទី (Role) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "តួនាទី" "Role" %} <span class="text-danger">*</span></label>
                             <select name="role" id="create_role" class="form-select" required>
-                                <option value="TEACHER">គ្រូបង្រៀន (Teacher)</option>
-                                <option value="STUDENT">សិស្ស-អាណាព្យាបាល (Student & Parent)</option>
-                                <option value="ACCOUNTANT">គណនេយ្យករ (Accountant)</option>
-                                <option value="ADMIN">Super Admin / អ្នកគ្រប់គ្រង</option>
+                                <option value="TEACHER">{% lang_switch "គ្រូបង្រៀន" "Teacher" %}</option>
+                                <option value="STUDENT">{% lang_switch "សិស្ស-អាណាព្យាបាល" "Student & Parent" %}</option>
+                                <option value="ACCOUNTANT">{% lang_switch "គណនេយ្យករ" "Accountant" %}</option>
+                                <option value="ADMIN">{% lang_switch "អ្នកគ្រប់គ្រងជាន់ខ្ពស់" "Super Admin" %}</option>
                             </select>
                         </div>
                         <!-- Password -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ពាក្យសម្ងាត់ដំបូង (Password) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ពាក្យសម្ងាត់ដំបូង" "Initial Password" %} <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
                                 <input type="password" name="password" id="create_password" class="form-control" value="p123456" placeholder="Password" required>
-                                <button type="button" class="btn btn-outline-secondary" id="toggleCreatePasswordBtn" title="បង្ហាញ/លាក់">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleCreatePasswordBtn" title="{% lang_switch 'បង្ហាញ/លាក់' 'Show/Hide' %}">
                                     <i class="fa-solid fa-eye" id="createPasswordEye"></i>
                                 </button>
                             </div>
-                            <small class="text-muted">លំនាំដើម៖ <code class="fw-bold">p123456</code></small>
+                            <small class="text-muted">{% lang_switch "លំនាំដើម៖" "Default:" %} <code class="fw-bold">p123456</code></small>
                         </div>
                         <!-- Status Active -->
                         <div class="col-12 col-md-6 d-flex align-items-center pt-md-4">
                             <div class="form-check form-switch form-switch-lg">
                                 <input class="form-check-input" type="checkbox" name="is_active" id="create_is_active" value="1" checked>
-                                <label class="form-check-label fw-bold text-dark ms-2" for="create_is_active">បើកដំណើរការភ្លាមៗ (Active Account)</label>
+                                <label class="form-check-label fw-bold text-dark ms-2" for="create_is_active">{% lang_switch "បើកដំណើរការភ្លាមៗ" "Activate Account Immediately" %}</label>
                             </div>
                         </div>
                         
@@ -536,36 +537,36 @@
                         
                         <!-- Khmer Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</label>
-                            <input type="text" name="khmer_name" class="form-control" placeholder="ឧ. សុខ ចិន្តា">
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះជាភាសាខ្មែរ" "Khmer Name" %}</label>
+                            <input type="text" name="khmer_name" class="form-control" placeholder="{% lang_switch 'ឧ. សុខ ចិន្តា' 'e.g. Sok Chinda' %}">
                         </div>
                         <!-- Latin Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</label>
-                            <input type="text" name="latin_name" class="form-control" placeholder="ឧ. SOK CHINDA">
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះជាអក្សរឡាតាំង" "Latin Name" %}</label>
+                            <input type="text" name="latin_name" class="form-control" placeholder="{% lang_switch 'ឧ. SOK CHINDA' 'e.g. SOK CHINDA' %}">
                         </div>
                         <!-- Phone -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">លេខទូរស័ព្ទ (Phone Number)</label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "លេខទូរស័ព្ទ" "Phone Number" %}</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-phone text-muted"></i></span>
-                                <input type="text" name="phone" class="form-control" placeholder="ឧ. 012 345 678">
+                                <input type="text" name="phone" class="form-control" placeholder="012 345 678">
                             </div>
                         </div>
                         <!-- Email -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">អ៊ីមែល (Email Address)</label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "អ៊ីមែល" "Email Address" %}</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-envelope text-muted"></i></span>
-                                <input type="email" name="email" class="form-control" placeholder="ឧ. user@school.edu.kh">
+                                <input type="email" name="email" class="form-control" placeholder="user@school.edu.kh">
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
-                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">{% lang_switch "បោះបង់" "Cancel" %}</button>
                     <button type="submit" class="btn btn-primary px-4 fw-bold" id="submitCreateUserBtn">
-                        <i class="fa-solid fa-check me-1"></i> បង្កើតគណនី
+                        <i class="fa-solid fa-check me-1"></i> {% lang_switch "បង្កើតគណនី" "Create Account" %}
                     </button>
                 </div>
             </form>
@@ -581,7 +582,7 @@
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header bg-dark text-white py-3 px-4 rounded-top-4">
                 <h5 class="modal-title fw-bold" id="editUserModalLabel">
-                    <i class="fa-solid fa-user-pen text-warning me-2"></i>កែប្រែព័ត៌មានគណនី (Edit User)
+                    <i class="fa-solid fa-user-pen text-warning me-2"></i>{% lang_switch "កែប្រែព័ត៌មានគណនី" "Edit User Information" %}
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -592,62 +593,62 @@
                     <div class="row g-3">
                         <!-- Username -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះគណនី (Username) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះគណនី" "Username" %} <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-at text-muted"></i></span>
                                 <input type="text" name="username" id="edit_username" class="form-control" required autocomplete="off">
                             </div>
-                            <small class="text-muted">ប្តូរ Username សម្រាប់ Login ចូលប្រព័ន្ធ</small>
+                            <small class="text-muted">{% lang_switch "ប្តូរ Username សម្រាប់ Login ចូលប្រព័ន្ធ" "Change username for system login" %}</small>
                         </div>
                         <!-- Role -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">តួនាទី (Role) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "តួនាទី" "Role" %} <span class="text-danger">*</span></label>
                             <select name="role" id="edit_role" class="form-select" required>
-                                <option value="TEACHER">គ្រូបង្រៀន (Teacher)</option>
-                                <option value="STUDENT">សិស្ស-អាណាព្យាបាល (Student & Parent)</option>
-                                <option value="ACCOUNTANT">គណនេយ្យករ (Accountant)</option>
-                                <option value="ADMIN">Super Admin / អ្នកគ្រប់គ្រង</option>
+                                <option value="TEACHER">{% lang_switch "គ្រូបង្រៀន" "Teacher" %}</option>
+                                <option value="STUDENT">{% lang_switch "សិស្ស-អាណាព្យាបាល" "Student & Parent" %}</option>
+                                <option value="ACCOUNTANT">{% lang_switch "គណនេយ្យករ" "Accountant" %}</option>
+                                <option value="ADMIN">{% lang_switch "អ្នកគ្រប់គ្រងជាន់ខ្ពស់" "Super Admin" %}</option>
                             </select>
                         </div>
                         <!-- Khmer Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះជាភាសាខ្មែរ (Khmer Name)</label>
-                            <input type="text" name="khmer_name" id="edit_khmer_name" class="form-control" placeholder="ឧ. សុខ ចិន្តា">
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះជាភាសាខ្មែរ" "Khmer Name" %}</label>
+                            <input type="text" name="khmer_name" id="edit_khmer_name" class="form-control" placeholder="{% lang_switch 'ឧ. សុខ ចិន្តា' 'e.g. Sok Chinda' %}">
                         </div>
                         <!-- Latin Name -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">ឈ្មោះជាអក្សរឡាតាំង (Latin Name)</label>
-                            <input type="text" name="latin_name" id="edit_latin_name" class="form-control" placeholder="ឧ. SOK CHINDA">
+                            <label class="form-label fw-bold text-dark">{% lang_switch "ឈ្មោះជាអក្សរឡាតាំង" "Latin Name" %}</label>
+                            <input type="text" name="latin_name" id="edit_latin_name" class="form-control" placeholder="{% lang_switch 'ឧ. SOK CHINDA' 'e.g. SOK CHINDA' %}">
                         </div>
                         <!-- Phone -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">លេខទូរស័ព្ទ (Phone Number)</label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "លេខទូរស័ព្ទ" "Phone Number" %}</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-phone text-muted"></i></span>
-                                <input type="text" name="phone" id="edit_phone" class="form-control" placeholder="ឧ. 012 345 678">
+                                <input type="text" name="phone" id="edit_phone" class="form-control" placeholder="012 345 678">
                             </div>
                         </div>
                         <!-- Email -->
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold text-dark">អ៊ីមែល (Email Address)</label>
+                            <label class="form-label fw-bold text-dark">{% lang_switch "អ៊ីមែល" "Email Address" %}</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fa-solid fa-envelope text-muted"></i></span>
-                                <input type="email" name="email" id="edit_email" class="form-control" placeholder="ឧ. user@school.edu.kh">
+                                <input type="email" name="email" id="edit_email" class="form-control" placeholder="user@school.edu.kh">
                             </div>
                         </div>
                         <!-- Active Status Checkbox -->
                         <div class="col-12" id="edit_active_container">
                             <div class="form-check form-switch form-switch-lg">
                                 <input class="form-check-input" type="checkbox" name="is_active" id="edit_is_active" value="1">
-                                <label class="form-check-label fw-bold text-dark ms-2" for="edit_is_active">បើកដំណើរការគណនី (Active Account)</label>
+                                <label class="form-check-label fw-bold text-dark ms-2" for="edit_is_active">{% lang_switch "បើកដំណើរការគណនី" "Active Account" %}</label>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
-                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">{% lang_switch "បោះបង់" "Cancel" %}</button>
                     <button type="submit" class="btn btn-primary px-4 fw-bold" id="submitEditUserBtn">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                        <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch "រក្សាទុកការកែប្រែ" "Save Changes" %}
                     </button>
                 </div>
             </form>
@@ -663,7 +664,7 @@
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header bg-warning text-dark py-3 px-4 rounded-top-4">
                 <h5 class="modal-title fw-bold" id="resetPasswordModalLabel">
-                    <i class="fa-solid fa-key me-2"></i>កំណត់ពាក្យសម្ងាត់ថ្មី (Reset Password)
+                    <i class="fa-solid fa-key me-2"></i>{% lang_switch "កំណត់ពាក្យសម្ងាត់ថ្មី" "Reset Password" %}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -673,34 +674,34 @@
                 <div class="modal-body p-4">
                     <div class="p-3 rounded-3 bg-light border mb-3">
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="text-muted small">គណនីគោលដៅ៖</span>
+                            <span class="text-muted small">{% lang_switch "គណនីគោលដៅ៖" "Target User:" %}</span>
                             <strong class="text-dark fs-6" id="reset_target_username">username</strong>
                         </div>
                         <div class="text-muted small" id="reset_target_fullname">Full Name</div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">បញ្ចូលពាក្យសម្ងាត់ថ្មី (New Password) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold text-dark">{% lang_switch "បញ្ចូលពាក្យសម្ងាត់ថ្មី" "Enter New Password" %} <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
-                            <input type="password" name="new_password" id="reset_new_password" class="form-control" placeholder="បញ្ចូល Password ថ្មី..." required>
-                            <button type="button" class="btn btn-outline-secondary" id="toggleResetPasswordBtn" title="បង្ហាញ/លាក់">
+                            <input type="password" name="new_password" id="reset_new_password" class="form-control" placeholder="{% lang_switch 'បញ្ចូល Password ថ្មី...' 'Enter new password...' %}" required>
+                            <button type="button" class="btn btn-outline-secondary" id="toggleResetPasswordBtn" title="{% lang_switch 'បង្ហាញ/លាក់' 'Show/Hide' %}">
                                 <i class="fa-solid fa-eye" id="resetPasswordEye"></i>
                             </button>
                         </div>
-                        <small class="text-muted">យ៉ាងហោចណាស់ ៤ តួអក្សរ</small>
+                        <small class="text-muted">{% lang_switch "យ៉ាងហោចណាស់ ៤ តួអក្សរ" "At least 4 characters" %}</small>
                     </div>
 
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnFillDefaultPassword">
-                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ប្រើ Password លំនាំដើម (<span id="default_pass_hint">p123456</span>)
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> {% lang_switch "ប្រើពាក្យសម្ងាត់លំនាំដើម" "Use Default Password" %} (<span id="default_pass_hint">p123456</span>)
                         </button>
                     </div>
                 </div>
                 <div class="modal-footer bg-light px-4 py-3 rounded-bottom-4">
-                    <button type="button" class="btn btn-outline-secondary px-3 fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="button" class="btn btn-outline-secondary px-3 fw-bold" data-bs-dismiss="modal">{% lang_switch "បោះបង់" "Cancel" %}</button>
                     <button type="submit" class="btn btn-warning text-dark px-4 fw-bold" id="submitResetPasswordBtn">
-                        <i class="fa-solid fa-key me-1"></i> កំណត់ Password ថ្មី
+                        <i class="fa-solid fa-key me-1"></i> {% lang_switch "កំណត់ពាក្យសម្ងាត់ថ្មី" "Reset Password" %}
                     </button>
                 </div>
             </form>

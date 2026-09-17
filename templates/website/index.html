@@ -1,7 +1,14 @@
 {% extends 'website/base_website.html' %}
 {% load static %}
+{% load i18n_extras %}
 
-{% block title %}{{ school_profile.name_kh|default:"សាលារៀន SM" }} | គេហទំព័រផ្លូវការ & ប្រព័ន្ធគ្រប់គ្រង{% endblock %}
+{% block title %}
+    {% if is_english %}
+        {{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }} | Official Website & Portal
+    {% else %}
+        {{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }} | គេហទំព័រផ្លូវការ & ប្រព័ន្ធគ្រប់គ្រង
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 
@@ -13,26 +20,40 @@
             <div class="col-lg-7">
                 <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-10 border border-white border-opacity-20 text-warning small mb-3 animate__animated animate__fadeInDown">
                     <i class="fa-solid fa-sparkles"></i>
-                    <span>{{ school_profile.school_type|default:"គ្រឹះស្ថានអប់រំចំណេះទូទៅ និងបច្ចេកវិទ្យា" }}</span>
+                    <span>
+                        {% if is_english %}
+                            {{ school_profile.school_type_en|default:"General High School" }}
+                        {% else %}
+                            {{ school_profile.school_type|default:"វិទ្យាល័យ / General High School" }}
+                        {% endif %}
+                    </span>
                 </div>
                 <h1 class="display-4 fw-bold text-white mb-3 animate__animated animate__fadeInLeft" style="line-height: 1.25;">
-                    {{ school_profile.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }}
+                    {% if is_english %}
+                        {{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}
+                    {% else %}
+                        {{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}
+                    {% endif %}
                 </h1>
                 <p class="fs-5 text-light opacity-90 mb-4 animate__animated animate__fadeInLeft animate__delay-1s" style="line-height: 1.6;">
-                    {{ school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — បណ្តុះបណ្តាលទំពាំងស្នងឫស្សីប្រកបដោយគុណភាព សមត្ថភាព និងភាពជាអ្នកដឹកនាំសម្រាប់អនាគត។" }}
+                    {% if is_english %}
+                        {{ school_profile.motto_en|default:"Knowledge, Discipline, Morality, Virtue — Cultivating future generations with quality, competence, and leadership for tomorrow." }}
+                    {% else %}
+                        {{ school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — បណ្តុះបណ្តាលទំពាំងស្នងឫស្សីប្រកបដោយគុណភាព សមត្ថភាព និងភាពជាអ្នកដឹកនាំសម្រាប់អនាគត។" }}
+                    {% endif %}
                 </p>
                 
                 <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start gap-3 animate__animated animate__fadeInUp animate__delay-1s">
                     <a href="#about" class="btn btn-warning btn-lg px-4 py-2 fw-semibold rounded-pill shadow-sm">
-                        <i class="fa-solid fa-circle-info me-2"></i>ស្វែងយល់បន្ថែម
+                        <i class="fa-solid fa-circle-info me-2"></i>{% lang_switch "ស្វែងយល់បន្ថែម" "Learn More" %}
                     </a>
                     {% if user.is_authenticated %}
                     <a href="{% url 'dashboard_redirect' %}" class="btn btn-outline-light btn-lg px-4 py-2 fw-semibold rounded-pill">
-                        <i class="fa-solid fa-gauge-high me-2"></i>ផ្ទាំងគ្រប់គ្រង (Dashboard)
+                        <i class="fa-solid fa-gauge-high me-2"></i>{% lang_switch "ផ្ទាំងគ្រប់គ្រង (Dashboard)" "Dashboard" %}
                     </a>
                     {% else %}
                     <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg px-4 py-2 fw-semibold rounded-pill">
-                        <i class="fa-solid fa-right-to-bracket me-2"></i>ចូលប្រព័ន្ធ (Portal Login)
+                        <i class="fa-solid fa-right-to-bracket me-2"></i>{% lang_switch "ចូលប្រព័ន្ធ (Portal Login)" "Portal Login" %}
                     </a>
                     {% endif %}
                 </div>
@@ -42,19 +63,19 @@
                     <div class="col-sm-4">
                         <div class="d-flex align-items-center gap-2 text-white-50 small">
                             <i class="fa-solid fa-circle-check text-success fs-5"></i>
-                            <span class="text-white">កម្មវិធី MoEYS & ទ្វេភាសា</span>
+                            <span class="text-white">{% lang_switch "កម្មវិធី MoEYS & ទ្វេភាសា" "MoEYS & Bilingual Program" %}</span>
                         </div>
                     </div>
                     <div class="col-sm-4">
                         <div class="d-flex align-items-center gap-2 text-white-50 small">
                             <i class="fa-solid fa-circle-check text-success fs-5"></i>
-                            <span class="text-white">បន្ទប់ពិសោធន៍ STEM & IT</span>
+                            <span class="text-white">{% lang_switch "បន្ទប់ពិសោធន៍ STEM & IT" "STEM & IT Labs" %}</span>
                         </div>
                     </div>
                     <div class="col-sm-4">
                         <div class="d-flex align-items-center gap-2 text-white-50 small">
                             <i class="fa-solid fa-circle-check text-success fs-5"></i>
-                            <span class="text-white">សុវត្ថិភាព & វិន័យខ្ពស់</span>
+                            <span class="text-white">{% lang_switch "សុវត្ថិភាព & វិន័យខ្ពស់" "High Safety & Discipline" %}</span>
                         </div>
                     </div>
                 </div>
@@ -71,35 +92,63 @@
                             <img src="{% static 'img/school_logo.png' %}" class="rounded-circle shadow-xs" style="width: 55px; height: 55px; object-fit: cover;" alt="Logo">
                             {% endif %}
                             <div>
-                                <h6 class="mb-0 fw-bold">{{ school_profile.short_name|default:"សាលារៀន SM" }}</h6>
+                                <h6 class="mb-0 fw-bold">
+                                    {% if is_english %}
+                                        {{ school_profile.short_name_en|default:school_profile.name_en|default:"Hun Sen Kampong Kantuot HS" }}
+                                    {% else %}
+                                        {{ school_profile.short_name|default:"វិ. ហ៊ុន សែន កំពង់កន្ទួត" }}
+                                    {% endif %}
+                                </h6>
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.75rem;">
-                                    EMIS: {{ school_profile.school_code|default:"080101" }}
+                                    EMIS: {{ school_profile.school_code|default:"08010306901" }}
                                 </span>
                             </div>
                         </div>
 
                         <div class="p-3">
                             <div class="mb-3">
-                                <small class="text-muted d-block mb-1">នាយកសាលា៖</small>
-                                <div class="fw-semibold text-dark"><i class="fa-solid fa-user-tie text-primary me-2"></i>{{ school_profile.principal_name|default:"លោកបណ្ឌិត សុខ ចាន់ថន" }}</div>
+                                <small class="text-muted d-block mb-1">{% lang_switch "នាយកសាលា៖" "Principal:" %}</small>
+                                <div class="fw-semibold text-dark">
+                                    <i class="fa-solid fa-user-tie text-primary me-2"></i>
+                                    {% if is_english %}
+                                        {{ school_profile.principal_name_en|default:school_profile.principal_name|default:"Mr. Theng Rithya" }}
+                                    {% else %}
+                                        {{ school_profile.principal_name|default:"លោក ថេង រិទ្ធីយ៉ា" }}
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="mb-3">
-                                <small class="text-muted d-block mb-1">ទីតាំងសាលា៖</small>
-                                <div class="small text-secondary"><i class="fa-solid fa-location-dot text-danger me-2"></i>{{ school_profile.street_address|default:"មហាវិថីព្រះនរោត្តម" }}, {{ school_profile.province|default:"រាជធានីភ្នំពេញ" }}</div>
+                                <small class="text-muted d-block mb-1">{% lang_switch "ទីតាំងសាលា៖" "Location:" %}</small>
+                                <div class="small text-secondary">
+                                    <i class="fa-solid fa-location-dot text-danger me-2"></i>
+                                    {% if is_english %}
+                                        {{ school_profile.street_address_en|default:school_profile.street_address|default:"Road 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal" }}
+                                    {% else %}
+                                        {{ school_profile.street_address|default:"ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល" }}, {{ school_profile.province|default:"ខេត្តកណ្តាល" }}
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="p-3 rounded-3 bg-light border">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="small fw-semibold text-dark">ប្រព័ន្ធគ្រប់គ្រងសាលា</span>
+                                    <span class="small fw-semibold text-dark">{% lang_switch "ប្រព័ន្ធគ្រប់គ្រងសាលា" "School Portal System" %}</span>
                                     <span class="badge bg-success">Online 24/7</span>
                                 </div>
-                                <small class="text-muted" style="font-size: 0.8rem;">វត្តមាន, កាលវិភាគ, ពិន្ទុ & ការប្រឡង ដំណើរការរលូនក្នុងប្រព័ន្ធ Web App</small>
+                                <small class="text-muted" style="font-size: 0.8rem;">
+                                    {% lang_switch "វត្តមាន, កាលវិភាគ, ពិន្ទុ & ការប្រឡង ដំណើរការរលូនក្នុងប្រព័ន្ធ Web App" "Attendance, Timetable, Grades & Exams running seamlessly online" %}
+                                </small>
                             </div>
                         </div>
 
                         <div class="card-footer bg-transparent border-0 pt-0 text-center">
-                            <a href="{% url 'login' %}" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
-                                <i class="fa-solid fa-shield-halved me-2"></i>ច្រកចូលគណនី (Portal Login)
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'dashboard_redirect' %}" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
+                                <i class="fa-solid fa-gauge-high me-2"></i>{% lang_switch "ផ្ទាំងគ្រប់គ្រង (Dashboard)" "Dashboard" %}
                             </a>
+                            {% else %}
+                            <a href="{% url 'login' %}" class="btn btn-primary w-100 rounded-pill py-2 fw-semibold">
+                                <i class="fa-solid fa-shield-halved me-2"></i>{% lang_switch "ច្រកចូលគណនី (Portal Login)" "Portal Login" %}
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -114,16 +163,16 @@
     <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div class="d-flex align-items-center gap-2 overflow-hidden text-truncate">
             <span class="badge bg-white text-danger fw-bold text-uppercase px-2 py-1 shadow-xs">
-                <i class="fa-solid fa-bullhorn me-1"></i>សេចក្តីជូនដំណឹង
+                <i class="fa-solid fa-bullhorn me-1"></i>{% lang_switch "សេចក្តីជូនដំណឹង" "Notice" %}
             </span>
             {% with first_ann=announcements.0 %}
             <a href="{% url 'website_announcement_detail' first_ann.id %}" class="text-white text-decoration-none fw-semibold text-truncate">
-                {{ first_ann.title }}
+                {% get_bilingual first_ann 'title' %}
             </a>
             {% endwith %}
         </div>
         <a href="{% url 'website_announcement_list' %}" class="text-white-50 text-decoration-none small text-nowrap hover-white">
-            មើលទាំងអស់ ({{ announcements.count }}) <i class="fa-solid fa-arrow-right ms-1"></i>
+            {% lang_switch "មើលទាំងអស់" "View All" %} ({{ announcements.count }}) <i class="fa-solid fa-arrow-right ms-1"></i>
         </a>
     </div>
 </div>
@@ -139,7 +188,7 @@
                         <i class="fa-solid fa-user-graduate fs-3"></i>
                     </div>
                     <div class="stat-number">{{ stats.students_count }}</div>
-                    <div class="text-muted small fw-semibold mt-1">សិស្សានុសិស្សសរុប</div>
+                    <div class="text-muted small fw-semibold mt-1">{% lang_switch "សិស្សានុសិស្សសរុប" "Total Students" %}</div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -148,7 +197,7 @@
                         <i class="fa-solid fa-chalkboard-user fs-3"></i>
                     </div>
                     <div class="stat-number">{{ stats.teachers_count }}</div>
-                    <div class="text-muted small fw-semibold mt-1">លោកគ្រូ-អ្នកគ្រូ</div>
+                    <div class="text-muted small fw-semibold mt-1">{% lang_switch "លោកគ្រូ-អ្នកគ្រូ" "Teachers & Staff" %}</div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -157,7 +206,7 @@
                         <i class="fa-solid fa-school fs-3"></i>
                     </div>
                     <div class="stat-number">{{ stats.classrooms_count }}</div>
-                    <div class="text-muted small fw-semibold mt-1">បន្ទប់រៀន & ពិសោធន៍</div>
+                    <div class="text-muted small fw-semibold mt-1">{% lang_switch "បន្ទប់រៀន & ពិសោធន៍" "Classrooms & Labs" %}</div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -165,8 +214,8 @@
                     <div class="d-inline-flex p-3 rounded-circle bg-info bg-opacity-10 text-info mb-2">
                         <i class="fa-solid fa-award fs-3"></i>
                     </div>
-                    <div class="stat-number">១០០%</div>
-                    <div class="text-muted small fw-semibold mt-1">ការទទួលស្គាល់ផ្លូវការ</div>
+                    <div class="stat-number">{% if is_english %}100%{% else %}១០០%{% endif %}</div>
+                    <div class="text-muted small fw-semibold mt-1">{% lang_switch "ការទទួលស្គាល់ផ្លូវការ" "Official Accreditation" %}</div>
                 </div>
             </div>
         </div>
@@ -180,16 +229,31 @@
             <div class="col-lg-6">
                 <div class="pe-lg-3">
                     <span class="section-badge">
-                        <i class="fa-solid fa-school-flag"></i> អំពីសាលារៀនយើងខ្ញុំ
+                        <i class="fa-solid fa-school-flag"></i> {% lang_switch "អំពីសាលារៀនយើងខ្ញុំ" "About Our School" %}
                     </span>
                     <h2 class="section-title mb-4">
-                        គ្រឹះស្ថានអប់រំគំរូ ផ្តោតលើគុណភាព និងសីលធម៌
+                        {% lang_switch "គ្រឹះស្ថានអប់រំគំរូ ផ្តោតលើគុណភាព និងសីលធម៌" "Model Institution Focused on Quality & Morality" %}
                     </h2>
                     <p class="text-secondary lead mb-3">
-                        <strong>{{ school_profile.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }}</strong> គឺជាគ្រឹះស្ថានអប់រំដែលប្តេជ្ញាចិត្តផ្តល់នូវការអប់រំប្រកបដោយស្តង់ដារខ្ពស់ ស្របតាមកម្មវិធីជាតិរបស់ក្រសួងអប់រំ យុវជន និងកីឡា បូកផ្សំនឹងកម្មវិធីទំនើបដូចជា STEM និងភាសាអន្តរជាតិ។
+                        <strong>
+                            {% if is_english %}
+                                {{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}
+                            {% else %}
+                                {{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}
+                            {% endif %}
+                        </strong>
+                        {% if is_english %}
+                            is committed to providing education with high standards aligned with the national curriculum of the Ministry of Education, Youth and Sport, integrated with modern STEM and foreign language programs.
+                        {% else %}
+                            គឺជាគ្រឹះស្ថានអប់រំដែលប្តេជ្ញាចិត្តផ្តល់នូវការអប់រំប្រកបដោយស្តង់ដារខ្ពស់ ស្របតាមកម្មវិធីជាតិរបស់ក្រសួងអប់រំ យុវជន និងកីឡា បូកផ្សំនឹងកម្មវិធីទំនើបដូចជា STEM និងភាសាអន្តរជាតិ។
+                        {% endif %}
                     </p>
                     <p class="text-secondary mb-4">
-                        យើងខ្ញុំបណ្តុះបណ្តាលសិស្សឱ្យមានទាំងចំណេះដឹងទូទៅ ជំនាញបច្ចេកវិទ្យា វិន័យ សីលធម៌ល្អ និងស្មារតីទទួលខុសត្រូវខ្ពស់ក្នុងការរស់នៅក្នុងសង្គមជាតិ និងសកលលោក។
+                        {% if is_english %}
+                            We cultivate learners with comprehensive knowledge, technical proficiency, strong moral character, discipline, and high civic responsibility for society and the world.
+                        {% else %}
+                            យើងខ្ញុំបណ្តុះបណ្តាលសិស្សឱ្យមានទាំងចំណេះដឹងទូទៅ ជំនាញបច្ចេកវិទ្យា វិន័យ សីលធម៌ល្អ និងស្មារតីទទួលខុសត្រូវខ្ពស់ក្នុងការរស់នៅក្នុងសង្គមជាតិ និងសកលលោក។
+                        {% endif %}
                     </p>
 
                     <div class="row g-3">
@@ -197,8 +261,10 @@
                             <div class="d-flex align-items-start gap-3 p-3 rounded-3 bg-light border">
                                 <i class="fa-solid fa-eye text-primary fs-4 mt-1"></i>
                                 <div>
-                                    <h6 class="fw-bold mb-1">ចក្ខុវិស័យ</h6>
-                                    <small class="text-muted">ក្លាយជាសាលារៀនឈានមុខគេលើគុណភាពបង្រៀន និងបច្ចេកវិទ្យាឌីជីថល។</small>
+                                    <h6 class="fw-bold mb-1">{% lang_switch "ចក្ខុវិស័យ" "Vision" %}</h6>
+                                    <small class="text-muted">
+                                        {% lang_switch "ក្លាយជាសាលារៀនឈានមុខគេលើគុណភាពបង្រៀន និងបច្ចេកវិទ្យាឌីជីថល។" "To be a leading secondary institution in teaching excellence and digital technology." %}
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -206,8 +272,10 @@
                             <div class="d-flex align-items-start gap-3 p-3 rounded-3 bg-light border">
                                 <i class="fa-solid fa-bullseye text-danger fs-4 mt-1"></i>
                                 <div>
-                                    <h6 class="fw-bold mb-1">បេសកកម្ម</h6>
-                                    <small class="text-muted">កសាងធនធានមនុស្សពោរពេញដោយចំណេះដឹង ជំនាញ និងគុណធម៌។</small>
+                                    <h6 class="fw-bold mb-1">{% lang_switch "បេសកកម្ម" "Mission" %}</h6>
+                                    <small class="text-muted">
+                                        {% lang_switch "កសាងធនធានមនុស្សពោរពេញដោយចំណេះដឹង ជំនាញ និងគុណធម៌។" "To develop human capital enriched with knowledge, skills, and virtuous character." %}
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -226,17 +294,33 @@
                         </div>
                         {% endif %}
                         <div>
-                            <h5 class="mb-0 fw-bold">{{ school_profile.principal_name|default:"លោកបណ្ឌិត សុខ ចាន់ថន" }}</h5>
-                            <small class="text-muted">នាយកសាលា / School Principal</small>
+                            <h5 class="mb-0 fw-bold">
+                                {% if is_english %}
+                                    {{ school_profile.principal_name_en|default:school_profile.principal_name|default:"Mr. Theng Rithya" }}
+                                {% else %}
+                                    {{ school_profile.principal_name|default:"លោក ថេង រិទ្ធីយ៉ា" }}
+                                {% endif %}
+                            </h5>
+                            <small class="text-muted">{% lang_switch "នាយកសាលា" "School Principal" %}</small>
                         </div>
                     </div>
                     <blockquote class="blockquote fst-italic text-secondary small mb-3">
-                        "ការអប់រំ មិនមែនត្រឹមតែជាការបំពេញចំណេះដឹងក្នុងក្បាលសិស្សប៉ុណ្ណោះទេ ប៉ុន្តែគឺជាការដុតបញ្ឆេះភ្លើងគំនិត គំនិតច្នៃប្រឌិត និងការកសាងចរិយាសម្បត្តិថ្លៃថ្នូរ។ យើងខ្ញុំស្វាគមន៍សិស្សានុសិស្ស និងមាតាបិតាទាំងអស់មកកាន់គ្រួសារសាលារៀនយើងខ្ញុំ!"
+                        {% if is_english %}
+                            "Education is not merely filling the vessel with knowledge, but lighting the fire of curiosity, creativity, and cultivating upright moral character. We warmly welcome all students and parents to our school family!"
+                        {% else %}
+                            "ការអប់រំ មិនមែនត្រឹមតែជាការបំពេញចំណេះដឹងក្នុងក្បាលសិស្សប៉ុណ្ណោះទេ ប៉ុន្តែគឺជាការដុតបញ្ឆេះភ្លើងគំនិត គំនិតច្នៃប្រឌិត និងការកសាងចរិយាសម្បត្តិថ្លៃថ្នូរ។ យើងខ្ញុំស្វាគមន៍សិស្សានុសិស្ស និងមាតាបិតាទាំងអស់មកកាន់គ្រួសារសាលារៀនយើងខ្ញុំ!"
+                        {% endif %}
                     </blockquote>
                     <hr class="my-3 opacity-25">
                     <div class="d-flex align-items-center justify-content-between small text-muted">
-                        <span><i class="fa-solid fa-stamp text-danger me-1"></i>ត្រា & ហត្ថលេខាផ្លូវការ</span>
-                        <span>{{ school_profile.short_name }}</span>
+                        <span><i class="fa-solid fa-stamp text-danger me-1"></i>{% lang_switch "ត្រា & ហត្ថលេខាផ្លូវការ" "Official Seal & Signature" %}</span>
+                        <span>
+                            {% if is_english %}
+                                {{ school_profile.short_name_en|default:school_profile.name_en }}
+                            {% else %}
+                                {{ school_profile.short_name|default:school_profile.name_kh }}
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -248,11 +332,11 @@
 <section class="py-5" id="academics">
     <div class="container text-center">
         <span class="section-badge">
-            <i class="fa-solid fa-book-open"></i> កម្រិតសិក្សា & កម្មវិធី
+            <i class="fa-solid fa-book-open"></i> {% lang_switch "កម្រិតសិក្សា & កម្មវិធី" "Academic Programs" %}
         </span>
-        <h2 class="section-title mb-3">កម្មវិធីអប់រំគ្រប់ជ្រុងជ្រោយ</h2>
+        <h2 class="section-title mb-3">{% lang_switch "កម្មវិធីអប់រំគ្រប់ជ្រុងជ្រោយ" "Comprehensive Academic Pathways" %}</h2>
         <p class="section-subtitle mb-5">
-            ផ្តល់ជូននូវការសិក្សាតាមស្តង់ដារជាតិ និងកម្មវិធីពង្រឹងភាសា និងបច្ចេកវិទ្យា ចាប់ពីកម្រិតដំបូងរហូតដល់បញ្ចប់វិទ្យាល័យ។
+            {% lang_switch "ផ្តល់ជូននូវការសិក្សាតាមស្តង់ដារជាតិ និងកម្មវិធីពង្រឹងភាសា និងបច្ចេកវិទ្យា ចាប់ពីកម្រិតដំបូងរហូតដល់បញ្ចប់វិទ្យាល័យ។" "Providing national curriculum education with enhanced languages and STEM programs from foundational levels through high school graduation." %}
         </p>
 
         <div class="row g-4 text-start">
@@ -262,13 +346,13 @@
                     <div class="d-inline-flex p-3 rounded-3 bg-primary bg-opacity-10 text-primary mb-3" style="width: fit-content;">
                         <i class="fa-solid fa-shapes fs-3"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">មត្តេយ្យសិក្សា</h5>
+                    <h5 class="fw-bold mb-2">{% lang_switch "មត្តេយ្យសិក្សា" "Kindergarten" %}</h5>
                     <p class="small text-muted mb-3">
-                        បណ្តុះបណ្តាលមូលដ្ឋានគ្រឹះ ទំនាក់ទំនង ភាពច្នៃប្រឌិត និងការរៀនតាមរយៈការលេងប្រកបដោយសុវត្ថិភាព។
+                        {% lang_switch "បណ្តុះបណ្តាលមូលដ្ឋានគ្រឹះ ទំនាក់ទំនង ភាពច្នៃប្រឌិត និងការរៀនតាមរយៈការលេងប្រកបដោយសុវត្ថិភាព។" "Foundational development, early communication, creativity, and play-based learning in a caring environment." %}
                     </p>
                     <ul class="list-unstyled small text-secondary mt-auto mb-0">
-                        <li><i class="fa-solid fa-check text-success me-2"></i>អភិវឌ្ឍន៍សតិបញ្ញា & រាងកាយ</li>
-                        <li><i class="fa-solid fa-check text-success me-2"></i>ភាសាខ្មែរ និងអង់គ្លេសកុមារ</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "អភិវឌ្ឍន៍សតិបញ្ញា & រាងកាយ" "Cognitive & Physical Growth" %}</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "ភាសាខ្មែរ និងអង់គ្លេសកុមារ" "Khmer & Early English" %}</li>
                     </ul>
                 </div>
             </div>
@@ -279,13 +363,13 @@
                     <div class="d-inline-flex p-3 rounded-3 bg-success bg-opacity-10 text-success mb-3" style="width: fit-content;">
                         <i class="fa-solid fa-book-bookmark fs-3"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">បឋមសិក្សា (ថ្នាក់ទី១-៦)</h5>
+                    <h5 class="fw-bold mb-2">{% lang_switch "បឋមសិក្សា (ថ្នាក់ទី១-៦)" "Primary School (Grades 1-6)" %}</h5>
                     <p class="small text-muted mb-3">
-                        ពង្រឹងអំណាន សំណេរ គណិតវិទ្យា មូលដ្ឋានវិទ្យាសាស្ត្រ និងការកសាងចរិយាសម្បត្តិរឹងមាំ។
+                        {% lang_switch "ពង្រឹងអំណាន សំណេរ គណិតវិទ្យា មូលដ្ឋានវិទ្យាសាស្ត្រ និងការកសាងចរិយាសម្បត្តិរឹងមាំ។" "Strengthening reading, writing, mathematics, science essentials, and civic values." %}
                     </p>
                     <ul class="list-unstyled small text-secondary mt-auto mb-0">
-                        <li><i class="fa-solid fa-check text-success me-2"></i>កម្មវិធីសិក្សាគោល MoEYS</li>
-                        <li><i class="fa-solid fa-check text-success me-2"></i>ភាសាអង់គ្លេស & កុំព្យូទ័រ</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "កម្មវិធីសិក្សាគោល MoEYS" "MoEYS Core Curriculum" %}</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "ភាសាអង់គ្លេស & កុំព្យូទ័រ" "English & Computer Literacy" %}</li>
                     </ul>
                 </div>
             </div>
@@ -296,13 +380,13 @@
                     <div class="d-inline-flex p-3 rounded-3 bg-warning bg-opacity-10 text-warning mb-3" style="width: fit-content;">
                         <i class="fa-solid fa-graduation-cap fs-3"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">អនុវិទ្យាល័យ (ថ្នាក់ទី៧-៩)</h5>
+                    <h5 class="fw-bold mb-2">{% lang_switch "អនុវិទ្យាល័យ (ថ្នាក់ទី៧-៩)" "Lower Secondary (Grades 7-9)" %}</h5>
                     <p class="small text-muted mb-3">
-                        ពង្រីកចំណេះដឹងមុខវិជ្ជាស្នូល ពិសោធន៍វិទ្យាសាស្ត្រ និងការត្រៀមខ្លួនសម្រាប់ថ្នាក់វិទ្យាល័យ។
+                        {% lang_switch "ពង្រីកចំណេះដឹងមុខវិជ្ជាស្នូល ពិសោធន៍វិទ្យាសាស្ត្រ និងការត្រៀមខ្លួនសម្រាប់ថ្នាក់វិទ្យាល័យ។" "Deepening core subject knowledge, practical laboratory sciences, and prep for high school." %}
                     </p>
                     <ul class="list-unstyled small text-secondary mt-auto mb-0">
-                        <li><i class="fa-solid fa-check text-success me-2"></i>ពិសោធន៍រូប-គីមី-ជីវៈ</li>
-                        <li><i class="fa-solid fa-check text-success me-2"></i>ប្រឡងឌីប្លូមកម្រិតខ្ពស់</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "ពិសោធន៍រូប-គីមី-ជីវៈ" "Physics, Chemistry & Bio Labs" %}</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "ប្រឡងឌីប្លូមកម្រិតខ្ពស់" "Diploma Exam Readiness" %}</li>
                     </ul>
                 </div>
             </div>
@@ -313,13 +397,13 @@
                     <div class="d-inline-flex p-3 rounded-3 bg-danger bg-opacity-10 text-danger mb-3" style="width: fit-content;">
                         <i class="fa-solid fa-user-astronaut fs-3"></i>
                     </div>
-                    <h5 class="fw-bold mb-2">វិទ្យាល័យ (ថ្នាក់ទី១០-១២)</h5>
+                    <h5 class="fw-bold mb-2">{% lang_switch "វិទ្យាល័យ (ថ្នាក់ទី១០-១២)" "Upper Secondary (Grades 10-12)" %}</h5>
                     <p class="small text-muted mb-3">
-                        បំបែកថ្នាក់វិទ្យាសាស្ត្រ និងវិទ្យាសាស្ត្រសង្គម ត្រៀមប្រឡងបាក់ឌុប និងអាហារូបករណ៍សាកលវិទ្យាល័យ។
+                        {% lang_switch "បំបែកថ្នាក់វិទ្យាសាស្ត្រ និងវិទ្យាសាស្ត្រសង្គម ត្រៀមប្រឡងបាក់ឌុប និងអាហារូបករណ៍សាកលវិទ្យាល័យ។" "Science & Social Science tracks, intensive BacII preparation, and university scholarship coaching." %}
                     </p>
                     <ul class="list-unstyled small text-secondary mt-auto mb-0">
-                        <li><i class="fa-solid fa-check text-success me-2"></i>ត្រៀមបាក់ឌុបនិទ្ទេស A</li>
-                        <li><i class="fa-solid fa-check text-success me-2"></i>តម្រង់ទិសអាជីព និង STEM</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "ត្រៀមបាក់ឌុបនិទ្ទេស A" "BacII Grade A Preparation" %}</li>
+                        <li><i class="fa-solid fa-check text-success me-2"></i>{% lang_switch "តម្រង់ទិសអាជីព និង STEM" "Career Guidance & STEM" %}</li>
                     </ul>
                 </div>
             </div>
@@ -333,12 +417,12 @@
         <div class="d-flex flex-wrap justify-content-between align-items-end mb-4">
             <div>
                 <span class="section-badge">
-                    <i class="fa-solid fa-newspaper"></i> ព័ត៌មាន & ព្រឹត្តិការណ៍
+                    <i class="fa-solid fa-newspaper"></i> {% lang_switch "ព័ត៌មាន & ព្រឹត្តិការណ៍" "News & Events" %}
                 </span>
-                <h2 class="section-title mb-0">សកម្មភាពថ្មីៗក្នុងសាលារៀន</h2>
+                <h2 class="section-title mb-0">{% lang_switch "សកម្មភាពថ្មីៗក្នុងសាលារៀន" "Latest School Activities" %}</h2>
             </div>
             <a href="{% url 'website_news_list' %}" class="btn btn-outline-primary rounded-pill px-4 mt-3 mt-sm-0">
-                ព័ត៌មានទាំងអស់ <i class="fa-solid fa-arrow-right ms-1"></i>
+                {% lang_switch "ព័ត៌មានទាំងអស់" "All News" %} <i class="fa-solid fa-arrow-right ms-1"></i>
             </a>
         </div>
 
@@ -348,7 +432,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card card-custom h-100">
                         {% if item.cover_image %}
-                        <img src="{{ item.cover_image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="{{ item.title }}">
+                        <img src="{{ item.cover_image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="{% get_bilingual item 'title' %}">
                         {% else %}
                         <div class="bg-light d-flex align-items-center justify-content-center text-secondary border-bottom" style="height: 200px;">
                             <i class="fa-solid fa-image fs-1 opacity-25"></i>
@@ -363,16 +447,18 @@
                             </div>
                             <h5 class="card-title fw-bold mb-2">
                                 <a href="{% url 'website_news_detail' item.id %}" class="text-dark text-decoration-none hover-primary">
-                                    {{ item.title|truncatechars:65 }}
+                                    {% get_bilingual item 'title' as item_t %}
+                                    {{ item_t|truncatechars:65 }}
                                 </a>
                             </h5>
                             <p class="card-text text-secondary small mb-3 flex-grow-1">
-                                {{ item.excerpt|default:item.content|striptags|truncatechars:100 }}
+                                {% get_bilingual item 'excerpt' as item_ex %}
+                                {{ item_ex|default:item.content|striptags|truncatechars:100 }}
                             </p>
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                <small class="text-muted"><i class="fa-regular fa-eye me-1"></i>{{ item.views_count }} មើល</small>
+                                <small class="text-muted"><i class="fa-regular fa-eye me-1"></i>{{ item.views_count }} {% lang_switch "មើល" "views" %}</small>
                                 <a href="{% url 'website_news_detail' item.id %}" class="text-primary fw-semibold small text-decoration-none">
-                                    អានលម្អិត <i class="fa-solid fa-arrow-right ms-1"></i>
+                                    {% lang_switch "អានលម្អិត" "Read More" %} <i class="fa-solid fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
                         </div>
@@ -383,8 +469,8 @@
                 <div class="col-12">
                     <div class="alert alert-light border text-center py-5 rounded-4">
                         <i class="fa-regular fa-newspaper fs-1 text-muted mb-3 d-block"></i>
-                        <h6 class="fw-bold">មិនទាន់មានអត្ថបទព័ត៌មានផ្សាយនៅឡើយទេ</h6>
-                        <p class="text-muted small mb-0">Admin អាចបង្ហោះព័ត៌មានថ្មីៗតាមរយៈផ្ទាំង Website CMS ក្នុង Web App Portal។</p>
+                        <h6 class="fw-bold">{% lang_switch "មិនទាន់មានអត្ថបទព័ត៌មានផ្សាយនៅឡើយទេ" "No news articles published yet" %}</h6>
+                        <p class="text-muted small mb-0">{% lang_switch "Admin អាចបង្ហោះព័ត៌មានថ្មីៗតាមរយៈផ្ទាំង Website CMS ក្នុង Web App Portal។" "Admin can publish new announcements and articles via Website CMS." %}</p>
                     </div>
                 </div>
             {% endif %}
@@ -398,12 +484,12 @@
         <div class="d-flex flex-wrap justify-content-between align-items-end mb-4">
             <div>
                 <span class="section-badge">
-                    <i class="fa-solid fa-images"></i> វិចិត្រសាលរូបភាព
+                    <i class="fa-solid fa-images"></i> {% lang_switch "វិចិត្រសាលរូបភាព" "Photo Gallery" %}
                 </span>
-                <h2 class="section-title mb-0">ទិដ្ឋភាពសកម្មភាពសាលារៀន</h2>
+                <h2 class="section-title mb-0">{% lang_switch "ទិដ្ឋភាពសកម្មភាពសាលារៀន" "Campus Life & Activities" %}</h2>
             </div>
             <a href="{% url 'website_gallery_list' %}" class="btn btn-outline-success rounded-pill px-4 mt-3 mt-sm-0">
-                វិចិត្រសាលទាំងអស់ <i class="fa-solid fa-arrow-right ms-1"></i>
+                {% lang_switch "វិចិត្រសាលទាំងអស់" "All Albums" %} <i class="fa-solid fa-arrow-right ms-1"></i>
             </a>
         </div>
 
@@ -429,7 +515,7 @@
                                 <small class="text-muted"><i class="fa-solid fa-calendar-day me-1"></i>{{ album.event_date|default:album.created_at|date:"d-m-Y" }}</small>
                             </div>
                             <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">
-                                <i class="fa-solid fa-image me-1"></i>{{ album.photo_count }} សន្លឹក
+                                <i class="fa-solid fa-image me-1"></i>{{ album.photo_count }} {% lang_switch "សន្លឹក" "Photos" %}
                             </span>
                         </div>
                     </div>
@@ -438,7 +524,7 @@
             {% else %}
                 <div class="col-12">
                     <div class="alert alert-light border text-center py-4 rounded-4">
-                        <p class="text-muted small mb-0">មិនទាន់មានអាល់ប៊ុមរូបភាពនៅឡើយទេ។</p>
+                        <p class="text-muted small mb-0">{% lang_switch "មិនទាន់មានអាល់ប៊ុមរូបភាពនៅឡើយទេ។" "No photo albums created yet." %}</p>
                     </div>
                 </div>
             {% endif %}
@@ -451,25 +537,35 @@
     <div class="container">
         <div class="text-center mb-5">
             <span class="section-badge">
-                <i class="fa-solid fa-envelope-open-text"></i> ទំនាក់ទំនង & ទីតាំង
+                <i class="fa-solid fa-envelope-open-text"></i> {% lang_switch "ទំនាក់ទំនង & ទីតាំង" "Contact & Location" %}
             </span>
-            <h2 class="section-title mb-2">ស្វាគមន៍ការមកកាន់សាលារៀនយើងខ្ញុំ</h2>
-            <p class="section-subtitle">លោកអ្នកអាចទាក់ទងមកកាន់យើងខ្ញុំ ឬផ្ញើសារសាកសួរព័ត៌មានបន្ថែមបានគ្រប់ពេលវេលា។</p>
+            <h2 class="section-title mb-2">{% lang_switch "ស្វាគមន៍ការមកកាន់សាលារៀនយើងខ្ញុំ" "Welcome to Our Campus" %}</h2>
+            <p class="section-subtitle">
+                {% lang_switch "លោកអ្នកអាចទាក់ទងមកកាន់យើងខ្ញុំ ឬផ្ញើសារសាកសួរព័ត៌មានបន្ថែមបានគ្រប់ពេលវេលា។" "Feel free to get in touch with our admissions and administrative offices anytime." %}
+            </p>
         </div>
 
         <div class="row g-5">
             <!-- Contact Details & Map -->
             <div class="col-lg-6">
                 <div class="p-4 rounded-4 bg-light border h-100">
-                    <h5 class="fw-bold mb-4 text-primary"><i class="fa-solid fa-address-card me-2"></i>ព័ត៌មានទំនាក់ទំនងផ្លូវការ</h5>
+                    <h5 class="fw-bold mb-4 text-primary">
+                        <i class="fa-solid fa-address-card me-2"></i>{% lang_switch "ព័ត៌មានទំនាក់ទំនងផ្លូវការ" "Official Contact Details" %}
+                    </h5>
 
                     <div class="d-flex align-items-start gap-3 mb-3">
                         <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-circle mt-1">
                             <i class="fa-solid fa-location-dot fs-5"></i>
                         </div>
                         <div>
-                            <span class="fw-semibold d-block">អាសយដ្ឋាន៖</span>
-                            <span class="text-secondary small">{{ school_profile.street_address|default:"មហាវិថីព្រះនរោត្តម" }}, {{ school_profile.commune|default:"វត្តភ្នំ" }}, {{ school_profile.district|default:"ខណ្ឌដូនពេញ" }}, {{ school_profile.province|default:"រាជធានីភ្នំពេញ" }}</span>
+                            <span class="fw-semibold d-block">{% lang_switch "អាសយដ្ឋាន៖" "Address:" %}</span>
+                            <span class="text-secondary small">
+                                {% if is_english %}
+                                    {{ school_profile.street_address_en|default:school_profile.street_address|default:"Road 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal" }}
+                                {% else %}
+                                    {{ school_profile.street_address|default:"ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល" }}, {{ school_profile.province|default:"ខេត្តកណ្តាល" }}
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
 
@@ -478,8 +574,8 @@
                             <i class="fa-solid fa-phone fs-5"></i>
                         </div>
                         <div>
-                            <span class="fw-semibold d-block">ទូរស័ព្ទ៖</span>
-                            <span class="text-secondary small">{{ school_profile.phone|default:"023 888 999 / 012 345 678" }}</span>
+                            <span class="fw-semibold d-block">{% lang_switch "ទូរស័ព្ទ៖" "Phone:" %}</span>
+                            <span class="text-secondary small">{{ school_profile.phone|default:"093 995 947 / 089 995 947" }}</span>
                         </div>
                     </div>
 
@@ -488,7 +584,7 @@
                             <i class="fa-solid fa-envelope fs-5"></i>
                         </div>
                         <div>
-                            <span class="fw-semibold d-block">អ៊ីមែល៖</span>
+                            <span class="fw-semibold d-block">{% lang_switch "អ៊ីមែល៖" "Email:" %}</span>
                             <span class="text-secondary small">{{ school_profile.email|default:"info@schoolsm.edu.kh" }}</span>
                         </div>
                     </div>
@@ -506,14 +602,14 @@
                             src="{{ school_profile.google_maps_embed_url }}">
                         </iframe>
                         <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="btn btn-sm btn-light border shadow-sm position-absolute bottom-0 end-0 m-2 px-2 py-1 small fw-semibold" style="z-index: 5; font-size: 0.76rem; background: rgba(255,255,255,0.92);">
-                            <i class="fa-solid fa-arrow-up-right-from-square me-1 text-primary"></i>បើកក្នុង Google Maps
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1 text-primary"></i>{% lang_switch "បើកក្នុង Google Maps" "Open in Google Maps" %}
                         </a>
                         {% else %}
                         <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-3 text-center">
                             <i class="fa-solid fa-map-location-dot fs-2 text-primary mb-2"></i>
                             <span class="small fw-semibold">{{ school_profile.province }}</span>
                             <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>បើកក្នុង Google Maps
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>{% lang_switch "បើកក្នុង Google Maps" "Open in Google Maps" %}
                             </a>
                         </div>
                         {% endif %}
@@ -524,35 +620,35 @@
             <!-- Inquiry Form -->
             <div class="col-lg-6">
                 <div class="card card-custom p-4 border shadow-sm">
-                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-paper-plane text-primary me-2"></i>ផ្ញើសារសាកសួរព័ត៌មាន</h5>
-                    <p class="text-muted small mb-4">បំពេញព័ត៌មានខាងក្រោមដើម្បីទាក់ទងមកគណៈគ្រប់គ្រងសាលា។</p>
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-paper-plane text-primary me-2"></i>{% lang_switch "ផ្ញើសារសាកសួរព័ត៌មាន" "Send an Inquiry" %}</h5>
+                    <p class="text-muted small mb-4">{% lang_switch "បំពេញព័ត៌មានខាងក្រោមដើម្បីទាក់ទងមកគណៈគ្រប់គ្រងសាលា។" "Complete the form below to reach our school administration." %}</p>
 
                     <form method="post" action="{% url 'website_contact_submit' %}">
                         {% csrf_token %}
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold">ឈ្មោះពេញរបស់លោកអ្នក *</label>
+                                <label class="form-label small fw-semibold">{% lang_switch "ឈ្មោះពេញរបស់លោកអ្នក *" "Full Name *" %}</label>
                                 {{ contact_form.name }}
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold">លេខទូរស័ព្ទ *</label>
+                                <label class="form-label small fw-semibold">{% lang_switch "លេខទូរស័ព្ទ *" "Phone Number *" %}</label>
                                 {{ contact_form.phone }}
                             </div>
                             <div class="col-12">
-                                <label class="form-label small fw-semibold">អ៊ីមែល (ស្រេចចិត្ត)</label>
+                                <label class="form-label small fw-semibold">{% lang_switch "អ៊ីមែល (ស្រេចចិត្ត)" "Email (Optional)" %}</label>
                                 {{ contact_form.email }}
                             </div>
                             <div class="col-12">
-                                <label class="form-label small fw-semibold">ប្រធានបទសាកសួរ *</label>
+                                <label class="form-label small fw-semibold">{% lang_switch "ប្រធានបទសាកសួរ *" "Subject *" %}</label>
                                 {{ contact_form.subject }}
                             </div>
                             <div class="col-12">
-                                <label class="form-label small fw-semibold">ខ្លឹមសារសារ *</label>
+                                <label class="form-label small fw-semibold">{% lang_switch "ខ្លឹមសារសារ *" "Message *" %}</label>
                                 {{ contact_form.message }}
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary w-100 py-2 rounded-pill fw-semibold">
-                                    <i class="fa-solid fa-paper-plane me-2"></i>ផ្ញើសារឥឡូវនេះ
+                                    <i class="fa-solid fa-paper-plane me-2"></i>{% lang_switch "ផ្ញើសារឥឡូវនេះ" "Send Message Now" %}
                                 </button>
                             </div>
                         </div>

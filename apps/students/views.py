@@ -1758,6 +1758,11 @@ def student_id_card(request, pk):
         pages = [grid_students[i:i + 4] for i in range(0, len(grid_students), 4)]
         students = [student]
 
+    grade_levels = list(Classroom.objects.values_list('grade_level', flat=True).distinct().order_by('grade_level'))
+    if not grade_levels:
+        grade_levels = [7, 8, 9, 10, 11, 12]
+    selected_grade_level = student.classroom.grade_level if student.classroom else None
+
     return render(request, 'students/student_id_card.html', {
         'student': student,
         'students': students,
@@ -1766,6 +1771,8 @@ def student_id_card(request, pk):
         'school_info': school_info,
         'classrooms': classrooms,
         'selected_classroom': student.classroom,
+        'grade_levels': grade_levels,
+        'selected_grade_level': selected_grade_level,
         'day_kh': day_kh,
         'month_kh': month_kh,
         'year_kh': year_kh,
@@ -1789,17 +1796,36 @@ def batch_student_id_cards(request):
     from django.utils import timezone
 
     school_info = SchoolProfile.get_settings()
-    classrooms = Classroom.objects.all().order_by('name')
+    classrooms = Classroom.objects.all().order_by('grade_level', 'name')
+    grade_levels = list(Classroom.objects.values_list('grade_level', flat=True).distinct().order_by('grade_level'))
+    if not grade_levels:
+        grade_levels = [7, 8, 9, 10, 11, 12]
 
+    grade_level = request.GET.get('grade_level')
     classroom_id = request.GET.get('classroom')
     classroom = None
+    selected_grade_level = None
+
     if classroom_id:
         classroom = get_object_or_404(Classroom, pk=classroom_id)
+        selected_grade_level = classroom.grade_level
         students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
+    elif grade_level and str(grade_level).strip() and str(grade_level).strip().upper() != 'ALL':
+        try:
+            gl_int = int(grade_level)
+            selected_grade_level = gl_int
+            students = list(Student.objects.filter(classroom__grade_level=gl_int).select_related('classroom', 'academic_year').order_by('classroom__name', 'student_id', 'khmer_name'))
+        except (ValueError, TypeError):
+            selected_grade_level = None
+            students = list(Student.objects.select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:12])
+    elif grade_level and str(grade_level).strip().upper() == 'ALL':
+        selected_grade_level = 'ALL'
+        students = list(Student.objects.select_related('classroom', 'academic_year').order_by('classroom__grade_level', 'classroom__name', 'student_id', 'khmer_name'))
     else:
         classroom = classrooms.first()
         if classroom:
-            students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:12])
+            selected_grade_level = classroom.grade_level
+            students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
         else:
             students = list(Student.objects.select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:4])
 
@@ -1844,6 +1870,8 @@ def batch_student_id_cards(request):
         'school_info': school_info,
         'classrooms': classrooms,
         'selected_classroom': classroom,
+        'grade_levels': grade_levels,
+        'selected_grade_level': selected_grade_level,
         'day_kh': day_kh,
         'month_kh': month_kh,
         'year_kh': year_kh,

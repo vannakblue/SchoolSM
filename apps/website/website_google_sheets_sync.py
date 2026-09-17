@@ -15,13 +15,15 @@ from apps.accounts.models import GoogleSheetsConfig, SchoolProfile
 from apps.extras.models import Announcement
 from apps.website.models import NewsArticle, ContactMessage
 from apps.tools.google_sheets_service import GoogleSheetsService
+from apps.tools.ai_translation_service import AiTranslationService
 
 logger = logging.getLogger(__name__)
 
 
 class WebsiteGoogleSheetsSync(GoogleSheetsService):
     """
-    Handles two-way synchronization between SchoolSM Website CMS and Google Sheets.
+    Handles two-way synchronization between SchoolSM Website CMS and Google Sheets,
+    with automatic AI translation from Khmer to English.
     """
     REGISTRY_KEY = "website_portal"
     SPREADSHEET_TITLE = "[SchoolSM] គេហទំព័រសាលា - Website Portal Data"
@@ -29,21 +31,26 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
     ANNOUNCEMENT_HEADERS = [
         "ID",
         "កាលបរិច្ឆេទ",
-        "ចំណងជើង",
+        "ចំណងជើង (Khmer)",
+        "ចំណងជើង (English)",
         "ប្រភេទ (Category)",
         "អ្នកទទួលដំណឹង (Audience)",
         "កម្រិតអាទិភាព",
-        "ខ្លឹមសារ",
+        "ខ្លឹមសារ (Khmer)",
+        "ខ្លឹមសារ (English)",
         "ផ្សាយជាសាធារណៈ (TRUE/FALSE)"
     ]
 
     NEWS_HEADERS = [
         "ID",
         "កាលបរិច្ឆេទ",
-        "ចំណងជើង",
+        "ចំណងជើង (Khmer)",
+        "ចំណងជើង (English)",
         "ប្រភេទ (Category)",
-        "ខ្លឹមសារសង្ខេប",
-        "ខ្លឹមសារពេញលេញ",
+        "ខ្លឹមសារសង្ខេប (Khmer)",
+        "ខ្លឹមសារសង្ខេប (English)",
+        "ខ្លឹមសារពេញលេញ (Khmer)",
+        "ខ្លឹមសារពេញលេញ (English)",
         "Link រូបភាព Cover",
         "អត្ថបទលេចធ្លោ (TRUE/FALSE)",
         "ផ្សាយជាសាធារណៈ (TRUE/FALSE)"
@@ -136,7 +143,7 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             client_email = self.config.client_email or "Google Service Account Email"
             raise RuntimeError(
                 f"មិនអាចបើក Google Sheet នេះបានឡើយ ({str(e)})! "
-                f"សូមប្រាកដថាបានចុច Share ទៅកាន់ Email: {client_email} (សិទ្ធិ Editor) ឬបានកំណត់ General access ជា 'Anyone with the link can edit' រួចចុច Done។"
+                f"សូមប្រាកដថាបានចុច Share ទៅកាន់ Email: {client_email} (សិទ្ធិ Editor) ឬបានកំណត់ General access ជា 'Anyone with the link can edit' រួចចុច Done。"
             )
 
         registry = self.config.spreadsheets_registry or {}
@@ -186,14 +193,16 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                 a.id,
                 dt_str,
                 a.title,
+                a.title_en or '',
                 a.category,
                 a.target_audience,
                 a.priority,
                 a.content,
+                a.content_en or '',
                 "TRUE" if a.is_published else "FALSE"
             ])
         if ann_rows:
-            ws_ann.update(ann_rows, f'A2:H{len(ann_rows) + 1}')
+            ws_ann.update(ann_rows, f'A2:J{len(ann_rows) + 1}')
 
         # 2. News Sheet
         ws_news = self._prepare_worksheet(sh, "News", self.NEWS_HEADERS)
@@ -206,15 +215,18 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                 n.id,
                 dt_str,
                 n.title,
+                n.title_en or '',
                 n.category,
                 n.excerpt or '',
+                n.excerpt_en or '',
                 n.content,
+                n.content_en or '',
                 cover_url,
                 "TRUE" if n.is_featured else "FALSE",
                 "TRUE" if n.is_published else "FALSE"
             ])
         if news_rows:
-            ws_news.update(news_rows, f'A2:I{len(news_rows) + 1}')
+            ws_news.update(news_rows, f'A2:L{len(news_rows) + 1}')
 
         # 3. School Profile Sheet
         ws_profile = self._prepare_worksheet(sh, "School_Profile", self.PROFILE_HEADERS)
@@ -222,17 +234,24 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
         profile_fields = [
             ("name_kh", "ឈ្មោះសាលា (ខ្មែរ)", getattr(p, "name_kh", "") or "", "ឈ្មោះផ្លូវការជាភាសាខ្មែរ"),
             ("name_en", "ឈ្មោះសាលា (English)", getattr(p, "name_en", "") or "", "ឈ្មោះផ្លូវការជាភាសាអង់គ្លេស"),
-            ("short_name", "ឈ្មោះកាត់សាលា", getattr(p, "short_name", "") or "", "ឈ្មោះសម្រាប់បង្ហាញលើ Header"),
+            ("short_name", "ឈ្មោះកាត់សាលា (Khmer)", getattr(p, "short_name", "") or "", "ឈ្មោះសម្រាប់បង្ហាញលើ Header"),
+            ("short_name_en", "ឈ្មោះកាត់សាលា (English)", getattr(p, "short_name_en", "") or "", "ឈ្មោះកាត់ជាភាសាអង់គ្លេស"),
             ("school_code", "លេខកូដសាលា (EMIS)", getattr(p, "school_code", "") or "", "លេខកូដសម្គាល់គ្រឹះស្ថានអប់រំ"),
-            ("school_type", "កម្រិត/ប្រភេទសាលា", getattr(p, "school_type", "") or "", "ឧទាហរណ៍៖ វិទ្យាល័យ / General High School"),
-            ("motto", "បាវចនាសាលា", getattr(p, "motto", "") or "", "បាវចនា ឬពាក្យស្លោករបស់សាលា"),
-            ("principal_name", "ឈ្មោះនាយកសាលា", getattr(p, "principal_name", "") or "", "ឈ្មោះថ្នាក់ដឹកនាំសាលា"),
+            ("school_type", "កម្រិត/ប្រភេទសាលា (Khmer)", getattr(p, "school_type", "") or "", "ឧទាហរណ៍៖ វិទ្យាល័យចំណេះទូទៅ"),
+            ("school_type_en", "កម្រិត/ប្រភេទសាលា (English)", getattr(p, "school_type_en", "") or "", "General High School"),
+            ("motto", "បាវចនាសាលា (Khmer)", getattr(p, "motto", "") or "", "បាវចនា ឬពាក្យស្លោករបស់សាលា"),
+            ("motto_en", "បាវចនាសាលា (English)", getattr(p, "motto_en", "") or "", "School Motto in English"),
+            ("about_school", "អំពីសាលារៀន (Khmer)", getattr(p, "about_school", "") or "", "ការពិពណ៌នាអំពីសាលាជាភាសាខ្មែរ"),
+            ("about_school_en", "អំពីសាលារៀន (English)", getattr(p, "about_school_en", "") or "", "About school description in English"),
+            ("principal_name", "ឈ្មោះនាយកសាលា (Khmer)", getattr(p, "principal_name", "") or "", "ឈ្មោះថ្នាក់ដឹកនាំសាលាជាភាសាខ្មែរ"),
+            ("principal_name_en", "ឈ្មោះនាយកសាលា (English)", getattr(p, "principal_name_en", "") or "", "Principal name in English"),
             ("phone", "លេខទូរស័ព្ទផ្លូវការ", getattr(p, "phone", "") or "", "លេខទូរស័ព្ទទំនាក់ទំនងទូទៅ"),
             ("email", "អ៊ីមែលផ្លូវការ", getattr(p, "email", "") or "", "អ៊ីមែលទាក់ទងផ្លូវការ"),
             ("website", "អាសយដ្ឋានគេហទំព័រ", getattr(p, "website", "") or "", "Domain URL"),
             ("facebook_page", "ទំព័រហ្វេសប៊ុក (Facebook)", getattr(p, "facebook_page", "") or "", "Facebook Link"),
             ("telegram_channel", "Telegram Channel", getattr(p, "telegram_channel", "") or "", "Telegram Channel Link"),
-            ("street_address", "អាសយដ្ឋានផ្លូវ", getattr(p, "street_address", "") or "", "លេខផ្ទះ/ផ្លូវ"),
+            ("street_address", "អាសយដ្ឋានផ្លូវ (Khmer)", getattr(p, "street_address", "") or "", "លេខផ្ទះ/ផ្លូវ"),
+            ("street_address_en", "អាសយដ្ឋានផ្លូវ (English)", getattr(p, "street_address_en", "") or "", "Street address in English"),
             ("village", "ភូមិ", getattr(p, "village", "") or "", "ភូមិ"),
             ("commune", "ឃុំ/សង្កាត់", getattr(p, "commune", "") or "", "ឃុំ ឬសង្កាត់"),
             ("district", "ស្រុក/ខណ្ឌ", getattr(p, "district", "") or "", "ស្រុក ខណ្ឌ ឬក្រុង"),
@@ -251,7 +270,7 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                 c.id,
                 dt_str,
                 c.name,
-                c.phone,
+                c.phone or '',
                 c.email or '',
                 c.subject,
                 c.message,
@@ -260,31 +279,30 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
         if contact_rows:
             ws_contact.update(contact_rows, f'A2:H{len(contact_rows) + 1}')
 
-        # Update registry timestamp
+        # Update last sync time
         registry = self.config.spreadsheets_registry or {}
         if self.REGISTRY_KEY in registry:
-            registry[self.REGISTRY_KEY]['last_sync_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            registry[self.REGISTRY_KEY]['last_pushed_at'] = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
             self.config.spreadsheets_registry = registry
             self.config.save(update_fields=['spreadsheets_registry'])
 
         return {
-            'status': 'success',
-            'announcements_count': len(ann_rows),
-            'news_count': len(news_rows),
-            'profile_fields_count': len(profile_rows),
-            'contact_messages_count': len(contact_rows),
-            'spreadsheet_url': sh.url,
-            'spreadsheet_title': sh.title,
+            'announcements': len(ann_rows),
+            'news': len(news_rows),
+            'profile_fields': len(profile_rows),
+            'contacts': len(contact_rows)
         }
 
     # =========================================================================
-    # 📥 PULL (Google Sheets -> Database)
+    # 📥 PULL (Google Sheets -> Database) with Auto AI Translation
     # =========================================================================
     def pull_from_sheets(self):
         """
-        Imports changes from Google Sheets into the Django database:
-        - If row has an ID: updates the record.
-        - If row has NO ID (new row in Sheet): creates a new record and writes the new ID back to the Sheet!
+        Pulls data from Google Sheets into Database:
+        - Updates or creates Announcements & News
+        - Automatically translates Khmer content into English via AI Agent if English is blank
+        - Updates School Profile
+        - Syncs Contact Messages status
         """
         sh = self.get_or_create_website_spreadsheet()
         summary = {
@@ -302,6 +320,7 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             ann_records = ws_ann.get_all_values()
             if len(ann_records) > 1:
                 new_id_updates = []
+                is_bilingual_header = len(ann_records[0]) >= 10
                 for row_idx, row in enumerate(ann_records[1:], start=2):
                     if not row or not any(row):
                         continue
@@ -309,11 +328,24 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                     title = row[2].strip() if len(row) > 2 else ""
                     if not title:
                         continue
-                    cat = row[3].strip() if len(row) > 3 and row[3].strip() else "GENERAL"
-                    aud = row[4].strip() if len(row) > 4 and row[4].strip() else "ALL"
-                    pri = row[5].strip() if len(row) > 5 and row[5].strip() else "NORMAL"
-                    content = row[6].strip() if len(row) > 6 else ""
-                    pub_str = row[7].strip().upper() if len(row) > 7 else "TRUE"
+
+                    if is_bilingual_header:
+                        title_en = row[3].strip() if len(row) > 3 else ""
+                        cat = row[4].strip() if len(row) > 4 and row[4].strip() else "GENERAL"
+                        aud = row[5].strip() if len(row) > 5 and row[5].strip() else "ALL"
+                        pri = row[6].strip() if len(row) > 6 and row[6].strip() else "NORMAL"
+                        content = row[7].strip() if len(row) > 7 else ""
+                        content_en = row[8].strip() if len(row) > 8 else ""
+                        pub_str = row[9].strip().upper() if len(row) > 9 else "TRUE"
+                    else:
+                        title_en = ""
+                        cat = row[3].strip() if len(row) > 3 and row[3].strip() else "GENERAL"
+                        aud = row[4].strip() if len(row) > 4 and row[4].strip() else "ALL"
+                        pri = row[5].strip() if len(row) > 5 and row[5].strip() else "NORMAL"
+                        content = row[6].strip() if len(row) > 6 else ""
+                        content_en = ""
+                        pub_str = row[7].strip().upper() if len(row) > 7 else "TRUE"
+
                     is_published = pub_str in ["TRUE", "1", "YES", "ពិត"]
 
                     if row_id and row_id.isdigit():
@@ -321,24 +353,34 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                         ann = Announcement.objects.filter(id=int(row_id)).first()
                         if ann:
                             ann.title = title
+                            if title_en:
+                                ann.title_en = title_en
                             ann.category = cat
                             ann.target_audience = aud
                             ann.priority = pri
                             ann.content = content
+                            if content_en:
+                                ann.content_en = content_en
                             ann.is_published = is_published
                             ann.save()
+                            # Automatically translate into English by AI Agent if missing
+                            AiTranslationService.auto_translate_announcement(ann)
                             summary['announcements_updated'] += 1
                             continue
 
                     # Create new
                     new_ann = Announcement.objects.create(
                         title=title,
+                        title_en=title_en,
                         category=cat,
                         target_audience=aud,
                         priority=pri,
                         content=content,
+                        content_en=content_en,
                         is_published=is_published
                     )
+                    # Automatically translate into English by AI Agent
+                    AiTranslationService.auto_translate_announcement(new_ann)
                     summary['announcements_created'] += 1
                     new_id_updates.append((row_idx, new_ann.id))
 
@@ -357,6 +399,7 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             news_records = ws_news.get_all_values()
             if len(news_records) > 1:
                 new_id_updates = []
+                is_bilingual_header = len(news_records[0]) >= 12
                 for row_idx, row in enumerate(news_records[1:], start=2):
                     if not row or not any(row):
                         continue
@@ -364,11 +407,26 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                     title = row[2].strip() if len(row) > 2 else ""
                     if not title:
                         continue
-                    cat = row[3].strip() if len(row) > 3 and row[3].strip() else "NEWS"
-                    excerpt = row[4].strip() if len(row) > 4 else ""
-                    content = row[5].strip() if len(row) > 5 else ""
-                    feat_str = row[7].strip().upper() if len(row) > 7 else "FALSE"
-                    pub_str = row[8].strip().upper() if len(row) > 8 else "TRUE"
+
+                    if is_bilingual_header:
+                        title_en = row[3].strip() if len(row) > 3 else ""
+                        cat = row[4].strip() if len(row) > 4 and row[4].strip() else "NEWS"
+                        excerpt = row[5].strip() if len(row) > 5 else ""
+                        excerpt_en = row[6].strip() if len(row) > 6 else ""
+                        content = row[7].strip() if len(row) > 7 else ""
+                        content_en = row[8].strip() if len(row) > 8 else ""
+                        feat_str = row[10].strip().upper() if len(row) > 10 else "FALSE"
+                        pub_str = row[11].strip().upper() if len(row) > 11 else "TRUE"
+                    else:
+                        title_en = ""
+                        cat = row[3].strip() if len(row) > 3 and row[3].strip() else "NEWS"
+                        excerpt = row[4].strip() if len(row) > 4 else ""
+                        excerpt_en = ""
+                        content = row[5].strip() if len(row) > 5 else ""
+                        content_en = ""
+                        feat_str = row[7].strip().upper() if len(row) > 7 else "FALSE"
+                        pub_str = row[8].strip().upper() if len(row) > 8 else "TRUE"
+
                     is_featured = feat_str in ["TRUE", "1", "YES", "ពិត"]
                     is_published = pub_str in ["TRUE", "1", "YES", "ពិត"]
 
@@ -376,24 +434,37 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                         art = NewsArticle.objects.filter(id=int(row_id)).first()
                         if art:
                             art.title = title
+                            if title_en:
+                                art.title_en = title_en
                             art.category = cat
                             art.excerpt = excerpt
+                            if excerpt_en:
+                                art.excerpt_en = excerpt_en
                             art.content = content
+                            if content_en:
+                                art.content_en = content_en
                             art.is_featured = is_featured
                             art.is_published = is_published
                             art.save()
+                            # Automatically translate into English by AI Agent
+                            AiTranslationService.auto_translate_news(art)
                             summary['news_updated'] += 1
                             continue
 
                     # Create new news article
                     new_art = NewsArticle.objects.create(
                         title=title,
+                        title_en=title_en,
                         category=cat,
                         excerpt=excerpt,
+                        excerpt_en=excerpt_en,
                         content=content,
+                        content_en=content_en,
                         is_featured=is_featured,
                         is_published=is_published
                     )
+                    # Automatically translate into English by AI Agent
+                    AiTranslationService.auto_translate_news(new_art)
                     summary['news_created'] += 1
                     new_id_updates.append((row_idx, new_art.id))
 
@@ -423,6 +494,8 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                         updated_fields.append(key)
                 if updated_fields:
                     p.save(update_fields=updated_fields)
+                    # Automatically translate Khmer profile fields into English by AI Agent
+                    AiTranslationService.auto_translate_school_profile(p)
                     summary['profile_updated'] = True
         except Exception as e:
             logger.error(f"Error pulling school profile from Google Sheets: {e}")

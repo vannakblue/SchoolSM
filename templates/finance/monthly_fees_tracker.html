@@ -665,9 +665,15 @@
                         {% for m in item.months %}
                         <td>
                             {% if m.cell_status == 'PAID' %}
-                            <span class="fee-badge paid" title="បង់គ្រប់៖ {{ m.paid|floatformat:0 }} {{ config.currency_symbol }}{% if m.payment_date %} ({{ m.payment_date|date:'d/m' }}){% endif %} (ចុចដើម្បីកែប្រែ)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '{{ m.paid|floatformat:0 }}')">
-                                <i class="fa-solid fa-check me-1"></i>គ្រប់
-                            </span>
+                                {% if m.expected == 0 and m.is_ticked %}
+                                <span class="fee-badge bg-info-subtle text-info border border-info-subtle" title="ឥតគិតថ្លៃ / លើកលែងការបង់ប្រាក់" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '0')">
+                                    <i class="fa-solid fa-gift me-1"></i>ឥតគិតថ្លៃ
+                                </span>
+                                {% else %}
+                                <span class="fee-badge paid" title="បង់គ្រប់៖ {{ m.paid|floatformat:0 }} {{ config.currency_symbol }}{% if m.payment_date %} ({{ m.payment_date|date:'d/m' }}){% endif %} (ចុចដើម្បីកែប្រែ)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '{{ m.paid|floatformat:0 }}')">
+                                    <i class="fa-solid fa-check me-1"></i>គ្រប់
+                                </span>
+                                {% endif %}
                             {% elif m.cell_status == 'PARTIAL' %}
                             <span class="fee-badge partial" title="បង់បានខ្លះ៖ {{ m.paid|floatformat:0 }} / {{ m.expected|floatformat:0 }} (ចុចដើម្បីកែប្រែ/បង់បន្ថែម)" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '{{ m.paid|floatformat:0 }}')">
                                 {{ m.paid|floatformat:0 }}
@@ -677,8 +683,10 @@
                                 ជំពាក់
                             </span>
                             {% else %}
-                            <span class="fee-badge not-due {% if m.is_pre_enrollment or m.is_post_stop %}opacity-50{% endif %}" title="{% if m.is_pre_enrollment %}មិនទាន់ចូលរៀន (ចាប់ផ្តើមបង់ពីខែ {{ item.fee_start_month_name }}){% elif m.is_post_stop %}ផ្អាក/ឈប់រៀន (បញ្ចប់ការបង់ត្រឹមខែ {{ item.fee_end_month_name }}){% else %}មិនទាន់ដល់ខែត្រូវបង់{% endif %}" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '0')">
-                                {% if m.is_post_stop %}
+                            <span class="fee-badge not-due {% if m.is_pre_enrollment or m.is_post_stop %}opacity-75{% endif %}" title="{% if m.is_pre_enrollment %}មិនទាន់ចូលរៀន (ចាប់ផ្តើមបង់ពីខែ {{ item.fee_start_month_name }}){% elif m.is_post_stop %}ផ្អាក/ឈប់រៀន (បញ្ចប់ការបង់ត្រឹមខែ {{ item.fee_end_month_name }}){% else %}មិនទាន់ដល់ខែត្រូវបង់{% endif %}" onclick="openRecordPaymentModal('{{ item.student.id }}', '{{ item.student.khmer_name|escapejs }}', '{{ item.student.classroom.name|default:''|escapejs }}', '{{ item.category.name|default:'ទូទៅ'|escapejs }}', '{{ m.number }}', '{{ m.cell_status }}', '0')">
+                                {% if m.is_pre_enrollment %}
+                                    <span class="text-muted small" style="font-size: 0.7rem;"><i class="fa-solid fa-clock-rotate-left me-0.5"></i>មិនទាន់ចូល</span>
+                                {% elif m.is_post_stop %}
                                     <span style="font-size: 0.72rem;">{{ m.cell_label }}</span>
                                 {% else %}
                                     -
@@ -795,13 +803,19 @@
                             <div>{{ m.month_name|slice:":3" }}</div>
                             <div style="font-size: 0.65rem;">
                                 {% if m.cell_status == 'PAID' %}
-                                <i class="fa-solid fa-check"></i>
+                                    {% if m.expected == 0 and m.is_ticked %}
+                                    <i class="fa-solid fa-gift text-info" title="ឥតគិតថ្លៃ"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-check"></i>
+                                    {% endif %}
                                 {% elif m.cell_status == 'UNPAID' %}
                                 ជំពាក់
                                 {% elif m.cell_status == 'PARTIAL' %}
                                 {{ m.paid|floatformat:0 }}
+                                {% elif m.is_pre_enrollment %}
+                                <span style="font-size:0.58rem;" class="text-muted">មិនទាន់ចូល</span>
                                 {% elif m.is_post_stop %}
-                                <span style="font-size:0.6rem;">{{ m.cell_label }}</span>
+                                <span style="font-size:0.58rem;">{{ m.cell_label }}</span>
                                 {% else %}
                                 -
                                 {% endif %}

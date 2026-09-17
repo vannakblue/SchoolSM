@@ -140,10 +140,12 @@ class Announcement(models.Model):
         URGENT = 'URGENT', 'បន្ទាន់ (Urgent)'
 
     title = models.CharField(max_length=255, verbose_name="ចំណងជើងសេចក្តីជូនដំណឹង / Announcement Title")
+    title_en = models.CharField(max_length=255, blank=True, null=True, verbose_name="ចំណងជើងភាសាអង់គ្លេស / English Title")
     category = models.CharField(max_length=30, choices=Category.choices, default=Category.GENERAL, verbose_name="ប្រភេទ / Category")
     target_audience = models.CharField(max_length=30, choices=TargetAudience.choices, default=TargetAudience.ALL, verbose_name="ក្រុមគោលដៅ / Target Audience")
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL, verbose_name="កម្រិតអាទិភាព / Priority")
     content = models.TextField(verbose_name="ខ្លឹមសារលម្អិត / Content")
+    content_en = models.TextField(blank=True, null=True, verbose_name="ខ្លឹមសារភាសាអង់គ្លេស / English Content")
     attachment = models.FileField(upload_to='announcements/docs/', blank=True, null=True, verbose_name="ឯកសារភ្ជាប់ / Attachment")
     is_published = models.BooleanField(default=True, verbose_name="ផ្សាយជាសាធារណៈ / Is Published")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="អ្នកបង្កើត / Created By")
@@ -153,6 +155,16 @@ class Announcement(models.Model):
         ordering = ['-created_at']
         verbose_name = "សេចក្តីជូនដំណឹង / Announcement"
         verbose_name_plural = "សេចក្តីជូនដំណឹងទាំងអស់ / Announcements"
+
+    def get_title(self, lang='km'):
+        if lang == 'en' and self.title_en:
+            return self.title_en
+        return self.title
+
+    def get_content(self, lang='km'):
+        if lang == 'en' and self.content_en:
+            return self.content_en
+        return self.content
 
     def __str__(self):
         return f"[{self.get_category_display()}] {self.title}"

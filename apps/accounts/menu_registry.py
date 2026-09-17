@@ -188,6 +188,14 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
                 'url_name': 'moeys_individual_student_roster',
             },
+            {
+                'key': 'batch_student_id_cards',
+                'name_kh': 'បោះពុម្ពប័ណ្ណសិស្ស (ID Card)',
+                'name_en': 'Print Student ID Cards',
+                'icon': 'fa-solid fa-id-card text-warning',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'batch_student_id_cards',
+            },
         ]
     },
     {

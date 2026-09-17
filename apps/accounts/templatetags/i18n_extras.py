@@ -11,15 +11,59 @@ def translate_filter(key, lang=None):
     return t(str(key), lang=lang or 'km')
 
 @register.simple_tag(takes_context=True)
-def lang_switch(context, kh_text, en_text):
+def lang_switch(context, kh_text, en_text=None):
     """
     Simple tag to cleanly output Khmer or English text based on active language:
     {% lang_switch "បញ្ជីសិស្សទាំងអស់" "All Students" %}
     """
     current_lang = context.get('current_language', 'km')
     if current_lang == 'en':
-        return en_text
+        return en_text if (en_text is not None and str(en_text).strip() != '') else kh_text
     return kh_text
+
+@register.simple_tag(takes_context=True)
+def get_bilingual(context, obj, field_name):
+    """
+    Retrieves bilingual field value from model instance.
+    Looks up <field_name>_en when current_language == 'en', falling back to <field_name> or <field_name>_kh.
+    Usage: {% get_bilingual item 'title' %}
+    """
+    if not obj:
+        return ''
+    current_lang = context.get('current_language', 'km')
+    if current_lang == 'en':
+        val_en = getattr(obj, f"{field_name}_en", None)
+        if val_en and str(val_en).strip():
+            return val_en
+    val = getattr(obj, field_name, None)
+    if val is None or str(val).strip() == '':
+        val = getattr(obj, f"{field_name}_kh", None)
+    return val or ''
+
+@register.filter(name='clean_choice')
+def clean_choice_filter(val, lang='km'):
+    """
+    Cleanly separates bilingual text like 'សាលារដ្ឋ / Public School'
+    or 'ប្រភេទគ្រឹះស្ថានសិក្សា (Institution Type)'.
+    If lang == 'en', returns English only.
+    If lang == 'km', returns Khmer only.
+    """
+    if not val:
+        return ''
+    s = str(val).strip()
+    is_en = (str(lang).lower() == 'en')
+    import re
+    if ' / ' in s:
+        parts = s.split(' / ')
+        if len(parts) >= 2:
+            return parts[1].strip() if is_en else parts[0].strip()
+    if is_en:
+        m = re.search(r'\(([A-Za-z0-9\s/&\-\.,]+)\)$', s)
+        if m:
+            return m.group(1).strip()
+    else:
+        s = re.sub(r'\s*\([A-Za-z0-9\s/&\-\.,]+\)$', '', s).strip()
+    return s
 
 @register.filter(name='dict_key')
 def dict_key(d, k):

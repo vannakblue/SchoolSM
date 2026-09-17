@@ -1,31 +1,32 @@
 {% extends 'base.html' %}
+{% load i18n_extras %}
 
-{% block title %}ការកំណត់ Google Gemini AI & Key Rotation | SchoolSM{% endblock %}
+{% block title %}{% lang_switch 'ការកំណត់ Google Gemini AI & Key Rotation' 'Google Gemini AI & Key Rotation Settings' %} | SchoolSM{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1 small">
-                <li class="breadcrumb-item"><a href="{% url 'dashboard_redirect' %}" class="text-decoration-none">ទំព័រដើម</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'school_profile_settings' %}" class="text-decoration-none">ការកំណត់</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Gemini AI Configuration</li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard_redirect' %}" class="text-decoration-none">{% lang_switch 'ទំព័រដើម' 'Home' %}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'school_profile_settings' %}" class="text-decoration-none">{% lang_switch 'ការកំណត់' 'Settings' %}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{% lang_switch 'ការកំណត់ Gemini AI' 'Gemini AI Configuration' %}</li>
             </ol>
         </nav>
         <h2 class="fw-bold mb-1 d-flex align-items-center gap-2">
             <span class="avatar-circle bg-primary text-white" style="width: 38px; height: 38px; font-size: 1.2rem;">
                 <i class="fa-solid fa-robot"></i>
             </span>
-            <span>ការកំណត់ Google Gemini AI & Key Rotation</span>
+            <span>{% lang_switch 'ការកំណត់ Gemini AI និងបង្វិលសោ' 'Google Gemini AI & Key Rotation' %}</span>
         </h2>
-        <p class="text-muted small mb-0">គ្រប់គ្រង API Keys តាមរយៈ Web Browser សម្រាប់ជំនួយការ Pop Chat AI, ការបង្កើតវិញ្ញាសា MCQs និងឧបករណ៍ឆ្លាតវៃ</p>
+        <p class="text-muted small mb-0">{% lang_switch 'គ្រប់គ្រង API Keys តាមរយៈកម្មវិធីរុករកសម្រាប់ជំនួយការ Pop Chat AI ការបង្កើតវិញ្ញាសា MCQs និងឧបករណ៍ឆ្លាតវៃ' 'Manage API Keys via web browser for Pop Chat AI assistant, MCQs exam generation, and smart tools' %}</p>
     </div>
     <div class="d-flex gap-2">
         <a href="https://aistudio.google.com/app/apikey" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill fw-bold">
-            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> យក Key ពី Google AI Studio
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> {% lang_switch 'យកសោពី Google AI Studio' 'Get Key from Google AI Studio' %}
         </a>
         <button type="button" class="btn btn-success btn-sm rounded-pill fw-bold" onclick="runLiveKeyTest(null)">
-            <i class="fa-solid fa-bolt me-1"></i> តេស្តការតភ្ជាប់ផ្ទាល់ (Live Test)
+            <i class="fa-solid fa-bolt me-1"></i> {% lang_switch 'តេស្តការតភ្ជាប់ផ្ទាល់' 'Live Connection Test' %}
         </button>
     </div>
 </div>
@@ -37,12 +38,12 @@
         <div class="custom-card mb-4 shadow-sm border-0">
             <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3">
                 <div>
-                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders text-primary me-2"></i>ការកំណត់ Generative AI & API Keys</h5>
-                    <small class="text-muted">កំណត់ Keys ចូលប្រព័ន្ធដោយផ្ទាល់ មិនចាំបាច់កែប្រែឯកសារ .env លើ Server ឡើយ</small>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders text-primary me-2"></i>{% lang_switch 'ការកំណត់ Generative AI និង API Keys' 'Generative AI & API Keys Settings' %}</h5>
+                    <small class="text-muted">{% lang_switch 'កំណត់សោចូលប្រព័ន្ធដោយផ្ទាល់ មិនចាំបាច់កែប្រែឯកសារ .env លើ Server ឡើយ' 'Configure keys directly in the system without editing .env files on server' %}</small>
                 </div>
                 <span class="badge {% if config.is_active %}bg-success-subtle text-success border border-success{% else %}bg-secondary-subtle text-secondary border{% endif %} px-2.5 py-1.5 rounded-pill small">
                     <i class="fa-solid {% if config.is_active %}fa-circle-check{% else %}fa-circle-pause{% endif %} me-1"></i>
-                    {% if config.is_active %}ដំណើរការ (Active){% else %}បានផ្អាក (Disabled){% endif %}
+                    {% if config.is_active %}{% lang_switch 'ដំណើរការ' 'Active' %}{% else %}{% lang_switch 'បានផ្អាក' 'Disabled' %}{% endif %}
                 </span>
             </div>
 
@@ -56,38 +57,67 @@
                             <div class="form-check form-switch m-0">
                                 {{ form.is_active }}
                                 <label class="form-check-label fw-bold small text-dark" for="{{ form.is_active.id_for_label }}">
-                                    បើកដំណើរការ Gemini AI ក្នុងប្រព័ន្ធ
+                                    {% lang_switch 'បើកដំណើរការ Gemini AI ក្នុងប្រព័ន្ធ' 'Enable Gemini AI in System' %}
                                 </label>
-                                <div class="text-muted" style="font-size: 0.72rem;">អនុញ្ញាតឱ្យលោកគ្រូ-អ្នកគ្រូ និង Admin ប្រើ AI</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{% lang_switch 'អនុញ្ញាតឱ្យលោកគ្រូ-អ្នកគ្រូ និងអ្នកគ្រប់គ្រងប្រើ AI' 'Allow teachers and administrators to use AI' %}</div>
                             </div>
                         </div>
                         <div class="col-sm-6">
                             <div class="form-check form-switch m-0">
                                 {{ form.rotation_enabled }}
                                 <label class="form-check-label fw-bold small text-dark" for="{{ form.rotation_enabled.id_for_label }}">
-                                    បើកដំណើរការ Key Auto-Rotation
+                                    {% lang_switch 'បើកដំណើរការបង្វិលសោស្វ័យប្រវត្តិ' 'Enable Key Auto-Rotation' %}
                                 </label>
-                                <div class="text-muted" style="font-size: 0.72rem;">ចែកវេនគ្នាប្រើ & Auto Failover ពេលជួប 429</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{% lang_switch 'ចែកវេនគ្នាប្រើ និងផ្ទេរស្វ័យប្រវត្តិពេលលើសកម្រិតកំណត់' 'Round-robin cycling & automatic failover on rate limit' %}</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Model & Thinking Level -->
+                <!-- Model & Thinking Level (Antigravity-Style Dropdown & Quick Selectors) -->
                 <div class="row g-3 mb-3">
                     <div class="col-md-7">
-                        <label class="form-label fw-bold small text-dark">ម៉ូដែល Gemini AI ចម្បង (Model Name)</label>
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-bold small text-dark mb-0">
+                                <i class="fa-solid fa-microchip text-primary me-1"></i> {% lang_switch 'ម៉ូដែល Gemini AI ចម្បង' 'Primary Gemini AI Model' %}
+                            </label>
+                            <span class="badge bg-primary-subtle text-primary border border-primary small" style="font-size: 0.68rem;">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> {% lang_switch 'ជ្រើសរើសដូចក្នុង Antigravity' 'Antigravity Style' %}
+                            </span>
+                        </div>
                         {{ form.model_name }}
-                        <div class="d-flex gap-1 mt-1">
-                            <span class="badge bg-light text-secondary border cursor-pointer small" style="cursor: pointer;" onclick="document.getElementById('{{ form.model_name.id_for_label }}').value='gemini-3.8-flash'">gemini-3.8-flash</span>
-                            <span class="badge bg-light text-secondary border cursor-pointer small" style="cursor: pointer;" onclick="document.getElementById('{{ form.model_name.id_for_label }}').value='gemini-2.5-flash'">gemini-2.5-flash</span>
-                            <span class="badge bg-light text-secondary border cursor-pointer small" style="cursor: pointer;" onclick="document.getElementById('{{ form.model_name.id_for_label }}').value='gemini-flash-latest'">gemini-flash-latest</span>
+
+                        <!-- Custom Model Name Input (shown when 'custom' is selected) -->
+                        <div id="customModelWrapper" class="mt-2 {% if not is_custom_model %}d-none{% endif %}">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted font-monospace"><i class="fa-solid fa-code-branch"></i></span>
+                                <input type="text" name="custom_model_name" id="customModelInput" class="form-control font-monospace" placeholder="{% if current_lang == 'km' %}វាយបញ្ចូលឈ្មោះម៉ូដែលផ្ទាល់ (ឧ. gemini-exp-1206)...{% else %}Enter custom model name (e.g. gemini-exp-1206)...{% endif %}" value="{% if is_custom_model %}{{ config.model_name }}{% endif %}">
+                            </div>
+                        </div>
+
+                        <!-- Antigravity-Style Quick-Selection Pills -->
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-3.8-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-3.8-flash')">
+                                ⚡ Gemini 3.8 Flash
+                            </button>
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-3.5-pro' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-3.5-pro')">
+                                🧠 Gemini 3.5 Pro
+                            </button>
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-2.5-flash' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-2.5-flash')">
+                                ⚡ Gemini 2.5 Flash
+                            </button>
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-2.5-pro' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-2.5-pro')">
+                                🧠 Gemini 2.5 Pro
+                            </button>
+                            <button type="button" class="btn btn-xs rounded-pill model-chip {% if config.model_name == 'gemini-flash-latest' %}btn-primary text-white shadow-sm{% else %}btn-outline-secondary{% endif %}" onclick="selectQuickModel('gemini-flash-latest')">
+                                🔄 Flash Latest
+                            </button>
                         </div>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label fw-bold small text-dark">កម្រិតគិត (Thinking Level)</label>
+                        <label class="form-label fw-bold small text-dark"><i class="fa-solid fa-brain text-info me-1"></i> {% lang_switch 'កម្រិតពិចារណា' 'Thinking Level' %}</label>
                         {{ form.thinking_level }}
-                        <div class="text-muted small mt-1" style="font-size: 0.72rem;">កម្រិតពិចារណាឆ្លើយតប</div>
+                        <div class="text-muted small mt-1" style="font-size: 0.72rem;">{% lang_switch 'កម្រិតពិចារណាឆ្លើយតប' 'Response thinking depth' %}</div>
                     </div>
                 </div>
 
@@ -95,28 +125,28 @@
                 <div class="mb-4">
                     <div class="d-flex align-items-center justify-content-between mb-1">
                         <label class="form-label fw-bold small text-dark mb-0">
-                            បញ្ជី Google Gemini API Keys <span class="text-danger">*</span>
+                            {% lang_switch 'បញ្ជី Google Gemini API Keys' 'Google Gemini API Keys List' %} <span class="text-danger">*</span>
                         </label>
                         <span class="badge bg-primary-subtle text-primary border border-primary small">
-                            <i class="fa-solid fa-key me-1"></i> មាន {{ keys_list|length }} Keys
+                            <i class="fa-solid fa-key me-1"></i> {% lang_switch 'មាន' 'Total' %} {{ keys_list|length }} {% lang_switch 'សោ' 'Keys' %}
                         </span>
                     </div>
                     {{ form.api_keys }}
                     <div class="d-flex align-items-start gap-1 text-muted small mt-1.5" style="font-size: 0.75rem;">
                         <i class="fa-solid fa-circle-info text-primary mt-0.5"></i>
                         <span>
-                            <strong>របៀបបញ្ចូល៖</strong> ដាក់ <strong>១ Key ក្នុងមួយបន្ទាត់</strong> ឬខណ្ឌដោយសញ្ញាក្បៀស <code>,</code>។ 
-                            សម្រាប់ Free Tier សូមដាក់ពី <strong>៣ ទៅ ៥ Keys</strong> ដើម្បីទទួលបាន 45-75 RPM និងការពារបញ្ហា Quota Rate Limit 429!
+                            <strong>{% lang_switch 'របៀបបញ្ចូល៖' 'How to input:' %}</strong>
+                            {% lang_switch 'ដាក់ <strong>១ Key ក្នុងមួយបន្ទាត់</strong> ឬខណ្ឌដោយសញ្ញាក្បៀស <code>,</code>។ លោកអ្នកអាចដាក់ <strong>ប៉ុន្មាន Keys ក៏បានគ្មានដែនកំណត់</strong>! សម្រាប់គណនីឥតគិតថ្លៃ សូមដាក់ពី <strong>៣ ទៅ ៥ Keys</strong> ឬច្រើនជាងនេះ ដើម្បីបង្កើនល្បឿន 45-75+ RPM និងការពារបញ្ហា Quota Rate Limit 429!' 'Enter <strong>1 Key per line</strong> or separated by comma <code>,</code>. You can add <strong>as many keys as you want with no limits</strong>! For Free Tier, adding <strong>3 to 5 Keys</strong> or more provides 45-75+ RPM and prevents Quota Rate Limit 429 errors!' %}
                         </span>
                     </div>
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between pt-2 border-top">
                     <span class="text-muted small" style="font-size: 0.75rem;">
-                        <i class="fa-solid fa-clock-rotate-left me-1"></i> កែប្រែចុងក្រោយ៖ {{ config.updated_at|date:"d-m-Y H:i" }}
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i> {% lang_switch 'កែប្រែចុងក្រោយ៖' 'Last modified:' %} {{ config.updated_at|date:"d-m-Y H:i" }}
                     </span>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ (Save)
+                        <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch 'រក្សាទុកការកំណត់' 'Save Settings' %}
                     </button>
                 </div>
             </form>
@@ -124,21 +154,21 @@
 
         <!-- Live Connection Test Card -->
         <div class="custom-card shadow-sm border-0">
-            <h5 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-vial-virus text-info me-2"></i>តេស្តសាកល្បងការតភ្ជាប់ (Live API Tester)</h5>
-            <p class="text-muted small mb-3">ផ្ញើសំណួរសាកល្បងទៅកាន់ Google Gemini API ភ្លាមៗ ដើម្បីបញ្ជាក់ថា Key និង Network ដំណើរការត្រឹមត្រូវ</p>
+            <h5 class="fw-bold mb-2 text-dark"><i class="fa-solid fa-vial-virus text-info me-2"></i>{% lang_switch 'តេស្តសាកល្បងការតភ្ជាប់' 'Live Connection Test' %}</h5>
+            <p class="text-muted small mb-3">{% lang_switch 'ផ្ញើសំណួរសាកល្បងទៅកាន់ Google Gemini API ភ្លាមៗ ដើម្បីបញ្ជាក់ថាសោ និងបណ្ដាញដំណើរការត្រឹមត្រូវ' 'Send an instant test request to Google Gemini API to verify keys and network connectivity' %}</p>
 
             <div class="input-group mb-3">
                 <span class="input-group-text bg-light text-muted small font-monospace"><i class="fa-solid fa-key"></i></span>
-                <input type="text" id="manualTestKeyInput" class="form-control font-monospace small" placeholder="ទុកទំនេរដើម្បីតេស្ត Key ក្នុងប្រព័ន្ធ ឬបិទភ្ជាប់ Key ជាក់លាក់ដើម្បីតេស្ត...">
+                <input type="text" id="manualTestKeyInput" class="form-control font-monospace small" placeholder="{% if current_lang == 'km' %}ទុកទំនេរដើម្បីតេស្តសោក្នុងប្រព័ន្ធ ឬបិទភ្ជាប់សោជាក់លាក់ដើម្បីតេស្ត...{% else %}Leave empty to test system key or paste specific key to test...{% endif %}">
                 <button type="button" id="btnRunTest" class="btn btn-info text-white fw-bold px-3" onclick="runLiveKeyTest(document.getElementById('manualTestKeyInput').value)">
-                    <i class="fa-solid fa-paper-plane me-1" id="testIcon"></i> <span id="testBtnText">តេស្តឥឡូវនេះ</span>
+                    <i class="fa-solid fa-paper-plane me-1" id="testIcon"></i> <span id="testBtnText">{% lang_switch 'តេស្តឥឡូវនេះ' 'Test Now' %}</span>
                 </button>
             </div>
 
             <!-- Test Result Output Container -->
             <div id="testResultBox" class="d-none p-3 rounded-3 border">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <strong id="testResultTitle" class="small">ស្ថានភាពតេស្ត</strong>
+                    <strong id="testResultTitle" class="small">{% lang_switch 'ស្ថានភាពតេស្ត' 'Test Status' %}</strong>
                     <span id="testResultBadge" class="badge bg-secondary">...</span>
                 </div>
                 <div id="testResultMessage" class="small line-height-relaxed font-monospace"></div>
@@ -152,9 +182,9 @@
         <div class="custom-card mb-4 shadow-sm border-0">
             <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
                 <h5 class="fw-bold mb-0 text-dark">
-                    <i class="fa-solid fa-chart-pie text-success me-2"></i>ស្ថានភាព Key Rotator
+                    <i class="fa-solid fa-chart-pie text-success me-2"></i>{% lang_switch 'ស្ថានភាពបង្វិលសោ' 'Key Rotator Status' %}
                 </h5>
-                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="window.location.reload()" title="Refresh Status">
+                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="window.location.reload()" title="{% if current_lang == 'km' %}ផ្ទុកឡើងវិញ{% else %}Refresh Status{% endif %}">
                     <i class="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
@@ -164,25 +194,25 @@
                 <div class="col-3">
                     <div class="p-2 rounded bg-light border">
                         <div class="fs-5 fw-bold text-dark">{{ rotator_status.total_keys }}</div>
-                        <div class="text-muted" style="font-size: 0.65rem;">សរុប (Total)</div>
+                        <div class="text-muted" style="font-size: 0.65rem;">{% lang_switch 'សរុប' 'Total' %}</div>
                     </div>
                 </div>
                 <div class="col-3">
                     <div class="p-2 rounded bg-success-subtle border border-success">
                         <div class="fs-5 fw-bold text-success">{{ rotator_status.active_available_keys }}</div>
-                        <div class="text-success" style="font-size: 0.65rem;">រួចរាល់ (Ready)</div>
+                        <div class="text-success" style="font-size: 0.65rem;">{% lang_switch 'រួចរាល់' 'Ready' %}</div>
                     </div>
                 </div>
                 <div class="col-3">
                     <div class="p-2 rounded bg-warning-subtle border border-warning">
                         <div class="fs-5 fw-bold text-warning">{{ rotator_status.cooling_down_keys }}</div>
-                        <div class="text-dark" style="font-size: 0.65rem;">Cooldown (429)</div>
+                        <div class="text-dark" style="font-size: 0.65rem;">{% lang_switch 'រង់ចាំ' 'Cooldown' %}</div>
                     </div>
                 </div>
                 <div class="col-3">
                     <div class="p-2 rounded bg-danger-subtle border border-danger">
                         <div class="fs-5 fw-bold text-danger">{{ rotator_status.disabled_keys }}</div>
-                        <div class="text-danger" style="font-size: 0.65rem;">ខូច (Disabled)</div>
+                        <div class="text-danger" style="font-size: 0.65rem;">{% lang_switch 'អសកម្ម' 'Disabled' %}</div>
                     </div>
                 </div>
             </div>
@@ -192,11 +222,11 @@
                 <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.78rem;">
                     <thead class="table-light">
                         <tr>
-                            <th>Key</th>
-                            <th>ស្ថានភាព</th>
-                            <th class="text-center">ជោគជ័យ</th>
-                            <th class="text-center">បរាជ័យ</th>
-                            <th class="text-end">សកម្មភាព</th>
+                            <th>{% lang_switch 'សោ' 'Key' %}</th>
+                            <th>{% lang_switch 'ស្ថានភាព' 'Status' %}</th>
+                            <th class="text-center">{% lang_switch 'ជោគជ័យ' 'Success' %}</th>
+                            <th class="text-center">{% lang_switch 'បរាជ័យ' 'Failed' %}</th>
+                            <th class="text-end">{% lang_switch 'សកម្មភាព' 'Action' %}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -206,7 +236,7 @@
                             <td>
                                 {% if item.status == 'ready' %}
                                 <span class="badge bg-success-subtle text-success border border-success">
-                                    <i class="fa-solid fa-check me-1"></i> Ready
+                                    <i class="fa-solid fa-check me-1"></i> {% lang_switch 'រួចរាល់' 'Ready' %}
                                 </span>
                                 {% elif 'cooldown' in item.status %}
                                 <span class="badge bg-warning-subtle text-dark border border-warning">
@@ -214,14 +244,14 @@
                                 </span>
                                 {% else %}
                                 <span class="badge bg-danger-subtle text-danger border border-danger">
-                                    <i class="fa-solid fa-xmark me-1"></i> Disabled
+                                    <i class="fa-solid fa-xmark me-1"></i> {% lang_switch 'អសកម្ម' 'Disabled' %}
                                 </span>
                                 {% endif %}
                             </td>
                             <td class="text-center text-success fw-bold">{{ item.success_count }}</td>
                             <td class="text-center text-danger fw-bold">{{ item.failure_count }}</td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" onclick="runLiveKeyTest('{{ item.masked_key }}')" title="តេស្ត Key នេះ">
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" onclick="runLiveKeyTest('{{ item.masked_key }}')" title="{% if current_lang == 'km' %}តេស្តសោនេះ{% else %}Test this key{% endif %}">
                                     <i class="fa-solid fa-vial"></i>
                                 </button>
                             </td>
@@ -230,7 +260,7 @@
                         <tr>
                             <td colspan="5" class="text-center py-4 text-muted">
                                 <i class="fa-solid fa-key text-secondary fs-4 mb-1 d-block"></i>
-                                មិនទាន់មាន API Key នៅឡើយទេ។ សូមបញ្ចូលក្នុងប្រអប់ខាងឆ្វេង!
+                                {% lang_switch 'មិនទាន់មាន API Key នៅឡើយទេ។ សូមបញ្ចូលក្នុងប្រអប់ខាងឆ្វេង!' 'No API Keys configured yet. Please enter them in the form on the left!' %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -242,24 +272,67 @@
         <!-- Setup Guide & Instructions Card -->
         <div class="custom-card shadow-sm border-0 bg-primary-subtle border-primary">
             <h6 class="fw-bold mb-2 text-primary">
-                <i class="fa-solid fa-circle-question me-1"></i> របៀបបង្កើត Gemini API Key ឥតគិតថ្លៃ៖
+                <i class="fa-solid fa-circle-question me-1"></i> {% lang_switch 'របៀបបង្កើត Gemini API Key ឥតគិតថ្លៃ៖' 'How to create a free Gemini API Key:' %}
             </h6>
             <ol class="small text-dark ps-3 mb-3 line-height-relaxed" style="font-size: 0.8rem;">
-                <li class="mb-1">ចូលទៅកាន់គេហទំព័រ <strong><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-primary fw-bold">Google AI Studio</a></strong></li>
-                <li class="mb-1">ចុចប៊ូតុង <strong>«Create API key»</strong></li>
-                <li class="mb-1">ជ្រើសរើស Google Cloud Project ឬបង្កើត Project ថ្មីភ្លាមៗ</li>
-                <li class="mb-1">Copy កូដ API Key (ចាប់ផ្តើមដោយ <code>AIzaSy...</code>)</li>
-                <li>យកមកបិទភ្ជាប់ (Paste) ក្នុងប្រអប់ខាងលើ រួចចុច <strong>រក្សាទុក</strong>!</li>
+                <li class="mb-1">{% lang_switch 'ចូលទៅកាន់គេហទំព័រ' 'Go to' %} <strong><a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-primary fw-bold">Google AI Studio</a></strong></li>
+                <li class="mb-1">{% lang_switch 'ចុចប៊ូតុង' 'Click button' %} <strong>«Create API key»</strong></li>
+                <li class="mb-1">{% lang_switch 'ជ្រើសរើស Google Cloud Project ឬបង្កើត Project ថ្មីភ្លាមៗ' 'Select Google Cloud Project or create a new Project instantly' %}</li>
+                <li class="mb-1">{% lang_switch 'ចម្លងកូដ API Key (ចាប់ផ្តើមដោយ' 'Copy API Key code (starts with' %} <code>AIzaSy...</code>)</li>
+                <li>{% lang_switch 'យកមកបិទភ្ជាប់ក្នុងប្រអប់ខាងលើ រួចចុច' 'Paste into the box above and click' %} <strong>{% lang_switch 'រក្សាទុក' 'Save' %}</strong>!</li>
             </ol>
             <div class="p-2 bg-white rounded border small text-muted" style="font-size: 0.72rem;">
-                💡 <strong>គន្លឹះពិសេស៖</strong> លោកអ្នកអាចបង្កើត Project ច្រើន ឬប្រើ Gmail ២-៣ ផ្សេងគ្នាដើម្បីទទួលបាន ៣-៥ Keys។ ប្រព័ន្ធ Key Rotator របស់ SchoolSM នឹងជួយបែងចែកសំណើស្មើៗគ្នា ធានាថាមិនដែលស្ទះ ឬជាប់ Rate Limit ឡើយ!
+                💡 <strong>{% lang_switch 'គន្លឹះពិសេស៖' 'Pro Tip:' %}</strong> {% lang_switch 'លោកអ្នកអាចដាក់ប៉ុន្មាន Keys ក៏បានគ្មានដែនកំណត់! លោកអ្នកអាចបង្កើត Project ច្រើន ឬប្រើ Gmail ២-៣ ផ្សេងគ្នាដើម្បីទទួលបាន ៣-៥ Keys ឬច្រើនជាងនេះ។ ប្រព័ន្ធ Key Rotator របស់ SchoolSM នឹងជួយបែងចែកសំណើស្មើៗគ្នា ធានាថាមិនដែលស្ទះ ឬជាប់ Rate Limit ឡើយ!' 'You can add as many keys as you want with no limits! You can create multiple Projects or use 2-3 different Google accounts to get 3-5 keys or more. SchoolSM Key Rotator balances requests evenly, ensuring zero throttling or rate limits!' %}
             </div>
         </div>
     </div>
 </div>
 
 <script>
+function handleModelSelectionChange(val) {
+    const customWrapper = document.getElementById('customModelWrapper');
+    const customInput = document.getElementById('customModelInput');
+    if (val === 'custom') {
+        if (customWrapper) customWrapper.classList.remove('d-none');
+        if (customInput) customInput.focus();
+    } else {
+        if (customWrapper) customWrapper.classList.add('d-none');
+    }
+    updateModelChips(val);
+}
+
+function selectQuickModel(modelName) {
+    const select = document.getElementById('id_model_name');
+    if (select) {
+        let found = false;
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === modelName) {
+                select.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            select.value = 'custom';
+            const customInput = document.getElementById('customModelInput');
+            if (customInput) customInput.value = modelName;
+        }
+        handleModelSelectionChange(select.value);
+    }
+}
+
+function updateModelChips(activeModel) {
+    document.querySelectorAll('.model-chip').forEach(btn => {
+        if (btn.getAttribute('onclick')?.includes(`'${activeModel}'`)) {
+            btn.className = 'btn btn-xs rounded-pill model-chip btn-primary text-white shadow-sm';
+        } else {
+            btn.className = 'btn btn-xs rounded-pill model-chip btn-outline-secondary';
+        }
+    });
+}
+
 function runLiveKeyTest(specificKey) {
+    const isKhmer = '{{ current_lang }}' === 'km';
     const btn = document.getElementById('btnRunTest');
     const icon = document.getElementById('testIcon');
     const btnText = document.getElementById('testBtnText');
@@ -270,17 +343,26 @@ function runLiveKeyTest(specificKey) {
 
     btn.disabled = true;
     icon.className = 'fa-solid fa-circle-notch fa-spin me-1';
-    btnText.innerText = 'កំពុងតេស្ត...';
+    btnText.innerText = isKhmer ? 'កំពុងតេស្ត...' : 'Testing...';
 
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     const formData = new FormData();
     if (specificKey && !specificKey.includes('...')) {
         formData.append('api_key', specificKey);
     }
-    const modelInput = document.getElementById('{{ form.model_name.id_for_label }}');
-    if (modelInput && modelInput.value) {
-        formData.append('model_name', modelInput.value.trim());
+    
+    // Resolve model name (Antigravity-style select or custom)
+    const modelSelect = document.getElementById('id_model_name');
+    let chosenModel = modelSelect ? modelSelect.value : 'gemini-3.8-flash';
+    if (chosenModel === 'custom') {
+        const customInput = document.getElementById('customModelInput');
+        if (customInput && customInput.value.trim()) {
+            chosenModel = customInput.value.trim();
+        } else {
+            chosenModel = 'gemini-3.8-flash';
+        }
     }
+    formData.append('model_name', chosenModel);
 
     fetch("{% url 'api_gemini_test_key' %}", {
         method: 'POST',
@@ -293,7 +375,7 @@ function runLiveKeyTest(specificKey) {
     .then(resObj => {
         btn.disabled = false;
         icon.className = 'fa-solid fa-paper-plane me-1';
-        btnText.innerText = 'តេស្តម្តងទៀត';
+        btnText.innerText = isKhmer ? 'តេស្តម្តងទៀត' : 'Test Again';
 
         resultBox.classList.remove('d-none', 'bg-success-subtle', 'border-success', 'bg-danger-subtle', 'border-danger', 'bg-warning-subtle', 'border-warning');
 
@@ -303,33 +385,35 @@ function runLiveKeyTest(specificKey) {
             resultBadge.className = 'badge bg-success';
             resultBadge.innerText = `${resObj.data.latency_ms} ms`;
             resultMessage.innerHTML = `
-                <div class="text-dark mb-1"><strong>ការឆ្លើយតបរបស់ Gemini:</strong> «${resObj.data.reply}»</div>
-                <div class="text-muted small">Key ប្រើប្រាស់: <code>${resObj.data.masked_key}</code></div>
+                <div class="text-dark mb-1"><strong>${isKhmer ? 'ការឆ្លើយតបរបស់ Gemini:' : 'Gemini Response:'}</strong> «${resObj.data.reply}»</div>
+                <div class="text-muted small">${isKhmer ? 'Key ប្រើប្រាស់:' : 'Used Key:'} <code>${resObj.data.masked_key}</code> | ${isKhmer ? 'ម៉ូដែល:' : 'Model:'} <code>${chosenModel}</code></div>
             `;
         } else if (resObj.status === 429) {
             resultBox.classList.add('bg-warning-subtle', 'border-warning');
             resultTitle.innerHTML = `<span class="text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${resObj.data.message}</span>`;
             resultBadge.className = 'badge bg-warning text-dark';
             resultBadge.innerText = 'HTTP 429';
-            resultMessage.innerText = 'Key នេះបានដល់កម្រិតកំណត់ (Rate Limit Exceeded)។ ប្រព័ន្ធបានដាក់វាចូល Cooldown ដោយស្វ័យប្រវត្តិ។';
+            resultMessage.innerText = isKhmer 
+                ? 'Key នេះបានដល់កម្រិតកំណត់ (Rate Limit Exceeded)។ ប្រព័ន្ធបានដាក់វាចូល Cooldown ដោយស្វ័យប្រវត្តិ។'
+                : 'This key has reached its rate limit. The system has automatically placed it in cooldown.';
         } else {
             resultBox.classList.add('bg-danger-subtle', 'border-danger');
-            resultTitle.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i> ${resObj.data.message || 'បរាជ័យក្នុងការតភ្ជាប់'}</span>`;
+            resultTitle.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i> ${resObj.data.message || (isKhmer ? 'បរាជ័យក្នុងការតភ្ជាប់' : 'Connection failed')}</span>`;
             resultBadge.className = 'badge bg-danger';
             resultBadge.innerText = 'FAILED';
-            resultMessage.innerText = resObj.data.details || resObj.data.message || 'សូមពិនិត្យមើល API Key និងការតភ្ជាប់អ៊ីនធឺណិត។';
+            resultMessage.innerText = resObj.data.details || resObj.data.message || (isKhmer ? 'សូមពិនិត្យមើល API Key និងការតភ្ជាប់អ៊ីនធឺណិត។' : 'Please check your API key and network connection.');
         }
     })
     .catch(err => {
         btn.disabled = false;
         icon.className = 'fa-solid fa-paper-plane me-1';
-        btnText.innerText = 'តេស្តម្តងទៀត';
+        btnText.innerText = isKhmer ? 'តេស្តម្តងទៀត' : 'Test Again';
         resultBox.classList.remove('d-none');
         resultBox.classList.add('bg-danger-subtle', 'border-danger');
-        resultTitle.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> បរាជ័យក្នុងការតភ្ជាប់</span>`;
+        resultTitle.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${isKhmer ? 'បរាជ័យក្នុងការតភ្ជាប់' : 'Connection failed'}</span>`;
         resultBadge.className = 'badge bg-danger';
         resultBadge.innerText = 'ERROR';
-        resultMessage.innerText = 'មិនអាចទាក់ទងទៅកាន់ម៉ាស៊ីនបម្រើបានទេ៖ ' + err;
+        resultMessage.innerText = (isKhmer ? 'មិនអាចទាក់ទងទៅកាន់ម៉ាស៊ីនបម្រើបានទេ៖ ' : 'Unable to contact server: ') + err;
     });
 }
 </script>

@@ -61,13 +61,15 @@ class AnnouncementForm(forms.ModelForm):
 
     class Meta:
         model = Announcement
-        fields = ['title', 'category', 'target_audience', 'priority', 'content', 'attachment', 'is_published']
+        fields = ['title', 'title_en', 'category', 'target_audience', 'priority', 'content', 'content_en', 'attachment', 'is_published']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. សេចក្តីជូនដំណឹងស្តីពីការប្រជុំមាតាបិតាសិស្សឆមាសទី១'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. សេចក្តីជូនដំណឹងស្តីពីការប្រជុំមាតាបិតាសិស្សឆមាសទី១ (Khmer)'}),
+            'title_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Announcement title in English (or leave blank to auto-translate by AI)'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'target_audience': forms.Select(attrs={'class': 'form-select'}),
             'priority': forms.Select(attrs={'class': 'form-select'}),
-            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'សរសេរខ្លឹមសារសេចក្តីជូនដំណឹងនៅទីនេះ...'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'សរសេរខ្លឹមសារសេចក្តីជូនដំណឹងនៅទីនេះ (Khmer)...'}),
+            'content_en': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Detailed content in English (or leave blank to auto-translate by AI)...'}),
             'attachment': forms.FileInput(attrs={'class': 'form-control'}),
             'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

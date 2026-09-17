@@ -604,26 +604,38 @@ def gemini_settings_view(request):
     Allows administrators to add, update, and manage multiple Gemini API Keys directly in the web browser.
     """
     from apps.tools.gemini_rotator import gemini_rotator
+    from apps.accounts.translation_service import get_current_language
+    current_lang = get_current_language(request)
     config = GeminiAiConfig.get_config()
 
     if request.method == 'POST':
-        form = GeminiAiConfigForm(request.POST, instance=config)
+        form = GeminiAiConfigForm(request.POST, instance=config, language=current_lang)
         if form.is_valid():
             saved_config = form.save()
             new_keys = saved_config.get_keys_list()
             gemini_rotator.set_keys(new_keys)
-            messages.success(request, f"🎉 បានរក្សាទុកការកំណត់ Gemini AI & {len(new_keys)} API Keys ដោយជោគជ័យ!")
+            if current_lang == 'km':
+                messages.success(request, f"🎉 បានរក្សាទុកការកំណត់ Gemini AI និងសោ {len(new_keys)} ដោយជោគជ័យ!")
+            else:
+                messages.success(request, f"🎉 Gemini AI settings and {len(new_keys)} API keys saved successfully!")
             return redirect('gemini_settings')
     else:
-        form = GeminiAiConfigForm(instance=config)
+        form = GeminiAiConfigForm(instance=config, language=current_lang)
 
     rotator_status = gemini_rotator.get_status_report()
+    standard_models = [
+        'gemini-3.8-flash', 'gemini-3.5-pro', 'gemini-2.5-flash',
+        'gemini-2.5-pro', 'gemini-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'
+    ]
+    is_custom_model = bool(config.model_name and config.model_name not in standard_models)
 
     return render(request, 'accounts/gemini_settings.html', {
         'form': form,
         'config': config,
         'keys_list': config.get_keys_list(),
         'rotator_status': rotator_status,
+        'current_lang': current_lang,
+        'is_custom_model': is_custom_model,
     })
 
 
@@ -719,6 +731,9 @@ def school_profile_settings_view(request):
     """
     school_profile = SchoolProfile.get_settings()
 
+    from apps.accounts.translation_service import get_current_language
+    current_lang = get_current_language(request)
+
     if request.method == 'POST':
         files = request.FILES.copy()
         cropped_logo = request.POST.get('cropped_logo_data')
@@ -733,20 +748,55 @@ def school_profile_settings_view(request):
             except Exception:
                 pass
 
-        form = SchoolProfileForm(request.POST, files, instance=school_profile)
+        form = SchoolProfileForm(request.POST, files, instance=school_profile, language=current_lang)
         if form.is_valid():
-            form.save()
-            messages.success(request, "បានរក្សាទុក និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានសាលារៀនជោគជ័យ!")
+            saved_profile = form.save()
+            from apps.tools.ai_translation_service import AiTranslationService
+            AiTranslationService.auto_translate_school_profile(saved_profile)
+            messages.success(request, "បានរក្សាទុក និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានសាលារៀនជោគជ័យ!" if current_lang == 'km' else "School settings updated successfully!")
             return redirect('school_profile_settings')
         else:
-            messages.error(request, "មានបញ្ហាក្នុងការរក្សាទុក! សូមពិនិត្យមើលទិន្នន័យដែលបានបញ្ចូលឡើងវិញ។")
+            messages.error(request, "មានបញ្ហាក្នុងការរក្សាទុក! សូមពិនិត្យមើលទិន្នន័យដែលបានបញ្ចូលឡើងវិញ。" if current_lang == 'km' else "Failed to save! Please check your input.")
     else:
-        form = SchoolProfileForm(instance=school_profile)
+        form = SchoolProfileForm(instance=school_profile, language=current_lang)
 
     return render(request, 'accounts/school_settings.html', {
         'form': form,
         'school_profile': school_profile,
     })
+
+
+@login_required
+def api_ai_translate_text(request):
+    """
+    Live AJAX AI Translation endpoint for web forms.
+    Translates Khmer input into professional English using Gemini AI with key rotation and smart fallback.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST required'}, status=405)
+
+    try:
+        import json
+        if request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST
+
+        from apps.tools.ai_translation_service import AiTranslationService
+        text = (data.get('text') or '').strip()
+        context = (data.get('context') or 'school').strip()
+
+        if not text:
+            return JsonResponse({'status': 'error', 'message': 'No text provided'})
+
+        translated = AiTranslationService.translate_khmer_to_english(text, context=context)
+        return JsonResponse({
+            'status': 'success',
+            'original': text,
+            'translated': translated
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
 import json

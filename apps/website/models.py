@@ -12,9 +12,12 @@ class NewsArticle(models.Model):
         OTHER = 'OTHER', 'ផ្សេងៗ / Other'
 
     title = models.CharField(max_length=255, verbose_name="ចំណងជើងអត្ថបទ / Article Title")
+    title_en = models.CharField(max_length=255, blank=True, null=True, verbose_name="ចំណងជើងភាសាអង់គ្លេស / English Title")
     category = models.CharField(max_length=30, choices=Category.choices, default=Category.NEWS, verbose_name="ប្រភេទ / Category")
     excerpt = models.TextField(max_length=500, blank=True, verbose_name="ខ្លឹមសារសង្ខេប / Short Excerpt")
+    excerpt_en = models.TextField(max_length=500, blank=True, null=True, verbose_name="ខ្លឹមសារសង្ខេបភាសាអង់គ្លេស / English Excerpt")
     content = models.TextField(verbose_name="ខ្លឹមសារលម្អិត / Full Content")
+    content_en = models.TextField(blank=True, null=True, verbose_name="ខ្លឹមសារលម្អិតភាសាអង់គ្លេស / English Content")
     cover_image = models.ImageField(upload_to='website/news/', blank=True, null=True, verbose_name="រូបភាព Cover / Featured Image")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="អ្នកនិពន្ធ / Author")
     views_count = models.PositiveIntegerField(default=0, verbose_name="ចំនួនអ្នកអាន / Views Count")
@@ -27,6 +30,21 @@ class NewsArticle(models.Model):
         ordering = ['-created_at']
         verbose_name = "អត្ថបទព័ត៌មានសាលា / News Article"
         verbose_name_plural = "អត្ថបទព័ត៌មានសាលាទាំងអស់ / News Articles"
+
+    def get_title(self, lang='km'):
+        if lang == 'en' and self.title_en:
+            return self.title_en
+        return self.title
+
+    def get_excerpt(self, lang='km'):
+        if lang == 'en' and self.excerpt_en:
+            return self.excerpt_en
+        return self.excerpt
+
+    def get_content(self, lang='km'):
+        if lang == 'en' and self.content_en:
+            return self.content_en
+        return self.content
 
     def __str__(self):
         return self.title
@@ -71,12 +89,17 @@ class GalleryPhoto(models.Model):
 
 class WebsiteBanner(models.Model):
     title = models.CharField(max_length=200, verbose_name="ចំណងជើងបដា / Banner Title")
+    title_en = models.CharField(max_length=200, blank=True, null=True, verbose_name="ចំណងជើងបដា (English)")
     subtitle = models.CharField(max_length=300, blank=True, null=True, verbose_name="ចំណងជើងរង / Subtitle")
+    subtitle_en = models.CharField(max_length=300, blank=True, null=True, verbose_name="ចំណងជើងរង (English)")
     badge_text = models.CharField(max_length=100, blank=True, null=True, verbose_name="ស្លាកចំណាំ (Badge) / Badge Text")
+    badge_text_en = models.CharField(max_length=100, blank=True, null=True, verbose_name="ស្លាកចំណាំ (Badge - English)")
     image = models.ImageField(upload_to='website/banners/', blank=True, null=True, verbose_name="រូបភាពបដា / Banner Background Image")
     primary_btn_text = models.CharField(max_length=100, default="ស្វែងយល់បន្ថែម", blank=True, verbose_name="ប៊ូតុងទី១ / Primary Button Text")
+    primary_btn_text_en = models.CharField(max_length=100, default="Learn More", blank=True, verbose_name="ប៊ូតុងទី១ (English)")
     primary_btn_url = models.CharField(max_length=255, default="#about", blank=True, verbose_name="តំណភ្ជាប់ប៊ូតុងទី១ / Primary Button URL")
     secondary_btn_text = models.CharField(max_length=100, default="ចូលប្រព័ន្ធគ្រប់គ្រង", blank=True, verbose_name="ប៊ូតុងទី២ / Secondary Button Text")
+    secondary_btn_text_en = models.CharField(max_length=100, default="Portal Login", blank=True, verbose_name="ប៊ូតុងទី២ (English)")
     secondary_btn_url = models.CharField(max_length=255, default="/accounts/login/", blank=True, verbose_name="តំណភ្ជាប់ប៊ូតុងទី២ / Secondary Button URL")
     order = models.PositiveIntegerField(default=0, verbose_name="លំដាប់បង្ហាញ / Order")
     is_active = models.BooleanField(default=True, verbose_name="សកម្ម / Is Active")
@@ -86,6 +109,31 @@ class WebsiteBanner(models.Model):
         ordering = ['order', '-id']
         verbose_name = "ផ្ទាំងបដាទំព័រដើម / Homepage Banner"
         verbose_name_plural = "ផ្ទាំងបដាទំព័រដើមទាំងអស់ / Homepage Banners"
+
+    def get_title(self, lang='km'):
+        if lang == 'en' and self.title_en:
+            return self.title_en
+        return self.title
+
+    def get_subtitle(self, lang='km'):
+        if lang == 'en' and self.subtitle_en:
+            return self.subtitle_en
+        return self.subtitle
+
+    def get_badge_text(self, lang='km'):
+        if lang == 'en' and self.badge_text_en:
+            return self.badge_text_en
+        return self.badge_text
+
+    def get_primary_btn_text(self, lang='km'):
+        if lang == 'en' and self.primary_btn_text_en:
+            return self.primary_btn_text_en
+        return self.primary_btn_text
+
+    def get_secondary_btn_text(self, lang='km'):
+        if lang == 'en' and self.secondary_btn_text_en:
+            return self.secondary_btn_text_en
+        return self.secondary_btn_text
 
     def __str__(self):
         return self.title

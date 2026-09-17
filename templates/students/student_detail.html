@@ -9,9 +9,12 @@
         <h2 class="fw-bold mb-1">{{ student.khmer_name }} ({{ student.latin_name }})</h2>
         <p class="text-muted small mb-0">កូដសិស្ស (ID)៖ <strong>{{ student.student_id }}</strong> | ថ្នាក់៖ <strong>{{ student.classroom.name|default:"គ្មានថ្នាក់" }}</strong></p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a href="{% url 'student_id_card' student.id %}" target="_blank" class="btn btn-outline-primary">
             <i class="fa-solid fa-address-card me-1"></i> បោះពុម្ពកាតសិស្ស
+        </a>
+        <a href="{% url 'student_cumulative_dossier_view' student.id %}" target="_blank" class="btn btn-outline-secondary" title="សៀវភៅសិក្ខាគារិក / សំណុំឯកសារផ្ទាល់ខ្លួនសិស្ស និងប្រវត្តិសិក្សាសន្សំ">
+            <i class="fa-solid fa-book-bookmark me-1"></i> សៀវភៅសិក្ខាគារិក
         </a>
         {% if is_admin %}
         <a href="{% url 'student_edit' student.id %}" class="btn btn-light">

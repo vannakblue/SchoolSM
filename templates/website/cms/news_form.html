@@ -1,63 +1,87 @@
 {% extends 'base.html' %}
+{% load i18n_extras %}
 
 {% block title %}{{ title }} | SchoolSM{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">
             <i class="fa-solid fa-pen-nib text-primary me-2"></i>{{ title }}
         </h2>
-        <p class="text-muted small mb-0">សរសេរ និងផ្សព្វផ្សាយព័ត៌មានលើគេហទំព័រសាលារៀន</p>
+        <p class="text-muted small mb-0">{% lang_switch "សរសេរ និងផ្សព្វផ្សាយព័ត៌មានលើគេហទំព័រសាលារៀន (គាំទ្រ ២ ភាសា & AI Auto-Translate)" "Publish news articles on school portal (Bilingual & AI Auto-Translate)" %}</p>
     </div>
-    <a href="{% url 'website_news_manager' %}" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
-    </a>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary rounded-pill shadow-xs" onclick="autoTranslateNews()" id="btnAiTranslateNews">
+            <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {% lang_switch "⚡ បកប្រែជាភាសាអង់គ្លេសស្វ័យប្រវត្តដោយ AI" "⚡ Auto-Translate to English via AI" %}
+        </button>
+        <a href="{% url 'website_news_manager' %}" class="btn btn-outline-secondary rounded-pill">
+            <i class="fa-solid fa-arrow-left me-1"></i> {% lang_switch "ត្រឡប់ក្រោយ" "Back" %}
+        </a>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-md-5">
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="newsArticleForm">
         {% csrf_token %}
         <div class="row g-4">
-            <!-- Title -->
-            <div class="col-md-8">
-                <label class="form-label fw-bold">ចំណងជើងអត្ថបទព័ត៌មាន *</label>
-                {{ form.title }}
-                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
-            </div>
-
-            <!-- Category -->
-            <div class="col-md-4">
-                <label class="form-label fw-bold">ប្រភេទព័ត៌មាន *</label>
+            
+            <!-- Category & Featured Flag -->
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{% lang_switch "ប្រភេទព័ត៌មាន *" "Category *" %}</label>
                 {{ form.category }}
                 {% if form.category.errors %}<div class="text-danger small">{{ form.category.errors }}</div>{% endif %}
             </div>
 
             <!-- Cover Image -->
-            <div class="col-md-12">
-                <label class="form-label fw-bold">រូបភាព Cover (Featured Image)</label>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">{% lang_switch "រូបភាព Cover (Featured Image)" "Cover Image" %}</label>
                 {{ form.cover_image }}
                 {% if article and article.cover_image %}
                 <div class="mt-2">
-                    <small class="text-muted d-block mb-1">រូបភាពបច្ចុប្បន្ន៖</small>
-                    <img src="{{ article.cover_image.url }}" class="rounded shadow-xs border" style="max-height: 120px;" alt="current cover">
+                    <small class="text-muted d-block mb-1">{% lang_switch "រូបភាពបច្ចុប្បន្ន៖" "Current Image:" %}</small>
+                    <img src="{{ article.cover_image.url }}" class="rounded shadow-xs border" style="max-height: 80px;" alt="current cover">
                 </div>
                 {% endif %}
                 {% if form.cover_image.errors %}<div class="text-danger small">{{ form.cover_image.errors }}</div>{% endif %}
             </div>
 
-            <!-- Excerpt -->
-            <div class="col-md-12">
-                <label class="form-label fw-bold">ខ្លឹមសារសង្ខេប (Excerpt) — បង្ហាញលើកាតព័ត៌មាន</label>
-                {{ form.excerpt }}
-                <small class="text-muted">សរសេរខ្លីៗប្រហែល ២-៣ ឃ្លា ដើម្បីទាក់ទាញអ្នកអាន</small>
+            <!-- Title KH & EN -->
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ចំណងជើងព័ត៌មាន (ភាសាខ្មែរ) *" "News Title (Khmer) *" %}</label>
+                {{ form.title }}
+                {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ចំណងជើងជាភាសាអង់គ្លេស (News Title - English)" "News Title (English)" %}</label>
+                {{ form.title_en }}
+                <div class="form-text small text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI Agent នឹងបកប្រែដោយស្វ័យប្រវត្តពេលរក្សាទុក" "Leave blank to auto-translate by AI Agent on save" %}</div>
+                {% if form.title_en.errors %}<div class="text-danger small">{{ form.title_en.errors }}</div>{% endif %}
             </div>
 
-            <!-- Full Content -->
-            <div class="col-md-12">
-                <label class="form-label fw-bold">ខ្លឹមសារលម្អិតនៃអត្ថបទព័ត៌មាន *</label>
+            <!-- Excerpt KH & EN -->
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារសង្ខេប (ខ្មែរ) — បង្ហាញលើកាតព័ត៌មាន" "Excerpt (Khmer)" %}</label>
+                {{ form.excerpt }}
+                <small class="text-muted">{% lang_switch "សរសេរខ្លីៗប្រហែល ២-៣ ឃ្លា ដើម្បីទាក់ទាញអ្នកអាន" "Brief overview for card teaser" %}</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារសង្ខេបជាភាសាអង់គ្លេស (Excerpt - English)" "Excerpt (English)" %}</label>
+                {{ form.excerpt_en }}
+                <small class="text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
+            </div>
+
+            <!-- Full Content KH & EN -->
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារលម្អិតនៃអត្ថបទ (ភាសាខ្មែរ) *" "Full Content (Khmer) *" %}</label>
                 {{ form.content }}
                 {% if form.content.errors %}<div class="text-danger small">{{ form.content.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-dark">{% lang_switch "ខ្លឹមសារលម្អិតជាភាសាអង់គ្លេស (Full Content - English)" "Full Content (English)" %}</label>
+                {{ form.content_en }}
+                <small class="text-muted">{% lang_switch "អាចទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
+                {% if form.content_en.errors %}<div class="text-danger small">{{ form.content_en.errors }}</div>{% endif %}
             </div>
 
             <!-- Options -->
@@ -65,7 +89,7 @@
                 <div class="form-check form-switch p-3 bg-light rounded-3 border">
                     {{ form.is_featured }}
                     <label class="form-check-label fw-semibold ms-2" for="{{ form.is_featured.id_for_label }}">
-                        <i class="fa-solid fa-star text-warning me-1"></i>កំណត់ជាព័ត៌មានលេចធ្លោ (Featured / Hero)
+                        <i class="fa-solid fa-star text-warning me-1"></i>{% lang_switch "កំណត់ជាព័ត៌មានលេចធ្លោ (Featured / Hero)" "Featured Article on Homepage" %}
                     </label>
                 </div>
             </div>
@@ -74,19 +98,70 @@
                 <div class="form-check form-switch p-3 bg-light rounded-3 border">
                     {{ form.is_published }}
                     <label class="form-check-label fw-semibold ms-2" for="{{ form.is_published.id_for_label }}">
-                        <i class="fa-solid fa-globe text-primary me-1"></i>ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រភ្លាមៗ
+                        <i class="fa-solid fa-globe text-primary me-1"></i>{% lang_switch "ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រភ្លាមៗ" "Publish immediately on website" %}
                     </label>
                 </div>
             </div>
 
             <!-- Submit Buttons -->
             <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                <a href="{% url 'website_news_manager' %}" class="btn btn-light border px-4">បោះបង់</a>
-                <button type="submit" class="btn btn-primary px-5 fw-bold">
-                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មាន
+                <a href="{% url 'website_news_manager' %}" class="btn btn-light border px-4 rounded-pill">{% lang_switch "បោះបង់" "Cancel" %}</a>
+                <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill shadow-sm">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch "រក្សាទុកព័ត៌មាន" "Save News Article" %}
                 </button>
             </div>
         </div>
     </form>
 </div>
+
+<script>
+function autoTranslateNews() {
+    const btn = document.getElementById('btnAiTranslateNews');
+    if (!btn) return;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែដោយ AI...';
+
+    const pairs = [
+        { src: 'id_title', tgt: 'id_title_en', ctx: 'News Headline' },
+        { src: 'id_excerpt', tgt: 'id_excerpt_en', ctx: 'News Excerpt' },
+        { src: 'id_content', tgt: 'id_content_en', ctx: 'News Article Content' }
+    ];
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    const reqs = pairs.map(p => {
+        const srcEl = document.getElementById(p.src);
+        const tgtEl = document.getElementById(p.tgt);
+        if (!srcEl || !tgtEl || !srcEl.value.trim()) return Promise.resolve();
+
+        return fetch('/accounts/api/ai-translate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                text: srcEl.value.trim(),
+                context: p.ctx
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.translated_text) {
+                tgtEl.value = data.translated_text;
+                tgtEl.classList.add('is-valid');
+                setTimeout(() => tgtEl.classList.remove('is-valid'), 3500);
+            }
+        })
+        .catch(err => console.error('AI translation error:', err));
+    });
+
+    Promise.all(reqs).then(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែដោយ AI ជោគជ័យ!';
+        setTimeout(() => { btn.innerHTML = origHtml; }, 3000);
+    });
+}
+</script>
 {% endblock %}

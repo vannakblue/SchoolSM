@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load i18n_extras %}
 
-{% block title %}ការគ្រប់គ្រង Database Backup & Snapshot | SchoolSM{% endblock %}
+{% block title %}{% lang_switch "ការគ្រប់គ្រង Database Backup & Snapshot" "Database Backup & Snapshot Management" %} | SchoolSM{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -59,28 +60,28 @@
             <div class="col-lg-8">
                 <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white bg-opacity-20 text-white mb-2" style="font-size: 0.85rem;">
                     <i class="fa-solid fa-shield-halved text-warning"></i>
-                    <span>ប្រព័ន្ធសុវត្ថិភាពទិន្នន័យ & គ្រប់គ្រង Snapshot (Data Safety & Recovery)</span>
+                    <span>{% lang_switch "ប្រព័ន្ធសុវត្ថិភាពទិន្នន័យ & គ្រប់គ្រង Snapshot" "Data Safety & Snapshot Recovery System" %}</span>
                 </div>
-                <h2 class="fw-bold mb-2">ការគ្រប់គ្រង Database Backup & Snapshot</h2>
+                <h2 class="fw-bold mb-2">{% lang_switch "ការគ្រប់គ្រង Database Backup & Snapshot" "Database Backup & Snapshot Management" %}</h2>
                 <p class="lead mb-3 text-white-50" style="font-size: 1rem;">
-                    រក្សាទុកស្ថានភាពទិន្នន័យ (សិស្ស, គ្រូ, ពិន្ទុ, វត្តមាន...) មុនពេលតេស្ត ឬកែប្រែ Code និងអាច Restore ត្រឡប់ក្រោយវិញបានភ្លាមៗត្រឹមតែ ១ វិនាទី។
+                    {% lang_switch "រក្សាទុកស្ថានភាពទិន្នន័យ (សិស្ស, គ្រូ, ពិន្ទុ, វត្តមាន...) មុនពេលតេស្ត ឬកែប្រែ Code និងអាច Restore ត្រឡប់ក្រោយវិញបានភ្លាមៗត្រឹមតែ ១ វិនាទី។" "Safeguard data states (students, teachers, scores, attendance) before testing and restore back instantaneously in 1 second." %}
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#createSnapshotModal">
-                        <i class="fa-solid fa-camera-retro me-2"></i> បង្កើត Snapshot ឥឡូវនេះ
+                        <i class="fa-solid fa-camera-retro me-2"></i> {% lang_switch "បង្កើត Snapshot ឥឡូវនេះ" "Create Snapshot Now" %}
                     </button>
-                    <a href="{% url 'tool_database_download_live' %}?format=json" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark" title="ទាញយកទិន្នន័យទាំងអស់ជា JSON">
-                        <i class="fa-solid fa-file-code me-2 text-primary"></i> ទាញយក Full JSON Backup
+                    <a href="{% url 'tool_database_download_live' %}?format=json" class="btn btn-light fw-bold px-3 py-2 rounded-pill shadow-sm text-dark" title="{% lang_switch 'ទាញយកទិន្នន័យទាំងអស់ជា JSON' 'Download all data as JSON' %}">
+                        <i class="fa-solid fa-file-code me-2 text-primary"></i> {% lang_switch "ទាញយក Full JSON Backup" "Download Full JSON Backup" %}
                     </a>
                     {% if stats.db_engine == 'SQLite' %}
-                    <a href="{% url 'tool_database_download_live' %}" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm" title="ទាញយកឯកសារ SQLite">
-                        <i class="fa-solid fa-database me-2 text-info"></i> ទាញយក Live SQLite (.sqlite3)
+                    <a href="{% url 'tool_database_download_live' %}" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm" title="{% lang_switch 'ទាញយកឯកសារ SQLite' 'Download SQLite file' %}">
+                        <i class="fa-solid fa-database me-2 text-info"></i> {% lang_switch "ទាញយក Live SQLite (.sqlite3)" "Download Live SQLite (.sqlite3)" %}
                     </a>
                     {% endif %}
-                    <button class="btn btn-info fw-bold px-3 py-2 rounded-pill shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#telegramBackupModal" title="បញ្ជូនឯកសារ Backup ទៅកាន់ Telegram Channel / Group">
-                        <i class="fa-brands fa-telegram me-2"></i> ផ្ញើ Backup ទៅ Telegram
+                    <button class="btn btn-info fw-bold px-3 py-2 rounded-pill shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#telegramBackupModal" title="{% lang_switch 'បញ្ជូនឯកសារ Backup ទៅកាន់ Telegram Channel / Group' 'Send backup file to Telegram Channel / Group' %}">
+                        <i class="fa-brands fa-telegram me-2"></i> {% lang_switch "ផ្ញើ Backup ទៅ Telegram" "Send Backup to Telegram" %}
                     </button>
-                    <a href="{% url 'tool_google_sheets' %}" class="btn btn-success fw-bold px-3 py-2 rounded-pill shadow-sm text-white" title="សមកាលកម្មទិន្នន័យទៅ Google Sheets តាមឆ្នាំសិក្សា">
+                    <a href="{% url 'tool_google_sheets' %}" class="btn btn-success fw-bold px-3 py-2 rounded-pill shadow-sm text-white" title="{% lang_switch 'សមកាលកម្មទិន្នន័យទៅ Google Sheets តាមឆ្នាំសិក្សា' 'Sync data to Google Sheets by academic year' %}">
                         <i class="fa-solid fa-file-excel me-2"></i> Google Sheets Cloud Sync
                     </a>
                     <button class="btn btn-outline-light px-3 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#uploadRestoreModal">
@@ -92,7 +93,7 @@
                 <div class="p-3 rounded-4 bg-white bg-opacity-10 backdrop-blur d-inline-block text-start text-white border border-white border-opacity-20">
                     <div class="small text-white-50 mb-1"><i class="fa-solid fa-database me-1"></i> Active Database Engine:</div>
                     <div class="fw-bold fs-5">{{ stats.db_engine }} ({{ stats.db_size_formatted }})</div>
-                    <div class="small text-white-50 mt-1">កែប្រែចុងក្រោយ: {{ stats.last_modified|default:"បច្ចុប្បន្ន" }}</div>
+                    <div class="small text-white-50 mt-1">{% lang_switch "កែប្រែចុងក្រោយ:" "Last modified:" %} {{ stats.last_modified|default:"បច្ចុប្បន្ន" }}</div>
                 </div>
             </div>
         </div>
@@ -105,14 +106,14 @@
             <div class="custom-card p-3 h-100 border-start border-4 border-success">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <i class="fa-solid fa-chalkboard-user fs-4 text-success"></i>
-                    <h6 class="fw-bold mb-0 text-dark">គ្រូបង្រៀន (Teachers)</h6>
+                    <h6 class="fw-bold mb-0 text-dark">{% lang_switch "គ្រូបង្រៀន" "Teachers" %}</h6>
                 </div>
-                <p class="small text-muted mb-3">ទាញយក Backup ឬ Upload បញ្ចូលគ្រូផ្លូវការ MoEYS ជា Excel</p>
+                <p class="small text-muted mb-3">{% lang_switch "ទាញយក Backup ឬ Upload បញ្ចូលគ្រូផ្លូវការ MoEYS ជា Excel" "Export backup or import official MoEYS teachers via Excel" %}</p>
                 <div class="d-flex gap-2">
-                    <a href="{% url 'teacher_export_excel' %}" class="btn btn-sm btn-outline-success flex-grow-1" title="ទាញយក Excel គ្រូទាំងអស់">
+                    <a href="{% url 'teacher_export_excel' %}" class="btn btn-sm btn-outline-success flex-grow-1" title="{% lang_switch 'ទាញយក Excel គ្រូទាំងអស់' 'Download all teachers Excel' %}">
                         <i class="fa-solid fa-download me-1"></i> Backup Excel
                     </a>
-                    <a href="{% url 'teacher_import' %}" class="btn btn-sm btn-success flex-grow-1" title="Upload ឯកសារ Excel គ្រូ">
+                    <a href="{% url 'teacher_import' %}" class="btn btn-sm btn-success flex-grow-1" title="{% lang_switch 'Upload ឯកសារ Excel គ្រូ' 'Upload teachers Excel file' %}">
                         <i class="fa-solid fa-upload me-1"></i> Import Excel
                     </a>
                 </div>
@@ -124,14 +125,14 @@
             <div class="custom-card p-3 h-100 border-start border-4 border-primary">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <i class="fa-solid fa-user-graduate fs-4 text-primary"></i>
-                    <h6 class="fw-bold mb-0 text-dark">សិស្ស (Students)</h6>
+                    <h6 class="fw-bold mb-0 text-dark">{% lang_switch "សិស្ស" "Students" %}</h6>
                 </div>
-                <p class="small text-muted mb-3">ទាញយកបញ្ជីសិស្សទាំងអស់ ឬ Upload បញ្ចូលសិស្សថ្មីជា Excel</p>
+                <p class="small text-muted mb-3">{% lang_switch "ទាញយកបញ្ជីសិស្សទាំងអស់ ឬ Upload បញ្ចូលសិស្សថ្មីជា Excel" "Export all students list or import new students via Excel" %}</p>
                 <div class="d-flex gap-2">
-                    <a href="{% url 'student_list' %}?export=excel" class="btn btn-sm btn-outline-primary flex-grow-1" title="ទាញយក Excel សិស្សទាំងអស់">
+                    <a href="{% url 'student_list' %}?export=excel" class="btn btn-sm btn-outline-primary flex-grow-1" title="{% lang_switch 'ទាញយក Excel សិស្សទាំងអស់' 'Download all students Excel' %}">
                         <i class="fa-solid fa-download me-1"></i> Backup Excel
                     </a>
-                    <a href="{% url 'student_import' %}" class="btn btn-sm btn-primary flex-grow-1" title="Upload ឯកសារ Excel សិស្ស">
+                    <a href="{% url 'student_import' %}" class="btn btn-sm btn-primary flex-grow-1" title="{% lang_switch 'Upload ឯកសារ Excel សិស្ស' 'Upload students Excel file' %}">
                         <i class="fa-solid fa-upload me-1"></i> Import Excel
                     </a>
                 </div>
@@ -143,12 +144,12 @@
             <div class="custom-card p-3 h-100 border-start border-4 border-warning">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <i class="fa-solid fa-calendar-days fs-4 text-warning"></i>
-                    <h6 class="fw-bold mb-0 text-dark">កាលវិភាគ (Timetables)</h6>
+                    <h6 class="fw-bold mb-0 text-dark">{% lang_switch "កាលវិភាគ" "Timetables" %}</h6>
                 </div>
-                <p class="small text-muted mb-3">គ្រប់គ្រង Master Timetable ម៉ោងបង្រៀនគ្រូ និងកាលវិភាគថ្នាក់</p>
+                <p class="small text-muted mb-3">{% lang_switch "គ្រប់គ្រង Master Timetable ម៉ោងបង្រៀនគ្រូ និងកាលវិភាគថ្នាក់" "Manage Master Timetable, teacher schedules, and class timetables" %}</p>
                 <div class="d-flex gap-2">
                     <a href="{% url 'timetable_view' %}" class="btn btn-sm btn-outline-warning text-dark flex-grow-1">
-                        <i class="fa-solid fa-table me-1"></i> មើលកាលវិភាគ
+                        <i class="fa-solid fa-table me-1"></i> {% lang_switch "មើលកាលវិភាគ" "View Timetable" %}
                     </a>
                 </div>
             </div>
@@ -159,12 +160,12 @@
             <div class="custom-card p-3 h-100 border-start border-4 border-info">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <i class="fa-solid fa-square-poll-vertical fs-4 text-info"></i>
-                    <h6 class="fw-bold mb-0 text-dark">ការប្រឡង & ពិន្ទុ (Scores)</h6>
+                    <h6 class="fw-bold mb-0 text-dark">{% lang_switch "ការប្រឡង & ពិន្ទុ" "Examinations & Scores" %}</h6>
                 </div>
-                <p class="small text-muted mb-3">ទាញយកតារាងពិន្ទុប្រចាំខែ ឆមាស និងរបាយការណ៍ចំណាត់ថ្នាក់</p>
+                <p class="small text-muted mb-3">{% lang_switch "ទាញយកតារាងពិន្ទុប្រចាំខែ ឆមាស និងរបាយការណ៍ចំណាត់ថ្នាក់" "Export monthly & semester score sheets and rankings" %}</p>
                 <div class="d-flex gap-2">
                     <a href="{% url 'exam_term_list' %}" class="btn btn-sm btn-outline-info flex-grow-1">
-                        <i class="fa-solid fa-list-check me-1"></i> មើលរបាយការណ៍ពិន្ទុ
+                        <i class="fa-solid fa-list-check me-1"></i> {% lang_switch "មើលរបាយការណ៍ពិន្ទុ" "View Score Reports" %}
                     </a>
                 </div>
             </div>

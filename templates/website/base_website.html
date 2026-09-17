@@ -1,10 +1,11 @@
 {% load static %}
+{% load i18n_extras %}
 <!DOCTYPE html>
-<html lang="km">
+<html lang="{{ current_language|default:'km' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>{% block title %}{{ school_profile.name_kh|default:"សាលារៀន SM" }} | គេហទំព័រផ្លូវការ{% endblock %}</title>
+    <title>{% block title %}{% if is_english %}{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }} | Official Portal{% else %}{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }} | គេហទំព័រផ្លូវការ{% endif %}{% endblock %}</title>
     
     <!-- Favicon -->
     {% if school_profile and school_profile.logo_url %}
@@ -276,13 +277,13 @@
 </head>
 <body>
 
-    <!-- 1. Top Utility Bar -->
+    <!-- 1. Top Utility Bar with Bilingual Language Switcher -->
     <div class="topbar-utility py-2 d-none d-md-block">
         <div class="container d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-4">
                 <span>
                     <i class="fa-solid fa-phone text-warning me-1"></i>
-                    {{ school_profile.phone|default:"023 888 999" }}
+                    {{ school_profile.phone|default:"093 995 947 / 089 995 947" }}
                 </span>
                 <span>
                     <i class="fa-solid fa-envelope text-info me-1"></i>
@@ -290,14 +291,41 @@
                 </span>
                 <span>
                     <i class="fa-solid fa-location-dot text-danger me-1"></i>
-                    {{ school_profile.district|default:"រាជធានីភ្នំពេញ" }}, {{ school_profile.province|default:"កម្ពុជា" }}
+                    {% if is_english %}
+                        {{ school_profile.district|default:"Kandal Stueng" }}, {{ school_profile.province|default:"Kandal Province" }}
+                    {% else %}
+                        {{ school_profile.district|default:"កណ្ដាលស្ទឹង" }}, {{ school_profile.province|default:"ខេត្តកណ្ដាល" }}
+                    {% endif %}
                 </span>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <span class="text-light-50 small">
                     <i class="fa-solid fa-building-columns text-primary me-1"></i>
-                    {{ school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}
+                    {% lang_switch school_profile.ministry_name "Ministry of Education, Youth and Sport" %}
                 </span>
+
+                <!-- Language Switcher in Top Bar -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle px-2 py-1 rounded-pill d-flex align-items-center gap-1 text-light border-light-subtle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem;">
+                        <span>{{ current_language_flag|default:"🇰🇭" }}</span>
+                        <span class="fw-semibold">{{ current_language_name|default:"ភាសាខ្មែរ" }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3 py-1 border-0">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 {% if is_khmer %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}">
+                                <span>🇰🇭</span>
+                                <span>ភាសាខ្មែរ (Khmer)</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 {% if is_english %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}">
+                                <span>🇬🇧</span>
+                                <span>English (EN)</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 {% if user.is_authenticated %}
                 <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
                     <i class="fa-solid fa-circle-check me-1"></i>{{ user.username }} ({{ user.role }})
@@ -318,57 +346,73 @@
                 <img src="{% static 'img/school_logo.png' %}" alt="Logo" class="rounded-circle shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
                 {% endif %}
                 <div class="d-flex flex-column">
-                    <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_kh|default:"សាលារៀន SM" }}</span>
-                    <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_en|default:"SchoolSM International" }}</span>
+                    {% if is_english %}
+                        <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</span>
+                        <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</span>
+                    {% else %}
+                        <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</span>
+                        <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</span>
+                    {% endif %}
                 </div>
             </a>
 
-            <!-- Mobile Hamburger Toggle -->
-            <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-                <i class="fa-solid fa-bars fs-3 text-primary"></i>
-            </button>
+            <!-- Mobile Actions: Language Switch + Hamburger Toggle -->
+            <div class="d-flex align-items-center gap-2 d-lg-none">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border dropdown-toggle px-2 py-1 rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem;">
+                        {{ current_language_flag|default:"🇰🇭" }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-1">
+                        <li><a class="dropdown-item {% if is_khmer %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}">🇰🇭 ភាសាខ្មែរ</a></li>
+                        <li><a class="dropdown-item {% if is_english %}active fw-bold{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}">🇬🇧 English</a></li>
+                    </ul>
+                </div>
+                <button class="navbar-toggler border-0 shadow-none p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="fa-solid fa-bars fs-3 text-primary"></i>
+                </button>
+            </div>
 
             <!-- Navigation Links -->
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-1">
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'home' %}active{% endif %}" href="{% url 'website_home' %}">
-                            <i class="fa-solid fa-house me-1 text-primary"></i>ទំព័រដើម
+                            <i class="fa-solid fa-house me-1 text-primary"></i>{% lang_switch 'ទំព័រដើម' 'Home' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'website_home' %}#about">
-                            <i class="fa-solid fa-landmark me-1 text-primary"></i>អំពីសាលា
+                            <i class="fa-solid fa-landmark me-1 text-primary"></i>{% lang_switch 'អំពីសាលា' 'About School' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'website_home' %}#academics">
-                            <i class="fa-solid fa-book-open-reader me-1 text-primary"></i>កម្មវិធីសិក្សា
+                            <i class="fa-solid fa-book-open-reader me-1 text-primary"></i>{% lang_switch 'កម្មវិធីសិក្សា' 'Academics' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'announcements' %}active{% endif %}" href="{% url 'website_announcement_list' %}">
-                            <i class="fa-solid fa-bullhorn me-1 text-warning"></i>សេចក្តីជូនដំណឹង
+                            <i class="fa-solid fa-bullhorn me-1 text-warning"></i>{% lang_switch 'សេចក្តីជូនដំណឹង' 'Announcements' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'news' %}active{% endif %}" href="{% url 'website_news_list' %}">
-                            <i class="fa-solid fa-newspaper me-1 text-info"></i>ព័ត៌មានថ្មីៗ
+                            <i class="fa-solid fa-newspaper me-1 text-info"></i>{% lang_switch 'ព័ត៌មានថ្មីៗ' 'News' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'gallery' %}active{% endif %}" href="{% url 'website_gallery_list' %}">
-                            <i class="fa-solid fa-images me-1 text-success"></i>វិចិត្រសាល
+                            <i class="fa-solid fa-images me-1 text-success"></i>{% lang_switch 'វិចិត្រសាល' 'Gallery' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'contact' %}active{% endif %}" href="{% url 'website_contact' %}">
-                            <i class="fa-solid fa-address-book me-1 text-danger"></i>ទំនាក់ទំនង
+                            <i class="fa-solid fa-address-book me-1 text-danger"></i>{% lang_switch 'ទំនាក់ទំនង' 'Contact' %}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-primary fw-bold" href="{% url 'tool_public_mobile_download' %}">
-                            <i class="fa-solid fa-mobile-screen-button me-1 text-success"></i>App ទូរស័ព្ទ
+                            <i class="fa-solid fa-mobile-screen-button me-1 text-success"></i>{% lang_switch 'App ទូរស័ព្ទ' 'Mobile App' %}
                         </a>
                     </li>
                 </ul>
@@ -378,12 +422,12 @@
                     {% if user.is_authenticated %}
                         <a href="{% url 'dashboard_redirect' %}" class="btn-portal-dashboard">
                             <i class="fa-solid fa-gauge-high"></i>
-                            <span>ផ្ទាំងគ្រប់គ្រង (Dashboard)</span>
+                            <span>{% lang_switch 'ផ្ទាំងគ្រប់គ្រង (Dashboard)' 'Dashboard' %}</span>
                         </a>
                     {% else %}
                         <a href="{% url 'login' %}" class="btn-portal-login">
                             <i class="fa-solid fa-right-to-bracket"></i>
-                            <span>ចូលប្រព័ន្ធ (Portal Login)</span>
+                            <span>{% lang_switch 'ចូលប្រព័ន្ធ (Portal Login)' 'Portal Login' %}</span>
                         </a>
                     {% endif %}
                 </div>
@@ -421,45 +465,54 @@
                         <img src="{% static 'img/school_logo.png' %}" alt="Logo" class="rounded-circle bg-white p-1" style="width: 50px; height: 50px; object-fit: cover;">
                         {% endif %}
                         <div>
-                            <h5 class="mb-0 text-white">{{ school_profile.name_kh|default:"សាលារៀន SM" }}</h5>
-                            <small class="text-light-50">{{ school_profile.name_en|default:"SchoolSM International" }}</small>
+                            {% if is_english %}
+                                <h5 class="mb-0 text-white">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</h5>
+                                <small class="text-light-50">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</small>
+                            {% else %}
+                                <h5 class="mb-0 text-white">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</h5>
+                                <small class="text-light-50">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</small>
+                            {% endif %}
                         </div>
                     </div>
                     <p class="small text-secondary mb-3">
-                        {{ school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — បណ្តុះបណ្តាលទំពាំងស្នងឫស្សីឱ្យក្លាយជាធនធានមនុស្សដ៏មានតម្លៃសម្រាប់សង្គមជាតិ។" }}
+                        {% if is_english %}
+                            {{ school_profile.motto_en|default:"Knowledge, Discipline, Morality, Virtue — Cultivating future leaders with quality and excellence." }}
+                        {% else %}
+                            {{ school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — បណ្តុះបណ្តាលទំពាំងស្នងឫស្សីឱ្យក្លាយជាធនធានមនុស្សដ៏មានតម្លៃសម្រាប់សង្គមជាតិ។" }}
+                        {% endif %}
                     </p>
                     <div class="small text-secondary">
-                        <p class="mb-1"><i class="fa-solid fa-school text-primary me-2"></i>កម្រិត៖ {{ school_profile.education_levels|default:"មត្តេយ្យ, បឋម, អនុវិទ្យាល័យ, វិទ្យាល័យ" }}</p>
-                        <p class="mb-1"><i class="fa-solid fa-shield-halved text-info me-2"></i>កូដសាលា MoEYS៖ <code>{{ school_profile.school_code|default:"080101" }}</code></p>
+                        <p class="mb-1"><i class="fa-solid fa-school text-primary me-2"></i>{% lang_switch "កម្រិត៖" "Level:" %} {{ school_profile.education_levels|default:"មត្តេយ្យ, បឋម, អនុវិទ្យាល័យ, វិទ្យាល័យ" }}</p>
+                        <p class="mb-1"><i class="fa-solid fa-shield-halved text-info me-2"></i>{% lang_switch "កូដសាលា MoEYS៖" "MoEYS Code:" %} <code>{{ school_profile.school_code|default:"08010306901" }}</code></p>
                     </div>
                 </div>
 
                 <!-- Column 2: Quick Links -->
                 <div class="col-lg-2 col-md-6">
-                    <h5>តំណភ្ជាប់រហ័ស</h5>
+                    <h5>{% lang_switch "តំណភ្ជាប់រហ័ស" "Quick Links" %}</h5>
                     <ul class="list-unstyled small d-flex flex-column gap-2">
-                        <li><a href="{% url 'website_home' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>ទំព័រដើម</a></li>
-                        <li><a href="{% url 'website_home' %}#about"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>អំពីសាលារៀន</a></li>
-                        <li><a href="{% url 'website_home' %}#academics"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>កម្មវិធីសិក្សា</a></li>
-                        <li><a href="{% url 'website_announcement_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>សេចក្តីជូនដំណឹង</a></li>
-                        <li><a href="{% url 'website_news_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>ព័ត៌មាន & ព្រឹត្តិការណ៍</a></li>
-                        <li><a href="{% url 'website_gallery_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>វិចិត្រសាលរូបភាព</a></li>
+                        <li><a href="{% url 'website_home' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'ទំព័រដើម' 'Home' %}</a></li>
+                        <li><a href="{% url 'website_home' %}#about"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'អំពីសាលារៀន' 'About School' %}</a></li>
+                        <li><a href="{% url 'website_home' %}#academics"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'កម្មវិធីសិក្សា' 'Academics' %}</a></li>
+                        <li><a href="{% url 'website_announcement_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'សេចក្តីជូនដំណឹង' 'Announcements' %}</a></li>
+                        <li><a href="{% url 'website_news_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'ព័ត៌មាន & ព្រឹត្តិការណ៍' 'News & Events' %}</a></li>
+                        <li><a href="{% url 'website_gallery_list' %}"><i class="fa-solid fa-chevron-right me-1 text-primary"></i>{% lang_switch 'វិចិត្រសាលរូបភាព' 'Photo Gallery' %}</a></li>
                     </ul>
                 </div>
 
                 <!-- Column 3: MoEYS & Administration -->
                 <div class="col-lg-3 col-md-6">
-                    <h5>អង្គភាពគ្រប់គ្រង</h5>
+                    <h5>{% lang_switch "អង្គភាពគ្រប់គ្រង" "Administration" %}</h5>
                     <ul class="list-unstyled small d-flex flex-column gap-2">
-                        <li><i class="fa-solid fa-building-columns text-warning me-2"></i>{{ school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</li>
-                        <li><i class="fa-solid fa-landmark text-info me-2"></i>{{ school_profile.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា" }}</li>
+                        <li><i class="fa-solid fa-building-columns text-warning me-2"></i>{% lang_switch school_profile.ministry_name "Ministry of Education, Youth and Sport" %}</li>
+                        <li><i class="fa-solid fa-landmark text-info me-2"></i>{% lang_switch school_profile.poe_name "Provincial Department of Education" %}</li>
                         {% if school_profile.doe_name %}
                         <li><i class="fa-solid fa-city text-secondary me-2"></i>{{ school_profile.doe_name }}</li>
                         {% endif %}
-                        <li><i class="fa-solid fa-user-tie text-success me-2"></i>នាយកសាលា៖ {{ school_profile.principal_name|default:"លោកនាយកសាលា" }}</li>
+                        <li><i class="fa-solid fa-user-tie text-success me-2"></i>{% lang_switch "នាយកសាលា៖" "Principal:" %} {% if is_english %}{{ school_profile.principal_name_en|default:school_profile.principal_name }}{% else %}{{ school_profile.principal_name|default:"លោក ផេង វ៉ូយ៉ា" }}{% endif %}</li>
                         <li class="mt-2">
                             <a href="{% url 'login' %}" class="badge bg-primary text-decoration-none py-2 px-3 rounded-pill">
-                                <i class="fa-solid fa-lock me-1"></i>ច្រកចូលគ្រប់គ្រង (Admin Login)
+                                <i class="fa-solid fa-lock me-1"></i>{% lang_switch "ច្រកចូលគ្រប់គ្រង (Admin Login)" "Admin Portal Login" %}
                             </a>
                         </li>
                     </ul>
@@ -467,12 +520,19 @@
 
                 <!-- Column 4: Contact Info -->
                 <div class="col-lg-3 col-md-6">
-                    <h5>ទំនាក់ទំនងយើងខ្ញុំ</h5>
+                    <h5>{% lang_switch "ទំនាក់ទំនងយើងខ្ញុំ" "Contact Us" %}</h5>
                     <ul class="list-unstyled small d-flex flex-column gap-2">
-                        <li><i class="fa-solid fa-location-dot text-danger me-2"></i>{{ school_profile.street_address|default:"មហាវិថីព្រះនរោត្តម" }}, {{ school_profile.commune|default:"វត្តភ្នំ" }}, {{ school_profile.district|default:"ដូនពេញ" }}, {{ school_profile.province|default:"ភ្នំពេញ" }}</li>
-                        <li><i class="fa-solid fa-phone text-warning me-2"></i>{{ school_profile.phone|default:"023 888 999" }}</li>
+                        <li>
+                            <i class="fa-solid fa-location-dot text-danger me-2"></i>
+                            {% if is_english %}
+                                {{ school_profile.street_address_en|default:school_profile.street_address }}, {{ school_profile.district|default:"Kandal Stueng" }}, {{ school_profile.province|default:"Kandal Province" }}
+                            {% else %}
+                                {{ school_profile.street_address|default:"ផ្លូវលេខ២០៤ ភូមិស្វាយមីង ឃុំបារគូ" }}, {{ school_profile.district|default:"ស្រុកកណ្ដាលស្ទឹង" }}, {{ school_profile.province|default:"ខេត្តកណ្ដាល" }}
+                            {% endif %}
+                        </li>
+                        <li><i class="fa-solid fa-phone text-warning me-2"></i>{{ school_profile.phone|default:"093 995 947 / 089 995 947" }}</li>
                         <li><i class="fa-solid fa-envelope text-info me-2"></i>{{ school_profile.email|default:"info@schoolsm.edu.kh" }}</li>
-                        <li><i class="fa-solid fa-clock text-secondary me-2"></i>ច័ន្ទ - សៅរ៍: 7:00 AM - 5:00 PM</li>
+                        <li><i class="fa-solid fa-clock text-secondary me-2"></i>{% lang_switch "ច័ន្ទ - សៅរ៍: 7:00 AM - 5:00 PM" "Mon - Sat: 7:00 AM - 5:00 PM" %}</li>
                     </ul>
                 </div>
             </div>
@@ -481,19 +541,19 @@
 
             <div class="row align-items-center small">
                 <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                    &copy; 2026 <strong>{{ school_profile.name_kh|default:"សាលារៀន SM" }}</strong>. រក្សាសិទ្ធិគ្រប់យ៉ាង។ ដំណើរការដោយប្រព័ន្ធ SchoolSM Digital Hub។
+                    &copy; 2026 <strong>{% if is_english %}{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}{% else %}{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}{% endif %}</strong>. {% lang_switch "រក្សាសិទ្ធិគ្រប់យ៉ាង។ ដំណើរការដោយប្រព័ន្ធ SchoolSM Digital Hub។" "All Rights Reserved. Powered by SchoolSM Digital Hub." %}
                 </div>
                 <div class="col-md-6 text-center text-md-end">
-                    <a href="{% url 'website_home' %}" class="me-3">ទំព័រដើម</a>
-                    <a href="{% url 'website_contact' %}" class="me-3">ទំនាក់ទំនង</a>
-                    <a href="{% url 'login' %}">ចូលប្រព័ន្ធគ្រប់គ្រង</a>
+                    <a href="{% url 'website_home' %}" class="me-3">{% lang_switch "ទំព័រដើម" "Home" %}</a>
+                    <a href="{% url 'website_contact' %}" class="me-3">{% lang_switch "ទំនាក់ទំនង" "Contact" %}</a>
+                    <a href="{% url 'login' %}">{% lang_switch "ចូលប្រព័ន្ធគ្រប់គ្រង" "Admin Portal Login" %}</a>
                 </div>
             </div>
         </div>
     </footer>
 
     <!-- Back to top button -->
-    <a href="#" class="back-to-top" id="backToTop" title="ត្រឡប់ទៅលើវិញ">
+    <a href="#" class="back-to-top" id="backToTop" title="{% lang_switch 'ត្រឡប់ទៅលើវិញ' 'Back to Top' %}">
         <i class="fa-solid fa-chevron-up"></i>
     </a>
 

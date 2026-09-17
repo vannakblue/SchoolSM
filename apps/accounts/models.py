@@ -427,6 +427,13 @@ class SchoolProfile(models.Model):
         default="សាលារៀន SM",
         verbose_name="ឈ្មោះកាត់សាលា / Short Name"
     )
+    short_name_en = models.CharField(
+        max_length=100,
+        default="SchoolSM",
+        blank=True,
+        null=True,
+        verbose_name="ឈ្មោះកាត់សាលា (English) / Short Name (English)"
+    )
     school_code = models.CharField(
         max_length=50,
         default="080101",
@@ -437,11 +444,49 @@ class SchoolProfile(models.Model):
         default="វិទ្យាល័យ / General High School",
         verbose_name="កម្រិត/ប្រភេទសាលា / School Level & Type"
     )
+    school_type_en = models.CharField(
+        max_length=100,
+        default="General High School",
+        blank=True,
+        null=True,
+        verbose_name="កម្រិត/ប្រភេទសាលា (English) / School Level & Type (English)"
+    )
     motto = models.CharField(
         max_length=255,
         default="ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌",
         blank=True,
         verbose_name="បាវចនាសាលា / School Motto"
+    )
+    motto_en = models.CharField(
+        max_length=255,
+        default="Knowledge, Discipline, Morality, Virtue",
+        blank=True,
+        null=True,
+        verbose_name="បាវចនាសាលា (English) / School Motto (English)"
+    )
+    about_school = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="អំពីសាលារៀន (Khmer) / About School (Khmer)"
+    )
+    about_school_en = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="អំពីសាលារៀន (English) / About School (English)"
+    )
+    principal_name_en = models.CharField(
+        max_length=150,
+        default="Dr. Sok Chanthorn",
+        blank=True,
+        null=True,
+        verbose_name="ឈ្មោះនាយក/នាយិកា (English) / Principal Name (English)"
+    )
+    street_address_en = models.CharField(
+        max_length=255,
+        default="Preah Norodom Blvd, Sangkat Wat Phnom",
+        blank=True,
+        null=True,
+        verbose_name="អាសយដ្ឋាន (English) / Street Address (English)"
     )
     
     # Media: Logo, Seal, Signature
@@ -957,6 +1002,41 @@ class SchoolProfile(models.Model):
         elif font == 'Khmer OS Battambang':
             return "'Khmer OS Battambang', 'Battambang', sans-serif"
         return "'Kantumruy Pro', 'Battambang', sans-serif"
+
+    def get_name(self, lang='km'):
+        if lang == 'en' and self.name_en:
+            return self.name_en
+        return self.name_kh
+
+    def get_short_name(self, lang='km'):
+        if lang == 'en' and self.short_name_en:
+            return self.short_name_en
+        return self.short_name or self.name_kh
+
+    def get_motto(self, lang='km'):
+        if lang == 'en' and self.motto_en:
+            return self.motto_en
+        return self.motto
+
+    def get_principal_name(self, lang='km'):
+        if lang == 'en' and self.principal_name_en:
+            return self.principal_name_en
+        return self.principal_name
+
+    def get_street_address(self, lang='km'):
+        if lang == 'en' and self.street_address_en:
+            return self.street_address_en
+        return self.street_address
+
+    def get_school_type(self, lang='km'):
+        if lang == 'en' and self.school_type_en:
+            return self.school_type_en
+        return self.school_type
+
+    def get_about(self, lang='km'):
+        if lang == 'en' and self.about_school_en:
+            return self.about_school_en
+        return self.about_school
 
     def __str__(self):
         return f"{self.name_kh} ({self.school_code})"

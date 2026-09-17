@@ -1,74 +1,151 @@
 {% extends 'base.html' %}
+{% load i18n_extras %}
 
 {% block title %}{{ title }} | SchoolSM{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold mb-1">{{ title }}</h2>
-        <p class="text-muted small mb-0">ផ្សព្វផ្សាយដំណឹងផ្លូវការ និងអាចផ្ញើជូនដំណឹងស្វ័យប្រវត្តិតាម Telegram ទៅកាន់អាណាព្យាបាល និងគ្រូ</p>
+        <p class="text-muted small mb-0">{% lang_switch "ផ្សព្វផ្សាយដំណឹងផ្លូវការ (គាំទ្រ ២ ភាសា & AI Auto-Translate)" "Publish official announcements (Bilingual & AI Auto-Translate)" %}</p>
     </div>
-    <a href="{% url 'announcement_list' %}" class="btn btn-light">ត្រឡប់ក្រោយ</a>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary rounded-pill shadow-xs" onclick="autoTranslateAnnouncement()" id="btnAiTranslateAnn">
+            <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {% lang_switch "⚡ បកប្រែជាភាសាអង់គ្លេសស្វ័យប្រវត្តដោយ AI" "⚡ Auto-Translate to English via AI" %}
+        </button>
+        <a href="{% url 'announcement_list' %}" class="btn btn-light rounded-pill border">{% lang_switch "ត្រឡប់ក្រោយ" "Back" %}</a>
+    </div>
 </div>
 
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="custom-card">
-            <form method="POST" enctype="multipart/form-data">
+    <div class="col-lg-9">
+        <div class="custom-card p-4 rounded-4 shadow-sm bg-white">
+            <form method="POST" enctype="multipart/form-data" id="announcementForm">
                 {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">ចំណងជើងសេចក្តីជូនដំណឹង *</label>
-                    {{ form.title }}
-                </div>
-
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold small">ប្រភេទដំណឹង *</label>
+                        <label class="form-label fw-bold small">{% lang_switch "ប្រភេទដំណឹង *" "Category *" %}</label>
                         {{ form.category }}
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold small">ក្រុមគោលដៅ *</label>
+                        <label class="form-label fw-bold small">{% lang_switch "ក្រុមគោលដៅ *" "Target Audience *" %}</label>
                         {{ form.target_audience }}
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold small">កម្រិតអាទិភាព *</label>
+                        <label class="form-label fw-bold small">{% lang_switch "កម្រិតអាទិភាព *" "Priority *" %}</label>
                         {{ form.priority }}
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">ខ្លឹមសារសេចក្តីជូនដំណឹង *</label>
-                    {{ form.content }}
+                <!-- Title KH & EN -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">{% lang_switch "ចំណងជើងសេចក្តីជូនដំណឹង (ខ្មែរ) *" "Announcement Title (Khmer) *" %}</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">{% lang_switch "ចំណងជើងជាភាសាអង់គ្លេស (Title - English)" "Title (English)" %}</label>
+                        {{ form.title_en }}
+                        <small class="text-muted">{% lang_switch "ទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
+                        {% if form.title_en.errors %}<div class="text-danger small">{{ form.title_en.errors }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <!-- Content KH & EN -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">{% lang_switch "ខ្លឹមសារសេចក្តីជូនដំណឹង (ខ្មែរ) *" "Content (Khmer) *" %}</label>
+                        {{ form.content }}
+                        {% if form.content.errors %}<div class="text-danger small">{{ form.content.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-dark">{% lang_switch "ខ្លឹមសារជាភាសាអង់គ្លេស (Content - English)" "Content (English)" %}</label>
+                        {{ form.content_en }}
+                        <small class="text-muted">{% lang_switch "ទុកទំនេរ ប្រព័ន្ធ AI នឹងបកប្រែដោយស្វ័យប្រវត្ត" "Leave blank to auto-translate by AI Agent" %}</small>
+                        {% if form.content_en.errors %}<div class="text-danger small">{{ form.content_en.errors }}</div>{% endif %}
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold small">ឯកសារភ្ជាប់ (រូបភាព ឬ PDF)</label>
+                    <label class="form-label fw-bold small">{% lang_switch "ឯកសារភ្ជាប់ (រូបភាព ឬ PDF)" "Attachment (Image or PDF)" %}</label>
                     {{ form.attachment }}
                 </div>
 
-                <div class="p-3 bg-light rounded-3 mb-4">
+                <div class="p-3 bg-light rounded-3 mb-4 border">
                     <div class="form-check form-switch mb-2">
                         {{ form.is_published }}
                         <label class="form-check-label fw-bold small" for="{{ form.is_published.id_for_label }}">
-                            ផ្សាយជាសាធារណៈលើផ្ទាំង Notice Board
+                            {% lang_switch "ផ្សាយជាសាធារណៈលើផ្ទាំង Notice Board និងគេហទំព័រ" "Publish on Notice Board and Website" %}
                         </label>
                     </div>
                     <div class="form-check form-switch">
                         {{ form.broadcast_telegram }}
                         <label class="form-check-label fw-bold small text-info" for="{{ form.broadcast_telegram.id_for_label }}">
-                            <i class="fa-brands fa-telegram me-1"></i> ផ្ញើដំណឹងនេះតាម Telegram Bot ទៅកាន់អាណាព្យាបាល & គ្រូស្វ័យប្រវត្តិ
+                            <i class="fa-brands fa-telegram me-1"></i> {% lang_switch "ផ្ញើដំណឹងនេះតាម Telegram Bot ទៅកាន់អាណាព្យាបាល & គ្រូស្វ័យប្រវត្តិ" "Broadcast via Telegram Bot automatically" %}
                         </label>
                     </div>
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary px-4 fw-bold">
-                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្សព្វផ្សាយសេចក្តីជូនដំណឹង
+                    <button type="submit" class="btn btn-primary px-4 fw-bold rounded-pill">
+                        <i class="fa-solid fa-paper-plane me-1"></i> {% lang_switch "ផ្សព្វផ្សាយសេចក្តីជូនដំណឹង" "Publish Announcement" %}
                     </button>
-                    <a href="{% url 'announcement_list' %}" class="btn btn-light">បោះបង់</a>
+                    <a href="{% url 'announcement_list' %}" class="btn btn-light rounded-pill border">{% lang_switch "បោះបង់" "Cancel" %}</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+function autoTranslateAnnouncement() {
+    const btn = document.getElementById('btnAiTranslateAnn');
+    if (!btn) return;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែដោយ AI...';
+
+    const pairs = [
+        { src: 'id_title', tgt: 'id_title_en', ctx: 'Announcement Title' },
+        { src: 'id_content', tgt: 'id_content_en', ctx: 'Announcement Message Body' }
+    ];
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+    const reqs = pairs.map(p => {
+        const srcEl = document.getElementById(p.src);
+        const tgtEl = document.getElementById(p.tgt);
+        if (!srcEl || !tgtEl || !srcEl.value.trim()) return Promise.resolve();
+
+        return fetch('/accounts/api/ai-translate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                text: srcEl.value.trim(),
+                context: p.ctx
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.translated_text) {
+                tgtEl.value = data.translated_text;
+                tgtEl.classList.add('is-valid');
+                setTimeout(() => tgtEl.classList.remove('is-valid'), 3500);
+            }
+        })
+        .catch(err => console.error('AI translation error:', err));
+    });
+
+    Promise.all(reqs).then(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែដោយ AI ជោគជ័យ!';
+        setTimeout(() => { btn.innerHTML = origHtml; }, 3000);
+    });
+}
+</script>
 {% endblock %}

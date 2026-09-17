@@ -129,18 +129,18 @@
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
     <div>
         <h2 class="fw-bold mb-1 text-primary">
-            <i class="fa-solid fa-school-flag me-2"></i>ការកំណត់ព័ត៌មានសាលារៀន (School Profile & Settings)
+            <i class="fa-solid fa-school-flag me-2"></i>{% lang_switch "ការកំណត់ព័ត៌មានសាលារៀន" "School Profile & Settings" %}
         </h2>
         <p class="text-muted small mb-0">
-            កំណត់ និងកែប្រែឈ្មោះសាលា ឡូហ្គោ ត្រាផ្លូវការ លេខកូដសាលា (EMIS) ទីតាំងភូមិសាស្ត្រ GPS Google Maps និងព័ត៌មានទំនាក់ទំនង
+            {% lang_switch "កំណត់ និងកែប្រែឈ្មោះសាលា ឡូហ្គោ ត្រាផ្លូវការ លេខកូដសាលា ទីតាំងភូមិសាស្ត្រ GPS ផែនទី និងព័ត៌មានទំនាក់ទំនង" "Configure school names, official logos, stamps, EMIS code, GPS coordinates, Google Maps, and contact details" %}
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <button type="button" class="btn btn-outline-success fw-bold btn-sm rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#locationQrModal">
-            <i class="fa-solid fa-qrcode me-1"></i> QR Code ទីតាំង
+            <i class="fa-solid fa-qrcode me-1"></i> {% lang_switch "QR Code ទីតាំង" "Location QR Code" %}
         </button>
         <a href="{% url 'moeys_reports' %}" class="btn btn-outline-primary fw-bold btn-sm rounded-pill px-3 shadow-xs">
-            <i class="fa-solid fa-file-waveform me-1"></i> មើលរបាយការណ៍ MoEYS
+            <i class="fa-solid fa-file-waveform me-1"></i> {% lang_switch "មើលរបាយការណ៍ MoEYS" "View MoEYS Reports" %}
         </a>
     </div>
 </div>
@@ -157,27 +157,31 @@
                     {% else %}
                         <img id="livePreviewLogoCard" src="{% static 'img/school_logo.png' %}" alt="School Logo" class="rounded-circle border border-2 border-primary p-1 bg-white shadow-sm" style="width: 110px; height: 110px; object-fit: cover;">
                     {% endif %}
-                    <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 shadow-sm d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; transform: translate(5%, 5%);" onclick="openCropModalForExistingOrNew()" title="កែសម្រួល & Zoom រូបភាពសាលា (Pinch to zoom / Crop)">
+                    <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 shadow-sm d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; transform: translate(5%, 5%);" onclick="openCropModalForExistingOrNew()" title="{% lang_switch 'កែសម្រួលរូបភាពសាលា' 'Edit School Photo' %}">
                         <i class="fa-solid fa-camera" style="font-size: 0.85rem;"></i>
                     </button>
                 </div>
             </div>
 
-            <h5 class="fw-bold text-dark mb-1">{{ school_profile.name_kh }}</h5>
-            <p class="text-muted small mb-2 fst-italic">{{ school_profile.name_en }}</p>
+            <h5 class="fw-bold text-dark mb-1">{% if is_english and school_profile.name_en %}{{ school_profile.name_en }}{% else %}{{ school_profile.name_kh }}{% endif %}</h5>
+            {% if is_english and school_profile.name_kh %}
+                <p class="text-muted small mb-2 fst-italic">{{ school_profile.name_kh }}</p>
+            {% elif not is_english and school_profile.name_en %}
+                <p class="text-muted small mb-2 fst-italic">{{ school_profile.name_en }}</p>
+            {% endif %}
             
             <div class="d-flex justify-content-center gap-2 mb-3 flex-wrap">
                 <span class="badge bg-primary px-2 py-1 rounded-pill">
-                    <i class="fa-solid fa-barcode me-1"></i>កូដ: {{ school_profile.school_code }}
+                    <i class="fa-solid fa-barcode me-1"></i>{% lang_switch "កូដ" "Code" %}: {{ school_profile.school_code }}
                 </span>
                 <span class="badge bg-secondary-subtle text-dark border px-2 py-1 rounded-pill">
-                    {{ school_profile.get_institution_type_display|default:school_profile.school_type }}
+                    {{ school_profile.get_institution_type_display|clean_choice:current_language|default:school_profile.school_type }}
                 </span>
             </div>
 
             <!-- GPS Location Link Badge -->
             <div class="mb-3">
-                <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="gps-badge text-decoration-none shadow-xs" title="ចុចដើម្បីបើកមើលផ្លូវលើ Google Maps">
+                <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="gps-badge text-decoration-none shadow-xs" title="{% lang_switch 'ចុចដើម្បីបើកមើលផ្លូវលើ Google Maps' 'Click to open route in Google Maps' %}">
                     <i class="fa-solid fa-map-location-dot text-danger"></i>
                     <span>GPS: {{ school_profile.latitude|floatformat:4 }}, {{ school_profile.longitude|floatformat:4 }}</span>
                     <i class="fa-solid fa-arrow-up-right-from-square text-muted ms-1" style="font-size: 0.75rem;"></i>
@@ -187,58 +191,58 @@
             <div class="alert alert-light border py-2 px-3 mb-3 text-start small rounded-3">
                 <div class="mb-1 text-secondary">
                     <i class="fa-solid fa-quote-left me-1 text-primary"></i>
-                    <strong>បាវចនា:</strong> <em>"{{ school_profile.motto }}"</em>
+                    <strong>{% lang_switch "បាវចនា" "Motto" %}:</strong> <em>"{{ school_profile.motto }}"</em>
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-building-columns text-info me-1"></i>
-                    <strong>មន្ទីរអប់រំ:</strong> {{ school_profile.poe_name }}
+                    <strong>{% lang_switch "មន្ទីរអប់រំ" "POE" %}:</strong> {{ school_profile.poe_name }}
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-location-dot text-danger me-1"></i>
-                    <strong>ទីតាំង:</strong> {{ school_profile.full_address }}
+                    <strong>{% lang_switch "ទីតាំង" "Location" %}:</strong> {{ school_profile.full_address }}
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-user-tie text-success me-1"></i>
-                    <strong>នាយកសាលា:</strong> {{ school_profile.principal_name }}
+                    <strong>{% lang_switch "នាយកសាលា" "Principal" %}:</strong> {{ school_profile.principal_name }}
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-phone text-warning me-1"></i>
-                    <strong>ទូរស័ព្ទ:</strong> {{ school_profile.phone }}
+                    <strong>{% lang_switch "ទូរស័ព្ទ" "Phone" %}:</strong> {{ school_profile.phone }}
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-envelope text-primary me-1"></i>
-                    <strong>អ៊ីមែល:</strong> {{ school_profile.email }}
+                    <strong>{% lang_switch "អ៊ីមែល" "Email" %}:</strong> {{ school_profile.email }}
                 </div>
                 <div class="mb-1">
                     <i class="fa-solid fa-calendar-days text-primary me-1"></i>
-                    <strong>ទម្រង់កាលបរិច្ឆេទ:</strong> <code>{{ school_profile.date_format|default:"dd-mm-yyyy" }}</code>
+                    <strong>{% lang_switch "ទម្រង់កាលបរិច្ឆេទ" "Date Format" %}:</strong> <code>{{ school_profile.date_format|default:"dd-mm-yyyy" }}</code>
                 </div>
                 <div>
                     <i class="fa-solid fa-clock text-primary me-1"></i>
-                    <strong>ទម្រង់ម៉ោង:</strong> <code>{{ school_profile.time_format|default:"HH:mm" }}</code>
+                    <strong>{% lang_switch "ទម្រង់ម៉ោង" "Time Format" %}:</strong> <code>{{ school_profile.time_format|default:"HH:mm" }}</code>
                 </div>
             </div>
 
             <!-- Official Seal & Signature Previews -->
             <div class="row g-2 pt-2 border-top">
                 <div class="col-6 text-center">
-                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">ត្រាសាលា (Seal)</p>
+                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">{% lang_switch "ត្រាសាលា" "School Seal" %}</p>
                     {% if school_profile.seal %}
                         <img id="livePreviewSealCard" src="{{ school_profile.seal.url }}" alt="Official Seal" class="img-thumbnail" style="max-height: 60px; object-fit: contain;">
                     {% else %}
                         <div id="livePreviewSealCardPlaceholder" class="border rounded p-2 text-muted small bg-light" style="font-size: 0.7rem;">
-                            <i class="fa-solid fa-stamp d-block mb-1"></i>គ្មានត្រា
+                            <i class="fa-solid fa-stamp d-block mb-1"></i>{% lang_switch "គ្មានត្រា" "No Seal" %}
                         </div>
                         <img id="livePreviewSealCard" src="" alt="Official Seal" class="img-thumbnail d-none" style="max-height: 60px; object-fit: contain;">
                     {% endif %}
                 </div>
                 <div class="col-6 text-center">
-                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">ហត្ថលេខានាយក</p>
+                    <p class="text-muted small mb-1" style="font-size: 0.75rem;">{% lang_switch "ហត្ថលេខានាយក" "Principal Signature" %}</p>
                     {% if school_profile.principal_signature %}
                         <img id="livePreviewSigCard" src="{{ school_profile.principal_signature.url }}" alt="Principal Signature" class="img-thumbnail" style="max-height: 60px; object-fit: contain;">
                     {% else %}
                         <div id="livePreviewSigCardPlaceholder" class="border rounded p-2 text-muted small bg-light" style="font-size: 0.7rem;">
-                            <i class="fa-solid fa-signature d-block mb-1"></i>គ្មានហត្ថលេខា
+                            <i class="fa-solid fa-signature d-block mb-1"></i>{% lang_switch "គ្មានហត្ថលេខា" "No Signature" %}
                         </div>
                         <img id="livePreviewSigCard" src="" alt="Principal Signature" class="img-thumbnail d-none" style="max-height: 60px; object-fit: contain;">
                     {% endif %}
@@ -246,16 +250,16 @@
             </div>
 
             <div class="mt-3 text-muted" style="font-size: 0.75rem;">
-                <i class="fa-solid fa-clock-rotate-left me-1"></i>កែប្រែចុងក្រោយ: {{ school_profile.updated_at|school_datetime }}
+                <i class="fa-solid fa-clock-rotate-left me-1"></i>{% lang_switch "កែប្រែចុងក្រោយ" "Last Updated" %}: {{ school_profile.updated_at|school_datetime }}
             </div>
         </div>
 
         <!-- Quick Help Alert -->
         <div class="alert alert-info border-0 shadow-sm small rounded-4">
-            <h6 class="fw-bold"><i class="fa-solid fa-circle-info me-1"></i>ព័ត៌មានជំនួយ</h6>
+            <h6 class="fw-bold"><i class="fa-solid fa-circle-info me-1"></i>{% lang_switch "ព័ត៌មានជំនួយ" "Quick Tips" %}</h6>
             <ul class="mb-0 ps-3">
-                <li>ព័ត៌មានដែលបានកែប្រែនៅទីនេះ នឹងធ្វើបច្ចុប្បន្នភាពដោយស្វ័យប្រវត្តិតាម Sidebar, ប័ណ្ណពិន្ទុ, វិក្កយបត្រ, កាតសិស្ស និងរបាយការណ៍ MoEYS។</li>
-                <li>កូអរដោនេ GPS នឹងជួយដល់ការបង្កើត QR Code ទីតាំង និងមុខងារស្រង់វត្តមានគ្រូតាមទូរស័ព្ទ (Geofencing)។</li>
+                <li>{% lang_switch "ព័ត៌មានដែលបានកែប្រែនៅទីនេះ នឹងធ្វើបច្ចុប្បន្នភាពដោយស្វ័យប្រវត្តិតាម Sidebar, ប័ណ្ណពិន្ទុ, វិក្កយបត្រ, កាតសិស្ស និងរបាយការណ៍ MoEYS។" "Settings saved here will automatically update across the Sidebar, Report Cards, Invoices, Student ID Cards, and MoEYS reports." %}</li>
+                <li>{% lang_switch "កូអរដោនេ GPS នឹងជួយដល់ការបង្កើត QR Code ទីតាំង និងមុខងារស្រង់វត្តមានគ្រូតាមទូរស័ព្ទ (Geofencing)។" "GPS coordinates enable Location QR Code generation and mobile teacher attendance geofencing." %}</li>
             </ul>
         </div>
     </div>
@@ -271,32 +275,32 @@
                 <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="schoolSettingsTab" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active fw-bold small py-2 px-3 rounded-pill" id="general-tab" data-bs-toggle="pill" data-bs-target="#tab-general" type="button" role="tab">
-                            <i class="fa-solid fa-school me-1"></i> ១. អត្តសញ្ញាណ & រដ្ឋបាល
+                            <i class="fa-solid fa-school me-1"></i> {% lang_switch "១. អត្តសញ្ញាណ & រដ្ឋបាល" "1. Identity & Administration" %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="location-tab" data-bs-toggle="pill" data-bs-target="#tab-location" type="button" role="tab">
-                            <i class="fa-solid fa-map-location-dot me-1"></i> ២. ទីតាំងភូមិសាស្ត្រ & ផែនទី
+                            <i class="fa-solid fa-map-location-dot me-1"></i> {% lang_switch "២. ទីតាំងភូមិសាស្ត្រ & ផែនទី" "2. Location & Maps" %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="media-tab" data-bs-toggle="pill" data-bs-target="#tab-media" type="button" role="tab">
-                            <i class="fa-solid fa-image me-1"></i> ៣. ឡូហ្គោ & ត្រា
+                            <i class="fa-solid fa-image me-1"></i> {% lang_switch "៣. ឡូហ្គោ & ត្រា" "3. Logo & Seal" %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="contact-tab" data-bs-toggle="pill" data-bs-target="#tab-contact" type="button" role="tab">
-                            <i class="fa-solid fa-address-book me-1"></i> ៤. ទំនាក់ទំនង & នាយក
+                            <i class="fa-solid fa-address-book me-1"></i> {% lang_switch "៤. ទំនាក់ទំនង & នាយក" "4. Contact & Principal" %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="student-id-tab" data-bs-toggle="pill" data-bs-target="#tab-student-id" type="button" role="tab">
-                            <i class="fa-solid fa-id-card me-1"></i> ៥. ទម្រង់អត្តលេខសិស្ស
+                            <i class="fa-solid fa-id-card me-1"></i> {% lang_switch "៥. ទម្រង់អត្តលេខសិស្ស" "5. Student ID Format" %}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="theme-tab" data-bs-toggle="pill" data-bs-target="#tab-theme" type="button" role="tab">
-                            <i class="fa-solid fa-palette me-1 text-warning"></i> ៦. ពុម្ពអក្សរ & រចនាប័ទ្មពណ៌
+                            <i class="fa-solid fa-palette me-1 text-warning"></i> {% lang_switch "៦. ពុម្ពអក្សរ & រចនាប័ទ្មពណ៌" "6. Typography & Theme" %}
                         </button>
                     </li>
                 </ul>
@@ -306,77 +310,113 @@
                     
                     <!-- TAB 1: General Identity & MoEYS Hierarchy -->
                     <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-id-card me-1"></i>ព័ត៌មានអត្តសញ្ញាណសាលា</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h6 class="fw-bold text-primary mb-0"><i class="fa-solid fa-id-card me-1"></i>{% lang_switch "ព័ត៌មានអត្តសញ្ញាណសាលា" "School Identity Information" %}</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs" onclick="autoTranslateSchoolIdentity()" id="btnAiTranslateIdentity">
+                                <i class="fa-solid fa-wand-magic-sparkles me-1 text-warning"></i> {% lang_switch "⚡ បកប្រែជាភាសាអង់គ្លេសស្វ័យប្រវត្តដោយ AI (Gemini)" "⚡ Auto-Translate to English via AI (Gemini)" %}
+                            </button>
+                        </div>
                         
                         <div class="row g-3 mb-4">
-                            <div class="col-md-7">
-                                <label class="form-label fw-bold small">ឈ្មោះសាលា (ភាសាខ្មែរ) <span class="text-danger">*</span></label>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះសាលា (ភាសាខ្មែរ)" "School Name (Khmer)" %} <span class="text-danger">*</span></label>
                                 {{ form.name_kh }}
-                                <div class="form-text small">ឧទាហរណ៍៖ វិទ្យាល័យអន្តរជាតិ សាលារៀន SM</div>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold small">ឈ្មោះកាត់សាលា <span class="text-danger">*</span></label>
-                                {{ form.short_name }}
-                                <div class="form-text small">សម្រាប់បង្ហាញលើ Sidebar (ឧ. សាលារៀន SM)</div>
-                            </div>
-                            <div class="col-md-7">
-                                <label class="form-label fw-bold small">ឈ្មោះសាលា (អង់គ្លេស / ឡាតាំង)</label>
-                                {{ form.name_en }}
-                                <div class="form-text small">ឧទាហរណ៍៖ SchoolSM International High School</div>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold small">លេខកូដសាលា (MoEYS EMIS Code) <span class="text-danger">*</span></label>
-                                {{ form.school_code }}
-                                <div class="form-text small">លេខកូដ ៦ ខ្ទង់តាមស្តង់ដារក្រសួង (ឧ. 080101)</div>
+                                <div class="form-text small">{% lang_switch "ឧទាហរណ៍៖ វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" "e.g. វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ប្រភេទគ្រឹះស្ថានសិក្សា (Institution Type)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះសាលាជាអក្សរឡាតាំង/អង់គ្លេស" "School Name (Latin / English)" %}</label>
+                                {{ form.name_en }}
+                                <div class="form-text small">{% lang_switch "ឧទាហរណ៍៖ Hun Sen Kampong Kantuot High School" "e.g. Hun Sen Kampong Kantuot High School" %}</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះកាត់សាលា (ខ្មែរ)" "School Short Name (Khmer)" %} <span class="text-danger">*</span></label>
+                                {{ form.short_name }}
+                                <div class="form-text small">{% lang_switch "សម្រាប់បង្ហាញលើ Sidebar (ឧ. វិ. ហ៊ុន សែន កំពង់កន្ទួត)" "Displayed on Sidebar (e.g. វិ. ហ៊ុន សែន កំពង់កន្ទួត)" %}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះកាត់សាលា (English)" "School Short Name (English)" %}</label>
+                                {{ form.short_name_en }}
+                                <div class="form-text small">{% lang_switch "សម្រាប់បង្ហាញពេលប្តូរជាភាសាអង់គ្លេស (ឧ. Hun Sen Kampong Kantuot HS)" "Displayed in English mode (e.g. Hun Sen Kampong Kantuot HS)" %}</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">{% lang_switch "លេខកូដសាលា (EMIS)" "School EMIS Code" %} <span class="text-danger">*</span></label>
+                                {{ form.school_code }}
+                                <div class="form-text small">{% lang_switch "លេខកូដតាមស្តង់ដារក្រសួង (ឧ. 08010306901)" "Official MoEYS code (e.g. 08010306901)" %}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">{% lang_switch "ប្រភេទគ្រឹះស្ថានសិក្សា" "Institution Type" %}</label>
                                 {{ form.institution_type }}
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">កម្រិតសិក្សាដែលបើកបង្រៀន (Education Levels)</label>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">{% lang_switch "កម្រិតសិក្សាដែលបើកបង្រៀន" "Education Levels" %}</label>
                                 {{ form.education_levels }}
-                                <div class="form-text small">ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ</div>
+                                <div class="form-text small">{% lang_switch "ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ" "e.g. Kindergarten, Primary, Lower Secondary, High School" %}</div>
                             </div>
+
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">កម្រិត/ប្រភេទសាលា</label>
+                                <label class="form-label fw-bold small">{% lang_switch "កម្រិត/ប្រភេទសាលា (ខ្មែរ)" "School Category / Type (Khmer)" %}</label>
                                 {{ form.school_type }}
+                                <div class="form-text small">{% lang_switch "ឧ. វិទ្យាល័យ" "e.g. វិទ្យាល័យ" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">បាវចនាសាលា (Motto)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "កម្រិត/ប្រភេទសាលា (English)" "School Category / Type (English)" %}</label>
+                                {{ form.school_type_en }}
+                                <div class="form-text small">{% lang_switch "ឧ. General High School" "e.g. General High School" %}</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "បាវចនាសាលា (ខ្មែរ)" "School Motto (Khmer)" %}</label>
                                 {{ form.motto }}
+                                <div class="form-text small">{% lang_switch "ឧ. ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌" "e.g. ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small"><i class="fa-solid fa-calendar-days me-1 text-primary"></i>ទម្រង់កាលបរិច្ឆេទ (Date Format) <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "បាវចនាសាលា (English)" "School Motto (English)" %}</label>
+                                {{ form.motto_en }}
+                                <div class="form-text small">{% lang_switch "ឧ. Knowledge, Discipline, Morality, Virtue" "e.g. Knowledge, Discipline, Morality, Virtue" %}</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "អំពីសាលារៀន (ខ្មែរ)" "About School (Khmer)" %}</label>
+                                {{ form.about_school }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "អំពីសាលារៀន (English)" "About School (English)" %}</label>
+                                {{ form.about_school_en }}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small"><i class="fa-solid fa-calendar-days me-1 text-primary"></i>{% lang_switch "ទម្រង់កាលបរិច្ឆេទ" "Date Format" %} <span class="text-danger">*</span></label>
                                 {{ form.date_format }}
-                                <div class="form-text small">ស្តង់ដារលំនាំដើម៖ <code>dd-mm-yyyy</code> (ឧ. 02-09-2026) ឬរួមបញ្ចូលម៉ោង នាទី វិនាទី</div>
+                                <div class="form-text small">{% lang_switch "ស្តង់ដារលំនាំដើម៖ dd-mm-yyyy (ឧ. 02-09-2026)" "Default standard: dd-mm-yyyy (e.g. 02-09-2026)" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small"><i class="fa-solid fa-clock me-1 text-primary"></i>ទម្រង់ម៉ោង (Time Format)</label>
+                                <label class="form-label fw-bold small"><i class="fa-solid fa-clock me-1 text-primary"></i>{% lang_switch "ទម្រង់ម៉ោង" "Time Format" %}</label>
                                 {{ form.time_format }}
-                                <div class="form-text small">ស្តង់ដារលំនាំដើម៖ <code>HH:mm</code> (ឧ. 14:30) ឬ <code>HH:mm:ss</code> (មានវិនាទី)</div>
+                                <div class="form-text small">{% lang_switch "ស្តង់ដារលំនាំដើម៖ HH:mm (ឧ. 14:30)" "Default standard: HH:mm (e.g. 14:30)" %}</div>
                             </div>
                         </div>
 
-                        <h6 class="fw-bold text-primary mb-3 border-top pt-3"><i class="fa-solid fa-user-plus me-1"></i>វិធីសាស្ត្រ និងបែបបទចុះឈ្មោះសិស្ស (Student Registration Form Mode)</h6>
+                        <h6 class="fw-bold text-primary mb-3 border-top pt-3"><i class="fa-solid fa-user-plus me-1"></i>{% lang_switch "វិធីសាស្ត្រ និងបែបបទចុះឈ្មោះសិស្ស" "Student Registration Form Mode" %}</h6>
                         <div class="row g-3 mb-3">
                             <div class="col-md-12">
                                 <div class="p-3 bg-light rounded-3 border">
                                     <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
                                         <div>
                                             <label class="form-label fw-bold small text-dark mb-0">
-                                                <i class="fa-solid fa-square-check me-1 text-primary"></i>កំណត់លំនាំដើមនៃបែបបទចុះឈ្មោះ (Select Default Registration Form by Ticking) <span class="text-danger">*</span>
+                                                <i class="fa-solid fa-square-check me-1 text-primary"></i>{% lang_switch "កំណត់លំនាំដើមនៃបែបបទចុះឈ្មោះ" "Select Default Registration Form" %} <span class="text-danger">*</span>
                                             </label>
                                             <div class="small text-muted" style="font-size: 0.8rem;">
-                                                ជ្រើសរើសដោយចុចធីកលើបែបបទដែល Admin ចង់បាន។ សិស្សនឹងបំពេញតាមបែបបទនេះដោយស្វ័យប្រវត្តិ (ទាំង Portal & Mobile)
+                                                {% lang_switch "ជ្រើសរើសដោយចុចធីកលើបែបបទដែល Admin ចង់បាន។ សិស្សនឹងបំពេញតាមបែបបទនេះដោយស្វ័យប្រវត្តិ។" "Click to select desired registration template for automatic student enrollment." %}
                                             </div>
                                         </div>
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
-                                            <i class="fa-solid fa-hand-pointer me-1"></i>ចុចលើប្រអប់ដើម្បីធីក (Click to Tick)
+                                            <i class="fa-solid fa-hand-pointer me-1"></i>{% lang_switch "ចុចលើប្រអប់ដើម្បីជ្រើសរើស" "Click to Select" %}
                                         </span>
                                     </div>
 
-                                    <!-- Ticking Selection Cards (Select by Ticking) -->
+                                    <!-- Ticking Selection Cards -->
                                     <div class="row g-3 mt-1" id="registrationModeTickCards">
                                         <!-- Card 1: ADMIN_CUSTOM -->
                                         <div class="col-md-4">
@@ -393,10 +433,10 @@
                                                         <i class="fa-regular fa-circle tick-icon-unchecked text-muted"></i>
                                                     </div>
                                                 </div>
-                                                <h6 class="fw-bold text-dark mb-1">១. បែបបទ Admin កំណត់</h6>
-                                                <span class="badge bg-primary text-white mb-2" style="font-size: 0.7rem;">Standard / Custom Form</span>
+                                                <h6 class="fw-bold text-dark mb-1">{% lang_switch "១. បែបបទ Admin កំណត់" "1. School Custom Form" %}</h6>
+                                                <span class="badge bg-primary text-white mb-2" style="font-size: 0.7rem;">{% lang_switch "ទម្រង់ទូទៅ" "Standard Form" %}</span>
                                                 <p class="small text-muted mb-0" style="font-size: 0.82rem; line-height: 1.4;">
-                                                    សិស្សទាំងអស់ចុះឈ្មោះតាមទម្រង់ទូទៅរបស់សាលា រួមទាំងប្រអប់ទិន្នន័យបន្ថែមដែល Admin បានកំណត់។
+                                                    {% lang_switch "សិស្សទាំងអស់ចុះឈ្មោះតាមទម្រង់ទូទៅរបស់សាលា រួមទាំងប្រអប់ទិន្នន័យបន្ថែមដែល Admin បានកំណត់។" "Students enroll using standard school form with custom administrator fields." %}
                                                 </p>
                                             </div>
                                         </div>
@@ -416,10 +456,10 @@
                                                         <i class="fa-regular fa-circle tick-icon-unchecked text-muted"></i>
                                                     </div>
                                                 </div>
-                                                <h6 class="fw-bold text-dark mb-1">២. សម្រង់ព័ត៌មាន MoEYS</h6>
-                                                <span class="badge bg-info text-dark mb-2" style="font-size: 0.7rem;">MoEYS Census 35 Columns</span>
+                                                <h6 class="fw-bold text-dark mb-1">{% lang_switch "២. សម្រង់ព័ត៌មាន MoEYS" "2. MoEYS Census Form" %}</h6>
+                                                <span class="badge bg-info text-dark mb-2" style="font-size: 0.7rem;">{% lang_switch "ជំរឿន ៣៥ ជួរឈរ" "35 Columns Census" %}</span>
                                                 <p class="small text-muted mb-0" style="font-size: 0.82rem; line-height: 1.4;">
-                                                    សិស្សចុះឈ្មោះតាមទម្រង់សម្រង់ព័ត៌មានជំរឿន ៣៥ ជួរឈររបស់ក្រសួងអប់រំ យុវជន និងកីឡា។
+                                                    {% lang_switch "សិស្សចុះឈ្មោះតាមទម្រង់សម្រង់ព័ត៌មានជំរឿន ៣៥ ជួរឈររបស់ក្រសួងអប់រំ យុវជន និងកីឡា។" "Students enroll using official MoEYS 35-column census information extract." %}
                                                 </p>
                                             </div>
                                         </div>
@@ -439,10 +479,10 @@
                                                         <i class="fa-regular fa-circle tick-icon-unchecked text-muted"></i>
                                                     </div>
                                                 </div>
-                                                <h6 class="fw-bold text-dark mb-1">៣. តាមកម្រិតថ្នាក់នីមួយៗ</h6>
-                                                <span class="badge bg-success text-white mb-2" style="font-size: 0.7rem;">Per-Grade Configuration</span>
+                                                <h6 class="fw-bold text-dark mb-1">{% lang_switch "៣. តាមកម្រិតថ្នាក់នីមួយៗ" "3. Per-Grade Configuration" %}</h6>
+                                                <span class="badge bg-success text-white mb-2" style="font-size: 0.7rem;">{% lang_switch "កំណត់តាមថ្នាក់" "Per-Grade Config" %}</span>
                                                 <p class="small text-muted mb-0" style="font-size: 0.82rem; line-height: 1.4;">
-                                                    អនុវត្តតាមបែបបទដែល Admin កំណត់ជាក់ស្តែងតាមថ្នាក់នីមួយៗ (អាចកំណត់ក្នុង Grade Options)។
+                                                    {% lang_switch "អនុវត្តតាមបែបបទដែល Admin កំណត់ជាក់ស្តែងតាមថ្នាក់នីមួយៗ (អាចកំណត់ក្នុង Grade Options)។" "Apply form mode configured individually per grade level in Grade Options." %}
                                                 </p>
                                             </div>
                                         </div>
@@ -452,10 +492,10 @@
                                     <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
                                         <div class="small">
                                             <i class="fa-solid fa-check-double text-success me-1"></i>
-                                            បែបបទកំពុងជ្រើសរើស (Ticked Mode): <span id="currentTickedModeLabel" class="fw-bold text-primary"></span>
+                                            {% lang_switch "បែបបទកំពុងជ្រើសរើស" "Currently Selected Mode" %}: <span id="currentTickedModeLabel" class="fw-bold text-primary"></span>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <label class="small text-muted mb-0" for="id_registration_mode">តម្លៃ Form:</label>
+                                            <label class="small text-muted mb-0" for="id_registration_mode">{% lang_switch "តម្លៃ Form" "Form Value" %}:</label>
                                             {{ form.registration_mode }}
                                         </div>
                                     </div>
@@ -463,54 +503,59 @@
                             </div>
                         </div>
 
-                        <h6 class="fw-bold text-primary mb-3 border-top pt-3"><i class="fa-solid fa-landmark me-1"></i>រចនាសម្ព័ន្ធក្រសួងសាមី និងរដ្ឋបាលអប់រំ</h6>
+                        <h6 class="fw-bold text-primary mb-3 border-top pt-3"><i class="fa-solid fa-landmark me-1"></i>{% lang_switch "រចនាសម្ព័ន្ធក្រសួងសាមី និងរដ្ឋបាលអប់រំ" "Ministry & Education Administration Hierarchy" %}</h6>
                         <div class="row g-3">
                             <div class="col-md-12">
-                                <label class="form-label fw-bold small">ក្រសួងសាមី</label>
+                                <label class="form-label fw-bold small">{% lang_switch "ក្រសួងសាមី" "Ministry Name" %}</label>
                                 {{ form.ministry_name }}
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">មន្ទីរអប់រំ យុវជន និងកីឡា (រាជធានី/ខេត្ត)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "មន្ទីរអប់រំ យុវជន និងកីឡា (រាជធានី/ខេត្ត)" "Provincial Office of Education (POE)" %}</label>
                                 {{ form.poe_name }}
-                                <div class="form-text small">ឧទាហរណ៍៖ មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ</div>
+                                <div class="form-text small">{% lang_switch "ឧទាហរណ៍៖ មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" "e.g. Phnom Penh Provincial Office of Education" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ការិយាល័យអប់រំ យុវជន និងកីឡា (ក្រុង/ស្រុក/ខណ្ឌ)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "ការិយាល័យអប់រំ យុវជន និងកីឡា (ក្រុង/ស្រុក/ខណ្ឌ)" "District Office of Education (DOE)" %}</label>
                                 {{ form.doe_name }}
-                                <div class="form-text small">ឧទាហរណ៍៖ ការិយាល័យអប់រំ យុវជន និងកីឡា ខណ្ឌដូនពេញ</div>
+                                <div class="form-text small">{% lang_switch "ឧទាហរណ៍៖ ការិយាល័យអប់រំ យុវជន និងកីឡា ខណ្ឌដូនពេញ" "e.g. Daun Penh District Office of Education" %}</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- TAB 2: Geographic Location & Interactive Google Maps -->
                     <div class="tab-pane fade" id="tab-location" role="tabpanel">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-map-pin me-1"></i>ទីតាំងភូមិសាស្ត្រ និងអាសយដ្ឋានសាលា</h6>
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-map-pin me-1"></i>{% lang_switch "ទីតាំងភូមិសាស្ត្រ និងអាសយដ្ឋានសាលា" "Geographic Location & School Address" %}</h6>
                         
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">រាជធានី / ខេត្ត <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "រាជធានី / ខេត្ត" "Province / Capital" %} <span class="text-danger">*</span></label>
                                 {{ form.province }}
-                                <div class="form-text small">ឧ. រាជធានីភ្នំពេញ, ខេត្តកណ្តាល, ខេត្តសៀមរាប...</div>
+                                <div class="form-text small">{% lang_switch "ឧ. រាជធានីភ្នំពេញ, ខេត្តកណ្តាល, ខេត្តសៀមរាប..." "e.g. Phnom Penh, Kandal, Siem Reap..." %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ក្រុង / ស្រុក / ខណ្ឌ <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "ក្រុង / ស្រុក / ខណ្ឌ" "District / Khan" %} <span class="text-danger">*</span></label>
                                 {{ form.district }}
-                                <div class="form-text small">ឧ. ខណ្ឌដូនពេញ, ស្រុកកណ្តាលស្ទឹង, ក្រុងតាខ្មៅ...</div>
+                                <div class="form-text small">{% lang_switch "ឧ. ខណ្ឌដូនពេញ, ស្រុកកណ្តាលស្ទឹង, ក្រុងតាខ្មៅ..." "e.g. Daun Penh, Kandal Stueng, Ta Khmau..." %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ឃុំ / សង្កាត់ <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "ឃុំ / សង្កាត់" "Commune / Sangkat" %} <span class="text-danger">*</span></label>
                                 {{ form.commune }}
-                                <div class="form-text small">ឧ. សង្កាត់វត្តភ្នំ, ឃុំដើមឫស...</div>
+                                <div class="form-text small">{% lang_switch "ឧ. សង្កាត់វត្តភ្នំ, ឃុំដើមឫស..." "e.g. Wat Phnom, Daeum Rues..." %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ភូមិ</label>
+                                <label class="form-label fw-bold small">{% lang_switch "ភូមិ" "Village" %}</label>
                                 {{ form.village }}
-                                <div class="form-text small">ឧ. ភូមិ១, ភូមិដើមពោធិ៍...</div>
+                                <div class="form-text small">{% lang_switch "ឧ. ភូមិ១, ភូមិដើមពោធិ៍..." "e.g. Village 1, Daeum Por..." %}</div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold small">អាសយដ្ឋានលម្អិត / ផ្លូវ / ផ្ទះលេខ</label>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "អាសយដ្ឋានលម្អិត / ផ្លូវ / ផ្ទះលេខ (ខ្មែរ)" "Detailed Street Address (Khmer)" %}</label>
                                 {{ form.street_address }}
-                                <div class="form-text small">ឧ. មហាវិថីព្រះនរោត្តម សង្កាត់វត្តភ្នំ ខណ្ឌដូនពេញ</div>
+                                <div class="form-text small">{% lang_switch "ឧ. ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល" "e.g. Road 105, Svay Ming, Barkou, Kandal Stueng, Kandal" %}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "អាសយដ្ឋានជាភាសាអង់គ្លេស" "Street Address (English)" %}</label>
+                                {{ form.street_address_en }}
+                                <div class="form-text small">{% lang_switch "ឧ. Road 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal" "e.g. Road 105, Svay Ming Village, Barkou, Kandal Stueng, Kandal" %}</div>
                             </div>
                         </div>
 
@@ -519,16 +564,16 @@
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                                 <div>
                                     <h6 class="fw-bold text-dark mb-0">
-                                        <i class="fa-solid fa-earth-asia text-primary me-2"></i>ផែនទីទីតាំង Google Maps & GPS (Interactive Map)
+                                        <i class="fa-solid fa-earth-asia text-primary me-2"></i>{% lang_switch "ផែនទីទីតាំង Google Maps & GPS" "Interactive Google Maps & GPS" %}
                                     </h6>
-                                    <span class="text-muted small">ចុចលើផែនទី ឬអូស Pin ក្រហម ដើម្បីកំណត់កូអរដោនេ</span>
+                                    <span class="text-muted small">{% lang_switch "ចុចលើផែនទី ឬអូស Pin ក្រហម ដើម្បីកំណត់កូអរដោនេ" "Click on the map or drag the red marker to set coordinates" %}</span>
                                 </div>
                                 <div class="d-flex gap-2 flex-wrap">
                                     <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs" onclick="getCurrentLocation()">
-                                        <i class="fa-solid fa-crosshairs me-1"></i> ចាប់យកទីតាំងបច្ចុប្បន្ន (GPS)
+                                        <i class="fa-solid fa-crosshairs me-1"></i> {% lang_switch "ចាប់យកទីតាំងបច្ចុប្បន្ន (GPS)" "Get Current GPS Location" %}
                                     </button>
                                     <a href="{{ school_profile.google_maps_direct_url }}" id="btnOpenGmaps" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs">
-                                        <i class="fa-brands fa-google me-1"></i> បើកក្នុង Google Maps
+                                        <i class="fa-brands fa-google me-1"></i> {% lang_switch "បើកក្នុង Google Maps" "Open in Google Maps" %}
                                     </a>
                                 </div>
                             </div>
@@ -538,22 +583,22 @@
 
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label class="form-label fw-bold small text-muted">រយៈទទឹង (Latitude) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold small text-muted">{% lang_switch "រយៈទទឹង" "Latitude" %} <span class="text-danger">*</span></label>
                                     {{ form.latitude }}
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-bold small text-muted">រយៈបណ្តោយ (Longitude) <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-bold small text-muted">{% lang_switch "រយៈបណ្តោយ" "Longitude" %} <span class="text-danger">*</span></label>
                                     {{ form.longitude }}
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-bold small text-muted">រង្វង់សុពលភាពវត្តមាន (Radius - Meters)</label>
+                                    <label class="form-label fw-bold small text-muted">{% lang_switch "រង្វង់សុពលភាពវត្តមាន (ម៉ែត្រ)" "Attendance Radius (Meters)" %}</label>
                                     {{ form.gps_radius_meters }}
-                                    <div class="form-text small" style="font-size: 0.72rem;">សម្រាប់ស្រង់វត្តមានតាមទូរស័ព្ទ (ឧ. 100m)</div>
+                                    <div class="form-text small" style="font-size: 0.72rem;">{% lang_switch "សម្រាប់ស្រង់វត្តមានតាមទូរស័ព្ទ (ឧ. 100m)" "For mobile geofenced attendance (e.g. 100m)" %}</div>
                                 </div>
                                 <div class="col-md-12">
-                                    <label class="form-label fw-bold small text-muted">Link ផែនទី Google Maps ផ្ទាល់ (Google Maps Share URL)</label>
+                                    <label class="form-label fw-bold small text-muted">{% lang_switch "Link ផែនទី Google Maps ផ្ទាល់" "Google Maps Share Link" %}</label>
                                     {{ form.google_maps_url }}
-                                    <div class="form-text small">ឧទាហរណ៍៖ https://maps.app.goo.gl/... ឬ https://www.google.com/maps?q=...</div>
+                                    <div class="form-text small">{% lang_switch "ឧទាហរណ៍៖ https://maps.app.goo.gl/... ឬ https://www.google.com/maps?q=..." "e.g. https://maps.app.goo.gl/... or https://www.google.com/maps?q=..." %}</div>
                                 </div>
                             </div>
                         </div>
@@ -561,7 +606,7 @@
 
                     <!-- TAB 3: Media (Logos, Seals, Signature) -->
                     <div class="tab-pane fade" id="tab-media" role="tabpanel">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-photo-film me-1"></i>រូបភាព ឡូហ្គោ ត្រាសាលា & ហត្ថលេខា</h6>
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-photo-film me-1"></i>{% lang_switch "រូបភាព ឡូហ្គោ ត្រាសាលា & ហត្ថលេខា" "Logos, Official Stamps & Signatures" %}</h6>
                         
                         <div class="row g-4">
                             <!-- Logo -->
@@ -578,13 +623,13 @@
                                             </div>
                                         </div>
                                         <div class="col-md-9">
-                                            <label class="form-label fw-bold small">រូបសញ្ញាសាលា (School Logo / Profile Picture)</label>
+                                            <label class="form-label fw-bold small">{% lang_switch "រូបសញ្ញាសាលា" "School Logo" %}</label>
                                             {{ form.logo }}
                                             <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
                                                 <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs" onclick="openCropModalForExistingOrNew()">
-                                                    <i class="fa-solid fa-crop-simple me-1"></i> កែសម្រួល & Zoom រូបភាព (Crop/Zoom)
+                                                    <i class="fa-solid fa-crop-simple me-1"></i> {% lang_switch "កែសម្រួល & Zoom រូបភាព" "Crop & Zoom Image" %}
                                                 </button>
-                                                <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG, JPG។ អាច Pinch / Zoom ពង្រីក-បង្រួម និងរំកិលទីតាំងមុននឹងរក្សាទុក។</span>
+                                                <span class="text-muted small">{% lang_switch "ទម្រង់ណែនាំ៖ PNG, JPG។ អាច Pinch / Zoom ពង្រីក-បង្រួម និងរំកិលទីតាំងមុននឹងរក្សាទុក។" "Recommended formats: PNG, JPG. Pinch and zoom to adjust before saving." %}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -601,15 +646,15 @@
                                             {% else %}
                                                 <div id="livePreviewSealTabPlaceholder" class="border rounded bg-white p-3 text-muted">
                                                     <i class="fa-solid fa-stamp fs-1 text-secondary"></i>
-                                                    <div class="small">គ្មានត្រា</div>
+                                                    <div class="small">{% lang_switch "គ្មានត្រា" "No Seal" %}</div>
                                                 </div>
                                                 <img id="livePreviewSealTab" src="" alt="Seal" class="img-thumbnail bg-white d-none" style="max-height: 100px; max-width: 100px; object-fit: contain;">
                                             {% endif %}
                                         </div>
                                         <div class="col-md-9">
-                                            <label class="form-label fw-bold small">ត្រាសាលាផ្លូវការ (Official Stamp & Seal)</label>
+                                            <label class="form-label fw-bold small">{% lang_switch "ត្រាសាលាផ្លូវការ" "Official School Stamp & Seal" %}</label>
                                             {{ form.seal }}
-                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG (Background ថ្លា)។ សម្រាប់បោះពុម្ពស្វ័យប្រវត្តលើបង្កាន់ដៃទទួលប្រាក់ ឬប័ណ្ណសរសើរ។</span>
+                                            <span class="text-muted small">{% lang_switch "ទម្រង់ណែនាំ៖ PNG (Background ថ្លា)។ សម្រាប់បោះពុម្ពស្វ័យប្រវត្តលើបង្កាន់ដៃទទួលប្រាក់ ឬប័ណ្ណសរសើរ។" "Recommended format: transparent PNG. Automatically applied on receipts and certificates." %}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -625,15 +670,15 @@
                                             {% else %}
                                                 <div id="livePreviewSigTabPlaceholder" class="border rounded bg-white p-3 text-muted">
                                                     <i class="fa-solid fa-signature fs-1 text-secondary"></i>
-                                                    <div class="small">គ្មានហត្ថលេខា</div>
+                                                    <div class="small">{% lang_switch "គ្មានហត្ថលេខា" "No Signature" %}</div>
                                                 </div>
                                                 <img id="livePreviewSigTab" src="" alt="Signature" class="img-thumbnail bg-white d-none" style="max-height: 100px; max-width: 100px; object-fit: contain;">
                                             {% endif %}
                                         </div>
                                         <div class="col-md-9">
-                                            <label class="form-label fw-bold small">ហត្ថលេខានាយក/នាយិកាសាលា (Principal Signature)</label>
+                                            <label class="form-label fw-bold small">{% lang_switch "ហត្ថលេខានាយក/នាយិកាសាលា" "Principal Signature" %}</label>
                                             {{ form.principal_signature }}
-                                            <span class="text-muted small">ទម្រង់ណែនាំ៖ PNG ថ្លា សម្រាប់ដាក់នៅផ្នែកចុះហត្ថលេខាប័ណ្ណពិន្ទុ និងវិញ្ញាបនបត្រ។</span>
+                                            <span class="text-muted small">{% lang_switch "ទម្រង់ណែនាំ៖ PNG ថ្លា សម្រាប់ដាក់នៅផ្នែកចុះហត្ថលេខាប័ណ្ណពិន្ទុ និងវិញ្ញាបនបត្រ។" "Recommended format: transparent PNG for report cards and certificates." %}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -643,38 +688,43 @@
 
                     <!-- TAB 4: Contact & Leadership -->
                     <div class="tab-pane fade" id="tab-contact" role="tabpanel">
-                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-phone-volume me-1"></i>ព័ត៌មានទំនាក់ទំនង & គណៈគ្រប់គ្រង</h6>
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-phone-volume me-1"></i>{% lang_switch "ព័ត៌មានទំនាក់ទំនង & គណៈគ្រប់គ្រង" "Contact & Leadership Information" %}</h6>
                         
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ឈ្មោះនាយក/នាយិកាសាលា <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះនាយក/នាយិកាសាលា (ខ្មែរ)" "Principal Name (Khmer)" %} <span class="text-danger">*</span></label>
                                 {{ form.principal_name }}
-                                <div class="form-text small">ឧ. លោកបណ្ឌិត សុខ ចាន់ថន</div>
+                                <div class="form-text small">{% lang_switch "ឧ. លោក ថេង រិទ្ធីយ៉ា" "e.g. លោក ថេង រិទ្ធីយ៉ា" %}</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">លេខទូរស័ព្ទសាលា <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small">{% lang_switch "ឈ្មោះនាយក/នាយិកា (English)" "Principal Name (English)" %}</label>
+                                {{ form.principal_name_en }}
+                                <div class="form-text small">{% lang_switch "ឧ. Mr. Theng Rithya" "e.g. Mr. Theng Rithya" %}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">{% lang_switch "លេខទូរស័ព្ទសាលា" "School Phone" %} <span class="text-danger">*</span></label>
                                 {{ form.phone }}
-                                <div class="form-text small">ឧ. 023 888 999 / 012 345 678</div>
+                                <div class="form-text small">023 888 999 / 012 345 678</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">អ៊ីមែលសាលា</label>
+                                <label class="form-label fw-bold small">{% lang_switch "អ៊ីមែលសាលា" "School Email" %}</label>
                                 {{ form.email }}
-                                <div class="form-text small">ឧ. info@schoolsm.edu.kh</div>
+                                <div class="form-text small">info@schoolsm.edu.kh</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">គេហទំព័រ (Website)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "គេហទំព័រ" "Official Website" %}</label>
                                 {{ form.website }}
-                                <div class="form-text small">ឧ. https://schoolsm.edu.kh</div>
+                                <div class="form-text small">https://schoolsm.edu.kh</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">ទំព័រហ្វេសប៊ុក (Facebook Page)</label>
+                                <label class="form-label fw-bold small">{% lang_switch "ទំព័រហ្វេសប៊ុក" "Facebook Page" %}</label>
                                 {{ form.facebook_page }}
-                                <div class="form-text small">ឧ. https://facebook.com/schoolsm</div>
+                                <div class="form-text small">https://facebook.com/schoolsm</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small">Telegram Channel / Group ផ្លូវការ</label>
+                                <label class="form-label fw-bold small">{% lang_switch "Telegram Channel / Group ផ្លូវការ" "Official Telegram Channel / Group" %}</label>
                                 {{ form.telegram_channel }}
-                                <div class="form-text small">ឧ. https://t.me/schoolsm_official</div>
+                                <div class="form-text small">https://t.me/schoolsm_official</div>
                             </div>
                         </div>
                     </div>
@@ -683,10 +733,10 @@
                     <div class="tab-pane fade" id="tab-student-id" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="fw-bold text-primary mb-0">
-                                <i class="fa-solid fa-id-card me-1"></i>កំណត់ទម្រង់បង្កើតអត្តលេខសិស្សស្វ័យប្រវត្តិ (Student ID Format Settings)
+                                <i class="fa-solid fa-id-card me-1"></i>{% lang_switch "កំណត់ទម្រង់បង្កើតអត្តលេខសិស្សស្វ័យប្រវត្តិ" "Student ID Format Settings" %}
                             </h6>
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill small">
-                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> ស្វ័យប្រវត្តិតាមឆ្នាំបញ្ចប់
+                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> {% lang_switch "ស្វ័យប្រវត្តិតាមឆ្នាំបញ្ចប់" "Auto by Graduating Year" %}
                             </span>
                         </div>
 
@@ -694,9 +744,9 @@
                             <div class="d-flex align-items-start gap-3">
                                 <div class="fs-3 text-primary mt-1"><i class="fa-solid fa-circle-info"></i></div>
                                 <div>
-                                    <div class="fw-bold text-primary mb-1">ស្តង់ដារកំណត់អត្តលេខសិស្សថ្នាក់ជាតិ និងតាមឆ្នាំសិក្សា</div>
+                                    <div class="fw-bold text-primary mb-1">{% lang_switch "ស្តង់ដារកំណត់អត្តលេខសិស្សថ្នាក់ជាតិ និងតាមឆ្នាំសិក្សា" "National & Academic Year Student ID Standard" %}</div>
                                     <div class="small text-muted">
-                                        តាមលំនាំដើម ប្រព័ន្ធកំណត់យក <strong>ឆ្នាំសិក្សាខាងចុង ២ ខ្ទង់</strong> ឧទាហរណ៍៖ ឆ្នាំសិក្សា <strong>2026-2027</strong> (ឬ ២០២៦-២០២៧) ប្រព័ន្ធនឹងចាប់យកលេខ <strong>27</strong> (មិនមែន 26 ទេ)។ ខាងក្រោមនេះ លោកអ្នកអាចជ្រើសរើសទម្រង់ពេញនិយម ឬកំណត់ទម្រង់ផ្ទាល់ខ្លួនតាមតម្រូវការជាក់ស្តែងរបស់សាលា។
+                                        {% lang_switch "តាមលំនាំដើម ប្រព័ន្ធកំណត់យក <strong>ឆ្នាំសិក្សាខាងចុង ២ ខ្ទង់</strong> ឧទាហរណ៍៖ ឆ្នាំសិក្សា <strong>2026-2027</strong> (ឬ ២០២៦-២០២៧) ប្រព័ន្ធនឹងចាប់យកលេខ <strong>27</strong> (មិនមែន 26 ទេ)។ ខាងក្រោមនេះ លោកអ្នកអាចជ្រើសរើសទម្រង់ពេញនិយម ឬកំណត់ទម្រង់ផ្ទាល់ខ្លួនតាមតម្រូវការជាក់ស្តែងរបស់សាលា។" "By default, the system extracts the <strong>last 2 digits of the academic year</strong>. For example, for <strong>2026-2027</strong>, the system uses <strong>27</strong>. You can choose a standard preset below or configure a custom format as needed." %}
                                     </div>
                                 </div>
                             </div>
@@ -707,22 +757,22 @@
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="badge bg-white text-primary fw-bold px-2.5 py-1 rounded-pill shadow-xs">
-                                        <i class="fa-solid fa-eye me-1"></i> ផ្ទាំងមើលគំរូជាក់ស្តែង (Live Preview)
+                                        <i class="fa-solid fa-eye me-1"></i> {% lang_switch "ផ្ទាំងមើលគំរូជាក់ស្តែង" "Live Preview" %}
                                     </span>
                                     <small class="opacity-75">
-                                        <i class="fa-solid fa-rotate fa-spin me-1" id="previewSpinIcon" style="display:none;"></i> គំរូអត្តលេខសិស្សតាមការកំណត់ខាងក្រោម
+                                        <i class="fa-solid fa-rotate fa-spin me-1" id="previewSpinIcon" style="display:none;"></i> {% lang_switch "គំរូអត្តលេខសិស្សតាមការកំណត់ខាងក្រោម" "Student ID preview based on settings" %}
                                     </small>
                                 </div>
 
                                 <div class="row align-items-center g-3 my-2">
                                     <div class="col-md-5">
-                                        <div class="text-white-50 small mb-1">អត្តលេខសិស្សបន្ទាប់ (Next Available ID)៖</div>
+                                        <div class="text-white-50 small mb-1">{% lang_switch "អត្តលេខសិស្សបន្ទាប់" "Next Available ID" %}៖</div>
                                         <div class="fs-2 fw-bolder font-monospace tracking-wide text-warning" id="livePreviewMainId">
                                             270001
                                         </div>
                                     </div>
                                     <div class="col-md-7 border-start border-white border-opacity-25 ps-md-4">
-                                        <div class="text-white-50 small mb-1">ឧទាហរណ៍សិស្សបន្តបន្ទាប់ (Sequence Samples)៖</div>
+                                        <div class="text-white-50 small mb-1">{% lang_switch "ឧទាហរណ៍សិស្សបន្តបន្ទាប់" "Sequence Samples" %}៖</div>
                                         <div class="d-flex flex-wrap gap-2" id="livePreviewSamples">
                                             <span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">270001</span>
                                             <span class="badge bg-white bg-opacity-20 text-white font-monospace px-2.5 py-1.5 fs-6 border border-white border-opacity-25 rounded-3">270002</span>
@@ -732,8 +782,8 @@
                                 </div>
 
                                 <div class="small opacity-75 mt-2 border-top border-white border-opacity-25 pt-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                    <span><i class="fa-solid fa-shield-halved me-1"></i> ប្រព័ន្ធធានា ១០០% គ្មានការស្ទួនលេខកូដ (Zero Collisions Guarantee)</span>
-                                    <span id="livePreviewRuleDesc" class="fw-semibold">ឆ្នាំបញ្ចប់ (27) + លេខ ៤ ខ្ទង់</span>
+                                    <span><i class="fa-solid fa-shield-halved me-1"></i> {% lang_switch "ប្រព័ន្ធធានា ១០០% គ្មានការស្ទួនលេខកូដ" "100% Guaranteed Zero Collisions" %}</span>
+                                    <span id="livePreviewRuleDesc" class="fw-semibold">{% lang_switch "ឆ្នាំបញ្ចប់ (27) + លេខ ៤ ខ្ទង់" "Ending Year (27) + 4 Digits" %}</span>
                                 </div>
                             </div>
                         </div>
@@ -742,31 +792,31 @@
                         <div class="row g-3">
                             <div class="col-md-12">
                                 <label class="form-label fw-bold small text-dark">
-                                    <i class="fa-solid fa-list-check text-primary me-1"></i> ជ្រើសរើសទម្រង់អត្តលេខ (ID Pattern Presets) <span class="text-danger">*</span>
+                                    <i class="fa-solid fa-list-check text-primary me-1"></i> {% lang_switch "ជ្រើសរើសទម្រង់អត្តលេខ" "ID Pattern Presets" %} <span class="text-danger">*</span>
                                 </label>
                                 {{ form.student_id_pattern }}
                                 <div class="form-text small text-muted">
-                                    ជ្រើសរើសទម្រង់ដែលលោកអ្នកចង់ឱ្យប្រព័ន្ធបង្កើតដោយស្វ័យប្រវត្តិ។
+                                    {% lang_switch "ជ្រើសរើសទម្រង់ដែលលោកអ្នកចង់ឱ្យប្រព័ន្ធបង្កើតដោយស្វ័យប្រវត្តិ។" "Select the pattern preset you want the system to generate automatically." %}
                                 </div>
                             </div>
 
                             <div class="col-md-6" id="fieldPrefixContainer">
                                 <label class="form-label fw-bold small text-dark">
-                                    <i class="fa-solid fa-font text-primary me-1"></i> អក្សរកាត់អត្តលេខ (Custom Prefix)
+                                    <i class="fa-solid fa-font text-primary me-1"></i> {% lang_switch "អក្សរកាត់អត្តលេខ" "Custom Prefix" %}
                                 </label>
                                 {{ form.student_id_prefix }}
                                 <div class="form-text small text-muted">
-                                    ឧ. <code>STU</code>, <code>KPS</code>, <code>SIS</code> (ប្រើសម្រាប់ទម្រង់ដែលមាន Prefix ឬ Custom Template)
+                                    {% lang_switch "ឧ. <code>STU</code>, <code>KPS</code>, <code>SIS</code> (ប្រើសម្រាប់ទម្រង់ដែលមាន Prefix ឬ Custom Template)" "E.g. <code>STU</code>, <code>KPS</code>, <code>SIS</code> (used for templates with Prefix or Custom Template)" %}
                                 </div>
                             </div>
 
                             <div class="col-md-6" id="fieldDigitsContainer">
                                 <label class="form-label fw-bold small text-dark">
-                                    <i class="fa-solid fa-arrow-down-1-9 text-primary me-1"></i> ចំនួនខ្ទង់លេខរៀងរត់ (Sequence Digits)
+                                    <i class="fa-solid fa-arrow-down-1-9 text-primary me-1"></i> {% lang_switch "ចំនួនខ្ទង់លេខរៀងរត់" "Sequence Digits" %}
                                 </label>
                                 {{ form.student_id_digits }}
                                 <div class="form-text small text-muted">
-                                    ឧ. ៤ ខ្ទង់ (0001), ៥ ខ្ទង់ (00001), ៦ ខ្ទង់ (000001)
+                                    {% lang_switch "ឧ. ៤ ខ្ទង់ (0001), ៥ ខ្ទង់ (00001), ៦ ខ្ទង់ (000001)" "E.g. 4 Digits (0001), 5 Digits (00001), 6 Digits (000001)" %}
                                 </div>
                             </div>
 
@@ -774,10 +824,10 @@
                                 <div class="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
                                     <div>
                                         <div class="fw-bold small text-dark">
-                                            <i class="fa-solid fa-graduation-cap text-primary me-1"></i> បញ្ចូលលេខកម្រិតថ្នាក់ក្នុងអត្តលេខ (Include Grade Level)
+                                            <i class="fa-solid fa-graduation-cap text-primary me-1"></i> {% lang_switch "បញ្ចូលលេខកម្រិតថ្នាក់ក្នុងអត្តលេខ" "Include Grade Level in Student ID" %}
                                         </div>
                                         <div class="small text-muted">
-                                            បើកជម្រើសនេះដើម្បីឱ្យអត្តលេខមានភ្ជាប់កម្រិតថ្នាក់សិស្ស (ឧ. ថ្នាក់ទី ៧ បង្កើតបាន <code>7-27-0001</code>)
+                                            {% lang_switch "បើកជម្រើសនេះដើម្បីឱ្យអត្តលេខមានភ្ជាប់កម្រិតថ្នាក់សិស្ស (ឧ. ថ្នាក់ទី ៧ បង្កើតបាន <code>7-27-0001</code>)" "Enable this to prefix student grade level in ID (e.g. Grade 7 generates <code>7-27-0001</code>)" %}
                                         </div>
                                     </div>
                                     <div class="form-check form-switch fs-4 mb-0">
@@ -790,19 +840,19 @@
                             <div class="col-md-12" id="fieldCustomTemplateContainer">
                                 <div class="border border-primary border-opacity-25 rounded-4 p-3 bg-primary-subtle bg-opacity-25">
                                     <label class="form-label fw-bold small text-primary">
-                                        <i class="fa-solid fa-code text-primary me-1"></i> រូបមន្តទម្រង់ផ្ទាល់ខ្លួន (Custom Pattern Template)
+                                        <i class="fa-solid fa-code text-primary me-1"></i> {% lang_switch "រូបមន្តទម្រង់ផ្ទាល់ខ្លួន" "Custom Pattern Template" %}
                                     </label>
                                     {{ form.student_id_custom_template }}
                                     <div class="form-text small text-muted mb-2">
-                                        លោកអ្នកអាចរៀបចំទម្រង់តាមចិត្តដោយចុចលើ Token ខាងក្រោមដើម្បីបន្ថែមចូលទៅក្នុងប្រអប់៖
+                                        {% lang_switch "លោកអ្នកអាចរៀបចំទម្រង់តាមចិត្តដោយចុចលើ Token ខាងក្រោមដើម្បីបន្ថែមចូលទៅក្នុងប្រអប់៖" "You can build custom pattern by clicking any token below to insert into input:" %}
                                     </div>
                                     <div class="d-flex flex-wrap gap-1">
                                         <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill token-btn" data-token="{PREFIX}">+ {PREFIX}</button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill token-btn" data-token="{YEAR2}">+ {YEAR2} (ឆ្នាំបញ្ចប់ ២ ខ្ទង់ ឧ. 27)</button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{START_YEAR2}">+ {START_YEAR2} (ឆ្នាំដើម ២ ខ្ទង់ ឧ. 26)</button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{YEAR4}">+ {YEAR4} (ឆ្នាំ ៤ ខ្ទង់ ឧ. 2027)</button>
-                                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill token-btn" data-token="{GRADE}">+ {GRADE} (កម្រិតថ្នាក់ ឧ. 7)</button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill token-btn" data-token="{SEQ}">+ {SEQ} (លេខរៀងរត់)</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill token-btn" data-token="{YEAR2}">+ {YEAR2} ({% lang_switch "ឆ្នាំបញ្ចប់ ២ ខ្ទង់ ឧ. 27" "Ending Year 2-digits e.g. 27" %})</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{START_YEAR2}">+ {START_YEAR2} ({% lang_switch "ឆ្នាំដើម ២ ខ្ទង់ ឧ. 26" "Starting Year 2-digits e.g. 26" %})</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill token-btn" data-token="{YEAR4}">+ {YEAR4} ({% lang_switch "ឆ្នាំ ៤ ខ្ទង់ ឧ. 2027" "4-digit Year e.g. 2027" %})</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill token-btn" data-token="{GRADE}">+ {GRADE} ({% lang_switch "កម្រិតថ្នាក់ ឧ. 7" "Grade Level e.g. 7" %})</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill token-btn" data-token="{SEQ}">+ {SEQ} ({% lang_switch "លេខរៀងរត់" "Sequence Number" %})</button>
                                     </div>
                                 </div>
                             </div>
@@ -813,10 +863,10 @@
                     <div class="tab-pane fade" id="tab-theme" role="tabpanel">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <h6 class="fw-bold text-primary mb-0">
-                                <i class="fa-solid fa-palette me-1"></i> កំណត់ពុម្ពអក្សរ & ពណ៌រចនាប័ទ្ម (Theme & Typography)
+                                <i class="fa-solid fa-palette me-1"></i> {% lang_switch "កំណត់ពុម្ពអក្សរ & ពណ៌រចនាប័ទ្ម" "Theme & Typography" %}
                             </h6>
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
-                                ដំណើរការលើ Website & Web App
+                                {% lang_switch "ដំណើរការលើ Website & Web App" "Applies to Website & Web App" %}
                             </span>
                         </div>
 
@@ -824,22 +874,22 @@
                         <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white position-relative overflow-hidden" id="themeLivePreviewCard" style="background: linear-gradient(135deg, {{ school_profile.theme_primary_color|default:'#1e40af' }} 0%, {{ school_profile.header_bg_color|default:'#0f172a' }} 100%); transition: all 0.3s ease;">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">
-                                    <i class="fa-solid fa-eye me-1"></i>ផ្ទាំងបង្ហាញផ្ទាល់ (Live Preview)
+                                    <i class="fa-solid fa-eye me-1"></i>{% lang_switch "ផ្ទាំងបង្ហាញផ្ទាល់" "Live Preview" %}
                                 </span>
-                                <small class="text-white-50">ការផ្លាស់ប្តូរនឹងបង្ហាញភ្លាមៗ</small>
+                                <small class="text-white-50">{% lang_switch "ការផ្លាស់ប្តូរនឹងបង្ហាញភ្លាមៗ" "Changes preview immediately" %}</small>
                             </div>
 
                             <h3 class="fw-bold my-2" id="previewTitle" style="font-family: {{ school_profile.report_font_css|safe }};">
-                                {{ school_profile.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }}
+                                {% if is_khmer %}{{ school_profile.name_kh|default:"វិទ្យាល័យអន្តរជាតិ សាលារៀន SM" }}{% else %}{{ school_profile.name_en|default:school_profile.name_kh|default:"SchoolSM International School" }}{% endif %}
                             </h3>
                             <p class="mb-3 opacity-90" id="previewBody" style="font-family: {{ school_profile.display_font_css|safe }}; font-size: 1.05rem;">
-                                "ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — នេះជាគំរូអក្សរដែលបានជ្រើសរើសសម្រាប់បង្ហាញលើប្រព័ន្ធគ្រប់គ្រង និងគេហទំព័រសាលា។"
+                                {% lang_switch "ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌ — នេះជាគំរូអក្សរដែលបានជ្រើសរើសសម្រាប់បង្ហាញលើប្រព័ន្ធគ្រប់គ្រង និងគេហទំព័រសាលា។" "Knowledge, Discipline, Morality, Virtue — This is sample text previewing the selected font across SchoolSM." %}
                             </p>
 
                             <div class="d-flex flex-wrap gap-2 pt-2 border-top border-white border-opacity-25">
-                                <span class="badge bg-white text-dark py-1.5 px-3 rounded-pill fw-semibold" id="previewBadgePrimary">ប៊ូតុងពណ៌ចម្បង</span>
-                                <span class="badge bg-warning text-dark py-1.5 px-3 rounded-pill fw-semibold">របាយការណ៍ MoEYS</span>
-                                <span class="badge bg-success py-1.5 px-3 rounded-pill fw-semibold">ប្រព័ន្ធ Active</span>
+                                <span class="badge bg-white text-dark py-1.5 px-3 rounded-pill fw-semibold" id="previewBadgePrimary">{% lang_switch "ប៊ូតុងពណ៌ចម្បង" "Primary Button" %}</span>
+                                <span class="badge bg-warning text-dark py-1.5 px-3 rounded-pill fw-semibold">{% lang_switch "របាយការណ៍ MoEYS" "MoEYS Report" %}</span>
+                                <span class="badge bg-success py-1.5 px-3 rounded-pill fw-semibold">{% lang_switch "ប្រព័ន្ធដំណើរការ" "System Active" %}</span>
                             </div>
                         </div>
 
@@ -847,51 +897,51 @@
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-dark small">
-                                    <i class="fa-solid fa-font text-primary me-1"></i> ពុម្ពអក្សរទូទៅក្នុងប្រព័ន្ធ & Website (Display Font) <span class="text-danger">*</span>
+                                    <i class="fa-solid fa-font text-primary me-1"></i> {% lang_switch "ពុម្ពអក្សរទូទៅក្នុងប្រព័ន្ធ & Website" "System & Website Display Font" %} <span class="text-danger">*</span>
                                 </label>
                                 {{ form.display_font }}
                                 <div class="form-text small text-muted">
-                                    ប្រើប្រាស់សម្រាប់អត្ថបទទូទៅ មឺនុយ តារាងបញ្ជី និងទំព័រ Website (ឧ. Kantumruy Pro, Khmer OS Siemreap, Battambang, Hanuman...)
+                                    {% lang_switch "ប្រើប្រាស់សម្រាប់អត្ថបទទូទៅ មឺនុយ តារាងបញ្ជី និងទំព័រ Website (ឧ. Kantumruy Pro, Khmer OS Siemreap, Battambang, Hanuman...)" "Used for general text, menus, tables, and website pages (e.g. Kantumruy Pro, Khmer OS Siemreap, Battambang, Hanuman...)" %}
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-dark small">
-                                    <i class="fa-solid fa-heading text-primary me-1"></i> ពុម្ពអក្សរចំណងជើង & របាយការណ៍ផ្លូវការ (Report & Header Font) <span class="text-danger">*</span>
+                                    <i class="fa-solid fa-heading text-primary me-1"></i> {% lang_switch "ពុម្ពអក្សរចំណងជើង & របាយការណ៍ផ្លូវការ" "Report & Header Font" %} <span class="text-danger">*</span>
                                 </label>
                                 {{ form.report_header_font }}
                                 <div class="form-text small text-muted">
-                                    ប្រើប្រាស់សម្រាប់ចំណងជើងធំ ក្បាលលិខិត ប័ណ្ណសរសើរ និងរបាយការណ៍ MoEYS (ឧ. Moul / Khmer OS Muol Light)
+                                    {% lang_switch "ប្រើប្រាស់សម្រាប់ចំណងជើងធំ ក្បាលលិខិត ប័ណ្ណសរសើរ និងរបាយការណ៍ MoEYS (ឧ. Moul / Khmer OS Muol Light)" "Used for major headers, letterheads, certificates, and MoEYS official reports (e.g. Moul / Khmer OS Muol Light)" %}
                                 </div>
                             </div>
                         </div>
 
                         <!-- Theme Colors Customization -->
                         <h6 class="fw-bold text-dark mb-3 border-top pt-3">
-                            <i class="fa-solid fa-droplet text-primary me-1"></i> កំណត់ពណ៌តាមផ្នែក (Color Palette)
+                            <i class="fa-solid fa-droplet text-primary me-1"></i> {% lang_switch "កំណត់ពណ៌តាមផ្នែក" "Color Palette" %}
                         </h6>
 
                         <!-- Quick Theme Presets -->
                         <div class="mb-4">
-                            <label class="form-label fw-semibold small text-muted d-block">ឈុតពណ៌គំរូរហ័ស (Quick Color Themes)៖</label>
+                            <label class="form-label fw-semibold small text-muted d-block">{% lang_switch "ឈុតពណ៌គំរូរហ័ស" "Quick Color Themes" %}៖</label>
                             <div class="d-flex flex-wrap gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="applyPresetTheme('#1e40af', '#0f172a', '#0b1329', '#f8fafc')">
-                                    🔵 Royal Blue (លំនាំដើម)
+                                    🔵 {% lang_switch "ខៀវស្តេច (លំនាំដើម)" "Royal Blue (Default)" %}
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="applyPresetTheme('#059669', '#064e3b', '#022c22', '#f0fdf4')">
-                                    🟢 Emerald Green (បៃតងធម្មជាតិ)
+                                    🟢 {% lang_switch "បៃតងធម្មជាតិ" "Emerald Green" %}
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="applyPresetTheme('#991b1b', '#450a0a', '#1f0404', '#fff5f5')">
-                                    🔴 Crimson Maroon (ក្រហមឈាមជ្រូក)
+                                    🔴 {% lang_switch "ក្រហមឈាមជ្រូក" "Crimson Maroon" %}
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="applyPresetTheme('#0f172a', '#1e293b', '#020617', '#f8fafc')">
-                                    ⚫ Midnight Navy (ខៀវចាស់/ខ្មៅ)
+                                    ⚫ {% lang_switch "ខៀវចាស់/ខ្មៅ" "Midnight Navy" %}
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="applyPresetTheme('#7c3aed', '#3b0764', '#1e0538', '#faf5ff')">
-                                    🟣 Royal Purple (ស្វាយប្រណីត)
+                                    🟣 {% lang_switch "ស្វាយប្រណីត" "Royal Purple" %}
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="applyPresetTheme('#b45309', '#451a03', '#1c0a02', '#fffbeb')">
-                                    🟡 Warm Amber (ទឹកមាស)
+                                    🟡 {% lang_switch "ទឹកមាស" "Warm Amber" %}
                                 </button>
                             </div>
                         </div>
@@ -899,30 +949,30 @@
                         <div class="row g-3">
                             <div class="col-sm-6 col-md-3">
                                 <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
-                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ចម្បង (Primary)</label>
+                                    <label class="form-label fw-bold small text-dark d-block">{% lang_switch "ពណ៌ចម្បង" "Primary Color" %}</label>
                                     {{ form.theme_primary_color }}
-                                    <small class="text-muted d-block mt-1">ប៊ូតុង & Header Highlight</small>
+                                    <small class="text-muted d-block mt-1">{% lang_switch "ប៊ូតុង & Header Highlight" "Buttons & Highlights" %}</small>
                                 </div>
                             </div>
                             <div class="col-sm-6 col-md-3">
                                 <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
-                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Header</label>
+                                    <label class="form-label fw-bold small text-dark d-block">{% lang_switch "ពណ៌ Header" "Header Color" %}</label>
                                     {{ form.header_bg_color }}
-                                    <small class="text-muted d-block mt-1">ក្បាលទំព័រ & Topbar</small>
+                                    <small class="text-muted d-block mt-1">{% lang_switch "ក្បាលទំព័រ & Topbar" "Header & Topbar" %}</small>
                                 </div>
                             </div>
                             <div class="col-sm-6 col-md-3">
                                 <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
-                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Footer</label>
+                                    <label class="form-label fw-bold small text-dark d-block">{% lang_switch "ពណ៌ Footer" "Footer Color" %}</label>
                                     {{ form.footer_bg_color }}
-                                    <small class="text-muted d-block mt-1">បាតទំព័រគេហទំព័រ</small>
+                                    <small class="text-muted d-block mt-1">{% lang_switch "បាតទំព័រគេហទំព័រ" "Website Footer" %}</small>
                                 </div>
                             </div>
                             <div class="col-sm-6 col-md-3">
                                 <div class="p-3 border rounded-3 bg-light text-center h-100 shadow-xs">
-                                    <label class="form-label fw-bold small text-dark d-block">ពណ៌ Background</label>
+                                    <label class="form-label fw-bold small text-dark d-block">{% lang_switch "ពណ៌ផ្ទៃខាងក្រោយ" "Background Color" %}</label>
                                     {{ form.body_bg_color }}
-                                    <small class="text-muted d-block mt-1">ផ្ទៃទំព័រកម្មវិធី & Web</small>
+                                    <small class="text-muted d-block mt-1">{% lang_switch "ផ្ទៃទំព័រកម្មវិធី & Web" "App & Web Background" %}</small>
                                 </div>
                             </div>
                         </div>
@@ -932,10 +982,10 @@
                 <!-- Submit Button Bar -->
                 <div class="border-top pt-4 mt-4 d-flex justify-content-between align-items-center">
                     <span class="text-muted small">
-                        <i class="fa-solid fa-circle-check text-success me-1"></i>ចុចរក្សាទុកដើម្បី Update ទូទាំងប្រព័ន្ធ
+                        <i class="fa-solid fa-circle-check text-success me-1"></i>{% lang_switch "ចុចរក្សាទុកដើម្បី Update ទូទាំងប្រព័ន្ធ" "Click save to apply updates system-wide" %}
                     </span>
                     <button type="submit" class="btn btn-primary fw-bold px-4 py-2 rounded-pill shadow-sm">
-                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មានសាលារៀន (Save Changes)
+                        <i class="fa-solid fa-floppy-disk me-1"></i> {% lang_switch "រក្សាទុកព័ត៌មានសាលារៀន" "Save Changes" %}
                     </button>
                 </div>
             </form>
@@ -955,8 +1005,8 @@
                     <div class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center p-3 mb-2">
                         <i class="fa-solid fa-map-location-dot fs-2"></i>
                     </div>
-                    <h5 class="fw-bold text-dark mb-1">QR Code ទីតាំងសាលារៀន</h5>
-                    <p class="text-muted small mb-0">{{ school_profile.name_kh }}</p>
+                    <h5 class="fw-bold text-dark mb-1">{% lang_switch "QR Code ទីតាំងសាលារៀន" "School Location QR Code" %}</h5>
+                    <p class="text-muted small mb-0">{% if is_khmer %}{{ school_profile.name_kh }}{% else %}{{ school_profile.name_en|default:school_profile.name_kh }}{% endif %}</p>
                 </div>
                 
                 <div class="d-flex justify-content-center my-3">
@@ -965,14 +1015,14 @@
 
                 <div class="alert alert-light border small text-muted text-start mb-0">
                     <i class="fa-solid fa-circle-info text-info me-1"></i>
-                    ស្កេន QR Code នេះតាមទូរស័ព្ទដៃ ដើម្បីបើកមើលផ្លូវធ្វើដំណើរលើ <strong>Google Maps</strong> ដោយផ្ទាល់។
+                    {% lang_switch "ស្កេន QR Code នេះតាមទូរស័ព្ទដៃ ដើម្បីបើកមើលផ្លូវធ្វើដំណើរលើ <strong>Google Maps</strong> ដោយផ្ទាល់។" "Scan this QR code with mobile phone to open directions in <strong>Google Maps</strong> directly." %}
                 </div>
             </div>
             <div class="modal-footer border-0 justify-content-center pt-0 gap-2">
                 <button type="button" class="btn btn-primary rounded-pill px-4 shadow-xs" onclick="printLocationQr()">
-                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print QR)
+                    <i class="fa-solid fa-print me-1"></i> {% lang_switch "បោះពុម្ព QR" "Print QR" %}
                 </button>
-                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">បិទ</button>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">{% lang_switch "បិទ" "Close" %}</button>
             </div>
         </div>
     </div>
@@ -989,9 +1039,9 @@
                     </div>
                     <div>
                         <h6 class="modal-title fw-bold mb-0 text-white" id="schoolLogoCropModalLabel">
-                            កែសម្រួលរូបភាពសាលារៀន (Zoom, Pan & Crop School Profile)
+                            {% lang_switch "កែសម្រួលរូបភាពសាលារៀន" "Crop & Adjust School Profile" %}
                         </h6>
-                        <small class="text-white-50">ពង្រីក-បង្រួម (Pinch/Zoom In-Out), អូសរំកិលទីតាំង, បង្វិល និងកាត់តម្រឹមរូបភាព</small>
+                        <small class="text-white-50">{% lang_switch "ពង្រីក-បង្រួម, អូសរំកិលទីតាំង, បង្វិល និងកាត់តម្រឹមរូបភាព" "Zoom, pan, rotate, and crop school profile image" %}</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1008,7 +1058,7 @@
                             
                             <!-- Floating helper badge -->
                             <div class="position-absolute top-0 start-0 m-2 badge bg-dark bg-opacity-75 text-white border border-secondary shadow-xs small d-none d-sm-inline-flex align-items-center gap-1">
-                                <i class="fa-solid fa-hand-pointer text-warning"></i> អូសរំកិលរូបភាព | <i class="fa-solid fa-magnifying-glass-plus text-info"></i> Pinch / Mouse Wheel Zoom
+                                <i class="fa-solid fa-hand-pointer text-warning"></i> {% lang_switch "អូសរំកិលរូបភាព" "Pan image" %} | <i class="fa-solid fa-magnifying-glass-plus text-info"></i> {% lang_switch "ពង្រីក-បង្រួម" "Zoom in-out" %}
                             </div>
                         </div>
 
@@ -1017,15 +1067,15 @@
                             <span class="small fw-bold text-muted d-flex align-items-center gap-1">
                                 <i class="fa-solid fa-magnifying-glass text-primary"></i> Zoom:
                             </span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(-0.1)" title="Zoom Out (បង្រួម)">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(-0.1)" title="{% lang_switch 'បង្រួម' 'Zoom Out' %}">
                                 <i class="fa-solid fa-minus"></i>
                             </button>
                             <input type="range" class="form-range flex-grow-1 mx-2" id="logoZoomSlider" min="0.1" max="3" step="0.05" value="1" oninput="onZoomSliderChange(this.value)">
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(0.1)" title="Zoom In (ពង្រីក)">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;" onclick="zoomCropper(0.1)" title="{% lang_switch 'ពង្រីក' 'Zoom In' %}">
                                 <i class="fa-solid fa-plus"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-light border rounded-pill px-2.5 small ms-1" onclick="resetCropper()" title="កំណត់ដូចដើម">
-                                <i class="fa-solid fa-arrow-rotate-left me-1"></i> កំណើតដើម
+                            <button type="button" class="btn btn-sm btn-light border rounded-pill px-2.5 small ms-1" onclick="resetCropper()" title="{% lang_switch 'កំណត់ដូចដើម' 'Reset' %}">
+                                <i class="fa-solid fa-arrow-rotate-left me-1"></i> {% lang_switch "កំណត់ដើម" "Reset" %}
                             </button>
                         </div>
                     </div>
@@ -1036,38 +1086,38 @@
                             <!-- Previews Section -->
                             <div>
                                 <h6 class="fw-bold small text-dark mb-2 pb-1 border-bottom">
-                                    <i class="fa-solid fa-eye text-primary me-1"></i> ទម្រង់បង្ហាញជាក់ស្តែង (Live Preview)
+                                    <i class="fa-solid fa-eye text-primary me-1"></i> {% lang_switch "ទម្រង់បង្ហាញជាក់ស្តែង" "Live Preview" %}
                                 </h6>
                                 
                                 <div class="d-flex align-items-center justify-content-around my-3 p-2 bg-light rounded-3 border">
                                     <div class="text-center">
                                         <div class="crop-circle-preview rounded-circle border border-2 border-primary shadow-sm mx-auto" style="width: 90px; height: 90px; overflow: hidden;"></div>
-                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">រង្វង់ Profile</span>
+                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">{% lang_switch "រង្វង់ Profile" "Circle Profile" %}</span>
                                     </div>
                                     <div class="text-center">
                                         <div class="crop-square-preview rounded-3 border border-2 border-secondary shadow-sm mx-auto" style="width: 70px; height: 70px; overflow: hidden;"></div>
-                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">ការ៉េ 1:1</span>
+                                        <span class="small text-muted mt-1 d-block" style="font-size: 0.75rem;">{% lang_switch "ការ៉េ 1:1" "Square 1:1" %}</span>
                                     </div>
                                 </div>
 
                                 <!-- Aspect Ratio Options -->
-                                <label class="form-label fw-bold small text-muted mb-1">សមាមាត្ររូបភាព (Aspect Ratio)</label>
+                                <label class="form-label fw-bold small text-muted mb-1">{% lang_switch "សមាមាត្ររូបភាព" "Aspect Ratio" %}</label>
                                 <div class="btn-group w-100 mb-3" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-primary active" id="btnRatio1_1" onclick="changeCropRatio(1, this)">1:1 (រង្វង់/ការ៉េ)</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary active" id="btnRatio1_1" onclick="changeCropRatio(1, this)">1:1 ({% lang_switch "រង្វង់/ការ៉េ" "Circle/Square" %})</button>
                                     <button type="button" class="btn btn-sm btn-outline-primary" id="btnRatio4_3" onclick="changeCropRatio(4/3, this)">4:3</button>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRatioFree" onclick="changeCropRatio(NaN, this)">សេរី</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRatioFree" onclick="changeCropRatio(NaN, this)">{% lang_switch "សេរី" "Free" %}</button>
                                 </div>
 
                                 <!-- Rotate & Flip Controls -->
-                                <label class="form-label fw-bold small text-muted mb-1">បង្វិលរូបភាព (Rotate & Flip)</label>
+                                <label class="form-label fw-bold small text-muted mb-1">{% lang_switch "បង្វិលរូបភាព" "Rotate & Flip" %}</label>
                                 <div class="d-flex gap-2 mb-3">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(-90)" title="បង្វិលឆ្វេង 90 ដឺក្រេ">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(-90)" title="{% lang_switch 'បង្វិលឆ្វេង 90 ដឺក្រេ' 'Rotate Left 90°' %}">
                                         <i class="fa-solid fa-rotate-left me-1"></i> -90°
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(90)" title="បង្វិលស្តាំ 90 ដឺក្រេ">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="rotateCropper(90)" title="{% lang_switch 'បង្វិលស្តាំ 90 ដឺក្រេ' 'Rotate Right 90°' %}">
                                         <i class="fa-solid fa-rotate-right me-1"></i> +90°
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="flipCropperX()" title="ត្រឡប់ផ្តេក">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick="flipCropperX()" title="{% lang_switch 'ត្រឡប់ផ្តេក' 'Flip Horizontal' %}">
                                         <i class="fa-solid fa-arrows-left-right"></i>
                                     </button>
                                 </div>
@@ -1076,7 +1126,7 @@
                             <!-- Upload Alternative File -->
                             <div class="pt-2 border-top">
                                 <button type="button" class="btn btn-sm btn-outline-secondary w-100 rounded-pill mb-1" onclick="document.getElementById('id_logo').click()">
-                                    <i class="fa-solid fa-folder-open me-1"></i> ជ្រើសរើសរូបភាពផ្សេង...
+                                    <i class="fa-solid fa-folder-open me-1"></i> {% lang_switch "ជ្រើសរើសរូបភាពផ្សេង..." "Choose another image..." %}
                                 </button>
                             </div>
                         </div>
@@ -1086,11 +1136,11 @@
             
             <div class="modal-footer bg-white border-top py-2.5 px-4 d-flex justify-content-between">
                 <button type="button" class="btn btn-light rounded-pill px-4 border" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark me-1"></i> បោះបង់
+                    <i class="fa-solid fa-xmark me-1"></i> {% lang_switch "បោះបង់" "Cancel" %}
                 </button>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" onclick="applyCroppedLogo()">
-                        <i class="fa-solid fa-check me-1"></i> កាត់ & យល់ព្រម (Crop & Apply)
+                        <i class="fa-solid fa-check me-1"></i> {% lang_switch "កាត់ & យល់ព្រម" "Crop & Apply" %}
                     </button>
                 </div>
             </div>
@@ -1425,12 +1475,12 @@
                     if (previewRuleDesc) {
                         const yearEnding = data.year_ending_code || '27';
                         const pVal = patternSelect.value;
-                        if (pVal === 'YEAR_END_4D') previewRuleDesc.textContent = `ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
-                        else if (pVal === 'YEAR_END_5D') previewRuleDesc.textContent = `ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៥ ខ្ទង់`;
-                        else if (pVal === 'PREFIX_YEAR_4D') previewRuleDesc.textContent = `Prefix + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
-                        else if (pVal === 'PREFIX_YEAR_5D') previewRuleDesc.textContent = `Prefix + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៥ ខ្ទង់`;
-                        else if (pVal === 'GRADE_YEAR_4D') previewRuleDesc.textContent = `កម្រិតថ្នាក់ + ឆ្នាំបញ្ចប់ (${yearEnding}) + លេខ ៤ ខ្ទង់`;
-                        else if (pVal === 'CUSTOM_PATTERN') previewRuleDesc.textContent = `ទម្រង់ផ្ទាល់ខ្លួន (Custom Pattern Template)`;
+                        if (pVal === 'YEAR_END_4D') previewRuleDesc.textContent = `{% lang_switch "ឆ្នាំបញ្ចប់" "Ending Year" %} (${yearEnding}) + {% lang_switch "លេខ ៤ ខ្ទង់" "4 Digits" %}`;
+                        else if (pVal === 'YEAR_END_5D') previewRuleDesc.textContent = `{% lang_switch "ឆ្នាំបញ្ចប់" "Ending Year" %} (${yearEnding}) + {% lang_switch "លេខ ៥ ខ្ទង់" "5 Digits" %}`;
+                        else if (pVal === 'PREFIX_YEAR_4D') previewRuleDesc.textContent = `Prefix + {% lang_switch "ឆ្នាំបញ្ចប់" "Ending Year" %} (${yearEnding}) + {% lang_switch "លេខ ៤ ខ្ទង់" "4 Digits" %}`;
+                        else if (pVal === 'PREFIX_YEAR_5D') previewRuleDesc.textContent = `Prefix + {% lang_switch "ឆ្នាំបញ្ចប់" "Ending Year" %} (${yearEnding}) + {% lang_switch "លេខ ៥ ខ្ទង់" "5 Digits" %}`;
+                        else if (pVal === 'GRADE_YEAR_4D') previewRuleDesc.textContent = `{% lang_switch "កម្រិតថ្នាក់" "Grade" %} + {% lang_switch "ឆ្នាំបញ្ចប់" "Ending Year" %} (${yearEnding}) + {% lang_switch "លេខ ៤ ខ្ទង់" "4 Digits" %}`;
+                        else if (pVal === 'CUSTOM_PATTERN') previewRuleDesc.textContent = `{% lang_switch "ទម្រង់ផ្ទាល់ខ្លួន" "Custom Pattern Template" %}`;
                     }
                 }
             } catch (err) {
@@ -1827,13 +1877,13 @@
             const labelEl = document.getElementById('currentTickedModeLabel');
             if (labelEl) {
                 if (mode === 'ADMIN_CUSTOM') {
-                    labelEl.textContent = '១. បែបបទ Admin កំណត់ (Standard / Custom Form)';
+                    labelEl.textContent = '{% lang_switch "១. បែបបទ Admin កំណត់" "1. Standard / Custom Form" %}';
                     labelEl.className = 'fw-bold text-primary';
                 } else if (mode === 'MOEYS_INDIVIDUAL') {
-                    labelEl.textContent = '២. បែបបទសម្រង់ព័ត៌មាន MoEYS (Census 35 Columns)';
+                    labelEl.textContent = '{% lang_switch "២. បែបបទសម្រង់ព័ត៌មាន MoEYS" "2. MoEYS Census Form" %}';
                     labelEl.className = 'fw-bold text-info';
                 } else if (mode === 'BOTH') {
-                    labelEl.textContent = '៣. បែបបទតាមកម្រិតថ្នាក់នីមួយៗ (Per-Grade Level Config)';
+                    labelEl.textContent = '{% lang_switch "៣. បែបបទតាមកម្រិតថ្នាក់នីមួយៗ" "3. Per-Grade Level Config" %}';
                     labelEl.className = 'fw-bold text-success';
                 } else {
                     labelEl.textContent = mode;
@@ -1850,14 +1900,59 @@
             updateRegistrationModeTickUI(regSelect.value || 'ADMIN_CUSTOM');
         }
 
-        // Check if navigated with hash #tab-theme
-        if (window.location.hash === '#tab-theme') {
-            const themeBtn = document.getElementById('theme-tab');
-            if (themeBtn) {
-                const bsTab = new bootstrap.Tab(themeBtn);
-                bsTab.show();
-            }
-        }
+        // Client-side AI Auto-Translation using Gemini Key Rotator
+        window.autoTranslateSchoolIdentity = function() {
+            const btn = document.getElementById('btnAiTranslateIdentity');
+            if (!btn) return;
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបកប្រែដោយ AI...';
+
+            const fields = [
+                { src: 'id_name_kh', tgt: 'id_name_en', ctx: 'School Name' },
+                { src: 'id_short_name', tgt: 'id_short_name_en', ctx: 'School Short Name' },
+                { src: 'id_school_type', tgt: 'id_school_type_en', ctx: 'School Type' },
+                { src: 'id_motto', tgt: 'id_motto_en', ctx: 'School Motto' },
+                { src: 'id_about_school', tgt: 'id_about_school_en', ctx: 'About School Description' },
+                { src: 'id_street_address', tgt: 'id_street_address_en', ctx: 'Street Address' },
+                { src: 'id_principal_name', tgt: 'id_principal_name_en', ctx: 'Principal Name' }
+            ];
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+
+            const requests = fields.map(f => {
+                const srcEl = document.getElementById(f.src);
+                const tgtEl = document.getElementById(f.tgt);
+                if (!srcEl || !tgtEl || !srcEl.value.trim()) return Promise.resolve();
+
+                return fetch('/accounts/api/ai-translate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        text: srcEl.value.trim(),
+                        context: f.ctx
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success' && data.translated_text) {
+                        tgtEl.value = data.translated_text;
+                        tgtEl.classList.add('is-valid');
+                        setTimeout(() => tgtEl.classList.remove('is-valid'), 3500);
+                    }
+                })
+                .catch(err => console.error('AI translation error:', err));
+            });
+
+            Promise.all(requests).then(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check text-success me-1"></i> បានបកប្រែដោយ AI ជោគជ័យ!';
+                setTimeout(() => { btn.innerHTML = origHtml; }, 3000);
+            });
+        };
     });
 </script>
 {% endblock %}

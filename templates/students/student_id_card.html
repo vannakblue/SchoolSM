@@ -713,11 +713,23 @@
             </div>
 
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <!-- Classroom Filter -->
-                <form method="GET" action="{% url 'batch_student_id_cards' %}" class="d-flex align-items-center gap-2 mb-0" id="classroomFilterForm">
+                <!-- Classroom & Grade Level Filter -->
+                <form method="GET" action="{% url 'batch_student_id_cards' %}" class="d-flex align-items-center gap-2 mb-0 flex-wrap" id="classroomFilterForm">
                     <input type="hidden" name="mode" id="filterFormMode" value="{{ mode|default:'4_grid' }}">
-                    <select name="classroom" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill" onchange="this.form.submit()">
-                        <option value="">-- បោះពុម្ពតាមថ្នាក់រៀន --</option>
+                    
+                    <!-- Grade Level Filter (កម្រិតថ្នាក់) -->
+                    <select name="grade_level" id="filterGradeLevel" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill" style="min-width: 140px;" onchange="document.getElementById('filterClassroom').value=''; this.form.submit()">
+                        <option value="">-- កម្រិតថ្នាក់ទាំងអស់ --</option>
+                        {% for gl in grade_levels %}
+                        <option value="{{ gl }}" {% if selected_grade_level|stringformat:"s" == gl|stringformat:"s" and not selected_classroom %}selected{% endif %}>
+                            ថ្នាក់ទី {{ gl }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <!-- Classroom Filter (ថ្នាក់រៀន) -->
+                    <select name="classroom" id="filterClassroom" class="form-select form-select-sm bg-dark text-white border-secondary rounded-pill" style="min-width: 170px;" onchange="this.form.submit()">
+                        <option value="">-- ជ្រើសរើសថ្នាក់រៀន --</option>
                         {% for c in classrooms %}
                         <option value="{{ c.id }}" {% if selected_classroom and selected_classroom.id == c.id %}selected{% endif %}>
                             {{ c.name|clean_classroom_full }} ({{ c.students.count }} នាក់)

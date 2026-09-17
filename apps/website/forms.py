@@ -5,13 +5,16 @@ from .models import NewsArticle, GalleryAlbum, GalleryPhoto, WebsiteBanner, Cont
 class NewsArticleForm(forms.ModelForm):
     class Meta:
         model = NewsArticle
-        fields = ['title', 'category', 'cover_image', 'excerpt', 'content', 'is_featured', 'is_published']
+        fields = ['title', 'title_en', 'category', 'cover_image', 'excerpt', 'excerpt_en', 'content', 'content_en', 'is_featured', 'is_published']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'បញ្ចូលចំណងជើងព័ត៌មាន...'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'បញ្ចូលចំណងជើងព័ត៌មាន (Khmer)...'}),
+            'title_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'English news title (or leave blank to auto-translate by AI)...'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'cover_image': forms.FileInput(attrs={'class': 'form-control'}),
-            'excerpt': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'សង្ខេបខ្លឹមសារខ្លីៗសម្រាប់បង្ហាញលើកាតព័ត៌មាន...'}),
-            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'សរសេរខ្លឹមសារលម្អិតនៃអត្ថបទព័ត៌មាន...'}),
+            'excerpt': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'សង្ខេបខ្លឹមសារខ្លីៗ (Khmer)...'}),
+            'excerpt_en': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'English short excerpt (or leave blank to auto-translate by AI)...'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'សរសេរខ្លឹមសារលម្អិតនៃអត្ថបទព័ត៌មាន (Khmer)...'}),
+            'content_en': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'Detailed English content (or leave blank to auto-translate by AI)...'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

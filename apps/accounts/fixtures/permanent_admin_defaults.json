@@ -4,9 +4,9 @@
   "school_profile": {
     "name_kh": "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត",
     "name_en": "Hun Sen Kampong Kantuot High School",
-    "short_name": "វិទ្យាល័យ កំពង់កន្ទួត",
+    "short_name": "វិ. ហ៊ុន សែន កំពង់កន្ទួត",
     "school_code": "08010306901",
-    "school_type": "វិទ្យាល័យចំណេះទូទៅ",
+    "school_type": "វិទ្យាល័យ",
     "institution_type": "PUBLIC",
     "education_levels": "អនុវិទ្យាល័យ, វិទ្យាល័យ",
     "motto": "ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌",
@@ -104,7 +104,7 @@
     "commune": "ឃុំបារគូ",
     "village": "ភូមិស្វាយមីង",
     "street_address": "ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល",
-    "principal_name": "លោក ផេង រឹទ្ធីយ៉ា",
+    "principal_name": "លោក ថេង រិទ្ធីយ៉ា",
     "phone": "093 995 947 / 089 995 947",
     "email": "info@schoolsm.edu.kh"
   },

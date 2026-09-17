@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/pop-chat/history/', views.api_pop_chat_history, name='api_pop_chat_history'),
     path('api/pop-chat/threads/', views.api_pop_chat_threads, name='api_pop_chat_threads'),
     path('api/ai-chat/', views.api_ai_chat, name='api_ai_chat'),
+    path('api/ai-translate/', views.api_ai_translate_text, name='api_ai_translate_text'),
     path('api/telegram/webhook/', views.telegram_webhook, name='telegram_webhook'),
     path('api/khmer-lunar/', views.api_khmer_lunar_date, name='api_khmer_lunar_date'),
 ]

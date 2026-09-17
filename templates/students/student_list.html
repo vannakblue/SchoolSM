@@ -63,8 +63,11 @@
             <i class="fa-solid fa-trash-can me-1"></i> {% if is_khmer %}សម្អាតតាមឆ្នាំ{% else %}Purge Year{% endif %}
         </button>
         {% endif %}
-        <a href="{% url 'batch_student_id_cards' %}" target="_blank" class="btn btn-outline-primary" title="{% if is_khmer %}បោះពុម្ពប័ណ្ណសម្គាល់ខ្លួនសិស្ស (ស្តង់ដារក្រសួង MoEYS ៤ ប័ណ្ណ/ទំព័រ A4){% else %}Print MoEYS Student ID Cards (4 Cards/A4 Page){% endif %}">
+        <a href="{% url 'batch_student_id_cards' %}" target="_blank" class="btn btn-outline-primary" title="{% if is_khmer %}បោះពុម្ពប័ណ្ណសម្គាល់ខ្លួនសិស្ស (ស្តង់ដារក្រសួង MoEYS ៤ ប័ណ្ណ/ទំព័រ A4 តាមកម្រិតថ្នាក់/ថ្នាក់រៀន){% else %}Print MoEYS Student ID Cards (4 Cards/A4 Page){% endif %}">
             <i class="fa-solid fa-id-card me-1"></i> {% if is_khmer %}បោះពុម្ពប័ណ្ណសិស្ស{% else %}Print ID Cards{% endif %}
+        </a>
+        <a href="{% url 'moeys_individual_student_roster' %}" class="btn btn-outline-info" title="{% if is_khmer %}សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ ស្តង់ដារក្រសួង MoEYS (៣៥ ជួរឈរ តាមកម្រិតថ្នាក់/ថ្នាក់រៀន){% else %}MoEYS Individual Student Extract (35 Columns){% endif %}">
+            <i class="fa-solid fa-file-lines me-1"></i> {% if is_khmer %}សម្រង់ព័ត៌មានសិស្ស{% else %}Student Extract{% endif %}
         </a>
         <a href="{% url 'student_age_grade_statistics' %}" class="btn btn-outline-primary fw-semibold" title="{% if is_khmer %}ស្ថិតិសិស្សតាមអាយុ និងកម្រិតថ្នាក់ ស្តង់ដារក្រសួងអប់រំ MoEYS{% else %}MoEYS Student Age & Grade Statistics{% endif %}">
             <i class="fa-solid fa-chart-column me-1 text-primary"></i> {% if is_khmer %}ស្ថិតិតាមអាយុ & ថ្នាក់{% else %}Age & Grade Stats{% endif %}
