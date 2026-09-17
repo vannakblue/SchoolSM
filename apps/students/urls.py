@@ -30,6 +30,8 @@ urlpatterns = [
     # AJAX API for Grade-Specific Enrollment Options & Student ID Validation
     path('api/grade-options/', views.api_get_grade_options, name='api_get_grade_options'),
     path('api/set-registration-mode/', views.api_set_registration_mode, name='api_set_registration_mode'),
+    path('api/save-registration-fields-config/', views.api_save_registration_fields_config, name='api_save_registration_fields_config'),
+    path('api/reset-registration-fields-config/', views.api_reset_registration_fields_config, name='api_reset_registration_fields_config'),
     path('api/check-student-id/', views.api_check_student_id, name='api_check_student_id'),
     path('api/check-duplicate/', views.api_check_duplicate_student, name='api_check_duplicate_student'),
     path('api/generate-student-id/', views.api_generate_student_id, name='api_generate_student_id'),

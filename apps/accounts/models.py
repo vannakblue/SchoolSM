@@ -149,6 +149,16 @@ class GoogleSheetsConfig(models.Model):
             except Exception:
                 pass
 
+        # Check environment variables (e.g. Render Environment Variables)
+        import os
+        for env_var in ['GOOGLE_SERVICE_ACCOUNT_JSON', 'GOOGLE_SHEETS_CREDENTIALS', 'GOOGLE_CREDENTIALS']:
+            val = os.environ.get(env_var, '').strip()
+            if val:
+                try:
+                    return json.loads(val)
+                except Exception:
+                    pass
+
         candidate_paths = [
             Path(self.service_account_json_path) if self.service_account_json_path else None,
             settings.BASE_DIR / 'google_service_account.json',
@@ -312,6 +322,89 @@ class DirectChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.display_name} -> {self.recipient.display_name if self.recipient else 'Admin'}: {self.message[:30]}"
+
+DEFAULT_REGISTRATION_FIELDS_CONFIG = {
+    # ------------------ GENERAL FORM (បែបបទ Admin កំណត់) ------------------
+    'general': {
+        'sections': {
+            'student_info': True,     # ផ្នែកទី១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស
+            'parent_info': True,      # ផ្នែកទី២. ព័ត៌មានអាណាព្យាបាល
+            'academic_fee': True,     # ផ្នែកទី៣. ការសិក្សា & កម្រៃ
+            'documents': True,        # ផ្នែកទី៤. ឯកសារ & រូបថត
+            'grade_specific': True,   # ផ្នែកទី៥. ព័ត៌មានបន្ថែមតាមកម្រិតថ្នាក់
+        },
+        'fields': {
+            # Section 1: ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស
+            'student_id': True,
+            'khmer_name': True,       # Always locked/required
+            'latin_name': True,
+            'gender': True,           # Always locked/required
+            'date_of_birth': True,    # Always locked/required
+            'phone': True,
+            'previous_school': True,
+            'place_of_birth': True,
+            'current_address': True,
+            # Section 2: ព័ត៌មានអាណាព្យាបាល
+            'father_name': True,
+            'father_phone': True,
+            'father_job': True,
+            'mother_name': True,
+            'mother_phone': True,
+            'mother_job': True,
+            'guardian_name': True,
+            'emergency_phone': True,
+            # Section 3: ការសិក្សា & កម្រៃ
+            'academic_year': True,
+            'classroom': True,
+            'scholarship_type': True,
+            'fee_start_month': True,
+            'telegram_chat_id': True,
+            # Section 4: ឯកសារ & រូបថត
+            'photo': True,
+            'birth_certificate': True,
+        }
+    },
+    # ------------------ MOEYS FORM (បែបបទសម្រង់ព័ត៌មាន ៣៥ ជួរឈរ) ------------------
+    'moeys': {
+        'sections': {
+            'identity': True,         # ផ្នែកទី១. អត្តសញ្ញាណសិស្ស
+            'pob_address': True,      # ផ្នែកទី២. ទីកន្លែងកំណើត & អាសយដ្ឋាន
+            'parents': True,          # ផ្នែកទី៣. ព័ត៌មានឪពុកម្តាយ & អាណាព្យាបាល
+            'academic_origin': True,  # ផ្នែកទី៤. ស្ថានភាពសិក្សា & សាលាចាស់
+            'vulnerability': True,    # ផ្នែកទី៥. ស្ថានភាពងាយរងគ្រោះ & ប័ណ្ណសមធម៌
+            'fees': True,             # ផ្នែកទី៦. ការសិក្សា & កម្រៃ
+        },
+        'fields': {
+            # Section 1
+            'student_id': True,
+            'surname': True,
+            'given_name': True,
+            'latin_name': True,
+            'gender': True,
+            'date_of_birth': True,
+            # Section 2
+            'pob': True,
+            'current_address': True,
+            # Section 3
+            'father': True,
+            'mother': True,
+            'guardian': True,
+            # Section 4
+            'classroom': True,
+            'previous_school': True,
+            'repeater': True,
+            'scholarship': True,
+            # Section 5
+            'equity_cards': True,
+            'risk_card': True,
+            'disability': True,
+            # Section 6
+            'academic_year': True,
+            'fee_start_month': True,
+            'telegram_chat_id': True,
+        }
+    }
+}
 
 
 class SchoolProfile(models.Model):
@@ -530,6 +623,14 @@ class SchoolProfile(models.Model):
         help_text="កំណត់វិធីចុះឈ្មោះសិស្ស៖ តាមទម្រង់ Admin កំណត់ ឬ តាមសម្រង់ព័ត៌មានសិស្សម្នាក់ៗ ឬ តាមកម្រិតថ្នាក់ (សិស្សមិនអាចជ្រើសរើសនៅលើ Portal ឬ Mobile បានទេ គឺ Admin ជាអ្នកកំណត់)"
     )
 
+    # Customizable Registration Form Sections & Fields Configuration (Ticking Admin Control)
+    registration_form_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="ការកំណត់ផ្នែក & ប្រអប់ចុះឈ្មោះ / Registration Sections & Fields Config",
+        help_text="រក្សាទុកការកំណត់ Ticking លើផ្នែកធំៗ និងចំណុចតូចៗនីមួយៗនៃបែបបទចុះឈ្មោះ"
+    )
+
     # Student Registration Allowance & Period Configuration (Admin Control for Portal & Mobile App)
     is_registration_open = models.BooleanField(
         default=True,
@@ -583,6 +684,40 @@ class SchoolProfile(models.Model):
             return False, msg, "EXPIRED"
 
         return True, "ការចុះឈ្មោះកំពុងបើកដំណើរការជាធម្មតា។", "OPEN"
+
+    def get_registration_fields_config(self):
+        """
+        Returns the merged registration form sections and fields configuration.
+        Ensures defaults exist for any missing keys.
+        """
+        import copy
+        config = copy.deepcopy(DEFAULT_REGISTRATION_FIELDS_CONFIG)
+        if isinstance(self.registration_form_config, dict) and self.registration_form_config:
+            for form_key in ['general', 'moeys']:
+                saved_form = self.registration_form_config.get(form_key, {})
+                if isinstance(saved_form, dict):
+                    saved_sec = saved_form.get('sections', {})
+                    if isinstance(saved_sec, dict):
+                        for s_key, s_val in saved_sec.items():
+                            if s_key in config[form_key]['sections']:
+                                config[form_key]['sections'][s_key] = bool(s_val)
+                    saved_fld = saved_form.get('fields', {})
+                    if isinstance(saved_fld, dict):
+                        for f_key, f_val in saved_fld.items():
+                            if f_key in config[form_key]['fields']:
+                                config[form_key]['fields'][f_key] = bool(f_val)
+        # Always enforce basic essentials to prevent invalid states
+        config['general']['sections']['student_info'] = True
+        config['general']['fields']['khmer_name'] = True
+        config['general']['fields']['gender'] = True
+        config['general']['fields']['date_of_birth'] = True
+
+        config['moeys']['sections']['identity'] = True
+        config['moeys']['fields']['surname'] = True
+        config['moeys']['fields']['given_name'] = True
+        config['moeys']['fields']['gender'] = True
+        config['moeys']['fields']['date_of_birth'] = True
+        return config
 
     # MoEYS Administrative & Hierarchy
     ministry_name = models.CharField(

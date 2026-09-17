@@ -24,6 +24,9 @@
         <a href="{% url 'grade_rules_manager' %}" class="btn btn-light shadow-xs border">
             <i class="fa-solid fa-list-check me-1"></i> កម្រិតថ្នាក់ & ច្បាប់ពិន្ទុ
         </a>
+        <button type="button" class="btn btn-outline-primary fw-bold shadow-xs border" data-bs-toggle="modal" data-bs-target="#registrationFieldsTickingModal" title="ជ្រើសរើសផ្នែកធំៗ (ផ្នែកទី១ ទី២...) និងចំណុចតូចៗដែលត្រូវឱ្យសិស្សបំពេញ">
+            <i class="fa-solid fa-list-check me-1"></i> កំណត់ផ្នែក & ចំណុចបែបបទ (Ticking)
+        </button>
         <button type="button" class="btn btn-primary fw-bold shadow-sm" onclick="openAddModalForGrade('', '', '{{ active_category }}')">
             <i class="fa-solid fa-plus-circle me-1"></i> បន្ថែមប្រអប់ទិន្នន័យថ្មី
         </button>
@@ -987,4 +990,6 @@ function previewGradeForm(gradeId, gradeName, category) {
         });
 }
 </script>
+
+{% include 'students/partials/registration_fields_ticking_modal.html' %}
 {% endblock %}

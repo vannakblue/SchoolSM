@@ -127,6 +127,24 @@ class StudentEnrollmentForm(forms.ModelForm):
             self.fields['status'].required = False
             self.fields['classroom'].required = False
 
+        # Soften requirements for fields unticked by Admin
+        try:
+            from apps.accounts.models import SchoolProfile
+            profile = SchoolProfile.get_settings()
+            cfg = profile.get_registration_fields_config().get('general', {})
+            fields_cfg = cfg.get('fields', {})
+            sections_cfg = cfg.get('sections', {})
+
+            if not sections_cfg.get('parent_info', True):
+                for pf in ['father_name', 'father_phone', 'father_job', 'mother_name', 'mother_phone', 'mother_job', 'guardian_name', 'emergency_phone']:
+                    if pf in self.fields:
+                        self.fields[pf].required = False
+            for f_name, is_enabled in fields_cfg.items():
+                if not is_enabled and f_name in self.fields:
+                    self.fields[f_name].required = False
+        except Exception:
+            pass
+
     def clean_student_id(self):
         sid = self.cleaned_data.get('student_id')
         if sid:
@@ -630,6 +648,63 @@ class MoeysIndividualStudentForm(forms.ModelForm):
             if st_choices:
                 self.initial.setdefault('scholarship_type', st_choices[0][0])
             self.initial.setdefault('status', 'ACTIVE')
+
+        # Soften requirements for MoEYS fields unticked by Admin
+        try:
+            from apps.accounts.models import SchoolProfile
+            profile = SchoolProfile.get_settings()
+            m_cfg = profile.get_registration_fields_config().get('moeys', {})
+            m_fields_cfg = m_cfg.get('fields', {})
+            m_sections_cfg = m_cfg.get('sections', {})
+
+            if not m_fields_cfg.get('latin_name', True) and 'latin_name' in self.fields:
+                self.fields['latin_name'].required = False
+
+            if not m_sections_cfg.get('pob_address', True) or not m_fields_cfg.get('pob', True):
+                for f in ['pob_commune', 'pob_district', 'pob_province']:
+                    if f in self.fields:
+                        self.fields[f].required = False
+
+            if not m_sections_cfg.get('parents', True):
+                for f in ['father_name', 'father_job', 'father_phone', 'mother_name', 'mother_job', 'mother_phone', 'guardian_name', 'guardian_job']:
+                    if f in self.fields:
+                        self.fields[f].required = False
+            else:
+                if not m_fields_cfg.get('father', True):
+                    for f in ['father_name', 'father_job', 'father_phone']:
+                        if f in self.fields:
+                            self.fields[f].required = False
+                if not m_fields_cfg.get('mother', True):
+                    for f in ['mother_name', 'mother_job', 'mother_phone']:
+                        if f in self.fields:
+                            self.fields[f].required = False
+                if not m_fields_cfg.get('guardian', True):
+                    for f in ['guardian_name', 'guardian_job']:
+                        if f in self.fields:
+                            self.fields[f].required = False
+
+            if not m_sections_cfg.get('academic_origin', True):
+                for f in ['primary_school', 'secondary_school', 'previous_school', 'is_repeating_grade', 'track']:
+                    if f in self.fields:
+                        self.fields[f].required = False
+            else:
+                if not m_fields_cfg.get('previous_school', True):
+                    for f in ['primary_school', 'secondary_school', 'previous_school']:
+                        if f in self.fields:
+                            self.fields[f].required = False
+                if not m_fields_cfg.get('repeater', True) and 'is_repeating_grade' in self.fields:
+                    self.fields['is_repeating_grade'].required = False
+
+            if not m_sections_cfg.get('vulnerability', True):
+                for f in ['orphan_status', 'ethnic_minority', 'disability_physical', 'disability_sight', 'disability_hearing', 'equity_card_1', 'equity_card_2', 'risk_card', 'scholarship']:
+                    if f in self.fields:
+                        self.fields[f].required = False
+
+            for f_name, is_enabled in m_fields_cfg.items():
+                if not is_enabled and f_name in self.fields:
+                    self.fields[f_name].required = False
+        except Exception:
+            pass
 
     def clean_student_id(self):
         sid = self.cleaned_data.get('student_id')

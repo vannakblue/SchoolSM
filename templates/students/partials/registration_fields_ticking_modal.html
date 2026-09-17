@@ -1,0 +1,774 @@
+<!-- ========================================================================= -->
+<!-- REGISTRATION SECTIONS & FIELDS TICKING CONFIGURATION MODAL                -->
+<!-- Allows Admin to tick/untick Major Sections (ផ្នែកទី១ ទី២...) and Sub-fields  -->
+<!-- ========================================================================= -->
+
+<div class="modal fade" id="registrationFieldsTickingModal" tabindex="-1" aria-labelledby="registrationFieldsTickingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header bg-gradient text-white p-4" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-white bg-opacity-20 p-2.5 rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-list-check fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-1" id="registrationFieldsTickingModalLabel">
+                            កំណត់ការបង្ហាញផ្នែក & ចំណុចបែបបទចុះឈ្មោះ (Sections & Fields Ticking)
+                        </h5>
+                        <p class="text-white-50 small mb-0">
+                            Admin មានសិទ្ធិធីក (Tick) ជ្រើសរើសផ្នែកធំៗ (ផ្នែកទី១ ទី២...) និងធីកចំណុចតូចៗនីមួយៗ សម្រាប់ឱ្យសិស្សបំពេញពេលចុះឈ្មោះ
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Sub-bar with Quick Presets -->
+            <div class="bg-light px-4 py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <!-- Nav Tabs -->
+                <ul class="nav nav-pills gap-2" id="tickingTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold py-2 px-3 rounded-pill shadow-xs" id="tab-general-ticking" data-bs-toggle="pill" data-bs-target="#content-general-ticking" type="button" role="tab">
+                            <i class="fa-solid fa-clipboard-user me-1 text-primary"></i> ១. បែបបទ Admin កំណត់ (General)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold py-2 px-3 rounded-pill shadow-xs" id="tab-moeys-ticking" data-bs-toggle="pill" data-bs-target="#content-moeys-ticking" type="button" role="tab">
+                            <i class="fa-solid fa-id-card-clip me-1 text-info"></i> ២. សម្រង់ព័ត៌មាន MoEYS (៣៥ ជួរឈរ)
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Presets -->
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-success fw-semibold rounded-pill px-3" onclick="tickingSelectAll()">
+                        <i class="fa-solid fa-check-double me-1"></i> ជ្រើសទាំងអស់ (Select All)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold rounded-pill px-3" onclick="tickingSelectEssentialOnly()">
+                        <i class="fa-solid fa-bolt me-1 text-warning"></i> មូលដ្ឋានសង្ខេប (Essential)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger fw-semibold rounded-pill px-3" onclick="tickingResetDefaults()">
+                        <i class="fa-solid fa-rotate-left me-1"></i> ស្តារលំនាំដើម
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4 bg-light-subtle">
+                <form id="formRegistrationTicking">
+                    {% csrf_token %}
+                    <div class="tab-content" id="tickingTabContent">
+                        <!-- ============================================================= -->
+                        <!-- TAB 1: GENERAL FORM TICKING (បែបបទ ADMIN កំណត់)               -->
+                        <!-- ============================================================= -->
+                        <div class="tab-pane fade show active" id="content-general-ticking" role="tabpanel">
+                            <div class="row g-4">
+                                <!-- SECTION 1: STUDENT INFO -->
+                                <div class="col-12">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="gen_sec_student_info" data-target-group="gen-fld-student-info" checked disabled>
+                                                <label class="form-check-label fw-bold text-primary fs-6 cursor-pointer" for="gen_sec_student_info">
+                                                    <i class="fa-solid fa-user-graduate me-1"></i> ផ្នែកទី១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
+                                                </label>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold ms-2">ផ្នែកចាំបាច់ (Mandatory)</span>
+                                            </div>
+                                            <span class="badge bg-light text-secondary border">៩ ចំណុច</span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="gen-fld-student-info">
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_student_id" name="gen_fld_student_id" {% if reg_config.general.fields.student_id %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_student_id">
+                                                            <i class="fa-solid fa-hashtag text-primary me-1"></i> អត្តលេខសិស្ស (Student ID)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_khmer_name" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="gen_fld_khmer_name">
+                                                            <i class="fa-solid fa-signature text-danger me-1"></i> ឈ្មោះជាភាសាខ្មែរ <span class="text-danger">*</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_latin_name" name="gen_fld_latin_name" {% if reg_config.general.fields.latin_name %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_latin_name">
+                                                            <i class="fa-solid fa-font text-primary me-1"></i> ឈ្មោះជាអក្សរឡាតាំង (Latin)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_gender" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="gen_fld_gender">
+                                                            <i class="fa-solid fa-venus-mars text-danger me-1"></i> ភេទ (Gender) <span class="text-danger">*</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_date_of_birth" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="gen_fld_date_of_birth">
+                                                            <i class="fa-solid fa-calendar-days text-danger me-1"></i> ថ្ងៃខែឆ្នាំកំណើត (DOB) <span class="text-danger">*</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_phone" name="gen_fld_phone" {% if reg_config.general.fields.phone %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_phone">
+                                                            <i class="fa-solid fa-phone text-success me-1"></i> លេខទូរស័ព្ទសិស្ស / ទំនាក់ទំនង
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_previous_school" name="gen_fld_previous_school" {% if reg_config.general.fields.previous_school %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_previous_school">
+                                                            <i class="fa-solid fa-school text-primary me-1"></i> ឆ្នាំសិក្សាចាស់មកពីសាលា
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_place_of_birth" name="gen_fld_place_of_birth" {% if reg_config.general.fields.place_of_birth %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_place_of_birth">
+                                                            <i class="fa-solid fa-location-dot text-danger me-1"></i> ទីកន្លែងកំណើត (៤ ថ្នាក់)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_current_address" name="gen_fld_current_address" {% if reg_config.general.fields.current_address %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_current_address">
+                                                            <i class="fa-solid fa-house-user text-info me-1"></i> អាសយដ្ឋានបច្ចុប្បន្ន (៤ ថ្នាក់)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SECTION 2: PARENT INFO -->
+                                <div class="col-12">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="gen_sec_parent_info" name="gen_sec_parent_info" data-target-group="gen-fld-parent-info" {% if reg_config.general.sections.parent_info %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-primary fs-6 cursor-pointer" for="gen_sec_parent_info">
+                                                    <i class="fa-solid fa-people-roof me-1"></i> ផ្នែកទី២. ព័ត៌មានអាណាព្យាបាល (Parent / Guardian Info)
+                                                </label>
+                                            </div>
+                                            <span class="badge bg-light text-secondary border">៨ ចំណុច</span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="gen-fld-parent-info">
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_father_name" name="gen_fld_father_name" {% if reg_config.general.fields.father_name %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_father_name">ឈ្មោះឪពុក</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_father_phone" name="gen_fld_father_phone" {% if reg_config.general.fields.father_phone %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_father_phone">ទូរស័ព្ទឪពុក</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_father_job" name="gen_fld_father_job" {% if reg_config.general.fields.father_job %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_father_job">មុខរបរឪពុក</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_mother_name" name="gen_fld_mother_name" {% if reg_config.general.fields.mother_name %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_mother_name">ឈ្មោះម្តាយ</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_mother_phone" name="gen_fld_mother_phone" {% if reg_config.general.fields.mother_phone %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_mother_phone">ទូរស័ព្ទម្តាយ</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_mother_job" name="gen_fld_mother_job" {% if reg_config.general.fields.mother_job %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_mother_job">មុខរបរម្តាយ</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_guardian_name" name="gen_fld_guardian_name" {% if reg_config.general.fields.guardian_name %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_guardian_name">ឈ្មោះអាណាព្យាបាលជំនួស</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_emergency_phone" name="gen_fld_emergency_phone" {% if reg_config.general.fields.emergency_phone %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer text-danger" for="gen_fld_emergency_phone">លេខទាក់ទងបន្ទាន់ (Emergency)</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SECTION 3: ACADEMIC & FEES -->
+                                <div class="col-12">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="gen_sec_academic_fee" name="gen_sec_academic_fee" data-target-group="gen-fld-academic-fee" {% if reg_config.general.sections.academic_fee %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-primary fs-6 cursor-pointer" for="gen_sec_academic_fee">
+                                                    <i class="fa-solid fa-school me-1"></i> ផ្នែកទី៣. ការសិក្សា & កម្រៃ (Academic & Fees)
+                                                </label>
+                                            </div>
+                                            <span class="badge bg-light text-secondary border">៥ ចំណុច</span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="gen-fld-academic-fee">
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_academic_year" name="gen_fld_academic_year" {% if reg_config.general.fields.academic_year %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_academic_year">ឆ្នាំសិក្សា (Academic Year)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_classroom" name="gen_fld_classroom" {% if reg_config.general.fields.classroom %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_classroom">ថ្នាក់រៀន (Classroom)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_scholarship_type" name="gen_fld_scholarship_type" {% if reg_config.general.fields.scholarship_type %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_scholarship_type">កម្រៃសិក្សា / អាហារូបករណ៍</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_fee_start_month" name="gen_fld_fee_start_month" {% if reg_config.general.fields.fee_start_month %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_fee_start_month">ខែចាប់ផ្តើមបង់ប្រាក់</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_telegram_chat_id" name="gen_fld_telegram_chat_id" {% if reg_config.general.fields.telegram_chat_id %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_telegram_chat_id">Telegram Chat ID</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SECTION 4: DOCUMENTS & PHOTO -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="gen_sec_documents" name="gen_sec_documents" data-target-group="gen-fld-documents" {% if reg_config.general.sections.documents %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-primary fs-6 cursor-pointer" for="gen_sec_documents">
+                                                    <i class="fa-solid fa-paperclip me-1"></i> ផ្នែកទី៤. ឯកសារ & រូបថត
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="gen-fld-documents">
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_photo" name="gen_fld_photo" {% if reg_config.general.fields.photo %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_photo">
+                                                            <i class="fa-solid fa-image text-primary me-1"></i> រូបថតសិស្ស (៤x៦)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="gen_fld_birth_certificate" name="gen_fld_birth_certificate" {% if reg_config.general.fields.birth_certificate %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="gen_fld_birth_certificate">
+                                                            <i class="fa-solid fa-file-lines text-warning me-1"></i> សំបុត្រកំណើត / ឯកសារភ្ជាប់
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- SECTION 5: GRADE-SPECIFIC CUSTOM FIELDS -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="gen_sec_grade_specific" name="gen_sec_grade_specific" {% if reg_config.general.sections.grade_specific %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-primary fs-6 cursor-pointer" for="gen_sec_grade_specific">
+                                                    <i class="fa-solid fa-clipboard-list me-1"></i> ផ្នែកទី៥. ប្រអប់តាមកម្រិតថ្នាក់
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4 d-flex flex-column justify-content-between">
+                                            <p class="text-muted small mb-3">
+                                                អនុញ្ញាតឱ្យបង្ហាញប្រអប់សំណួរ ឬព័ត៌មានបន្ថែមដែល Admin បានបង្កើតតាមកម្រិតថ្នាក់នីមួយៗ (Grade Enrollment Options)។
+                                            </p>
+                                            <a href="{% url 'grade_options_manager' %}" class="btn btn-sm btn-outline-primary fw-semibold" target="_blank">
+                                                <i class="fa-solid fa-gear me-1"></i> គ្រប់គ្រងប្រអប់កម្រិតថ្នាក់លម្អិត
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================= -->
+                        <!-- TAB 2: MOEYS FORM TICKING (សម្រង់ព័ត៌មាន ៣៥ ជួរឈរ)           -->
+                        <!-- ============================================================= -->
+                        <div class="tab-pane fade" id="content-moeys-ticking" role="tabpanel">
+                            <div class="row g-4">
+                                <!-- MOEYS SECTION 1: IDENTITY -->
+                                <div class="col-12">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="moeys_sec_identity" checked disabled>
+                                                <label class="form-check-label fw-bold text-info fs-6 cursor-pointer" for="moeys_sec_identity">
+                                                    <i class="fa-solid fa-id-card-clip me-1"></i> ផ្នែកទី១. អត្តសញ្ញាណសិស្ស MoEYS
+                                                </label>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle small fw-bold ms-2">ផ្នែកចាំបាច់ (Mandatory)</span>
+                                            </div>
+                                            <span class="badge bg-light text-secondary border">៦ ចំណុច</span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_student_id" name="moeys_fld_student_id" {% if reg_config.moeys.fields.student_id %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_student_id">អត្តលេខសិស្ស (ID)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_surname" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="moeys_fld_surname">គោត្តនាម (Surname) *</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_given_name" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="moeys_fld_given_name">នាមខ្លួន (Given Name) *</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_latin_name" name="moeys_fld_latin_name" {% if reg_config.moeys.fields.latin_name %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_latin_name">ឈ្មោះអក្សរឡាតាំង (Latin)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_gender" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="moeys_fld_gender">ភេទ (Gender) *</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_date_of_birth" checked disabled>
+                                                        <label class="form-check-label fw-bold small text-dark" for="moeys_fld_date_of_birth">ថ្ងៃខែឆ្នាំកំណើត *</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MOEYS SECTION 2: POB & CURRENT ADDRESS -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="moeys_sec_pob_address" name="moeys_sec_pob_address" data-target-group="moeys-fld-pob-address" {% if reg_config.moeys.sections.pob_address %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-info fs-6 cursor-pointer" for="moeys_sec_pob_address">
+                                                    <i class="fa-solid fa-map-location-dot me-1"></i> ផ្នែកទី២. ទីកន្លែងកំណើត & អាសយដ្ឋាន
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="moeys-fld-pob-address">
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_pob" name="moeys_fld_pob" {% if reg_config.moeys.fields.pob %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_pob">ទីកន្លែងកំណើត (ឃុំ ស្រុក ខេត្ត)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_current_address" name="moeys_fld_current_address" {% if reg_config.moeys.fields.current_address %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_current_address">អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ ឃុំ ស្រុក ខេត្ត)</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MOEYS SECTION 3: PARENTS -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="moeys_sec_parents" name="moeys_sec_parents" data-target-group="moeys-fld-parents" {% if reg_config.moeys.sections.parents %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-info fs-6 cursor-pointer" for="moeys_sec_parents">
+                                                    <i class="fa-solid fa-people-roof me-1"></i> ផ្នែកទី៣. ព័ត៌មានឪពុកម្តាយ & អាណាព្យាបាល
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="moeys-fld-parents">
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_father" name="moeys_fld_father" {% if reg_config.moeys.fields.father %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_father">ព័ត៌មានឪពុក (ឈ្មោះ, មុខរបរ, ស្ថានភាពរស់នៅ)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_mother" name="moeys_fld_mother" {% if reg_config.moeys.fields.mother %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_mother">ព័ត៌មានម្តាយ (ឈ្មោះ, មុខរបរ, ស្ថានភាពរស់នៅ)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_guardian" name="moeys_fld_guardian" {% if reg_config.moeys.fields.guardian %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_guardian">ព័ត៌មានអាណាព្យាបាលជំនួស</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MOEYS SECTION 4: ACADEMIC ORIGIN -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="moeys_sec_academic_origin" name="moeys_sec_academic_origin" data-target-group="moeys-fld-academic" {% if reg_config.moeys.sections.academic_origin %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-info fs-6 cursor-pointer" for="moeys_sec_academic_origin">
+                                                    <i class="fa-solid fa-graduation-cap me-1"></i> ផ្នែកទី៤. ស្ថានភាពសិក្សា & សាលាចាស់
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="moeys-fld-academic">
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_classroom" name="moeys_fld_classroom" {% if reg_config.moeys.fields.classroom %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_classroom">ថ្នាក់រៀន & ជំនាញ/Track</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_previous_school" name="moeys_fld_previous_school" {% if reg_config.moeys.fields.previous_school %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_previous_school">ឆ្នាំសិក្សាចាស់ & សាលាចាស់</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_repeater" name="moeys_fld_repeater" {% if reg_config.moeys.fields.repeater %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_repeater">ស្ថានភាពត្រួតថ្នាក់ (Repeater Status)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_scholarship" name="moeys_fld_scholarship" {% if reg_config.moeys.fields.scholarship %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_scholarship">អាហារូបករណ៍រដ្ឋ / សាលា</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- MOEYS SECTION 5: VULNERABILITY & EQUITY CARDS -->
+                                <div class="col-md-6">
+                                    <div class="card border shadow-xs rounded-3 overflow-hidden bg-white h-100">
+                                        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+                                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input section-master-tick fs-5" type="checkbox" role="switch" id="moeys_sec_vulnerability" name="moeys_sec_vulnerability" data-target-group="moeys-fld-vulnerability" {% if reg_config.moeys.sections.vulnerability %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold text-info fs-6 cursor-pointer" for="moeys_sec_vulnerability">
+                                                    <i class="fa-solid fa-hand-holding-heart me-1"></i> ផ្នែកទី៥. ស្ថានភាពងាយរងគ្រោះ & ប័ណ្ណសមធម៌
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3" id="moeys-fld-vulnerability">
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_equity_cards" name="moeys_fld_equity_cards" {% if reg_config.moeys.fields.equity_cards %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_equity_cards">ប័ណ្ណសមធម៌ក្រ១ & ក្រ២ (IDPoor)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_risk_card" name="moeys_fld_risk_card" {% if reg_config.moeys.fields.risk_card %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_risk_card">ប័ណ្ណហានិភ័យ (At-Risk Card)</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check p-2.5 rounded-2 border bg-light d-flex align-items-center gap-2">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="moeys_fld_disability" name="moeys_fld_disability" {% if reg_config.moeys.fields.disability %}checked{% endif %}>
+                                                        <label class="form-check-label fw-semibold small cursor-pointer" for="moeys_fld_disability">ស្ថានភាពពិការភាព (Disability Type)</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white px-4 py-3 border-top d-flex align-items-center justify-content-between">
+                <div class="small text-muted">
+                    <i class="fa-solid fa-circle-info text-primary me-1"></i> ការផ្លាស់ប្តូរត្រូវបានការពាររក្សាទុកជាអចិន្ត្រៃយ៍ និងមិនបាត់បង់ពេលធ្វើបច្ចុប្បន្នភាពឡើយ។
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-light border fw-semibold px-3" data-bs-dismiss="modal">
+                        បោះបង់
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnSaveTickingConfig" onclick="saveRegistrationTickingConfig()">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់ (Save Ticking)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle Master Section switches to toggle all child field checkboxes in that section
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.section-master-tick').forEach(function(masterSwitch) {
+        masterSwitch.addEventListener('change', function() {
+            var targetGroupId = this.getAttribute('data-target-group');
+            if (targetGroupId) {
+                var group = document.getElementById(targetGroupId);
+                if (group) {
+                    var isChecked = this.checked;
+                    group.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                        if (!cb.disabled) {
+                            cb.checked = isChecked;
+                        }
+                    });
+                }
+            }
+        });
+    });
+});
+
+function tickingSelectAll() {
+    document.querySelectorAll('#formRegistrationTicking input[type="checkbox"]').forEach(function(cb) {
+        if (!cb.disabled) {
+            cb.checked = true;
+        }
+    });
+}
+
+function tickingSelectEssentialOnly() {
+    // Keep only essential basic fields
+    document.querySelectorAll('#formRegistrationTicking input[type="checkbox"]').forEach(function(cb) {
+        if (!cb.disabled) {
+            cb.checked = false;
+        }
+    });
+    // Turn on primary sections
+    var s1 = document.getElementById('gen_sec_student_info');
+    if (s1) s1.checked = true;
+    var s3 = document.getElementById('gen_sec_academic_fee');
+    if (s3) s3.checked = true;
+    var fClass = document.getElementById('gen_fld_classroom');
+    if (fClass) fClass.checked = true;
+    var fYear = document.getElementById('gen_fld_academic_year');
+    if (fYear) fYear.checked = true;
+    var fSch = document.getElementById('gen_fld_scholarship_type');
+    if (fSch) fSch.checked = true;
+    var fId = document.getElementById('gen_fld_student_id');
+    if (fId) fId.checked = true;
+    var fPhone = document.getElementById('gen_fld_phone');
+    if (fPhone) fPhone.checked = true;
+
+    // MoEYS
+    var mClass = document.getElementById('moeys_fld_classroom');
+    if (mClass) mClass.checked = true;
+    var mId = document.getElementById('moeys_fld_student_id');
+    if (mId) mId.checked = true;
+    var mYear = document.getElementById('moeys_sec_academic_origin');
+    if (mYear) mYear.checked = true;
+}
+
+function saveRegistrationTickingConfig() {
+    var btn = document.getElementById('btnSaveTickingConfig');
+    var oldText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> កំពុងរក្សាទុក...';
+
+    var payload = {
+        general: {
+            sections: {
+                student_info: true,
+                parent_info: document.getElementById('gen_sec_parent_info') ? document.getElementById('gen_sec_parent_info').checked : true,
+                academic_fee: document.getElementById('gen_sec_academic_fee') ? document.getElementById('gen_sec_academic_fee').checked : true,
+                documents: document.getElementById('gen_sec_documents') ? document.getElementById('gen_sec_documents').checked : true,
+                grade_specific: document.getElementById('gen_sec_grade_specific') ? document.getElementById('gen_sec_grade_specific').checked : true
+            },
+            fields: {
+                student_id: document.getElementById('gen_fld_student_id') ? document.getElementById('gen_fld_student_id').checked : true,
+                khmer_name: true,
+                latin_name: document.getElementById('gen_fld_latin_name') ? document.getElementById('gen_fld_latin_name').checked : true,
+                gender: true,
+                date_of_birth: true,
+                phone: document.getElementById('gen_fld_phone') ? document.getElementById('gen_fld_phone').checked : true,
+                previous_school: document.getElementById('gen_fld_previous_school') ? document.getElementById('gen_fld_previous_school').checked : true,
+                place_of_birth: document.getElementById('gen_fld_place_of_birth') ? document.getElementById('gen_fld_place_of_birth').checked : true,
+                current_address: document.getElementById('gen_fld_current_address') ? document.getElementById('gen_fld_current_address').checked : true,
+                father_name: document.getElementById('gen_fld_father_name') ? document.getElementById('gen_fld_father_name').checked : true,
+                father_phone: document.getElementById('gen_fld_father_phone') ? document.getElementById('gen_fld_father_phone').checked : true,
+                father_job: document.getElementById('gen_fld_father_job') ? document.getElementById('gen_fld_father_job').checked : true,
+                mother_name: document.getElementById('gen_fld_mother_name') ? document.getElementById('gen_fld_mother_name').checked : true,
+                mother_phone: document.getElementById('gen_fld_mother_phone') ? document.getElementById('gen_fld_mother_phone').checked : true,
+                mother_job: document.getElementById('gen_fld_mother_job') ? document.getElementById('gen_fld_mother_job').checked : true,
+                guardian_name: document.getElementById('gen_fld_guardian_name') ? document.getElementById('gen_fld_guardian_name').checked : true,
+                emergency_phone: document.getElementById('gen_fld_emergency_phone') ? document.getElementById('gen_fld_emergency_phone').checked : true,
+                academic_year: document.getElementById('gen_fld_academic_year') ? document.getElementById('gen_fld_academic_year').checked : true,
+                classroom: document.getElementById('gen_fld_classroom') ? document.getElementById('gen_fld_classroom').checked : true,
+                scholarship_type: document.getElementById('gen_fld_scholarship_type') ? document.getElementById('gen_fld_scholarship_type').checked : true,
+                fee_start_month: document.getElementById('gen_fld_fee_start_month') ? document.getElementById('gen_fld_fee_start_month').checked : true,
+                telegram_chat_id: document.getElementById('gen_fld_telegram_chat_id') ? document.getElementById('gen_fld_telegram_chat_id').checked : true,
+                photo: document.getElementById('gen_fld_photo') ? document.getElementById('gen_fld_photo').checked : true,
+                birth_certificate: document.getElementById('gen_fld_birth_certificate') ? document.getElementById('gen_fld_birth_certificate').checked : true
+            }
+        },
+        moeys: {
+            sections: {
+                identity: true,
+                pob_address: document.getElementById('moeys_sec_pob_address') ? document.getElementById('moeys_sec_pob_address').checked : true,
+                parents: document.getElementById('moeys_sec_parents') ? document.getElementById('moeys_sec_parents').checked : true,
+                academic_origin: document.getElementById('moeys_sec_academic_origin') ? document.getElementById('moeys_sec_academic_origin').checked : true,
+                vulnerability: document.getElementById('moeys_sec_vulnerability') ? document.getElementById('moeys_sec_vulnerability').checked : true,
+                fees: true
+            },
+            fields: {
+                student_id: document.getElementById('moeys_fld_student_id') ? document.getElementById('moeys_fld_student_id').checked : true,
+                surname: true,
+                given_name: true,
+                latin_name: document.getElementById('moeys_fld_latin_name') ? document.getElementById('moeys_fld_latin_name').checked : true,
+                gender: true,
+                date_of_birth: true,
+                pob: document.getElementById('moeys_fld_pob') ? document.getElementById('moeys_fld_pob').checked : true,
+                current_address: document.getElementById('moeys_fld_current_address') ? document.getElementById('moeys_fld_current_address').checked : true,
+                father: document.getElementById('moeys_fld_father') ? document.getElementById('moeys_fld_father').checked : true,
+                mother: document.getElementById('moeys_fld_mother') ? document.getElementById('moeys_fld_mother').checked : true,
+                guardian: document.getElementById('moeys_fld_guardian') ? document.getElementById('moeys_fld_guardian').checked : true,
+                classroom: document.getElementById('moeys_fld_classroom') ? document.getElementById('moeys_fld_classroom').checked : true,
+                previous_school: document.getElementById('moeys_fld_previous_school') ? document.getElementById('moeys_fld_previous_school').checked : true,
+                repeater: document.getElementById('moeys_fld_repeater') ? document.getElementById('moeys_fld_repeater').checked : true,
+                scholarship: document.getElementById('moeys_fld_scholarship') ? document.getElementById('moeys_fld_scholarship').checked : true,
+                equity_cards: document.getElementById('moeys_fld_equity_cards') ? document.getElementById('moeys_fld_equity_cards').checked : true,
+                risk_card: document.getElementById('moeys_fld_risk_card') ? document.getElementById('moeys_fld_risk_card').checked : true,
+                disability: document.getElementById('moeys_fld_disability') ? document.getElementById('moeys_fld_disability').checked : true
+            }
+        }
+    };
+
+    fetch('{% url "api_save_registration_fields_config" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+        if (data.status === 'success') {
+            var modalEl = document.getElementById('registrationFieldsTickingModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            
+            // Notification
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ជោគជ័យ!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(function() {
+                    window.location.reload();
+                });
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        } else {
+            alert('បរាជ័យ៖ ' + (data.message || 'កំហុសមិនស្គាល់'));
+        }
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+        alert('កំហុសប្រព័ន្ធ៖ ' + err);
+    });
+}
+
+function tickingResetDefaults() {
+    if (!confirm('តើលោកអ្នកពិតជាចង់ស្តារការធីកជ្រើសរើសផ្នែក និងចំណុចទាំងអស់មកតាមលំនាំដើមវិញមែនទេ?')) return;
+    
+    fetch('{% url "api_reset_registration_fields_config" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.status === 'success') {
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'បានស្តារឡើងវិញ!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(function() {
+                    window.location.reload();
+                });
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        } else {
+            alert('បរាជ័យ៖ ' + data.message);
+        }
+    })
+    .catch(function(err) {
+        alert('កំហុសប្រព័ន្ធ៖ ' + err);
+    });
+}
+</script>

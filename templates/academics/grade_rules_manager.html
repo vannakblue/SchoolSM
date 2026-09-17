@@ -68,9 +68,13 @@
         </form>
 
         {% if has_saved_custom %}
-        <a href="{% url 'restore_saved_custom_default' %}" class="btn btn-outline-primary fw-bold bg-white" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុលំនាំដើមដែលបាន Save ទុកឡើងវិញមែនទេ?')">
-            <i class="fa-solid fa-clock-rotate-left me-1"></i> ស្តារតាមដែលបាន Save
+        <a href="{% url 'restore_saved_custom_default' %}" class="btn btn-outline-primary fw-bold shadow-sm bg-white" title="ទាញយកច្បាប់ពិន្ទុលំនាំដើមដែល Admin បាន Save ទុកមកប្រើឡើងវិញ" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុលំនាំដើមដែលបាន Save ទុកឡើងវិញមែនទេ?')">
+            <i class="fa-solid fa-clock-rotate-left me-1 text-primary"></i> ស្តារតាមដែលបាន Save <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 0.65rem;">មានទិន្នន័យ Save</span>
         </a>
+        {% else %}
+        <button type="button" class="btn btn-light border text-muted fw-semibold" disabled title="លោកអ្នកត្រូវចុច «រក្សាទុកជា Default» ជាមុនសិន ទើបអាចទាញយកមកប្រើឡើងវិញបាន">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> ស្តារតាមដែលបាន Save <span class="badge bg-secondary-subtle text-muted ms-1" style="font-size: 0.65rem;">មិនទាន់ Save</span>
+        </button>
         {% endif %}
 
         <a href="{% url 'reset_grade_rules_to_moeys' %}" class="btn btn-outline-success fw-bold bg-white" onclick="return confirm('តើលោកអ្នកចង់ស្តារច្បាប់ពិន្ទុទាំងអស់ឡើងវិញទៅតាមស្តង់ដារក្រសួងអប់រំ (MoEYS Standard Matrix) មែនទេ?')">

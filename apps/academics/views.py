@@ -326,6 +326,7 @@ def grade_options_manager(request):
         'form': form,
         'school_profile': school_profile,
         'active_category': active_category,
+        'reg_config': school_profile.get_registration_fields_config(),
         'total_general_options': total_general_options,
         'total_moeys_options': total_moeys_options,
     })
@@ -1408,7 +1409,14 @@ def save_current_as_default(request):
             key='custom_scoring_rules',
             defaults={'data': {'rules': rules_data, 'streams': streams_data}}
         )
-        messages.success(request, "💾 ជោគជ័យ! បានរក្សាទុកការកំណត់ច្បាប់ពិន្ទុបច្ចុប្បន្នជា Default សម្រាប់ប្រើប្រាស់ឡើងវិញគ្រប់ពេល។")
+
+        try:
+            from apps.accounts.permanent_data_manager import export_permanent_admin_defaults
+            export_permanent_admin_defaults()
+        except Exception:
+            pass
+
+        messages.success(request, "💾 ជោគជ័យ! បានរក្សាទុកការកំណត់ច្បាប់ពិន្ទុបច្ចុប្បន្នជា Default អចិន្ត្រៃយ៍ មិនបាត់បង់ពេល Deploy ឬ Update ឡើយ។")
     return redirect('grade_rules_manager')
 
 

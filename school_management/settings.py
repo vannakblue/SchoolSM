@@ -149,11 +149,21 @@ DATABASES = {
 database_url = os.environ.get('DATABASE_URL', '').strip()
 if dj_database_url and database_url:
     try:
-        parsed_db = dj_database_url.parse(database_url, conn_max_age=600, conn_health_checks=True)
+        # Neon.tech, Supabase, and cloud PostgreSQL require SSL
+        is_cloud_postgres = any(host_kw in database_url.lower() for host_kw in ['neon.tech', 'supabase', 'render.com', 'aws', 'pooler'])
+        is_local = any(loc_kw in database_url.lower() for loc_kw in ['localhost', '127.0.0.1'])
+        ssl_require = is_cloud_postgres or (not is_local and 'postgres' in database_url.lower())
+
+        parsed_db = dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=ssl_require
+        )
         if parsed_db:
             DATABASES['default'] = parsed_db
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: Could not parse DATABASE_URL: {e}")
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -205,6 +215,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '').strip()
 CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY', '').strip()
 CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '').strip()
+CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', '').strip()
+
+# Support CLOUDINARY_URL directly from Cloudinary Dashboard (cloudinary://<key>:<secret>@<cloud_name>)
+if CLOUDINARY_URL and not (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET):
+    try:
+        import urllib.parse
+        parsed_c = urllib.parse.urlparse(CLOUDINARY_URL)
+        CLOUDINARY_CLOUD_NAME = parsed_c.hostname or ''
+        CLOUDINARY_API_KEY = parsed_c.username or ''
+        CLOUDINARY_API_SECRET = parsed_c.password or ''
+    except Exception as e:
+        print(f"Warning: Could not parse CLOUDINARY_URL: {e}")
 
 if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
     CLOUDINARY_STORAGE = {

@@ -39,6 +39,12 @@ if %errorlevel% equ 0 (
 )
 echo.
 
+:: 3. Lock & Export permanent admin defaults (Scoring rules, school profile, grade settings)
+echo [*] Locking and exporting permanent admin defaults for Render...
+python manage.py dump_permanent_defaults >nul 2>nul
+echo   - Permanent admin defaults snapshot secured in apps/accounts/fixtures/.
+echo.
+
 :: 3. Show Git Status
 echo [2/4] Current Changed Files:
 echo ----------------------------------------------------------------

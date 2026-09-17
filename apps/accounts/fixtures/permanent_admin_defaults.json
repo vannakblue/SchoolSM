@@ -1,0 +1,2774 @@
+{
+  "version": "1.0",
+  "exported_at": null,
+  "school_profile": {
+    "name_kh": "វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត",
+    "name_en": "Hun Sen Kampong Kantuot High School",
+    "short_name": "វិទ្យាល័យ កំពង់កន្ទួត",
+    "school_code": "08010306901",
+    "school_type": "វិទ្យាល័យចំណេះទូទៅ",
+    "institution_type": "PUBLIC",
+    "education_levels": "អនុវិទ្យាល័យ, វិទ្យាល័យ",
+    "motto": "ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌",
+    "date_format": "dd-mm-yyyy",
+    "time_format": "HH:mm",
+    "display_font": "Khmer OS Battambang",
+    "report_header_font": "Moul",
+    "theme_primary_color": "#991b1b",
+    "header_bg_color": "#450a0a",
+    "footer_bg_color": "#1f0404",
+    "body_bg_color": "#fff5f5",
+    "student_id_pattern": "YEAR_END_4D",
+    "student_id_prefix": "KPS",
+    "student_id_custom_template": "{PREFIX}-{YEAR4}-G{GRADE}-{SEQ}",
+    "student_id_digits": 4,
+    "student_id_include_grade": false,
+    "registration_mode": "BOTH",
+    "registration_form_config": {
+      "general": {
+        "sections": {
+          "student_info": true,
+          "parent_info": true,
+          "academic_fee": true,
+          "documents": true,
+          "grade_specific": true
+        },
+        "fields": {
+          "student_id": true,
+          "khmer_name": true,
+          "latin_name": true,
+          "gender": true,
+          "date_of_birth": true,
+          "phone": true,
+          "previous_school": true,
+          "place_of_birth": true,
+          "current_address": true,
+          "father_name": true,
+          "father_phone": true,
+          "father_job": true,
+          "mother_name": true,
+          "mother_phone": true,
+          "mother_job": true,
+          "guardian_name": true,
+          "emergency_phone": true,
+          "academic_year": true,
+          "classroom": true,
+          "scholarship_type": true,
+          "fee_start_month": true,
+          "telegram_chat_id": true,
+          "photo": true,
+          "birth_certificate": true
+        }
+      },
+      "moeys": {
+        "sections": {
+          "identity": true,
+          "pob_address": true,
+          "parents": true,
+          "academic_origin": true,
+          "vulnerability": true,
+          "fees": true
+        },
+        "fields": {
+          "student_id": true,
+          "surname": true,
+          "given_name": true,
+          "latin_name": true,
+          "gender": true,
+          "date_of_birth": true,
+          "pob": true,
+          "current_address": true,
+          "father": true,
+          "mother": true,
+          "guardian": true,
+          "classroom": true,
+          "previous_school": true,
+          "repeater": true,
+          "scholarship": true,
+          "equity_cards": true,
+          "risk_card": true,
+          "disability": true,
+          "academic_year": true,
+          "fee_start_month": true,
+          "telegram_chat_id": true
+        }
+      }
+    },
+    "is_registration_open": false,
+    "registration_closed_message": "ការចុះឈ្មោះត្រូវបានបិទជាបណ្ដោះអាសន្ន។",
+    "ministry_name": "ក្រសួងអប់រំ យុវជន និងកីឡា",
+    "poe_name": "មន្ទីរអប់រំ យុវជន និងកីឡា ខេត្តកណ្តាល",
+    "doe_name": "ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុកកណ្តាលស្ទឹង",
+    "province": "ខេត្តកណ្តាល",
+    "district": "ស្រុកកណ្តាលស្ទឹង",
+    "commune": "ឃុំបារគូ",
+    "village": "ភូមិស្វាយមីង",
+    "street_address": "ផ្លូវលេខ១០៥ ភូមិស្វាយមីង ឃុំបារគូ ស្រុកកណ្តាលស្ទឹង ខេត្តកណ្តាល",
+    "principal_name": "លោក ផេង រឹទ្ធីយ៉ា",
+    "phone": "093 995 947 / 089 995 947",
+    "email": "info@schoolsm.edu.kh"
+  },
+  "saved_default_configs": {
+    "custom_scoring_rules": {
+      "rules": [
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "R",
+          "subject_name_kh": "តែងសេចក្តី",
+          "max_score": "60.00",
+          "order": 1
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "D",
+          "subject_name_kh": "សរសេរតាមអាន",
+          "max_score": "40.00",
+          "order": 2
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "50.00",
+          "order": 4
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "50.00",
+          "order": 5
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "50.00",
+          "order": 6
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "100.00",
+          "order": 7
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "50.00",
+          "order": 9
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "50.00",
+          "order": 10
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "50.00",
+          "order": 11
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "He",
+          "subject_name_kh": "គេហវិទ្យា",
+          "max_score": "50.00",
+          "order": 12
+        },
+        {
+          "grade_level": 7,
+          "track": "GENERAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "R",
+          "subject_name_kh": "តែងសេចក្តី",
+          "max_score": "60.00",
+          "order": 1
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "D",
+          "subject_name_kh": "សរសេរតាមអាន",
+          "max_score": "40.00",
+          "order": 2
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "50.00",
+          "order": 4
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "50.00",
+          "order": 5
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "50.00",
+          "order": 6
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "100.00",
+          "order": 7
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "50.00",
+          "order": 9
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "50.00",
+          "order": 10
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "50.00",
+          "order": 11
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "He",
+          "subject_name_kh": "គេហវិទ្យា",
+          "max_score": "50.00",
+          "order": 12
+        },
+        {
+          "grade_level": 8,
+          "track": "GENERAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "R",
+          "subject_name_kh": "តែងសេចក្តី",
+          "max_score": "60.00",
+          "order": 1
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "D",
+          "subject_name_kh": "សរសេរតាមអាន",
+          "max_score": "40.00",
+          "order": 2
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "35.00",
+          "order": 4
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "32.00",
+          "order": 5
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "33.00",
+          "order": 6
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "100.00",
+          "order": 7
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "25.00",
+          "order": 8
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "35.00",
+          "order": 9
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "25.00",
+          "order": 10
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "35.00",
+          "order": 11
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "He",
+          "subject_name_kh": "គេហវិទ្យា",
+          "max_score": "50.00",
+          "order": 12
+        },
+        {
+          "grade_level": 9,
+          "track": "GENERAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "K",
+          "subject_name_kh": "ភាសាខ្មែរ",
+          "max_score": "150.00",
+          "order": 3
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "38.00",
+          "order": 4
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "38.00",
+          "order": 5
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "37.00",
+          "order": 6
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "150.00",
+          "order": 7
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "25.00",
+          "order": 8
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "50.00",
+          "order": 9
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "37.00",
+          "order": 10
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "38.00",
+          "order": 11
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "He",
+          "subject_name_kh": "គេហវិទ្យា",
+          "max_score": "37.00",
+          "order": 12
+        },
+        {
+          "grade_level": 10,
+          "track": "GENERAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "100.00",
+          "order": 14
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "K",
+          "subject_name_kh": "ភាសាខ្មែរ",
+          "max_score": "75.00",
+          "order": 3
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "50.00",
+          "order": 4
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "50.00",
+          "order": 5
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "50.00",
+          "order": 6
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "125.00",
+          "order": 7
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "75.00",
+          "order": 9
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "75.00",
+          "order": 10
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "75.00",
+          "order": 11
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "Ec",
+          "subject_name_kh": "សេដ្ឋកិច្ច",
+          "max_score": "50.00",
+          "order": 13
+        },
+        {
+          "grade_level": 11,
+          "track": "SCIENCE",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "K",
+          "subject_name_kh": "ភាសាខ្មែរ",
+          "max_score": "125.00",
+          "order": 3
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "75.00",
+          "order": 4
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "75.00",
+          "order": 5
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "75.00",
+          "order": 6
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "75.00",
+          "order": 7
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "50.00",
+          "order": 9
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "50.00",
+          "order": 10
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "50.00",
+          "order": 11
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "Ec",
+          "subject_name_kh": "សេដ្ឋកិច្ច",
+          "max_score": "50.00",
+          "order": 13
+        },
+        {
+          "grade_level": 11,
+          "track": "SOCIAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "K",
+          "subject_name_kh": "ភាសាខ្មែរ",
+          "max_score": "75.00",
+          "order": 3
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "50.00",
+          "order": 4
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "50.00",
+          "order": 5
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "50.00",
+          "order": 6
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "125.00",
+          "order": 7
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "75.00",
+          "order": 9
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "75.00",
+          "order": 10
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "75.00",
+          "order": 11
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "Ec",
+          "subject_name_kh": "សេដ្ឋកិច្ច",
+          "max_score": "50.00",
+          "order": 13
+        },
+        {
+          "grade_level": 12,
+          "track": "SCIENCE",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "K",
+          "subject_name_kh": "ភាសាខ្មែរ",
+          "max_score": "125.00",
+          "order": 3
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "I",
+          "subject_name_kh": "សីលធម៌",
+          "max_score": "75.00",
+          "order": 4
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "G",
+          "subject_name_kh": "ភូមិវិទ្យា",
+          "max_score": "75.00",
+          "order": 5
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "H",
+          "subject_name_kh": "ប្រវត្តិវិទ្យា",
+          "max_score": "75.00",
+          "order": 6
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "M",
+          "subject_name_kh": "គណិតវិទ្យា",
+          "max_score": "75.00",
+          "order": 7
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "Es",
+          "subject_name_kh": "ផែនដីវិទ្យា",
+          "max_score": "50.00",
+          "order": 8
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "P",
+          "subject_name_kh": "រូបវិទ្យា",
+          "max_score": "50.00",
+          "order": 9
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "C",
+          "subject_name_kh": "គីមីវិទ្យា",
+          "max_score": "50.00",
+          "order": 10
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "B",
+          "subject_name_kh": "ជីវវិទ្យា",
+          "max_score": "50.00",
+          "order": 11
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "Ec",
+          "subject_name_kh": "សេដ្ឋកិច្ច",
+          "max_score": "50.00",
+          "order": 13
+        },
+        {
+          "grade_level": 12,
+          "track": "SOCIAL",
+          "subject_code": "E",
+          "subject_name_kh": "អង់គ្លេស",
+          "max_score": "50.00",
+          "order": 14
+        }
+      ],
+      "streams": [
+        {
+          "name": "ថ្នាក់ទី ៧",
+          "grade_number": 7,
+          "track": "GENERAL",
+          "order": 1
+        },
+        {
+          "name": "ថ្នាក់ទី ៨",
+          "grade_number": 8,
+          "track": "GENERAL",
+          "order": 2
+        },
+        {
+          "name": "ថ្នាក់ទី ៩",
+          "grade_number": 9,
+          "track": "GENERAL",
+          "order": 3
+        },
+        {
+          "name": "ថ្នាក់ទី ១០",
+          "grade_number": 10,
+          "track": "GENERAL",
+          "order": 4
+        },
+        {
+          "name": "ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រសង្គម",
+          "grade_number": 11,
+          "track": "SOCIAL",
+          "order": 5
+        },
+        {
+          "name": "ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ",
+          "grade_number": 11,
+          "track": "SCIENCE",
+          "order": 6
+        },
+        {
+          "name": "ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម",
+          "grade_number": 12,
+          "track": "SOCIAL",
+          "order": 7
+        },
+        {
+          "name": "ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ",
+          "grade_number": 12,
+          "track": "SCIENCE",
+          "order": 8
+        }
+      ]
+    },
+    "moeys_subject_requirements": {
+      "7_GENERAL_15": 5,
+      "7_GENERAL_19": 5,
+      "7_GENERAL_21": 2,
+      "7_GENERAL_22": 1,
+      "7_GENERAL_23": 2,
+      "7_GENERAL_20": 1,
+      "7_GENERAL_16": 2,
+      "7_GENERAL_17": 2,
+      "7_GENERAL_18": 2,
+      "7_GENERAL_24": 2,
+      "7_GENERAL_25": 0,
+      "7_GENERAL_26": 2,
+      "7_GENERAL_162": 2,
+      "7_GENERAL_163": 2,
+      "7_GENERAL_161": 2,
+      "8_GENERAL_15": 5,
+      "8_GENERAL_19": 5,
+      "8_GENERAL_21": 2,
+      "8_GENERAL_22": 2,
+      "8_GENERAL_23": 2,
+      "8_GENERAL_20": 1,
+      "8_GENERAL_16": 2,
+      "8_GENERAL_17": 2,
+      "8_GENERAL_18": 2,
+      "8_GENERAL_24": 2,
+      "8_GENERAL_25": 0,
+      "8_GENERAL_26": 2,
+      "8_GENERAL_162": 2,
+      "8_GENERAL_163": 2,
+      "8_GENERAL_161": 2,
+      "9_GENERAL_15": 5,
+      "9_GENERAL_19": 5,
+      "9_GENERAL_21": 2,
+      "9_GENERAL_22": 2,
+      "9_GENERAL_23": 2,
+      "9_GENERAL_20": 1,
+      "9_GENERAL_16": 2,
+      "9_GENERAL_17": 2,
+      "9_GENERAL_18": 2,
+      "9_GENERAL_24": 2,
+      "9_GENERAL_25": 0,
+      "9_GENERAL_26": 2,
+      "9_GENERAL_162": 2,
+      "9_GENERAL_163": 2,
+      "9_GENERAL_161": 2,
+      "10_GENERAL_15": 5,
+      "10_GENERAL_19": 5,
+      "10_GENERAL_21": 3,
+      "10_GENERAL_22": 3,
+      "10_GENERAL_23": 3,
+      "10_GENERAL_20": 2,
+      "10_GENERAL_16": 2,
+      "10_GENERAL_17": 2,
+      "10_GENERAL_18": 2,
+      "10_GENERAL_24": 2,
+      "10_GENERAL_25": 2,
+      "10_GENERAL_26": 3,
+      "10_GENERAL_162": 2,
+      "10_GENERAL_163": 0,
+      "10_GENERAL_161": 2,
+      "11_SCIENCE_15": 4,
+      "11_SCIENCE_19": 6,
+      "11_SCIENCE_21": 4,
+      "11_SCIENCE_22": 4,
+      "11_SCIENCE_23": 4,
+      "11_SCIENCE_20": 2,
+      "11_SCIENCE_16": 2,
+      "11_SCIENCE_17": 2,
+      "11_SCIENCE_18": 2,
+      "11_SCIENCE_24": 0,
+      "11_SCIENCE_25": 2,
+      "11_SCIENCE_26": 2,
+      "11_SCIENCE_162": 2,
+      "11_SCIENCE_163": 0,
+      "11_SCIENCE_161": 2,
+      "11_SOCIAL_15": 6,
+      "11_SOCIAL_19": 4,
+      "11_SOCIAL_21": 2,
+      "11_SOCIAL_22": 1,
+      "11_SOCIAL_23": 2,
+      "11_SOCIAL_20": 2,
+      "11_SOCIAL_16": 4,
+      "11_SOCIAL_17": 4,
+      "11_SOCIAL_18": 4,
+      "11_SOCIAL_24": 0,
+      "11_SOCIAL_25": 3,
+      "11_SOCIAL_26": 2,
+      "11_SOCIAL_162": 2,
+      "11_SOCIAL_163": 0,
+      "11_SOCIAL_161": 2,
+      "12_SCIENCE_15": 4,
+      "12_SCIENCE_19": 6,
+      "12_SCIENCE_21": 4,
+      "12_SCIENCE_22": 4,
+      "12_SCIENCE_23": 4,
+      "12_SCIENCE_20": 2,
+      "12_SCIENCE_16": 2,
+      "12_SCIENCE_17": 2,
+      "12_SCIENCE_18": 2,
+      "12_SCIENCE_24": 0,
+      "12_SCIENCE_25": 2,
+      "12_SCIENCE_26": 2,
+      "12_SCIENCE_162": 2,
+      "12_SCIENCE_163": 0,
+      "12_SCIENCE_161": 2,
+      "12_SOCIAL_15": 6,
+      "12_SOCIAL_19": 4,
+      "12_SOCIAL_21": 2,
+      "12_SOCIAL_22": 1,
+      "12_SOCIAL_23": 2,
+      "12_SOCIAL_20": 2,
+      "12_SOCIAL_16": 4,
+      "12_SOCIAL_17": 4,
+      "12_SOCIAL_18": 4,
+      "12_SOCIAL_24": 0,
+      "12_SOCIAL_25": 3,
+      "12_SOCIAL_26": 2,
+      "12_SOCIAL_162": 2,
+      "12_SOCIAL_163": 0,
+      "12_SOCIAL_161": 2
+    },
+    "custom_subject_requirements": {
+      "7_GENERAL_15": 5,
+      "7_GENERAL_19": 5,
+      "7_GENERAL_21": 2,
+      "7_GENERAL_22": 1,
+      "7_GENERAL_23": 2,
+      "7_GENERAL_20": 1,
+      "7_GENERAL_16": 2,
+      "7_GENERAL_17": 2,
+      "7_GENERAL_18": 2,
+      "7_GENERAL_24": 2,
+      "7_GENERAL_25": 0,
+      "7_GENERAL_26": 2,
+      "7_GENERAL_162": 2,
+      "7_GENERAL_163": 2,
+      "7_GENERAL_161": 2,
+      "8_GENERAL_15": 5,
+      "8_GENERAL_19": 5,
+      "8_GENERAL_21": 2,
+      "8_GENERAL_22": 2,
+      "8_GENERAL_23": 2,
+      "8_GENERAL_20": 1,
+      "8_GENERAL_16": 2,
+      "8_GENERAL_17": 2,
+      "8_GENERAL_18": 2,
+      "8_GENERAL_24": 2,
+      "8_GENERAL_25": 0,
+      "8_GENERAL_26": 2,
+      "8_GENERAL_162": 2,
+      "8_GENERAL_163": 2,
+      "8_GENERAL_161": 2,
+      "9_GENERAL_15": 5,
+      "9_GENERAL_19": 5,
+      "9_GENERAL_21": 2,
+      "9_GENERAL_22": 2,
+      "9_GENERAL_23": 2,
+      "9_GENERAL_20": 1,
+      "9_GENERAL_16": 2,
+      "9_GENERAL_17": 2,
+      "9_GENERAL_18": 2,
+      "9_GENERAL_24": 2,
+      "9_GENERAL_25": 0,
+      "9_GENERAL_26": 2,
+      "9_GENERAL_162": 2,
+      "9_GENERAL_163": 2,
+      "9_GENERAL_161": 2,
+      "10_GENERAL_15": 5,
+      "10_GENERAL_19": 5,
+      "10_GENERAL_21": 3,
+      "10_GENERAL_22": 3,
+      "10_GENERAL_23": 3,
+      "10_GENERAL_20": 2,
+      "10_GENERAL_16": 2,
+      "10_GENERAL_17": 2,
+      "10_GENERAL_18": 2,
+      "10_GENERAL_24": 2,
+      "10_GENERAL_25": 2,
+      "10_GENERAL_26": 3,
+      "10_GENERAL_162": 2,
+      "10_GENERAL_163": 0,
+      "10_GENERAL_161": 2,
+      "11_SCIENCE_15": 4,
+      "11_SCIENCE_19": 6,
+      "11_SCIENCE_21": 4,
+      "11_SCIENCE_22": 4,
+      "11_SCIENCE_23": 4,
+      "11_SCIENCE_20": 2,
+      "11_SCIENCE_16": 2,
+      "11_SCIENCE_17": 2,
+      "11_SCIENCE_18": 2,
+      "11_SCIENCE_24": 0,
+      "11_SCIENCE_25": 2,
+      "11_SCIENCE_26": 2,
+      "11_SCIENCE_162": 2,
+      "11_SCIENCE_163": 0,
+      "11_SCIENCE_161": 2,
+      "11_SOCIAL_15": 6,
+      "11_SOCIAL_19": 4,
+      "11_SOCIAL_21": 2,
+      "11_SOCIAL_22": 1,
+      "11_SOCIAL_23": 2,
+      "11_SOCIAL_20": 2,
+      "11_SOCIAL_16": 4,
+      "11_SOCIAL_17": 4,
+      "11_SOCIAL_18": 4,
+      "11_SOCIAL_24": 0,
+      "11_SOCIAL_25": 3,
+      "11_SOCIAL_26": 2,
+      "11_SOCIAL_162": 2,
+      "11_SOCIAL_163": 0,
+      "11_SOCIAL_161": 2,
+      "12_SCIENCE_15": 4,
+      "12_SCIENCE_19": 6,
+      "12_SCIENCE_21": 4,
+      "12_SCIENCE_22": 4,
+      "12_SCIENCE_23": 4,
+      "12_SCIENCE_20": 2,
+      "12_SCIENCE_16": 2,
+      "12_SCIENCE_17": 2,
+      "12_SCIENCE_18": 2,
+      "12_SCIENCE_24": 0,
+      "12_SCIENCE_25": 2,
+      "12_SCIENCE_26": 2,
+      "12_SCIENCE_162": 2,
+      "12_SCIENCE_163": 0,
+      "12_SCIENCE_161": 2,
+      "12_SOCIAL_15": 6,
+      "12_SOCIAL_19": 4,
+      "12_SOCIAL_21": 2,
+      "12_SOCIAL_22": 1,
+      "12_SOCIAL_23": 2,
+      "12_SOCIAL_20": 2,
+      "12_SOCIAL_16": 4,
+      "12_SOCIAL_17": 4,
+      "12_SOCIAL_18": 4,
+      "12_SOCIAL_24": 0,
+      "12_SOCIAL_25": 3,
+      "12_SOCIAL_26": 2,
+      "12_SOCIAL_162": 2,
+      "12_SOCIAL_163": 0,
+      "12_SOCIAL_161": 2
+    },
+    "training_level_quotas": {
+      "គ្រូទុតិយភូមិ": 16,
+      "គ្រូបឋមភូមិ": 18,
+      "គ្រូកម្រិតបឋម": 18,
+      "default": 18
+    },
+    "teacher_subject_duty_codes": {
+      "1177": "M1",
+      "19_1177": "M1",
+      "1157": "M2",
+      "19_1157": "M2",
+      "1167": "M3",
+      "19_1167": "M3",
+      "1170": "M4",
+      "19_1170": "M4",
+      "1120": "M5",
+      "19_1120": "M5",
+      "1111": "M6",
+      "19_1111": "M6",
+      "1132": "M7",
+      "19_1132": "M7",
+      "1097": "M8",
+      "19_1097": "M8",
+      "1085": "M9",
+      "19_1085": "M9",
+      "1133": "M10",
+      "19_1133": "M10",
+      "1112": "M11",
+      "19_1112": "M11",
+      "1185": "P1",
+      "21_1185": "P1",
+      "1180": "P2",
+      "21_1180": "P2",
+      "1168": "P3",
+      "21_1168": "P3",
+      "1108": "P4",
+      "21_1108": "P4",
+      "1117": "P5",
+      "21_1117": "P5",
+      "1089": "P6",
+      "21_1089": "P6",
+      "1114": "P7",
+      "21_1114": "P7",
+      "1169": "C1",
+      "22_1169": "C1",
+      "1135": "C2",
+      "22_1135": "C2",
+      "1172": "C3",
+      "22_1172": "C3",
+      "1124": "C4",
+      "22_1124": "C4",
+      "1129": "C5",
+      "22_1129": "C5",
+      "1128": "C6",
+      "22_1128": "C6",
+      "1110": "C7",
+      "22_1110": "C7",
+      "1183": "B1",
+      "23_1183": "B1",
+      "1122": "B2",
+      "23_1122": "B2",
+      "1095": "B3",
+      "23_1095": "B3",
+      "1115": "B4",
+      "23_1115": "B4",
+      "1139": "B5",
+      "23_1139": "B5",
+      "1161": "B6",
+      "23_1161": "B6",
+      "1189": "ES1",
+      "20_1189": "ES1",
+      "1088": "ES2",
+      "20_1088": "ES2",
+      "1103": "ES3",
+      "20_1103": "ES3",
+      "1116": "ES4",
+      "20_1116": "ES4",
+      "1156": "H1",
+      "18_1156": "H1",
+      "1093": "H2",
+      "18_1093": "H2",
+      "1118": "H3",
+      "18_1118": "H3",
+      "1121": "H4",
+      "18_1121": "H4",
+      "1094": "H5",
+      "18_1094": "H5",
+      "1080": "H6",
+      "18_1080": "H6",
+      "1190": "I9G1",
+      "17_1190": "I9G1",
+      "1188": "G2",
+      "17_1188": "G2",
+      "1123": "G3",
+      "17_1123": "G3",
+      "1090": "G4",
+      "17_1090": "G4",
+      "1171": "G5",
+      "17_1171": "G5",
+      "1126": "G6",
+      "17_1126": "G6",
+      "1091": "EC1",
+      "25_1091": "EC1",
+      "1181": "EC2",
+      "25_1181": "EC2",
+      "1149": "EC3",
+      "25_1149": "EC3",
+      "1186": "HE1",
+      "24_1186": "HE1",
+      "1165": "HE2",
+      "24_1165": "HE2",
+      "1160": "HE3",
+      "24_1160": "HE3",
+      "1159": "HE4",
+      "24_1159": "HE4",
+      "1187": "I1",
+      "16_1187": "I1",
+      "1166": "I2",
+      "16_1166": "I2",
+      "1152": "I3",
+      "16_1152": "I3",
+      "1099": "I4",
+      "16_1099": "I4",
+      "1134": "I5",
+      "16_1134": "I5",
+      "1086": "I6",
+      "16_1086": "I6",
+      "1100": "I7",
+      "16_1100": "I7",
+      "1142": "K1",
+      "15_1142": "K1",
+      "1144": "K2",
+      "15_1144": "K2",
+      "1162": "K3",
+      "15_1162": "K3",
+      "1140": "K4",
+      "15_1140": "K4",
+      "1138": "K5",
+      "15_1138": "K5",
+      "1113": "K6",
+      "15_1113": "K6",
+      "1125": "K7",
+      "15_1125": "K7",
+      "1102": "K8",
+      "15_1102": "K8",
+      "1101": "K9",
+      "15_1101": "K9",
+      "1131": "K10",
+      "15_1131": "K10",
+      "1092": "K11",
+      "15_1092": "K11",
+      "1105": "K12",
+      "15_1105": "K12",
+      "1081": "K13",
+      "15_1081": "K13",
+      "1127": "K14",
+      "15_1127": "K14",
+      "1083": "K15",
+      "15_1083": "K15",
+      "1078": "K16",
+      "15_1078": "K16",
+      "1136": "E1",
+      "26_1136": "E1",
+      "1109": "E2",
+      "26_1109": "E2",
+      "1173": "E3",
+      "26_1173": "E3",
+      "1106": "E4",
+      "26_1106": "E4",
+      "1130": "E5",
+      "26_1130": "E5",
+      "1096": "E6",
+      "26_1096": "E6",
+      "1104": "E7",
+      "26_1104": "E7",
+      "1154": "E8",
+      "26_1154": "E8",
+      "1151": "ED1",
+      "271_1151": "ED1",
+      "1150": "ED2",
+      "271_1150": "ED2",
+      "1176": "ED3",
+      "271_1176": "ED3",
+      "1179": "ED4",
+      "271_1179": "ED4",
+      "1174": "ED5",
+      "271_1174": "ED5",
+      "1158": "ED6",
+      "271_1158": "ED6",
+      "1178": "ED7",
+      "271_1178": "ED7",
+      "1184": "ED8",
+      "271_1184": "ED8",
+      "1182": "ED9",
+      "271_1182": "ED9",
+      "1175": "ED10",
+      "271_1175": "ED10",
+      "1147": "ED11",
+      "271_1147": "ED11",
+      "1137": "AG1",
+      "272_1137": "AG1",
+      "1143": "AG2",
+      "272_1143": "AG2",
+      "1148": "AG3",
+      "272_1148": "AG3",
+      "1084": "AG4",
+      "272_1084": "AG4",
+      "1082": "AG5",
+      "272_1082": "AG5",
+      "1163": "AG6",
+      "272_1163": "AG6",
+      "1098": "AG7",
+      "272_1098": "AG7",
+      "1145": "AG8",
+      "272_1145": "AG8"
+    }
+  },
+  "grade_levels": [
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "name": "ថ្នាក់ទី ៧",
+      "order": 1,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 8,
+      "track": "GENERAL",
+      "name": "ថ្នាក់ទី ៨",
+      "order": 2,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": "ការចុះឈ្មោះសម្រាប់ថ្នាក់ទី ៨ បានបិទ!"
+    },
+    {
+      "grade_number": 9,
+      "track": "GENERAL",
+      "name": "ថ្នាក់ទី ៩",
+      "order": 3,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "name": "ថ្នាក់ទី ១០",
+      "order": 4,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 11,
+      "track": "SOCIAL",
+      "name": "ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រសង្គម",
+      "order": 5,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 11,
+      "track": "SCIENCE",
+      "name": "ថ្នាក់ទី ១១ វិទ្យាសាស្ត្រ",
+      "order": 6,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 12,
+      "track": "SOCIAL",
+      "name": "ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រសង្គម",
+      "order": 7,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    },
+    {
+      "grade_number": 12,
+      "track": "SCIENCE",
+      "name": "ថ្នាក់ទី ១២ វិទ្យាសាស្ត្រ",
+      "order": 8,
+      "level_type": "",
+      "is_registration_open": true,
+      "registration_closed_message": ""
+    }
+  ],
+  "scoring_rules": [
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "R",
+      "subject_name_kh": "តែងសេចក្តី",
+      "max_score": "60.00",
+      "order": 1
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "D",
+      "subject_name_kh": "សរសេរតាមអាន",
+      "max_score": "40.00",
+      "order": 2
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "50.00",
+      "order": 4
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "50.00",
+      "order": 5
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "50.00",
+      "order": 6
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "125.00",
+      "order": 7
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "50.00",
+      "order": 9
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "50.00",
+      "order": 10
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "50.00",
+      "order": 11
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 12
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 7,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 7,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 7,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 7,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "R",
+      "subject_name_kh": "តែងសេចក្តី",
+      "max_score": "60.00",
+      "order": 1
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "D",
+      "subject_name_kh": "សរសេរតាមអាន",
+      "max_score": "40.00",
+      "order": 2
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "50.00",
+      "order": 4
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "50.00",
+      "order": 5
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "50.00",
+      "order": 6
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "100.00",
+      "order": 7
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "50.00",
+      "order": 9
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "50.00",
+      "order": 10
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "50.00",
+      "order": 11
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 12
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 8,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 8,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 8,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 8,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "R",
+      "subject_name_kh": "តែងសេចក្តី",
+      "max_score": "60.00",
+      "order": 1
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "D",
+      "subject_name_kh": "សរសេរតាមអាន",
+      "max_score": "40.00",
+      "order": 2
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "35.00",
+      "order": 4
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "32.00",
+      "order": 5
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "33.00",
+      "order": 6
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "100.00",
+      "order": 7
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "25.00",
+      "order": 8
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "35.00",
+      "order": 9
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "25.00",
+      "order": 10
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "35.00",
+      "order": 11
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 12
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 9,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 9,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 9,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 9,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "150.00",
+      "order": 3
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "38.00",
+      "order": 4
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "38.00",
+      "order": 5
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "37.00",
+      "order": 6
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "150.00",
+      "order": 7
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "25.00",
+      "order": 8
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "50.00",
+      "order": 9
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "37.00",
+      "order": 10
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "38.00",
+      "order": 11
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "37.00",
+      "order": 12
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "100.00",
+      "order": 14
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 10,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 10,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 10,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 10,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 11,
+      "track": "GENERAL",
+      "subject_code": "KH_TEST",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "100.00",
+      "order": 1
+    },
+    {
+      "grade_level": 11,
+      "track": "GENERAL",
+      "subject_code": "MATH_TEST",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "100.00",
+      "order": 1
+    },
+    {
+      "grade_level": 11,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 11,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "75.00",
+      "order": 3
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "50.00",
+      "order": 4
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "50.00",
+      "order": 5
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "50.00",
+      "order": 6
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "125.00",
+      "order": 7
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "75.00",
+      "order": 9
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "75.00",
+      "order": 10
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "75.00",
+      "order": 11
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 13
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "125.00",
+      "order": 3
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "75.00",
+      "order": 4
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "75.00",
+      "order": 5
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "75.00",
+      "order": 6
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "75.00",
+      "order": 7
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "50.00",
+      "order": 9
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "50.00",
+      "order": 10
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "50.00",
+      "order": 11
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 13
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 12,
+      "track": "GENERAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 12,
+      "track": "GENERAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "75.00",
+      "order": 3
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "50.00",
+      "order": 4
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "50.00",
+      "order": 5
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "50.00",
+      "order": 6
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "175.00",
+      "order": 7
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "75.00",
+      "order": 9
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "75.00",
+      "order": 10
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "75.00",
+      "order": 11
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 13
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "125.00",
+      "order": 3
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "I",
+      "subject_name_kh": "សីលធម៌",
+      "max_score": "75.00",
+      "order": 4
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "G",
+      "subject_name_kh": "ភូមិវិទ្យា",
+      "max_score": "75.00",
+      "order": 5
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "H",
+      "subject_name_kh": "ប្រវត្តិវិទ្យា",
+      "max_score": "75.00",
+      "order": 6
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "M",
+      "subject_name_kh": "គណិតវិទ្យា",
+      "max_score": "75.00",
+      "order": 7
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "Es",
+      "subject_name_kh": "ផែនដីវិទ្យា",
+      "max_score": "50.00",
+      "order": 8
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "P",
+      "subject_name_kh": "រូបវិទ្យា",
+      "max_score": "50.00",
+      "order": 9
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "C",
+      "subject_name_kh": "គីមីវិទ្យា",
+      "max_score": "50.00",
+      "order": 10
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "B",
+      "subject_name_kh": "ជីវវិទ្យា",
+      "max_score": "50.00",
+      "order": 11
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 13
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "E",
+      "subject_name_kh": "អង់គ្លេស",
+      "max_score": "50.00",
+      "order": 14
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "ED",
+      "subject_name_kh": "អប់រំកាយ និងកីឡា",
+      "max_score": "50.00",
+      "order": 15
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "AG",
+      "subject_name_kh": "កសិកម្ម",
+      "max_score": "50.00",
+      "order": 16
+    }
+  ],
+  "verification_form_configs": [
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "form_template": "GENERAL",
+      "custom_instructions": "",
+      "is_active": true
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "form_template": "MOEYS_INDIVIDUAL",
+      "custom_instructions": "សេចក្តីណែនាំពីរដ្ឋបាល៖ សូមភ្ជាប់សំបុត្រកំណើតច្បាប់ដើម",
+      "is_active": true
+    }
+  ],
+  "enrollment_options": [
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "health_sec",
+      "label": "ផ្នែកព័ត៌មានសុខភាពសិស្ស",
+      "field_type": "SECTION",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 12
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "extracurricular",
+      "label": "សកម្មភាពក្រៅម៉ោងសិក្សា",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 2,
+      "choices": "កីឡាបាល់ទាត់, តន្ត្រី, គំនូរ, កុំព្យូទ័រ",
+      "placeholder": "",
+      "col_width": 12
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "study_shift",
+      "label": "វេនសិក្សា",
+      "field_type": "RADIO",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 3,
+      "choices": "វេនព្រឹក, វេនរសៀល",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "preferred_time",
+      "label": "ម៉ោងសិក្សាពេញចិត្ត",
+      "field_type": "TIME",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 4,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 4
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "entry_date",
+      "label": "កាលបរិច្ឆេទចូលរៀន",
+      "field_type": "DATE",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 5,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 12
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "foreign_language",
+      "label": "ភាសាបរទេសទី១",
+      "field_type": "SELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 6,
+      "choices": "ភាសាអង់គ្លេស, ភាសាបារាំង",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 7,
+      "track": "GENERAL",
+      "field_name": "primary_school",
+      "label": "ឈ្មោះសាលាបឋមសិក្សាដើម",
+      "field_type": "TEXT",
+      "form_category": "GENERAL",
+      "is_required": true,
+      "is_active": true,
+      "order": 7,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "extra_notes_mobile",
+      "label": "កំណត់សម្គាល់បន្ថែមទូទៅ",
+      "field_type": "TEXT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "foreign_lang_2",
+      "label": "ភាសាបរទេសទី២",
+      "field_type": "MULTISELECT",
+      "form_category": "GENERAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "បារាំង, ចិន, ជប៉ុន, ថៃ",
+      "placeholder": "ជ្រើសរើសភាសាដែលចេះ",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "moeys_doc_num_mobile",
+      "label": "លេខបញ្ជីសំបុត្រកំណើតដើម",
+      "field_type": "TEXT",
+      "form_category": "MOEYS_INDIVIDUAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 10,
+      "track": "GENERAL",
+      "field_name": "birth_cert_book_num",
+      "label": "លេខកត់ត្រាសំបុត្រកំណើត",
+      "field_type": "TEXT",
+      "form_category": "MOEYS_INDIVIDUAL",
+      "is_required": false,
+      "is_active": true,
+      "order": 1,
+      "choices": "",
+      "placeholder": "",
+      "col_width": 6
+    },
+    {
+      "grade_number": 11,
+      "track": "SCIENCE",
+      "field_name": "diploma_grade",
+      "label": "និទ្ទេសប្រឡងឌីប្លូម",
+      "field_type": "SELECT",
+      "form_category": "GENERAL",
+      "is_required": true,
+      "is_active": true,
+      "order": 1,
+      "choices": "និទ្ទេស A, និទ្ទេស B, និទ្ទេស C, និទ្ទេស D, និទ្ទេស E",
+      "placeholder": "",
+      "col_width": 6
+    }
+  ],
+  "google_sheets_config": {
+    "is_active": true,
+    "admin_email": "admin@myschool.edu.kh",
+    "drive_folder_name": "SchoolSM_Cloud_Sync",
+    "drive_folder_id": "folder_xyz_123",
+    "sync_students_with_photos": true,
+    "spreadsheets_registry": {
+      "2025-2026": {
+        "sheet_id": "sheet_abc_123",
+        "sheet_url": "https://docs.google.com/spreadsheets/d/sheet_abc_123/edit"
+      }
+    }
+  }
+}

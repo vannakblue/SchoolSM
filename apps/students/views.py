@@ -324,6 +324,7 @@ def student_enroll(request):
         'school_profile': school_profile,
         'configured_mode': configured_mode,
         'active_mode': active_mode,
+        'reg_config': school_profile.get_registration_fields_config(),
         'title': 'ចុះឈ្មោះសិស្សថ្មី / Student Enrollment'
     })
 
@@ -588,6 +589,7 @@ def public_student_enroll(request):
         'school_profile': school_profile,
         'configured_mode': configured_mode,
         'active_mode': active_mode,
+        'reg_config': school_profile.get_registration_fields_config(),
         'is_staff_preview': is_staff_preview,
         'is_reg_allowed': is_allowed,
         'reg_status': status_code,
@@ -682,6 +684,103 @@ def api_set_registration_mode(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_save_registration_fields_config(request):
+    """
+    Saves Admin's ticking preferences for Registration Sections and individual Fields.
+    Supports both General Form and MoEYS Individual 35 Columns Form.
+    Also syncs to permanent data storage so that Git push / render deploy never wipes it.
+    """
+    from apps.accounts.models import SchoolProfile
+    from apps.accounts.permanent_data_manager import export_permanent_admin_defaults
+    from django.http import JsonResponse
+    import json
+
+    if request.method == 'POST':
+        try:
+            if request.content_type == 'application/json':
+                payload = json.loads(request.body)
+            else:
+                raw_data = request.POST.get('config_data')
+                payload = json.loads(raw_data) if raw_data else request.POST.dict()
+
+            profile = SchoolProfile.get_settings()
+            current_config = profile.get_registration_fields_config()
+
+            # Merge sections and fields from payload
+            for form_key in ['general', 'moeys']:
+                if form_key in payload:
+                    form_data = payload[form_key]
+                    if 'sections' in form_data and isinstance(form_data['sections'], dict):
+                        for s_key, s_val in form_data['sections'].items():
+                            if s_key in current_config[form_key]['sections']:
+                                current_config[form_key]['sections'][s_key] = bool(s_val)
+                    if 'fields' in form_data and isinstance(form_data['fields'], dict):
+                        for f_key, f_val in form_data['fields'].items():
+                            if f_key in current_config[form_key]['fields']:
+                                current_config[form_key]['fields'][f_key] = bool(f_val)
+
+            # Re-enforce basic mandatory fields
+            current_config['general']['sections']['student_info'] = True
+            current_config['general']['fields']['khmer_name'] = True
+            current_config['general']['fields']['gender'] = True
+            current_config['general']['fields']['date_of_birth'] = True
+
+            current_config['moeys']['sections']['identity'] = True
+            current_config['moeys']['fields']['surname'] = True
+            current_config['moeys']['fields']['given_name'] = True
+            current_config['moeys']['fields']['gender'] = True
+            current_config['moeys']['fields']['date_of_birth'] = True
+
+            profile.registration_form_config = current_config
+            profile.save(update_fields=['registration_form_config'])
+
+            # Automatically export to permanent JSON fixture
+            try:
+                export_permanent_admin_defaults()
+            except Exception:
+                pass
+
+            return JsonResponse({
+                'status': 'success',
+                'message': '🎉 បានរក្សាទុកការកំណត់ផ្នែក និងប្រអប់បែបបទចុះឈ្មោះ (Ticking Settings) ដោយជោគជ័យ!',
+                'config': current_config
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_reset_registration_fields_config(request):
+    """
+    Resets the registration form sections and fields to factory defaults (all ticked).
+    """
+    from apps.accounts.models import SchoolProfile, DEFAULT_REGISTRATION_FIELDS_CONFIG
+    from apps.accounts.permanent_data_manager import export_permanent_admin_defaults
+    from django.http import JsonResponse
+    import copy
+
+    if request.method == 'POST':
+        profile = SchoolProfile.get_settings()
+        profile.registration_form_config = copy.deepcopy(DEFAULT_REGISTRATION_FIELDS_CONFIG)
+        profile.save(update_fields=['registration_form_config'])
+        try:
+            export_permanent_admin_defaults()
+        except Exception:
+            pass
+        return JsonResponse({
+            'status': 'success',
+            'message': '🔄 បានស្តារការកំណត់ផ្នែក និងប្រអប់ចុះឈ្មោះមកតាមលំនាំដើមវិញដោយជោគជ័យ!',
+            'config': profile.registration_form_config
+        })
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
 
 
 def api_check_student_id(request):
@@ -1591,6 +1690,7 @@ def student_edit(request, pk):
         'school_profile': school_profile,
         'configured_mode': configured_mode,
         'active_mode': active_mode,
+        'reg_config': school_profile.get_registration_fields_config(),
         'title': f'កែប្រែព័ត៌មានសិស្ស {student.khmer_name}',
         'student': student
     })

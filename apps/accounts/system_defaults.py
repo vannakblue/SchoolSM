@@ -28,14 +28,24 @@ def ensure_system_defaults(stdout=None, purge_non_defaults=False):
                 is_superuser=True,
                 is_active=True
             )
-        admin_user.role = User.Role.ADMIN
-        admin_user.is_staff = True
-        admin_user.is_superuser = True
-        admin_user.is_active = True
-        admin_user.set_password('123')
-        admin_user.save()
-        if stdout:
-            stdout.write("Admin account verified with permanent password '123'.")
+            admin_user.set_password('123')
+            admin_user.save()
+            if stdout:
+                stdout.write("Admin account initialized with default password '123'.")
+        else:
+            # Ensure staff and superuser permissions, but NEVER overwrite existing password or profile
+            changed = False
+            if not admin_user.is_staff or not admin_user.is_superuser:
+                admin_user.is_staff = True
+                admin_user.is_superuser = True
+                changed = True
+            if admin_user.role != User.Role.ADMIN:
+                admin_user.role = User.Role.ADMIN
+                changed = True
+            if changed:
+                admin_user.save(update_fields=['is_staff', 'is_superuser', 'role'])
+            if stdout:
+                stdout.write("Admin account verified without modifying existing credentials.")
     except Exception as e:
         if stdout:
             stdout.write(f"Admin setup warning: {e}")
@@ -126,42 +136,12 @@ def ensure_system_defaults(stdout=None, purge_non_defaults=False):
         if stdout:
             stdout.write(f"Academic years default setup warning: {e}")
 
-    # 3. ENSURE CLEANUP OF CLASSROOMS WITH FEWER THAN 10 STUDENTS ACROSS UPDATES
+    # 3. RESTORE PERMANENT ADMIN DEFAULTS (Scoring Rules, School Profile, Registration Mode, Grade Configs)
     try:
-        from apps.academics.models import Classroom
-        from apps.students.models import Student
-        from django.db.models import Count
-
-        small_classes = list(Classroom.objects.annotate(stu_count=Count('students')).filter(stu_count__lt=10))
-        if small_classes:
-            real_classes = {
-                (c.code or '').upper().strip(): c
-                for c in Classroom.objects.annotate(stu_count=Count('students')).filter(stu_count__gte=10)
-                if c.code
-            }
-            with transaction.atomic():
-                for sc in small_classes:
-                    students = list(Student.objects.filter(classroom=sc))
-                    if students:
-                        raw_code = (sc.code or '').upper().split('-')[0].split('_')[0].strip()
-                        target_cls = real_classes.get(raw_code)
-                        if not target_cls and '8B' in (sc.name or ''):
-                            target_cls = real_classes.get('8B')
-                        if not target_cls and '7A' in (sc.name or ''):
-                            target_cls = real_classes.get('7A')
-                        if not target_cls and '10A' in (sc.name or ''):
-                            target_cls = real_classes.get('10A')
-
-                        if target_cls:
-                            Student.objects.filter(classroom=sc).update(classroom=target_cls)
-                        else:
-                            Student.objects.filter(classroom=sc).update(classroom=None)
-
-                sc_ids = [sc.id for sc in small_classes]
-                Classroom.objects.filter(id__in=sc_ids).delete()
-                if stdout:
-                    stdout.write(f"Cleaned up {len(sc_ids)} classrooms with fewer than 10 students. Preserved {len(real_classes)} official classrooms.")
-    except Exception as cls_err:
+        from apps.accounts.permanent_data_manager import import_permanent_admin_defaults
+        import_permanent_admin_defaults(stdout=stdout)
+    except Exception as e:
         if stdout:
-            stdout.write(f"Classroom cleanup note: {cls_err}")
+            stdout.write(f"Permanent defaults restore note: {e}")
+
 

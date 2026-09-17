@@ -25,6 +25,9 @@
         <a href="{% url 'grade_options_manager' %}" class="btn btn-light shadow-xs border text-secondary btn-sm" target="_blank" title="គ្រប់គ្រងបែបបទតាមកម្រិតថ្នាក់">
             <i class="fa-solid fa-sliders me-1"></i> កំណត់បែបបទថ្នាក់
         </a>
+        <button type="button" class="btn btn-outline-primary shadow-xs border btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#registrationFieldsTickingModal" title="ជ្រើសរើសផ្នែកធំៗ (ផ្នែកទី១ ទី២...) និងចំណុចតូចៗនីមួយៗដែលត្រូវឱ្យសិស្សបំពេញ">
+            <i class="fa-solid fa-list-check me-1"></i> កំណត់ផ្នែក & ចំណុចបែបបទ (Ticking)
+        </button>
         <a href="{% url 'student_list' %}" class="btn btn-light shadow-xs border">
             <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
         </a>
@@ -86,6 +89,7 @@
                         <i class="fa-solid fa-user-graduate me-2"></i>១. ព័ត៌មានផ្ទាល់ខ្លួនសិស្ស (Student Info)
                     </h5>
                     <div class="row g-3">
+                        {% if not reg_config or reg_config.general.fields.student_id %}
                         <div class="col-md-12">
                             <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1" style="background: #f8fafc;">
                                 <div class="d-flex align-items-center gap-2">
@@ -113,14 +117,17 @@
                             </div>
                             {% endif %}
                         </div>
+                        {% endif %}
 
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">ឈ្មោះជាភាសាខ្មែរ *</label>
                             {{ form.khmer_name }}
                         </div>
+
+                        {% if not reg_config or reg_config.general.fields.latin_name %}
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង *</label>
+                                <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង</label>
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 small" id="latin_auto_status_badge" style="font-size: 0.72rem;">
                                     <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto Live
                                 </span>
@@ -132,6 +139,8 @@
                                 </button>
                             </div>
                         </div>
+                        {% endif %}
+
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ភេទ *</label>
                             {{ form.gender }}
@@ -140,10 +149,15 @@
                             <label class="form-label fw-bold small">ថ្ងៃខែឆ្នាំកំណើត *</label>
                             {{ form.date_of_birth }}
                         </div>
+
+                        {% if not reg_config or reg_config.general.fields.phone %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">លេខទូរស័ព្ទសិស្ស / ទំនាក់ទំនង</label>
                             {{ form.phone }}
                         </div>
+                        {% endif %}
+
+                        {% if not reg_config or reg_config.general.fields.previous_school %}
                         <div class="col-md-12">
                             <label class="form-label fw-bold small text-dark d-flex align-items-center justify-content-between">
                                 <span><i class="fa-solid fa-school text-primary me-1"></i> ឆ្នាំសិក្សាចាស់មកពីសាលា (Previous School & Year)</span>
@@ -152,8 +166,10 @@
                             {{ form.previous_school }}
                             <div class="form-text small text-muted">សាលារៀន ឬឆ្នាំសិក្សាចាស់ដែលសិស្សធ្លាប់បានរៀនពីមុន (Admin អាចកែប្រែ ឬជំនួសបានគ្រប់ពេលវេលា)</div>
                         </div>
+                        {% endif %}
                     </div>
 
+                    {% if not reg_config or reg_config.general.fields.place_of_birth %}
                     <!-- 📍 ទីកន្លែងកំណើត (Place of Birth Dropdowns) -->
                     <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -201,7 +217,13 @@
                             {{ form.place_of_birth }}
                         </div>
                     </div>
+                    {% else %}
+                    <div style="display: none;">
+                        {{ form.place_of_birth }}
+                    </div>
+                    {% endif %}
 
+                    {% if not reg_config or reg_config.general.fields.current_address %}
                     <!-- 🏠 អាសយដ្ឋានបច្ចុប្បន្ន (Current Address Dropdowns) -->
                     <div class="card border rounded-3 p-3 mt-3 shadow-sm bg-white" style="border-color: #e2e8f0;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -255,8 +277,14 @@
                             {{ form.current_address }}
                         </div>
                     </div>
+                    {% else %}
+                    <div style="display: none;">
+                        {{ form.current_address }}
+                    </div>
+                    {% endif %}
                 </div>
 
+                {% if not reg_config or reg_config.general.sections.parent_info %}
                 <!-- Section 2: Parent Information -->
                 <div class="custom-card mb-4 draggable-form-card" id="card-parent-info" draggable="true">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
@@ -264,41 +292,59 @@
                         <i class="fa-solid fa-people-roof me-2"></i>២. ព័ត៌មានអាណាព្យាបាល (Parent / Guardian Info)
                     </h5>
                     <div class="row g-3">
+                        {% if not reg_config or reg_config.general.fields.father_name %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
                             {{ form.father_name }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.father_phone %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
                             {{ form.father_phone }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.father_job %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">មុខរបរឪពុក</label>
                             {{ form.father_job }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.mother_name %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
                             {{ form.mother_name }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.mother_phone %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
                             {{ form.mother_phone }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.mother_job %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">មុខរបរម្តាយ</label>
                             {{ form.mother_job }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.guardian_name %}
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស (បើមាន)</label>
                             {{ form.guardian_name }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.general.fields.emergency_phone %}
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">លេខទាក់ទងបន្ទាន់</label>
                             {{ form.emergency_phone }}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
 
+                {% if not reg_config or reg_config.general.sections.grade_specific %}
                 <!-- Section 5: Dynamic Grade-Specific Information (បែបបទ Admin បានកំណត់) -->
                 <div class="custom-card mb-4 draggable-form-card" id="card-grade-specific" draggable="true" style="display: none;">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center justify-content-between">
@@ -312,16 +358,19 @@
                         <!-- Loaded dynamically via JavaScript based on classroom selection -->
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Right Column Container -->
             <div class="col-lg-4 form-card-column" id="rightFormCol">
+                {% if not reg_config or reg_config.general.sections.academic_fee %}
                 <!-- Section 3: Academic & Fee Tier -->
                 <div class="custom-card mb-4 draggable-form-card" id="card-academic-fee" draggable="true">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
                         <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
                         <i class="fa-solid fa-school me-2"></i>៣. ការសិក្សា & កម្រៃ
                     </h5>
+                    {% if not reg_config or reg_config.general.fields.academic_year %}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label class="form-label fw-bold small mb-0">
@@ -340,6 +389,13 @@
                             <input type="hidden" name="academic_year" value="{{ form.instance.academic_year.id|default:current_year.id }}">
                         {% endif %}
                     </div>
+                    {% else %}
+                    <div style="display: none;">
+                        <input type="hidden" name="academic_year" value="{{ form.instance.academic_year.id|default:current_year.id }}">
+                    </div>
+                    {% endif %}
+
+                    {% if not reg_config or reg_config.general.fields.classroom %}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label class="form-label fw-bold small mb-0">
@@ -355,37 +411,62 @@
                             <div class="form-text small text-muted">កំណត់ដោយរដ្ឋបាលសាលា (សិស្សមិនអាចកែប្រែបានទេ)</div>
                         {% endif %}
                     </div>
+                    {% else %}
+                    <div style="display: none;">
+                        {{ form.classroom }}
+                    </div>
+                    {% endif %}
+
+                    {% if not reg_config or reg_config.general.fields.scholarship_type %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា / អាហារូបករណ៍ *</label>
                         {{ form.scholarship_type }}
                     </div>
+                    {% else %}
+                    <div style="display: none;">
+                        {{ form.scholarship_type }}
+                    </div>
+                    {% endif %}
+
+                    {% if not reg_config or reg_config.general.fields.fee_start_month %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">
                             <i class="fa-solid fa-calendar-day text-primary me-1"></i>ខែចាប់ផ្តើមបង់ប្រាក់
                         </label>
                         {{ form.fee_start_month }}
                     </div>
+                    {% endif %}
+
+                    {% if not reg_config or reg_config.general.fields.telegram_chat_id %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Telegram Chat ID (សម្រាប់ទទួលដំណឹង)</label>
                         {{ form.telegram_chat_id }}
                     </div>
+                    {% endif %}
                 </div>
+                {% endif %}
 
+                {% if not reg_config or reg_config.general.sections.documents %}
                 <!-- Section 4: Attachments -->
                 <div class="custom-card mb-4 draggable-form-card" id="card-documents" draggable="true">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary d-flex align-items-center">
                         <span class="card-drag-handle text-muted me-2 cursor-grab" title="ចុចអូសស៊ុម"><i class="fa-solid fa-grip-vertical"></i></span>
                         <i class="fa-solid fa-paperclip me-2"></i>៤. ឯកសារ & រូបថត
                     </h5>
+                    {% if not reg_config or reg_config.general.fields.photo %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
                         {{ form.photo }}
                     </div>
+                    {% endif %}
+                    {% if not reg_config or reg_config.general.fields.birth_certificate %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">សំបុត្រកំណើត / ឯកសារ</label>
                         {{ form.birth_certificate }}
                     </div>
+                    {% endif %}
                 </div>
+                {% endif %}
 
                 <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" id="btnSubmitGeneralForm">
                     <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកទិន្នន័យសិស្ស (Admin Form)
@@ -416,6 +497,7 @@
                         <span class="badge bg-info-subtle text-info border border-info-subtle small fw-bold">សម្រង់ព័ត៌មាន MoEYS</span>
                     </h5>
                     <div class="row g-3">
+                        {% if not reg_config or reg_config.moeys.fields.student_id %}
                         <div class="col-md-12">
                             <div class="p-2.5 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
                                 <div class="d-flex align-items-center gap-2">
@@ -433,6 +515,7 @@
                             {{ moeys_form.student_id }}
                             <div class="small mt-1" id="moeysStudentIdFeedbackText"></div>
                         </div>
+                        {% endif %}
 
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">គោត្តនាម / នាមត្រកូល (Surname) *</label>
@@ -442,6 +525,7 @@
                             <label class="form-label fw-bold small">នាមខ្លួន (Given Name) *</label>
                             {{ moeys_form.given_name }}
                         </div>
+                        {% if not reg_config or reg_config.moeys.fields.latin_name %}
                         <div class="col-md-12">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label fw-bold small mb-0">ឈ្មោះជាអក្សរឡាតាំង (Latin Name) *</label>
@@ -456,6 +540,7 @@
                                 </button>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">ភេទ (Gender) *</label>
                             {{ moeys_form.gender }}
@@ -467,6 +552,8 @@
                     </div>
                 </div>
 
+                {% if not reg_config or reg_config.moeys.sections.pob_address %}
+                {% if not reg_config or reg_config.moeys.fields.pob %}
                 <!-- MoEYS Section 2: Place of Birth (3 columns) -->
                 <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
@@ -487,13 +574,17 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
+                {% endif %}
 
+                {% if not reg_config or reg_config.moeys.sections.parents %}
                 <!-- MoEYS Section 3: Parents and Guardian -->
                 <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
                         <i class="fa-solid fa-people-roof me-2"></i>៣. ព័ត៌មានឪពុកម្តាយ និងអាណាព្យាបាល (Parents & Guardian)
                     </h5>
                     <div class="row g-3">
+                        {% if not reg_config or reg_config.moeys.fields.father %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ឈ្មោះឪពុក</label>
                             {{ moeys_form.father_name }}
@@ -506,6 +597,8 @@
                             <label class="form-label fw-bold small">លេខទូរស័ព្ទឪពុក</label>
                             {{ moeys_form.father_phone }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.moeys.fields.mother %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ឈ្មោះម្តាយ</label>
                             {{ moeys_form.mother_name }}
@@ -518,6 +611,8 @@
                             <label class="form-label fw-bold small">លេខទូរស័ព្ទម្តាយ</label>
                             {{ moeys_form.mother_phone }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.moeys.fields.guardian %}
                         <div class="col-md-6">
                             <label class="form-label fw-bold small">ឈ្មោះអាណាព្យាបាលជំនួស</label>
                             {{ moeys_form.guardian_name }}
@@ -526,9 +621,12 @@
                             <label class="form-label fw-bold small">មុខរបរអាណាព្យាបាល</label>
                             {{ moeys_form.guardian_job }}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
 
+                {% if not reg_config or reg_config.moeys.sections.vulnerability %}
                 <!-- MoEYS Section 4: Vulnerability & Social Protection -->
                 <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
@@ -543,6 +641,7 @@
                             <label class="form-label fw-bold small">ជនជាតិដើមភាគតិច (Minority)</label>
                             {{ moeys_form.ethnic_minority }}
                         </div>
+                        {% if not reg_config or reg_config.moeys.fields.disability %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ពិការភាពកាយសម្បទា</label>
                             {{ moeys_form.disability_physical }}
@@ -555,6 +654,8 @@
                             <label class="form-label fw-bold small">ពិការភាពការស្តាប់</label>
                             {{ moeys_form.disability_hearing }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.moeys.fields.equity_cards %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small d-flex justify-content-between align-items-center">
                                 <span>ប័ណ្ណសមធម៌ក្រ១ (IDPoor 1)</span>
@@ -569,16 +670,22 @@
                             </label>
                             {{ moeys_form.equity_card_2 }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.moeys.fields.risk_card %}
                         <div class="col-md-4">
                             <label class="form-label fw-bold small">ប័ណ្ណហានិភ័យ (Risk Card)</label>
                             {{ moeys_form.risk_card }}
                         </div>
+                        {% endif %}
+                        {% if not reg_config or reg_config.moeys.fields.scholarship %}
                         <div class="col-md-12">
                             <label class="form-label fw-bold small">អាហារូបករណ៍ (Scholarship)</label>
                             {{ moeys_form.scholarship }}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
 
                 <!-- MoEYS Section 5: Dynamic Grade-Specific Information for MoEYS -->
                 <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4" id="card-moeys-grade-specific" style="display: none;">
@@ -633,6 +740,7 @@
                         <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
                         {{ moeys_form.track }}
                     </div>
+                    {% if not reg_config or reg_config.moeys.fields.repeater %}
                     <div class="mb-3 pt-2">
                         <div class="form-check">
                             {{ moeys_form.is_repeating_grade }}
@@ -641,6 +749,8 @@
                             </label>
                         </div>
                     </div>
+                    {% endif %}
+                    {% if not reg_config or reg_config.moeys.fields.previous_school %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small d-flex justify-content-between align-items-center mb-1">
                             <span>គ្រឹះស្ថានសិក្សាពីមុន (Previous School)</span>
@@ -671,30 +781,41 @@
                             {{ moeys_form.secondary_school }}
                         </div>
                     </div>
+                    {% endif %}
+                    {% if not reg_config or reg_config.general.fields.scholarship_type %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">ប្រភេទកម្រៃសិក្សា</label>
                         {{ moeys_form.scholarship_type }}
                     </div>
+                    {% endif %}
+                    {% if not reg_config or reg_config.general.fields.phone %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">លេខទូរស័ព្ទទំនាក់ទំនង</label>
                         {{ moeys_form.phone }}
                     </div>
+                    {% endif %}
                 </div>
 
+                {% if not reg_config or reg_config.general.sections.documents %}
                 <!-- MoEYS Section 7: Documents -->
                 <div class="custom-card mb-4 border shadow-xs bg-white rounded-3 p-4">
                     <h5 class="fw-bold mb-3 border-bottom pb-2 text-info d-flex align-items-center">
                         <i class="fa-solid fa-paperclip me-2"></i>៧. ឯកសារ & រូបថត
                     </h5>
+                    {% if not reg_config or reg_config.general.fields.photo %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">រូបថតសិស្ស (៤x៦)</label>
                         {{ moeys_form.photo }}
                     </div>
+                    {% endif %}
+                    {% if not reg_config or reg_config.general.fields.birth_certificate %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">សំបុត្រកំណើត / សៀវភៅគ្រួសារ</label>
                         {{ moeys_form.birth_certificate }}
                     </div>
+                    {% endif %}
                 </div>
+                {% endif %}
 
                 <button type="submit" class="btn btn-info w-100 py-3 fw-bold text-dark shadow-sm" id="btnSubmitMoeysForm">
                     <i class="fa-solid fa-floppy-disk me-2"></i> រក្សាទុកសម្រង់ព័ត៌មាន (MoEYS Profile)
@@ -1430,4 +1551,6 @@ function initAddressCascade() {
     }
 }
 </script>
+
+{% include 'students/partials/registration_fields_ticking_modal.html' %}
 {% endblock %}
