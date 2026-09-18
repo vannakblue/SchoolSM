@@ -1833,7 +1833,10 @@ def get_student_study_tracking_book_data(student, academic_year=None, context_ca
     # Filter attendance records to strictly match the months defined by admin for each semester
     def _build_semester_attendance_records(monthly_terms, sem_num, default_semester_records):
         if not monthly_terms:
-            return list(default_semester_records)
+            has_records = any(r['total_recorded'] > 0 for r in default_semester_records)
+            if has_records:
+                return [r for r in default_semester_records if r['total_recorded'] > 0]
+            return []
         records = []
         for t in monthly_terms:
             m_num = t.get('month') if isinstance(t, dict) else getattr(t, 'month', None)
@@ -1987,6 +1990,18 @@ def get_student_study_tracking_book_data(student, academic_year=None, context_ca
             {'no': '៥', 'name_kh': 'ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា', 'name_en': 'Social Activities, Labor & Sports', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
         ]
 
+    available_monthly_terms = []
+    for t in s1_monthly_terms:
+        m_num = t.get('month') if isinstance(t, dict) else getattr(t, 'month', None)
+        m_name = t.get('display_month') if isinstance(t, dict) else getattr(t, 'display_month', None)
+        if m_num:
+            available_monthly_terms.append({'month': m_num, 'name_kh': m_name or str(m_num), 'semester': 1})
+    for t in s2_monthly_terms:
+        m_num = t.get('month') if isinstance(t, dict) else getattr(t, 'month', None)
+        m_name = t.get('display_month') if isinstance(t, dict) else getattr(t, 'display_month', None)
+        if m_num:
+            available_monthly_terms.append({'month': m_num, 'name_kh': m_name or str(m_num), 'semester': 2})
+
     return {
         'student': student,
         'classroom': classroom,
@@ -1997,6 +2012,7 @@ def get_student_study_tracking_book_data(student, academic_year=None, context_ca
         'school_name': default_school_name,
         'total_class_students': total_class_students,
         'total_grade_students': total_grade_students_ann,
+        'available_monthly_terms': available_monthly_terms,
         's1_monthly_terms': s1_monthly_terms,
         's1_exam_term': s1_exam_term,
         's2_monthly_terms': s2_monthly_terms,
@@ -2021,6 +2037,8 @@ def get_student_study_tracking_book_data(student, academic_year=None, context_ca
         'parent_comment_s1': parent_comment_s1,
         'parent_comment_s2': parent_comment_s2,
         'parent_comment_monthly': parent_comment_monthly,
+        's1_month_cols': s1_stu_item.get('month_cols', []) if s1_stu_item else [],
+        's2_month_cols': s2_stu_item.get('month_cols', []) if s2_stu_item else [],
         'conduct_assessment': conduct_obj,
     }
 

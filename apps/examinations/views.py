@@ -10693,7 +10693,10 @@ def student_study_tracking_book_view(request, student_id: int):
     from .services import get_student_study_tracking_book_data
     from apps.teachers.permissions import can_teacher_manage_homeroom
 
-    student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), id=student_id)
+    student = get_object_or_404(
+        Student.objects.select_related('classroom', 'academic_year', 'classroom__homeroom_teacher'),
+        id=student_id
+    )
 
     # Permission check: Admin, Teacher (homeroom or teacher of this student), or the Student themselves
     is_admin = bool(request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
@@ -10705,32 +10708,38 @@ def student_study_tracking_book_view(request, student_id: int):
         messages.error(request, "⚠️ លោកគ្រូ-អ្នកគ្រូ គ្មានសិទ្ធិចូលមើលសៀវភៅតាមដានការសិក្សារបស់សិស្សនេះឡើយ!")
         return redirect('teacher_dashboard')
 
-    selected_period = request.GET.get('period', 'ANNUAL').upper()
+    tracking_data = get_student_study_tracking_book_data(student)
+    available_monthly_terms = tracking_data.get('available_monthly_terms', []) if tracking_data else []
+
+    selected_period = request.GET.get('period')
     month_param = request.GET.get('month')
-    if month_param:
-        try:
-            m_val = int(month_param)
-            if m_val in [9, 10, 11, 12, 1, 2]:
-                selected_period = 'SEMESTER_1'
-            elif m_val in [3, 4, 5, 6, 7, 8]:
-                selected_period = 'SEMESTER_2'
-        except (ValueError, TypeError):
-            pass
+    if month_param and not selected_period:
+        selected_period = 'MONTHLY'
+    selected_period = (selected_period or 'ANNUAL').upper()
 
     if selected_period not in ['ANNUAL', 'SEMESTER_1', 'SEMESTER_2', 'MONTHLY']:
         selected_period = 'ANNUAL'
+
+    selected_month = None
+    if month_param:
+        try:
+            selected_month = int(month_param)
+        except (ValueError, TypeError):
+            selected_month = None
+
+    if selected_period == 'MONTHLY' and not selected_month and available_monthly_terms:
+        selected_month = available_monthly_terms[0]['month']
 
     selected_lang = request.GET.get('lang', 'kh').lower()
     if selected_lang not in ['kh', 'en']:
         selected_lang = 'kh'
 
-    tracking_data = get_student_study_tracking_book_data(student)
-
     return render(request, 'examinations/student/study_tracking_book_individual.html', {
         'book_list': [tracking_data] if tracking_data else [],
         'is_batch': False,
         'selected_period': selected_period,
-        'selected_month': month_param,
+        'selected_month': selected_month,
+        'available_monthly_terms': available_monthly_terms,
         'selected_lang': selected_lang,
         'classroom': student.classroom,
     })
@@ -10752,26 +10761,27 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
         messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
         return redirect('teacher_dashboard')
 
-    selected_period = request.GET.get('period', 'ANNUAL').upper()
+    selected_period = request.GET.get('period')
     month_param = request.GET.get('month')
-    if month_param:
-        try:
-            m_val = int(month_param)
-            if m_val in [9, 10, 11, 12, 1, 2]:
-                selected_period = 'SEMESTER_1'
-            elif m_val in [3, 4, 5, 6, 7, 8]:
-                selected_period = 'SEMESTER_2'
-        except (ValueError, TypeError):
-            pass
+    if month_param and not selected_period:
+        selected_period = 'MONTHLY'
+    selected_period = (selected_period or 'ANNUAL').upper()
 
     if selected_period not in ['ANNUAL', 'SEMESTER_1', 'SEMESTER_2', 'MONTHLY']:
         selected_period = 'ANNUAL'
+
+    selected_month = None
+    if month_param:
+        try:
+            selected_month = int(month_param)
+        except (ValueError, TypeError):
+            selected_month = None
 
     selected_lang = request.GET.get('lang', 'kh').lower()
     if selected_lang not in ['kh', 'en']:
         selected_lang = 'kh'
 
-    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').select_related('classroom', 'classroom__homeroom_teacher').order_by('student_id')
     book_list = []
     context_cache = {}
     for stu in students:
@@ -10779,12 +10789,17 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
         if b_data:
             book_list.append(b_data)
 
+    available_monthly_terms = book_list[0].get('available_monthly_terms', []) if book_list else []
+    if selected_period == 'MONTHLY' and not selected_month and available_monthly_terms:
+        selected_month = available_monthly_terms[0]['month']
+
     return render(request, 'examinations/student/study_tracking_book_individual.html', {
         'book_list': book_list,
         'is_batch': True,
         'classroom': classroom,
         'selected_period': selected_period,
-        'selected_month': month_param,
+        'selected_month': selected_month,
+        'available_monthly_terms': available_monthly_terms,
         'selected_lang': selected_lang,
     })
 

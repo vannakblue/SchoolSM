@@ -1971,6 +1971,10 @@ def timetable_view(request):
     and conditional formatting for required vs scheduled weekly hours.
     Strictly isolated per Academic Year!
     """
+    is_admin = bool(getattr(request.user, 'is_superuser', False) or getattr(request.user, 'role', '') == 'ADMIN')
+    if not is_admin:
+        return redirect('student_teacher_timetable_view')
+
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
     selected_year = request.GET.get('year') or request.GET.get('academic_year')
@@ -4307,9 +4311,33 @@ def student_teacher_timetable_view(request):
         if found_year:
             active_year = found_year
 
+    is_admin = bool(getattr(request.user, 'is_superuser', False) or getattr(request.user, 'role', '') == 'ADMIN')
+    teacher_profile = None
+    if request.user.is_authenticated:
+        teacher_profile = getattr(request.user, 'teacher_profile', None)
+        if not teacher_profile:
+            teacher_profile = Teacher.objects.filter(user=request.user).first()
+        if not teacher_profile:
+            phone = getattr(request.user, 'phone', None) or getattr(request.user, 'username', '')
+            digits = ''.join(c for c in str(phone) if c.isdigit())
+            if len(digits) >= 8:
+                teacher_profile = Teacher.objects.filter(Q(phone__icontains=digits[-8:]) | Q(phone2__icontains=digits[-8:])).first()
+        if not teacher_profile:
+            kh_name = getattr(request.user, 'khmer_name', None)
+            if kh_name:
+                teacher_profile = Teacher.objects.filter(khmer_name=kh_name).first()
+
     academic_years = list(AcademicYear.objects.all().order_by('-start_date'))
-    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
-    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    if is_admin:
+        classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+        teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    else:
+        # Regular teacher: strictly restricted to their own timetable only
+        classrooms = []
+        if teacher_profile:
+            teachers = [teacher_profile]
+        else:
+            teachers = []
     timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
     timetables = list(timetables_qs)
 
@@ -4461,6 +4489,8 @@ def student_teacher_timetable_view(request):
     today_solar_date = f"{school_short} ថ្ងៃទី {today_kh_day} ខែ {today_kh_month} ឆ្នាំ {today_kh_year}"
 
     context = {
+        'is_admin': is_admin,
+        'teacher_profile': teacher_profile,
         'classrooms': classrooms,
         'teachers': teachers,
         'classrooms_timetables': classrooms_timetables,
@@ -4505,12 +4535,36 @@ def student_teacher_timetable_export_excel(request):
         if found_year:
             active_year = found_year
 
-    year_name = active_year.name if active_year else '២០២៦-២០២៧'
-    mode = request.GET.get('mode', 'class') # 'class' or 'teacher'
-    target_id = request.GET.get('id', 'all')
+    is_admin = bool(getattr(request.user, 'is_superuser', False) or getattr(request.user, 'role', '') == 'ADMIN')
+    teacher_profile = None
+    if request.user.is_authenticated:
+        teacher_profile = getattr(request.user, 'teacher_profile', None)
+        if not teacher_profile:
+            teacher_profile = Teacher.objects.filter(user=request.user).first()
+        if not teacher_profile:
+            phone = getattr(request.user, 'phone', None) or getattr(request.user, 'username', '')
+            digits = ''.join(c for c in str(phone) if c.isdigit())
+            if len(digits) >= 8:
+                teacher_profile = Teacher.objects.filter(Q(phone__icontains=digits[-8:]) | Q(phone2__icontains=digits[-8:])).first()
+        if not teacher_profile:
+            kh_name = getattr(request.user, 'khmer_name', None)
+            if kh_name:
+                teacher_profile = Teacher.objects.filter(khmer_name=kh_name).first()
 
-    classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
-    teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    year_name = active_year.name if active_year else '២០២៦-២០២៧'
+    if is_admin:
+        mode = request.GET.get('mode', 'class') # 'class' or 'teacher'
+        target_id = request.GET.get('id', 'all')
+        classrooms = list(Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code'))
+        teachers = list(Teacher.objects.filter(status='ACTIVE').order_by('khmer_name'))
+    else:
+        if not teacher_profile:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("Access denied. You do not have an active teacher profile.")
+        mode = 'teacher'
+        target_id = str(teacher_profile.id)
+        classrooms = []
+        teachers = [teacher_profile]
     timetables_qs = Timetable.objects.filter(classroom__academic_year=active_year).select_related('classroom', 'subject', 'teacher') if active_year else Timetable.objects.select_related('classroom', 'subject', 'teacher').all()
     timetables = list(timetables_qs)
 
@@ -4885,6 +4939,10 @@ def timetable_daily_reports_view(request):
     Matches MoEYS standard layout: No, Teacher ID, Name, Period 1-4 / 5-8, Sign In, Sign Out, Remarks.
     Strictly isolated per Academic Year!
     """
+    is_admin = bool(getattr(request.user, 'is_superuser', False) or getattr(request.user, 'role', '') == 'ADMIN')
+    if not is_admin:
+        return redirect('student_teacher_timetable_view')
+
     from .utils import get_active_academic_year
     active_year = get_active_academic_year(request)
     selected_year = request.GET.get('year') or request.GET.get('academic_year')
@@ -7345,7 +7403,7 @@ def teacher_assignments_import_excel(request):
 # ----------------- TEACHER & STAFF ON-DUTY ALLOCATION (ម៉ោងប្រចាំការ) -----------------
 
 @login_required
-@role_required(['ADMIN', 'TEACHER'])
+@role_required(['ADMIN'])
 def teacher_duty_manager(request):
     """
     Teacher & Office Staff On-Duty (ម៉ោងប្រចាំការ) Allocation Manager.
@@ -7920,31 +7978,16 @@ def api_duty_type_delete(request, type_id):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER'])
+@role_required(['ADMIN'])
 def student_promotion_view(request):
     """
     Student Promotion & Grade Retention Matrix (ឧបករណ៍ផ្ទេរ ឡើងថ្នាក់ និងត្រួតថ្នាក់សិស្ស).
-    Allows Admin & Authorized Teachers to specify individual promotion / retention decisions per student
+    Allows Admin to specify individual promotion / retention decisions per student
     with MoEYS standard reasons, target classrooms, and full audit logs.
     """
     from apps.students.models import StudentPromotionRecord
 
-    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
-    teacher_profile = None
-
-    if not is_admin:
-        teacher_profile = Teacher.objects.filter(user=request.user).first()
-        if not teacher_profile:
-            messages.error(request, "⚠️ គណនីរបស់អ្នកមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!")
-            return redirect('dashboard')
-        # Allowed classrooms where teacher is class head or teaches
-        taught_class_ids = set(ClassSubject.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
-        if hasattr(Classroom, 'teacher'):
-            taught_class_ids.update(Classroom.objects.filter(teacher=teacher_profile).values_list('id', flat=True))
-        classrooms = Classroom.objects.filter(id__in=taught_class_ids).select_related('academic_year')
-    else:
-        classrooms = Classroom.objects.all().select_related('academic_year')
-
+    classrooms = Classroom.objects.all().select_related('academic_year')
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     all_target_classrooms = Classroom.objects.all().select_related('academic_year').order_by('grade_level', 'name')
 
@@ -7954,7 +7997,7 @@ def student_promotion_view(request):
 
     if source_class_id and str(source_class_id).strip().isdigit():
         cls_int_id = int(str(source_class_id).strip())
-        source_class = classrooms.filter(id=cls_int_id).first() if not is_admin else Classroom.objects.filter(id=cls_int_id).first()
+        source_class = Classroom.objects.filter(id=cls_int_id).first()
         if source_class:
             students = Student.objects.filter(classroom=source_class, status='ACTIVE').order_by('student_id')
 
@@ -8079,7 +8122,7 @@ def student_promotion_view(request):
         'students': students,
         'recent_promotions': recent_promotions,
         'standard_reasons': StudentPromotionRecord.StandardReason.choices,
-        'is_admin': is_admin,
+        'is_admin': True,
     })
 
 

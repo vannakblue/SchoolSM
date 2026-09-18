@@ -227,10 +227,14 @@ function toggleSelectAll(masterCheckbox, targetCheckboxClass) {
     });
 }
 
-// Mark all present in Attendance sheet
-function markAllPresent() {
-    const presentRadios = document.querySelectorAll('input[type="radio"][value="PRESENT"]');
-    presentRadios.forEach(radio => {
-        radio.checked = true;
-    });
+// Mark all present in Attendance sheet (fallback only if not defined by page)
+if (typeof window.markAllPresent === 'undefined') {
+    window.markAllPresent = function() {
+        const presentRadios = document.querySelectorAll('input[type="radio"][value="PRESENT"]');
+        if (presentRadios.length > 0) {
+            presentRadios.forEach(radio => {
+                radio.checked = true;
+            });
+        }
+    };
 }

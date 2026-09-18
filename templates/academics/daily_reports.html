@@ -413,6 +413,7 @@
 {% endblock %}
 
 {% block content %}
+{% if request.user.role == 'ADMIN' or request.user.is_superuser %}
 <!-- Timetable Module Unified Sub-Menu Navigation Tabs -->
 <ul class="nav nav-tabs-custom no-print">
     <li class="nav-item">
@@ -446,6 +447,7 @@
         </a>
     </li>
 </ul>
+{% endif %}
 
 <!-- Top Action Bar Matching User Screenshot -->
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">

@@ -47,6 +47,38 @@
   font-display: swap;
 }
 
+/* Authentic Khmer OS Tacteing Definition */
+@font-face {
+  font-family: 'Tacteing';
+  src: local('Khmer OS Tacteing'),
+       local('Tacteing'),
+       local('KhmerOS_tacteing'),
+       local('TacteingA'),
+       url('../fonts/tacteng.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Khmer OS Tacteing';
+  src: local('Khmer OS Tacteing'),
+       local('Tacteing'),
+       local('KhmerOS_tacteing'),
+       local('TacteingA'),
+       url('../fonts/tacteng.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-tacteing,
+.tatch,
+.tacteing,
+.card-tacteing-display,
+.tacteing-char-val {
+  font-family: 'Tacteing', 'Khmer OS Tacteing', cursive !important;
+}
+
 /* Standard Khmer OS Muol Light Typography for All Reports */
 .font-muol,
 .font-moul,

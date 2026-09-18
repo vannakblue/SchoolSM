@@ -211,7 +211,8 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'កាលវិភាគរួម',
                 'name_en': 'Master Timetable Matrix',
                 'icon': 'fa-solid fa-calendar-days text-primary',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN'],
+                'is_admin_only': True,
                 'url_name': 'timetable_view',
             },
             {
@@ -219,7 +220,8 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'របាយការណ៍ប្រចាំថ្ងៃ',
                 'name_en': 'Daily Duty & Teaching Log',
                 'icon': 'fa-solid fa-file-signature text-purple',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN'],
+                'is_admin_only': True,
                 'url_name': 'timetable_daily_reports_view',
             },
             {
@@ -236,6 +238,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_en': 'Subject Hours Requirements',
                 'icon': 'fa-solid fa-sliders text-info',
                 'default_roles': ['ADMIN'],
+                'is_admin_only': True,
                 'url_name': 'subject_requirements_manager',
             },
             {
@@ -244,6 +247,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_en': 'Teacher Class Assignments',
                 'icon': 'fa-solid fa-chalkboard-user text-warning',
                 'default_roles': ['ADMIN'],
+                'is_admin_only': True,
                 'url_name': 'teacher_assignments_manager',
             },
             {
@@ -251,7 +255,8 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'គ្រប់គ្រងម៉ោងប្រចាំការ',
                 'name_en': 'Duty Hours & Staff Roster',
                 'icon': 'fa-solid fa-clock text-danger',
-                'default_roles': ['ADMIN', 'TEACHER'],
+                'default_roles': ['ADMIN'],
+                'is_admin_only': True,
                 'url_name': 'teacher_duty_manager',
             },
         ]

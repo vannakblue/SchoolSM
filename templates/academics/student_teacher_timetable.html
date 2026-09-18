@@ -337,7 +337,8 @@
 {% endblock %}
 
 {% block content %}
-<!-- Sub-Menu Navigation Tabs -->
+{% if is_admin %}
+<!-- Sub-Menu Navigation Tabs (Admin Only) -->
 <ul class="nav nav-tabs-custom no-print">
     <li class="nav-item">
         <a class="nav-link" href="{% url 'timetable_view' %}">
@@ -370,12 +371,14 @@
         </a>
     </li>
 </ul>
+{% endif %}
 
 <!-- Control & Filter Action Panel -->
 <div class="filter-panel-card no-print">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <!-- Left: Mode Switcher -->
         <div class="d-flex align-items-center gap-2">
+            {% if is_admin %}
             <div class="btn-group mode-btn-group" role="group">
                 <button type="button" class="btn btn-primary" id="btnModeClass" onclick="switchTimetableMode('class')">
                     <i class="fa-solid fa-graduation-cap me-1.5"></i> កាលវិភាគសិស្ស (តាមថ្នាក់)
@@ -384,6 +387,13 @@
                     <i class="fa-solid fa-chalkboard-user me-1.5"></i> កាលវិភាគគ្រូបង្រៀន (តាមគ្រូ)
                 </button>
             </div>
+            {% else %}
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary fs-6 py-2 px-3 shadow-sm">
+                    <i class="fa-solid fa-chalkboard-user me-1.5"></i> កាលវិភាគបង្រៀនរបស់ខ្ញុំ
+                </span>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Middle: Dynamic Dropdown Filters -->
@@ -398,7 +408,8 @@
                 </select>
             </div>
 
-            <!-- Classroom Select Filter -->
+            {% if is_admin %}
+            <!-- Classroom Select Filter (Admin Only) -->
             <div id="classFilterWrapper" class="d-flex align-items-center gap-2">
                 <label for="selectClassroom" class="fw-bold small text-muted text-nowrap">ជ្រើសរើសថ្នាក់៖</label>
                 <select id="selectClassroom" class="form-select form-select-sm fw-bold border-primary" style="min-width: 170px;" onchange="filterClassTimetable(this.value)">
@@ -409,7 +420,7 @@
                 </select>
             </div>
 
-            <!-- Teacher Select Filter (Hidden initially) -->
+            <!-- Teacher Select Filter (Admin Only) -->
             <div id="teacherFilterWrapper" class="d-flex align-items-center gap-2 d-none">
                 <label for="selectTeacher" class="fw-bold small text-muted text-nowrap">ជ្រើសរើសគ្រូ៖</label>
                 <select id="selectTeacher" class="form-select form-select-sm fw-bold border-primary" style="min-width: 200px;" onchange="filterTeacherTimetable(this.value)">
@@ -419,6 +430,19 @@
                     {% endfor %}
                 </select>
             </div>
+            {% else %}
+            <!-- Logged-in Teacher Info Badge -->
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-light text-dark border px-3 py-2 fw-bold">
+                    <i class="fa-solid fa-user-tie text-primary me-1"></i>
+                    {% if teacher_profile %}
+                        {% if teacher_profile.gender == 'F' %}អ្នកគ្រូ{% else %}លោកគ្រូ{% endif %} {{ teacher_profile.khmer_name }}
+                    {% else %}
+                        {{ request.user.get_full_name|default:request.user.username }}
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
 
             <!-- Toggle Custom Date Panel -->
             <button class="btn btn-sm btn-outline-secondary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#customDateCollapse" title="កែប្រែកាលបរិច្ឆេទលើកាលវិភាគ">
@@ -428,7 +452,8 @@
 
         <!-- Right: Print & Excel Action Buttons -->
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <!-- Excel Export Split Button with Individual or Multi-Sheet Options -->
+            {% if is_admin %}
+            <!-- Excel Export Split Button with Individual or Multi-Sheet Options (Admin Only) -->
             <div class="btn-group shadow-sm">
                 <button type="button" class="btn btn-warning fw-bold text-white px-3 py-1.5" id="btnExcelExportCurrent" onclick="exportCurrentTimetableExcel()" title="ទាញយកជា Excel (.xlsx)">
                     <i class="fa-solid fa-file-excel me-1.5"></i> <span id="btnExcelExportText">ទាញយក Excel (ថ្នាក់បច្ចុប្បន្ន)</span>
@@ -456,6 +481,12 @@
                     </li>
                 </ul>
             </div>
+            {% else %}
+            <!-- Excel Export Single Button for Teacher -->
+            <button type="button" class="btn btn-warning fw-bold text-white px-3 py-1.5 shadow-sm" onclick="exportCurrentTimetableExcel()" title="ទាញយកជា Excel (.xlsx)">
+                <i class="fa-solid fa-file-excel me-1.5"></i> <span>ទាញយក Excel (កាលវិភាគរបស់ខ្ញុំ)</span>
+            </button>
+            {% endif %}
 
             <button type="button" class="btn btn-outline-primary btn-sm fw-bold py-1.5" data-bs-toggle="modal" data-bs-target="#timetablePrintConfigModal" title="កំណត់ទម្រង់ និងចំនួនទំព័រព្រីនកាលវិភាគ">
                 <i class="fa-solid fa-sliders me-1.5"></i> កំណត់ទំព័រព្រីន (Print Config)
@@ -463,9 +494,11 @@
             <button type="button" class="btn btn-dark btn-sm fw-bold px-3 py-1.5" onclick="window.print()">
                 <i class="fa-solid fa-print me-1.5"></i> បោះពុម្ព (Print)
             </button>
+            {% if is_admin %}
             <button type="button" class="btn btn-outline-dark btn-sm fw-bold py-1.5" onclick="printAllCurrentMode()">
                 <i class="fa-solid fa-copy me-1.5"></i> ព្រីនទាំងអស់ (Print All)
             </button>
+            {% endif %}
         </div>
     </div>
 
@@ -493,6 +526,7 @@
 <div class="timetable-sheet-container">
 
     <!-- 1. Classroom Timetables Container -->
+    {% if is_admin %}
     <div id="classTimetablesContainer" class="w-100 d-flex flex-column gap-4 align-items-center">
         {% for cls_item in classrooms_timetables %}
         <div class="timetable-sheet sheet-class" data-class-id="{{ cls_item.classroom.id }}" id="sheet_cls_{{ cls_item.classroom.id }}">
@@ -608,9 +642,10 @@
         </div>
         {% endfor %}
     </div>
+    {% endif %}
 
-    <!-- 2. Teacher Timetables Container (Hidden by default until Mode Switch) -->
-    <div id="teacherTimetablesContainer" class="w-100 d-flex flex-column gap-4 align-items-center d-none">
+    <!-- 2. Teacher Timetables Container (Hidden by default for Admin until Mode Switch, Visible by default for Teachers) -->
+    <div id="teacherTimetablesContainer" class="w-100 d-flex flex-column gap-4 align-items-center {% if is_admin %}d-none{% endif %}">
         {% for tch_item in teachers_timetables %}
         <div class="timetable-sheet sheet-teacher" data-teacher-id="{{ tch_item.teacher.id }}" id="sheet_tch_{{ tch_item.teacher.id }}">
             <!-- Header Matching Teacher Screenshot -->
@@ -728,7 +763,7 @@
 
 {% block extra_js %}
 <script>
-    let currentMode = 'class'; // 'class' or 'teacher'
+    let currentMode = '{% if is_admin %}class{% else %}teacher{% endif %}'; // 'class' or 'teacher'
 
     function switchTimetableMode(mode) {
         currentMode = mode;
@@ -740,12 +775,12 @@
         const teacherContainer = document.getElementById('teacherTimetablesContainer');
 
         if (mode === 'class') {
-            btnClass.className = 'btn btn-primary';
-            btnTeacher.className = 'btn btn-outline-primary';
-            classFilter.classList.remove('d-none');
-            teacherFilter.classList.add('d-none');
-            classContainer.classList.remove('d-none');
-            teacherContainer.classList.add('d-none');
+            if (btnClass) btnClass.className = 'btn btn-primary';
+            if (btnTeacher) btnTeacher.className = 'btn btn-outline-primary';
+            if (classFilter) classFilter.classList.remove('d-none');
+            if (teacherFilter) teacherFilter.classList.add('d-none');
+            if (classContainer) classContainer.classList.remove('d-none');
+            if (teacherContainer) teacherContainer.classList.add('d-none');
 
             // Update Excel Export button text
             const btnExcelText = document.getElementById('btnExcelExportText');
@@ -754,15 +789,15 @@
             if (lblExportCurrentOpt) lblExportCurrentOpt.innerText = '១. ទាញយក Excel ថ្នាក់បច្ចុប្បន្ន (Single Sheet)';
 
             // Apply current class filter
-            const selCls = document.getElementById('selectClassroom').value;
-            filterClassTimetable(selCls);
+            const selCls = document.getElementById('selectClassroom')?.value;
+            if (selCls) filterClassTimetable(selCls);
         } else {
-            btnTeacher.className = 'btn btn-primary';
-            btnClass.className = 'btn btn-outline-primary';
-            teacherFilter.classList.remove('d-none');
-            classFilter.classList.add('d-none');
-            teacherContainer.classList.remove('d-none');
-            classContainer.classList.add('d-none');
+            if (btnTeacher) btnTeacher.className = 'btn btn-primary';
+            if (btnClass) btnClass.className = 'btn btn-outline-primary';
+            if (teacherFilter) teacherFilter.classList.remove('d-none');
+            if (classFilter) classFilter.classList.add('d-none');
+            if (teacherContainer) teacherContainer.classList.remove('d-none');
+            if (classContainer) classContainer.classList.add('d-none');
 
             // Update Excel Export button text
             const btnExcelText = document.getElementById('btnExcelExportText');
@@ -771,13 +806,17 @@
             if (lblExportCurrentOpt) lblExportCurrentOpt.innerText = '១. ទាញយក Excel គ្រូបច្ចុប្បន្ន (Single Sheet)';
 
             // Apply current teacher filter
-            const selTch = document.getElementById('selectTeacher').value;
-            filterTeacherTimetable(selTch);
+            const selTch = document.getElementById('selectTeacher')?.value;
+            if (selTch) filterTeacherTimetable(selTch);
         }
     }
 
     function exportCurrentTimetableExcel() {
         const yearId = document.getElementById('selectAcademicYear')?.value || '';
+        {% if not is_admin %}
+        window.location.href = `{% url 'student_teacher_timetable_export_excel' %}?mode=teacher&id={{ teacher_profile.id|default:'' }}&year=${yearId}`;
+        return;
+        {% endif %}
         if (currentMode === 'class') {
             const classId = document.getElementById('selectClassroom')?.value || 'all';
             window.location.href = `{% url 'student_teacher_timetable_export_excel' %}?mode=class&id=${classId}&year=${yearId}`;
@@ -811,11 +850,17 @@
 
     function printAllCurrentMode() {
         if (currentMode === 'class') {
-            document.getElementById('selectClassroom').value = 'all';
-            filterClassTimetable('all');
+            const selCls = document.getElementById('selectClassroom');
+            if (selCls) {
+                selCls.value = 'all';
+                filterClassTimetable('all');
+            }
         } else {
-            document.getElementById('selectTeacher').value = 'all';
-            filterTeacherTimetable('all');
+            const selTch = document.getElementById('selectTeacher');
+            if (selTch) {
+                selTch.value = 'all';
+                filterTeacherTimetable('all');
+            }
         }
         setTimeout(() => {
             window.print();
@@ -855,6 +900,9 @@
         if (btnAuto) {
             btnAuto.addEventListener('click', autoCalcTimetableLunar);
         }
+        {% if not is_admin %}
+        switchTimetableMode('teacher');
+        {% endif %}
     });
 
     function switchAcademicYear(yearId) {

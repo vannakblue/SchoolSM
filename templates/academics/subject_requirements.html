@@ -102,6 +102,7 @@
 {% endblock %}
 
 {% block content %}
+{% if request.user.role == 'ADMIN' or request.user.is_superuser %}
 <!-- Timetable Module Unified Sub-Menu Navigation Tabs -->
 <ul class="nav nav-tabs-custom">
     <li class="nav-item">
@@ -135,6 +136,7 @@
         </a>
     </li>
 </ul>
+{% endif %}
 
 <form method="POST" id="requirementsForm">
     {% csrf_token %}

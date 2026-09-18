@@ -38,6 +38,9 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
   String _searchQuery = '';
 
   // Teacher Schedule & Permissions
+  bool _isTimetableLocked = false;
+  bool _canEditScheduleFields = true;
+  String? _currentSubjectName;
   bool _canRecord = true;
   bool _isTeacherScheduled = true;
   Map<String, dynamic>? _scheduleAlert;
@@ -75,17 +78,51 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
         final classrooms = (data['classrooms'] as List<dynamic>?) ?? [];
         final periods = (data['periods'] as List<dynamic>?) ?? [];
         final currentPeriod = (data['current_period'] as int?) ?? 1;
+        final currentSession = (data['current_session'] as String?) ?? 'MORNING';
+        final isLocked = (data['is_timetable_locked'] as bool?) ?? false;
+        final canEdit = (data['can_edit_schedule_fields'] as bool?) ?? true;
+        final teacherSchedules = (data['teacher_schedules'] as List<dynamic>?) ?? [];
+        final defaultSubjectName = (data['default_subject_name'] as String?) ?? '';
+        final defaultClassId = data['default_classroom_id'] as int?;
+
+        final auth = Provider.of<AuthService>(context, listen: false);
+        final isTeacherUser = auth.isTeacher || (data['user_role'] == 'TEACHER') || isLocked;
+
         setState(() {
           _classrooms = classrooms;
           _periods = periods;
-          _selectedPeriod = widget.initialPeriod ?? currentPeriod;
-          _selectedSession = _selectedPeriod <= 4 ? 'MORNING' : 'AFTERNOON';
+          _isTimetableLocked = isTeacherUser;
+          _canEditScheduleFields = !isTeacherUser && canEdit;
+          _teacherTodaySlots = teacherSchedules;
 
-          if (widget.initialClassroomId != null &&
-              classrooms.any((c) => c['id'] == widget.initialClassroomId)) {
-            _selectedClassroomId = widget.initialClassroomId;
-          } else if (classrooms.isNotEmpty) {
-            _selectedClassroomId = classrooms.first['id'];
+          if (isTeacherUser) {
+            _selectedDate = DateTime.now(); // Date is strictly today for teachers
+            if (teacherSchedules.isNotEmpty) {
+              final initialSlot = teacherSchedules.firstWhere(
+                (s) => s['period_number'] == (widget.initialPeriod ?? currentPeriod),
+                orElse: () => teacherSchedules.first,
+              );
+              _selectedClassroomId = initialSlot['classroom_id'] as int?;
+              _selectedPeriod = (initialSlot['period_number'] as int?) ?? 1;
+              _selectedSession = (initialSlot['session'] as String?) ?? (_selectedPeriod <= 4 ? 'MORNING' : 'AFTERNOON');
+              _currentSubjectName = (initialSlot['subject_name'] as String?) ?? defaultSubjectName;
+            } else {
+              _selectedClassroomId = null;
+              _selectedPeriod = currentPeriod;
+              _selectedSession = currentSession;
+              _currentSubjectName = null;
+              _canRecord = false;
+            }
+          } else {
+            _selectedPeriod = widget.initialPeriod ?? currentPeriod;
+            _selectedSession = _selectedPeriod <= 4 ? 'MORNING' : 'AFTERNOON';
+            if (widget.initialClassroomId != null && classrooms.any((c) => c['id'] == widget.initialClassroomId)) {
+              _selectedClassroomId = widget.initialClassroomId;
+            } else if (defaultClassId != null && classrooms.any((c) => c['id'] == defaultClassId)) {
+              _selectedClassroomId = defaultClassId;
+            } else if (classrooms.isNotEmpty) {
+              _selectedClassroomId = classrooms.first['id'];
+            }
           }
 
           _isLoadingMeta = false;
@@ -279,6 +316,32 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
       const SnackBar(
         content: Text('✅ បានកំណត់សិស្សទាំងអស់ជាវត្តមាន (All marked Present)!'),
         backgroundColor: AppColors.success,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _markAllAbsent() {
+    if (!_canRecord) {
+      if (_scheduleAlert != null) {
+        _showScheduleAlertModal(_scheduleAlert!);
+      } else {
+        _onSaveError('ការកត់ត្រាវត្តមានត្រូវបានបិទ (Disabled) ព្រោះលោកគ្រូ-អ្នកគ្រូពុំមានម៉ោងបង្រៀនចំម៉ោងនេះឡើយ!');
+      }
+      return;
+    }
+
+    setState(() {
+      for (final s in _students) {
+        s['status'] = 'ABSENT';
+        s['is_absent'] = true;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚠️ បានកំណត់សិស្សទាំងអស់ជាអវត្តមាន (All marked Absent)!'),
+        backgroundColor: AppColors.danger,
         duration: Duration(seconds: 2),
       ),
     );
@@ -566,6 +629,18 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
   }
 
   Future<void> _pickDate() async {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    if (auth.isTeacher || _isTimetableLocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 កាលបរិច្ឆេទត្រូវបានកំណត់តាមកាលវិភាគបង្រៀន (ថ្ងៃនេះ) មិនអាចកែប្រែបានឡើយ។'),
+          backgroundColor: AppColors.warning,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -705,6 +780,208 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
   }
 
   Widget _buildFilterHeader() {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final isLocked = _isTimetableLocked || auth.isTeacher;
+
+    if (isLocked) {
+      // Find classroom name
+      final currentClass = _classrooms.firstWhere(
+        (c) => c['id'] == _selectedClassroomId,
+        orElse: () => {
+          'name': _selectedClassroomId != null ? 'ថ្នាក់ទី $_selectedClassroomId' : 'គ្មានថ្នាក់រៀន'
+        },
+      );
+      final className = currentClass['name'] ?? currentClass['code'] ?? 'ពុំមានថ្នាក់';
+      final sessionKh = _selectedSession == 'MORNING' ? 'ពេលព្រឹក (Morning)' : 'ពេលរសៀល (Afternoon)';
+
+      return Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: const Border(bottom: BorderSide(color: Color(0xFF334155))),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top locked badges
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.success.withOpacity(0.5)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_rounded, size: 12, color: AppColors.success),
+                      SizedBox(width: 4),
+                      Text(
+                        'កាលវិភាគជាប់សោ (View Only / Disabled)',
+                        style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 11, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${DateFormat('dd/MM/yyyy').format(_selectedDate)} (ថ្ងៃនេះ)',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // 4 Disabled / View-Only items grid (Date, Classroom, Period, Session)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildViewOnlyFieldBadge(
+                          icon: Icons.school_rounded,
+                          label: 'ថ្នាក់ទី (Classroom)',
+                          value: className.toString(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildViewOnlyFieldBadge(
+                          icon: Icons.access_time_filled_rounded,
+                          label: 'ម៉ោងទី (Period)',
+                          value: 'ម៉ោងទី $_selectedPeriod',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildViewOnlyFieldBadge(
+                          icon: Icons.wb_sunny_rounded,
+                          label: 'វេនសិក្សា (Session)',
+                          value: sessionKh,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildViewOnlyFieldBadge(
+                          icon: Icons.menu_book_rounded,
+                          label: 'មុខវិជ្ជា (Subject)',
+                          value: _currentSubjectName ?? 'ទូទៅ',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Today's schedule switcher (if teacher has slots)
+            if (_teacherTodaySlots.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  Icon(Icons.history_toggle_off_rounded, size: 12, color: Colors.white70),
+                  SizedBox(width: 4),
+                  Text(
+                    'ម៉ោងស្រង់វត្តមានតាមកាលវិភាគថ្ងៃនេះ៖',
+                    style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _teacherTodaySlots.map<Widget>((slot) {
+                    final pNum = (slot['period_number'] as int?) ?? 1;
+                    final cId = slot['classroom_id'] as int?;
+                    final cCode = slot['classroom_code'] ?? slot['classroom_name'] ?? '';
+                    final sName = slot['subject_name'] ?? '';
+                    final isSelected = (pNum == _selectedPeriod && cId == _selectedClassroomId);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: InkWell(
+                        onTap: () {
+                          if (!isSelected && cId != null) {
+                            setState(() {
+                              _selectedPeriod = pNum;
+                              _selectedClassroomId = cId;
+                              _selectedSession = (slot['session'] as String?) ?? (pNum <= 4 ? 'MORNING' : 'AFTERNOON');
+                              _currentSubjectName = sName.toString();
+                            });
+                            _fetchRoster();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.2),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            'ម៉ោងទី $pNum ($cCode${sName.isNotEmpty ? " - $sName" : ""})',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -887,6 +1164,45 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
     );
   }
 
+  Widget _buildViewOnlyFieldBadge({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF60A5FA)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.6)),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.lock_outline_rounded, size: 11, color: Colors.white.withOpacity(0.4)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryBar({
     required int total,
     required int present,
@@ -894,6 +1210,52 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
     required int permission,
     required int late,
   }) {
+    final metricsWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildBadgeMetric('សរុប', '$total', AppColors.primary),
+        _buildBadgeMetric('វត្តមាន', '$present', AppColors.success),
+        _buildBadgeMetric('ឥតច្បាប់', '$absent', AppColors.danger),
+        _buildBadgeMetric('ច្បាប់', '$permission', AppColors.warning),
+        _buildBadgeMetric('យឺត', '$late', AppColors.info),
+      ],
+    );
+
+    final actionButtons = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton.icon(
+          onPressed: _markAllPresent,
+          icon: const Icon(Icons.done_all_rounded, size: 15, color: AppColors.success),
+          label: const Text(
+            'វត្តមានទាំងអស់',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.success),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            backgroundColor: AppColors.success.withOpacity(0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 6),
+        TextButton.icon(
+          onPressed: _markAllAbsent,
+          icon: const Icon(Icons.remove_done_rounded, size: 15, color: AppColors.danger),
+          label: const Text(
+            'អវត្តមានទាំងអស់',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.danger),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            backgroundColor: AppColors.danger.withOpacity(0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
+    );
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -909,28 +1271,34 @@ class _StudentHourlyAttendanceScreenState extends State<StudentHourlyAttendanceS
           ),
         ],
       ),
-      child: Row(
-        children: [
-          _buildBadgeMetric('សរុប', '$total', AppColors.primary),
-          _buildBadgeMetric('វត្តមាន', '$present', AppColors.success),
-          _buildBadgeMetric('ឥតច្បាប់', '$absent', AppColors.danger),
-          _buildBadgeMetric('ច្បាប់', '$permission', AppColors.warning),
-          _buildBadgeMetric('យឺត', '$late', AppColors.info),
-          const Spacer(),
-          TextButton.icon(
-            onPressed: _markAllPresent,
-            icon: const Icon(Icons.done_all_rounded, size: 16, color: AppColors.success),
-            label: const Text(
-              'វត្តមានទាំងអស់',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.success),
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              backgroundColor: AppColors.success.withOpacity(0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 500) {
+            return Row(
+              children: [
+                metricsWidget,
+                const Spacer(),
+                actionButtons,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: metricsWidget,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  actionButtons,
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

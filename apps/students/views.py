@@ -63,6 +63,14 @@ def student_list(request):
 
     students = Student.objects.select_related('classroom', 'academic_year').all()
 
+    # Teacher permission restriction: only view students in classrooms they teach in timetable / homeroom
+    is_teacher = request.user.is_authenticated and getattr(request.user, 'role', '') == User.Role.TEACHER
+    teacher_allowed_cls_ids = set()
+    if is_teacher:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        teacher_allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+        students = students.filter(classroom_id__in=teacher_allowed_cls_ids)
+
     if active_year:
         students = students.filter(Q(academic_year=active_year) | Q(classroom__academic_year=active_year))
 
@@ -77,7 +85,11 @@ def student_list(request):
         )
 
     if class_id and class_id.isdigit():
-        students = students.filter(classroom_id=int(class_id))
+        target_cid = int(class_id)
+        if is_teacher and target_cid not in teacher_allowed_cls_ids:
+            students = students.none()
+        else:
+            students = students.filter(classroom_id=target_cid)
 
     if status_filter:
         students = students.filter(status=status_filter)
@@ -98,6 +110,8 @@ def student_list(request):
 
     academic_years = AcademicYear.objects.all().order_by('-start_date')
     classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+    if is_teacher:
+        classrooms = classrooms.filter(id__in=teacher_allowed_cls_ids)
 
     StudentStatusConfig.ensure_default_statuses()
     available_statuses = StudentStatusConfig.objects.filter(is_active=True).order_by('order', 'id')
@@ -1724,6 +1738,14 @@ def student_detail(request, pk):
             messages.error(request, "លោកអ្នកអាចចូលមើលបានតែប្រវត្តិរូបផ្ទាល់ខ្លួនប៉ុណ្ណោះ!")
             return redirect('student_dashboard')
 
+    # Check permission for teacher role: can only view students in classrooms they teach in timetable / homeroom
+    if getattr(request.user, 'role', '') == User.Role.TEACHER:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        allowed_class_ids = get_teacher_allowed_classroom_ids(request.user)
+        if not student.classroom_id or student.classroom_id not in allowed_class_ids:
+            messages.error(request, "⚠️ លោកអ្នកមានសិទ្ធិមើលឃើញតែសិស្សក្នុងថ្នាក់ដែលលោកអ្នកបង្រៀនក្នុងកាលវិភាគប៉ុណ្ណោះ!")
+            return redirect('student_list')
+
     attendances = StudentAttendance.objects.filter(student=student).order_by('-date')[:30]
     grades = Grade.objects.filter(student=student).select_related('subject', 'exam_term')
     invoices = Invoice.objects.filter(student=student).select_related('fee_category', 'academic_year').order_by('-created_at')
@@ -1846,6 +1868,12 @@ def student_id_card(request, pk):
     from django.utils import timezone
 
     student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), pk=pk)
+    if getattr(request.user, 'role', '') == User.Role.TEACHER:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        allowed_class_ids = get_teacher_allowed_classroom_ids(request.user)
+        if not student.classroom_id or student.classroom_id not in allowed_class_ids:
+            messages.error(request, "⚠️ លោកអ្នកមានសិទ្ធិមើលកាតសិស្សតែក្នុងថ្នាក់ដែលលោកអ្នកបង្រៀនក្នុងកាលវិភាគប៉ុណ្ណោះ!")
+            return redirect('student_list')
     school_info = SchoolProfile.get_settings()
 
     now = timezone.now()
@@ -1919,7 +1947,14 @@ def batch_student_id_cards(request):
 
     school_info = SchoolProfile.get_settings()
     classrooms = Classroom.objects.all().order_by('grade_level', 'name')
-    grade_levels = list(Classroom.objects.values_list('grade_level', flat=True).distinct().order_by('grade_level'))
+    is_teacher = request.user.is_authenticated and getattr(request.user, 'role', '') == User.Role.TEACHER
+    teacher_allowed_cls_ids = set()
+    if is_teacher:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        teacher_allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+        classrooms = classrooms.filter(id__in=teacher_allowed_cls_ids)
+
+    grade_levels = list(classrooms.values_list('grade_level', flat=True).distinct().order_by('grade_level'))
     if not grade_levels:
         grade_levels = [7, 8, 9, 10, 11, 12]
 
@@ -1930,26 +1965,38 @@ def batch_student_id_cards(request):
 
     if classroom_id:
         classroom = get_object_or_404(Classroom, pk=classroom_id)
+        if is_teacher and classroom.id not in teacher_allowed_cls_ids:
+            messages.error(request, "⚠️ លោកអ្នកមានសិទ្ធិមើលកាតសិស្សតែក្នុងថ្នាក់ដែលលោកអ្នកបង្រៀនក្នុងកាលវិភាគប៉ុណ្ណោះ!")
+            return redirect('student_list')
         selected_grade_level = classroom.grade_level
         students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
     elif grade_level and str(grade_level).strip() and str(grade_level).strip().upper() != 'ALL':
         try:
             gl_int = int(grade_level)
             selected_grade_level = gl_int
-            students = list(Student.objects.filter(classroom__grade_level=gl_int).select_related('classroom', 'academic_year').order_by('classroom__name', 'student_id', 'khmer_name'))
+            qs = Student.objects.filter(classroom__grade_level=gl_int).select_related('classroom', 'academic_year')
+            if is_teacher:
+                qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+            students = list(qs.order_by('classroom__name', 'student_id', 'khmer_name'))
         except (ValueError, TypeError):
             selected_grade_level = None
-            students = list(Student.objects.select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:12])
+            qs = Student.objects.select_related('classroom', 'academic_year')
+            if is_teacher:
+                qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+            students = list(qs.order_by('student_id', 'khmer_name')[:12])
     elif grade_level and str(grade_level).strip().upper() == 'ALL':
         selected_grade_level = 'ALL'
-        students = list(Student.objects.select_related('classroom', 'academic_year').order_by('classroom__grade_level', 'classroom__name', 'student_id', 'khmer_name'))
+        qs = Student.objects.select_related('classroom', 'academic_year')
+        if is_teacher:
+            qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+        students = list(qs.order_by('classroom__grade_level', 'classroom__name', 'student_id', 'khmer_name'))
     else:
         classroom = classrooms.first()
         if classroom:
             selected_grade_level = classroom.grade_level
             students = list(Student.objects.filter(classroom=classroom).select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name'))
         else:
-            students = list(Student.objects.select_related('classroom', 'academic_year').order_by('student_id', 'khmer_name')[:4])
+            students = []
 
     now = timezone.now()
     day_kh = to_khmer_number_filter(f"{now.day:02d}")
@@ -2011,6 +2058,11 @@ def batch_student_id_cards(request):
 def api_student_upload_photo(request, pk):
     """AJAX endpoint to upload or update a student's profile photo."""
     student = get_object_or_404(Student, pk=pk)
+    if getattr(request.user, 'role', '') == User.Role.TEACHER:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        allowed_class_ids = get_teacher_allowed_classroom_ids(request.user)
+        if not student.classroom_id or student.classroom_id not in allowed_class_ids:
+            return JsonResponse({'status': 'error', 'message': 'គ្មានសិទ្ធិផ្លាស់ប្តូររូបថតសិស្សក្រៅពីថ្នាក់បង្រៀនឡើយ!'}, status=403)
     if request.method == 'POST' and request.FILES.get('photo'):
         student.photo = request.FILES['photo']
         student.save(update_fields=['photo'])
@@ -4708,6 +4760,13 @@ def _get_student_age_roster_data(request):
     if active_year:
         qs = qs.filter(Q(academic_year=active_year) | Q(classroom__academic_year=active_year))
 
+    is_teacher = request.user.is_authenticated and getattr(request.user, 'role', '') == User.Role.TEACHER
+    teacher_allowed_cls_ids = set()
+    if is_teacher:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        teacher_allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+        qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+
     if status_filter != 'ALL':
         qs = qs.filter(status='ACTIVE')
 
@@ -4837,6 +4896,8 @@ def _get_student_age_roster_data(request):
 
     # Dropdown Options
     all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.none()
+    if is_teacher:
+        all_classrooms = all_classrooms.filter(id__in=teacher_allowed_cls_ids)
 
     return {
         'students': students_list,
@@ -5196,6 +5257,13 @@ def _get_moeys_individual_student_roster_data(request):
     if active_year:
         qs = qs.filter(Q(academic_year=active_year) | Q(classroom__academic_year=active_year))
 
+    is_teacher = request.user.is_authenticated and getattr(request.user, 'role', '') == User.Role.TEACHER
+    teacher_allowed_cls_ids = set()
+    if is_teacher:
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        teacher_allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+        qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+
     # Grade filter handling
     if grade_filter and grade_filter != 'ALL' and grade_filter.isdigit():
         qs = qs.filter(classroom__grade_level=int(grade_filter))
@@ -5408,6 +5476,8 @@ def _get_moeys_individual_student_roster_data(request):
     female_pct = round((total_female / total_count * 100), 1) if total_count > 0 else 0.0
 
     all_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.none()
+    if is_teacher:
+        all_classrooms = all_classrooms.filter(id__in=teacher_allowed_cls_ids)
 
     from apps.students.models import StudentStatusConfig
     available_statuses = list(StudentStatusConfig.objects.filter(is_active=True).order_by('order', 'id'))

@@ -346,7 +346,7 @@
                             <td>{{ slot.subject.name_kh }}</td>
                             <td>{{ slot.room|default:"-" }}</td>
                             <td>
-                                <a href="{% url 'student_attendance_grid' %}?classroom={{ slot.classroom.id }}" class="btn btn-sm btn-outline-success py-1">
+                                <a href="{% url 'student_attendance_grid' %}?classroom={{ slot.classroom.id }}&period={{ slot.period_number }}" class="btn btn-sm btn-outline-success py-1">
                                     <i class="fa-solid fa-check me-1"></i> ស្រង់វត្តមាន
                                 </a>
                             </td>

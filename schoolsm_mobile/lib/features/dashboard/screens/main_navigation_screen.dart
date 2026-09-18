@@ -526,13 +526,6 @@ class _HomeScreenState extends State<_HomeScreen> {
           'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentListScreen())),
         },
         {
-          'title': 'ឡើងថ្នាក់ & ត្រួតថ្នាក់',
-          'subtitle': 'Student Promotion',
-          'icon': Icons.swap_vert_circle_rounded,
-          'color': const Color(0xFFEC4899),
-          'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentPromotionScreen())),
-        },
-        {
           'title': 'កាលវិភាគបង្រៀន',
           'subtitle': 'My Schedule',
           'icon': Icons.calendar_month_rounded,

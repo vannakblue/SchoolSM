@@ -41,7 +41,8 @@ def verify_roles_and_zoom():
     # Teacher: Academics, Timetable, Attendance, Grade Entry, Leaves, Tools
     assert is_menu_allowed(teacher_user, 'teacher_dashboard') is True
     assert is_menu_allowed(teacher_user, 'student_list') is True
-    assert is_menu_allowed(teacher_user, 'timetable_view') is True
+    assert is_menu_allowed(teacher_user, 'student_teacher_timetable_view') is True
+    assert is_menu_allowed(teacher_user, 'timetable_view') is False
     assert is_menu_allowed(teacher_user, 'student_attendance_grid') is True
     assert is_menu_allowed(teacher_user, 'grade_entry_matrix') is True
     assert is_menu_allowed(teacher_user, 'teacher_mobile_qr_scan') is True

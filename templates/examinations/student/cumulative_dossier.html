@@ -71,7 +71,7 @@
             background-color: #f1f5f9;
             color: #0f172a;
             margin: 0;
-            padding: 20px 0;
+            padding: 85px 0 20px 0;
             font-size: 11px;
             line-height: 1.4;
         }
@@ -208,21 +208,23 @@
             margin: 4px auto;
         }
 
-        .no-print {
+        .dossier-floating-actions {
             position: fixed;
-            top: 20px;
+            top: 15px;
             right: 20px;
             z-index: 99999;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
         }
 
         @media print {
             body {
                 background: white;
-                padding: 0;
+                padding: 0 !important;
             }
             .dossier-booklet {
                 width: 100%;
@@ -232,7 +234,8 @@
                 box-shadow: none;
                 page-break-after: always;
             }
-            .no-print {
+            .no-print,
+            .dossier-floating-actions {
                 display: none !important;
             }
             @page {
@@ -264,7 +267,7 @@
 <body>
 
 <!-- Floating Action Bar -->
-<div class="no-print d-flex gap-2 align-items-center">
+<div class="dossier-floating-actions no-print d-flex gap-2 align-items-center">
     {% if is_batch %}
     <span class="badge bg-primary px-3 py-2 fs-6">
         <i class="fa-solid fa-users me-1"></i> បោះពុម្ពជាបណ្តុំ៖ {{ dossier_list|length }} នាក់ {% if classroom %}(ថ្នាក់ {{ classroom.name }}){% endif %}

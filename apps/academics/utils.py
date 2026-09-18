@@ -134,3 +134,27 @@ def get_teacher_subject_duty_code_map(academic_year=None, subjects=None, teacher
 
     return code_map, teacher_direct_code
 
+
+def get_teacher_allowed_classroom_ids(user):
+    """
+    Returns a set of Classroom IDs that a teacher is assigned to teach via Timetable,
+    or as homeroom teacher, or via ClassSubject.
+    Returns an empty set if user is not a teacher, has no profile, or has no assigned classrooms.
+    """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return set()
+
+    teacher_profile = getattr(user, 'teacher_profile', None)
+    if not teacher_profile:
+        from apps.teachers.models import Teacher
+        teacher_profile = Teacher.objects.filter(user=user).first()
+
+    if not teacher_profile:
+        return set()
+
+    from .models import Timetable, Classroom, ClassSubject
+    timetable_cls_ids = set(Timetable.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
+    homeroom_cls_ids = set(Classroom.objects.filter(homeroom_teacher=teacher_profile).values_list('id', flat=True))
+    class_subject_cls_ids = set(ClassSubject.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
+
+    return timetable_cls_ids | homeroom_cls_ids | class_subject_cls_ids

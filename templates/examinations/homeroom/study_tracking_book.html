@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -8,6 +9,29 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        @font-face {
+            font-family: 'Tacteing';
+            src: url("{% static 'fonts/tacteng.ttf' %}") format('truetype'),
+                 local('Khmer OS Tacteing'),
+                 local('Tacteing'),
+                 local('KhmerOS_tacteing');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Khmer OS Tacteing';
+            src: url("{% static 'fonts/tacteng.ttf' %}") format('truetype'),
+                 local('Khmer OS Tacteing'),
+                 local('Tacteing'),
+                 local('KhmerOS_tacteing');
+            font-weight: normal;
+            font-style: normal;
+        }
+        .font-tacteing, .tatch, .tacteing {
+            font-family: 'Tacteing', 'Khmer OS Tacteing', cursive, sans-serif !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+        }
         :root {
             --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
             --font-body: 'Kantumruy Pro', 'Battambang', sans-serif;
@@ -121,7 +145,7 @@
         <div class="col-4 text-center">
             <div class="font-moul text-primary">ព្រះរាជាណាចក្រកម្ពុជា</div>
             <div class="font-moul text-danger">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-            <div style="letter-spacing: 2px;">***</div>
+            <div class="font-tacteing text-center" style="font-size: 1.15rem; line-height: 1; margin-top: 2px;" title="ក្បាច់ Tacteing">r</div>
         </div>
         <div class="col-4 text-end">
             <div class="small">ឆ្នាំសិក្សា៖ <strong>{{ classroom.academic_year.name }}</strong></div>

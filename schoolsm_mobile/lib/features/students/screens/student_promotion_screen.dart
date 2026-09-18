@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/services/auth_service.dart';
 
 class StudentPromotionScreen extends StatefulWidget {
   const StudentPromotionScreen({super.key});
@@ -15,6 +18,7 @@ class _StudentPromotionScreenState extends State<StudentPromotionScreen> {
   bool _isLoadingMeta = true;
   bool _isLoadingStudents = false;
   bool _isSubmitting = false;
+  bool _isForbidden = false;
 
   List<dynamic> _sourceClassrooms = [];
   List<dynamic> _targetYears = [];
@@ -34,7 +38,10 @@ class _StudentPromotionScreenState extends State<StudentPromotionScreen> {
   }
 
   Future<void> _fetchMeta() async {
-    setState(() => _isLoadingMeta = true);
+    setState(() {
+      _isLoadingMeta = true;
+      _isForbidden = false;
+    });
     try {
       final res = await ApiClient().dio.get(ApiConstants.studentPromotionMeta);
       final data = res.data;
@@ -57,6 +64,15 @@ class _StudentPromotionScreenState extends State<StudentPromotionScreen> {
       } else {
         setState(() => _isLoadingMeta = false);
       }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) {
+        setState(() {
+          _isForbidden = true;
+          _isLoadingMeta = false;
+        });
+        return;
+      }
+      setState(() => _isLoadingMeta = false);
     } catch (_) {
       setState(() => _isLoadingMeta = false);
     }
@@ -141,6 +157,65 @@ class _StudentPromotionScreenState extends State<StudentPromotionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthService>(context);
+    if (auth.isTeacher || _isForbidden) {
+      return Scaffold(
+        backgroundColor: AppColors.bgLight,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            "ឡើងថ្នាក់ & ត្រួតថ្នាក់",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.gpp_bad_rounded, size: 64, color: Colors.red.shade600),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "មិនមានសិទ្ធិចូលប្រើប្រាស់ឡើយ",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "គ្រូបង្រៀនធម្មតាមិនមានសិទ្ធិប្រើប្រាស់មុខងារឡើងថ្នាក់ និងត្រួតថ្នាក់សិស្សឡើយ។ មុខងារនេះសម្រាប់តែគណៈគ្រប់គ្រងសាលា (Admin) ប៉ុណ្ណោះ។",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: const Text("ត្រឡប់ក្រោយ"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(

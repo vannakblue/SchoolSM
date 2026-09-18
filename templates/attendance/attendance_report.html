@@ -63,74 +63,108 @@
 
 <!-- Filters Bar -->
 <div class="custom-card p-3 mb-4 shadow-sm border-0">
-
     <form method="GET" id="reportFilterForm">
-        <div class="row g-3 align-items-end">
-            <!-- Classroom Selector -->
-            <div class="col-md-3">
-                <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្នាក់រៀន *</label>
-                <select name="classroom" class="form-select" onchange="document.getElementById('reportFilterForm').submit()">
-                    {% for c in classrooms %}
-                    <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+        <div class="row g-2 align-items-end">
+            <!-- 1. Grade Level Selector -->
+            <div class="col-lg-2 col-md-3 col-sm-6">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="fa-solid fa-layer-group text-primary me-1"></i>កម្រិតថ្នាក់
+                </label>
+                <select name="grade_level" id="gradeLevelSelect" class="form-select form-select-sm" onchange="handleGradeChange(this.value)">
+                    <option value="" {% if not selected_grade_level or selected_grade_level == 'ALL' %}selected{% endif %}>-- គ្រប់កម្រិតថ្នាក់ --</option>
+                    {% for g in available_grades %}
+                    <option value="{{ g }}" {% if selected_grade_level == g|stringformat:"s" %}selected{% endif %}>ថ្នាក់ទី {{ g }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <!-- Filter Type Selector -->
-            <div class="col-md-3">
-                <label class="form-label fw-bold small text-muted">ប្រភេទចន្លោះពេល (Filter By) *</label>
-                <select name="filter_type" id="filterTypeSelect" class="form-select" onchange="handleFilterTypeChange(this.value)">
-                    <option value="today" {% if filter_type == 'today' %}selected{% endif %}>📅 ថ្ងៃនេះ (Today)</option>
-                    <option value="week" {% if filter_type == 'week' %}selected{% endif %}>📆 សប្តាហ៍ (Week)</option>
-                    <option value="month" {% if filter_type == 'month' %}selected{% endif %}>🗓️ ប្រចាំខែ (Month)</option>
-                    <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>⚙️ ចន្លោះថ្ងៃជាក់លាក់ (Custom Range)</option>
+            <!-- 2. Classroom Selector -->
+            <div class="col-lg-2 col-md-3 col-sm-6">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="fa-solid fa-school text-primary me-1"></i>ថ្នាក់រៀន
+                </label>
+                <select name="classroom" id="classroomSelect" class="form-select form-select-sm" onchange="document.getElementById('reportFilterForm').submit()">
+                    <option value="ALL" {% if selected_class_id == 'ALL' or not selected_class_id %}selected{% endif %}>
+                        {% if selected_grade_level %}-- គ្រប់ថ្នាក់ទី {{ selected_grade_level }} --{% else %}-- គ្រប់ថ្នាក់ទាំងអស់ (All) --{% endif %}
+                    </option>
+                    {% for c in filtered_classrooms %}
+                    <option value="{{ c.id }}" data-grade="{{ c.grade_level }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                    {% endfor %}
                 </select>
             </div>
 
-            <!-- Dynamic Input: Month -->
-            <div class="col-md-4 filter-input-box" id="box_month" style="{% if filter_type != 'month' %}display: none;{% endif %}">
-                <label class="form-label fw-bold small text-muted">ជ្រើសរើសខែ *</label>
-                <input type="month" name="month" value="{{ month_str }}" class="form-control" onchange="document.getElementById('reportFilterForm').submit()">
+            <!-- 3. Filter Type Selector -->
+            <div class="col-lg-2 col-md-3 col-sm-6">
+                <label class="form-label fw-bold small text-muted mb-1">
+                    <i class="fa-solid fa-filter text-primary me-1"></i>ប្រភេទចន្លោះពេល *
+                </label>
+                <select name="filter_type" id="filterTypeSelect" class="form-select form-select-sm" onchange="handleFilterTypeChange(this.value)">
+                    <option value="today" {% if filter_type == 'today' %}selected{% endif %}>📅 ថ្ងៃនេះ (Today)</option>
+                    <option value="week" {% if filter_type == 'week' %}selected{% endif %}>📆 សប្តាហ៍ (Week)</option>
+                    <option value="month" {% if filter_type == 'month' %}selected{% endif %}>🗓️ ប្រចាំខែ (Month)</option>
+                    <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>⚙️ ចន្លោះថ្ងៃ (Custom)</option>
+                </select>
             </div>
 
-            <!-- Dynamic Input: Week -->
-            <div class="col-md-4 filter-input-box" id="box_week" style="{% if filter_type != 'week' %}display: none;{% endif %}">
-                <label class="form-label fw-bold small text-muted">ជ្រើសរើសថ្ងៃក្នុងសប្តាហ៍ *</label>
-                <input type="date" name="week_date" value="{{ week_date_str }}" class="form-control" onchange="document.getElementById('reportFilterForm').submit()">
+            <!-- 4. Dynamic Date Inputs -->
+            <!-- Month -->
+            <div class="col-lg-3 col-md-3 col-sm-6 filter-input-box" id="box_month" style="{% if filter_type != 'month' %}display: none;{% endif %}">
+                <label class="form-label fw-bold small text-muted mb-1">ជ្រើសរើសខែ *</label>
+                <input type="month" name="month" value="{{ month_str }}" class="form-control form-control-sm" onchange="document.getElementById('reportFilterForm').submit()">
             </div>
 
-            <!-- Dynamic Input: Custom Range -->
-            <div class="col-md-4 filter-input-box" id="box_custom" style="{% if filter_type != 'custom' %}display: none;{% endif %}">
-                <div class="row g-2">
+            <!-- Week -->
+            <div class="col-lg-3 col-md-3 col-sm-6 filter-input-box" id="box_week" style="{% if filter_type != 'week' %}display: none;{% endif %}">
+                <label class="form-label fw-bold small text-muted mb-1">ជ្រើសរើសថ្ងៃក្នុងសប្តាហ៍ *</label>
+                <input type="date" name="week_date" value="{{ week_date_str }}" class="form-control form-control-sm" onchange="document.getElementById('reportFilterForm').submit()">
+            </div>
+
+            <!-- Custom Range -->
+            <div class="col-lg-3 col-md-4 col-sm-6 filter-input-box" id="box_custom" style="{% if filter_type != 'custom' %}display: none;{% endif %}">
+                <div class="row g-1">
                     <div class="col-6">
-                        <label class="form-label fw-bold small text-muted">ចាប់ពីថ្ងៃ</label>
-                        <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+                        <label class="form-label fw-bold small text-muted mb-1">ចាប់ពី</label>
+                        <input type="date" name="start_date" value="{{ start_date }}" class="form-control form-control-sm">
                     </div>
                     <div class="col-6">
-                        <label class="form-label fw-bold small text-muted">ដល់ថ្ងៃ</label>
-                        <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+                        <label class="form-label fw-bold small text-muted mb-1">ដល់</label>
+                        <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm">
                     </div>
                 </div>
             </div>
 
-            <!-- Submit Button -->
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100 fw-bold">
+            <!-- 5. Submit & Reset Actions -->
+            <div class="col-lg-3 col-md-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
                     <i class="fa-solid fa-arrows-rotate me-1"></i> ទាញទិន្នន័យ
                 </button>
+                <a href="{% url 'attendance_report' %}" class="btn btn-outline-secondary btn-sm" title="កំណត់ឡើងវិញ (Reset Filters)">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
             </div>
         </div>
     </form>
 </div>
 
-{% if selected_class %}
+{% if target_classes_count > 0 or report_data %}
 <!-- Summary Metric KPI Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <div class="kpi-card border-start border-4 border-primary">
             <div class="text-muted small fw-bold">សិស្សសរុប</div>
             <div class="h3 fw-bold text-dark my-1">{{ summary_stats.total_students }} <span class="fs-6 text-muted font-monospace">នាក់</span></div>
-            <small class="text-muted"><i class="fa-solid fa-users text-primary me-1"></i>ក្នុងថ្នាក់ {{ selected_class.name }}</small>
+            <small class="text-muted">
+                <i class="fa-solid fa-users text-primary me-1"></i>
+                {% if selected_class %}
+                    ក្នុងថ្នាក់ {{ selected_class.name }}
+                {% elif selected_grade_level %}
+                    កម្រិតទី {{ selected_grade_level }} ({{ target_classes_count }} ថ្នាក់)
+                {% else %}
+                    ទូទាំងសាលា ({{ target_classes_count }} ថ្នាក់)
+                {% endif %}
+            </small>
         </div>
     </div>
     <div class="col-6 col-md-3">
@@ -151,7 +185,14 @@
         <div class="kpi-card border-start border-4 border-success">
             <div class="text-muted small fw-bold">អត្រាវត្តមានមធ្យម</div>
             <div class="h3 fw-bold text-success my-1">{{ summary_stats.avg_attendance_rate }}%</div>
-            <small class="text-muted"><i class="fa-solid fa-chart-line text-success me-1"></i>មធ្យមភាគទូទាំងថ្នាក់</small>
+            <small class="text-muted">
+                <i class="fa-solid fa-chart-line text-success me-1"></i>
+                {% if selected_class %}
+                    មធ្យមភាគក្នុងថ្នាក់
+                {% else %}
+                    មធ្យមភាគសរុប
+                {% endif %}
+            </small>
         </div>
     </div>
 </div>
@@ -161,42 +202,85 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-bottom bg-light bg-opacity-50 rounded-top">
         <div>
             <h5 class="fw-bold mb-0 text-dark">
-                <i class="fa-solid fa-calendar-check text-primary me-2"></i>របាយការណ៍វត្តមាន៖ {{ selected_class.name }}
+                <i class="fa-solid fa-calendar-check text-primary me-2"></i>
+                {% if selected_class %}
+                    របាយការណ៍វត្តមាន៖ {{ selected_class.name }}
+                {% elif selected_grade_level %}
+                    របាយការណ៍វត្តមាន៖ គ្រប់ថ្នាក់កម្រិតទី {{ selected_grade_level }} ({{ target_classes_count }} ថ្នាក់)
+                {% else %}
+                    របាយការណ៍វត្តមាន៖ គ្រប់ថ្នាក់ទូទាំងសាលា ({{ target_classes_count }} ថ្នាក់)
+                {% endif %}
             </h5>
             <span class="text-muted small">
                 ចន្លោះពេល៖ <strong class="text-primary">{{ filter_label }}</strong> | 
-                គិតសរុប៖ <strong class="text-dark">{{ summary_stats.total_sessions_held }} វេនសិក្សា</strong>
+                គិតសរុប៖ <strong class="text-dark">{{ summary_stats.total_sessions_held }} វេនសិក្សា</strong> |
+                សិស្សសរុប៖ <strong class="text-dark"><span id="visibleStudentCount">{{ summary_stats.total_students }}</span> / {{ summary_stats.total_students }} នាក់</strong>
             </span>
         </div>
-        <div>
-            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-3 py-2">
-                <i class="fa-solid fa-circle-info me-1"></i> សិស្សអវត្តមានច្រើនម៉ោងក្នុងវេនតែមួយ ត្រូវបានរាប់ត្រឹមតែ ១ លើក
-            </span>
+
+        <!-- Live Instant Search (Show as typing) -->
+        <div style="min-width: 280px; max-width: 440px;" class="flex-grow-1">
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0 text-primary">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" 
+                       id="liveStudentSearchInput" 
+                       value="{{ search_query|default:'' }}" 
+                       class="form-control border-start-0 border-end-0" 
+                       placeholder="ស្វែងរកតាមអត្តលេខ ឬ ឈ្មោះសិស្ស..." 
+                       autocomplete="off"
+                       oninput="filterStudentsOnTyping(this.value)">
+                <button type="button" 
+                        id="clearSearchBtn" 
+                        class="btn btn-outline-secondary bg-white border-start-0 text-muted" 
+                        style="{% if not search_query %}display: none;{% endif %}" 
+                        onclick="clearLiveSearch()" 
+                        title="សម្អាតការស្វែងរក">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-1 px-1">
+                <span class="text-muted" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-bolt text-warning me-1"></i>ស្វែងរកភ្លាមៗពេលកំពុងវាយ (Show as typing)
+                </span>
+                <span id="searchResultBadge" class="fw-bold" style="font-size: 0.75rem; display: none;"></span>
+            </div>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table align-middle table-hover mb-0">
+        <table class="table align-middle table-hover mb-0" id="attendanceReportTable">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 120px;">កូដសិស្ស</th>
+                    <th style="width: 110px;">កូដសិស្ស</th>
                     <th>ឈ្មោះសិស្ស</th>
-                    <th style="width: 90px;">ភេទ</th>
-                    <th class="text-center" style="width: 140px;">វត្តមាន (Present)</th>
-                    <th class="text-center" style="width: 140px;">ច្បាប់ (Permission)</th>
-                    <th class="text-center" style="width: 140px;">អវត្តមាន (Absent)</th>
-                    <th class="text-center" style="width: 110px;">មកយឺត (Late)</th>
-                    <th class="text-center" style="width: 110px;">វេនសរុប</th>
-                    <th style="width: 200px;">អត្រាវត្តមាន (%)</th>
+                    <th style="width: 110px;">ថ្នាក់រៀន</th>
+                    <th style="width: 75px;">ភេទ</th>
+                    <th class="text-center" style="width: 130px;">វត្តមាន (Present)</th>
+                    <th class="text-center" style="width: 130px;">ច្បាប់ (Permission)</th>
+                    <th class="text-center" style="width: 130px;">អវត្តមាន (Absent)</th>
+                    <th class="text-center" style="width: 95px;">មកយឺត (Late)</th>
+                    <th class="text-center" style="width: 95px;">វេនសរុប</th>
+                    <th style="width: 180px;">អត្រាវត្តមាន (%)</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="attendanceTableBody">
                 {% for r in report_data %}
-                <tr>
+                <tr class="student-report-row" 
+                    data-student-id="{{ r.student.student_id|lower }}" 
+                    data-khmer-name="{{ r.student.khmer_name|lower }}" 
+                    data-latin-name="{{ r.student.latin_name|default:''|lower }}" 
+                    data-classroom="{{ r.student.classroom.name|default:''|lower }}">
                     <td class="fw-bold text-primary font-monospace">{{ r.student.student_id }}</td>
                     <td>
                         <div class="fw-bold text-dark">{{ r.student.khmer_name }}</div>
                         <small class="text-muted">{{ r.student.latin_name }}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary bg-opacity-10 text-dark border px-2 py-1">
+                            {{ r.student.classroom.name|default:'-' }}
+                        </span>
                     </td>
                     <td>
                         {% if r.student.gender == 'F' %}
@@ -248,12 +332,19 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-5 text-muted">
+                    <td colspan="10" class="text-center py-5 text-muted">
                         <i class="fa-solid fa-folder-open fa-2x mb-2 text-secondary opacity-50"></i>
                         <div>មិនទាន់មានទិន្នន័យវត្តមានសម្រាប់ចន្លោះពេលនេះឡើយ</div>
                     </td>
                 </tr>
                 {% endfor %}
+                <tr id="noSearchMatchRow" style="display: none;">
+                    <td colspan="10" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-magnifying-glass fa-2x mb-2 text-secondary opacity-50"></i>
+                        <div class="fw-bold text-secondary">រកមិនឃើញសិស្សដែលត្រូវនឹងពាក្យស្វែងរកឡើយ</div>
+                        <small class="text-muted">សូមសាកល្បងបញ្ចូលអត្តលេខ ឬឈ្មោះផ្សេងទៀត</small>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -262,6 +353,82 @@
 
 {% block extra_js %}
 <script>
+    const KHMER_NUM_MAP = {'០':'0','១':'1','២':'2','៣':'3','៤':'4','៥':'5','៦':'6','៧':'7','៨':'8','៩':'9'};
+
+    function normalizeForSearch(str) {
+        if (!str) return '';
+        let s = str.toString().trim().toLowerCase().normalize('NFC');
+        return s.replace(/[០-៩]/g, d => KHMER_NUM_MAP[d] || d);
+    }
+
+    function filterStudentsOnTyping(query) {
+        const q = normalizeForSearch(query);
+        const rows = document.querySelectorAll('.student-report-row');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const badge = document.getElementById('searchResultBadge');
+        const visibleCounter = document.getElementById('visibleStudentCount');
+        const noMatchRow = document.getElementById('noSearchMatchRow');
+
+        if (clearBtn) {
+            clearBtn.style.display = query.trim().length > 0 ? 'inline-block' : 'none';
+        }
+
+        let visibleCount = 0;
+        rows.forEach(row => {
+            const sid = normalizeForSearch(row.getAttribute('data-student-id'));
+            const khName = normalizeForSearch(row.getAttribute('data-khmer-name'));
+            const latName = normalizeForSearch(row.getAttribute('data-latin-name'));
+            const clsName = normalizeForSearch(row.getAttribute('data-classroom'));
+
+            if (!q || sid.includes(q) || khName.includes(q) || latName.includes(q) || clsName.includes(q)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (visibleCounter) {
+            visibleCounter.textContent = visibleCount;
+        }
+
+        if (badge) {
+            if (q.length > 0) {
+                badge.style.display = 'inline';
+                if (visibleCount > 0) {
+                    badge.className = 'fw-bold text-success';
+                    badge.textContent = `✓ រកឃើញ ${visibleCount} / ${rows.length} នាក់`;
+                } else {
+                    badge.className = 'fw-bold text-danger';
+                    badge.textContent = `✗ រកមិនឃើញសិស្ស`;
+                }
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        if (noMatchRow) {
+            noMatchRow.style.display = (visibleCount === 0 && rows.length > 0 && q.length > 0) ? '' : 'none';
+        }
+    }
+
+    function clearLiveSearch() {
+        const input = document.getElementById('liveStudentSearchInput');
+        if (input) {
+            input.value = '';
+            filterStudentsOnTyping('');
+            input.focus();
+        }
+    }
+
+    function handleGradeChange(grade) {
+        const classSelect = document.getElementById('classroomSelect');
+        if (classSelect) {
+            classSelect.value = 'ALL';
+        }
+        document.getElementById('reportFilterForm').submit();
+    }
+
     function handleFilterTypeChange(type) {
         document.querySelectorAll('.filter-input-box').forEach(box => box.style.display = 'none');
         if (type === 'today') {
@@ -274,6 +441,13 @@
             document.getElementById('box_custom').style.display = 'block';
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('liveStudentSearchInput');
+        if (searchInput && searchInput.value.trim().length > 0) {
+            filterStudentsOnTyping(searchInput.value);
+        }
+    });
 </script>
 {% endblock %}
 {% endblock %}

@@ -1700,21 +1700,14 @@ class MobileStudentPromotionMetaAPIView(APIView):
         from apps.academics.models import ClassSubject
 
         is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
-        teacher_profile = Teacher.objects.filter(user=request.user).first() if not is_admin else None
-
-        if not is_admin and not teacher_profile:
+        if not is_admin:
             return Response({
                 'status': 'error',
-                'message': 'អ្នកមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!'
+                'error_code': 'TEACHER_PROMOTION_FORBIDDEN',
+                'message': 'គ្រូបង្រៀនធម្មតាមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        if not is_admin:
-            taught_cids = set(ClassSubject.objects.filter(teacher=teacher_profile).values_list('classroom_id', flat=True))
-            if hasattr(Classroom, 'teacher'):
-                taught_cids.update(Classroom.objects.filter(teacher=teacher_profile).values_list('id', flat=True))
-            source_classes = Classroom.objects.filter(id__in=taught_cids).select_related('academic_year')
-        else:
-            source_classes = Classroom.objects.all().select_related('academic_year')
+        source_classes = Classroom.objects.all().select_related('academic_year')
 
         source_classes_data = [
             {
@@ -1776,6 +1769,14 @@ class MobileStudentPromotionClassStudentsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        if not is_admin:
+            return Response({
+                'status': 'error',
+                'error_code': 'TEACHER_PROMOTION_FORBIDDEN',
+                'message': 'គ្រូបង្រៀនធម្មតាមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         source_class_id = request.GET.get('source_class_id')
         if not source_class_id:
             return Response({'status': 'error', 'message': 'source_class_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1833,6 +1834,14 @@ class MobileStudentPromotionSubmitAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+        if not is_admin:
+            return Response({
+                'status': 'error',
+                'error_code': 'TEACHER_PROMOTION_FORBIDDEN',
+                'message': 'គ្រូបង្រៀនធម្មតាមិនមានសិទ្ធិចាត់ចែងការឡើងថ្នាក់/ត្រួតថ្នាក់សិស្សឡើយ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         from apps.students.models import StudentPromotionRecord
 
         data = request.data
@@ -1848,12 +1857,6 @@ class MobileStudentPromotionSubmitAPIView(APIView):
 
         source_class = get_object_or_404(Classroom, id=source_class_id)
         target_year = AcademicYear.objects.filter(id=target_year_id).first() if target_year_id else source_class.academic_year
-
-        is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
-        if not is_admin:
-            teacher_profile = Teacher.objects.filter(user=request.user).first()
-            if not teacher_profile:
-                return Response({'status': 'error', 'message': 'គ្មានសិទ្ធិអនុវត្ត!'}, status=status.HTTP_403_FORBIDDEN)
 
         promoted_count = 0
         retained_count = 0
@@ -3126,7 +3129,16 @@ class MobileStudentListView(APIView):
         year_id = request.GET.get('academic_year_id')
         status_filter = request.GET.get('status', 'ACTIVE')
 
+        is_teacher = getattr(request.user, 'role', '') == 'TEACHER'
+        teacher_allowed_cls_ids = set()
+        if is_teacher:
+            from apps.academics.utils import get_teacher_allowed_classroom_ids
+            teacher_allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+
         qs = Student.objects.select_related('classroom', 'academic_year', 'user').all()
+        if is_teacher:
+            qs = qs.filter(classroom_id__in=teacher_allowed_cls_ids)
+
         if status_filter:
             qs = qs.filter(status=status_filter)
 
@@ -3138,7 +3150,10 @@ class MobileStudentListView(APIView):
                 qs = qs.filter(academic_year=current_year)
 
         if classroom_id:
-            qs = qs.filter(classroom_id=classroom_id)
+            if is_teacher and int(classroom_id) not in teacher_allowed_cls_ids:
+                qs = qs.none()
+            else:
+                qs = qs.filter(classroom_id=classroom_id)
         if grade_level:
             qs = qs.filter(classroom__grade_level=grade_level)
 
@@ -3177,7 +3192,16 @@ class MobileStudentListView(APIView):
                 'avatar_url': request.build_absolute_uri(s.user.avatar.url) if (s.user and s.user.avatar) else None
             })
 
-        classrooms = Classroom.objects.filter(academic_year__is_current=True).values('id', 'name', 'grade_level').order_by('grade_level', 'name')
+        if year_id:
+            classrooms_qs = Classroom.objects.filter(academic_year_id=year_id)
+        else:
+            classrooms_qs = Classroom.objects.filter(academic_year__is_current=True)
+            if not classrooms_qs.exists():
+                classrooms_qs = Classroom.objects.all()
+
+        if is_teacher:
+            classrooms_qs = classrooms_qs.filter(id__in=teacher_allowed_cls_ids)
+        classrooms = classrooms_qs.values('id', 'name', 'grade_level').order_by('grade_level', 'name')
 
         school_profile = SchoolProfile.get_settings()
         is_reg_allowed, reg_reason, reg_status = school_profile.is_student_registration_allowed()
@@ -4057,34 +4081,50 @@ class MobileHourlyAttendanceMetaAPIView(APIView):
 
         teacher_profile = getattr(user, 'teacher_profile', None)
         teacher_schedules = []
-        if user.role == 'TEACHER' and teacher_profile:
-            timetable_classes = Classroom.objects.filter(
-                timetables__teacher=teacher_profile,
-                academic_year=active_year
-            ).distinct()
-            homeroom_classes = Classroom.objects.filter(
-                homeroom_teacher=teacher_profile,
-                academic_year=active_year
-            )
-            classrooms_qs = (timetable_classes | homeroom_classes).distinct().order_by('grade_level', 'code')
-            if not classrooms_qs.exists():
-                classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+        is_timetable_locked = False
+        can_edit_schedule_fields = True
+        default_classroom_id = None
+        default_period = auto_period
+        default_session = auto_session
+        default_subject_name = ''
 
-            # Populate teacher's timetable slots
-            slots_qs = Timetable.objects.filter(
+        if user.role == 'TEACHER' and teacher_profile:
+            is_timetable_locked = True
+            can_edit_schedule_fields = False
+            today_dow = today_date.isoweekday()
+
+            # Populate teacher's timetable slots strictly FOR TODAY
+            today_slots_qs = Timetable.objects.filter(
                 teacher=teacher_profile,
+                day_of_week=today_dow,
                 classroom__academic_year=active_year
-            ).select_related('classroom', 'subject').order_by('day_of_week', 'period_number')
-            for sl in slots_qs:
+            ).select_related('classroom', 'subject').order_by('period_number')
+
+            for sl in today_slots_qs:
                 teacher_schedules.append({
                     'classroom_id': sl.classroom_id,
                     'classroom_name': sl.classroom.name,
+                    'classroom_code': sl.classroom.code,
                     'day_of_week': sl.day_of_week,
                     'period_number': sl.period_number,
+                    'session': 'MORNING' if sl.period_number <= 4 else 'AFTERNOON',
+                    'session_name': 'ពេលព្រឹក (Morning)' if sl.period_number <= 4 else 'ពេលរសៀល (Afternoon)',
                     'subject_name': sl.subject.name_kh if sl.subject else (sl.subject.name_en if sl.subject else ''),
                 })
+
+            if today_slots_qs.exists():
+                matching = today_slots_qs.filter(period_number=auto_period).first() or today_slots_qs.first()
+                default_classroom_id = matching.classroom_id
+                default_period = matching.period_number
+                default_session = 'MORNING' if matching.period_number <= 4 else 'AFTERNOON'
+                default_subject_name = matching.subject.name_kh if matching.subject else (matching.subject.name_en if matching.subject else '')
+                classrooms_qs = Classroom.objects.filter(id__in=[s.classroom_id for s in today_slots_qs]).distinct().order_by('grade_level', 'code')
+            else:
+                default_classroom_id = None
+                classrooms_qs = Classroom.objects.none()
         else:
             classrooms_qs = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+            default_classroom_id = classrooms_qs.first().id if classrooms_qs.exists() else None
 
         classrooms_data = [
             {
@@ -4119,8 +4159,12 @@ class MobileHourlyAttendanceMetaAPIView(APIView):
         return Response({
             'status': 'success',
             'today_date': today_date.strftime('%Y-%m-%d'),
-            'current_period': auto_period,
-            'current_session': auto_session,
+            'current_period': default_period,
+            'current_session': default_session,
+            'default_classroom_id': default_classroom_id,
+            'default_subject_name': default_subject_name,
+            'is_timetable_locked': is_timetable_locked,
+            'can_edit_schedule_fields': can_edit_schedule_fields,
             'can_override': user.role in ['ADMIN', 'ACCOUNTANT'] or user.is_superuser,
             'classrooms': classrooms_data,
             'periods': periods_data,
@@ -4193,6 +4237,9 @@ class MobileHourlyAttendanceRosterAPIView(APIView):
         teacher_today_slots = []
 
         if user.role == 'TEACHER':
+            # Teachers are locked to today and timetable session
+            target_date = timezone.localtime(timezone.now()).date()
+            session_val = 'MORNING' if period_num <= 4 else 'AFTERNOON'
             teacher_profile = getattr(user, 'teacher_profile', None)
             from apps.academics.models import Timetable
             day_of_week = target_date.isoweekday()
@@ -4209,6 +4256,8 @@ class MobileHourlyAttendanceRosterAPIView(APIView):
                     'classroom_id': s.classroom_id,
                     'classroom_name': s.classroom.name,
                     'classroom_code': s.classroom.code,
+                    'session': 'MORNING' if s.period_number <= 4 else 'AFTERNOON',
+                    'session_name': 'ពេលព្រឹក (Morning)' if s.period_number <= 4 else 'ពេលរសៀល (Afternoon)',
                     'subject_name': s.subject.name_kh if s.subject else (s.subject.name_en if s.subject else ''),
                 }
                 for s in today_slots_qs
@@ -4315,6 +4364,8 @@ class MobileHourlyAttendanceRosterAPIView(APIView):
             'date': target_date.strftime('%Y-%m-%d'),
             'session': session_val,
             'period_number': period_num,
+            'is_timetable_locked': user.role == 'TEACHER',
+            'can_edit_schedule_fields': user.role != 'TEACHER',
             'can_record': can_record,
             'is_teacher_scheduled': is_teacher_scheduled,
             'schedule_alert': schedule_alert,
@@ -4374,11 +4425,13 @@ class MobileHourlyAttendanceSaveAPIView(APIView):
         req_session = request.data.get('session')
         session_val = req_session if req_session in ['MORNING', 'AFTERNOON'] else ('MORNING' if period_num <= 4 else 'AFTERNOON')
 
-        # Enforce Teacher Timetable Schedule
+        # Enforce Teacher Timetable Schedule (Lock date, session, and slot strictly to teacher timetable)
         teacher_profile = getattr(user, 'teacher_profile', None)
-        if user.role == 'TEACHER' and teacher_profile:
+        if user.role == 'TEACHER':
+            target_date = timezone.localtime(timezone.now()).date()
+            session_val = 'MORNING' if period_num <= 4 else 'AFTERNOON'
             from apps.academics.models import Timetable
-            is_scheduled = Timetable.objects.filter(
+            is_scheduled = teacher_profile and Timetable.objects.filter(
                 teacher=teacher_profile,
                 classroom=classroom,
                 period_number=period_num,

@@ -1446,6 +1446,14 @@
     {
       "grade_level": 7,
       "track": "GENERAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
       "subject_code": "I",
       "subject_name_kh": "សីលធម៌",
       "max_score": "50.00",
@@ -1518,6 +1526,14 @@
     {
       "grade_level": 7,
       "track": "GENERAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 7,
+      "track": "GENERAL",
       "subject_code": "E",
       "subject_name_kh": "អង់គ្លេស",
       "max_score": "50.00",
@@ -1586,6 +1602,14 @@
       "subject_name_kh": "សរសេរតាមអាន",
       "max_score": "40.00",
       "order": 2
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "50.00",
+      "order": 1
     },
     {
       "grade_level": 8,
@@ -1662,6 +1686,14 @@
     {
       "grade_level": 8,
       "track": "GENERAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 8,
+      "track": "GENERAL",
       "subject_code": "E",
       "subject_name_kh": "អង់គ្លេស",
       "max_score": "50.00",
@@ -1730,6 +1762,14 @@
       "subject_name_kh": "សរសេរតាមអាន",
       "max_score": "40.00",
       "order": 2
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "K",
+      "subject_name_kh": "ភាសាខ្មែរ",
+      "max_score": "50.00",
+      "order": 1
     },
     {
       "grade_level": 9,
@@ -1802,6 +1842,14 @@
       "subject_name_kh": "គេហវិទ្យា",
       "max_score": "50.00",
       "order": 12
+    },
+    {
+      "grade_level": 9,
+      "track": "GENERAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 1
     },
     {
       "grade_level": 9,
@@ -1982,6 +2030,14 @@
     {
       "grade_level": 10,
       "track": "GENERAL",
+      "subject_code": "Ec",
+      "subject_name_kh": "សេដ្ឋកិច្ច",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 10,
+      "track": "GENERAL",
       "subject_code": "E",
       "subject_name_kh": "អង់គ្លេស",
       "max_score": "100.00",
@@ -2142,6 +2198,14 @@
     {
       "grade_level": 11,
       "track": "SCIENCE",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 11,
+      "track": "SCIENCE",
       "subject_code": "Ec",
       "subject_name_kh": "សេដ្ឋកិច្ច",
       "max_score": "50.00",
@@ -2242,6 +2306,14 @@
       "subject_name_kh": "ជីវវិទ្យា",
       "max_score": "50.00",
       "order": 11
+    },
+    {
+      "grade_level": 11,
+      "track": "SOCIAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 1
     },
     {
       "grade_level": 11,
@@ -2366,6 +2438,14 @@
     {
       "grade_level": 12,
       "track": "SCIENCE",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 1
+    },
+    {
+      "grade_level": 12,
+      "track": "SCIENCE",
       "subject_code": "Ec",
       "subject_name_kh": "សេដ្ឋកិច្ច",
       "max_score": "50.00",
@@ -2466,6 +2546,14 @@
       "subject_name_kh": "ជីវវិទ្យា",
       "max_score": "50.00",
       "order": 11
+    },
+    {
+      "grade_level": 12,
+      "track": "SOCIAL",
+      "subject_code": "He",
+      "subject_name_kh": "គេហវិទ្យា",
+      "max_score": "50.00",
+      "order": 1
     },
     {
       "grade_level": 12,

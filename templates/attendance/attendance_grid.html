@@ -118,46 +118,84 @@
 </div>
 
 
-<!-- Timetable Auto-Detection & Information Card -->
-{% if is_timetable_locked and detected_slot_info %}
-<div class="timetable-locked-card p-4 mb-4 shadow-sm">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="badge bg-success px-2.5 py-1.5 fw-bold">
-                    <i class="fa-solid fa-lock me-1"></i> ចាក់សោតាមកាលវិភាគ (Timetable Auto-Locked)
-                </span>
-                <span class="badge bg-primary px-2.5 py-1.5 fw-bold">
-                    <i class="fa-solid fa-calendar-day me-1"></i> {{ selected_date }}
-                </span>
+<!-- Timetable Auto-Detection & Information Card for Teacher (Disabled / View Only) -->
+{% if request.user.role == 'TEACHER' %}
+    {% if is_timetable_locked and detected_slot_info %}
+    <div class="timetable-locked-card p-4 mb-4 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge bg-success px-2.5 py-1.5 fw-bold">
+                        <i class="fa-solid fa-lock me-1"></i> កាលវិភាគជាប់សោ (View Only / Disabled)
+                    </span>
+                    <span class="badge bg-primary px-2.5 py-1.5 fw-bold">
+                        <i class="fa-solid fa-calendar-day me-1"></i> កាលបរិច្ឆេទ៖ {{ selected_date }}
+                    </span>
+                    <span class="badge bg-info text-dark px-2.5 py-1.5 fw-bold">
+                        <i class="fa-solid fa-clock me-1"></i> វេន៖ {{ detected_slot_info.session_name }}
+                    </span>
+                </div>
+                <h4 class="fw-bold text-white mb-1">
+                    {{ selected_class.name }} &bull; ម៉ោងទី {{ selected_period }}
+                    {% if selected_subject %}<span class="text-info">({{ selected_subject.name_kh|default:selected_subject.name_en }})</span>{% endif %}
+                </h4>
+                <div class="text-white-50 small mt-1">
+                    <i class="fa-solid fa-user-tie me-1"></i> គ្រូបង្រៀន៖ <span class="text-white fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <span class="mx-2 text-white-50">|</span>
+                    <i class="fa-solid fa-circle-info me-1"></i> ស្ថានភាព៖ <span class="text-warning fw-semibold">ទិន្នន័យស្រង់ចេញពីកាលវិភាគបង្រៀនផ្ទាល់ (មិនអាចកែប្រែដោយគ្រូបានឡើយ)</span>
+                </div>
             </div>
-            <h4 class="fw-bold text-white mb-1">
-                {{ selected_class.name }} &bull; ម៉ោងទី {{ selected_period }}
-                {% if selected_subject %}<span class="text-info">({{ selected_subject.name_kh|default:selected_subject.name_en }})</span>{% endif %}
-            </h4>
-            <div class="text-white-50 small">
-                វេនសិក្សា៖ <span class="text-white fw-bold">{{ detected_slot_info.session_name }}</span> | 
-                គ្រូបង្រៀន៖ <span class="text-white fw-bold">{{ request.user.get_full_name|default:request.user.username }}</span>
+
+            {% if today_slots %}
+            <div class="d-flex flex-column align-items-sm-end gap-1">
+                <span class="text-white-50 small mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i> ម៉ោងបង្រៀនរបស់លោកគ្រូ-អ្នកគ្រូថ្ងៃនេះ៖</span>
+                <div class="d-flex flex-wrap gap-1.5">
+                    {% for sl in today_slots %}
+                    <a href="?classroom={{ sl.classroom.id }}&period={{ sl.period_number }}" 
+                       class="slot-chip {% if sl.period_number == selected_period and sl.classroom.id == selected_class.id %}active{% endif %}">
+                        ម៉ោងទី {{ sl.period_number }} ({{ sl.classroom.code }}{% if sl.subject %} - {{ sl.subject.name_kh }}{% endif %})
+                    </a>
+                    {% endfor %}
+                </div>
             </div>
+            {% endif %}
         </div>
 
-        {% if today_slots %}
-        <div class="d-flex flex-column align-items-sm-end gap-1">
-            <span class="text-white-50 small mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i> ម៉ោងបង្រៀនរបស់អ្នកថ្ងៃនេះ៖</span>
-            <div class="d-flex flex-wrap gap-1.5">
-                {% for sl in today_slots %}
-                <a href="?classroom={{ sl.classroom.id }}&period={{ sl.period_number }}&date={{ selected_date }}" 
-                   class="slot-chip {% if sl.period_number == selected_period and sl.classroom.id == selected_class.id %}active{% endif %}">
-                    ម៉ោងទី {{ sl.period_number }} ({{ sl.classroom.code }})
-                </a>
-                {% endfor %}
+        <!-- Read-Only / Disabled Fields Grid -->
+        <div class="row g-2 mt-3 pt-3 border-top border-secondary border-opacity-25">
+            <div class="col-6 col-md-3">
+                <label class="small text-white-50 mb-1 d-block"><i class="fa-solid fa-calendar me-1"></i> កាលបរិច្ឆេទ (Date)</label>
+                <div class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-50 fw-bold d-flex justify-content-between align-items-center py-2">
+                    <span>{{ selected_date }}</span>
+                    <i class="fa-solid fa-lock text-white-50 small" title="មិនអាចកែប្រែបាន (Disabled)"></i>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="small text-white-50 mb-1 d-block"><i class="fa-solid fa-chalkboard-user me-1"></i> ថ្នាក់ទី (Classroom)</label>
+                <div class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-50 fw-bold d-flex justify-content-between align-items-center py-2">
+                    <span>{{ selected_class.name }}</span>
+                    <i class="fa-solid fa-lock text-white-50 small" title="មិនអាចកែប្រែបាន (Disabled)"></i>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="small text-white-50 mb-1 d-block"><i class="fa-solid fa-business-time me-1"></i> ម៉ោងទី (Period)</label>
+                <div class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-50 fw-bold d-flex justify-content-between align-items-center py-2">
+                    <span>ម៉ោងទី {{ selected_period }}</span>
+                    <i class="fa-solid fa-lock text-white-50 small" title="មិនអាចកែប្រែបាន (Disabled)"></i>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="small text-white-50 mb-1 d-block"><i class="fa-solid fa-sun me-1"></i> វេនសិក្សា (Session)</label>
+                <div class="form-control form-control-sm bg-dark text-white border-secondary border-opacity-50 fw-bold d-flex justify-content-between align-items-center py-2">
+                    <span>{{ detected_slot_info.session_name }}</span>
+                    <i class="fa-solid fa-lock text-white-50 small" title="មិនអាចកែប្រែបាន (Disabled)"></i>
+                </div>
             </div>
         </div>
-        {% endif %}
     </div>
-</div>
+    {% endif %}
 {% else %}
-<!-- Admin / Manual Filter Bar -->
+<!-- Admin / Manual Filter Bar (Admins & Accountants only) -->
 <div class="custom-card p-3 mb-4 shadow-sm border-0">
     <form method="GET" class="row g-3 align-items-center">
         <div class="col-md-3">
@@ -292,11 +330,11 @@
                 </div>
             </div>
             <div class="d-flex gap-2 align-items-center">
-                <button type="button" class="btn btn-outline-danger btn-sm fw-bold" onclick="markAllAbsent()" {% if is_form_disabled %}disabled{% endif %}>
-                    <i class="fa-solid fa-check-square me-1"></i> Tick អវត្តមានទាំងអស់
+                <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="markAllAbsent()" {% if is_form_disabled %}disabled{% endif %}>
+                    <i class="fa-solid fa-square-check me-1"></i> Tick អវត្តមានទាំងអស់
                 </button>
-                <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="markAllPresent()" {% if is_form_disabled %}disabled{% endif %}>
-                    <i class="fa-solid fa-square me-1"></i> មានវត្តមានទាំងអស់ (ដោះ Tick)
+                <button type="button" class="btn btn-outline-success btn-sm fw-bold shadow-sm" onclick="markAllPresent()" {% if is_form_disabled %}disabled{% endif %}>
+                    <i class="fa-solid fa-check-double me-1"></i> មានវត្តមានទាំងអស់ (ដោះ Tick)
                 </button>
             </div>
         </div>
@@ -308,7 +346,7 @@
                     <tr>
                         <th class="text-center" style="width: 60px;">
                             <div class="form-check d-flex justify-content-center m-0">
-                                <input type="checkbox" class="form-check-input student-absent-check" id="masterCheck" onchange="toggleMasterCheck(this)" title="Tick សិស្សអវត្តមានទាំងអស់" {% if is_form_disabled %}disabled{% endif %}>
+                                <input type="checkbox" class="form-check-input student-absent-check" id="masterCheck" onclick="toggleMasterCheck(this)" onchange="toggleMasterCheck(this)" title="Tick សិស្សអវត្តមានទាំងអស់" {% if is_form_disabled %}disabled{% endif %}>
                             </div>
                         </th>
                         <th style="width: 120px;">កូដសិស្ស</th>
@@ -513,7 +551,7 @@
 {% endif %}
 
 <script>
-    function toggleStudentRow(studentId) {
+    function toggleStudentRow(studentId, skipSync = false) {
         const chk = document.getElementById(`chk_${studentId}`);
         const row = document.getElementById(`row_${studentId}`);
         const presentBadge = document.getElementById(`present_badge_${studentId}`);
@@ -550,8 +588,10 @@
             }
         }
 
-        updateAbsentCounter();
-        syncMasterCheckState();
+        if (!skipSync) {
+            updateAbsentCounter();
+            syncMasterCheckState();
+        }
     }
 
     function updateRowStyle(studentId) {
@@ -572,40 +612,92 @@
         }
     }
 
-    function toggleMasterCheck(masterChk) {
+    function setAllAttendance(isAbsent) {
+        const master = document.getElementById('masterCheck');
+        if (master && master.disabled) return;
+
+        if (master) {
+            master.checked = isAbsent;
+            master.indeterminate = false;
+        }
+
         const checks = document.querySelectorAll('.absent-single-check');
         checks.forEach(chk => {
-            chk.checked = masterChk.checked;
-            const studentId = chk.id.replace('chk_', '');
-            toggleStudentRow(studentId);
+            if (!chk.disabled) {
+                chk.checked = isAbsent;
+                const studentId = chk.id.replace('chk_', '');
+                toggleStudentRow(studentId, true);
+            }
         });
+
+        updateAbsentCounter();
+        syncMasterCheckState();
+    }
+
+    function toggleMasterCheck(masterChk) {
+        const allChecks = document.querySelectorAll('.absent-single-check');
+        const checkedChecks = document.querySelectorAll('.absent-single-check:checked');
+
+        // If not all students are checked (including none checked or partial/indeterminate),
+        // clicking the master checkbox marks all absent.
+        // If all students are already checked, it marks all present (deselection).
+        const shouldSelectAll = (checkedChecks.length < allChecks.length);
+        setAllAttendance(shouldSelectAll);
     }
 
     function markAllAbsent() {
-        const master = document.getElementById('masterCheck');
-        if (master) master.checked = true;
-        toggleMasterCheck({ checked: true });
+        setAllAttendance(true);
     }
 
     function markAllPresent() {
-        const master = document.getElementById('masterCheck');
-        if (master) master.checked = false;
-        toggleMasterCheck({ checked: false });
+        setAllAttendance(false);
     }
+
+    // Attach to window explicitly to guarantee global availability
+    window.toggleStudentRow = toggleStudentRow;
+    window.updateRowStyle = updateRowStyle;
+    window.setAllAttendance = setAllAttendance;
+    window.toggleMasterCheck = toggleMasterCheck;
+    window.markAllAbsent = markAllAbsent;
+    window.markAllPresent = markAllPresent;
 
     function updateAbsentCounter() {
         const checkedCount = document.querySelectorAll('.absent-single-check:checked').length;
         const textEl = document.getElementById('countAbsentText');
         if (textEl) textEl.textContent = checkedCount;
+
+        const badgeEl = document.getElementById('badgeAbsentCount');
+        if (badgeEl) {
+            if (checkedCount > 0) {
+                badgeEl.className = 'counter-badge bg-danger bg-opacity-10 text-danger border border-danger-subtle';
+            } else {
+                badgeEl.className = 'counter-badge bg-success bg-opacity-10 text-success border border-success-subtle';
+            }
+        }
     }
 
     function syncMasterCheckState() {
         const allChecks = document.querySelectorAll('.absent-single-check');
         const checkedChecks = document.querySelectorAll('.absent-single-check:checked');
         const master = document.getElementById('masterCheck');
-        if (master && allChecks.length > 0) {
-            master.checked = (allChecks.length === checkedChecks.length);
-            master.indeterminate = (checkedChecks.length > 0 && checkedChecks.length < allChecks.length);
+        if (!master) return;
+
+        const total = allChecks.length;
+        const checkedCount = checkedChecks.length;
+
+        if (total === 0) {
+            master.checked = false;
+            master.indeterminate = false;
+        } else if (checkedCount === total) {
+            master.checked = true;
+            master.indeterminate = false;
+        } else if (checkedCount === 0) {
+            master.checked = false;
+            master.indeterminate = false;
+        } else {
+            // Partial: some checked, some unchecked -> indeterminate [-]
+            master.checked = false;
+            master.indeterminate = true;
         }
     }
 

@@ -5,6 +5,20 @@
 
 {% block extra_css %}
 <style>
+    @font-face {
+        font-family: 'Tacteing';
+        src: url("{% static 'fonts/tacteng.ttf' %}") format('truetype'),
+             local('Khmer OS Tacteing'),
+             local('Tacteing'),
+             local('KhmerOS_tacteing');
+        font-weight: normal;
+        font-style: normal;
+    }
+    .font-tacteing, .tatch {
+        font-family: 'Tacteing', 'Khmer OS Tacteing', cursive, sans-serif !important;
+        font-weight: normal !important;
+        font-style: normal !important;
+    }
     .roster-container {
         background-color: var(--bs-card-bg, #ffffff);
     }
@@ -258,7 +272,7 @@
             <div class="text-center" style="min-width: 260px;">
                 <div class="font-muol" style="color: #0f172a;">ព្រះរាជាណាចក្រកម្ពុជា</div>
                 <div class="font-muol" style="color: #0f172a;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                <div style="font-size: 0.85rem; letter-spacing: 3px; color: #0f172a;">3 3 3</div>
+                <div class="font-tacteing text-center" style="font-size: 1.35rem; line-height: 1; color: #0f172a; margin-top: 2px;" title="ក្បាច់ Tacteing">r</div>
             </div>
         </div>
 

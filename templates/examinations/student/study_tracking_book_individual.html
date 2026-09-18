@@ -71,7 +71,7 @@
             background-color: #f1f5f9;
             color: #0f172a;
             margin: 0;
-            padding: 20px 0;
+            padding: 95px 0 25px 0;
             font-size: 11px;
             line-height: 1.4;
         }
@@ -313,16 +313,22 @@
         body.scope-semester_2 .scope-title-s2 { display: inline-block !important; }
         body.scope-monthly .scope-title-monthly { display: inline-block !important; }
 
-        /* Review columns display control */
-        .col-monthly-review {
+        /* Scoped column display controls */
+        .col-monthly-review,
+        .col-grp-monthly,
+        .row-summary-monthly,
+        .col-conduct-monthly {
             display: none !important;
         }
 
-        /* When Semester 1 is active: hide Semester 2, Annual, and Monthly reviews */
+        /* When Semester 1 is active: hide Semester 2, Annual, Monthly elements, and Monthly reviews */
         body.scope-semester_1 .col-grp-s2,
         body.scope-semester_1 .col-s2,
         body.scope-semester_1 .col-grp-annual,
         body.scope-semester_1 .col-annual,
+        body.scope-semester_1 .col-grp-monthly,
+        body.scope-semester_1 .col-conduct-monthly,
+        body.scope-semester_1 .row-summary-monthly,
         body.scope-semester_1 .col-att-s2,
         body.scope-semester_1 .col-att-annual,
         body.scope-semester_1 .col-s2-review,
@@ -334,11 +340,14 @@
             width: 100% !important;
         }
 
-        /* When Semester 2 is active: hide Semester 1, Annual, and Monthly reviews */
+        /* When Semester 2 is active: hide Semester 1, Annual, Monthly elements, and Monthly reviews */
         body.scope-semester_2 .col-grp-s1,
         body.scope-semester_2 .col-s1,
         body.scope-semester_2 .col-grp-annual,
         body.scope-semester_2 .col-annual,
+        body.scope-semester_2 .col-grp-monthly,
+        body.scope-semester_2 .col-conduct-monthly,
+        body.scope-semester_2 .row-summary-monthly,
         body.scope-semester_2 .col-att-s1,
         body.scope-semester_2 .col-att-annual,
         body.scope-semester_2 .col-s1-review,
@@ -350,8 +359,11 @@
             width: 100% !important;
         }
 
-        /* When Annual is active: hide monthly review */
-        body.scope-annual .col-monthly-review {
+        /* When Annual is active: hide monthly review and monthly-only elements */
+        body.scope-annual .col-monthly-review,
+        body.scope-annual .col-grp-monthly,
+        body.scope-annual .row-summary-monthly,
+        body.scope-annual .col-conduct-monthly {
             display: none !important;
         }
         body.scope-annual .col-s1-review,
@@ -359,16 +371,38 @@
             display: block !important;
         }
 
-        /* When Monthly is active: hide Semester Exams, Annual & Semester Reviews, show ONLY Monthly Review */
+        /* When Monthly is active: STRICTLY NO SEMESTER 1, SEMESTER 2, OR ANNUAL RESULTS */
+        body.scope-monthly .col-grp-s1,
+        body.scope-monthly .col-grp-s2,
+        body.scope-monthly .col-grp-annual,
+        body.scope-monthly .col-s1-m-avg,
         body.scope-monthly .col-s1-exam,
         body.scope-monthly .col-s1-final,
+        body.scope-monthly .col-s2-m-avg,
         body.scope-monthly .col-s2-exam,
         body.scope-monthly .col-s2-final,
-        body.scope-monthly .col-grp-annual,
+        body.scope-monthly .col-s2-empty,
         body.scope-monthly .col-annual,
+        body.scope-monthly .row-summary-semester,
+        body.scope-monthly .col-att-s1-total,
+        body.scope-monthly .col-att-s2-total,
+        body.scope-monthly .col-att-annual,
+        body.scope-monthly .col-conduct-s1,
+        body.scope-monthly .col-conduct-s2,
+        body.scope-monthly .col-conduct-annual,
         body.scope-monthly .col-s1-review,
-        body.scope-monthly .col-s2-review {
+        body.scope-monthly .col-s2-review,
+        body.scope-monthly .annual-decision-card {
             display: none !important;
+        }
+        body.scope-monthly .col-grp-monthly {
+            display: table-cell !important;
+        }
+        body.scope-monthly .row-summary-monthly {
+            display: table-row !important;
+        }
+        body.scope-monthly .col-conduct-monthly {
+            display: table-cell !important;
         }
         body.scope-monthly .col-monthly-review {
             display: block !important;
@@ -376,18 +410,68 @@
         }
         body.scope-monthly .col-s1-m,
         body.scope-monthly .col-s2-m {
+            display: table-cell !important;
+            background-color: #f0fdf4 !important;
+            font-weight: 600;
+        }
+        body.scope-monthly .col-s1-empty,
+        body.scope-monthly .col-s2-empty {
+            display: none !important;
+        }
+        body.scope-monthly .table-matrix {
+            width: 100% !important;
+            table-layout: auto !important;
+        }
+        body.scope-monthly .table-matrix th.col-s1-m,
+        body.scope-monthly .table-matrix th.col-s2-m,
+        body.scope-monthly .table-matrix td.col-s1-m,
+        body.scope-monthly .table-matrix td.col-s2-m {
+            width: auto !important;
+            min-width: 50px !important;
+        }
+
+        /* Monthly Attendance: Strictly show ONLY the active month's attendance column */
+        body.scope-monthly .col-att-month,
+        body.scope-monthly .col-att-s1,
+        body.scope-monthly .col-att-s2,
+        body.scope-monthly .col-att-s1-total,
+        body.scope-monthly .col-att-s2-total,
+        body.scope-monthly .col-att-annual,
+        body.scope-monthly .col-att-empty {
+            display: none !important;
+        }
+
+        body.scope-monthly.active-month-10 .col-att-m-10,
+        body.scope-monthly.active-month-11 .col-att-m-11,
+        body.scope-monthly.active-month-12 .col-att-m-12,
+        body.scope-monthly.active-month-1 .col-att-m-1,
+        body.scope-monthly.active-month-2 .col-att-m-2,
+        body.scope-monthly.active-month-3 .col-att-m-3,
+        body.scope-monthly.active-month-4 .col-att-m-4,
+        body.scope-monthly.active-month-5 .col-att-m-5,
+        body.scope-monthly.active-month-6 .col-att-m-6,
+        body.scope-monthly.active-month-7 .col-att-m-7,
+        body.scope-monthly.active-month-8 .col-att-m-8,
+        body.scope-monthly.active-month-9 .col-att-m-9 {
+            display: table-cell !important;
             background-color: #f0fdf4 !important;
             font-weight: 600;
         }
 
-        .no-print {
+        /* Fallback: if in scope-monthly and no active-month-* class is present on body, display only the first month */
+        body.scope-monthly:not([class*="active-month-"]) .col-att-month:first-of-type {
+            display: table-cell !important;
+        }
+
+        .tracking-action-bar {
             position: fixed;
             top: 12px;
+            left: 18px;
             right: 18px;
             z-index: 99999;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(8px);
-            padding: 8px 14px;
+            padding: 8px 16px;
             border-radius: 10px;
             border: 1px solid #cbd5e1;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -396,7 +480,7 @@
         @media print {
             body {
                 background: white;
-                padding: 0;
+                padding: 0 !important;
             }
             .tracking-booklet {
                 width: 100%;
@@ -409,7 +493,8 @@
                 page-break-after: always !important;
                 break-after: page !important;
             }
-            .no-print {
+            .no-print,
+            .tracking-action-bar {
                 display: none !important;
             }
             @page {
@@ -502,10 +587,10 @@
         }
     </style>
 </head>
-<body class="scope-{{ selected_period|lower|default:'annual' }} lang-mode-{{ selected_lang|default:'kh' }}" id="trackingBody">
+<body class="scope-{{ selected_period|lower|default:'annual' }} lang-mode-{{ selected_lang|default:'kh' }} {% if selected_month %}active-month-{{ selected_month }}{% endif %}" id="trackingBody" data-selected-month="{{ selected_month|default:'' }}">
 
 <!-- Floating Action Bar for Print, Language & Scope Selection -->
-<div class="no-print d-flex flex-wrap gap-2 align-items-center justify-content-between">
+<div class="tracking-action-bar no-print d-flex flex-wrap gap-2 align-items-center justify-content-between">
     <!-- Language Switcher (Pure Khmer OR Pure English) -->
     <div class="d-flex align-items-center bg-light p-1 rounded border">
         <span class="small fw-bold text-muted px-2"><i class="fa-solid fa-language me-1 text-primary"></i>ភាសា / Lang:</span>
@@ -541,8 +626,24 @@
         </button>
     </div>
 
+    <!-- Month Switcher (Active when Scope is Monthly) -->
+    <div id="monthSelectorContainer" class="d-flex flex-wrap gap-1 align-items-center bg-light p-1 rounded border" style="{% if selected_period != 'MONTHLY' %}display: none !important;{% endif %}">
+        <span class="small fw-bold text-muted px-2">
+            <span class="lang-kh"><i class="fa-solid fa-calendar me-1 text-warning"></i>ខែសិក្សា៖</span>
+            <span class="lang-en"><i class="fa-solid fa-calendar me-1 text-warning"></i>Month:</span>
+        </span>
+        {% for m_term in available_monthly_terms %}
+        <button type="button" 
+                id="btnMonthTab{{ m_term.month }}" 
+                onclick="setSelectedMonth({{ m_term.month }}, '{{ m_term.name_kh }}')" 
+                class="btn btn-sm btn-month-tab {% if selected_month == m_term.month|stringformat:'s' or selected_month == m_term.month %}btn-warning text-dark fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}">
+            {{ m_term.name_kh }}
+        </button>
+        {% endfor %}
+    </div>
+
     <!-- Actions & Assessment Shortcut -->
-    <div class="d-flex gap-2 align-items-center">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
         {% if classroom %}
         <a href="{% url 'homeroom_conduct_assessment' classroom.id %}" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm" title="វាយតម្លៃមារយាទ និងបញ្ចូលមតិ">
             <i class="fa-solid fa-clipboard-check me-1"></i>
@@ -776,11 +877,11 @@
                         <td class="fw-bold text-primary">{{ book.homeroom_teacher.khmer_name|default:"-" }}</td>
                         <td>
                             <strong>
-                                <span class="lang-kh">សាលាចាស់ពីមុន៖</span>
-                                <span class="lang-en">Previous School:</span>
+                                <span class="lang-kh">លេខទូរសព្ទគ្រូបន្ទុកថ្នាក់៖</span>
+                                <span class="lang-en">Teacher's Phone:</span>
                             </strong>
                         </td>
-                        <td>{{ book.student.previous_school|default:"-" }}</td>
+                        <td>{% if book.homeroom_teacher %}{{ book.homeroom_teacher.phone|default:book.homeroom_teacher.phone2|default:"-" }}{% else %}-{% endif %}</td>
                     </tr>
                 </table>
             </div>
@@ -792,8 +893,22 @@
         <div class="section-header">
             <span>
                 <i class="fa-solid fa-graduation-cap me-1"></i>
-                <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ</span>
-                <span class="lang-en">Part 1: Academic Performance Record (Monthly, Semester & Annual)</span>
+                <span class="scope-title-annual">
+                    <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ</span>
+                    <span class="lang-en">Part 1: Academic Performance Record (Monthly, Semester & Annual)</span>
+                </span>
+                <span class="scope-title-s1">
+                    <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាឆមាសទី ១</span>
+                    <span class="lang-en">Part 1: Semester 1 Academic Performance Record</span>
+                </span>
+                <span class="scope-title-s2">
+                    <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាឆមាសទី ២</span>
+                    <span class="lang-en">Part 1: Semester 2 Academic Performance Record</span>
+                </span>
+                <span class="scope-title-monthly">
+                    <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ</span>
+                    <span class="lang-en">Part 1: Monthly Academic Performance Record</span>
+                </span>
             </span>
             <span class="small fw-normal">
                 <span class="lang-kh">សរុបសិស្សក្នុងថ្នាក់៖ <strong>{{ book.total_class_students }}</strong> នាក់</span>
@@ -828,15 +943,19 @@
                     <span class="lang-kh">ប្រចាំឆ្នាំ</span>
                     <span class="lang-en">Annual</span>
                 </th>
+                <th colspan="{% with s1_cnt=book.s1_monthly_terms|length s2_cnt=book.s2_monthly_terms|length %}{% if s1_cnt and s2_cnt %}{{ s1_cnt|add:s2_cnt }}{% elif s1_cnt %}{{ s1_cnt }}{% elif s2_cnt %}{{ s2_cnt }}{% else %}1{% endif %}{% endwith %}" class="col-grp-monthly">
+                    <span class="lang-kh">លទ្ធផលប្រចាំខែ</span>
+                    <span class="lang-en">Monthly Results</span>
+                </th>
             </tr>
             <tr>
                 <!-- Semester 1 columns -->
                 {% for term in book.s1_monthly_terms %}
                 <th style="width: 32px;" class="col-s1-m col-s1" title="{{ term.primary_term.name|default:term.name }}">{{ term.display_month|default:term.name }}</th>
                 {% empty %}
-                <th style="width: 32px;" class="col-s1-m col-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                <th style="width: 32px;" class="col-s1-m col-s1 {% if book.s2_monthly_terms %}col-s1-empty{% endif %}"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th style="width: 34px;" class="col-s1-m-avg col-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.Avg</span></th>
+                <th style="width: 34px;" class="col-s1-m-avg col-s1"><span class="lang-kh">ម.ភាគ</span><span class="lang-en">Mo.Avg</span></th>
                 <th style="width: 34px;" class="col-s1-exam col-s1"><span class="lang-kh">ប្រឡង</span><span class="lang-en">Exam</span></th>
                 <th style="width: 36px;" class="col-s1-final col-s1 text-primary"><span class="lang-kh">ម.ឆ.១</span><span class="lang-en">S1 Final</span></th>
 
@@ -844,9 +963,9 @@
                 {% for term in book.s2_monthly_terms %}
                 <th style="width: 32px;" class="col-s2-m col-s2" title="{{ term.primary_term.name|default:term.name }}">{{ term.display_month|default:term.name }}</th>
                 {% empty %}
-                <th style="width: 32px;" class="col-s2-m col-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                <th style="width: 32px;" class="col-s2-m col-s2 {% if book.s1_monthly_terms %}col-s2-empty{% endif %}"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th style="width: 34px;" class="col-s2-m-avg col-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.Avg</span></th>
+                <th style="width: 34px;" class="col-s2-m-avg col-s2"><span class="lang-kh">ម.ភាគ</span><span class="lang-en">Mo.Avg</span></th>
                 <th style="width: 34px;" class="col-s2-exam col-s2"><span class="lang-kh">ប្រឡង</span><span class="lang-en">Exam</span></th>
                 <th style="width: 36px;" class="col-s2-final col-s2 text-primary"><span class="lang-kh">ម.ឆ.២</span><span class="lang-en">S2 Final</span></th>
 
@@ -869,7 +988,7 @@
                 {% for m_sc in row.s1_monthly_scores %}
                 <td class="col-s1-m col-s1">{{ m_sc.score|clean_score }}</td>
                 {% empty %}
-                <td class="col-s1-m col-s1">-</td>
+                <td class="col-s1-m col-s1 {% if book.s2_monthly_terms %}col-s1-empty{% endif %}">-</td>
                 {% endfor %}
                 <td class="col-s1-m-avg col-s1">{{ row.s1_monthly_avg|clean_score }}</td>
                 <td class="col-s1-exam col-s1">{{ row.s1_exam_score|clean_score }}</td>
@@ -879,7 +998,7 @@
                 {% for m_sc in row.s2_monthly_scores %}
                 <td class="col-s2-m col-s2">{{ m_sc.score|clean_score }}</td>
                 {% empty %}
-                <td class="col-s2-m col-s2">-</td>
+                <td class="col-s2-m col-s2 {% if book.s1_monthly_terms %}col-s2-empty{% endif %}">-</td>
                 {% endfor %}
                 <td class="col-s2-m-avg col-s2">{{ row.s2_monthly_avg|clean_score }}</td>
                 <td class="col-s2-exam col-s2">{{ row.s2_exam_score|clean_score }}</td>
@@ -902,8 +1021,38 @@
             </tr>
             {% endfor %}
 
+            <!-- Monthly Summary Row: Monthly Average -->
+            <tr class="row-summary row-summary-monthly">
+                <td colspan="3" class="text-start fw-bold text-primary">
+                    <span class="lang-kh">មធ្យមភាគប្រចាំខែ (១០០)</span>
+                    <span class="lang-en">Monthly Average (/100)</span>
+                </td>
+                {% for col in book.s1_month_cols %}
+                <td class="col-s1-m col-s1 fw-bold text-primary">
+                    {% if col.percentage is not None %}{{ col.percentage|clean_score }}%{% else %}-{% endif %}
+                </td>
+                {% empty %}
+                {% for term in book.s1_monthly_terms %}
+                <td class="col-s1-m col-s1 fw-bold text-primary">-</td>
+                {% empty %}
+                <td class="col-s1-m col-s1 {% if book.s2_monthly_terms %}col-s1-empty{% endif %} fw-bold text-primary">-</td>
+                {% endfor %}
+                {% endfor %}
+                {% for col in book.s2_month_cols %}
+                <td class="col-s2-m col-s2 fw-bold text-primary">
+                    {% if col.percentage is not None %}{{ col.percentage|clean_score }}%{% else %}-{% endif %}
+                </td>
+                {% empty %}
+                {% for term in book.s2_monthly_terms %}
+                <td class="col-s2-m col-s2 fw-bold text-primary">-</td>
+                {% empty %}
+                <td class="col-s2-m col-s2 {% if book.s1_monthly_terms %}col-s2-empty{% endif %} fw-bold text-primary">-</td>
+                {% endfor %}
+                {% endfor %}
+            </tr>
+
             <!-- Summary Row 1: Average /100 -->
-            <tr class="row-summary">
+            <tr class="row-summary row-summary-semester">
                 <td colspan="3" class="text-start fw-bold text-primary">
                     <span class="lang-kh">មធ្យមភាគសរុប (១០០)</span>
                     <span class="lang-en">Overall Average (/100)</span>
@@ -925,7 +1074,7 @@
             </tr>
 
             <!-- Summary Row 2: Class Rank -->
-            <tr class="row-summary">
+            <tr class="row-summary row-summary-semester">
                 <td colspan="3" class="text-start fw-bold">
                     <span class="lang-kh">ចំណាត់ថ្នាក់ក្នុងថ្នាក់</span>
                     <span class="lang-en">Class Rank</span>
@@ -945,7 +1094,7 @@
             </tr>
 
             <!-- Summary Row 3: Grade-Level Rank (ចំណាត់ថ្នាក់ក្នុងកម្រិតថ្នាក់) -->
-            <tr class="row-summary" style="background-color: #f0fdf4;">
+            <tr class="row-summary row-summary-semester" style="background-color: #f0fdf4;">
                 <td colspan="3" class="text-start fw-bold text-success">
                     <span class="lang-kh">ចំណាត់ថ្នាក់ក្នុងកម្រិតថ្នាក់</span>
                     <span class="lang-en">Grade-Level Rank</span>
@@ -965,7 +1114,7 @@
             </tr>
 
             <!-- Summary Row 4: Letter Grade (និទ្ទេសរួម) -->
-            <tr class="row-summary">
+            <tr class="row-summary row-summary-semester">
                 <td colspan="3" class="text-start fw-bold">
                     <span class="lang-kh">និទ្ទេសរួម</span>
                     <span class="lang-en">Letter Grade</span>
@@ -1009,8 +1158,8 @@
                 <span class="lang-en">Semester 2 Rate: <strong class="text-info">{{ book.s2_att_totals.attendance_rate|clean_pct }}</strong></span>
             </span>
             <span class="scope-title-monthly">
-                <span class="lang-kh">អត្រាវត្តមានសរុប៖ <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
-                <span class="lang-en">Total Attendance Rate: <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-kh">អត្រាវត្តមាន<span class="active-att-month-label">ប្រចាំខែ</span>៖ <strong class="text-success active-att-month-rate">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-en">Monthly Rate: <strong class="text-success active-att-month-rate">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
             </span>
         </span>
     </div>
@@ -1018,31 +1167,31 @@
     <table class="table-matrix">
         <thead>
             <tr>
-                <th>
+                <th style="min-width: 140px;">
                     <span class="lang-kh">ខែសិក្សា</span>
                     <span class="lang-en">Month</span>
                 </th>
                 {% for rec in book.s1_attendance_records %}
-                <th class="col-att-s1">
+                <th class="col-att-s1 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}" data-name-kh="{{ rec.name_kh }}" data-name-en="{{ rec.name_en }}" data-rate="{{ rec.attendance_rate|clean_pct }}">
                     <span class="lang-kh">{{ rec.name_kh }}</span>
                     <span class="lang-en">{{ rec.name_en }}</span>
                 </th>
                 {% empty %}
-                <th class="col-att-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                <th class="col-att-s1 col-att-empty"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th class="col-att-s1 table-primary">
+                <th class="col-att-s1 col-att-s1-total table-primary">
                     <span class="lang-kh">សរុប ឆ.១</span>
                     <span class="lang-en">Total S1</span>
                 </th>
                 {% for rec in book.s2_attendance_records %}
-                <th class="col-att-s2">
+                <th class="col-att-s2 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}" data-name-kh="{{ rec.name_kh }}" data-name-en="{{ rec.name_en }}" data-rate="{{ rec.attendance_rate|clean_pct }}">
                     <span class="lang-kh">{{ rec.name_kh }}</span>
                     <span class="lang-en">{{ rec.name_en }}</span>
                 </th>
                 {% empty %}
-                <th class="col-att-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                <th class="col-att-s2 col-att-empty"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th class="col-att-s2 table-primary">
+                <th class="col-att-s2 col-att-s2-total table-primary">
                     <span class="lang-kh">សរុប ឆ.២</span>
                     <span class="lang-en">Total S2</span>
                 </th>
@@ -1059,17 +1208,17 @@
                     <span class="lang-en">Present (Times)</span>
                 </td>
                 {% for rec in book.s1_attendance_records %}
-                <td class="col-att-s1">{{ rec.present }}</td>
+                <td class="col-att-s1 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.present }}</td>
                 {% empty %}
-                <td class="col-att-s1">0</td>
+                <td class="col-att-s1 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s1 fw-bold table-primary">{{ book.s1_att_totals.present }}</td>
+                <td class="col-att-s1 col-att-s1-total fw-bold table-primary">{{ book.s1_att_totals.present }}</td>
                 {% for rec in book.s2_attendance_records %}
-                <td class="col-att-s2">{{ rec.present }}</td>
+                <td class="col-att-s2 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.present }}</td>
                 {% empty %}
-                <td class="col-att-s2">0</td>
+                <td class="col-att-s2 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s2 fw-bold table-primary">{{ book.s2_att_totals.present }}</td>
+                <td class="col-att-s2 col-att-s2-total fw-bold table-primary">{{ book.s2_att_totals.present }}</td>
                 <td class="col-att-annual fw-bold table-success">{{ book.annual_att_totals.present }}</td>
             </tr>
             <tr>
@@ -1078,17 +1227,17 @@
                     <span class="lang-en">Excused Absence (Times)</span>
                 </td>
                 {% for rec in book.s1_attendance_records %}
-                <td class="col-att-s1">{{ rec.excused }}</td>
+                <td class="col-att-s1 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.excused }}</td>
                 {% empty %}
-                <td class="col-att-s1">0</td>
+                <td class="col-att-s1 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s1 fw-bold table-primary">{{ book.s1_att_totals.excused }}</td>
+                <td class="col-att-s1 col-att-s1-total fw-bold table-primary">{{ book.s1_att_totals.excused }}</td>
                 {% for rec in book.s2_attendance_records %}
-                <td class="col-att-s2">{{ rec.excused }}</td>
+                <td class="col-att-s2 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.excused }}</td>
                 {% empty %}
-                <td class="col-att-s2">0</td>
+                <td class="col-att-s2 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s2 fw-bold table-primary">{{ book.s2_att_totals.excused }}</td>
+                <td class="col-att-s2 col-att-s2-total fw-bold table-primary">{{ book.s2_att_totals.excused }}</td>
                 <td class="col-att-annual fw-bold table-success">{{ book.annual_att_totals.excused }}</td>
             </tr>
             <tr>
@@ -1097,17 +1246,17 @@
                     <span class="lang-en">Unexcused Absence (Times)</span>
                 </td>
                 {% for rec in book.s1_attendance_records %}
-                <td class="col-att-s1 {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                <td class="col-att-s1 col-att-month col-att-m-{{ rec.month }} {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}" data-month="{{ rec.month }}">{{ rec.unexcused }}</td>
                 {% empty %}
-                <td class="col-att-s1">0</td>
+                <td class="col-att-s1 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s1 fw-bold table-primary text-danger">{{ book.s1_att_totals.unexcused }}</td>
+                <td class="col-att-s1 col-att-s1-total fw-bold table-primary text-danger">{{ book.s1_att_totals.unexcused }}</td>
                 {% for rec in book.s2_attendance_records %}
-                <td class="col-att-s2 {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                <td class="col-att-s2 col-att-month col-att-m-{{ rec.month }} {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}" data-month="{{ rec.month }}">{{ rec.unexcused }}</td>
                 {% empty %}
-                <td class="col-att-s2">0</td>
+                <td class="col-att-s2 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s2 fw-bold table-primary text-danger">{{ book.s2_att_totals.unexcused }}</td>
+                <td class="col-att-s2 col-att-s2-total fw-bold table-primary text-danger">{{ book.s2_att_totals.unexcused }}</td>
                 <td class="col-att-annual fw-bold table-success text-danger">{{ book.annual_att_totals.unexcused }}</td>
             </tr>
             <tr class="fw-bold bg-light">
@@ -1116,17 +1265,17 @@
                     <span class="lang-en">Total Absent (Times)</span>
                 </td>
                 {% for rec in book.s1_attendance_records %}
-                <td class="col-att-s1">{{ rec.total_absent }}</td>
+                <td class="col-att-s1 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.total_absent }}</td>
                 {% empty %}
-                <td class="col-att-s1">0</td>
+                <td class="col-att-s1 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s1 table-primary">{{ book.s1_att_totals.total_absent }}</td>
+                <td class="col-att-s1 col-att-s1-total table-primary">{{ book.s1_att_totals.total_absent }}</td>
                 {% for rec in book.s2_attendance_records %}
-                <td class="col-att-s2">{{ rec.total_absent }}</td>
+                <td class="col-att-s2 col-att-month col-att-m-{{ rec.month }}" data-month="{{ rec.month }}">{{ rec.total_absent }}</td>
                 {% empty %}
-                <td class="col-att-s2">0</td>
+                <td class="col-att-s2 col-att-empty">0</td>
                 {% endfor %}
-                <td class="col-att-s2 table-primary">{{ book.s2_att_totals.total_absent }}</td>
+                <td class="col-att-s2 col-att-s2-total table-primary">{{ book.s2_att_totals.total_absent }}</td>
                 <td class="col-att-annual table-success">{{ book.annual_att_totals.total_absent }}</td>
             </tr>
         </tbody>
@@ -1143,8 +1292,22 @@
         </span>
         <div class="d-flex align-items-center gap-2">
             <span class="small fw-normal">
-                <span class="lang-kh">មារយាទប្រចាំឆ្នាំ៖ <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
-                <span class="lang-en">Annual Conduct: <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+                <span class="scope-title-annual">
+                    <span class="lang-kh">មារយាទប្រចាំឆ្នាំ៖ <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+                    <span class="lang-en">Annual Conduct: <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+                </span>
+                <span class="scope-title-s1">
+                    <span class="lang-kh">មារយាទឆមាសទី ១៖ <strong class="text-primary">{{ book.conduct_s1 }}</strong></span>
+                    <span class="lang-en">S1 Conduct: <strong class="text-primary">{{ book.conduct_s1 }}</strong></span>
+                </span>
+                <span class="scope-title-s2">
+                    <span class="lang-kh">មារយាទឆមាសទី ២៖ <strong class="text-primary">{{ book.conduct_s2 }}</strong></span>
+                    <span class="lang-en">S2 Conduct: <strong class="text-primary">{{ book.conduct_s2 }}</strong></span>
+                </span>
+                <span class="scope-title-monthly">
+                    <span class="lang-kh">មារយាទប្រចាំខែ៖ <strong class="text-primary">{{ book.conduct_s1|default:book.conduct_annual }}</strong></span>
+                    <span class="lang-en">Monthly Conduct: <strong class="text-primary">{{ book.conduct_s1|default:book.conduct_annual }}</strong></span>
+                </span>
             </span>
             {% if book.classroom %}
             <a href="{% url 'homeroom_conduct_assessment' book.classroom.id %}" target="_blank" class="btn btn-xs btn-outline-primary no-print" style="font-size: 9px; padding: 1px 6px;">
@@ -1167,17 +1330,21 @@
                     <span class="lang-kh">លក្ខណៈវិនិច្ឆ័យវាយតម្លៃ</span>
                     <span class="lang-en">Evaluation Criteria</span>
                 </th>
-                <th style="width: 100px;" class="col-s1">
+                <th style="width: 100px;" class="col-conduct-s1 col-s1">
                     <span class="lang-kh">ឆមាសទី ១</span>
                     <span class="lang-en">Semester 1</span>
                 </th>
-                <th style="width: 100px;" class="col-s2">
+                <th style="width: 100px;" class="col-conduct-s2 col-s2">
                     <span class="lang-kh">ឆមាសទី ២</span>
                     <span class="lang-en">Semester 2</span>
                 </th>
-                <th style="width: 120px;" class="col-annual table-success">
+                <th style="width: 120px;" class="col-conduct-annual col-annual table-success">
                     <span class="lang-kh">ប្រចាំឆ្នាំ</span>
                     <span class="lang-en">Annual</span>
+                </th>
+                <th style="width: 120px;" class="col-conduct-monthly col-monthly table-warning text-dark">
+                    <span class="lang-kh">ការវាយតម្លៃប្រចាំខែ</span>
+                    <span class="lang-en">Monthly Conduct</span>
                 </th>
             </tr>
         </thead>
@@ -1189,9 +1356,10 @@
                     <span class="lang-kh">{{ cr.name_kh }}</span>
                     <span class="lang-en">{{ cr.name_en }}</span>
                 </td>
-                <td class="col-s1 fw-bold text-primary">{{ cr.s1 }}</td>
-                <td class="col-s2 fw-bold text-primary">{{ cr.s2 }}</td>
-                <td class="col-annual fw-bold text-success table-success">{{ cr.ann }}</td>
+                <td class="col-conduct-s1 col-s1 fw-bold text-primary">{{ cr.s1 }}</td>
+                <td class="col-conduct-s2 col-s2 fw-bold text-primary">{{ cr.s2 }}</td>
+                <td class="col-conduct-annual col-annual fw-bold text-success table-success">{{ cr.ann }}</td>
+                <td class="col-conduct-monthly col-monthly fw-bold text-dark table-warning">{{ cr.s1|default:cr.ann|default:"ល្អ" }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -1505,25 +1673,104 @@ function setTrackingScope(scope) {
     if (btnS1) btnS1.className = 'btn btn-sm btn-outline-primary fw-bold';
     if (btnS2) btnS2.className = 'btn btn-sm btn-outline-info fw-bold';
     if (btnMonthly) btnMonthly.className = 'btn btn-sm btn-outline-warning text-dark fw-bold';
+    const monthContainer = document.getElementById('monthSelectorContainer');
 
     if (scope === 'SEMESTER_1') {
         body.classList.add('scope-semester_1');
         if (btnS1) btnS1.className = 'btn btn-sm btn-primary fw-bold shadow-sm';
+        if (monthContainer) monthContainer.style.setProperty('display', 'none', 'important');
     } else if (scope === 'SEMESTER_2') {
         body.classList.add('scope-semester_2');
         if (btnS2) btnS2.className = 'btn btn-sm btn-info text-white fw-bold shadow-sm';
+        if (monthContainer) monthContainer.style.setProperty('display', 'none', 'important');
     } else if (scope === 'MONTHLY') {
         body.classList.add('scope-monthly');
         if (btnMonthly) btnMonthly.className = 'btn btn-sm btn-warning text-dark fw-bold shadow-sm';
+        if (monthContainer) monthContainer.style.setProperty('display', 'flex', 'important');
+
+        // Ensure an active month is selected in monthly mode
+        let currentMonth = body.dataset.selectedMonth;
+        if (!currentMonth) {
+            const firstMonthBtn = document.querySelector('.btn-month-tab');
+            if (firstMonthBtn && firstMonthBtn.id) {
+                currentMonth = firstMonthBtn.id.replace('btnMonthTab', '');
+            }
+        }
+        if (currentMonth) {
+            const mBtn = document.getElementById('btnMonthTab' + currentMonth);
+            const mName = mBtn ? mBtn.textContent.trim() : '';
+            setSelectedMonth(parseInt(currentMonth, 10), mName);
+        }
     } else {
         body.classList.add('scope-annual');
         if (btnAnnual) btnAnnual.className = 'btn btn-sm btn-success fw-bold shadow-sm';
+        if (monthContainer) monthContainer.style.setProperty('display', 'none', 'important');
     }
+}
+
+function setSelectedMonth(monthNum, nameKh) {
+    if (!monthNum) return;
+    const body = document.getElementById('trackingBody');
+    if (!body) return;
+
+    // Remove all previous active-month-* classes
+    const classes = Array.from(body.classList);
+    classes.forEach(c => {
+        if (c.startsWith('active-month-')) {
+            body.classList.remove(c);
+        }
+    });
+    body.classList.add('active-month-' + monthNum);
+    body.dataset.selectedMonth = monthNum;
+
+    // Update month tabs appearance
+    document.querySelectorAll('.btn-month-tab').forEach(btn => {
+        btn.className = 'btn btn-sm btn-month-tab btn-outline-secondary';
+    });
+    const activeBtn = document.getElementById('btnMonthTab' + monthNum);
+    if (activeBtn) {
+        activeBtn.className = 'btn btn-sm btn-month-tab btn-warning text-dark fw-bold shadow-sm';
+        if (!nameKh) {
+            nameKh = activeBtn.textContent.trim();
+        }
+    }
+
+    // Update Attendance rate and active month name in Section 2 Header
+    document.querySelectorAll('.active-att-month-label').forEach(el => {
+        el.textContent = nameKh ? 'ខែ' + nameKh : 'ប្រចាំខែ';
+    });
+
+    const matchingCell = document.querySelector('.col-att-m-' + monthNum);
+    if (matchingCell && matchingCell.dataset.rate) {
+        document.querySelectorAll('.active-att-month-rate').forEach(el => {
+            el.textContent = matchingCell.dataset.rate;
+        });
+    }
+
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('period', 'MONTHLY');
+        url.searchParams.set('month', monthNum);
+        window.history.replaceState(null, '', url.toString());
+    } catch(e) {}
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     const initialPeriod = "{{ selected_period|default:'ANNUAL' }}";
     setTrackingScope(initialPeriod);
+
+    const initialMonth = "{{ selected_month|default:'' }}";
+    if (initialMonth) {
+        const mBtn = document.getElementById('btnMonthTab' + initialMonth);
+        const mName = mBtn ? mBtn.textContent.trim() : '';
+        setSelectedMonth(parseInt(initialMonth, 10), mName);
+    } else if (initialPeriod === 'MONTHLY') {
+        const firstMonthBtn = document.querySelector('.btn-month-tab');
+        if (firstMonthBtn && firstMonthBtn.id) {
+            const mId = firstMonthBtn.id.replace('btnMonthTab', '');
+            setSelectedMonth(parseInt(mId, 10), firstMonthBtn.textContent.trim());
+        }
+    }
 
     let initialLang = "{{ selected_lang|default:'' }}";
     if (!initialLang) {

@@ -76,6 +76,7 @@
 {% endblock %}
 
 {% block content %}
+{% if request.user.role == 'ADMIN' or request.user.is_superuser %}
 <!-- Timetable Module Unified Sub-Menu Navigation Tabs -->
 <ul class="nav nav-tabs-custom">
     <li class="nav-item">
@@ -109,6 +110,7 @@
         </a>
     </li>
 </ul>
+{% endif %}
 
 <!-- Page Header Title -->
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
