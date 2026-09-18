@@ -156,5 +156,8 @@ urlpatterns = [
     path('classrooms/allocation/', views.student_classroom_allocation_view, name='student_classroom_allocation'),
     path('classrooms/allocation/api/preview/', views.api_classroom_allocation_preview, name='api_classroom_allocation_preview'),
     path('classrooms/allocation/api/apply/', views.api_classroom_allocation_apply, name='api_classroom_allocation_apply'),
+    path('classrooms/allocation/api/quick-transfer/', views.api_quick_transfer_student_classroom, name='api_quick_transfer_student_classroom'),
+    path('classrooms/allocation/api/current-roster/', views.api_get_current_classroom_roster, name='api_get_current_classroom_roster'),
     path('classrooms/allocation/export-excel/', views.export_classroom_allocation_excel, name='export_classroom_allocation_excel'),
 ]
+

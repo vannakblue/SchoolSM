@@ -9,7 +9,10 @@
         <p class="text-muted small mb-0">សូមស្វាគមន៍ លោកគ្រូ/អ្នកគ្រូ <strong>{{ teacher.khmer_name|default:request.user.display_name }}</strong> (ឯកទេស: {{ teacher.specialization|default:"គ្រូបង្រៀន" }})</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{% url 'teacher_self_update_portal' %}" class="btn btn-warning text-dark rounded-pill fw-bold shadow-sm">
+        <a href="{% url 'academic_booklets_hub' %}" class="btn btn-warning text-dark rounded-pill fw-bold shadow-sm">
+            <i class="fa-solid fa-book-open-reader me-1"></i> សៀវភៅតាមដាន & សិក្ខាគារិក
+        </a>
+        <a href="{% url 'teacher_self_update_portal' %}" class="btn btn-outline-warning text-dark rounded-pill fw-bold shadow-sm">
             <i class="fa-solid fa-id-card-clip me-1"></i> បំពេញ/ផ្ទៀងផ្ទាត់ព័ត៌មាន (Portal)
         </a>
         <a href="{% url 'teacher_mobile_qr_scan' %}" class="btn btn-primary rounded-pill fw-bold shadow-sm">
@@ -134,6 +137,9 @@
             </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'homeroom_conduct_assessment_view' my_homeroom.id %}" class="btn btn-sm btn-primary fw-bold shadow-xs">
+                <i class="fa-solid fa-award me-1"></i> វាយតម្លៃមារយាទ & មតិគ្រូ
+            </a>
             <a href="{% url 'homeroom_study_tracking_book_view' my_homeroom.id %}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-xs">
                 <i class="fa-solid fa-book-open-reader me-1"></i> សៀវភៅតាមដានរួម
             </a>
@@ -284,6 +290,25 @@
                     <p class="small text-muted mb-3">កំណត់សិស្សដែលមានពិន្ទុខ្សោយ (< ៥០%) តាមមុខវិជ្ជានានាក្នុងថ្នាក់បន្ទុក។</p>
                     <a href="{% url 'slow_learners_report_view' %}?classroom={{ my_homeroom.id }}" class="btn btn-sm btn-outline-danger fw-bold w-100">
                         <i class="fa-solid fa-user-xmark me-1"></i> ពិនិត្យសិស្សរៀនយឺត ({{ homeroom_slow_learners_count }} នាក់)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tool 7: Conduct & Moral Assessment -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="p-3 bg-white rounded-3 border h-100 shadow-xs hover-elevate transition border-primary border-opacity-25">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary text-white p-2 rounded-2">
+                            <i class="fa-solid fa-award fs-5"></i>
+                        </span>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark">វាយតម្លៃមារយាទ & អាកប្បកិរិយា</h6>
+                            <span class="small text-muted">Conduct & Moral Assessment</span>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">បញ្ចូលការវាយតម្លៃលក្ខណៈវិនិច្ឆ័យ ៥ យ៉ាង, មារយាទរួម និងមតិគ្រូ/មាតាបិតា (ឆ.១, ឆ.២ & ប្រចាំឆ្នាំ)។</p>
+                    <a href="{% url 'homeroom_conduct_assessment_view' my_homeroom.id %}" class="btn btn-sm btn-primary fw-bold w-100">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> បញ្ចូលការវាយតម្លៃមារយាទ
                     </a>
                 </div>
             </div>

@@ -206,6 +206,80 @@ class StudentTransferGrade(models.Model):
         return f"{self.student.khmer_name} - ឆមាសទី{self.semester} ({self.academic_year.name}): {self.semester_final_average}"
 
 
+class StudentConductAssessment(models.Model):
+    """
+    Official MoEYS Student Conduct & Moral Assessment (ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ និងគុណវុឌ្ឍិ)
+    Evaluated by the Homeroom Teacher (គ្រូបន្ទុកថ្នាក់) or School Admin.
+    Accessible via Teacher Portal, Mobile Web/App, and Desktop Browser.
+    Supports evaluation across:
+    - Semester 1 (ឆមាសទី ១)
+    - Semester 2 (ឆមាសទី ២)
+    - Annual (ប្រចាំឆ្នាំ)
+    5 MoEYS Criteria:
+    1. ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា (Discipline & School Regulations)
+    2. ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា (Academic Diligence & Self-Study)
+    3. សីលធម៌ សុជីវធម៌ និងការប្រាស្រ័យទាក់ទង (Moral, Manners & Interpersonal Conduct)
+    4. អនាម័យផ្ទាល់ខ្លួន និងការថែរក្សាបរិស្ថាន (Personal Hygiene & Environmental Care)
+    5. ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា (Social Activities, Labor & Sports)
+    Plus:
+    - Overall Conduct Rating (មារយាទរួម): ល្អណាស់, ល្អ, ល្អបង្គួរ, មធ្យម, ខ្សោយ
+    - Teacher Comments (មតិគ្រូទទួលបន្ទុកថ្នាក់)
+    - Parent Comments (មតិមាតាបិតា/អាណាព្យាបាល)
+    """
+    RATING_CHOICES = [
+        ('ល្អណាស់', 'ល្អណាស់ (Excellent)'),
+        ('ល្អ', 'ល្អ (Good)'),
+        ('ល្អបង្គួរ', 'ល្អបង្គួរ (Fairly Good)'),
+        ('មធ្យម', 'មធ្យម (Average)'),
+        ('ខ្សោយ', 'ខ្សោយ (Poor)'),
+    ]
+
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='conduct_assessments', verbose_name="សិស្ស / Student")
+    academic_year = models.ForeignKey('academics.AcademicYear', on_delete=models.CASCADE, related_name='conduct_assessments', verbose_name="ឆ្នាំសិក្សា / Academic Year")
+    classroom = models.ForeignKey('academics.Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='conduct_assessments', verbose_name="ថ្នាក់រៀន / Classroom")
+    evaluated_by = models.ForeignKey('teachers.Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='conduct_evaluations', verbose_name="វាយតម្លៃដោយគ្រូ / Evaluated By")
+
+    # Semester 1 (ឆមាសទី ១)
+    discipline_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការគោរពវិន័យ (ឆ.១)")
+    diligence_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការខិតខំប្រឹងប្រែង (ឆ.១)")
+    moral_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អណាស់', verbose_name="សីលធម៌ សុជីវធម៌ (ឆ.១)")
+    hygiene_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="អនាម័យ និងបរិស្ថាន (ឆ.១)")
+    social_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="សកម្មភាពសង្គម/ពលកម្ម (ឆ.១)")
+    overall_s1 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="មារយាទរួម (ឆ.១)")
+    teacher_comment_s1 = models.TextField(blank=True, default='', verbose_name="មតិគ្រូបន្ទុកថ្នាក់ (ឆ.១)")
+    parent_comment_s1 = models.TextField(blank=True, default='', verbose_name="មតិមាតាបិតា (ឆ.១)")
+
+    # Semester 2 (ឆមាសទី ២)
+    discipline_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការគោរពវិន័យ (ឆ.២)")
+    diligence_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការខិតខំប្រឹងប្រែង (ឆ.២)")
+    moral_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អណាស់', verbose_name="សីលធម៌ សុជីវធម៌ (ឆ.២)")
+    hygiene_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="អនាម័យ និងបរិស្ថាន (ឆ.២)")
+    social_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="សកម្មភាពសង្គម/ពលកម្ម (ឆ.២)")
+    overall_s2 = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="មារយាទរួម (ឆ.២)")
+    teacher_comment_s2 = models.TextField(blank=True, default='', verbose_name="មតិគ្រូបន្ទុកថ្នាក់ (ឆ.២)")
+    parent_comment_s2 = models.TextField(blank=True, default='', verbose_name="មតិមាតាបិតា (ឆ.២)")
+
+    # Annual (ប្រចាំឆ្នាំ)
+    discipline_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការគោរពវិន័យ (ប្រចាំឆ្នាំ)")
+    diligence_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="ការខិតខំប្រឹងប្រែង (ប្រចាំឆ្នាំ)")
+    moral_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អណាស់', verbose_name="សីលធម៌ សុជីវធម៌ (ប្រចាំឆ្នាំ)")
+    hygiene_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="អនាម័យ និងបរិស្ថាន (ប្រចាំឆ្នាំ)")
+    social_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="សកម្មភាពសង្គម/ពលកម្ម (ប្រចាំឆ្នាំ)")
+    overall_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="មារយាទប្រចាំឆ្នាំ")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "ការវាយតម្លៃអាកប្បកិរិយា & មារយាទ"
+        verbose_name_plural = "ការវាយតម្លៃអាកប្បកិរិយា & មារយាទ"
+        ordering = ['student', 'academic_year']
+        unique_together = ('student', 'academic_year')
+
+    def __str__(self):
+        return f"{self.student} - {self.academic_year}: មារយាទ {self.overall_annual}"
+
+
 # =========================================================================
 # CAMBODIAN HIGH SCHOOL STANDARDIZED EXAMINATION SYSTEM (តេស្តស្តង់ដា)
 # =========================================================================

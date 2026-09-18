@@ -9,6 +9,9 @@
         <p class="text-muted small mb-0">ទិដ្ឋភាពទូទៅនៃដំណើរការសាលារៀន ស្ថិតិសិស្ស វត្តមាន និងហិរញ្ញវត្ថុ</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'academic_booklets_hub' %}" class="btn btn-warning text-dark fw-bold">
+            <i class="fa-solid fa-book-open-reader me-1"></i> សៀវភៅតាមដាន & សិក្ខាគារិក
+        </a>
         <a href="{% url 'gemini_settings' %}" class="btn btn-outline-info">
             <i class="fa-solid fa-robot me-1"></i> កំណត់ Gemini AI
         </a>
@@ -95,6 +98,34 @@
                 <h3 class="stat-value">${{ total_due_amount|floatformat:2 }}</h3>
                 <p class="stat-label">ថ្លៃសិក្សាជំពាក់សរុប (Due)</p>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Academic Booklets Quick Launch Banner -->
+<div class="custom-card p-3.5 mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border-left: 5px solid #3b82f6 !important; border-radius: 1rem;">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-circle p-3 d-flex align-items-center justify-content-center shadow-xs" style="width: 48px; height: 48px;">
+                <i class="fa-solid fa-book-open-reader fs-4"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-pill small">MoEYS Official Booklets</span>
+                    <span class="badge bg-warning text-dark rounded-pill small fw-bold">សៀវភៅតាមដាន & សិក្ខាគារិក</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-0 mt-1">
+                    គ្រប់គ្រង ចេញ និងបោះពុម្ព «សៀវភៅតាមដានការសិក្សា» (ពេញមួយឆ្នាំ, ឆមាស១, ឆមាស២, ប្រចាំខែ) និង «សៀវភៅសិក្ខាគារិក» (ថ្នាក់ទី៧ ដល់ ទី១២)
+                </h6>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
+            <a href="{% url 'academic_booklets_hub' %}" class="btn btn-primary fw-bold shadow-xs px-3 py-2">
+                <i class="fa-solid fa-arrow-right-to-bracket me-1.5"></i> ចូលមជ្ឈមណ្ឌលសៀវភៅតាមដាន
+            </a>
+            <a href="{% url 'annual_results' %}" class="btn btn-outline-success fw-semibold px-3 py-2">
+                <i class="fa-solid fa-award me-1"></i> លទ្ធផលប្រចាំឆ្នាំ
+            </a>
         </div>
     </div>
 </div>

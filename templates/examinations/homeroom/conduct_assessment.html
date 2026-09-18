@@ -1,0 +1,472 @@
+{% extends 'base.html' %}
+{% load static i18n_extras %}
+
+{% block title %}វាយតម្លៃមារយាទ & អាកប្បកិរិយាសិស្ស - {{ classroom.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .conduct-card {
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    .conduct-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+    }
+    .rating-pill-group .btn {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+    .comment-chip {
+        font-size: 11px;
+        cursor: pointer;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 20px;
+        padding: 3px 10px;
+        display: inline-block;
+        margin: 2px;
+        transition: all 0.15s;
+    }
+    .comment-chip:hover {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+        transform: translateY(-1px);
+    }
+    .sticky-actions-bar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 10px 16px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    .table-conduct th {
+        background-color: #f8fafc;
+        font-size: 12px;
+        vertical-align: middle;
+        text-align: center;
+    }
+    .table-conduct td {
+        vertical-align: middle;
+        font-size: 12px;
+    }
+    @media (max-width: 768px) {
+        .desktop-table-view {
+            display: none !important;
+        }
+        .mobile-cards-view {
+            display: block !important;
+        }
+    }
+    @media (min-width: 769px) {
+        .desktop-table-view {
+            display: block;
+        }
+        .mobile-cards-view {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-md-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3 bg-gradient-primary text-white p-3 p-md-4" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-white text-primary fw-bold px-2.5 py-1.5 rounded-pill shadow-xs">
+                        <i class="fa-solid fa-award me-1"></i> កំណត់ត្រាមារយាទ
+                    </span>
+                    <span class="badge bg-white bg-opacity-25 text-white fw-normal">
+                        ឆ្នាំសិក្សា {{ academic_year.name }}
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-1 font-moul text-white">
+                    ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ និងគុណវុឌ្ឍិ (Conduct & Moral Assessment)
+                </h3>
+                <div class="small text-white text-opacity-90">
+                    <span>ថ្នាក់រៀន៖ <strong>{{ classroom.name }}</strong></span>
+                    <span class="mx-2">•</span>
+                    <span>គ្រូទទួលបន្ទុក៖ <strong>{{ classroom.homeroom_teacher.khmer_name|default:"មិនទាន់ចាត់តាំង" }}</strong></span>
+                    <span class="mx-2">•</span>
+                    <span>ចំនួនសិស្ស៖ <strong>{{ total_students }} នាក់</strong></span>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'homeroom_study_tracking_book_view' classroom.id %}" target="_blank" class="btn btn-light btn-sm fw-bold shadow-xs">
+                    <i class="fa-solid fa-book-open-reader me-1 text-primary"></i> សៀវភៅតាមដានរួម
+                </a>
+                <a href="{% url 'homeroom_individual_tracking_books_batch_view' classroom.id %}" target="_blank" class="btn btn-outline-light btn-sm fw-bold shadow-xs">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅសិស្ស
+                </a>
+                <a href="{% url 'teacher_dashboard' %}" class="btn btn-dark bg-opacity-50 border-0 btn-sm text-white fw-bold">
+                    <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Semester Tabs & Controls -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+        <div class="btn-group shadow-xs rounded-3 p-1 bg-white border" role="group">
+            <a href="?semester=1" class="btn btn-sm {% if selected_semester == '1' %}btn-primary fw-bold{% else %}btn-light text-muted{% endif %} rounded-2 px-3">
+                <i class="fa-regular fa-calendar-check me-1"></i> ឆមាសទី ១ (Semester 1)
+            </a>
+            <a href="?semester=2" class="btn btn-sm {% if selected_semester == '2' %}btn-primary fw-bold{% else %}btn-light text-muted{% endif %} rounded-2 px-3">
+                <i class="fa-regular fa-calendar-check me-1"></i> ឆមាសទី ២ (Semester 2)
+            </a>
+            <a href="?semester=annual" class="btn btn-sm {% if selected_semester == 'annual' %}btn-success fw-bold text-white{% else %}btn-light text-muted{% endif %} rounded-2 px-3">
+                <i class="fa-solid fa-star me-1"></i> ប្រចាំឆ្នាំ (Annual)
+            </a>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="applyPresetToAll('ល្អ')">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i> កំណត់ «ល្អ» គ្រប់សិស្ស
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="applyPresetToAll('ល្អណាស់')">
+                <i class="fa-solid fa-check-double me-1"></i> កំណត់ «ល្អណាស់» គ្រប់សិស្ស
+            </button>
+        </div>
+    </div>
+
+    <!-- Form for Full Batch Submit -->
+    <form method="POST" id="conductAssessmentForm">
+        {% csrf_token %}
+
+        <!-- DESKTOP TABLE VIEW -->
+        <div class="desktop-table-view card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered table-conduct mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">ល.រ</th>
+                            <th style="width: 80px;">អត្តលេខ</th>
+                            <th style="min-width: 140px;" class="text-start">គោត្តនាម-នាម</th>
+                            <th style="width: 110px;">១. គោរពវិន័យ</th>
+                            <th style="width: 110px;">២. ខិតខំរៀនសូត្រ</th>
+                            <th style="width: 110px;">៣. សីលធម៌ សុជីវធម៌</th>
+                            <th style="width: 110px;">៤. អនាម័យ បរិស្ថាន</th>
+                            <th style="width: 110px;">៥. សង្គម/ពលកម្ម</th>
+                            <th style="width: 120px;" class="table-primary text-primary">មារយាទរួម</th>
+                            {% if selected_semester != 'annual' %}
+                            <th style="min-width: 220px;">មតិគ្រូទទួលបន្ទុកថ្នាក់</th>
+                            <th style="min-width: 200px;">មតិមាតាបិតា/អាណាព្យាបាល</th>
+                            {% endif %}
+                            <th style="width: 60px;">សកម្មភាព</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in student_rows %}
+                        {% with stu=row.student ca=row.ca %}
+                        <tr id="row-student-{{ stu.id }}">
+                            <td class="text-center fw-bold">{{ row.no }}</td>
+                            <td class="text-center font-monospace">{{ stu.student_id }}</td>
+                            <td class="text-start fw-bold">
+                                <div class="text-dark">{{ stu.khmer_name }}</div>
+                                <small class="text-muted">{{ stu.latin_name|default:"" }}</small>
+                            </td>
+
+                            <!-- 1. Discipline -->
+                            <td>
+                                <select name="discipline_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="discipline">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.discipline_s1 == opt %}selected{% elif selected_semester == '2' and ca.discipline_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.discipline_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- 2. Diligence -->
+                            <td>
+                                <select name="diligence_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="diligence">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.diligence_s1 == opt %}selected{% elif selected_semester == '2' and ca.diligence_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.diligence_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- 3. Moral -->
+                            <td>
+                                <select name="moral_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="moral">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.moral_s1 == opt %}selected{% elif selected_semester == '2' and ca.moral_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.moral_annual == opt %}selected{% elif not ca and opt == 'ល្អណាស់' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- 4. Hygiene -->
+                            <td>
+                                <select name="hygiene_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="hygiene">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.hygiene_s1 == opt %}selected{% elif selected_semester == '2' and ca.hygiene_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.hygiene_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- 5. Social -->
+                            <td>
+                                <select name="social_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="social">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.social_s1 == opt %}selected{% elif selected_semester == '2' and ca.social_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.social_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- Overall -->
+                            <td class="table-primary">
+                                <select name="overall_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm fw-bold text-primary rating-select" data-student="{{ stu.id }}" data-field="overall">
+                                    {% for opt in rating_options %}
+                                    <option value="{{ opt }}" {% if selected_semester == '1' and ca.overall_s1 == opt %}selected{% elif selected_semester == '2' and ca.overall_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.overall_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            {% if selected_semester != 'annual' %}
+                            <!-- Teacher Comment -->
+                            <td>
+                                <textarea name="teacher_comment_{{ selected_semester }}_{{ stu.id }}" id="t_comm_{{ stu.id }}" class="form-control form-control-sm" rows="2" placeholder="មតិគ្រូបន្ទុកថ្នាក់...">{% if selected_semester == '1' %}{{ ca.teacher_comment_s1|default:"" }}{% elif selected_semester == '2' %}{{ ca.teacher_comment_s2|default:"" }}{% endif %}</textarea>
+                                <div class="mt-1">
+                                    <span class="comment-chip" onclick="insertComment('t_comm_{{ stu.id }}', 'សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។')">+ ខិតខំរៀន</span>
+                                    <span class="comment-chip" onclick="insertComment('t_comm_{{ stu.id }}', 'សិស្សរៀនពូកែ ឧស្សាហ៍ព្យាយាម និងមានសីលធម៌ល្អណាស់។')">+ ពូកែ & វិន័យ</span>
+                                </div>
+                            </td>
+
+                            <!-- Parent Comment -->
+                            <td>
+                                <textarea name="parent_comment_{{ selected_semester }}_{{ stu.id }}" id="p_comm_{{ stu.id }}" class="form-control form-control-sm" rows="2" placeholder="មតិមាតាបិតា...">{% if selected_semester == '1' %}{{ ca.parent_comment_s1|default:"" }}{% elif selected_semester == '2' %}{{ ca.parent_comment_s2|default:"" }}{% endif %}</textarea>
+                                <div class="mt-1">
+                                    <span class="comment-chip" onclick="insertComment('p_comm_{{ stu.id }}', 'បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។')">+ បានពិនិត្យ</span>
+                                    <span class="comment-chip" onclick="insertComment('p_comm_{{ stu.id }}', 'សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។')">+ អរគុណគ្រូ</span>
+                                </div>
+                            </td>
+                            {% endif %}
+
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveSingleStudent('{{ stu.id }}')" title="រក្សាទុកសិស្សនេះភ្លាមៗ">
+                                    <i class="fa-solid fa-floppy-disk" id="save-icon-{{ stu.id }}"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MOBILE CARDS VIEW (For Smartphone & Touch) -->
+        <div class="mobile-cards-view mb-4">
+            {% for row in student_rows %}
+            {% with stu=row.student ca=row.ca %}
+            <div class="conduct-card p-3 mb-3 bg-white shadow-xs" id="mobile-card-{{ stu.id }}">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <div>
+                        <span class="badge bg-primary rounded-pill me-1">#{{ row.no }}</span>
+                        <strong class="text-dark fs-6">{{ stu.khmer_name }}</strong>
+                        <div class="small text-muted font-monospace">អត្តលេខ៖ {{ stu.student_id }}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="saveSingleStudent('{{ stu.id }}')">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុក
+                    </button>
+                </div>
+
+                <!-- Overall Conduct Pill -->
+                <div class="mb-3 p-2 bg-light rounded-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-primary small"><i class="fa-solid fa-star me-1"></i> មារយាទរួម៖</span>
+                    <select name="overall_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm w-auto fw-bold text-primary rating-select" data-student="{{ stu.id }}" data-field="overall">
+                        {% for opt in rating_options %}
+                        <option value="{{ opt }}" {% if selected_semester == '1' and ca.overall_s1 == opt %}selected{% elif selected_semester == '2' and ca.overall_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.overall_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 5 Criteria grid -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">១. គោរពវិន័យ</label>
+                        <select name="discipline_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="discipline">
+                            {% for opt in rating_options %}
+                            <option value="{{ opt }}" {% if selected_semester == '1' and ca.discipline_s1 == opt %}selected{% elif selected_semester == '2' and ca.discipline_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.discipline_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">២. ខិតខំរៀនសូត្រ</label>
+                        <select name="diligence_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="diligence">
+                            {% for opt in rating_options %}
+                            <option value="{{ opt }}" {% if selected_semester == '1' and ca.diligence_s1 == opt %}selected{% elif selected_semester == '2' and ca.diligence_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.diligence_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">៣. សីលធម៌ សុជីវធម៌</label>
+                        <select name="moral_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="moral">
+                            {% for opt in rating_options %}
+                            <option value="{{ opt }}" {% if selected_semester == '1' and ca.moral_s1 == opt %}selected{% elif selected_semester == '2' and ca.moral_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.moral_annual == opt %}selected{% elif not ca and opt == 'ល្អណាស់' %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted mb-1">៤. អនាម័យ បរិស្ថាន</label>
+                        <select name="hygiene_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="hygiene">
+                            {% for opt in rating_options %}
+                            <option value="{{ opt }}" {% if selected_semester == '1' and ca.hygiene_s1 == opt %}selected{% elif selected_semester == '2' and ca.hygiene_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.hygiene_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="small text-muted mb-1">៥. សង្គម/ពលកម្ម</label>
+                        <select name="social_{{ selected_semester }}_{{ stu.id }}" class="form-select form-select-sm rating-select" data-student="{{ stu.id }}" data-field="social">
+                            {% for opt in rating_options %}
+                            <option value="{{ opt }}" {% if selected_semester == '1' and ca.social_s1 == opt %}selected{% elif selected_semester == '2' and ca.social_s2 == opt %}selected{% elif selected_semester == 'annual' and ca.social_annual == opt %}selected{% elif not ca and opt == 'ល្អ' %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                {% if selected_semester != 'annual' %}
+                <!-- Comments -->
+                <div class="mb-2">
+                    <label class="small fw-bold text-dark">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</label>
+                    <textarea name="teacher_comment_{{ selected_semester }}_{{ stu.id }}" id="m_t_comm_{{ stu.id }}" class="form-control form-control-sm" rows="2">{% if selected_semester == '1' %}{{ ca.teacher_comment_s1|default:"" }}{% elif selected_semester == '2' %}{{ ca.teacher_comment_s2|default:"" }}{% endif %}</textarea>
+                    <div class="mt-1">
+                        <span class="comment-chip" onclick="insertComment('m_t_comm_{{ stu.id }}', 'សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។')">+ ខិតខំរៀន</span>
+                        <span class="comment-chip" onclick="insertComment('m_t_comm_{{ stu.id }}', 'សិស្សរៀនពូកែ ឧស្សាហ៍ព្យាយាម និងមានសីលធម៌ល្អណាស់។')">+ ពូកែ & វិន័យ</span>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="small fw-bold text-dark">មតិមាតាបិតា/អាណាព្យាបាល៖</label>
+                    <textarea name="parent_comment_{{ selected_semester }}_{{ stu.id }}" id="m_p_comm_{{ stu.id }}" class="form-control form-control-sm" rows="2">{% if selected_semester == '1' %}{{ ca.parent_comment_s1|default:"" }}{% elif selected_semester == '2' %}{{ ca.parent_comment_s2|default:"" }}{% endif %}</textarea>
+                    <div class="mt-1">
+                        <span class="comment-chip" onclick="insertComment('m_p_comm_{{ stu.id }}', 'បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។')">+ បានពិនិត្យ</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+
+        <!-- Sticky Floating Action Bar -->
+        <div class="sticky-actions-bar d-flex justify-content-between align-items-center">
+            <div class="d-none d-md-block text-muted small">
+                <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                លោកគ្រូ-អ្នកគ្រូអាចចុច «រក្សាទុកទាំងអស់» ឬចុចរក្សាទុកតាមសិស្សម្នាក់ៗ។
+            </div>
+            <div class="d-flex gap-2 ms-auto">
+                <a href="{% url 'homeroom_study_tracking_book_view' classroom.id %}" target="_blank" class="btn btn-outline-secondary btn-sm fw-bold">
+                    <i class="fa-solid fa-eye me-1"></i> មើលសៀវភៅតាមដាន
+                </a>
+                <button type="submit" class="btn btn-success btn-sm px-4 fw-bold shadow-xs">
+                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> រក្សាទុកទាំងអស់ (Save All)
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const currentSemester = "{{ selected_semester }}";
+
+    function insertComment(elementId, text) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            if (el.value.trim() !== '') {
+                el.value = el.value.trim() + ' ' + text;
+            } else {
+                el.value = text;
+            }
+            el.focus();
+        }
+    }
+
+    function applyPresetToAll(rating) {
+        if (!confirm(`តើលោកគ្រូ-អ្នកគ្រូពិតជាចង់កំណត់ «${rating}» សម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់មែនទេ?`)) {
+            return;
+        }
+        document.querySelectorAll('.rating-select').forEach(sel => {
+            sel.value = rating;
+        });
+        showToast(`បានកំណត់ «${rating}» គ្រប់មុខវិនិច្ឆ័យរួចរាល់ សូមចុច «រក្សាទុកទាំងអស់»!`, 'info');
+    }
+
+    function saveSingleStudent(studentId) {
+        const icon = document.getElementById(`save-icon-${studentId}`);
+        if (icon) {
+            icon.className = 'fa-solid fa-spinner fa-spin text-warning';
+        }
+
+        // Gather form fields for this student
+        const data = {
+            student_id: studentId,
+            semester: currentSemester,
+            discipline: document.querySelector(`[name="discipline_${currentSemester}_${studentId}"]`)?.value || 'ល្អ',
+            diligence: document.querySelector(`[name="diligence_${currentSemester}_${studentId}"]`)?.value || 'ល្អ',
+            moral: document.querySelector(`[name="moral_${currentSemester}_${studentId}"]`)?.value || 'ល្អណាស់',
+            hygiene: document.querySelector(`[name="hygiene_${currentSemester}_${studentId}"]`)?.value || 'ល្អ',
+            social: document.querySelector(`[name="social_${currentSemester}_${studentId}"]`)?.value || 'ល្អ',
+            overall: document.querySelector(`[name="overall_${currentSemester}_${studentId}"]`)?.value || 'ល្អ',
+            teacher_comment: (document.getElementById(`t_comm_${studentId}`)?.value || document.getElementById(`m_t_comm_${studentId}`)?.value || '').trim(),
+            parent_comment: (document.getElementById(`p_comm_${studentId}`)?.value || document.getElementById(`m_p_comm_${studentId}`)?.value || '').trim(),
+        };
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch("{% url 'api_save_student_conduct_assessment' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (icon) {
+                icon.className = 'fa-solid fa-check text-success';
+                setTimeout(() => { icon.className = 'fa-solid fa-floppy-disk'; }, 2000);
+            }
+            showToast(resData.message || 'រក្សាទុកជោគជ័យ!', 'success');
+        })
+        .catch(err => {
+            if (icon) {
+                icon.className = 'fa-solid fa-triangle-exclamation text-danger';
+                setTimeout(() => { icon.className = 'fa-solid fa-floppy-disk'; }, 3000);
+            }
+            showToast('មានបញ្ហាក្នុងការរក្សាទុក សូមព្យាយាមម្តងទៀត', 'danger');
+        });
+    }
+
+    function showToast(message, type) {
+        let toastEl = document.getElementById('conductToast');
+        if (!toastEl) {
+            toastEl = document.createElement('div');
+            toastEl.id = 'conductToast';
+            toastEl.style.position = 'fixed';
+            toastEl.style.top = '20px';
+            toastEl.style.right = '20px';
+            toastEl.style.zIndex = '99999';
+            document.body.appendChild(toastEl);
+        }
+        toastEl.innerHTML = `
+            <div class="alert alert-${type} shadow-lg rounded-3 py-2 px-3 alert-dismissible fade show mb-0" role="alert">
+                <i class="fa-solid fa-circle-check me-2"></i> ${message}
+            </div>
+        `;
+        setTimeout(() => {
+            toastEl.innerHTML = '';
+        }, 3500);
+    }
+</script>
+{% endblock %}

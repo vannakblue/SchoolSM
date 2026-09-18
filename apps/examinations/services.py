@@ -1,6 +1,6 @@
 from decimal import Decimal
 from django.db.models import Q
-from .models import ExamTerm, Grade, StudentTransferGrade, ExamTermSubjectSetting
+from .models import ExamTerm, Grade, StudentTransferGrade, ExamTermSubjectSetting, StudentConductAssessment
 from apps.academics.models import GradeLevelRule, Subject
 from apps.students.models import Student
 
@@ -97,6 +97,153 @@ def get_effective_term_subjects(exam_term=None, classroom=None, grade_level=None
     return effective_rules
 
 
+# MoEYS Semester Valid Academic Months Mapping
+# Semester 1: October to February (+ September if early start)
+# Semester 2: March to July (+ August if needed)
+SEMESTER_VALID_MONTHS = {
+    1: [9, 10, 11, 12, 1, 2],
+    2: [3, 4, 5, 6, 7, 8],
+}
+
+
+class SemesterMonthDescriptor(dict):
+    """
+    Descriptor representing a distinct academic month in a semester.
+    Supports both attribute and dict-key access for seamless template compatibility.
+    """
+    def __init__(self, month_num, display_month, primary_term, term_ids, terms):
+        super().__init__(
+            month=month_num,
+            display_month=display_month,
+            name=display_month,
+            primary_term=primary_term,
+            term_ids=term_ids,
+            terms=terms,
+            id=primary_term.id if primary_term else None,
+            start_date=primary_term.start_date if primary_term else None,
+            end_date=primary_term.end_date if primary_term else None,
+        )
+        self.month = month_num
+        self.display_month = display_month
+        self.name = display_month
+        self.primary_term = primary_term
+        self.term_ids = term_ids
+        self.terms = terms
+        self.id = primary_term.id if primary_term else None
+        self.start_date = primary_term.start_date if primary_term else None
+        self.end_date = primary_term.end_date if primary_term else None
+
+    def __str__(self):
+        return self.display_month
+
+
+def extract_term_month_info(term):
+    """
+    Extracts the academic month number (1-12) and Khmer display name from an ExamTerm.
+    Checks term.name first for Khmer/English month names, then falls back to term.start_date.month.
+    """
+    if not term:
+        return None, ""
+
+    name_lower = (term.name or "").lower()
+
+    month_patterns = [
+        (10, 'តុលា', ['តុលា', 'october', 'oct']),
+        (11, 'វិច្ឆិកា', ['វិច្ឆិកា', 'november', 'nov']),
+        (12, 'ធ្នូ', ['ធ្នូ', 'december', 'dec']),
+        (1, 'មករា', ['មករា', 'january', 'jan']),
+        (2, 'កុម្ភៈ', ['កុម្ភៈ', 'កុម្ភះ', 'february', 'feb']),
+        (3, 'មីនា', ['មីនា', 'march', 'mar']),
+        (4, 'មេសា', ['មេសា', 'april', 'apr']),
+        (5, 'ឧសភា', ['ឧសភា', 'may']),
+        (6, 'មិថុនា', ['មិថុនា', 'june', 'jun']),
+        (7, 'កក្កដា', ['កក្កដា', 'july', 'jul']),
+        (8, 'សីហា', ['សីហា', 'august', 'aug']),
+        (9, 'កញ្ញា', ['កញ្ញា', 'september', 'sep', 'sept']),
+    ]
+
+    for m_num, m_kh, aliases in month_patterns:
+        for alias in aliases:
+            if alias in name_lower:
+                return m_num, m_kh
+
+    # Fallback to start_date or end_date month
+    ref_date = term.start_date or getattr(term, 'end_date', None)
+    if ref_date:
+        m_num = ref_date.month
+        kh_names = {
+            1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា',
+            5: 'ឧសភា', 6: 'មិថុនា', 7: 'កក្កដា', 8: 'សីហា',
+            9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ',
+        }
+        return m_num, kh_names.get(m_num, f"ខែ {m_num}")
+
+    return None, ""
+
+
+def resolve_semester_monthly_terms(academic_year, semester):
+    """
+    Returns the distinct monthly terms configured by admin that legitimately belong to the given semester.
+    Guarantees:
+    1. Only includes months that belong to that semester (MoEYS standard).
+    2. Only includes months defined by admin in ExamTerm for this academic year and semester.
+    3. De-duplicates multiple terms in the same month into a single month descriptor.
+    4. Orders months chronologically according to Cambodian school year.
+    """
+    if not academic_year:
+        return []
+
+    valid_months = SEMESTER_VALID_MONTHS.get(semester, [])
+
+    terms = list(ExamTerm.objects.filter(
+        academic_year=academic_year,
+        semester=semester,
+        term_type=ExamTerm.TermType.MONTHLY,
+        is_counted_in_semester=True
+    ).order_by('start_date', 'id'))
+
+    grouped_months = {}
+    for term in terms:
+        m_num, m_kh = extract_term_month_info(term)
+        if m_num in valid_months:
+            if m_num not in grouped_months:
+                grouped_months[m_num] = {
+                    'month': m_num,
+                    'display_month': m_kh,
+                    'primary_term': term,
+                    'term_ids': [term.id],
+                    'terms': [term],
+                }
+            else:
+                grouped_months[m_num]['term_ids'].append(term.id)
+                grouped_months[m_num]['terms'].append(term)
+
+    result = []
+    for m in valid_months:
+        if m in grouped_months:
+            m_data = grouped_months[m]
+            # If multiple terms exist in the same month, prefer the one with recorded grades
+            if len(m_data['terms']) > 1:
+                term_with_grades = None
+                for t in m_data['terms']:
+                    if Grade.objects.filter(exam_term=t).exists():
+                        term_with_grades = t
+                        break
+                if term_with_grades:
+                    m_data['primary_term'] = term_with_grades
+
+            descriptor = SemesterMonthDescriptor(
+                month_num=m,
+                display_month=m_data['display_month'],
+                primary_term=m_data['primary_term'],
+                term_ids=m_data['term_ids'],
+                terms=m_data['terms']
+            )
+            result.append(descriptor)
+
+    return result
+
+
 class AcademicResultService:
     """
     Core Calculation Service for MoEYS Academic Results:
@@ -128,7 +275,12 @@ class AcademicResultService:
         """
         Computes total score, max score, percentage, and letter grade for a student in a specific exam term.
         """
-        grades = Grade.objects.filter(student=student, exam_term=term)
+        if hasattr(term, 'term_ids'):
+            grades = Grade.objects.filter(student=student, exam_term_id__in=term.term_ids)
+        elif isinstance(term, dict) and 'term_ids' in term:
+            grades = Grade.objects.filter(student=student, exam_term_id__in=term['term_ids'])
+        else:
+            grades = Grade.objects.filter(student=student, exam_term=term)
         if not grades.exists():
             return {
                 'has_grades': False,
@@ -212,13 +364,8 @@ class AcademicResultService:
             include_non_tested=False
         )
 
-        # 2. Find Monthly Terms belonging to this semester
-        monthly_terms = list(ExamTerm.objects.filter(
-            academic_year=academic_year,
-            semester=semester,
-            term_type=ExamTerm.TermType.MONTHLY,
-            is_counted_in_semester=True
-        ).order_by('start_date', 'id'))
+        # 2. Find Monthly Terms belonging to this semester (distinct configured months)
+        monthly_terms = resolve_semester_monthly_terms(academic_year, semester)
 
         # 3. Find Semester Final Exam Term
         sem_type = ExamTerm.TermType.SEMESTER_1 if semester == 1 else ExamTerm.TermType.SEMESTER_2
@@ -256,7 +403,15 @@ class AcademicResultService:
                 letter_desc = AcademicResultService.get_letter_grade(sem_final)[1]
                 passed = float(sem_final or 0) >= 50.0
 
-                month_cols = [{'term': t, 'has_grades': False, 'percentage': None, 'score': None} for t in monthly_terms]
+                month_cols = [{
+                    'term': getattr(t, 'primary_term', t),
+                    'name': getattr(t, 'display_month', getattr(t, 'name', '')),
+                    'display_month': getattr(t, 'display_month', getattr(t, 'name', '')),
+                    'has_grades': False,
+                    'percentage': None,
+                    'score': None,
+                    'max': None,
+                } for t in monthly_terms]
 
                 results.append({
                     'student': student,
@@ -283,10 +438,14 @@ class AcademicResultService:
 
                 for t in monthly_terms:
                     t_res = AcademicResultService.compute_student_term_score(student, t, subject_rules)
+                    t_display = getattr(t, 'display_month', getattr(t, 'name', ''))
+                    t_obj = getattr(t, 'primary_term', t)
                     if t_res['has_grades']:
                         attended_percentages.append(t_res['percentage'])
                         month_cols.append({
-                            'term': t,
+                            'term': t_obj,
+                            'name': t_display,
+                            'display_month': t_display,
                             'has_grades': True,
                             'percentage': t_res['percentage'],
                             'score': t_res['total_score'],
@@ -294,7 +453,9 @@ class AcademicResultService:
                         })
                     else:
                         month_cols.append({
-                            'term': t,
+                            'term': t_obj,
+                            'name': t_display,
+                            'display_month': t_display,
                             'has_grades': False,
                             'percentage': None,
                             'score': None,
@@ -746,18 +907,134 @@ def get_student_exam_seating_data(student):
     return exam_seating_info
 
 
-def get_student_cumulative_dossier_data(student):
+def compute_classroom_subject_annual_ranks(classroom, academic_year):
+    """
+    Computes annual subject score, class rank, and letter grade for all students
+    in a classroom across all tested subjects.
+    Returns: dict[student_id][subject_id] = {'annual_score': Decimal, 'rank': int, 'letter': str}
+    """
+    if not classroom or not academic_year:
+        return {}
+
+    from decimal import Decimal
+    from apps.examinations.models import ExamTerm, Grade
+    from apps.students.models import Student
+
+    subject_rules = get_effective_term_subjects(classroom=classroom, include_non_tested=False)
+    if not subject_rules:
+        subject_rules = get_effective_term_subjects(grade_level=classroom.grade_level, include_non_tested=False)
+    if not subject_rules:
+        return {}
+
+    students = list(Student.objects.filter(classroom=classroom).order_by('student_id'))
+    if not students:
+        return {}
+
+    s1_monthly_ids = list(ExamTerm.objects.filter(
+        academic_year=academic_year, semester=1, term_type=ExamTerm.TermType.MONTHLY, is_counted_in_semester=True
+    ).values_list('id', flat=True))
+    s1_exam_id = ExamTerm.objects.filter(
+        academic_year=academic_year, semester=1, term_type=ExamTerm.TermType.SEMESTER_1
+    ).values_list('id', flat=True).first()
+
+    s2_monthly_ids = list(ExamTerm.objects.filter(
+        academic_year=academic_year, semester=2, term_type=ExamTerm.TermType.MONTHLY, is_counted_in_semester=True
+    ).values_list('id', flat=True))
+    s2_exam_id = ExamTerm.objects.filter(
+        academic_year=academic_year, semester=2, term_type=ExamTerm.TermType.SEMESTER_2
+    ).values_list('id', flat=True).first()
+
+    all_term_ids = s1_monthly_ids + ([s1_exam_id] if s1_exam_id else []) + s2_monthly_ids + ([s2_exam_id] if s2_exam_id else [])
+    grades_qs = Grade.objects.filter(Q(classroom=classroom) | Q(student__in=students), exam_term_id__in=all_term_ids)
+
+    g_map = {}
+    for g in grades_qs:
+        g_map[(g.student_id, g.subject_id, g.exam_term_id)] = g.score
+
+    student_subject_results = {s.id: {} for s in students}
+
+    for rule in subject_rules:
+        sub = rule.subject
+        max_sc = rule.max_score or Decimal('100.00')
+        scores_for_ranking = []
+
+        for stu in students:
+            # S1 monthly
+            s1_m_scores = [g_map[(stu.id, sub.id, tid)] for tid in s1_monthly_ids if (stu.id, sub.id, tid) in g_map and g_map[(stu.id, sub.id, tid)] is not None]
+            s1_m_avg = round(sum(s1_m_scores) / Decimal(str(len(s1_m_scores))), 2) if s1_m_scores else None
+            s1_ex = g_map.get((stu.id, sub.id, s1_exam_id)) if s1_exam_id else None
+
+            if s1_m_avg is not None and s1_ex is not None:
+                s1_final = round((s1_m_avg + s1_ex) / Decimal('2.0'), 2)
+            elif s1_ex is not None:
+                s1_final = s1_ex
+            elif s1_m_avg is not None:
+                s1_final = s1_m_avg
+            else:
+                s1_final = None
+
+            # S2 monthly
+            s2_m_scores = [g_map[(stu.id, sub.id, tid)] for tid in s2_monthly_ids if (stu.id, sub.id, tid) in g_map and g_map[(stu.id, sub.id, tid)] is not None]
+            s2_m_avg = round(sum(s2_m_scores) / Decimal(str(len(s2_m_scores))), 2) if s2_m_scores else None
+            s2_ex = g_map.get((stu.id, sub.id, s2_exam_id)) if s2_exam_id else None
+
+            if s2_m_avg is not None and s2_ex is not None:
+                s2_final = round((s2_m_avg + s2_ex) / Decimal('2.0'), 2)
+            elif s2_ex is not None:
+                s2_final = s2_ex
+            elif s2_m_avg is not None:
+                s2_final = s2_m_avg
+            else:
+                s2_final = None
+
+            if s1_final is not None and s2_final is not None:
+                ann_sub = round((s1_final + s2_final) / Decimal('2.0'), 2)
+            elif s2_final is not None:
+                ann_sub = s2_final
+            elif s1_final is not None:
+                ann_sub = s1_final
+            else:
+                ann_sub = None
+
+            letter = '-'
+            if ann_sub is not None and max_sc > 0:
+                pct = round((ann_sub / max_sc) * Decimal('100.0'), 2)
+                letter = AcademicResultService.get_letter_grade(pct)[0]
+
+            student_subject_results[stu.id][sub.id] = {
+                'annual_score': ann_sub,
+                'letter': letter,
+                'max_score': max_sc,
+            }
+            if ann_sub is not None:
+                scores_for_ranking.append((stu.id, ann_sub))
+
+        scores_for_ranking.sort(key=lambda x: x[1], reverse=True)
+        cur_rank = 1
+        for idx, (s_id, sc_val) in enumerate(scores_for_ranking):
+            if idx > 0 and sc_val < scores_for_ranking[idx - 1][1]:
+                cur_rank = idx + 1
+            student_subject_results[s_id][sub.id]['rank'] = cur_rank
+
+    return student_subject_results
+
+
+def get_student_cumulative_dossier_data(student, class_ranks_cache=None):
     """
     Constructs comprehensive multi-year Academic Dossier (សៀវភៅសិក្ខាគារិក) data
     for Grades 7 to 12 up to the student's actual current grade.
     Standardized to Cambodian Ministry of Education, Youth and Sport (MoEYS) Secondary & High School standards.
+    Includes full annual subject breakdown matrix (Score, Class Rank, Letter Grade) for every grade level studied.
     """
     if not student:
         return None
 
+    if class_ranks_cache is None:
+        class_ranks_cache = {}
+
     from django.db.models import Q
     from apps.accounts.models import SchoolProfile
-    from apps.academics.models import Classroom
+    from apps.academics.models import Classroom, Subject, GradeLevelRule
     from apps.students.models import StudentPromotionRecord
     from apps.attendance.models import StudentAttendance
     from apps.examinations.models import StudentTransferGrade, Grade
@@ -792,6 +1069,14 @@ def get_student_cumulative_dossier_data(student):
     ).select_related('academic_year', 'homeroom_teacher')
     classes_by_grade = {c.grade_level: c for c in past_classes_qs}
 
+    for p in promotions:
+        if p.from_classroom and p.from_classroom.grade_level:
+            if p.from_classroom.grade_level not in classes_by_grade:
+                classes_by_grade[p.from_classroom.grade_level] = p.from_classroom
+        if p.to_classroom and p.to_classroom.grade_level:
+            if p.to_classroom.grade_level not in classes_by_grade:
+                classes_by_grade[p.to_classroom.grade_level] = p.to_classroom
+
     if current_cls and current_cls.grade_level:
         classes_by_grade[current_cls.grade_level] = current_cls
 
@@ -809,6 +1094,8 @@ def get_student_cumulative_dossier_data(student):
 
     # 5. Build record for Grades 7 to 12
     grade_records = []
+    grade_ranks_map = {}
+
     for g_num in range(7, 13):
         is_current = (g_num == current_grade)
         is_past = (g_num < current_grade)
@@ -830,6 +1117,15 @@ def get_student_cumulative_dossier_data(student):
         conduct_val = "ល្អ"
         decision_val = "-"
         remarks = ""
+
+        # Subject ranks caching for this grade
+        if cls_obj and cls_obj.academic_year:
+            cache_key = (cls_obj.id, cls_obj.academic_year.id)
+            if cache_key not in class_ranks_cache:
+                class_ranks_cache[cache_key] = compute_classroom_subject_annual_ranks(cls_obj, cls_obj.academic_year)
+            grade_ranks_map[g_num] = class_ranks_cache[cache_key].get(student.id, {})
+        else:
+            grade_ranks_map[g_num] = {}
 
         if cls_obj:
             cls_name = cls_obj.name
@@ -915,6 +1211,98 @@ def get_student_cumulative_dossier_data(student):
             'remarks': remarks,
         })
 
+    # 6. Multi-Year Subject Breakdown Matrix (ថ្នាក់ទី ៧ ដល់ ទី ១២)
+    relevant_subject_ids = set(
+        GradeLevelRule.objects.filter(grade_level__gte=7, grade_level__lte=12).values_list('subject_id', flat=True)
+    )
+    student_grade_subject_ids = set(
+        Grade.objects.filter(student=student).values_list('subject_id', flat=True)
+    )
+    all_sub_ids = relevant_subject_ids.union(student_grade_subject_ids)
+
+    if all_sub_ids:
+        all_subjects_qs = list(Subject.objects.filter(id__in=all_sub_ids).order_by('order', 'id'))
+    else:
+        all_subjects_qs = list(Subject.objects.all().order_by('order', 'id'))
+
+    cumulative_subjects = []
+    for sub in all_subjects_qs:
+        grade_cells = []
+        has_any_score = False
+
+        for g_num in range(7, 13):
+            is_current = (g_num == current_grade)
+            is_past = (g_num < current_grade)
+            is_future = (g_num > current_grade)
+
+            sub_rank_info = grade_ranks_map.get(g_num, {}).get(sub.id)
+            if sub_rank_info and sub_rank_info.get('annual_score') is not None:
+                has_any_score = True
+                grade_cells.append({
+                    'grade_level': g_num,
+                    'annual_score': sub_rank_info['annual_score'],
+                    'rank': sub_rank_info.get('rank', '-'),
+                    'letter': sub_rank_info.get('letter', '-'),
+                    'max_score': sub_rank_info.get('max_score', Decimal('100.00')),
+                    'is_current': is_current,
+                    'is_past': is_past,
+                    'is_future': is_future,
+                    'has_data': True,
+                })
+            else:
+                grade_cells.append({
+                    'grade_level': g_num,
+                    'annual_score': None,
+                    'rank': '-',
+                    'letter': '-',
+                    'max_score': None,
+                    'is_current': is_current,
+                    'is_past': is_past,
+                    'is_future': is_future,
+                    'has_data': False,
+                })
+
+        cumulative_subjects.append({
+            'subject': sub,
+            'subject_name': sub.name_kh,
+            'subject_code': sub.code,
+            'grade_cells': grade_cells,
+            'has_any_score': has_any_score,
+        })
+
+    active_rules_sub_ids = set(GradeLevelRule.objects.filter(grade_level__lte=max(current_grade, 7), grade_level__gte=7).values_list('subject_id', flat=True))
+    filtered_cumulative_subjects = [
+        s for s in cumulative_subjects
+        if s['has_any_score'] or s['subject'].id in active_rules_sub_ids
+    ]
+    if filtered_cumulative_subjects:
+        cumulative_subjects = filtered_cumulative_subjects
+
+    # Grade totals row for footer
+    cumulative_grade_totals = []
+    for g_idx, g_num in enumerate(range(7, 13)):
+        rec = next((r for r in grade_records if r['grade_level'] == g_num), None)
+        scores = [
+            row['grade_cells'][g_idx]['annual_score']
+            for row in cumulative_subjects
+            if row['grade_cells'][g_idx]['annual_score'] is not None
+        ]
+        tot_sc = round(sum(scores), 2) if scores else None
+        ann_avg = rec['annual_average'] if rec else None
+        rk_val = rec['rank'] if rec else '-'
+        lt_val = rec['grade_letter'] if rec else '-'
+        cumulative_grade_totals.append({
+            'grade_level': g_num,
+            'total_score': tot_sc,
+            'annual_average': ann_avg,
+            'rank': rk_val,
+            'letter': lt_val,
+            'is_current': (g_num == current_grade),
+            'is_past': (g_num < current_grade),
+            'is_future': (g_num > current_grade),
+            'has_data': (tot_sc is not None or ann_avg is not None),
+        })
+
     # Health & Physical Record (កាយសម្បទា និងសុខភាព)
     enr_data = getattr(student, 'enrollment_data', {}) or {}
     health_info = {
@@ -960,6 +1348,9 @@ def get_student_cumulative_dossier_data(student):
         'current_classroom': current_cls,
         'current_academic_year': current_ay,
         'grade_records': grade_records,
+        'grade_numbers': list(range(7, 13)),
+        'cumulative_subjects': cumulative_subjects,
+        'cumulative_grade_totals': cumulative_grade_totals,
         'health_info': health_info,
         'primary_info': primary_info,
         'diploma_info': diploma_info,
@@ -997,13 +1388,8 @@ def get_student_study_tracking_book_data(student, academic_year=None):
 
     homeroom_teacher = classroom.homeroom_teacher if classroom else None
 
-    # 1. Exam Terms Resolution
-    s1_monthly_terms = list(ExamTerm.objects.filter(
-        academic_year=ay,
-        semester=1,
-        term_type=ExamTerm.TermType.MONTHLY,
-        is_counted_in_semester=True
-    ).order_by('start_date', 'id')) if ay else []
+    # 1. Exam Terms Resolution (Distinct months defined by admin for each semester)
+    s1_monthly_terms = resolve_semester_monthly_terms(ay, semester=1) if ay else []
 
     s1_exam_term = ExamTerm.objects.filter(
         academic_year=ay,
@@ -1011,12 +1397,7 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         term_type=ExamTerm.TermType.SEMESTER_1
     ).first() if ay else None
 
-    s2_monthly_terms = list(ExamTerm.objects.filter(
-        academic_year=ay,
-        semester=2,
-        term_type=ExamTerm.TermType.MONTHLY,
-        is_counted_in_semester=True
-    ).order_by('start_date', 'id')) if ay else []
+    s2_monthly_terms = resolve_semester_monthly_terms(ay, semester=2) if ay else []
 
     s2_exam_term = ExamTerm.objects.filter(
         academic_year=ay,
@@ -1024,10 +1405,34 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         term_type=ExamTerm.TermType.SEMESTER_2
     ).first() if ay else None
 
-    # 2. Subject Rules & Grade Mapping
-    subject_rules = get_effective_term_subjects(classroom=classroom, include_non_tested=False) if classroom else []
-    if not subject_rules:
-        subject_rules = get_effective_term_subjects(grade_level=grade_level, include_non_tested=False)
+    # 2. Subject Rules & Grade Mapping (Guarantee all subjects in this classroom/grade are included)
+    classroom_subjects = []
+    if classroom:
+        assigned_subs = list(classroom.assigned_subjects.select_related('subject').order_by('subject__order', 'id'))
+        if assigned_subs:
+            rule_map = {r.subject_id: r for r in GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject')}
+            for cs in assigned_subs:
+                rule = rule_map.get(cs.subject_id) or GradeLevelRule(
+                    grade_level=grade_level, track=classroom.track, subject=cs.subject, max_score=Decimal('100.00')
+                )
+                classroom_subjects.append(rule)
+        else:
+            classroom_subjects = list(GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject').order_by('subject__order', 'id'))
+
+    if not classroom_subjects:
+        classroom_subjects = list(GradeLevelRule.objects.filter(grade_level=grade_level).select_related('subject').order_by('subject__order', 'id'))
+
+    # Also include any subjects that have recorded grades for this student
+    existing_sub_ids = {r.subject_id for r in classroom_subjects}
+    extra_grade_sub_ids = set(Grade.objects.filter(student=student, exam_term__academic_year=ay).values_list('subject_id', flat=True)) - existing_sub_ids
+    if extra_grade_sub_ids:
+        extra_subs = Subject.objects.filter(id__in=extra_grade_sub_ids).order_by('order', 'id')
+        for es in extra_subs:
+            classroom_subjects.append(GradeLevelRule(
+                grade_level=grade_level, track=classroom.track if classroom else 'GENERAL', subject=es, max_score=Decimal('100.00')
+            ))
+
+    subject_rules = classroom_subjects
 
     grades_qs = Grade.objects.filter(student=student)
     if ay:
@@ -1043,10 +1448,48 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     s2_stu_item = next((item for item in s2_class_res.get('students_data', []) if item['student'].id == student.id), None)
     ann_stu_item = next((item for item in ann_class_res.get('students_data', []) if item['student'].id == student.id), None)
 
-    # 4. Subject Rows Matrix
-    subject_rows = []
+    # Compute Grade-Level Ranks across all classrooms of this grade level
+    grade_classrooms = list(Classroom.objects.filter(grade_level=grade_level, academic_year=ay)) if ay else ([classroom] if classroom else [])
     total_class_students = classroom.total_students if classroom else 1
 
+    s1_grade_rank = s1_stu_item.get('rank') if s1_stu_item else None
+    total_grade_students_s1 = total_class_students
+    if len(grade_classrooms) > 1:
+        all_s1 = []
+        for c in grade_classrooms:
+            c_res = AcademicResultService.compute_semester_results(c, ay, semester=1)
+            all_s1.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
+        if all_s1:
+            all_s1.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
+            total_grade_students_s1 = len(all_s1)
+            s1_grade_rank = next((idx + 1 for idx, item in enumerate(all_s1) if item['student'].id == student.id), s1_stu_item.get('rank'))
+
+    s2_grade_rank = s2_stu_item.get('rank') if s2_stu_item else None
+    total_grade_students_s2 = total_class_students
+    if len(grade_classrooms) > 1:
+        all_s2 = []
+        for c in grade_classrooms:
+            c_res = AcademicResultService.compute_semester_results(c, ay, semester=2)
+            all_s2.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
+        if all_s2:
+            all_s2.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
+            total_grade_students_s2 = len(all_s2)
+            s2_grade_rank = next((idx + 1 for idx, item in enumerate(all_s2) if item['student'].id == student.id), s2_stu_item.get('rank'))
+
+    ann_grade_rank = ann_stu_item.get('rank') if ann_stu_item else None
+    total_grade_students_ann = total_class_students
+    if len(grade_classrooms) > 1:
+        all_ann = []
+        for c in grade_classrooms:
+            c_res = AcademicResultService.compute_annual_results(c, ay)
+            all_ann.extend([st for st in c_res.get('students_data', []) if st.get('annual_average') is not None])
+        if all_ann:
+            all_ann.sort(key=lambda x: float(x.get('annual_average') or 0), reverse=True)
+            total_grade_students_ann = len(all_ann)
+            ann_grade_rank = next((idx + 1 for idx, item in enumerate(all_ann) if item['student'].id == student.id), ann_stu_item.get('rank'))
+
+    # 4. Subject Rows Matrix
+    subject_rows = []
     for idx, rule in enumerate(subject_rules, 1):
         sub = rule.subject
         max_sc = rule.max_score or Decimal('100.00')
@@ -1055,9 +1498,16 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         s1_m_scores = []
         s1_m_vals = []
         for mt in s1_monthly_terms:
-            sc = grade_map.get((sub.id, mt.id))
+            sc = None
+            term_ids = getattr(mt, 'term_ids', [mt.id] if hasattr(mt, 'id') else [])
+            for tid in term_ids:
+                if (sub.id, tid) in grade_map:
+                    sc = grade_map[(sub.id, tid)]
+                    break
+
             s1_m_scores.append({
-                'term': mt,
+                'term': getattr(mt, 'primary_term', mt),
+                'display_month': getattr(mt, 'display_month', getattr(mt, 'name', '')),
                 'score': sc,
             })
             if sc is not None:
@@ -1082,9 +1532,16 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         s2_m_scores = []
         s2_m_vals = []
         for mt in s2_monthly_terms:
-            sc = grade_map.get((sub.id, mt.id))
+            sc = None
+            term_ids = getattr(mt, 'term_ids', [mt.id] if hasattr(mt, 'id') else [])
+            for tid in term_ids:
+                if (sub.id, tid) in grade_map:
+                    sc = grade_map[(sub.id, tid)]
+                    break
+
             s2_m_scores.append({
-                'term': mt,
+                'term': getattr(mt, 'primary_term', mt),
+                'display_month': getattr(mt, 'display_month', getattr(mt, 'name', '')),
                 'score': sc,
             })
             if sc is not None:
@@ -1147,6 +1604,8 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         'letter': s1_stu_item.get('letter_grade') if s1_stu_item else '-',
         'letter_desc': s1_stu_item.get('letter_desc') if s1_stu_item else '',
         'rank': s1_stu_item.get('rank') if s1_stu_item else '-',
+        'grade_rank': s1_grade_rank or (s1_stu_item.get('rank') if s1_stu_item else '-'),
+        'total_grade': total_grade_students_s1,
         'passed': s1_stu_item.get('passed') if s1_stu_item else False,
     }
 
@@ -1158,6 +1617,8 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         'letter': s2_stu_item.get('letter_grade') if s2_stu_item else '-',
         'letter_desc': s2_stu_item.get('letter_desc') if s2_stu_item else '',
         'rank': s2_stu_item.get('rank') if s2_stu_item else '-',
+        'grade_rank': s2_grade_rank or (s2_stu_item.get('rank') if s2_stu_item else '-'),
+        'total_grade': total_grade_students_s2,
         'passed': s2_stu_item.get('passed') if s2_stu_item else False,
     }
 
@@ -1175,6 +1636,8 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         'average_10': round(ann_avg / Decimal('10.0'), 2) if ann_avg else Decimal('0.00'),
         'letter': ann_let,
         'rank': ann_rk,
+        'grade_rank': ann_grade_rank or ann_rk,
+        'total_grade': total_grade_students_ann,
         'passed': is_passed,
         'decision_kh': decision_kh,
         'decision_en': decision_en,
@@ -1182,6 +1645,7 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     }
 
     # 6. Monthly Attendance Breakdown (October to July)
+    # 6. Monthly Attendance Breakdown (Counted per session/shift: 1 session/shift = 1 count)
     att_qs = StudentAttendance.objects.filter(student=student)
     if ay and ay.start_date and ay.end_date:
         att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
@@ -1201,18 +1665,36 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     ]
 
     monthly_attendance_records = []
-    s1_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0}
-    s2_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0}
 
     for m_item in academic_months:
         m_num = m_item['month']
         sem = m_item['semester']
 
         m_att = att_qs.filter(date__month=m_num)
-        pres = m_att.filter(status='PRESENT').count()
-        exc = m_att.filter(Q(status='PERMISSION') | Q(status='EXCUSED_LEAVE')).count()
-        unexc = m_att.filter(Q(status='ABSENT') | Q(status='UNEXCUSED_ABSENCE')).count()
-        late = m_att.filter(status='LATE').count()
+
+        # In Cambodian schools: 1 session/shift (MORNING or AFTERNOON) = 1 time/count (១ពេល/វេន គឺគិតយកម្តង)
+        session_groups = {}
+        for a in m_att:
+            sess_key = (a.date, a.session or 'MORNING')
+            if sess_key not in session_groups:
+                session_groups[sess_key] = []
+            session_groups[sess_key].append(a.status)
+
+        pres = 0
+        exc = 0
+        unexc = 0
+        late = 0
+
+        for sess_key, statuses in session_groups.items():
+            if any(s in ['ABSENT', 'UNEXCUSED_ABSENCE'] for s in statuses):
+                unexc += 1
+            elif any(s in ['PERMISSION', 'EXCUSED_LEAVE'] for s in statuses):
+                exc += 1
+            elif any(s == 'LATE' for s in statuses):
+                late += 1
+            elif any(s == 'PRESENT' for s in statuses):
+                pres += 1
+
         tot_abs = exc + unexc
         tot_rec = pres + tot_abs + late
         rate = round((pres / tot_rec * 100), 1) if tot_rec > 0 else 100.0
@@ -1232,13 +1714,85 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         }
         monthly_attendance_records.append(rec)
 
-        target_tot = s1_att_totals if sem == 1 else s2_att_totals
-        target_tot['present'] += pres
-        target_tot['excused'] += exc
-        target_tot['unexcused'] += unexc
-        target_tot['late'] += late
-        target_tot['total_absent'] += tot_abs
-        target_tot['total_recorded'] += tot_rec
+    # Filter attendance records to strictly match the months defined by admin for each semester
+    def _build_semester_attendance_records(monthly_terms, sem_num, default_semester_records):
+        if not monthly_terms:
+            return list(default_semester_records)
+        records = []
+        for t in monthly_terms:
+            m_num = t.get('month') if isinstance(t, dict) else getattr(t, 'month', None)
+            m_name = t.get('display_month') if isinstance(t, dict) else getattr(t, 'display_month', None)
+            matching = next((r for r in monthly_attendance_records if r['month'] == m_num and r['semester'] == sem_num), None)
+            if matching:
+                records.append(matching)
+            else:
+                m_att = att_qs.filter(date__month=m_num)
+                session_groups = {}
+                for a in m_att:
+                    sess_key = (a.date, a.session or 'MORNING')
+                    if sess_key not in session_groups:
+                        session_groups[sess_key] = []
+                    session_groups[sess_key].append(a.status)
+                pres = exc = unexc = late = 0
+                for sess_key, statuses in session_groups.items():
+                    if any(s in ['ABSENT', 'UNEXCUSED_ABSENCE'] for s in statuses):
+                        unexc += 1
+                    elif any(s in ['PERMISSION', 'EXCUSED_LEAVE'] for s in statuses):
+                        exc += 1
+                    elif any(s == 'LATE' for s in statuses):
+                        late += 1
+                    elif any(s == 'PRESENT' for s in statuses):
+                        pres += 1
+                tot_abs = exc + unexc
+                tot_rec = pres + tot_abs + late
+                rate = round((pres / tot_rec * 100), 1) if tot_rec > 0 else 100.0
+                records.append({
+                    'month': m_num,
+                    'name_kh': m_name or str(m_num),
+                    'name_en': str(m_num),
+                    'semester': sem_num,
+                    'present': pres,
+                    'excused': exc,
+                    'unexcused': unexc,
+                    'late': late,
+                    'total_absent': tot_abs,
+                    'total_recorded': tot_rec,
+                    'attendance_rate': rate,
+                })
+        return records
+
+    s1_attendance_records = _build_semester_attendance_records(
+        s1_monthly_terms, 1, [rec for rec in monthly_attendance_records if rec['semester'] == 1]
+    )
+    s2_attendance_records = _build_semester_attendance_records(
+        s2_monthly_terms, 2, [rec for rec in monthly_attendance_records if rec['semester'] == 2]
+    )
+
+    s1_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0, 'attendance_rate': 100.0}
+    for rec in s1_attendance_records:
+        s1_att_totals['present'] += rec['present']
+        s1_att_totals['excused'] += rec['excused']
+        s1_att_totals['unexcused'] += rec['unexcused']
+        s1_att_totals['late'] += rec['late']
+        s1_att_totals['total_absent'] += rec['total_absent']
+        s1_att_totals['total_recorded'] += rec['total_recorded']
+    s1_att_totals['attendance_rate'] = (
+        round((s1_att_totals['present'] / s1_att_totals['total_recorded'] * 100), 1)
+        if s1_att_totals['total_recorded'] > 0 else 100.0
+    )
+
+    s2_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0, 'attendance_rate': 100.0}
+    for rec in s2_attendance_records:
+        s2_att_totals['present'] += rec['present']
+        s2_att_totals['excused'] += rec['excused']
+        s2_att_totals['unexcused'] += rec['unexcused']
+        s2_att_totals['late'] += rec['late']
+        s2_att_totals['total_absent'] += rec['total_absent']
+        s2_att_totals['total_recorded'] += rec['total_recorded']
+    s2_att_totals['attendance_rate'] = (
+        round((s2_att_totals['present'] / s2_att_totals['total_recorded'] * 100), 1)
+        if s2_att_totals['total_recorded'] > 0 else 100.0
+    )
 
     annual_att_totals = {
         'present': s1_att_totals['present'] + s2_att_totals['present'],
@@ -1253,32 +1807,51 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         if annual_att_totals['total_recorded'] > 0 else 100.0
     )
 
-    # 7. Conduct & Moral Rubrics (វាយតម្លៃអាកប្បកិរិយា សីលធម៌ គុណវុឌ្ឍិ)
-    # Default assessments based on MoEYS standards
-    def determine_conduct_grade(avg_val, unexcused_cnt):
-        if avg_val is None:
-            return "ល្អ"
-        a = float(avg_val)
-        if a >= 80 and unexcused_cnt <= 2:
-            return "ល្អណាស់"
-        elif a >= 65 and unexcused_cnt <= 5:
-            return "ល្អ"
-        elif a >= 50:
-            return "ល្អបង្គួរ"
-        else:
-            return "មធ្យម"
+    # 7. Conduct & Moral Rubrics (វាយតម្លៃអាកប្បកិរិយា សីលធម៌ គុណវុឌ្ឍិ & មតិគ្រូ/មាតាបិតា)
+    conduct_obj = StudentConductAssessment.objects.filter(student=student, academic_year=ay).first()
+    if conduct_obj:
+        conduct_s1 = conduct_obj.overall_s1
+        conduct_s2 = conduct_obj.overall_s2
+        conduct_annual = conduct_obj.overall_annual
+        teacher_comment_s1 = conduct_obj.teacher_comment_s1 or "សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។"
+        teacher_comment_s2 = conduct_obj.teacher_comment_s2 or "សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។"
+        parent_comment_s1 = conduct_obj.parent_comment_s1 or "បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។"
+        parent_comment_s2 = conduct_obj.parent_comment_s2 or "សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។"
+        conduct_criteria = [
+            {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_obj.discipline_s1, 's2': conduct_obj.discipline_s2, 'ann': conduct_obj.discipline_annual},
+            {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_obj.diligence_s1, 's2': conduct_obj.diligence_s2, 'ann': conduct_obj.diligence_annual},
+            {'no': '៣', 'name_kh': 'សីលធម៌ សុជីវធម៌ និងការប្រាស្រ័យទាក់ទង', 'name_en': 'Moral, Manners & Interpersonal Conduct', 's1': conduct_obj.moral_s1, 's2': conduct_obj.moral_s2, 'ann': conduct_obj.moral_annual},
+            {'no': '៤', 'name_kh': 'អនាម័យផ្ទាល់ខ្លួន និងការថែរក្សាបរិស្ថាន', 'name_en': 'Personal Hygiene & Environmental Care', 's1': conduct_obj.hygiene_s1, 's2': conduct_obj.hygiene_s2, 'ann': conduct_obj.hygiene_annual},
+            {'no': '៥', 'name_kh': 'ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា', 'name_en': 'Social Activities, Labor & Sports', 's1': conduct_obj.social_s1, 's2': conduct_obj.social_s2, 'ann': conduct_obj.social_annual},
+        ]
+    else:
+        def determine_conduct_grade(avg_val, unexcused_cnt):
+            if avg_val is None:
+                return "ល្អ"
+            a = float(avg_val)
+            if a >= 80 and unexcused_cnt <= 2:
+                return "ល្អណាស់"
+            elif a >= 65 and unexcused_cnt <= 5:
+                return "ល្អ"
+            elif a >= 50:
+                return "ល្អបង្គួរ"
+            else:
+                return "មធ្យម"
 
-    conduct_s1 = determine_conduct_grade(s1_overall['final_average'], s1_att_totals['unexcused'])
-    conduct_s2 = determine_conduct_grade(s2_overall['final_average'], s2_att_totals['unexcused'])
-    conduct_annual = determine_conduct_grade(ann_avg, annual_att_totals['unexcused'])
-
-    conduct_criteria = [
-        {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
-        {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
-        {'no': '៣', 'name_kh': 'សីលធម៌ សុជីវធម៌ និងការប្រាស្រ័យទាក់ទង', 'name_en': 'Moral, Manners & Interpersonal Conduct', 's1': 'ល្អណាស់', 's2': 'ល្អណាស់', 'ann': 'ល្អណាស់'},
-        {'no': '៤', 'name_kh': 'អនាម័យផ្ទាល់ខ្លួន និងការថែរក្សាបរិស្ថាន', 'name_en': 'Personal Hygiene & Environmental Care', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
-        {'no': '៥', 'name_kh': 'ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា', 'name_en': 'Social Activities, Labor & Sports', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
-    ]
+        conduct_s1 = determine_conduct_grade(s1_overall['final_average'], s1_att_totals['unexcused'])
+        conduct_s2 = determine_conduct_grade(s2_overall['final_average'], s2_att_totals['unexcused'])
+        conduct_annual = determine_conduct_grade(ann_avg, annual_att_totals['unexcused'])
+        teacher_comment_s1 = "សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។"
+        teacher_comment_s2 = "សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។"
+        parent_comment_s1 = "បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។"
+        parent_comment_s2 = "សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។"
+        conduct_criteria = [
+            {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
+            {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
+            {'no': '៣', 'name_kh': 'សីលធម៌ សុជីវធម៌ និងការប្រាស្រ័យទាក់ទង', 'name_en': 'Moral, Manners & Interpersonal Conduct', 's1': 'ល្អណាស់', 's2': 'ល្អណាស់', 'ann': 'ល្អណាស់'},
+            {'no': '៤', 'name_kh': 'អនាម័យផ្ទាល់ខ្លួន និងការថែរក្សាបរិស្ថាន', 'name_en': 'Personal Hygiene & Environmental Care', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
+            {'no': '៥', 'name_kh': 'ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា', 'name_en': 'Social Activities, Labor & Sports', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
+        ]
 
     return {
         'student': student,
@@ -1289,6 +1862,7 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         'school_profile': school_profile,
         'school_name': default_school_name,
         'total_class_students': total_class_students,
+        'total_grade_students': total_grade_students_ann,
         's1_monthly_terms': s1_monthly_terms,
         's1_exam_term': s1_exam_term,
         's2_monthly_terms': s2_monthly_terms,
@@ -1298,11 +1872,20 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         's2_overall': s2_overall,
         'annual_overall': annual_overall,
         'monthly_attendance_records': monthly_attendance_records,
+        's1_attendance_records': s1_attendance_records,
+        's2_attendance_records': s2_attendance_records,
         's1_att_totals': s1_att_totals,
         's2_att_totals': s2_att_totals,
         'annual_att_totals': annual_att_totals,
         'conduct_criteria': conduct_criteria,
+        'conduct_s1': conduct_s1,
+        'conduct_s2': conduct_s2,
         'conduct_annual': conduct_annual,
+        'teacher_comment_s1': teacher_comment_s1,
+        'teacher_comment_s2': teacher_comment_s2,
+        'parent_comment_s1': parent_comment_s1,
+        'parent_comment_s2': parent_comment_s2,
+        'conduct_assessment': conduct_obj,
     }
 
 

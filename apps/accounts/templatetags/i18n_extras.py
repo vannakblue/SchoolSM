@@ -481,3 +481,43 @@ def today_khmer_lunar_date(with_space=True):
     return get_khmer_lunar_date(datetime.date.today(), with_space=with_space)
 
 
+@register.filter(name='clean_score')
+def clean_score_filter(val):
+    """
+    Formats score according to MoEYS standards:
+    - If whole integer (e.g. 85.0, 20.0, 100.0), returns integer string without decimal point/comma ('85', '20', '100').
+    - If decimal (e.g. 85.5, 70.25), returns trimmed decimal ('85.5', '70.25').
+    - If None, empty, or '-', returns '-'.
+    """
+    if val is None or val == '' or val == '-':
+        return '-'
+    try:
+        f = float(val)
+        if f.is_integer():
+            return str(int(f))
+        s = f"{f:.2f}".rstrip('0').rstrip('.')
+        return s
+    except (ValueError, TypeError):
+        return str(val)
+
+
+@register.filter(name='clean_pct')
+def clean_pct_filter(val):
+    """
+    Formats percentage according to MoEYS standards:
+    - If whole integer (e.g. 70.0, 70.00), returns '70%'.
+    - If decimal (e.g. 70.5), returns '70.5%'.
+    - If None, empty, returns '-'.
+    """
+    if val is None or val == '' or val == '-':
+        return '-'
+    try:
+        f = float(val)
+        if f.is_integer():
+            return f"{int(f)}%"
+        s = f"{f:.2f}".rstrip('0').rstrip('.')
+        return f"{s}%"
+    except (ValueError, TypeError):
+        return f"{val}%"
+
+

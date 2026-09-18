@@ -9799,3 +9799,126 @@ def export_classroom_allocation_excel(request):
     filename = f"Class_Allocation_Grade_{grade_level}_{target_year.name}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_get_current_classroom_roster(request):
+    """
+    Returns the list of currently enrolled active students in a specific classroom,
+    along with other available classrooms in the same grade/year for quick transfer.
+    """
+    from apps.students.models import Student
+    classroom_id = request.GET.get('classroom_id')
+    if not classroom_id or not str(classroom_id).isdigit():
+        return JsonResponse({'status': 'error', 'message': 'សូមជ្រើសរើសថ្នាក់រៀន'}, status=400)
+
+    cls = Classroom.objects.filter(id=int(classroom_id)).first()
+    if not cls:
+        return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀនឡើយ'}, status=404)
+
+    students = Student.objects.filter(classroom=cls, status='ACTIVE').order_by('khmer_name')
+    students_list = []
+    for s in students:
+        students_list.append({
+            'id': s.id,
+            'student_id': s.student_id,
+            'khmer_name': s.khmer_name,
+            'latin_name': s.latin_name or '',
+            'gender': s.gender,
+            'gender_display': 'ស្រី' if s.gender == 'F' else 'ប្រុស',
+            'current_class_name': cls.name,
+            'current_class_id': cls.id,
+            'photo_url': s.photo.url if s.photo else None,
+        })
+
+    dest_classes = Classroom.objects.filter(
+        academic_year=cls.academic_year,
+        grade_level=cls.grade_level
+    ).exclude(id=cls.id).order_by('name')
+
+    dest_classes_list = [{'id': c.id, 'name': c.name, 'capacity': c.capacity or 45} for c in dest_classes]
+
+    return JsonResponse({
+        'status': 'success',
+        'classroom': {'id': cls.id, 'name': cls.name, 'grade_level': cls.grade_level, 'academic_year_name': cls.academic_year.name if cls.academic_year else ''},
+        'students': students_list,
+        'destination_classrooms': dest_classes_list,
+        'total_count': len(students_list),
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_quick_transfer_student_classroom(request):
+    """
+    Enables Admin to immediately move / reassign an individual student to another classroom
+    at any time, before, during, or after bulk allocation.
+    Audits the change atomically in StudentPromotionRecord.
+    """
+    import json
+    from apps.students.models import Student, StudentPromotionRecord
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception:
+        payload = request.POST
+
+    student_id = payload.get('student_id')
+    target_classroom_id = payload.get('target_classroom_id')
+    reason = payload.get('reason', 'Admin បានផ្លាស់ប្តូរថ្នាក់សិស្សដោយផ្ទាល់')
+
+    if not student_id or not target_classroom_id:
+        return JsonResponse({'status': 'error', 'message': 'ព័ត៌មានមិនគ្រប់គ្រាន់ឡើយ'}, status=400)
+
+    student = Student.objects.filter(id=int(student_id)).first()
+    target_cls = Classroom.objects.filter(id=int(target_classroom_id)).first()
+
+    if not student:
+        return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញសិស្សឡើយ'}, status=404)
+    if not target_cls:
+        return JsonResponse({'status': 'error', 'message': 'រកមិនឃើញថ្នាក់រៀនគោលដៅឡើយ'}, status=404)
+
+    if student.classroom_id == target_cls.id:
+        return JsonResponse({'status': 'info', 'message': f'សិស្ស {student.khmer_name} ស្ថិតក្នុងថ្នាក់ {target_cls.name} រួចហើយ'})
+
+    old_class = student.classroom
+    old_class_name = old_class.name if old_class else 'គ្មានថ្នាក់'
+
+    with transaction.atomic():
+        student.classroom = target_cls
+        if target_cls.academic_year:
+            student.academic_year = target_cls.academic_year
+        student.last_promotion_status = f"ផ្ទេរទៅ {target_cls.name}"
+        student.last_promotion_reason = reason
+        student.save(update_fields=['classroom', 'academic_year', 'last_promotion_status', 'last_promotion_reason'])
+
+        action_type = StudentPromotionRecord.Action.TRANSFER
+        if old_class and target_cls.grade_level > old_class.grade_level:
+            action_type = StudentPromotionRecord.Action.PROMOTE
+
+        StudentPromotionRecord.objects.create(
+            student=student,
+            from_academic_year=student.academic_year,
+            to_academic_year=target_cls.academic_year,
+            from_classroom=old_class,
+            to_classroom=target_cls,
+            action=action_type,
+            standard_reason=StudentPromotionRecord.StandardReason.PASSED_YEAR,
+            custom_notes=f"{reason} (ផ្ទេរពី {old_class_name} ទៅ {target_cls.name})",
+            processed_by=request.user
+        )
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f"🎉 បានផ្លាស់ប្តូរសិស្ស {student.khmer_name} ពី «{old_class_name}» ទៅកាន់ «{target_cls.name}» ដោយជោគជ័យ!",
+        'student_id': student.id,
+        'student_name': student.khmer_name,
+        'new_classroom_id': target_cls.id,
+        'new_classroom_name': target_cls.name,
+        'old_classroom_name': old_class_name,
+    })
+

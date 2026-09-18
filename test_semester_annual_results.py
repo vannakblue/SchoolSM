@@ -32,6 +32,10 @@ classroom, _ = Classroom.objects.get_or_create(
 sub_khmer, _ = Subject.objects.get_or_create(code="KH_TEST", defaults={'name_kh': "ភាសាខ្មែរ", 'name_en': "Khmer"})
 sub_math, _ = Subject.objects.get_or_create(code="MATH_TEST", defaults={'name_kh': "គណិតវិទ្យា", 'name_en': "Mathematics"})
 
+from apps.academics.models import ClassSubject
+ClassSubject.objects.get_or_create(classroom=classroom, subject=sub_khmer)
+ClassSubject.objects.get_or_create(classroom=classroom, subject=sub_math)
+
 GradeLevelRule.objects.update_or_create(
     grade_level=11, track='GENERAL', subject=sub_khmer,
     defaults={'max_score': Decimal('100.00')}

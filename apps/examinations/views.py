@@ -10648,6 +10648,7 @@ def student_cumulative_dossier_view(request, student_id: int):
 
     return render(request, 'examinations/student/cumulative_dossier.html', {
         'dossier_list': [dossier] if dossier else [],
+        'is_batch': False,
     })
 
 
@@ -10668,13 +10669,16 @@ def homeroom_cumulative_dossier_batch_view(request, classroom_id: int):
 
     students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
     dossier_list = []
+    class_ranks_cache = {}
     for stu in students:
-        d_data = get_student_cumulative_dossier_data(stu)
+        d_data = get_student_cumulative_dossier_data(stu, class_ranks_cache=class_ranks_cache)
         if d_data:
             dossier_list.append(d_data)
 
     return render(request, 'examinations/student/cumulative_dossier.html', {
         'dossier_list': dossier_list,
+        'classroom': classroom,
+        'is_batch': True,
     })
 
 
@@ -10684,6 +10688,7 @@ def student_study_tracking_book_view(request, student_id: int):
     """
     Official MoEYS Individual Student Study Tracking Book (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ / Carnet Scolaire Individuel)
     Displays full monthly & semester marks, attendance, conduct, parent/teacher feedback, and promotion decisions.
+    Supports timeframe scope: ANNUAL (ប្រចាំឆ្នាំ), SEMESTER_1 (ឆមាសទី១), SEMESTER_2 (ឆមាសទី២), MONTHLY (ប្រចាំខែ).
     """
     from .services import get_student_study_tracking_book_data
     from apps.teachers.permissions import can_teacher_manage_homeroom
@@ -10700,11 +10705,34 @@ def student_study_tracking_book_view(request, student_id: int):
         messages.error(request, "⚠️ លោកគ្រូ-អ្នកគ្រូ គ្មានសិទ្ធិចូលមើលសៀវភៅតាមដានការសិក្សារបស់សិស្សនេះឡើយ!")
         return redirect('teacher_dashboard')
 
+    selected_period = request.GET.get('period', 'ANNUAL').upper()
+    month_param = request.GET.get('month')
+    if month_param:
+        try:
+            m_val = int(month_param)
+            if m_val in [9, 10, 11, 12, 1, 2]:
+                selected_period = 'SEMESTER_1'
+            elif m_val in [3, 4, 5, 6, 7, 8]:
+                selected_period = 'SEMESTER_2'
+        except (ValueError, TypeError):
+            pass
+
+    if selected_period not in ['ANNUAL', 'SEMESTER_1', 'SEMESTER_2', 'MONTHLY']:
+        selected_period = 'ANNUAL'
+
+    selected_lang = request.GET.get('lang', 'kh').lower()
+    if selected_lang not in ['kh', 'en']:
+        selected_lang = 'kh'
+
     tracking_data = get_student_study_tracking_book_data(student)
 
     return render(request, 'examinations/student/study_tracking_book_individual.html', {
         'book_list': [tracking_data] if tracking_data else [],
         'is_batch': False,
+        'selected_period': selected_period,
+        'selected_month': month_param,
+        'selected_lang': selected_lang,
+        'classroom': student.classroom,
     })
 
 
@@ -10714,6 +10742,7 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
     """
     Batch print of Individual Student Study Tracking Books (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ៗ)
     for all active students in a classroom.
+    Supports timeframe scope: ANNUAL (ប្រចាំឆ្នាំ), SEMESTER_1 (ឆមាសទី១), SEMESTER_2 (ឆមាសទី២), MONTHLY (ប្រចាំខែ).
     """
     from .services import get_student_study_tracking_book_data
     from apps.teachers.permissions import can_teacher_manage_homeroom
@@ -10722,6 +10751,25 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
     if not can_teacher_manage_homeroom(request.user, classroom.id):
         messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
         return redirect('teacher_dashboard')
+
+    selected_period = request.GET.get('period', 'ANNUAL').upper()
+    month_param = request.GET.get('month')
+    if month_param:
+        try:
+            m_val = int(month_param)
+            if m_val in [9, 10, 11, 12, 1, 2]:
+                selected_period = 'SEMESTER_1'
+            elif m_val in [3, 4, 5, 6, 7, 8]:
+                selected_period = 'SEMESTER_2'
+        except (ValueError, TypeError):
+            pass
+
+    if selected_period not in ['ANNUAL', 'SEMESTER_1', 'SEMESTER_2', 'MONTHLY']:
+        selected_period = 'ANNUAL'
+
+    selected_lang = request.GET.get('lang', 'kh').lower()
+    if selected_lang not in ['kh', 'en']:
+        selected_lang = 'kh'
 
     students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
     book_list = []
@@ -10734,7 +10782,278 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
         'book_list': book_list,
         'is_batch': True,
         'classroom': classroom,
+        'selected_period': selected_period,
+        'selected_month': month_param,
+        'selected_lang': selected_lang,
     })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def homeroom_conduct_assessment_view(request, classroom_id: int):
+    """
+    Homeroom Conduct & Moral Assessment Portal (ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ គុណវុឌ្ឍិ & មតិគ្រូ/មាតាបិតា)
+    Allows Homeroom Teachers and School Admins to evaluate students across:
+    - Semester 1 (ឆមាសទី ១)
+    - Semester 2 (ឆមាសទី ២)
+    - Annual (ប្រចាំឆ្នាំ)
+    Responsive design: optimized for both Computer Web Browser and Mobile App / Phone touch viewport.
+    """
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+    from apps.examinations.models import StudentConductAssessment
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    if not can_teacher_manage_homeroom(request.user, classroom.id):
+        messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
+        return redirect('teacher_dashboard')
+
+    ay = classroom.academic_year
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+
+    selected_semester = request.GET.get('semester', '1')
+    if selected_semester not in ['1', '2', 'annual']:
+        selected_semester = '1'
+
+    # Pull existing conduct records for this classroom
+    existing_records = {
+        ca.student_id: ca
+        for ca in StudentConductAssessment.objects.filter(student__in=students, academic_year=ay)
+    }
+
+    if request.method == 'POST':
+        saved_count = 0
+        teacher = getattr(request.user, 'teacher_profile', None)
+        for stu in students:
+            ca = existing_records.get(stu.id)
+            if not ca:
+                ca = StudentConductAssessment(
+                    student=stu,
+                    academic_year=ay,
+                    classroom=classroom,
+                    evaluated_by=teacher,
+                )
+
+            # S1 fields
+            if f'discipline_s1_{stu.id}' in request.POST:
+                ca.discipline_s1 = request.POST.get(f'discipline_s1_{stu.id}', 'ល្អ')
+                ca.diligence_s1 = request.POST.get(f'diligence_s1_{stu.id}', 'ល្អ')
+                ca.moral_s1 = request.POST.get(f'moral_s1_{stu.id}', 'ល្អណាស់')
+                ca.hygiene_s1 = request.POST.get(f'hygiene_s1_{stu.id}', 'ល្អ')
+                ca.social_s1 = request.POST.get(f'social_s1_{stu.id}', 'ល្អ')
+                ca.overall_s1 = request.POST.get(f'overall_s1_{stu.id}', 'ល្អ')
+                ca.teacher_comment_s1 = request.POST.get(f'teacher_comment_s1_{stu.id}', '').strip()
+                ca.parent_comment_s1 = request.POST.get(f'parent_comment_s1_{stu.id}', '').strip()
+
+            # S2 fields
+            if f'discipline_s2_{stu.id}' in request.POST:
+                ca.discipline_s2 = request.POST.get(f'discipline_s2_{stu.id}', 'ល្អ')
+                ca.diligence_s2 = request.POST.get(f'diligence_s2_{stu.id}', 'ល្អ')
+                ca.moral_s2 = request.POST.get(f'moral_s2_{stu.id}', 'ល្អណាស់')
+                ca.hygiene_s2 = request.POST.get(f'hygiene_s2_{stu.id}', 'ល្អ')
+                ca.social_s2 = request.POST.get(f'social_s2_{stu.id}', 'ល្អ')
+                ca.overall_s2 = request.POST.get(f'overall_s2_{stu.id}', 'ល្អ')
+                ca.teacher_comment_s2 = request.POST.get(f'teacher_comment_s2_{stu.id}', '').strip()
+                ca.parent_comment_s2 = request.POST.get(f'parent_comment_s2_{stu.id}', '').strip()
+
+            # Annual fields
+            if f'discipline_annual_{stu.id}' in request.POST:
+                ca.discipline_annual = request.POST.get(f'discipline_annual_{stu.id}', 'ល្អ')
+                ca.diligence_annual = request.POST.get(f'diligence_annual_{stu.id}', 'ល្អ')
+                ca.moral_annual = request.POST.get(f'moral_annual_{stu.id}', 'ល្អណាស់')
+                ca.hygiene_annual = request.POST.get(f'hygiene_annual_{stu.id}', 'ល្អ')
+                ca.social_annual = request.POST.get(f'social_annual_{stu.id}', 'ល្អ')
+                ca.overall_annual = request.POST.get(f'overall_annual_{stu.id}', 'ល្អ')
+
+            if teacher:
+                ca.evaluated_by = teacher
+            ca.classroom = classroom
+            ca.save()
+            saved_count += 1
+
+        messages.success(request, f"✅ បានរក្សាទុកការវាយតម្លៃអាកប្បកិរិយា និងមតិសម្រាប់សិស្សចំនួន {saved_count} នាក់ដោយជោគជ័យ!")
+        return redirect(f"{reverse('homeroom_conduct_assessment_view', args=[classroom.id])}?semester={selected_semester}")
+
+    # Build student evaluation rows
+    student_rows = []
+    for idx, stu in enumerate(students, 1):
+        ca = existing_records.get(stu.id)
+        student_rows.append({
+            'no': idx,
+            'student': stu,
+            'ca': ca,
+        })
+
+    rating_options = ['ល្អណាស់', 'ល្អ', 'ល្អបង្គួរ', 'មធ្យម', 'ខ្សោយ']
+
+    return render(request, 'examinations/homeroom/conduct_assessment.html', {
+        'classroom': classroom,
+        'academic_year': ay,
+        'student_rows': student_rows,
+        'selected_semester': selected_semester,
+        'total_students': len(student_rows),
+        'rating_options': rating_options,
+    })
+
+
+@login_required
+def api_save_student_conduct_assessment(request):
+    """
+    AJAX / REST API endpoint to save conduct assessment and teacher/parent comments.
+    Used by Mobile App, PWA, or interactive live update on desktop.
+    """
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+    from apps.examinations.models import StudentConductAssessment
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+    data = {}
+    if request.content_type == 'application/json':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+    else:
+        data = request.POST.dict()
+
+    student_id = data.get('student_id')
+    student = get_object_or_404(Student, id=student_id)
+    classroom = student.classroom
+
+    if not classroom or not can_teacher_manage_homeroom(request.user, classroom.id):
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+    ay = classroom.academic_year
+    teacher = getattr(request.user, 'teacher_profile', None)
+
+    ca, _ = StudentConductAssessment.objects.get_or_create(
+        student=student,
+        academic_year=ay,
+        defaults={'classroom': classroom, 'evaluated_by': teacher}
+    )
+
+    sem = str(data.get('semester', '1')).lower()
+    if sem == '1':
+        for fld in ['discipline', 'diligence', 'moral', 'hygiene', 'social', 'overall']:
+            if fld in data:
+                setattr(ca, f"{fld}_s1", data[fld])
+        if 'teacher_comment' in data:
+            ca.teacher_comment_s1 = data['teacher_comment']
+        if 'parent_comment' in data:
+            ca.parent_comment_s1 = data['parent_comment']
+    elif sem == '2':
+        for fld in ['discipline', 'diligence', 'moral', 'hygiene', 'social', 'overall']:
+            if fld in data:
+                setattr(ca, f"{fld}_s2", data[fld])
+        if 'teacher_comment' in data:
+            ca.teacher_comment_s2 = data['teacher_comment']
+        if 'parent_comment' in data:
+            ca.parent_comment_s2 = data['parent_comment']
+    elif sem in ['annual', 'ann']:
+        for fld in ['discipline', 'diligence', 'moral', 'hygiene', 'social', 'overall']:
+            if fld in data:
+                setattr(ca, f"{fld}_annual", data[fld])
+
+    if teacher:
+        ca.evaluated_by = teacher
+    ca.classroom = classroom
+    ca.save()
+
+    return JsonResponse({
+        'status': 'success',
+        'message': f'បានរក្សាទុកការវាយតម្លៃសម្រាប់ {student.khmer_name} ដោយជោគជ័យ!',
+        'student_id': student.id,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def academic_booklets_hub_view(request):
+    """
+    Central MoEYS Portal for Study Tracking Books & Cumulative Academic Dossiers
+    (មជ្ឈមណ្ឌលសៀវភៅតាមដានការសិក្សា និងសៀវភៅសិក្ខាគារិក MoEYS)
+    Provides a one-stop unified hub to:
+    1. Filter classrooms by Academic Year and Grade Level (7-12).
+    2. Batch-print Classroom Study Tracking Books with scope options (Annual, Semester 1, Semester 2, Monthly).
+    3. Batch-print Classroom Cumulative Academic Dossiers.
+    4. Instant search for any individual student to open or print their booklet with 1 click.
+    """
+    from apps.academics.models import AcademicYear, Classroom
+    from apps.academics.utils import get_active_academic_year
+    from apps.students.models import Student
+    from apps.teachers.permissions import get_teacher_privileges, can_teacher_manage_homeroom
+
+    privileges = get_teacher_privileges(request.user, request)
+    is_admin = privileges['is_admin']
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+    selected_year_id = request.GET.get('year')
+    if selected_year_id and str(selected_year_id).isdigit():
+        selected_year = AcademicYear.objects.filter(id=int(selected_year_id)).first()
+    else:
+        selected_year = get_active_academic_year(request) or academic_years.first()
+
+    grade_filter = request.GET.get('grade', '').strip()
+    search_query = request.GET.get('q', '').strip()
+
+    cls_qs = Classroom.objects.select_related('academic_year', 'homeroom_teacher')
+    if selected_year:
+        cls_qs = cls_qs.filter(academic_year=selected_year)
+
+    if grade_filter and grade_filter.isdigit():
+        cls_qs = cls_qs.filter(grade_level=int(grade_filter))
+
+    cls_qs = cls_qs.order_by('grade_level', 'name')
+
+    classroom_list = []
+    total_school_students = 0
+    total_school_females = 0
+
+    for c in cls_qs:
+        total_students = c.students.filter(status='ACTIVE').count()
+        female_students = c.students.filter(status='ACTIVE', gender='F').count()
+        total_school_students += total_students
+        total_school_females += female_students
+        can_manage = can_teacher_manage_homeroom(request.user, c.id)
+
+        classroom_list.append({
+            'classroom': c,
+            'total_students': total_students,
+            'female_students': female_students,
+            'can_manage': can_manage,
+        })
+
+    # Student quick search
+    searched_students = []
+    if search_query:
+        s_qs = Student.objects.select_related('classroom', 'academic_year').filter(
+            Q(khmer_name__icontains=search_query) |
+            Q(latin_name__icontains=search_query) |
+            Q(student_id__icontains=search_query),
+            status='ACTIVE'
+        )
+        if selected_year:
+            s_qs = s_qs.filter(academic_year=selected_year)
+        searched_students = list(s_qs[:50])
+
+    available_grades = [7, 8, 9, 10, 11, 12]
+
+    context = {
+        'academic_years': academic_years,
+        'selected_year': selected_year,
+        'grade_filter': grade_filter,
+        'available_grades': available_grades,
+        'classroom_list': classroom_list,
+        'total_classrooms_count': len(classroom_list),
+        'total_school_students': total_school_students,
+        'total_school_females': total_school_females,
+        'search_query': search_query,
+        'searched_students': searched_students,
+        'is_admin': is_admin,
+    }
+    return render(request, 'examinations/academic_booklets_hub.html', context)
+
 
 
 

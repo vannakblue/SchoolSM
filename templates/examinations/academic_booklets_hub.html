@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}សៀវភៅតាមដាន & សិក្ខាគារិក MoEYS | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .book-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 1rem;
+    }
+    .book-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.08) !important;
+    }
+    .badge-scope-btn {
+        transition: all 0.15s ease-in-out;
+    }
+    .badge-scope-btn:hover {
+        opacity: 0.9;
+        transform: scale(1.02);
+    }
+    .header-gradient-portal {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #0d9488 100%);
+        border-radius: 1.25rem;
+        color: white;
+    }
+    .quick-search-box {
+        border-radius: 2rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+    .stat-badge-soft {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Portal Hero Header Banner -->
+<div class="header-gradient-portal p-4 p-md-5 mb-4 shadow-sm position-relative overflow-hidden">
+    <div class="row align-items-center position-relative" style="z-index: 2;">
+        <div class="col-lg-8">
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill stat-badge-soft mb-3">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span class="small fw-semibold">ក្រសួងអប់រំ យុវជន និងកីឡា • MoEYS Official Booklets</span>
+            </div>
+            <h1 class="h2 fw-bold text-white mb-2">
+                <i class="fa-solid fa-book-open-reader me-2"></i>មជ្ឈមណ្ឌលសៀវភៅតាមដាន & សិក្ខាគារិក
+            </h1>
+            <p class="text-white-50 mb-4" style="max-width: 680px; font-size: 0.95rem;">
+                ចេញ និងបោះពុម្ព <strong>«សៀវភៅតាមដានការសិក្សា»</strong> (Carnet Scolaire Individuel) ពេញមួយឆ្នាំ ឆមាសទី១ ឆមាសទី២ ឬប្រចាំខែ និង <strong>«សៀវភៅសិក្ខាគារិក»</strong> (Cumulative Academic Dossier) ពីថ្នាក់ទី៧ ដល់ ទី១២ សម្រាប់សិស្សម្នាក់ៗ ឬមួយថ្នាក់ទាំងមូល។
+            </p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge stat-badge-soft rounded-pill px-3 py-2">
+                    <i class="fa-solid fa-calendar-days me-1.5"></i> ឆ្នាំសិក្សា៖ <strong>{{ selected_year.name|default:"-" }}</strong>
+                </span>
+                <span class="badge stat-badge-soft rounded-pill px-3 py-2">
+                    <i class="fa-solid fa-school me-1.5"></i> ថ្នាក់រៀនសរុប៖ <strong>{{ total_classrooms_count }}</strong> ថ្នាក់
+                </span>
+                <span class="badge stat-badge-soft rounded-pill px-3 py-2">
+                    <i class="fa-solid fa-users me-1.5"></i> សិស្សសរុប៖ <strong>{{ total_school_students }}</strong> នាក់ (ស្រី <strong>{{ total_school_females }}</strong>)
+                </span>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mt-4 mt-lg-0 text-lg-end">
+            <!-- Student Quick Search Form inside Hero -->
+            <div class="bg-white p-3 p-md-4 rounded-4 shadow-sm text-start text-dark">
+                <h6 class="fw-bold mb-2 text-primary">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> ស្វែងរកសិស្សភ្លាមៗ (Quick Search)
+                </h6>
+                <p class="text-muted small mb-3">បញ្ចូលឈ្មោះខ្មែរ ឡាតាំង ឬអត្តលេខសិស្ស ដើម្បីបើកសៀវភៅតាមដាន ឬសិក្ខាគារិក៖</p>
+                <form method="GET" action="{% url 'academic_booklets_hub' %}">
+                    {% if selected_year %}
+                    <input type="hidden" name="year" value="{{ selected_year.id }}">
+                    {% endif %}
+                    {% if grade_filter %}
+                    <input type="hidden" name="grade" value="{{ grade_filter }}">
+                    {% endif %}
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-user-graduate text-muted"></i></span>
+                        <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0" placeholder="ឈ្មោះសិស្ស ឬ អត្តលេខ..." autofocus>
+                        <button type="submit" class="btn btn-primary fw-semibold">ស្វែងរក</button>
+                    </div>
+                    {% if search_query %}
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <span class="small text-muted">លទ្ធផល៖ {{ searched_students|length }} នាក់</span>
+                        <a href="{% url 'academic_booklets_hub' %}{% if selected_year %}?year={{ selected_year.id }}{% endif %}" class="small text-danger text-decoration-none">
+                            <i class="fa-solid fa-xmark me-0.5"></i> សម្អាតការស្វែងរក
+                        </a>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- If Student Search Results Found -->
+{% if search_query %}
+<div class="custom-card p-4 mb-4 border-0 shadow-sm" style="border-radius: 1.25rem; background: #fdfefe; border-left: 4px solid #3b82f6 !important;">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0 text-primary">
+                <i class="fa-solid fa-user-check me-2"></i>លទ្ធផលស្វែងរកសិស្ស៖ «{{ search_query }}» ({{ searched_students|length }} នាក់)
+            </h5>
+            <span class="text-muted small">ចុចប៊ូតុងខាងស្ដាំដើម្បីបើក ឬបោះពុម្ពសៀវភៅតាមដាន ឬសៀវភៅសិក្ខាគារិកផ្ទាល់ខ្លួនរបស់សិស្ស</span>
+        </div>
+    </div>
+
+    {% if searched_students %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-muted small text-uppercase">
+                <tr>
+                    <th style="width: 60px;" class="text-center">រូបថត</th>
+                    <th>អត្តលេខ / ID</th>
+                    <th>គោត្តនាម & នាម</th>
+                    <th>ឈ្មោះឡាតាំង</th>
+                    <th class="text-center">ភេទ</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th class="text-end pe-3" style="min-width: 320px;">សៀវភៅ & ឯកសារសិក្សា (Action)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in searched_students %}
+                <tr>
+                    <td class="text-center">
+                        {% if s.photo %}
+                        <img src="{{ s.photo.url }}" class="rounded-circle border" width="38" height="38" style="object-fit: cover;">
+                        {% else %}
+                        <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-inline-flex align-items-center justify-content-center" style="width: 38px; height: 38px; font-size: 0.85rem;">
+                            {{ s.khmer_name|slice:":1" }}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td><span class="font-monospace fw-bold text-dark">{{ s.student_id }}</span></td>
+                    <td>
+                        <strong class="text-primary">{{ s.khmer_name }}</strong>
+                    </td>
+                    <td><span class="text-muted">{{ s.latin_name|default:"-" }}</span></td>
+                    <td class="text-center">
+                        {% if s.gender == 'F' %}
+                        <span class="badge bg-danger-subtle text-danger rounded-pill">ស្រី</span>
+                        {% else %}
+                        <span class="badge bg-primary-subtle text-primary rounded-pill">ប្រុស</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            <i class="fa-solid fa-chalkboard me-1 text-secondary"></i>{{ s.classroom.name|default:"គ្មានថ្នាក់" }}
+                        </span>
+                    </td>
+                    <td class="text-end pe-3">
+                        <div class="d-inline-flex gap-1.5 flex-wrap justify-content-end">
+                            <!-- Dropdown for Study Tracking Book -->
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'student_study_tracking_book_view' s.id %}?period=ANNUAL" target="_blank" class="btn btn-outline-primary fw-semibold" title="សៀវភៅតាមដាន (ពេញមួយឆ្នាំ)">
+                                    <i class="fa-solid fa-book-open me-1"></i> សៀវភៅតាមដាន
+                                </a>
+                                <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false"></button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 0.82rem;">
+                                    <li><h6 class="dropdown-header text-primary fw-bold"><i class="fa-solid fa-calendar me-1"></i>ជ្រើសរើសចន្លោះពេលបោះពុម្ព៖</h6></li>
+                                    <li><a class="dropdown-item" href="{% url 'student_study_tracking_book_view' s.id %}?period=ANNUAL" target="_blank"><i class="fa-solid fa-calendar-check me-2 text-success"></i>ពេញមួយឆ្នាំ (ប្រចាំឆ្នាំ - លំនាំដើម)</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'student_study_tracking_book_view' s.id %}?period=SEMESTER_1" target="_blank"><i class="fa-solid fa-file-lines me-2 text-primary"></i>ឆមាសទី ១</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'student_study_tracking_book_view' s.id %}?period=SEMESTER_2" target="_blank"><i class="fa-solid fa-file-lines me-2 text-info"></i>ឆមាសទី ២</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'student_study_tracking_book_view' s.id %}?period=MONTHLY" target="_blank"><i class="fa-solid fa-calendar-days me-2 text-warning"></i>ប្រចាំខែ (ពិន្ទុ & វត្តមានប្រចាំខែ)</a></li>
+                                </ul>
+                            </div>
+
+                            <!-- Cumulative Dossier Button -->
+                            <a href="{% url 'student_cumulative_dossier_view' s.id %}" target="_blank" class="btn btn-sm btn-outline-warning text-dark fw-semibold" title="សៀវភៅសិក្ខាគារិកសន្សំ (ទី៧ ដល់ ទី១២)">
+                                <i class="fa-solid fa-graduation-cap me-1"></i> សិក្ខាគារិក (៧-១២)
+                            </a>
+
+                            <!-- View Student Detail Profile -->
+                            <a href="{% url 'student_detail' s.id %}" class="btn btn-sm btn-light border text-muted" title="មើលព័ត៌មានលម្អិតសិស្ស">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4 text-muted">
+        <i class="fa-solid fa-user-slash fa-3x mb-2 text-secondary opacity-50"></i>
+        <h6>រកមិនឃើញសិស្សណាដែលត្រូវគ្នានឹង «{{ search_query }}» ឡើយ</h6>
+        <p class="small text-muted">សូមសាកល្បងបញ្ចូលឈ្មោះជាអក្សរខ្មែរ ឬអត្តលេខសិស្សម្ដងទៀត។</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Filter and Scope Bar -->
+<div class="custom-card p-3 mb-4 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-radius: 1rem;">
+    <!-- Left: Academic Year selector -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <form method="GET" class="d-flex align-items-center gap-2">
+            {% if grade_filter %}
+            <input type="hidden" name="grade" value="{{ grade_filter }}">
+            {% endif %}
+            <label class="fw-bold small text-muted text-nowrap mb-0"><i class="fa-solid fa-calendar-days me-1"></i>ឆ្នាំសិក្សា៖</label>
+            <select name="year" class="form-select form-select-sm" style="min-width: 170px;" onchange="this.form.submit()">
+                {% for y in academic_years %}
+                <option value="{{ y.id }}" {% if selected_year and selected_year.id == y.id %}selected{% endif %}>
+                    {{ y.name }}{% if y.is_current %} (បច្ចុប្បន្ន){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <div class="vr mx-2 d-none d-md-block"></div>
+
+        <!-- Grade Filter Pills -->
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <span class="small fw-bold text-muted me-1">កម្រិតថ្នាក់៖</span>
+            <a href="{% url 'academic_booklets_hub' %}{% if selected_year %}?year={{ selected_year.id }}{% endif %}" class="btn btn-sm {% if not grade_filter %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %} rounded-pill px-2.5 py-0.5">
+                ទាំងអស់
+            </a>
+            {% for g in available_grades %}
+            <a href="{% url 'academic_booklets_hub' %}?grade={{ g }}{% if selected_year %}&year={{ selected_year.id }}{% endif %}" class="btn btn-sm {% if grade_filter == g|stringformat:'i' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %} rounded-pill px-2.5 py-0.5">
+                ថ្នាក់ទី {{ g }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right: Quick Links to Annual/Semester Results -->
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'annual_results' %}" class="btn btn-sm btn-outline-success rounded-pill fw-semibold">
+            <i class="fa-solid fa-award me-1"></i> លទ្ធផលប្រចាំឆ្នាំ
+        </a>
+        <a href="{% url 'classroom_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill">
+            <i class="fa-solid fa-school me-1"></i> បញ្ជីថ្នាក់រៀន
+        </a>
+    </div>
+</div>
+
+<!-- Classrooms Booklet Grid Section -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-chalkboard-user me-2 text-primary"></i>បញ្ជីថ្នាក់រៀន & ការបោះពុម្ពសៀវភៅតាមដាន / សិក្ខាគារិក ({{ classroom_list|length }} ថ្នាក់)
+        </h5>
+        <span class="text-muted small">ចុចប៊ូតុងខាងក្រោមលើថ្នាក់នីមួយៗ ដើម្បីបោះពុម្ពសៀវភៅតាមដានការសិក្សា ឬសៀវភៅសិក្ខាគារិកសម្រាប់សិស្សទាំងអស់ក្នុងថ្នាក់</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    {% for item in classroom_list %}
+    {% with c=item.classroom %}
+    <div class="col-xl-4 col-md-6">
+        <div class="custom-card p-3.5 h-100 book-card border shadow-xs d-flex flex-column justify-content-between">
+            <!-- Header of Class Card -->
+            <div>
+                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                    <div>
+                        <div class="d-flex align-items-center gap-1.5 mb-1">
+                            <span class="badge {% if c.track == 'SCIENCE' %}bg-info-subtle text-info border border-info-subtle{% elif c.track == 'SOCIAL' %}bg-warning-subtle text-dark border border-warning-subtle{% else %}bg-primary-subtle text-primary border border-primary-subtle{% endif %} rounded-pill small">
+                                ថ្នាក់ទី {{ c.grade_level }} • {{ c.get_track_display }}
+                            </span>
+                            {% if c.room_number %}
+                            <span class="badge bg-light text-muted border">បន្ទប់ {{ c.room_number }}</span>
+                            {% endif %}
+                        </div>
+                        <h4 class="fw-bold text-dark mb-0">{{ c.name }}</h4>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-light text-primary border px-2.5 py-1.5 fw-bold fs-6">
+                            <i class="fa-solid fa-user-graduate me-1"></i>{{ item.total_students }} នាក់
+                        </span>
+                        <div class="text-muted small mt-0.5" style="font-size: 0.72rem;">(ស្រី: {{ item.female_students }})</div>
+                    </div>
+                </div>
+
+                <!-- Teacher Info -->
+                <div class="p-2 rounded-3 bg-light border mb-3 small d-flex align-items-center gap-2">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <span class="text-muted d-block" style="font-size: 0.7rem;">គ្រូទទួលបន្ទុកថ្នាក់ (Homeroom):</span>
+                        <strong class="text-dark">{{ c.homeroom_teacher.khmer_name|default:"មិនទាន់ចាត់តាំង" }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons for this classroom -->
+            <div class="pt-2 border-top">
+                <div class="d-grid gap-2">
+                    <!-- Dropdown for Study Tracking Book Batch -->
+                    <div class="btn-group w-100">
+                        <a href="{% url 'homeroom_individual_tracking_books_batch_view' c.id %}?period=ANNUAL" target="_blank" class="btn btn-primary fw-semibold py-1.5 text-truncate" title="បោះពុម្ពសៀវភៅតាមដានការសិក្សា ពេញមួយឆ្នាំសម្រាប់មួយថ្នាក់">
+                            <i class="fa-solid fa-book-open-reader me-1.5"></i> សៀវភៅតាមដាន (មួយថ្នាក់)
+                        </a>
+                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="ជ្រើសរើសចន្លោះពេលបោះពុម្ព"></button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 0.84rem; min-width: 260px;">
+                            <li><h6 class="dropdown-header text-primary fw-bold"><i class="fa-solid fa-calendar me-1"></i>ជ្រើសរើសចន្លោះពេល (Scope):</h6></li>
+                            <li>
+                                <a class="dropdown-item py-2" href="{% url 'homeroom_individual_tracking_books_batch_view' c.id %}?period=ANNUAL" target="_blank">
+                                    <div class="fw-bold text-success"><i class="fa-solid fa-calendar-check me-2"></i>ពេញមួយឆ្នាំ (ប្រចាំឆ្នាំ)</div>
+                                    <span class="small text-muted ps-4">បង្ហាញលទ្ធផលខែទាំងអស់ ឆមាស១ ឆមាស២ និងប្រចាំឆ្នាំ</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item py-2" href="{% url 'homeroom_individual_tracking_books_batch_view' c.id %}?period=SEMESTER_1" target="_blank">
+                                    <div class="fw-bold text-primary"><i class="fa-solid fa-file-lines me-2"></i>ឆមាសទី ១</div>
+                                    <span class="small text-muted ps-4">បោះពុម្ពសម្រាប់បញ្ចប់ឆមាសទី១</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item py-2" href="{% url 'homeroom_individual_tracking_books_batch_view' c.id %}?period=SEMESTER_2" target="_blank">
+                                    <div class="fw-bold text-info"><i class="fa-solid fa-file-lines me-2"></i>ឆមាសទី ២</div>
+                                    <span class="small text-muted ps-4">បោះពុម្ពសម្រាប់ឆមាសទី២</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item py-2" href="{% url 'homeroom_individual_tracking_books_batch_view' c.id %}?period=MONTHLY" target="_blank">
+                                    <div class="fw-bold text-warning"><i class="fa-solid fa-calendar-days me-2"></i>ប្រចាំខែ</div>
+                                    <span class="small text-muted ps-4">បង្ហាញពិន្ទុ និងវត្តមានប្រចាំខែ</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item py-1.5" href="{% url 'homeroom_study_tracking_book_view' c.id %}" target="_blank">
+                                    <i class="fa-solid fa-table-list me-2 text-secondary"></i>សៀវភៅតាមដានរួម (Carnet សង្ខេបមួយថ្នាក់)
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Cumulative Dossier Batch Button -->
+                    <a href="{% url 'homeroom_cumulative_dossier_batch_view' c.id %}" target="_blank" class="btn btn-outline-warning text-dark fw-bold py-1.5 text-truncate" title="បោះពុម្ពសៀវភៅសិក្ខាគារិកមួយថ្នាក់ (ប្រវត្តិ ៦ ឆ្នាំ ទី៧-១២)">
+                        <i class="fa-solid fa-graduation-cap me-1.5 text-warning"></i> សៀវភៅសិក្ខាគារិក (មួយថ្នាក់)
+                    </a>
+
+                    <!-- Classroom Students link -->
+                    <div class="d-flex justify-content-between align-items-center pt-1">
+                        <a href="{% url 'student_list' %}?classroom={{ c.id }}" class="small text-decoration-none text-muted">
+                            <i class="fa-solid fa-users me-1"></i> បញ្ជីសិស្សក្នុងថ្នាក់ ({{ item.total_students }})
+                        </a>
+                        <a href="{% url 'annual_results' %}?classroom={{ c.id }}" class="small text-decoration-none text-success fw-semibold">
+                            <i class="fa-solid fa-award me-1"></i> ពិន្ទុប្រចាំឆ្នាំ <i class="fa-solid fa-arrow-right ms-0.5"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="fa-solid fa-school-circle-xmark fa-3x mb-3 text-secondary opacity-50"></i>
+        <h5>មិនទាន់មានថ្នាក់រៀនសម្រាប់ឆ្នាំសិក្សាដែលបានជ្រើសរើសឡើយ</h5>
+        <p class="small">សូមជ្រើសរើសឆ្នាំសិក្សាផ្សេង ឬបង្កើតថ្នាក់រៀនថ្មី។</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Explanatory Guide Box at bottom -->
+<div class="custom-card p-4 border-0 shadow-sm" style="border-radius: 1.25rem; background: #f8fafc;">
+    <h6 class="fw-bold text-dark mb-3">
+        <i class="fa-solid fa-circle-info me-2 text-primary"></i>សេចក្តីណែនាំអំពីទម្រង់សៀវភៅទាំងពីររបស់ក្រសួងអប់រំ យុវជន និងកីឡា (MoEYS Standard):
+    </h6>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="fa-solid fa-book-open me-2"></i>១. សៀវភៅតាមដានការសិក្សា (Carnet Scolaire Individuel)
+                </h6>
+                <p class="text-muted small mb-0">
+                    ជាឯកសារតាមដានការសិក្សាផ្ទាល់ខ្លួនរបស់សិស្សសម្រាប់ប្រើប្រាស់ក្នុងឆ្នាំសិក្សានីមួយៗ។ រួមមានវត្តមាន វិន័យ សីលធម៌ ពិន្ទុតាមមុខវិជ្ជា ចំណាត់ថ្នាក់ មធ្យមភាគប្រចាំខែ ឆមាសទី១ ឆមាសទី២ និងប្រចាំឆ្នាំ រួមទាំងការវាយតម្លៃរបស់លោកគ្រូអ្នកគ្រូ និងមតិមាតាបិតា។ ប្រព័ន្ធគាំទ្រការបោះពុម្ពជា ៤ ជម្រើស៖ <strong>ពេញមួយឆ្នាំ</strong>, <strong>ឆមាសទី១</strong>, <strong>ឆមាសទី២</strong>, និង <strong>ប្រចាំខែ</strong>។
+                </p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                <h6 class="fw-bold text-warning text-dark mb-1">
+                    <i class="fa-solid fa-graduation-cap me-2 text-warning"></i>២. សៀវភៅសិក្ខាគារិក (Cumulative Academic Dossier)
+                </h6>
+                <p class="text-muted small mb-0">
+                    ជាសំណុំឯកសារផ្ទាល់ខ្លួនសន្សំប្រវត្តិសិក្សារយៈពេល ៦ ឆ្នាំរបស់សិស្ស (ចាប់ពីថ្នាក់ទី ៧ រហូតដល់ ទី១២)។ ចេញមួយឆ្នាំម្តងនៅចុងឆ្នាំសិក្សា ដោយកត់ត្រាពិន្ទុ មធ្យមភាគ ចំណាត់ថ្នាក់ក្នុងថ្នាក់ និងនិទ្ទេសតាមមុខវិជ្ជានីមួយៗដែលសិស្សបានរៀនតាមឆ្នាំនីមួយៗ និងសេចក្តីសម្រេចឡើងថ្នាក់។
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

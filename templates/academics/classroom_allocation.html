@@ -174,6 +174,28 @@
         </div>
     </div>
 
+    <!-- Admin Rights & Flexibility Assurance Banner -->
+    <div class="alert alert-primary bg-primary-subtle border-primary border-opacity-25 rounded-4 shadow-sm mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-circle p-2.5 d-flex align-items-center justify-content-center shadow-sm" style="width: 46px; height: 46px; min-width: 46px;">
+                <i class="fa-solid fa-user-gear fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-1 text-primary-emphasis">
+                    <i class="fa-solid fa-shield-halved me-1"></i> សិទ្ធិអភិបាលពេញលេញជានិច្ច (Full Admin Control & Flexibility)
+                </h6>
+                <p class="small text-muted mb-0">
+                    បន្ទាប់ពីអនុវត្តការបែងចែកថ្នាក់រៀនរួចហើយ <strong>Admin នៅតែមានសិទ្ធិកែប្រែ ឬផ្លាស់ប្តូរសិស្សម្នាក់ៗបានជានិច្ច គ្រប់ពេលវេលា</strong> (កែប្រែក្នុងតារាងបែងចែកមុនពេល Apply, ផ្លាស់ប្តូរតាមកាតសិស្ស, ឬផ្ទេរប្តូរថ្នាក់ភ្លាមៗតាមតម្រូវការជាក់ស្តែង)។
+                </p>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm" onclick="openClassRosterModalFromActive()">
+                <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> ផ្លាស់ប្តូរថ្នាក់សិស្សរហ័ស (Quick Transfer)
+            </button>
+        </div>
+    </div>
+
     <!-- Main Configuration Card -->
     <div class="custom-card p-4 mb-4 shadow-sm border-0">
         <h5 class="fw-bold text-dark mb-3">
@@ -318,10 +340,18 @@
 
                     <div class="d-flex flex-wrap gap-2" id="targetClassesChipsContainer">
                         {% for tc in target_classrooms %}
-                        <div class="target-class-chip active" data-class-id="{{ tc.id }}" onclick="toggleTargetClass(this)">
-                            <i class="fa-solid fa-check text-primary check-icon"></i>
-                            <span>{{ tc.name }}</span>
-                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">ចំណុះ {{ tc.capacity|default:45 }}</span>
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <div class="target-class-chip active" data-class-id="{{ tc.id }}" onclick="toggleTargetClass(this)">
+                                <i class="fa-solid fa-check text-primary check-icon"></i>
+                                <span>{{ tc.name }}</span>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">ចំណុះ {{ tc.capacity|default:45 }}</span>
+                                <span class="badge {% if tc.current_students_count > 0 %}bg-primary-subtle text-primary{% else %}bg-light text-muted{% endif %}" style="font-size: 0.7rem;" title="សិស្សជាក់ស្តែងបច្ចុប្បន្ន">
+                                    {{ tc.current_students_count }} នាក់
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 rounded-3 border shadow-xs" title="ពិនិត្យសិស្សក្នុង {{ tc.name }} & ផ្ទេរប្តូរថ្នាក់" onclick="event.stopPropagation(); openClassRosterModal({{ tc.id }}, '{{ tc.name }}')">
+                                <i class="fa-solid fa-users-gear"></i>
+                            </button>
                         </div>
                         {% empty %}
                         <div class="text-danger small fw-bold">
@@ -624,7 +654,7 @@ function renderPreview(data) {
             const avatarBg = s.gender === 'F' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary';
             const scoreClass = s.has_score ? 'text-primary fw-bold' : 'text-muted';
             studentsListHtml += `
-                <div class="d-flex align-items-center justify-content-between p-2 border-bottom hover-bg">
+                <div class="d-flex align-items-center justify-content-between p-2 border-bottom hover-bg" id="studentCardRow_${s.id}">
                     <div class="d-flex align-items-center gap-2">
                         <span class="student-avatar ${avatarBg}">
                             ${s.gender === 'F' ? 'ស្រី' : 'ប្រុស'}
@@ -638,7 +668,20 @@ function renderPreview(data) {
                     </div>
                     <div class="text-end">
                         <div class="${scoreClass} small">${s.score.toFixed(2)}</div>
-                        <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">${s.current_class_name}</span>
+                        <div class="d-flex align-items-center gap-1 justify-content-end mt-1">
+                            <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;" title="ថ្នាក់ដើម">${s.current_class_name}</span>
+                            <select class="form-select form-select-sm py-0 px-1 border-primary fw-bold student-card-override" 
+                                    style="font-size: 0.7rem; height: 23px; width: 75px;" 
+                                    data-student-id="${s.id}" 
+                                    data-score="${s.score}" 
+                                    data-rank="${s.rank}" 
+                                    title="ផ្លាស់ប្តូរថ្នាក់សិស្សនេះ"
+                                    onchange="syncCardWithTable(${s.id}, this.value)">
+                                ${data.target_classrooms.map(c => `
+                                    <option value="${c.id}" ${c.id === b.classroom_id ? 'selected' : ''}>${c.name}</option>
+                                `).join('')}
+                            </select>
+                        </div>
                     </div>
                 </div>
             `;
@@ -690,7 +733,11 @@ function renderPreview(data) {
                     <td class="text-end fw-bold text-primary">${s.score.toFixed(2)}</td>
                     <td class="small text-muted">${s.score_detail || '-'}</td>
                     <td>
-                        <select class="form-select form-select-sm fw-bold border-primary student-target-override" data-student-id="${s.id}" data-score="${s.score}" data-rank="${s.rank}">
+                        <select class="form-select form-select-sm fw-bold border-primary student-target-override" 
+                                data-student-id="${s.id}" 
+                                data-score="${s.score}" 
+                                data-rank="${s.rank}"
+                                onchange="syncTableWithCard(${s.id}, this.value)">
                             ${data.target_classrooms.map(c => `
                                 <option value="${c.id}" ${c.id === b.classroom_id ? 'selected' : ''}>${c.name}</option>
                             `).join('')}
@@ -802,5 +849,221 @@ function executeFinalAllocation() {
         alert('⚠️ បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
     });
 }
+
+function syncCardWithTable(studentId, targetClassId) {
+    const tableSel = document.querySelector(`.student-target-override[data-student-id="${studentId}"]`);
+    if (tableSel) {
+        tableSel.value = targetClassId;
+    }
+}
+
+function syncTableWithCard(studentId, targetClassId) {
+    const cardSel = document.querySelector(`.student-card-override[data-student-id="${studentId}"]`);
+    if (cardSel) {
+        cardSel.value = targetClassId;
+    }
+}
+
+// -------------------------------------------------------------------------
+// Modal: Current Classroom Roster & Quick Student Transfer
+// -------------------------------------------------------------------------
+function openClassRosterModal(classId, className) {
+    const sel = document.getElementById('modalSelectClassroom');
+    if (sel && classId) {
+        sel.value = classId;
+    }
+    const modalEl = document.getElementById('modalClassRosterQuickTransfer');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+    loadClassroomRoster(classId || (sel ? sel.value : null));
+}
+
+function openClassRosterModalFromActive() {
+    const sel = document.getElementById('modalSelectClassroom');
+    const firstVal = sel && sel.options.length > 0 ? sel.options[0].value : null;
+    if (firstVal) {
+        openClassRosterModal(firstVal);
+    } else {
+        alert('⚠️ មិនមានថ្នាក់រៀនគោលដៅឡើយ');
+    }
+}
+
+function loadClassroomRoster(classId) {
+    if (!classId) return;
+    const alertEl = document.getElementById('modalTransferAlert');
+    if (alertEl) alertEl.classList.add('d-none');
+
+    const tbody = document.getElementById('modalRosterTableBody');
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div> កំពុងទាញយកទិន្នន័យ...</td></tr>`;
+
+    fetch(`{% url 'api_get_current_classroom_roster' %}?classroom_id=${classId}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.status !== 'success') {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">⚠️ ${data.message || 'បរាជ័យក្នុងការទាញយកទិន្នន័យ'}</td></tr>`;
+            return;
+        }
+
+        document.getElementById('modalRosterTotalBadge').innerText = `សរុប ${data.total_count} នាក់`;
+
+        if (data.students.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">មិនទាន់មានសិស្សក្នុងថ្នាក់ ${data.classroom.name} នៅឡើយទេ</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        data.students.forEach((s, idx) => {
+            const genderBadge = s.gender === 'F' ? '<span class="badge bg-danger-subtle text-danger">ស្រី</span>' : '<span class="badge bg-primary-subtle text-primary">ប្រុស</span>';
+            const destOptions = data.destination_classrooms.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+            html += `
+                <tr id="rosterRow_${s.id}">
+                    <td class="text-center small">${idx + 1}</td>
+                    <td class="font-monospace small fw-bold">${s.student_id}</td>
+                    <td>
+                        <div class="fw-bold text-dark">${s.khmer_name}</div>
+                        ${s.latin_name ? `<small class="text-muted">${s.latin_name}</small>` : ''}
+                    </td>
+                    <td class="text-center">${genderBadge}</td>
+                    <td><span class="badge bg-primary-subtle text-primary fw-bold">${s.current_class_name}</span></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1">
+                            <select class="form-select form-select-sm fw-bold border-info" id="quickDestSel_${s.id}" style="font-size: 0.8rem;">
+                                ${destOptions}
+                            </select>
+                            <button type="button" class="btn btn-sm btn-info text-white fw-bold text-nowrap px-2 shadow-xs" onclick="executeQuickStudentTransfer(${s.id}, '${s.khmer_name.replace(/'/g, "\\'")}')">
+                                <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> ផ្ទេរ
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    })
+    .catch(err => {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">⚠️ កំហុសបច្ចេកទេស៖ ${err}</td></tr>`;
+    });
+}
+
+function executeQuickStudentTransfer(studentId, studentName) {
+    const sel = document.getElementById(`quickDestSel_${studentId}`);
+    if (!sel || !sel.value) {
+        alert('⚠️ សូមជ្រើសរើសថ្នាក់រៀនគោលដៅ!');
+        return;
+    }
+    const targetClassId = sel.value;
+    const targetClassName = sel.options[sel.selectedIndex].text;
+
+    if (!confirm(`តើលោកអ្នកពិតជាចង់ផ្លាស់ប្តូរសិស្ស «${studentName}» ទៅកាន់ «${targetClassName}» មែនទេ?`)) {
+        return;
+    }
+
+    fetch("{% url 'api_quick_transfer_student_classroom' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            target_classroom_id: targetClassId,
+            reason: `Admin បានផ្លាស់ប្តូរថ្នាក់សិស្សដោយផ្ទាល់ ទៅកាន់ ${targetClassName}`
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        const alertEl = document.getElementById('modalTransferAlert');
+        if (res.status === 'success') {
+            alertEl.className = 'alert alert-success py-2 px-3 small rounded-3 mb-3';
+            alertEl.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${res.message}`;
+            alertEl.classList.remove('d-none');
+
+            // Animate and remove row
+            const row = document.getElementById(`rosterRow_${studentId}`);
+            if (row) {
+                row.style.transition = 'all 0.5s ease';
+                row.style.backgroundColor = '#dcfce7';
+                setTimeout(() => {
+                    row.remove();
+                    const remaining = document.querySelectorAll('#modalRosterTableBody tr[id^="rosterRow_"]').length;
+                    document.getElementById('modalRosterTotalBadge').innerText = `សរុប ${remaining} នាក់`;
+                }, 600);
+            }
+        } else {
+            alertEl.className = 'alert alert-danger py-2 px-3 small rounded-3 mb-3';
+            alertEl.innerHTML = `⚠️ ${res.message || 'មិនអាចផ្លាស់ប្តូរថ្នាក់បានទេ'}`;
+            alertEl.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        alert('⚠️ បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
 </script>
+
+<!-- Modal: Current Classroom Roster & Quick Student Transfer -->
+<div class="modal fade" id="modalClassRosterQuickTransfer" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-white bg-opacity-20 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fa-solid fa-users-gear fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">គ្រប់គ្រង និងផ្លាស់ប្តូរថ្នាក់សិស្សម្នាក់ៗ (Quick Student Class Transfer)</h5>
+                        <small class="text-white-50">កែប្រែ ឬផ្ទេរសិស្សម្នាក់ៗទៅកាន់ថ្នាក់ផ្សេងទៀតបានភ្លាមៗគ្រប់ពេលវេលា</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Class selector inside modal -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-light rounded-3 border mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="small fw-bold text-muted text-nowrap mb-0">ជ្រើសរើសថ្នាក់រៀនពិនិត្យ៖</label>
+                        <select id="modalSelectClassroom" class="form-select form-select-sm fw-bold border-primary" style="width: auto; min-width: 180px;" onchange="loadClassroomRoster(this.value)">
+                            {% for tc in target_classrooms %}
+                            <option value="{{ tc.id }}">{{ tc.name }} (សិស្សបច្ចុប្បន្ន៖ {{ tc.current_students_count }} នាក់)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary fs-6 px-3 py-1" id="modalRosterTotalBadge">សរុប 0 នាក់</span>
+                    </div>
+                </div>
+
+                <!-- Live Notification in modal -->
+                <div id="modalTransferAlert" class="alert d-none py-2 px-3 small rounded-3 mb-3"></div>
+
+                <!-- Roster Students Table -->
+                <div class="table-responsive border rounded-3" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr class="small text-muted fw-bold">
+                                <th style="width: 50px;" class="text-center">ល.រ</th>
+                                <th style="width: 110px;">អត្តលេខ</th>
+                                <th>គោត្តនាម-នាម</th>
+                                <th class="text-center" style="width: 60px;">ភេទ</th>
+                                <th>ថ្នាក់បច្ចុប្បន្ន</th>
+                                <th style="width: 250px;">ផ្ទេរទៅថ្នាក់ថ្មី (Transfer To)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalRosterTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2"></div> កំពុងទាញយកបញ្ជីសិស្ស...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2.5">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">បិទ</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

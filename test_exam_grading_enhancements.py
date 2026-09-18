@@ -193,7 +193,9 @@ def run_tests():
     }
     save_b_resp = teacher_client.post('/api/v1/grades/blind-scoring/save-scores/', save_blind_payload, content_type='application/json')
     assert save_b_resp.status_code == 200, f"Expected 200 for blind save API, got {save_b_resp.status_code}"
-    print("9. [PASS] Mobile Blind Scoring Save API saved anonymous desk scores and updated exam ranks!")
+    # Clean up test records
+    term.delete()
+    std_exam.delete()
 
     print("\n=== ALL EXAM GRADING & MOBILE ENHANCEMENT TESTS PASSED 100%! ===")
 

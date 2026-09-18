@@ -347,6 +347,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'annual_results',
             },
             {
+                'key': 'academic_booklets_hub',
+                'name_kh': 'សៀវភៅតាមដាន & សិក្ខាគារិក',
+                'name_en': 'Study Tracking & Dossier Books',
+                'icon': 'fa-solid fa-book-open-reader text-warning',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'academic_booklets_hub',
+            },
+            {
                 'key': 'online_exam_list',
                 'name_kh': 'វិញ្ញាសាប្រឡងអនឡាញ',
                 'name_en': 'Online Exams & Quizzes',

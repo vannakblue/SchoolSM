@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n_extras %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -9,14 +9,33 @@
     <!-- Google Fonts for Authentic MoEYS Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&family=Siemreap&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&family=Siemreap&family=Battambang:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'KhmerOSmuollight';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         :root {
             --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
-            --font-body: 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
+            --font-body: 'Siemreap', 'Kantumruy Pro', 'Battambang', 'Inter', sans-serif;
             --moeys-primary: #1e3a8a;
             --moeys-secondary: #b91c1c;
             --moeys-gold: #b45309;
@@ -50,7 +69,6 @@
         [style*="font-family:'Moul'"],
         [style*='font-family: "Moul"'] {
             font-family: var(--font-moul) !important;
-            font-size: 11pt !important;
             font-weight: normal !important;
             font-weight: 400 !important;
             font-synthesis: none !important;
@@ -59,12 +77,27 @@
             line-height: 1.4 !important;
         }
 
+        /* Language Mode Switching (Pure Khmer OR Pure English) */
+        body.lang-mode-kh .lang-en { display: none !important; }
+        body.lang-mode-kh .lang-kh { display: inline !important; }
+        body.lang-mode-kh div.lang-kh,
+        body.lang-mode-kh p.lang-kh { display: block !important; }
+        body.lang-mode-kh th.lang-kh,
+        body.lang-mode-kh td.lang-kh { display: table-cell !important; }
+
+        body.lang-mode-en .lang-kh { display: none !important; }
+        body.lang-mode-en .lang-en { display: inline !important; }
+        body.lang-mode-en div.lang-en,
+        body.lang-mode-en p.lang-en { display: block !important; }
+        body.lang-mode-en th.lang-en,
+        body.lang-mode-en td.lang-en { display: table-cell !important; }
+
         .tracking-booklet {
             background: #ffffff;
             width: 210mm; /* A4 Portrait */
             min-height: 297mm;
             margin: 0 auto 25px auto;
-            padding: 12mm 14mm;
+            padding: 11mm 13mm;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             box-sizing: border-box;
             position: relative;
@@ -78,15 +111,15 @@
         .official-header {
             border-bottom: 2px solid var(--moeys-primary);
             padding-bottom: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .header-title-box {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             border: 2px solid var(--moeys-primary);
             border-radius: 6px;
-            padding: 8px 14px;
-            margin: 10px 0 14px 0;
+            padding: 7px 14px;
+            margin: 8px 0 12px 0;
             text-align: center;
         }
 
@@ -116,7 +149,7 @@
         }
 
         .profile-table td {
-            padding: 3px 6px;
+            padding: 2.5px 6px;
             vertical-align: middle;
         }
 
@@ -127,7 +160,7 @@
             font-weight: 700;
             font-size: 11px;
             color: var(--moeys-primary);
-            margin: 12px 0 6px 0;
+            margin: 10px 0 5px 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -137,7 +170,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 9.5px;
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         .table-matrix th, .table-matrix td {
@@ -180,14 +213,14 @@
         .signature-box {
             border: 1px dashed #94a3b8;
             border-radius: 6px;
-            padding: 10px;
+            padding: 8px 10px;
             background: #fdfdfd;
             height: 100%;
         }
 
         .seal-circle {
-            width: 75px;
-            height: 75px;
+            width: 70px;
+            height: 70px;
             border: 1px dashed #cbd5e1;
             border-radius: 50%;
             display: flex;
@@ -198,15 +231,69 @@
             margin: 4px auto;
         }
 
+        /* Scoping CSS rules for Print & Screen */
+        .scope-title-annual, .scope-title-s1, .scope-title-s2, .scope-title-monthly {
+            display: none !important;
+        }
+        body.scope-annual .scope-title-annual { display: inline-block !important; }
+        body.scope-semester_1 .scope-title-s1 { display: inline-block !important; }
+        body.scope-semester_2 .scope-title-s2 { display: inline-block !important; }
+        body.scope-monthly .scope-title-monthly { display: inline-block !important; }
+
+        /* When Semester 1 is active: hide Semester 2 and Annual columns */
+        body.scope-semester_1 .col-grp-s2,
+        body.scope-semester_1 .col-s2,
+        body.scope-semester_1 .col-grp-annual,
+        body.scope-semester_1 .col-annual,
+        body.scope-semester_1 .col-att-s2,
+        body.scope-semester_1 .col-att-annual,
+        body.scope-semester_1 .col-s2-review {
+            display: none !important;
+        }
+        body.scope-semester_1 .col-s1-review {
+            width: 100% !important;
+        }
+
+        /* When Semester 2 is active: hide Semester 1 and Annual columns */
+        body.scope-semester_2 .col-grp-s1,
+        body.scope-semester_2 .col-s1,
+        body.scope-semester_2 .col-grp-annual,
+        body.scope-semester_2 .col-annual,
+        body.scope-semester_2 .col-att-s1,
+        body.scope-semester_2 .col-att-annual,
+        body.scope-semester_2 .col-s1-review {
+            display: none !important;
+        }
+        body.scope-semester_2 .col-s2-review {
+            width: 100% !important;
+        }
+
+        /* When Monthly is active: hide Semester Exams & Annual, highlight monthly columns */
+        body.scope-monthly .col-s1-exam,
+        body.scope-monthly .col-s1-final,
+        body.scope-monthly .col-s2-exam,
+        body.scope-monthly .col-s2-final,
+        body.scope-monthly .col-grp-annual,
+        body.scope-monthly .col-annual {
+            display: none !important;
+        }
+        body.scope-monthly .col-s1-m,
+        body.scope-monthly .col-s2-m {
+            background-color: #f0fdf4 !important;
+            font-weight: 600;
+        }
+
         .no-print {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 12px;
+            right: 18px;
             z-index: 99999;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
         }
 
         @media print {
@@ -218,7 +305,7 @@
                 width: 100%;
                 min-height: auto;
                 margin: 0;
-                padding: 8mm 10mm;
+                padding: 7mm 9mm;
                 box-shadow: none;
                 page-break-after: always;
             }
@@ -232,21 +319,80 @@
         }
     </style>
 </head>
-<body>
+<body class="scope-{{ selected_period|lower|default:'annual' }} lang-mode-{{ selected_lang|default:'kh' }}" id="trackingBody">
 
-<!-- Floating Action Bar for Print & Navigation -->
-<div class="no-print d-flex gap-2 align-items-center">
-    {% if is_batch %}
-    <span class="badge bg-primary px-3 py-2 fs-6">
-        <i class="fa-solid fa-users me-1"></i> បោះពុម្ពជាបណ្តុំ៖ {{ book_list|length }} នាក់
-    </span>
-    {% endif %}
-    <button onclick="window.print()" class="btn btn-primary fw-bold px-4 shadow-sm">
-        <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅតាមដាន (Print A4)
-    </button>
-    <button onclick="window.history.back()" class="btn btn-outline-secondary fw-bold shadow-sm">
-        <i class="fa-solid fa-arrow-left me-1"></i> ថយក្រោយ
-    </button>
+<!-- Floating Action Bar for Print, Language & Scope Selection -->
+<div class="no-print d-flex flex-wrap gap-2 align-items-center justify-content-between">
+    <!-- Language Switcher (Pure Khmer OR Pure English) -->
+    <div class="d-flex align-items-center bg-light p-1 rounded border">
+        <span class="small fw-bold text-muted px-2"><i class="fa-solid fa-language me-1 text-primary"></i>ភាសា / Lang:</span>
+        <button type="button" id="btnLangKh" onclick="setLanguage('kh')" class="btn btn-sm {% if selected_lang != 'en' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %}">
+            🇰🇭 ភាសាខ្មែរ
+        </button>
+        <button type="button" id="btnLangEn" onclick="setLanguage('en')" class="btn btn-sm {% if selected_lang == 'en' %}btn-primary fw-bold{% else %}btn-outline-secondary{% endif %} ms-1">
+            🇬🇧 English
+        </button>
+    </div>
+
+    <!-- Timeframe Scope Switcher -->
+    <div class="d-flex flex-wrap gap-1 align-items-center bg-light p-1 rounded border">
+        <span class="small fw-bold text-muted px-2">
+            <span class="lang-kh"><i class="fa-solid fa-filter me-1 text-primary"></i>កាលកំណត់៖</span>
+            <span class="lang-en"><i class="fa-solid fa-filter me-1 text-primary"></i>Period:</span>
+        </span>
+        <button type="button" id="btnScopeAnnual" onclick="setTrackingScope('ANNUAL')" class="btn btn-sm btn-outline-success fw-bold">
+            <span class="lang-kh"><i class="fa-solid fa-calendar-check me-1"></i>ប្រចាំឆ្នាំ</span>
+            <span class="lang-en"><i class="fa-solid fa-calendar-check me-1"></i>Annual</span>
+        </button>
+        <button type="button" id="btnScopeS1" onclick="setTrackingScope('SEMESTER_1')" class="btn btn-sm btn-outline-primary fw-bold">
+            <span class="lang-kh"><i class="fa-solid fa-file-lines me-1"></i>ឆមាសទី ១</span>
+            <span class="lang-en"><i class="fa-solid fa-file-lines me-1"></i>Semester 1</span>
+        </button>
+        <button type="button" id="btnScopeS2" onclick="setTrackingScope('SEMESTER_2')" class="btn btn-sm btn-outline-info fw-bold">
+            <span class="lang-kh"><i class="fa-solid fa-file-lines me-1"></i>ឆមាសទី ២</span>
+            <span class="lang-en"><i class="fa-solid fa-file-lines me-1"></i>Semester 2</span>
+        </button>
+        <button type="button" id="btnScopeMonthly" onclick="setTrackingScope('MONTHLY')" class="btn btn-sm btn-outline-warning text-dark fw-bold">
+            <span class="lang-kh"><i class="fa-solid fa-calendar-days me-1"></i>ប្រចាំខែ</span>
+            <span class="lang-en"><i class="fa-solid fa-calendar-days me-1"></i>Monthly</span>
+        </button>
+    </div>
+
+    <!-- Actions & Assessment Shortcut -->
+    <div class="d-flex gap-2 align-items-center">
+        {% if classroom %}
+        <a href="{% url 'homeroom_conduct_assessment' classroom.id %}" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm" title="វាយតម្លៃមារយាទ និងបញ្ចូលមតិ">
+            <i class="fa-solid fa-clipboard-check me-1"></i>
+            <span class="lang-kh">វាយតម្លៃមារយាទ/មតិ</span>
+            <span class="lang-en">Conduct & Feedback</span>
+        </a>
+        {% elif book_list and book_list.0.classroom %}
+        <a href="{% url 'homeroom_conduct_assessment' book_list.0.classroom.id %}" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm" title="វាយតម្លៃមារយាទ និងបញ្ចូលមតិ">
+            <i class="fa-solid fa-clipboard-check me-1"></i>
+            <span class="lang-kh">វាយតម្លៃមារយាទ/មតិ</span>
+            <span class="lang-en">Conduct & Feedback</span>
+        </a>
+        {% endif %}
+
+        {% if is_batch %}
+        <span class="badge bg-primary px-3 py-2 fs-6">
+            <i class="fa-solid fa-users me-1"></i>
+            <span class="lang-kh">បោះពុម្ពមួយថ្នាក់៖ {{ book_list|length }} នាក់ {% if classroom %}(ថ្នាក់ {{ classroom.name }}){% endif %}</span>
+            <span class="lang-en">Batch Print: {{ book_list|length }} {% if classroom %}(Class {{ classroom.name }}){% endif %}</span>
+        </span>
+        {% endif %}
+
+        <button onclick="window.print()" class="btn btn-primary fw-bold px-3 shadow-sm">
+            <i class="fa-solid fa-print me-1"></i>
+            <span class="lang-kh">បោះពុម្ព (Print A4)</span>
+            <span class="lang-en">Print (A4)</span>
+        </button>
+        <a href="{% url 'academic_booklets_hub' %}" onclick="smartGoBack(event);" class="btn btn-outline-secondary fw-bold shadow-sm" title="ថយក្រោយ / ត្រឡប់វិញ">
+            <i class="fa-solid fa-arrow-left me-1"></i>
+            <span class="lang-kh">ថយក្រោយ</span>
+            <span class="lang-en">Back</span>
+        </a>
+    </div>
 </div>
 
 {% for book in book_list %}
@@ -255,28 +401,63 @@
     <div class="official-header">
         <div class="row align-items-center">
             <div class="col-6 text-center">
-                <div class="font-moul text-primary" style="font-size: 11pt;">{{ book.school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
-                <div class="fw-bold text-dark" style="font-size: 10.5px;">{{ book.school_profile.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" }}</div>
+                <div class="font-moul text-primary" style="font-size: 11pt;">
+                    <span class="lang-kh">{{ book.school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</span>
+                    <span class="lang-en">MINISTRY OF EDUCATION, YOUTH AND SPORT</span>
+                </div>
+                <div class="fw-bold text-dark" style="font-size: 10.5px;">
+                    <span class="lang-kh">{{ book.school_profile.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" }}</span>
+                    <span class="lang-en">Department of Education, Youth and Sport</span>
+                </div>
                 <div class="font-moul text-dark mt-1" style="font-size: 11.5pt;">{{ book.school_name }}</div>
-                <div class="text-muted small" style="font-size: 9px;">កូដសាលា (EMIS)៖ <strong>{{ book.school_profile.school_code|default:"080101" }}</strong></div>
+                <div class="text-muted small" style="font-size: 9px;">
+                    <span class="lang-kh">កូដសាលា (EMIS)៖ <strong>{{ book.school_profile.school_code|default:"080101" }}</strong></span>
+                    <span class="lang-en">EMIS Code: <strong>{{ book.school_profile.school_code|default:"080101" }}</strong></span>
+                </div>
             </div>
             <div class="col-6 text-center">
-                <div class="font-moul text-primary" style="font-size: 11.5pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="font-moul text-danger" style="font-size: 11pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="font-moul text-primary" style="font-size: 11.5pt;">
+                    <span class="lang-kh">ព្រះរាជាណាចក្រកម្ពុជា</span>
+                    <span class="lang-en">KINGDOM OF CAMBODIA</span>
+                </div>
+                <div class="font-moul text-danger" style="font-size: 11pt;">
+                    <span class="lang-kh">ជាតិ សាសនា ព្រះមហាក្សត្រ</span>
+                    <span class="lang-en">NATION RELIGION KING</span>
+                </div>
                 <div style="letter-spacing: 3px; font-size: 11px; color: #b45309;" class="my-1">֍ ֍ ֍</div>
-                <div class="text-muted small" style="font-size: 9px;">បាវចនា៖ «{{ book.school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌" }}»</div>
+                <div class="text-muted small" style="font-size: 9px;">
+                    <span class="lang-kh">បាវចនា៖ «{{ book.school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌" }}»</span>
+                    <span class="lang-en">Motto: "{{ book.school_profile.motto|default:"Knowledge, Discipline, Morality, Virtue" }}"</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Title Banner -->
     <div class="header-title-box">
-        <div class="font-moul text-dark" style="font-size: 13pt;">សៀវភៅតាមដានការសិក្សា</div>
-        <div class="fw-bold text-primary" style="font-size: 9.5px; letter-spacing: 1px;">
-            STUDENT STUDY & PROGRESS TRACKING BOOK (CARNET SCOLAIRE INDIVIDUEL)
+        <div class="font-moul text-dark" style="font-size: 13pt;">
+            <span class="lang-kh">សៀវភៅតាមដានការសិក្សា</span>
+            <span class="lang-en">STUDENT STUDY TRACKING BOOK</span>
         </div>
-        <div class="small text-muted mt-0.5" style="font-size: 9px;">
-            ឆ្នាំសិក្សា៖ <strong>{{ book.academic_year.name }}</strong> • ថ្នាក់រៀន៖ <strong class="text-primary fs-6">{{ book.classroom.name|default:"-" }}</strong> (បន្ទប់ {{ book.classroom.room_number|default:"-" }})
+        <div class="small text-muted mt-0.5" style="font-size: 9.5px;">
+            <span class="lang-kh">ឆ្នាំសិក្សា៖ <strong>{{ book.academic_year.name }}</strong> • ថ្នាក់រៀន៖ <strong class="text-primary fs-6">{{ book.classroom.name|default:"-" }}</strong> (បន្ទប់ {{ book.classroom.room_number|default:"-" }})</span>
+            <span class="lang-en">Academic Year: <strong>{{ book.academic_year.name }}</strong> • Classroom: <strong class="text-primary fs-6">{{ book.classroom.name|default:"-" }}</strong> (Room {{ book.classroom.room_number|default:"-" }})</span>
+            • <span class="badge bg-success scope-title-annual">
+                <span class="lang-kh"><i class="fa-solid fa-calendar-check me-1"></i>របាយការណ៍ពេញមួយឆ្នាំ</span>
+                <span class="lang-en"><i class="fa-solid fa-calendar-check me-1"></i>Annual Record</span>
+            </span>
+            <span class="badge bg-primary scope-title-s1">
+                <span class="lang-kh"><i class="fa-solid fa-file-lines me-1"></i>របាយការណ៍ឆមាសទី ១</span>
+                <span class="lang-en"><i class="fa-solid fa-file-lines me-1"></i>Semester 1 Record</span>
+            </span>
+            <span class="badge bg-info text-dark scope-title-s2">
+                <span class="lang-kh"><i class="fa-solid fa-file-lines me-1"></i>របាយការណ៍ឆមាសទី ២</span>
+                <span class="lang-en"><i class="fa-solid fa-file-lines me-1"></i>Semester 2 Record</span>
+            </span>
+            <span class="badge bg-warning text-dark scope-title-monthly">
+                <span class="lang-kh"><i class="fa-solid fa-calendar-days me-1"></i>របាយការណ៍តាមដានប្រចាំខែ</span>
+                <span class="lang-en"><i class="fa-solid fa-calendar-days me-1"></i>Monthly Record</span>
+            </span>
         </div>
     </div>
 
@@ -289,7 +470,9 @@
                         <img src="{{ book.student.photo.url }}" alt="Student Photo">
                     {% else %}
                         <div class="text-muted text-center" style="font-size: 9px;">
-                            <i class="fa-regular fa-user fa-2x mb-1 opacity-50"></i><br>រូបថត ៤x៦
+                            <i class="fa-regular fa-user fa-2x mb-1 opacity-50"></i><br>
+                            <span class="lang-kh">រូបថត ៤x៦</span>
+                            <span class="lang-en">Photo 4x6</span>
                         </div>
                     {% endif %}
                 </div>
@@ -298,47 +481,122 @@
             <div class="col-10">
                 <table class="profile-table">
                     <tr>
-                        <td style="width: 16%;"><strong>គោត្តនាម-នាម៖</strong></td>
-                        <td style="width: 34%;" class="fw-bold fs-6 text-dark">{{ book.student.khmer_name }}</td>
-                        <td style="width: 16%;"><strong>ឈ្មោះឡាតាំង៖</strong></td>
+                        <td style="width: 17%;">
+                            <strong class="font-moul" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 10pt; font-weight: normal;">
+                                <span class="lang-kh">គោត្តនាម-នាម៖</span>
+                                <span class="lang-en">Full Name (Khmer):</span>
+                            </strong>
+                        </td>
+                        <td style="width: 33%;" class="text-dark">
+                            <span class="font-moul text-dark" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 11pt; font-weight: normal;">{{ book.student.khmer_name }}</span>
+                        </td>
+                        <td style="width: 16%;">
+                            <strong>
+                                <span class="lang-kh">ឈ្មោះឡាតាំង៖</span>
+                                <span class="lang-en">Latin Name:</span>
+                            </strong>
+                        </td>
                         <td style="width: 34%;" class="fw-bold text-uppercase">{{ book.student.latin_name|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>ភេទ៖</strong></td>
-                        <td>{% if book.student.gender == 'F' %}ស្រី (Female){% else %}ប្រុស (Male){% endif %}</td>
-                        <td><strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ភេទ៖</span>
+                                <span class="lang-en">Gender:</span>
+                            </strong>
+                        </td>
+                        <td>
+                            <span class="lang-kh">{% if book.student.gender == 'F' %}ស្រី{% else %}ប្រុស{% endif %}</span>
+                            <span class="lang-en">{% if book.student.gender == 'F' %}Female{% else %}Male{% endif %}</span>
+                        </td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ថ្ងៃខែឆ្នាំកំណើត៖</span>
+                                <span class="lang-en">Date of Birth:</span>
+                            </strong>
+                        </td>
                         <td class="fw-bold">{{ book.student.date_of_birth|date:"d/m/Y"|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>ទីកន្លែងកំណើត៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ទីកន្លែងកំណើត៖</span>
+                                <span class="lang-en">Place of Birth:</span>
+                            </strong>
+                        </td>
                         <td colspan="3">{{ book.student.place_of_birth|default:"កម្ពុជា" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>ឈ្មោះឪពុក៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ឈ្មោះឪពុក៖</span>
+                                <span class="lang-en">Father's Name:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.father_name|default:"-" }} {% if book.student.father_job %}({{ book.student.father_job }}){% endif %}</td>
-                        <td><strong>ទូរស័ព្ទឪពុក៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ទូរស័ព្ទឪពុក៖</span>
+                                <span class="lang-en">Father's Phone:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.father_phone|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>ឈ្មោះម្តាយ៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ឈ្មោះម្តាយ៖</span>
+                                <span class="lang-en">Mother's Name:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.mother_name|default:"-" }} {% if book.student.mother_job %}({{ book.student.mother_job }}){% endif %}</td>
-                        <td><strong>ទូរស័ព្ទម្តាយ៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ទូរស័ព្ទម្តាយ៖</span>
+                                <span class="lang-en">Mother's Phone:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.mother_phone|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>អាណាព្យាបាល៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">អាណាព្យាបាល៖</span>
+                                <span class="lang-en">Guardian:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.guardian_name|default:book.student.father_name|default:"-" }}</td>
-                        <td><strong>ទូរស័ព្ទបន្ទាន់៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">ទូរស័ព្ទបន្ទាន់៖</span>
+                                <span class="lang-en">Emergency Phone:</span>
+                            </strong>
+                        </td>
                         <td class="fw-bold text-danger">{{ book.student.emergency_phone|default:book.student.phone|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>អាសយដ្ឋានបច្ចុប្បន្ន៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">អាសយដ្ឋានបច្ចុប្បន្ន៖</span>
+                                <span class="lang-en">Current Address:</span>
+                            </strong>
+                        </td>
                         <td colspan="3">{{ book.student.current_address|default:"-" }}</td>
                     </tr>
                     <tr>
-                        <td><strong>គ្រូបន្ទុកថ្នាក់៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">គ្រូបន្ទុកថ្នាក់៖</span>
+                                <span class="lang-en">Homeroom Teacher:</span>
+                            </strong>
+                        </td>
                         <td class="fw-bold text-primary">{{ book.homeroom_teacher.khmer_name|default:"-" }}</td>
-                        <td><strong>សាលាចាស់ពីមុន៖</strong></td>
+                        <td>
+                            <strong>
+                                <span class="lang-kh">សាលាចាស់ពីមុន៖</span>
+                                <span class="lang-en">Previous School:</span>
+                            </strong>
+                        </td>
                         <td>{{ book.student.previous_school|default:"-" }}</td>
                     </tr>
                 </table>
@@ -348,76 +606,104 @@
 
     <!-- 2. Academic Performance Matrix -->
     <div class="section-header">
-        <span><i class="fa-solid fa-graduation-cap me-1"></i> ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ (Academic Performance Record)</span>
-        <span class="small fw-normal">សរុបសិស្សក្នុងថ្នាក់៖ <strong>{{ book.total_class_students }}</strong> នាក់</span>
+        <span>
+            <i class="fa-solid fa-graduation-cap me-1"></i>
+            <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ</span>
+            <span class="lang-en">Part 1: Academic Performance Record (Monthly, Semester & Annual)</span>
+        </span>
+        <span class="small fw-normal">
+            <span class="lang-kh">សរុបសិស្សក្នុងថ្នាក់៖ <strong>{{ book.total_class_students }}</strong> នាក់</span>
+            <span class="lang-en">Class Total: <strong>{{ book.total_class_students }}</strong> Students</span>
+        </span>
     </div>
 
     <table class="table-matrix">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 24px;">ល.រ</th>
-                <th rowspan="2" style="min-width: 105px;">មុខវិជ្ជា (Subjects)</th>
-                <th rowspan="2" style="width: 32px;">ពិន្ទុ<br>ពេញ</th>
-                <th colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}">ឆមាសទី ១ (Semester 1)</th>
-                <th colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}">ឆមាសទី ២ (Semester 2)</th>
-                <th colspan="2">ប្រចាំឆ្នាំ (Annual)</th>
+                <th rowspan="2" style="width: 24px;">
+                    <span class="lang-kh">ល.រ</span>
+                    <span class="lang-en">No.</span>
+                </th>
+                <th rowspan="2" style="min-width: 110px;">
+                    <span class="lang-kh">មុខវិជ្ជា</span>
+                    <span class="lang-en">Subject</span>
+                </th>
+                <th rowspan="2" style="width: 32px;">
+                    <span class="lang-kh">ពិន្ទុ<br>ពេញ</span>
+                    <span class="lang-en">Max</span>
+                </th>
+                <th colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-grp-s1">
+                    <span class="lang-kh">ឆមាសទី ១</span>
+                    <span class="lang-en">Semester 1</span>
+                </th>
+                <th colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-grp-s2">
+                    <span class="lang-kh">ឆមាសទី ២</span>
+                    <span class="lang-en">Semester 2</span>
+                </th>
+                <th colspan="2" class="col-grp-annual">
+                    <span class="lang-kh">ប្រចាំឆ្នាំ</span>
+                    <span class="lang-en">Annual</span>
+                </th>
             </tr>
             <tr>
                 <!-- Semester 1 columns -->
                 {% for term in book.s1_monthly_terms %}
-                <th style="width: 32px;" title="{{ term.name }}">{{ term.name|slice:":4" }}</th>
+                <th style="width: 32px;" class="col-s1-m col-s1" title="{{ term.primary_term.name|default:term.name }}">{{ term.display_month|default:term.name }}</th>
                 {% empty %}
-                <th style="width: 32px;">ម.ខែ</th>
+                <th style="width: 32px;" class="col-s1-m col-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th style="width: 34px;">ម.ខែ</th>
-                <th style="width: 34px;">ប្រឡង</th>
-                <th style="width: 36px;" class="text-primary">ម.ឆ.១</th>
+                <th style="width: 34px;" class="col-s1-m-avg col-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.Avg</span></th>
+                <th style="width: 34px;" class="col-s1-exam col-s1"><span class="lang-kh">ប្រឡង</span><span class="lang-en">Exam</span></th>
+                <th style="width: 36px;" class="col-s1-final col-s1 text-primary"><span class="lang-kh">ម.ឆ.១</span><span class="lang-en">S1 Final</span></th>
 
                 <!-- Semester 2 columns -->
                 {% for term in book.s2_monthly_terms %}
-                <th style="width: 32px;" title="{{ term.name }}">{{ term.name|slice:":4" }}</th>
+                <th style="width: 32px;" class="col-s2-m col-s2" title="{{ term.primary_term.name|default:term.name }}">{{ term.display_month|default:term.name }}</th>
                 {% empty %}
-                <th style="width: 32px;">ម.ខែ</th>
+                <th style="width: 32px;" class="col-s2-m col-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
                 {% endfor %}
-                <th style="width: 34px;">ម.ខែ</th>
-                <th style="width: 34px;">ប្រឡង</th>
-                <th style="width: 36px;" class="text-primary">ម.ឆ.២</th>
+                <th style="width: 34px;" class="col-s2-m-avg col-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.Avg</span></th>
+                <th style="width: 34px;" class="col-s2-exam col-s2"><span class="lang-kh">ប្រឡង</span><span class="lang-en">Exam</span></th>
+                <th style="width: 36px;" class="col-s2-final col-s2 text-primary"><span class="lang-kh">ម.ឆ.២</span><span class="lang-en">S2 Final</span></th>
 
                 <!-- Annual columns -->
-                <th style="width: 40px;" class="text-success">ម.ឆ្នាំ</th>
-                <th style="width: 28px;">និទ្ទេស</th>
+                <th style="width: 40px;" class="col-annual col-annual-avg text-success"><span class="lang-kh">ម.ឆ្នាំ</span><span class="lang-en">Ann.Avg</span></th>
+                <th style="width: 28px;" class="col-annual col-annual-letter"><span class="lang-kh">និទ្ទេស</span><span class="lang-en">Grade</span></th>
             </tr>
         </thead>
         <tbody>
             {% for row in book.subject_rows %}
             <tr>
                 <td>{{ row.no }}</td>
-                <td class="text-start fw-bold">{{ row.name_kh }}</td>
-                <td class="text-muted">{{ row.max_score|floatformat:0 }}</td>
+                <td class="text-start fw-bold">
+                    <span class="lang-kh">{{ row.name_kh }}</span>
+                    <span class="lang-en">{{ row.name_en|default:row.name_kh }}</span>
+                </td>
+                <td class="text-muted">{{ row.max_score|clean_score }}</td>
 
-                <!-- S1 Monthly -->
+                <!-- S1 Monthly Scores -->
                 {% for m_sc in row.s1_monthly_scores %}
-                <td>{% if m_sc.score is not None %}{{ m_sc.score|floatformat:1 }}{% else %}-{% endif %}</td>
+                <td class="col-s1-m col-s1">{{ m_sc.score|clean_score }}</td>
                 {% empty %}
-                <td>-</td>
+                <td class="col-s1-m col-s1">-</td>
                 {% endfor %}
-                <td>{% if row.s1_monthly_avg is not None %}{{ row.s1_monthly_avg|floatformat:1 }}{% else %}-{% endif %}</td>
-                <td>{% if row.s1_exam_score is not None %}{{ row.s1_exam_score|floatformat:1 }}{% else %}-{% endif %}</td>
-                <td class="fw-bold text-primary">{% if row.s1_final_score is not None %}{{ row.s1_final_score|floatformat:1 }}{% else %}-{% endif %}</td>
+                <td class="col-s1-m-avg col-s1">{{ row.s1_monthly_avg|clean_score }}</td>
+                <td class="col-s1-exam col-s1">{{ row.s1_exam_score|clean_score }}</td>
+                <td class="col-s1-final col-s1 fw-bold text-primary">{{ row.s1_final_score|clean_score }}</td>
 
-                <!-- S2 Monthly -->
+                <!-- S2 Monthly Scores -->
                 {% for m_sc in row.s2_monthly_scores %}
-                <td>{% if m_sc.score is not None %}{{ m_sc.score|floatformat:1 }}{% else %}-{% endif %}</td>
+                <td class="col-s2-m col-s2">{{ m_sc.score|clean_score }}</td>
                 {% empty %}
-                <td>-</td>
+                <td class="col-s2-m col-s2">-</td>
                 {% endfor %}
-                <td>{% if row.s2_monthly_avg is not None %}{{ row.s2_monthly_avg|floatformat:1 }}{% else %}-{% endif %}</td>
-                <td>{% if row.s2_exam_score is not None %}{{ row.s2_exam_score|floatformat:1 }}{% else %}-{% endif %}</td>
-                <td class="fw-bold text-primary">{% if row.s2_final_score is not None %}{{ row.s2_final_score|floatformat:1 }}{% else %}-{% endif %}</td>
+                <td class="col-s2-m-avg col-s2">{{ row.s2_monthly_avg|clean_score }}</td>
+                <td class="col-s2-exam col-s2">{{ row.s2_exam_score|clean_score }}</td>
+                <td class="col-s2-final col-s2 fw-bold text-primary">{{ row.s2_final_score|clean_score }}</td>
 
-                <!-- Annual -->
-                <td class="fw-bold text-success">{% if row.annual_final_score is not None %}{{ row.annual_final_score|floatformat:1 }}{% else %}-{% endif %}</td>
-                <td class="fw-bold">
+                <!-- Annual Scores -->
+                <td class="col-annual col-annual-avg fw-bold text-success">{{ row.annual_final_score|clean_score }}</td>
+                <td class="col-annual col-annual-letter fw-bold">
                     <span class="badge-letter {% if row.annual_letter == 'A' %}badge-a{% elif row.annual_letter == 'F' %}badge-f{% else %}badge-c{% endif %}">
                         {{ row.annual_letter }}
                     </span>
@@ -425,53 +711,92 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="15" class="py-3 text-muted">មិនទាន់មានទិន្នន័យមុខវិជ្ជាត្រូវបានកំណត់ឡើយ</td>
+                <td colspan="30" class="py-3 text-muted">
+                    <span class="lang-kh">មិនទាន់មានទិន្នន័យមុខវិជ្ជាត្រូវបានកំណត់ឡើយ</span>
+                    <span class="lang-en">No subject rules configured yet</span>
+                </td>
             </tr>
             {% endfor %}
 
-            <!-- Summary Rows -->
+            <!-- Summary Row 1: Average /100 -->
             <tr class="row-summary">
-                <td colspan="3" class="text-start fw-bold text-primary">មធ្យមភាគសរុប (Average /100)</td>
-                <!-- S1 Avg span -->
-                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold text-primary">
+                <td colspan="3" class="text-start fw-bold text-primary">
+                    <span class="lang-kh">មធ្យមភាគសរុប (១០០)</span>
+                    <span class="lang-en">Overall Average (/100)</span>
+                </td>
+                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s1 fw-bold text-primary">
                     {% if book.s1_overall.final_average is not None %}
-                        {{ book.s1_overall.final_average|floatformat:2 }}% ({{ book.s1_overall.average_10|floatformat:2 }}/10)
+                        {{ book.s1_overall.final_average|clean_score }}%
                     {% else %}-{% endif %}
                 </td>
-                <!-- S2 Avg span -->
-                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold text-primary">
+                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s2 fw-bold text-primary">
                     {% if book.s2_overall.final_average is not None %}
-                        {{ book.s2_overall.final_average|floatformat:2 }}% ({{ book.s2_overall.average_10|floatformat:2 }}/10)
+                        {{ book.s2_overall.final_average|clean_score }}%
                     {% else %}-{% endif %}
                 </td>
-                <!-- Annual Avg -->
-                <td class="fw-bold text-success" style="font-size: 10px;">
-                    {% if book.annual_overall.annual_average is not None %}{{ book.annual_overall.annual_average|floatformat:2 }}{% else %}-{% endif %}
+                <td class="col-annual col-annual-avg fw-bold text-success" style="font-size: 10px;">
+                    {% if book.annual_overall.annual_average is not None %}{{ book.annual_overall.annual_average|clean_score }}%{% else %}-{% endif %}
                 </td>
-                <td class="fw-bold text-success">{{ book.annual_overall.letter }}</td>
+                <td class="col-annual col-annual-letter fw-bold text-success">{{ book.annual_overall.letter|default:"-" }}</td>
             </tr>
+
+            <!-- Summary Row 2: Class Rank -->
             <tr class="row-summary">
-                <td colspan="3" class="text-start fw-bold">ចំណាត់ថ្នាក់ក្នុងថ្នាក់ (Rank in Room)</td>
-                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold">
-                    លេខ <strong>{{ book.s1_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}
+                <td colspan="3" class="text-start fw-bold">
+                    <span class="lang-kh">ចំណាត់ថ្នាក់ក្នុងថ្នាក់</span>
+                    <span class="lang-en">Class Rank</span>
                 </td>
-                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold">
-                    លេខ <strong>{{ book.s2_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}
+                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s1 fw-bold">
+                    <span class="lang-kh">លេខ <strong>{{ book.s1_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.s1_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
                 </td>
-                <td colspan="2" class="fw-bold text-success">
-                    លេខ <strong>{{ book.annual_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}
+                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s2 fw-bold">
+                    <span class="lang-kh">លេខ <strong>{{ book.s2_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.s2_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
+                </td>
+                <td colspan="2" class="col-annual fw-bold text-success">
+                    <span class="lang-kh">លេខ <strong>{{ book.annual_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.annual_overall.rank|default:"-" }}</strong> / {{ book.total_class_students }}</span>
                 </td>
             </tr>
+
+            <!-- Summary Row 3: Grade-Level Rank (ចំណាត់ថ្នាក់ក្នុងកម្រិតថ្នាក់) -->
+            <tr class="row-summary" style="background-color: #f0fdf4;">
+                <td colspan="3" class="text-start fw-bold text-success">
+                    <span class="lang-kh">ចំណាត់ថ្នាក់ក្នុងកម្រិតថ្នាក់</span>
+                    <span class="lang-en">Grade-Level Rank</span>
+                </td>
+                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s1 fw-bold text-success">
+                    <span class="lang-kh">លេខ <strong>{{ book.s1_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.s1_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                </td>
+                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s2 fw-bold text-success">
+                    <span class="lang-kh">លេខ <strong>{{ book.s2_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.s2_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                </td>
+                <td colspan="2" class="col-annual fw-bold text-success">
+                    <span class="lang-kh">លេខ <strong>{{ book.annual_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                    <span class="lang-en">No. <strong>{{ book.annual_overall.grade_rank|default:"-" }}</strong> / {{ book.total_grade_students }}</span>
+                </td>
+            </tr>
+
+            <!-- Summary Row 4: Letter Grade (និទ្ទេសរួម) -->
             <tr class="row-summary">
-                <td colspan="3" class="text-start fw-bold">និទ្ទេសរួម (Letter Grade)</td>
-                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold text-primary">
-                    និទ្ទេស «{{ book.s1_overall.letter|default:"-" }}»
+                <td colspan="3" class="text-start fw-bold">
+                    <span class="lang-kh">និទ្ទេសរួម</span>
+                    <span class="lang-en">Letter Grade</span>
                 </td>
-                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="fw-bold text-primary">
-                    និទ្ទេស «{{ book.s2_overall.letter|default:"-" }}»
+                <td colspan="{% if book.s1_monthly_terms %}{{ book.s1_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s1 fw-bold text-primary">
+                    <span class="lang-kh">និទ្ទេស «{{ book.s1_overall.letter|default:"-" }}»</span>
+                    <span class="lang-en">Grade {{ book.s1_overall.letter|default:"-" }}</span>
                 </td>
-                <td colspan="2" class="fw-bold text-success">
-                    និទ្ទេស «{{ book.annual_overall.letter|default:"-" }}»
+                <td colspan="{% if book.s2_monthly_terms %}{{ book.s2_monthly_terms|length|add:3 }}{% else %}4{% endif %}" class="col-s2 fw-bold text-primary">
+                    <span class="lang-kh">និទ្ទេស «{{ book.s2_overall.letter|default:"-" }}»</span>
+                    <span class="lang-en">Grade {{ book.s2_overall.letter|default:"-" }}</span>
+                </td>
+                <td colspan="2" class="col-annual fw-bold text-success">
+                    <span class="lang-kh">និទ្ទេស «{{ book.annual_overall.letter|default:"-" }}»</span>
+                    <span class="lang-en">Grade {{ book.annual_overall.letter|default:"-" }}</span>
                 </td>
             </tr>
         </tbody>
@@ -479,105 +804,206 @@
 
     <!-- 3. Monthly Attendance Record -->
     <div class="section-header">
-        <span><i class="fa-solid fa-clipboard-user me-1"></i> ផ្នែកទី ២៖ កំណត់ត្រាវត្តមាន និងអវត្តមានសិស្សប្រចាំខែ (Monthly Attendance & Absence Register)</span>
-        <span class="small fw-normal">អត្រាវត្តមានប្រចាំឆ្នាំ៖ <strong class="text-success">{{ book.annual_att_totals.attendance_rate }}%</strong></span>
+        <span>
+            <i class="fa-solid fa-clipboard-user me-1"></i>
+            <span class="lang-kh">ផ្នែកទី ២៖ កំណត់ត្រាវត្តមាន និងអវត្តមានសិស្សប្រចាំខែ</span>
+            <span class="lang-en">Part 2: Monthly Attendance & Absence Register</span>
+        </span>
+        <span class="small fw-normal">
+            <span class="scope-title-annual">
+                <span class="lang-kh">អត្រាវត្តមានប្រចាំឆ្នាំ៖ <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-en">Annual Attendance Rate: <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+            </span>
+            <span class="scope-title-s1">
+                <span class="lang-kh">អត្រាវត្តមានឆមាសទី ១៖ <strong class="text-primary">{{ book.s1_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-en">Semester 1 Rate: <strong class="text-primary">{{ book.s1_att_totals.attendance_rate|clean_pct }}</strong></span>
+            </span>
+            <span class="scope-title-s2">
+                <span class="lang-kh">អត្រាវត្តមានឆមាសទី ២៖ <strong class="text-info">{{ book.s2_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-en">Semester 2 Rate: <strong class="text-info">{{ book.s2_att_totals.attendance_rate|clean_pct }}</strong></span>
+            </span>
+            <span class="scope-title-monthly">
+                <span class="lang-kh">អត្រាវត្តមានសរុប៖ <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+                <span class="lang-en">Total Attendance Rate: <strong class="text-success">{{ book.annual_att_totals.attendance_rate|clean_pct }}</strong></span>
+            </span>
+        </span>
     </div>
 
     <table class="table-matrix">
         <thead>
             <tr>
-                <th>ខែសិក្សា</th>
-                <th>តុលា</th>
-                <th>វិច្ឆិកា</th>
-                <th>ធ្នូ</th>
-                <th>មករា</th>
-                <th>កុម្ភៈ</th>
-                <th class="table-primary">សរុប ឆ.១</th>
-                <th>មីនា</th>
-                <th>មេសា</th>
-                <th>ឧសភា</th>
-                <th>មិថុនា</th>
-                <th>កក្កដា</th>
-                <th class="table-primary">សរុប ឆ.២</th>
-                <th class="table-success">សរុបពេញមួយឆ្នាំ</th>
+                <th>
+                    <span class="lang-kh">ខែសិក្សា</span>
+                    <span class="lang-en">Month</span>
+                </th>
+                {% for rec in book.s1_attendance_records %}
+                <th class="col-att-s1">
+                    <span class="lang-kh">{{ rec.name_kh }}</span>
+                    <span class="lang-en">{{ rec.name_en }}</span>
+                </th>
+                {% empty %}
+                <th class="col-att-s1"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                {% endfor %}
+                <th class="col-att-s1 table-primary">
+                    <span class="lang-kh">សរុប ឆ.១</span>
+                    <span class="lang-en">Total S1</span>
+                </th>
+                {% for rec in book.s2_attendance_records %}
+                <th class="col-att-s2">
+                    <span class="lang-kh">{{ rec.name_kh }}</span>
+                    <span class="lang-en">{{ rec.name_en }}</span>
+                </th>
+                {% empty %}
+                <th class="col-att-s2"><span class="lang-kh">ម.ខែ</span><span class="lang-en">Mo.</span></th>
+                {% endfor %}
+                <th class="col-att-s2 table-primary">
+                    <span class="lang-kh">សរុប ឆ.២</span>
+                    <span class="lang-en">Total S2</span>
+                </th>
+                <th class="col-att-annual table-success">
+                    <span class="lang-kh">សរុបពេញមួយឆ្នាំ</span>
+                    <span class="lang-en">Annual Total</span>
+                </th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td class="fw-bold text-start">វត្តមាន (ថ្ងៃ)</td>
-                {% for rec in book.monthly_attendance_records|slice:":5" %}
-                <td>{{ rec.present }}</td>
+                <td class="fw-bold text-start">
+                    <span class="lang-kh">វត្តមាន (ដង)</span>
+                    <span class="lang-en">Present (Times)</span>
+                </td>
+                {% for rec in book.s1_attendance_records %}
+                <td class="col-att-s1">{{ rec.present }}</td>
+                {% empty %}
+                <td class="col-att-s1">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary">{{ book.s1_att_totals.present }}</td>
-                {% for rec in book.monthly_attendance_records|slice:"5:" %}
-                <td>{{ rec.present }}</td>
+                <td class="col-att-s1 fw-bold table-primary">{{ book.s1_att_totals.present }}</td>
+                {% for rec in book.s2_attendance_records %}
+                <td class="col-att-s2">{{ rec.present }}</td>
+                {% empty %}
+                <td class="col-att-s2">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary">{{ book.s2_att_totals.present }}</td>
-                <td class="fw-bold table-success">{{ book.annual_att_totals.present }}</td>
+                <td class="col-att-s2 fw-bold table-primary">{{ book.s2_att_totals.present }}</td>
+                <td class="col-att-annual fw-bold table-success">{{ book.annual_att_totals.present }}</td>
             </tr>
             <tr>
-                <td class="text-start">អវត្តមានមានច្បាប់ (P)</td>
-                {% for rec in book.monthly_attendance_records|slice:":5" %}
-                <td>{{ rec.excused }}</td>
+                <td class="text-start">
+                    <span class="lang-kh">អវត្តមានមានច្បាប់ (ដង)</span>
+                    <span class="lang-en">Excused Absence (Times)</span>
+                </td>
+                {% for rec in book.s1_attendance_records %}
+                <td class="col-att-s1">{{ rec.excused }}</td>
+                {% empty %}
+                <td class="col-att-s1">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary">{{ book.s1_att_totals.excused }}</td>
-                {% for rec in book.monthly_attendance_records|slice:"5:" %}
-                <td>{{ rec.excused }}</td>
+                <td class="col-att-s1 fw-bold table-primary">{{ book.s1_att_totals.excused }}</td>
+                {% for rec in book.s2_attendance_records %}
+                <td class="col-att-s2">{{ rec.excused }}</td>
+                {% empty %}
+                <td class="col-att-s2">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary">{{ book.s2_att_totals.excused }}</td>
-                <td class="fw-bold table-success">{{ book.annual_att_totals.excused }}</td>
+                <td class="col-att-s2 fw-bold table-primary">{{ book.s2_att_totals.excused }}</td>
+                <td class="col-att-annual fw-bold table-success">{{ book.annual_att_totals.excused }}</td>
             </tr>
             <tr>
-                <td class="text-start text-danger">អវត្តមានឥតច្បាប់ (A)</td>
-                {% for rec in book.monthly_attendance_records|slice:":5" %}
-                <td class="{% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                <td class="text-start text-danger">
+                    <span class="lang-kh">អវត្តមានឥតច្បាប់ (ដង)</span>
+                    <span class="lang-en">Unexcused Absence (Times)</span>
+                </td>
+                {% for rec in book.s1_attendance_records %}
+                <td class="col-att-s1 {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                {% empty %}
+                <td class="col-att-s1">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary text-danger">{{ book.s1_att_totals.unexcused }}</td>
-                {% for rec in book.monthly_attendance_records|slice:"5:" %}
-                <td class="{% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                <td class="col-att-s1 fw-bold table-primary text-danger">{{ book.s1_att_totals.unexcused }}</td>
+                {% for rec in book.s2_attendance_records %}
+                <td class="col-att-s2 {% if rec.unexcused > 0 %}text-danger fw-bold{% endif %}">{{ rec.unexcused }}</td>
+                {% empty %}
+                <td class="col-att-s2">0</td>
                 {% endfor %}
-                <td class="fw-bold table-primary text-danger">{{ book.s2_att_totals.unexcused }}</td>
-                <td class="fw-bold table-success text-danger">{{ book.annual_att_totals.unexcused }}</td>
+                <td class="col-att-s2 fw-bold table-primary text-danger">{{ book.s2_att_totals.unexcused }}</td>
+                <td class="col-att-annual fw-bold table-success text-danger">{{ book.annual_att_totals.unexcused }}</td>
             </tr>
             <tr class="fw-bold bg-light">
-                <td class="text-start">សរុបអវត្តមាន (ថ្ងៃ)</td>
-                {% for rec in book.monthly_attendance_records|slice:":5" %}
-                <td>{{ rec.total_absent }}</td>
+                <td class="text-start">
+                    <span class="lang-kh">សរុបអវត្តមាន (ដង)</span>
+                    <span class="lang-en">Total Absent (Times)</span>
+                </td>
+                {% for rec in book.s1_attendance_records %}
+                <td class="col-att-s1">{{ rec.total_absent }}</td>
+                {% empty %}
+                <td class="col-att-s1">0</td>
                 {% endfor %}
-                <td class="table-primary">{{ book.s1_att_totals.total_absent }}</td>
-                {% for rec in book.monthly_attendance_records|slice:"5:" %}
-                <td>{{ rec.total_absent }}</td>
+                <td class="col-att-s1 table-primary">{{ book.s1_att_totals.total_absent }}</td>
+                {% for rec in book.s2_attendance_records %}
+                <td class="col-att-s2">{{ rec.total_absent }}</td>
+                {% empty %}
+                <td class="col-att-s2">0</td>
                 {% endfor %}
-                <td class="table-primary">{{ book.s2_att_totals.total_absent }}</td>
-                <td class="table-success">{{ book.annual_att_totals.total_absent }}</td>
+                <td class="col-att-s2 table-primary">{{ book.s2_att_totals.total_absent }}</td>
+                <td class="col-att-annual table-success">{{ book.annual_att_totals.total_absent }}</td>
             </tr>
         </tbody>
     </table>
 
     <!-- 4. Conduct & Moral Assessment -->
     <div class="section-header">
-        <span><i class="fa-solid fa-award me-1"></i> ផ្នែកទី ៣៖ ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ និងគុណវុឌ្ឍិ (Conduct & Moral Assessment)</span>
-        <span class="small fw-normal">មារយាទប្រចាំឆ្នាំ៖ <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+        <span>
+            <i class="fa-solid fa-award me-1"></i>
+            <span class="lang-kh">ផ្នែកទី ៣៖ ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ និងគុណវុឌ្ឍិ</span>
+            <span class="lang-en">Part 3: Conduct, Ethics & Moral Rubrics</span>
+        </span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="small fw-normal">
+                <span class="lang-kh">មារយាទប្រចាំឆ្នាំ៖ <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+                <span class="lang-en">Annual Conduct: <strong class="text-primary">{{ book.conduct_annual }}</strong></span>
+            </span>
+            {% if book.classroom %}
+            <a href="{% url 'homeroom_conduct_assessment' book.classroom.id %}" target="_blank" class="btn btn-xs btn-outline-primary no-print" style="font-size: 9px; padding: 1px 6px;">
+                <i class="fa-solid fa-pen-to-square me-1"></i>
+                <span class="lang-kh">វាយតម្លៃ</span>
+                <span class="lang-en">Assess</span>
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <table class="table-matrix">
         <thead>
             <tr>
-                <th style="width: 35px;">ល.រ</th>
-                <th class="text-start">លក្ខណៈវិនិច្ឆ័យវាយតម្លៃ (MoEYS Evaluation Criteria)</th>
-                <th style="width: 100px;">ឆមាសទី ១</th>
-                <th style="width: 100px;">ឆមាសទី ២</th>
-                <th style="width: 120px;" class="table-success">ប្រចាំឆ្នាំ (Annual)</th>
+                <th style="width: 35px;">
+                    <span class="lang-kh">ល.រ</span>
+                    <span class="lang-en">No.</span>
+                </th>
+                <th class="text-start">
+                    <span class="lang-kh">លក្ខណៈវិនិច្ឆ័យវាយតម្លៃ</span>
+                    <span class="lang-en">Evaluation Criteria</span>
+                </th>
+                <th style="width: 100px;" class="col-s1">
+                    <span class="lang-kh">ឆមាសទី ១</span>
+                    <span class="lang-en">Semester 1</span>
+                </th>
+                <th style="width: 100px;" class="col-s2">
+                    <span class="lang-kh">ឆមាសទី ២</span>
+                    <span class="lang-en">Semester 2</span>
+                </th>
+                <th style="width: 120px;" class="col-annual table-success">
+                    <span class="lang-kh">ប្រចាំឆ្នាំ</span>
+                    <span class="lang-en">Annual</span>
+                </th>
             </tr>
         </thead>
         <tbody>
             {% for cr in book.conduct_criteria %}
             <tr>
                 <td>{{ cr.no }}</td>
-                <td class="text-start">{{ cr.name_kh }}</td>
-                <td class="fw-bold text-primary">{{ cr.s1 }}</td>
-                <td class="fw-bold text-primary">{{ cr.s2 }}</td>
-                <td class="fw-bold text-success table-success">{{ cr.ann }}</td>
+                <td class="text-start">
+                    <span class="lang-kh">{{ cr.name_kh }}</span>
+                    <span class="lang-en">{{ cr.name_en }}</span>
+                </td>
+                <td class="col-s1 fw-bold text-primary">{{ cr.s1 }}</td>
+                <td class="col-s2 fw-bold text-primary">{{ cr.s2 }}</td>
+                <td class="col-annual fw-bold text-success table-success">{{ cr.ann }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -585,77 +1011,163 @@
 
     <!-- 5. Parent-Teacher Communication & Comments -->
     <div class="section-header">
-        <span><i class="fa-solid fa-comments me-1"></i> ផ្នែកទី ៤៖ មតិយោបល់ និងការតាមដានរវាងគ្រូ និងមាតាបិតា/អាណាព្យាបាល (Communication & Signatures)</span>
+        <span>
+            <i class="fa-solid fa-comments me-1"></i>
+            <span class="lang-kh">ផ្នែកទី ៤៖ មតិយោបល់ និងការតាមដានរវាងគ្រូ និងមាតាបិតា/អាណាព្យាបាល</span>
+            <span class="lang-en">Part 4: Homeroom Teacher & Parent Communication</span>
+        </span>
+        {% if book.classroom %}
+        <a href="{% url 'homeroom_conduct_assessment' book.classroom.id %}" target="_blank" class="btn btn-xs btn-outline-primary no-print" style="font-size: 9px; padding: 1px 6px;">
+            <i class="fa-solid fa-pen-to-square me-1"></i>
+            <span class="lang-kh">បញ្ចូលមតិ</span>
+            <span class="lang-en">Add Feedback</span>
+        </a>
+        {% endif %}
     </div>
 
     <div class="row g-2 mb-2">
-        <div class="col-6">
+        <!-- Semester 1 Review -->
+        <div class="col-6 col-s1-review">
             <div class="signature-box">
                 <div class="fw-bold text-primary border-bottom pb-1 mb-1">
-                    <i class="fa-regular fa-calendar-check me-1"></i> ការតាមដានឆមាសទី ១ (Semester 1 Review)
+                    <i class="fa-regular fa-calendar-check me-1"></i>
+                    <span class="lang-kh">ការតាមដានឆមាសទី ១</span>
+                    <span class="lang-en">Semester 1 Review</span>
                 </div>
                 <div class="small" style="line-height: 1.5;">
-                    <div>• <strong>មតិគ្រូទទួលបន្ទុកថ្នាក់៖</strong> <span>សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។</span></div>
-                    <div class="text-end mt-2">ហត្ថលេខាគ្រូ៖ .................................</div>
+                    <div>
+                        • <strong>
+                            <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
+                            <span class="lang-en">Homeroom Teacher's Feedback:</span>
+                        </strong>
+                        <span class="text-dark">{{ book.teacher_comment_s1|default:"សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។" }}</span>
+                    </div>
+                    <div class="text-end mt-2">
+                        <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
+                        <span class="lang-en">Teacher's Signature: .................................</span>
+                    </div>
                     <hr class="my-1">
-                    <div>• <strong>មតិមាតាបិតា/អាណាព្យាបាល៖</strong> <span>បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។</span></div>
-                    <div class="text-end mt-2">ហត្ថលេខាអាណាព្យាបាល៖ .................................</div>
+                    <div>
+                        • <strong>
+                            <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
+                            <span class="lang-en">Parent/Guardian's Feedback:</span>
+                        </strong>
+                        <span class="text-dark">{{ book.parent_comment_s1|default:"បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។" }}</span>
+                    </div>
+                    <div class="text-end mt-2">
+                        <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
+                        <span class="lang-en">Parent's Signature: .................................</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-6">
+
+        <!-- Semester 2 Review -->
+        <div class="col-6 col-s2-review">
             <div class="signature-box">
                 <div class="fw-bold text-primary border-bottom pb-1 mb-1">
-                    <i class="fa-regular fa-calendar-check me-1"></i> ការតាមដានឆមាសទី ២ (Semester 2 Review)
+                    <i class="fa-regular fa-calendar-check me-1"></i>
+                    <span class="lang-kh">ការតាមដានឆមាសទី ២</span>
+                    <span class="lang-en">Semester 2 Review</span>
                 </div>
                 <div class="small" style="line-height: 1.5;">
-                    <div>• <strong>មតិគ្រូទទួលបន្ទុកថ្នាក់៖</strong> <span>សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។</span></div>
-                    <div class="text-end mt-2">ហត្ថលេខាគ្រូ៖ .................................</div>
+                    <div>
+                        • <strong>
+                            <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
+                            <span class="lang-en">Homeroom Teacher's Feedback:</span>
+                        </strong>
+                        <span class="text-dark">{{ book.teacher_comment_s2|default:"សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។" }}</span>
+                    </div>
+                    <div class="text-end mt-2">
+                        <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
+                        <span class="lang-en">Teacher's Signature: .................................</span>
+                    </div>
                     <hr class="my-1">
-                    <div>• <strong>មតិមាតាបិតា/អាណាព្យាបាល៖</strong> <span>សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។</span></div>
-                    <div class="text-end mt-2">ហត្ថលេខាអាណាព្យាបាល៖ .................................</div>
+                    <div>
+                        • <strong>
+                            <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
+                            <span class="lang-en">Parent/Guardian's Feedback:</span>
+                        </strong>
+                        <span class="text-dark">{{ book.parent_comment_s2|default:"សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។" }}</span>
+                    </div>
+                    <div class="text-end mt-2">
+                        <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
+                        <span class="lang-en">Parent's Signature: .................................</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 6. Official Annual Promotion Decision & Seals -->
-    <div class="border-2 border rounded-3 p-2.5 bg-light mt-2">
+    <div class="border-2 border rounded-3 p-2.5 bg-light mt-2 col-annual">
         <div class="row align-items-center">
             <div class="col-12 text-center pb-2 border-bottom mb-2">
-                <div class="font-moul text-dark" style="font-size: 11pt;">សេចក្តីសម្រេចរបស់ក្រុមប្រឹក្សាវិន័យ និងគរុកោសល្យចុងឆ្នាំ</div>
+                <div class="font-moul text-dark" style="font-size: 11pt;">
+                    <span class="lang-kh">សេចក្តីសម្រេចរបស់ក្រុមប្រឹក្សាវិន័យ និងគរុកោសល្យចុងឆ្នាំ</span>
+                    <span class="lang-en">Annual Academic Council & Promotion Decision</span>
+                </div>
                 <div class="fw-bold fs-6 mt-1 {% if book.annual_overall.passed %}text-success{% else %}text-danger{% endif %}">
-                    លទ្ធផល៖ {{ book.annual_overall.decision_kh }}
-                    {% if book.annual_overall.passed %}
-                    (ជាប់ជាស្ថាពរ ដោយទទួលបានមធ្យមភាគប្រចាំឆ្នាំ {{ book.annual_overall.annual_average|floatformat:2 }} និទ្ទេស {{ book.annual_overall.letter }})
-                    {% else %}
-                    (មិនទាន់គ្រប់លក្ខខណ្ឌឡើងថ្នាក់ ដោយសារមធ្យមភាគក្រោម ៥០)
-                    {% endif %}
+                    <span class="lang-kh">
+                        លទ្ធផល៖ {{ book.annual_overall.decision_kh }}
+                        {% if book.annual_overall.passed %}
+                        (ជាប់ជាស្ថាពរ ដោយទទួលបានមធ្យមភាគប្រចាំឆ្នាំ {{ book.annual_overall.annual_average|clean_score }}% និទ្ទេស {{ book.annual_overall.letter }})
+                        {% else %}
+                        (មិនទាន់គ្រប់លក្ខខណ្ឌឡើងថ្នាក់ ដោយសារមធ្យមភាគក្រោម ៥០)
+                        {% endif %}
+                    </span>
+                    <span class="lang-en">
+                        Result: {{ book.annual_overall.decision_en }}
+                        {% if book.annual_overall.passed %}
+                        (Successfully passed with Annual Average {{ book.annual_overall.annual_average|clean_score }}%, Grade {{ book.annual_overall.letter }})
+                        {% else %}
+                        (Retained due to Annual Average below 50%)
+                        {% endif %}
+                    </span>
                 </div>
             </div>
 
             <div class="col-4 text-center">
-                <div class="fw-bold text-dark">គ្រូទទួលបន្ទុកថ្នាក់</div>
-                <div class="small text-muted">បានពិនិត្យ និងវាយតម្លៃត្រឹមត្រូវ</div>
+                <div class="fw-bold text-dark">
+                    <span class="lang-kh">គ្រូទទួលបន្ទុកថ្នាក់</span>
+                    <span class="lang-en">Homeroom Teacher</span>
+                </div>
+                <div class="small text-muted">
+                    <span class="lang-kh">បានពិនិត្យ និងវាយតម្លៃត្រឹមត្រូវ</span>
+                    <span class="lang-en">Reviewed & Approved</span>
+                </div>
                 <div style="height: 48px;"></div>
                 <div class="fw-bold text-primary">{{ book.homeroom_teacher.khmer_name|default:".........................................." }}</div>
             </div>
 
             <div class="col-4 text-center">
-                <div class="fw-bold text-dark">ប្រធានការិយាល័យសិក្សា</div>
-                <div class="small text-muted">បានផ្ទៀងផ្ទាត់បញ្ជីពិន្ទុ និងវត្តមាន</div>
+                <div class="fw-bold text-dark">
+                    <span class="lang-kh">ប្រធានការិយាល័យសិក្សា</span>
+                    <span class="lang-en">Director of Academic Affairs</span>
+                </div>
+                <div class="small text-muted">
+                    <span class="lang-kh">បានផ្ទៀងផ្ទាត់បញ្ជីពិន្ទុ និងវត្តមាន</span>
+                    <span class="lang-en">Verified Records & Attendance</span>
+                </div>
                 <div style="height: 48px;"></div>
                 <div class="fw-bold">..........................................</div>
             </div>
 
             <div class="col-4 text-center">
-                <div>ថ្ងៃទី..........ខែ.............ឆ្នាំ២០២...</div>
-                <div class="font-moul text-primary mt-0.5" style="font-size: 10.5pt;">នាយកសាលា</div>
+                <div>
+                    <span class="lang-kh">ថ្ងៃទី..........ខែ.............ឆ្នាំ២០២...</span>
+                    <span class="lang-en">Date: ..... / ..... / 202...</span>
+                </div>
+                <div class="font-moul text-primary mt-0.5" style="font-size: 10.5pt;">
+                    <span class="lang-kh">នាយកសាលា</span>
+                    <span class="lang-en">Principal</span>
+                </div>
                 <div class="seal-circle">
                     {% if book.school_profile.seal %}
                         <img src="{{ book.school_profile.seal.url }}" alt="Seal" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                     {% else %}
-                        [ ត្រាសាលា ]
+                        <span class="lang-kh">[ ត្រាសាលា ]</span>
+                        <span class="lang-en">[ School Seal ]</span>
                     {% endif %}
                 </div>
                 <div class="fw-bold">{{ book.school_profile.principal_name|default:"លោកបណ្ឌិត សុខ ចាន់ថន" }}</div>
@@ -663,7 +1175,134 @@
         </div>
     </div>
 </div>
+{% empty %}
+<div class="container text-center py-5 no-print" style="margin-top: 100px;">
+    <div class="card shadow-sm p-5 border-0 mx-auto" style="max-width: 650px; border-radius: 1.25rem; background: #fff;">
+        <div class="rounded-circle bg-warning-subtle text-warning mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+            <i class="fa-solid fa-triangle-exclamation fs-2"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">
+            <span class="lang-kh">មិនទាន់មានទិន្នន័យសិស្សឡើយ</span>
+            <span class="lang-en">No Student Records Found</span>
+        </h4>
+        <p class="text-muted mb-4">
+            {% if classroom %}
+            <span class="lang-kh">ថ្នាក់រៀន <strong>«{{ classroom.name }}»</strong> មិនទាន់មានសិស្សកំពុងសិក្សា (ACTIVE) សម្រាប់ចេញសៀវភៅតាមដានការសិក្សានៅឡើយទេ។</span>
+            <span class="lang-en">Classroom <strong>"{{ classroom.name }}"</strong> has no active students for tracking books.</span>
+            {% else %}
+            <span class="lang-kh">មិនមានទិន្នន័យសៀវភៅតាមដានការសិក្សាសម្រាប់សិស្សនេះឡើយ។</span>
+            <span class="lang-en">No study tracking data available for this student.</span>
+            {% endif %}
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="{% url 'academic_booklets_hub' %}" onclick="smartGoBack(event);" class="btn btn-primary fw-semibold px-4">
+                <i class="fa-solid fa-arrow-left me-1"></i>
+                <span class="lang-kh">ត្រឡប់ទៅមជ្ឈមណ្ឌលសៀវភៅ</span>
+                <span class="lang-en">Back to Booklets Hub</span>
+            </a>
+            {% if classroom %}
+            <a href="{% url 'student_list' %}?classroom={{ classroom.id }}" class="btn btn-outline-secondary fw-semibold">
+                <i class="fa-solid fa-users me-1"></i>
+                <span class="lang-kh">ពិនិត្យបញ្ជីសិស្សក្នុងថ្នាក់</span>
+                <span class="lang-en">View Students</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endfor %}
+
+<script>
+function smartGoBack(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    try {
+        window.close();
+    } catch(e) {}
+
+    setTimeout(function() {
+        if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+            window.history.back();
+        } else {
+            window.location.href = "{% url 'academic_booklets_hub' %}";
+        }
+    }, 120);
+}
+
+function setLanguage(lang) {
+    const body = document.getElementById('trackingBody');
+    const btnKh = document.getElementById('btnLangKh');
+    const btnEn = document.getElementById('btnLangEn');
+
+    if (lang === 'en') {
+        body.classList.remove('lang-mode-kh');
+        body.classList.add('lang-mode-en');
+        if (btnEn) {
+            btnEn.className = 'btn btn-sm btn-primary fw-bold ms-1';
+        }
+        if (btnKh) {
+            btnKh.className = 'btn btn-sm btn-outline-secondary';
+        }
+    } else {
+        body.classList.remove('lang-mode-en');
+        body.classList.add('lang-mode-kh');
+        if (btnKh) {
+            btnKh.className = 'btn btn-sm btn-primary fw-bold';
+        }
+        if (btnEn) {
+            btnEn.className = 'btn btn-sm btn-outline-secondary ms-1';
+        }
+    }
+
+    try {
+        localStorage.setItem('schoolsm_tracking_lang', lang);
+    } catch(e) {}
+}
+
+function setTrackingScope(scope) {
+    const body = document.getElementById('trackingBody');
+    body.classList.remove('scope-annual', 'scope-semester_1', 'scope-semester_2', 'scope-monthly');
+    const btnAnnual = document.getElementById('btnScopeAnnual');
+    const btnS1 = document.getElementById('btnScopeS1');
+    const btnS2 = document.getElementById('btnScopeS2');
+    const btnMonthly = document.getElementById('btnScopeMonthly');
+
+    if (btnAnnual) btnAnnual.className = 'btn btn-sm btn-outline-success fw-bold';
+    if (btnS1) btnS1.className = 'btn btn-sm btn-outline-primary fw-bold';
+    if (btnS2) btnS2.className = 'btn btn-sm btn-outline-info fw-bold';
+    if (btnMonthly) btnMonthly.className = 'btn btn-sm btn-outline-warning text-dark fw-bold';
+
+    if (scope === 'SEMESTER_1') {
+        body.classList.add('scope-semester_1');
+        if (btnS1) btnS1.className = 'btn btn-sm btn-primary fw-bold shadow-sm';
+    } else if (scope === 'SEMESTER_2') {
+        body.classList.add('scope-semester_2');
+        if (btnS2) btnS2.className = 'btn btn-sm btn-info text-white fw-bold shadow-sm';
+    } else if (scope === 'MONTHLY') {
+        body.classList.add('scope-monthly');
+        if (btnMonthly) btnMonthly.className = 'btn btn-sm btn-warning text-dark fw-bold shadow-sm';
+    } else {
+        body.classList.add('scope-annual');
+        if (btnAnnual) btnAnnual.className = 'btn btn-sm btn-success fw-bold shadow-sm';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const initialPeriod = "{{ selected_period|default:'ANNUAL' }}";
+    setTrackingScope(initialPeriod);
+
+    let initialLang = "{{ selected_lang|default:'' }}";
+    if (!initialLang) {
+        try {
+            initialLang = localStorage.getItem('schoolsm_tracking_lang') || 'kh';
+        } catch(e) {
+            initialLang = 'kh';
+        }
+    }
+    setLanguage(initialLang);
+});
+</script>
 
 </body>
 </html>

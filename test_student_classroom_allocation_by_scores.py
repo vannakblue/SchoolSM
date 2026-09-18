@@ -45,9 +45,9 @@ def run_tests():
 
     # 3. Get existing classrooms in target year for Grade 7 (7A, 7B)
     cls_7a = Classroom.objects.filter(academic_year=ay_target, grade_level=7).first()
-    cls_7b = Classroom.objects.filter(academic_year=ay_target, grade_level=7).exclude(id=cls_7a.id).first()
     if not cls_7a:
         cls_7a = Classroom.objects.create(name='7A-TEST', code='7A-TEST', academic_year=ay_target, grade_level=7, capacity=25)
+    cls_7b = Classroom.objects.filter(academic_year=ay_target, grade_level=7).exclude(id=cls_7a.id).first()
     if not cls_7b:
         cls_7b = Classroom.objects.create(name='7B-TEST', code='7B-TEST', academic_year=ay_target, grade_level=7, capacity=25)
 

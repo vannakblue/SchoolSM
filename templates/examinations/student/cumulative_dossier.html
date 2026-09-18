@@ -14,6 +14,25 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
+        @font-face {
+            font-family: 'Khmer OS Muol Light';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'KhmerOSmuollight';
+            src: local('Khmer OS Muol Light'),
+                 local('KhmerOSmuollight'),
+                 url("{% static 'fonts/KhmerOSmuollight.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
         :root {
             --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
             --font-body: 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
@@ -209,12 +228,17 @@
 
 <!-- Floating Action Bar -->
 <div class="no-print d-flex gap-2 align-items-center">
+    {% if is_batch %}
+    <span class="badge bg-primary px-3 py-2 fs-6">
+        <i class="fa-solid fa-users me-1"></i> បោះពុម្ពជាបណ្តុំ៖ {{ dossier_list|length }} នាក់ {% if classroom %}(ថ្នាក់ {{ classroom.name }}){% endif %}
+    </span>
+    {% endif %}
     <button onclick="window.print()" class="btn btn-primary fw-bold px-4 shadow-sm">
         <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅសិក្ខាគារិក (Print A4)
     </button>
-    <button onclick="window.history.back()" class="btn btn-outline-secondary fw-bold shadow-sm">
+    <a href="{% url 'academic_booklets_hub' %}" onclick="smartGoBack(event);" class="btn btn-outline-secondary fw-bold shadow-sm" title="ថយក្រោយ / ត្រឡប់វិញ">
         <i class="fa-solid fa-arrow-left me-1"></i> ថយក្រោយ
-    </button>
+    </a>
 </div>
 
 {% for dossier in dossier_list %}
@@ -266,8 +290,10 @@
             <div class="col-10">
                 <table class="profile-table">
                     <tr>
-                        <td style="width: 16%;"><strong>គោត្តនាម-នាម៖</strong></td>
-                        <td style="width: 34%;" class="fw-bold fs-6 text-dark">{{ dossier.student.khmer_name }}</td>
+                        <td style="width: 16%;"><strong class="font-moul" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 10pt; font-weight: normal;">គោត្តនាម-នាម៖</strong></td>
+                        <td style="width: 34%;" class="text-dark">
+                            <span class="font-moul text-dark" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 11pt; font-weight: normal;">{{ dossier.student.khmer_name }}</span>
+                        </td>
                         <td style="width: 16%;"><strong>ឈ្មោះឡាតាំង៖</strong></td>
                         <td style="width: 34%;" class="fw-bold text-uppercase">{{ dossier.student.latin_name|default:"-" }}</td>
                     </tr>
@@ -400,9 +426,140 @@
         </tbody>
     </table>
 
-    <!-- Section 3: National Examinations -->
+    <!-- Section 3: Multi-Year Subject Performance Record (Grades 7 to 12) -->
     <div class="section-header">
-        <span><i class="fa-solid fa-stamp me-1"></i> ផ្នែកទី ៣៖ កំណត់ត្រាការប្រឡងសញ្ញាបត្រថ្នាក់ជាតិ (National Examination Records)</span>
+        <span><i class="fa-solid fa-book-bookmark me-1"></i> ផ្នែកទី ៣៖ តារាងពិន្ទុតាមមុខវិជ្ជាប្រចាំឆ្នាំ ពីថ្នាក់ទី ៧ ដល់ ទី ១២ (Annual Subject Performance Record: Grades 7 - 12)</span>
+        <span class="small fw-normal">ពិន្ទុ (Score) • ចំណាត់ថ្នាក់ (Rank) • និទ្ទេស (Grade)</span>
+    </div>
+
+    <table class="table-dossier table-subjects-matrix">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 24px;">ល.រ</th>
+                <th rowspan="2" style="min-width: 105px;">មុខវិជ្ជា (Subjects)</th>
+                {% for g_num in dossier.grade_numbers %}
+                <th colspan="3" class="{% if dossier.current_grade == g_num %}table-primary fw-bold text-primary{% endif %}">
+                    ថ្នាក់ទី {{ g_num }}
+                    {% if dossier.current_grade == g_num %}<span class="badge bg-success text-white p-0 px-1" style="font-size: 7.5px;">បច្ចុប្បន្ន</span>{% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for g_num in dossier.grade_numbers %}
+                <th style="width: 38px;">ពិន្ទុ</th>
+                <th style="width: 28px;">ច.ថ្នាក់</th>
+                <th style="width: 28px;">និទ្ទេស</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in dossier.cumulative_subjects %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td class="text-start fw-bold">{{ row.subject_name }}</td>
+                {% for cell in row.grade_cells %}
+                <td class="{% if cell.is_current %}grade-highlight-current{% elif cell.is_future %}table-light opacity-50{% endif %}">
+                    {% if cell.annual_score is not None %}
+                        {{ cell.annual_score|floatformat:1 }}
+                    {% elif cell.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="{% if cell.is_current %}grade-highlight-current{% elif cell.is_future %}table-light opacity-50{% endif %}">
+                    {% if cell.rank and cell.rank != '-' %}
+                        {{ cell.rank }}
+                    {% elif cell.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="{% if cell.is_current %}grade-highlight-current{% elif cell.is_future %}table-light opacity-50{% endif %} fw-bold">
+                    {% if cell.letter and cell.letter != '-' %}
+                        <span class="{% if cell.letter == 'A' %}text-success{% elif cell.letter == 'F' %}text-danger{% else %}text-dark{% endif %}">
+                            {{ cell.letter }}
+                        </span>
+                    {% elif cell.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="20" class="text-muted py-2">មិនទាន់មានទិន្នន័យពិន្ទុតាមមុខវិជ្ជាត្រូវបានបញ្ចូលឡើយ</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold bg-light">
+                <td colspan="2" class="text-start text-primary">ពិន្ទុសរុប (Total Score)</td>
+                {% for g_tot in dossier.cumulative_grade_totals %}
+                <td colspan="3" class="{% if g_tot.is_current %}table-primary fw-bold text-primary{% endif %}">
+                    {% if g_tot.total_score is not None %}
+                        {{ g_tot.total_score|floatformat:1 }}
+                    {% elif g_tot.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr class="fw-bold bg-light">
+                <td colspan="2" class="text-start text-primary">មធ្យមភាគប្រចាំឆ្នាំ (Annual Average)</td>
+                {% for g_tot in dossier.cumulative_grade_totals %}
+                <td colspan="3" class="{% if g_tot.is_current %}text-primary fw-bold{% endif %}">
+                    {% if g_tot.annual_average is not None %}
+                        {{ g_tot.annual_average|floatformat:2 }}
+                    {% elif g_tot.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr class="fw-bold bg-light">
+                <td colspan="2" class="text-start">ចំណាត់ថ្នាក់ទូទៅ (Overall Rank)</td>
+                {% for g_tot in dossier.cumulative_grade_totals %}
+                <td colspan="3" class="{% if g_tot.is_current %}fw-bold text-danger{% endif %}">
+                    {% if g_tot.rank and g_tot.rank != '-' %}
+                        {{ g_tot.rank }}
+                    {% elif g_tot.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr class="fw-bold bg-light">
+                <td colspan="2" class="text-start">និទ្ទេសរួម (Overall Grade)</td>
+                {% for g_tot in dossier.cumulative_grade_totals %}
+                <td colspan="3" class="{% if g_tot.is_current %}fw-bold text-success{% endif %}">
+                    {% if g_tot.letter and g_tot.letter != '-' %}
+                        <span class="{% if g_tot.letter == 'A' %}text-success{% elif g_tot.letter == 'F' %}text-danger{% else %}text-dark{% endif %}">
+                            {{ g_tot.letter }}
+                        </span>
+                    {% elif g_tot.is_future %}
+                        -
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Section 4: National Examinations -->
+    <div class="section-header">
+        <span><i class="fa-solid fa-stamp me-1"></i> ផ្នែកទី ៤៖ កំណត់ត្រាការប្រឡងសញ្ញាបត្រថ្នាក់ជាតិ (National Examination Records)</span>
     </div>
 
     <div class="row g-2 mb-2">
@@ -440,9 +597,9 @@
         </div>
     </div>
 
-    <!-- Section 4: Pedagogical Conduct & Moral Appraisal -->
+    <!-- Section 5: Pedagogical Conduct & Moral Appraisal -->
     <div class="section-header">
-        <span><i class="fa-solid fa-scale-balanced me-1"></i> ផ្នែកទី ៤៖ ការវាយតម្លៃរួមផ្នែកគរុកោសល្យ និងមារយាទសិស្ស (Pedagogical & Moral Appraisal)</span>
+        <span><i class="fa-solid fa-scale-balanced me-1"></i> ផ្នែកទី ៥៖ ការវាយតម្លៃរួមផ្នែកគរុកោសល្យ និងមារយាទសិស្ស (Pedagogical & Moral Appraisal)</span>
     </div>
     <div class="border rounded-2 p-2 bg-light small mb-2 text-muted" style="line-height: 1.6;">
         សិស្ស <strong>{{ dossier.student.khmer_name }}</strong> មានអាកប្បកិរិយាល្អ សុភាពរាបសារ គោរពវិន័យសាលា និងបទបញ្ជាផ្ទៃក្នុងបានយ៉ាងខ្ជាប់ខ្ជួន។ មានស្មារតីសាមគ្គីភាព និងសកម្មក្នុងការសិក្សាស្រាវជ្រាវ។ 
@@ -483,7 +640,52 @@
         </div>
     </div>
 </div>
+{% empty %}
+<div class="container text-center py-5 no-print" style="margin-top: 100px;">
+    <div class="card shadow-sm p-5 border-0 mx-auto" style="max-width: 650px; border-radius: 1.25rem; background: #fff;">
+        <div class="rounded-circle bg-warning-subtle text-warning mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+            <i class="fa-solid fa-triangle-exclamation fs-2"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">មិនទាន់មានទិន្នន័យសិស្សឡើយ</h4>
+        <p class="text-muted mb-4">
+            {% if classroom %}
+            ថ្នាក់រៀន <strong>«{{ classroom.name }}»</strong> មិនទាន់មានសិស្សកំពុងសិក្សា (ACTIVE) សម្រាប់ចេញសៀវភៅសិក្ខាគារិកនៅឡើយទេ។
+            {% else %}
+            មិនមានទិន្នន័យសៀវភៅសិក្ខាគារិកសម្រាប់សិស្សនេះឡើយ។
+            {% endif %}
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="{% url 'academic_booklets_hub' %}" onclick="smartGoBack(event);" class="btn btn-primary fw-semibold px-4">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅមជ្ឈមណ្ឌលសៀវភៅ
+            </a>
+            {% if classroom %}
+            <a href="{% url 'student_list' %}?classroom={{ classroom.id }}" class="btn btn-outline-secondary fw-semibold">
+                <i class="fa-solid fa-users me-1"></i> ពិនិត្យបញ្ជីសិស្សក្នុងថ្នាក់
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endfor %}
+
+<script>
+function smartGoBack(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    try {
+        window.close();
+    } catch(e) {}
+
+    setTimeout(function() {
+        if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+            window.history.back();
+        } else {
+            window.location.href = "{% url 'academic_booklets_hub' %}";
+        }
+    }, 120);
+}
+</script>
 
 </body>
 </html>
