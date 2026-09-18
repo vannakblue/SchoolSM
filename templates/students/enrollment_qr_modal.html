@@ -307,7 +307,10 @@
 
         <!-- 2A. Grade Level Selector (Shown when type === 'GRADE') -->
         <div class="col-md-5" id="gradeSelectWrapper">
-            <label class="form-label fw-bold small text-primary mb-1">២. ជ្រើសរើសកម្រិតថ្នាក់ (Target Grade Level) *</label>
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label fw-bold small text-primary mb-0">២. ជ្រើសរើសកម្រិតថ្នាក់ (Target Grade Level) *</label>
+                <span id="selectedGradeStatusBadge" class="badge small" style="font-size: 0.72rem;"></span>
+            </div>
             <select id="gradeSelect" class="form-select border-primary">
                 {% for g in grade_data %}
                 <option value="{{ g.grade_level }}" 
@@ -318,8 +321,9 @@
                         data-url="{{ g.url }}"
                         data-qr="{{ g.qr_src }}"
                         data-is-open="{{ g.is_registration_open|yesno:'1,0' }}"
-                        data-closed-msg="{{ g.registration_closed_message }}">
-                    {{ g.name }} {% if not g.is_registration_open %}[🔴 បិទការចុះឈ្មោះ]{% endif %} {% if g.class_codes %}(ថ្នាក់៖ {{ g.class_codes }}){% endif %}
+                        data-closed-msg="{{ g.registration_closed_message }}"
+                        data-grade-id="{{ g.grade_level_id }}">
+                    {{ g.name }} {% if g.is_registration_open %}[🟢 បើក]{% else %}[🔴 បិទ]{% endif %} {% if g.class_codes %}(ថ្នាក់៖ {{ g.class_codes }}){% endif %}
                 </option>
                 {% endfor %}
             </select>
@@ -327,7 +331,10 @@
 
         <!-- 2B. Classroom Selector (Shown when type === 'CLASSROOM') -->
         <div class="col-md-5" id="classroomSelectWrapper" style="display: none;">
-            <label class="form-label fw-bold small text-primary mb-1">២. ជ្រើសរើសថ្នាក់រៀនជាក់លាក់ (Target Classroom) *</label>
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label fw-bold small text-primary mb-0">២. ជ្រើសរើសថ្នាក់រៀនជាក់លាក់ (Target Classroom) *</label>
+                <span id="selectedClassStatusBadge" class="badge small" style="font-size: 0.72rem;"></span>
+            </div>
             <select id="classroomSelect" class="form-select border-primary">
                 {% for c in classroom_data %}
                 <option value="{{ c.id }}" 
@@ -335,9 +342,10 @@
                         data-name="{{ c.name }}" 
                         data-room="{{ c.room_number }}"
                         data-grade="{{ c.grade_level }}"
+                        data-is-open="{{ c.is_registration_open|yesno:'1,0' }}"
                         data-url="{{ c.url }}"
                         data-qr="{{ c.qr_src }}">
-                    {{ c.name }} ({{ c.code }}) {% if c.room_number %}- {{ c.room_number }}{% endif %}
+                    {{ c.name }} ({{ c.code }}) {% if c.is_registration_open %}[🟢 បើក]{% else %}[🔴 បិទ]{% endif %} {% if c.room_number %}- {{ c.room_number }}{% endif %}
                 </option>
                 {% endfor %}
             </select>
@@ -390,6 +398,17 @@
                         <i class="fa-regular fa-calendar-check text-primary me-1"></i>
                         សុពលភាពចុះឈ្មោះ៖ <strong id="posterPeriodText">{% if school_profile.registration_start_date %}{{ school_profile.registration_start_date|date:"d/m/Y" }}{% else %}ឥឡូវនេះ{% endif %} ដល់ {% if school_profile.registration_end_date %}{{ school_profile.registration_end_date|date:"d/m/Y" }}{% else %}គ្មានកំណត់{% endif %}</strong>
                     </span>
+                </div>
+
+                <!-- Live Grade Closed Warning on Poster (Shown when selected grade is closed) -->
+                <div id="posterClosedWarning" class="alert alert-danger py-2 px-3 mb-3 text-start small border border-danger rounded-3 d-none">
+                    <div class="fw-bold text-danger d-flex align-items-center gap-1 mb-0.5">
+                        <i class="fa-solid fa-triangle-exclamation fs-6"></i>
+                        <span>ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់នេះត្រូវបានបិទ (Registration Closed)!</span>
+                    </div>
+                    <div class="text-dark small" style="font-size: 0.78rem;">
+                        ⚠️ បច្ចុប្បន្នសិស្សដែលស្កេន QR Code នេះ <strong>នឹងមិនអាចចុះឈ្មោះចូលរៀនបានឡើយ</strong> ដោយសារកម្រិតថ្នាក់នេះត្រូវបានបិទ។ ប្រសិនបើលោកអ្នកចង់បើកទទួលសិស្ស សូមចុចបើកកុងតាក់ក្នុងផ្នែក <strong>«កំណត់ការចុះឈ្មោះតាមកម្រិតថ្នាក់ (Grade-Level Controls)»</strong> ខាងលើជាមុនសិន។
+                    </div>
                 </div>
                 
                 <p class="text-muted small mb-3">
@@ -563,9 +582,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!baseUrl.endsWith('/')) baseUrl += '/';
         baseUrl = baseUrl.split('?')[0];
 
+        const posterClosedWarning = document.getElementById('posterClosedWarning');
+        const selectedGradeStatusBadge = document.getElementById('selectedGradeStatusBadge');
+        const selectedClassStatusBadge = document.getElementById('selectedClassStatusBadge');
+
         if (type === 'GENERAL') {
             gradeSelectWrapper.style.display = 'none';
             classroomSelectWrapper.style.display = 'none';
+            if (posterClosedWarning) posterClosedWarning.classList.add('d-none');
 
             posterBadge.textContent = 'ពាក្យសុំទូទៅ (គ្រប់កម្រិតថ្នាក់)';
             posterBadge.className = 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-3 py-1 rounded-pill fw-bold mb-2';
@@ -586,9 +610,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 const gradeName = opt.dataset.name;
                 const gradeTrack = opt.dataset.track;
                 const classCodes = opt.dataset.classes;
+                const isOpen = opt.dataset.isOpen === '1';
+
+                // Update Status Badge on Dropdown Header
+                if (selectedGradeStatusBadge) {
+                    selectedGradeStatusBadge.innerHTML = isOpen 
+                        ? '<i class="fa-solid fa-circle-check me-1"></i> កំពុងបើក' 
+                        : '<i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ';
+                    selectedGradeStatusBadge.className = isOpen
+                        ? 'badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill'
+                        : 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-pill';
+                }
+
+                // Show/Hide Warning on Poster Card
+                if (posterClosedWarning) {
+                    if (!isOpen) {
+                        posterClosedWarning.classList.remove('d-none');
+                    } else {
+                        posterClosedWarning.classList.add('d-none');
+                    }
+                }
 
                 posterBadge.textContent = `កម្រិតថ្នាក់ទី ${gradeNum}`;
-                posterBadge.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-1 rounded-pill fw-bold mb-2';
+                posterBadge.className = isOpen
+                    ? 'badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-1 rounded-pill fw-bold mb-2'
+                    : 'badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-1 rounded-pill fw-bold mb-2';
                 posterTitle.textContent = `ចុះឈ្មោះចូលរៀន ${gradeName}`;
                 posterSubtitle.textContent = classCodes ? `ថ្នាក់រៀនក្នុងកម្រិតនេះ៖ ${classCodes}` : `កម្រិតថ្នាក់ទី ${gradeNum}`;
 
@@ -610,9 +656,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 const className = opt.dataset.name;
                 const classCode = opt.dataset.code;
                 const classRoom = opt.dataset.room;
+                const isOpen = opt.dataset.isOpen === '1';
+
+                // Update Status Badge on Dropdown Header
+                if (selectedClassStatusBadge) {
+                    selectedClassStatusBadge.innerHTML = isOpen 
+                        ? '<i class="fa-solid fa-circle-check me-1"></i> កំពុងបើក' 
+                        : '<i class="fa-solid fa-ban me-1"></i> បានបិទការចុះឈ្មោះ';
+                    selectedClassStatusBadge.className = isOpen
+                        ? 'badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill'
+                        : 'badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-pill';
+                }
+
+                // Show/Hide Warning on Poster Card
+                if (posterClosedWarning) {
+                    if (!isOpen) {
+                        posterClosedWarning.classList.remove('d-none');
+                    } else {
+                        posterClosedWarning.classList.add('d-none');
+                    }
+                }
 
                 posterBadge.textContent = `កូដថ្នាក់៖ ${classCode}`;
-                posterBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success px-3 py-1 rounded-pill fw-bold mb-2';
+                posterBadge.className = isOpen
+                    ? 'badge bg-success bg-opacity-10 text-success border border-success px-3 py-1 rounded-pill fw-bold mb-2'
+                    : 'badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-1 rounded-pill fw-bold mb-2';
                 posterTitle.textContent = `ចុះឈ្មោះចូលរៀន ${className}`;
                 posterSubtitle.textContent = classRoom ? `បន្ទប់រៀន៖ ${classRoom}` : `ថ្នាក់រៀន ${classCode}`;
 
@@ -622,6 +690,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+
+    window.updatePoster = updatePoster;
 
     posterTypeSelect.addEventListener('change', updatePoster);
     gradeSelect.addEventListener('change', updatePoster);
@@ -908,6 +978,39 @@ function toggleGradeReg(gradeId, isOpen) {
 
     updateGradeOpenCount();
 
+    // Real-time synchronization with Target Grade Level dropdown
+    const gradeOpt = document.querySelector(`#gradeSelect option[data-grade-id="${gradeId}"]`);
+    if (gradeOpt) {
+        gradeOpt.dataset.isOpen = isOpen ? '1' : '0';
+        const rawName = gradeOpt.dataset.name || '';
+        const classCodes = gradeOpt.dataset.classes || '';
+        const statusTag = isOpen ? '[🟢 បើក]' : '[🔴 បិទ]';
+        const classesTag = classCodes ? ` (ថ្នាក់៖ ${classCodes})` : '';
+        gradeOpt.textContent = `${rawName} ${statusTag}${classesTag}`;
+        
+        // If this grade was just toggled OPEN, auto-select it in the dropdown so user sees its poster immediately!
+        if (isOpen) {
+            gradeOpt.selected = true;
+        }
+    }
+    
+    // Also update any classrooms belonging to this grade
+    const gradeVal = gradeOpt ? gradeOpt.value : null;
+    if (gradeVal) {
+        document.querySelectorAll(`#classroomSelect option[data-grade="${gradeVal}"]`).forEach(cOpt => {
+            cOpt.dataset.isOpen = isOpen ? '1' : '0';
+            const rawName = cOpt.dataset.name || '';
+            const code = cOpt.dataset.code || '';
+            const room = cOpt.dataset.room ? ` - ${cOpt.dataset.room}` : '';
+            const statusTag = isOpen ? '[🟢 បើក]' : '[🔴 បិទ]';
+            cOpt.textContent = `${rawName} (${code}) ${statusTag}${room}`;
+        });
+    }
+
+    if (window.updatePoster) {
+        window.updatePoster();
+    }
+
     const formData = new FormData();
     formData.append('grade_id', gradeId);
     formData.append('is_registration_open', isOpen ? 'true' : 'false');
@@ -1068,6 +1171,29 @@ function bulkToggleGrades(action) {
             });
 
             updateGradeOpenCount();
+
+            // Sync gradeSelect and classroomSelect options
+            document.querySelectorAll('#gradeSelect option').forEach(opt => {
+                opt.dataset.isOpen = isAllOpen ? '1' : '0';
+                const rawName = opt.dataset.name || '';
+                const classCodes = opt.dataset.classes || '';
+                const statusTag = isAllOpen ? '[🟢 បើក]' : '[🔴 បិទ]';
+                const classesTag = classCodes ? ` (ថ្នាក់៖ ${classCodes})` : '';
+                opt.textContent = `${rawName} ${statusTag}${classesTag}`;
+            });
+            document.querySelectorAll('#classroomSelect option').forEach(cOpt => {
+                cOpt.dataset.isOpen = isAllOpen ? '1' : '0';
+                const rawName = cOpt.dataset.name || '';
+                const code = cOpt.dataset.code || '';
+                const room = cOpt.dataset.room ? ` - ${cOpt.dataset.room}` : '';
+                const statusTag = isAllOpen ? '[🟢 បើក]' : '[🔴 បិទ]';
+                cOpt.textContent = `${rawName} (${code}) ${statusTag}${room}`;
+            });
+
+            if (window.updatePoster) {
+                window.updatePoster();
+            }
+
             showToast(data.message);
 
             if (alertBox) {

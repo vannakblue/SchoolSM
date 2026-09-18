@@ -374,7 +374,9 @@ def public_student_enroll(request):
     target_grade_name = None
 
     if classroom_id:
-        target_classroom = classrooms.filter(id=classroom_id).first()
+        target_classroom = classrooms.filter(id=classroom_id).first() or Classroom.objects.filter(id=classroom_id).first()
+        if target_classroom and target_classroom.academic_year:
+            current_year = target_classroom.academic_year
     elif grade_param:
         try:
             g_num = int(grade_param)
@@ -404,8 +406,9 @@ def public_student_enroll(request):
         except (ValueError, TypeError):
             pass
 
+    # Check if target grade registration is closed by Admin
     if target_gl and not target_gl.is_registration_open and not is_staff_preview:
-        closed_msg = target_gl.registration_closed_message.strip() if target_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់ {target_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
+        closed_msg = target_gl.registration_closed_message.strip() if target_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់ {target_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ (លុះត្រាមានការបើកពី Admin)។"
         if request.method == 'POST':
             messages.error(request, closed_msg)
             return redirect('public_student_enroll')
@@ -419,6 +422,17 @@ def public_student_enroll(request):
             'end_date': school_profile.registration_end_date,
         })
 
+    # Grade & Classroom locking flags
+    is_grade_locked = False
+    is_classroom_locked = False
+
+    if target_classroom:
+        is_grade_locked = True
+        is_classroom_locked = True
+        classrooms = classrooms.filter(id=target_classroom.id)
+    elif grade_param and target_gl:
+        is_grade_locked = True
+
     # Filter out closed grade classrooms for non-staff public users
     if not is_staff_preview:
         for cgl in GradeLevel.objects.filter(is_registration_open=False):
@@ -426,16 +440,37 @@ def public_student_enroll(request):
                 classrooms = classrooms.exclude(grade_level=cgl.grade_number, track=cgl.track)
             else:
                 classrooms = classrooms.exclude(grade_level=cgl.grade_number)
-        available_grade_levels = GradeLevel.objects.filter(is_registration_open=True).order_by('order', 'grade_number', 'track')
+        all_open_grades = list(GradeLevel.objects.filter(is_registration_open=True).order_by('order', 'grade_number', 'track'))
     else:
-        available_grade_levels = GradeLevel.objects.all().order_by('order', 'grade_number', 'track')
+        all_open_grades = list(GradeLevel.objects.all().order_by('order', 'grade_number', 'track'))
+
+    # If grade is locked from QR Code or URL param, ONLY show that target grade level
+    if is_grade_locked and target_gl:
+        available_grade_levels = [target_gl]
+    else:
+        available_grade_levels = all_open_grades
+
+    # If no grade levels are open for public registration:
+    if not available_grade_levels and not is_staff_preview:
+        return render(request, 'students/registration_closed.html', {
+            'school_profile': school_profile,
+            'reason': "បច្ចុប្បន្នគ្មានកម្រិតថ្នាក់ណាមួយត្រូវបានបើកឱ្យចុះឈ្មោះនៅឡើយទេ។ សូមរង់ចាំការបើកទទួលពាក្យពីសាលារៀន ឬទាក់ទងរដ្ឋបាលសាលា។",
+            'status_code': 'ALL_GRADES_CLOSED',
+            'current_year': current_year,
+            'start_date': school_profile.registration_start_date,
+            'end_date': school_profile.registration_end_date,
+        })
+
+    # If exactly 1 grade level is available, auto-select it
+    if len(available_grade_levels) == 1 and not target_gl:
+        target_gl = available_grade_levels[0]
 
     # Active mode is strictly determined by Admin (Grade-level template or School registration mode)
     # Students cannot choose their own registration method on Portal or Mobile
     from .models import GradeVerificationFormConfig
     assigned_grade_tpl = None
     if target_gl:
-        assigned_grade_tpl = GradeVerificationFormConfig.get_template_for_grade(target_gl, academic_year=current_year)
+        assigned_grade_tpl = GradeVerificationFormConfig.get_template_for_grade(target_gl, academic_year=current_year, fallback_default=None)
 
     if assigned_grade_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
         active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
@@ -443,6 +478,10 @@ def public_student_enroll(request):
         active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
     elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
         active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+    elif configured_mode == SchoolProfile.RegistrationMode.ADMIN_CUSTOM:
+        active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+    elif request.GET.get('mode') in [SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL, SchoolProfile.RegistrationMode.ADMIN_CUSTOM]:
+        active_mode = request.GET.get('mode')
     else:
         active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
 
@@ -456,6 +495,7 @@ def public_student_enroll(request):
         # Resolve target classroom or grade submitted to enforce Admin's configured mode
         submitted_cls_id = request.POST.get('classroom')
         submitted_gl = None
+        sub_cls = None
         if submitted_cls_id:
             sub_cls = Classroom.objects.filter(id=submitted_cls_id).first()
             if sub_cls:
@@ -463,24 +503,40 @@ def public_student_enroll(request):
         elif target_gl:
             submitted_gl = target_gl
 
-        if submitted_gl:
+        if not is_staff_preview:
             # If admin does not allow this grade level, reject immediately for non-staff
-            if not submitted_gl.is_registration_open and not is_staff_preview:
+            if submitted_gl and not submitted_gl.is_registration_open:
                 closed_msg = submitted_gl.registration_closed_message.strip() if submitted_gl.registration_closed_message else f"ការចុះឈ្មោះសម្រាប់កម្រិតថ្នាក់ {submitted_gl.name} ត្រូវបានបិទមិនឱ្យចុះឈ្មោះឡើយ។"
                 messages.error(request, closed_msg)
                 return redirect('public_student_enroll')
 
-            cls_tpl = GradeVerificationFormConfig.get_template_for_grade(submitted_gl, academic_year=current_year)
-            if cls_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
-                active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
-            elif cls_tpl == GradeVerificationFormConfig.FormTemplate.GENERAL:
-                active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
-            elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
-                active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
-            else:
-                active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+            # If grade was locked by QR scan, prevent tampering
+            if is_grade_locked and target_gl and sub_cls:
+                if sub_cls.grade_level != target_gl.grade_number or (target_gl.track and target_gl.track != 'GENERAL' and sub_cls.track != target_gl.track):
+                    messages.error(request, f"ការចុះឈ្មោះត្រូវបានកំណត់សម្រាប់តែ {target_gl.name} ប៉ុណ្ណោះ។")
+                    return redirect(request.get_full_path())
+
+            # If classroom was locked by QR scan, prevent tampering
+            if is_classroom_locked and target_classroom and sub_cls:
+                if sub_cls.id != target_classroom.id:
+                    messages.error(request, f"ការចុះឈ្មោះត្រូវបានកំណត់សម្រាប់តែបន្ទប់ {target_classroom.name} ប៉ុណ្ណោះ។")
+                    return redirect(request.get_full_path())
+
+        submitted_post_mode = request.POST.get('enrollment_mode')
+        assigned_sub_tpl = None
+        if submitted_gl:
+            assigned_sub_tpl = GradeVerificationFormConfig.get_template_for_grade(submitted_gl, academic_year=current_year, fallback_default=None)
+
+        if assigned_sub_tpl == GradeVerificationFormConfig.FormTemplate.MOEYS_INDIVIDUAL:
+            active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+        elif assigned_sub_tpl == GradeVerificationFormConfig.FormTemplate.GENERAL:
+            active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
         elif configured_mode == SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL:
             active_mode = SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL
+        elif configured_mode == SchoolProfile.RegistrationMode.ADMIN_CUSTOM:
+            active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
+        elif submitted_post_mode in [SchoolProfile.RegistrationMode.MOEYS_INDIVIDUAL, SchoolProfile.RegistrationMode.ADMIN_CUSTOM]:
+            active_mode = submitted_post_mode
         else:
             active_mode = SchoolProfile.RegistrationMode.ADMIN_CUSTOM
 
@@ -495,6 +551,17 @@ def public_student_enroll(request):
                     if not student.academic_year:
                         student.academic_year = current_year
                     student.status = Student.Status.ACTIVE
+
+                    # Guarantee student_id is automatically created
+                    if not student.student_id or str(student.student_id).strip() == '':
+                        target_yr = student.academic_year or (student.classroom.academic_year if student.classroom else None)
+                        target_grd = student.classroom.grade_level if student.classroom else (submitted_gl.grade_number if submitted_gl else None)
+                        student.student_id = Student.generate_unique_student_id(
+                            academic_year=target_yr,
+                            grade_level=target_grd,
+                            classroom=student.classroom
+                        )
+
                     student.enrollment_data = _extract_grade_options(
                         request, student.classroom,
                         existing_data=student.enrollment_data,
@@ -523,7 +590,7 @@ def public_student_enroll(request):
                     student.user = user
                     student.save(update_fields=['user'])
 
-                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} តាមសម្រង់ព័ត៌មាន MoEYS បានជោគជ័យ!")
+                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} (អត្តលេខ: {student.student_id}) តាមសម្រង់ព័ត៌មាន MoEYS បានជោគជ័យ!")
                 return redirect('public_enroll_success', pk=student.pk)
             else:
                 messages.error(request, "សូមពិនិត្យព័ត៌មានសម្រង់ព័ត៌មានដែលបានបំពេញឡើងវិញ!")
@@ -536,6 +603,17 @@ def public_student_enroll(request):
                     if not student.academic_year:
                         student.academic_year = current_year
                     student.status = Student.Status.ACTIVE
+
+                    # Guarantee student_id is automatically created
+                    if not student.student_id or str(student.student_id).strip() == '':
+                        target_yr = student.academic_year or (student.classroom.academic_year if student.classroom else None)
+                        target_grd = student.classroom.grade_level if student.classroom else (submitted_gl.grade_number if submitted_gl else None)
+                        student.student_id = Student.generate_unique_student_id(
+                            academic_year=target_yr,
+                            grade_level=target_grd,
+                            classroom=student.classroom
+                        )
+
                     student.enrollment_data = _extract_grade_options(
                         request, student.classroom,
                         existing_data=student.enrollment_data,
@@ -564,14 +642,14 @@ def public_student_enroll(request):
                     student.user = user
                     student.save(update_fields=['user'])
 
-                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} បានជោគជ័យ!")
+                messages.success(request, f"🎉 ការចុះឈ្មោះសិស្ស {student.khmer_name} (អត្តលេខ: {student.student_id}) បានជោគជ័យ!")
                 return redirect('public_enroll_success', pk=student.pk)
             else:
                 messages.error(request, "សូមពិនិត្យព័ត៌មានដែលបានបំពេញឡើងវិញ!")
     else:
         form = StudentEnrollmentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
         moeys_form = MoeysIndividualStudentForm(initial=initial_data, academic_year=current_year, filter_closed_grades=True, is_staff=is_staff_preview)
-        if grade_param:
+        if grade_param or target_classroom:
             form.fields['classroom'].queryset = classrooms
             moeys_form.fields['classroom'].queryset = classrooms
 
@@ -586,6 +664,8 @@ def public_student_enroll(request):
         'target_classroom': target_classroom,
         'selected_classroom_id': target_classroom.id if target_classroom else (int(classroom_id) if (classroom_id and classroom_id.isdigit()) else None),
         'target_grade_name': target_grade_name,
+        'is_grade_locked': is_grade_locked,
+        'is_classroom_locked': is_classroom_locked,
         'school_profile': school_profile,
         'configured_mode': configured_mode,
         'active_mode': active_mode,
@@ -1285,15 +1365,57 @@ def api_quick_set_student_status(request, pk):
 
 def public_enroll_success(request, pk):
     """
-    Public registration receipt & credentials confirmation page with print/PDF options.
+    Public registration receipt & credentials confirmation page with print/PDF options and permanent student QR code.
     """
+    import socket
+    import base64
+    import io
+    import qrcode
+    from apps.accounts.models import SchoolProfile
+
     student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year', 'user'), pk=pk)
     username = student.user.username if student.user else student.student_id.lower().replace('-', '_')
+    school_info = SchoolProfile.get_settings()
     
+    local_ip = '127.0.0.1'
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
+    host = request.get_host()
+    port = request.get_port()
+    if host.startswith('127.0.0.1') or host.startswith('localhost'):
+        port_suffix = f":{port}" if port and str(port) not in ['80', '443'] else ""
+        verify_url = f"http://{local_ip}{port_suffix}/students/enroll/success/{student.pk}/"
+    else:
+        verify_url = request.build_absolute_uri(reverse('public_enroll_success', kwargs={'pk': student.pk}))
+
+    # Generate permanent, non-expiring QR Code (Base64 PNG)
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(verify_url)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="#0f172a", back_color="#ffffff")
+    
+    buffer = io.BytesIO()
+    qr_img.save(buffer, format='PNG')
+    qr_base64 = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
+
     return render(request, 'students/public_enroll_success.html', {
         'student': student,
         'username': username,
         'initial_password': 'p123456',
+        'qr_base64': qr_base64,
+        'verify_url': verify_url,
+        'school_info': school_info,
     })
 
 

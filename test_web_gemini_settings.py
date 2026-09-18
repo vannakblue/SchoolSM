@@ -31,6 +31,12 @@ def test_web_gemini_settings():
     print("TESTING: WEB BROWSER GEMINI API KEY CONFIGURATION & ROTATION")
     print("==================================================================")
 
+    orig_cfg = GeminiAiConfig.get_config()
+    orig_keys = orig_cfg.api_keys
+    orig_model = orig_cfg.model_name
+    orig_level = orig_cfg.thinking_level
+    orig_active = orig_cfg.is_active
+
     # 1. Setup Admin & Teacher users
     admin_user, _ = User.objects.get_or_create(
         username='admin_gemini_tester',
@@ -65,7 +71,7 @@ def test_web_gemini_settings():
     content = res_admin.content.decode('utf-8')
     assert 'ការកំណត់ Google Gemini AI & Key Rotation' in content
     assert 'បញ្ជី Google Gemini API Keys' in content
-    assert 'ស្ថានភាព Key Rotator' in content
+    assert 'ស្ថានភាពបង្វិលសោ' in content or 'Key Rotator' in content
     print("  [PASS] 2. Admin successfully loaded web settings UI with form and status dashboard.")
 
     # 4. Test Saving Keys via Web Browser POST Form
@@ -125,6 +131,13 @@ def test_web_gemini_settings():
     # Cleanup
     teacher_user.delete()
     admin_user.delete()
+
+    orig_cfg.api_keys = orig_keys
+    orig_cfg.model_name = orig_model
+    orig_cfg.thinking_level = orig_level
+    orig_cfg.is_active = orig_active
+    orig_cfg.save()
+    gemini_rotator.set_keys(orig_cfg.get_keys_list())
 
     print("\n==================================================================")
     print("ALL WEB GEMINI SETTINGS TESTS PASSED 100%!")

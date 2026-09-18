@@ -166,17 +166,17 @@ class SchoolProfileForm(forms.ModelForm):
 
 
 AVAILABLE_GEMINI_MODELS_KM = [
-    ('gemini-3.5-flash', '⚡ Gemini 3.5 Flash (លឿនរហ័ស & ដំណើរការ ១០០% - ណែនាំ)'),
-    ('gemini-3.5-flash-lite', '🚀 Gemini 3.5 Flash-Lite (ស្រាល & ល្បឿនខ្ពស់)'),
-    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (ជំនាន់ខ្ពស់)'),
+    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (ជំនាន់ថ្មី & ឆ្លាតវៃ - ណែនាំ)'),
+    ('gemini-3.5-flash-lite', '🚀 Gemini 3.5 Flash-Lite (ស្រាល & ល្បឿនលឿនបំផុត ~1-2s)'),
+    ('gemini-3.5-flash', '⚡ Gemini 3.5 Flash (ស្តង់ដារ)'),
     ('gemini-flash-latest', '🔄 Gemini Flash Latest (បច្ចុប្បន្នភាពស្វ័យប្រវត្តិ)'),
     ('custom', '✏️ ផ្សេងទៀត (បញ្ចូលឈ្មោះម៉ូដែលផ្ទាល់)...'),
 ]
 
 AVAILABLE_GEMINI_MODELS_EN = [
-    ('gemini-3.5-flash', '⚡ Gemini 3.5 Flash (Fast & 100% Active - Recommended)'),
-    ('gemini-3.5-flash-lite', '🚀 Gemini 3.5 Flash-Lite (Lightweight & High Speed)'),
-    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (Advanced Version)'),
+    ('gemini-3.8-flash', '⚡ Gemini 3.8 Flash (Latest & Smartest - Recommended)'),
+    ('gemini-3.5-flash-lite', '🚀 Gemini 3.5 Flash-Lite (Ultra Fast Speed ~1-2s)'),
+    ('gemini-3.5-flash', '⚡ Gemini 3.5 Flash (Standard)'),
     ('gemini-flash-latest', '🔄 Gemini Flash Latest (Always Latest Version)'),
     ('custom', '✏️ Custom (Enter custom model name)...'),
 ]

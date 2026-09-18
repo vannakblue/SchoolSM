@@ -1568,12 +1568,9 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
                     ),
                   ],
 
-                  // Mode Switcher for Staff/Admin vs Admin-Enforced Banner for Students (សិស្សមិនអាចជ្រើសរើសដោយខ្លួនឯងបានទេ)
+                  // Mode Switcher for Staff/Admin
                   if (isStaffOrAdmin) ...[
                     _buildModeSwitcher(),
-                    const SizedBox(height: 18),
-                  ] else ...[
-                    _buildAdminEnforcedModeBanner(),
                     const SizedBox(height: 18),
                   ],
 
@@ -1627,89 +1624,6 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // ADMIN ENFORCED MODE BANNER (FOR STUDENTS / PUBLIC APPLICANTS)
-  // ---------------------------------------------------------------------------
-  Widget _buildAdminEnforcedModeBanner() {
-    final isMoeys = _activeEnrollmentMode == 'MOEYS_INDIVIDUAL';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isMoeys ? const Color(0xFFE0F2FE) : AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              isMoeys ? Icons.table_chart_rounded : Icons.tune_rounded,
-              color: isMoeys ? const Color(0xFF0284C7) : AppColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.shield_rounded, size: 14, color: AppColors.success),
-                    const SizedBox(width: 4),
-                    const Text(
-                      "វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយ Admin",
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isMoeys ? "សម្រង់ព័ត៌មាន MoEYS (៣៥ ជួរឈរ)" : "បែបបទ Admin បានកំណត់ (General Form)",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isMoeys ? const Color(0xFF0284C7) : AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              isMoeys ? "MoEYS" : "Standard",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // DUAL MODE SWITCHER WIDGET (ONLY FOR STAFF / ADMIN)

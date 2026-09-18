@@ -940,13 +940,13 @@ class GradeVerificationFormConfig(models.Model):
         verbose_name_plural = "ការកំណត់បែបបទតាមកម្រិតថ្នាក់ទាំងអស់ / Grade Form Configurations"
 
     @classmethod
-    def get_template_for_grade(cls, grade_level, academic_year=None, campaign=None):
+    def get_template_for_grade(cls, grade_level, academic_year=None, campaign=None, fallback_default='GENERAL'):
         """
         Resolves the configured form template for a given grade level.
-        Fallback to GENERAL or SchoolProfile registration_mode.
+        Fallback to fallback_default or GENERAL.
         """
         if not grade_level:
-            return cls.FormTemplate.GENERAL
+            return fallback_default if fallback_default is not None else cls.FormTemplate.GENERAL
 
         # 1. Look for campaign specific config
         if campaign:
@@ -965,7 +965,7 @@ class GradeVerificationFormConfig(models.Model):
         if cfg:
             return cfg.form_template
 
-        return cls.FormTemplate.GENERAL
+        return fallback_default if fallback_default is not None else cls.FormTemplate.GENERAL
 
     def __str__(self):
         camp_str = f" [{self.campaign.title}]" if self.campaign else ""

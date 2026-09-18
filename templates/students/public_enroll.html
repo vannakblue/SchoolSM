@@ -135,37 +135,6 @@
                 {% endfor %}
             {% endif %}
 
-            <!-- Admin Enforced Registration Mode Indicator (សិស្សមិនអាចជ្រើសរើសដោយខ្លួនឯងបានទេ គឺ Admin ជាអ្នកកំណត់) -->
-            <div class="alert alert-light border d-flex align-items-center justify-content-between p-3 rounded-4 mb-4 shadow-xs bg-white" id="adminModeIndicatorBox">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle {% if active_mode == 'MOEYS_INDIVIDUAL' %}bg-info text-dark{% else %}bg-primary text-white{% endif %} p-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;" id="activeModeIconBox">
-                        {% if active_mode == 'MOEYS_INDIVIDUAL' %}
-                            <i class="fa-solid fa-id-card-clip fs-5" id="activeModeIcon"></i>
-                        {% else %}
-                            <i class="fa-solid fa-clipboard-list fs-5" id="activeModeIcon"></i>
-                        {% endif %}
-                    </div>
-                    <div>
-                        <div class="small text-muted fw-semibold">
-                            <i class="fa-solid fa-shield-halved text-success me-1"></i> វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយរដ្ឋបាលសាលា (Admin Enforced Method)៖
-                        </div>
-                        <h6 class="fw-bold mb-0 text-dark" id="activeModeNameDisplay">
-                            {% if active_mode == 'MOEYS_INDIVIDUAL' %}
-                                ទម្រង់សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ (MoEYS Census 35 Columns)
-                            {% else %}
-                                ទម្រង់បែបបទ Admin បានកំណត់ (General Form)
-                            {% endif %}
-                        </h6>
-                    </div>
-                </div>
-                <span class="badge {% if active_mode == 'MOEYS_INDIVIDUAL' %}bg-info text-dark{% else %}bg-primary{% endif %} px-3 py-2 rounded-pill fw-bold" id="activeModeBadge">
-                    {% if active_mode == 'MOEYS_INDIVIDUAL' %}
-                        <i class="fa-solid fa-check me-1"></i> MoEYS Form
-                    {% else %}
-                        <i class="fa-solid fa-check me-1"></i> Standard Form
-                    {% endif %}
-                </span>
-            </div>
 
             {% if target_classroom %}
             <div class="alert alert-primary border-primary d-flex align-items-center gap-3 py-3 px-4 rounded-3 mb-4 shadow-sm bg-primary bg-opacity-10">
@@ -354,27 +323,54 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-primary d-flex align-items-center justify-content-between">
                                     <span><i class="fa-solid fa-layer-group me-1"></i> ជំហានទី ១៖ ជ្រើសរើសកម្រិតថ្នាក់ <span class="text-danger">*</span></span>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                    {% if is_grade_locked %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-0.5" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-lock me-1"></i> កំណត់តាម QR Code (ចាក់សោ)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                    {% endif %}
                                 </label>
-                                <select id="portal_grade_level" class="form-select fw-semibold border-primary shadow-xs" required>
-                                    <option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>
+                                <select id="portal_grade_level" class="form-select fw-semibold border-primary shadow-xs" required {% if is_grade_locked %}style="pointer-events: none; background-color: #f8fafc; cursor: not-allowed;" tabindex="-1"{% endif %}>
+                                    {% if not is_grade_locked %}<option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>{% endif %}
                                     {% for gl in available_grade_levels %}
-                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% endif %}>
+                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% elif available_grade_levels|length == 1 %}selected{% endif %}>
                                             {{ gl.name }}
                                         </option>
                                     {% endfor %}
                                 </select>
                                 <div class="form-text small text-muted">
-                                    <i class="fa-solid fa-shield-check text-success me-1"></i>បង្ហាញតែកម្រិតថ្នាក់ដែល Admin អនុញ្ញាតឱ្យចុះឈ្មោះ
+                                    {% if is_grade_locked %}
+                                        <i class="fa-solid fa-lock text-primary me-1"></i>កម្រិតថ្នាក់ត្រូវបានកំណត់តាម QR Code (មិនអាចជ្រើសរើសកម្រិតផ្សេងបានទេ លុះត្រាមានការបើកពី Admin)
+                                    {% else %}
+                                        <i class="fa-solid fa-shield-check text-success me-1"></i>បង្ហាញតែកម្រិតថ្នាក់ដែល Admin អនុញ្ញាតឱ្យចុះឈ្មោះ
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-dark d-flex align-items-center justify-content-between">
                                     <span><i class="fa-solid fa-chalkboard-user me-1"></i> ជំហានទី ២៖ ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន <span class="text-danger">*</span></span>
-                                    <span class="badge bg-light text-muted border px-1.5 py-0.5" style="font-size: 0.7rem;">Classroom</span>
+                                    {% if is_classroom_locked %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-0.5" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-lock me-1"></i> ចាក់សោថ្នាក់រៀន
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border px-1.5 py-0.5" style="font-size: 0.7rem;">Classroom</span>
+                                    {% endif %}
                                 </label>
-                                {{ form.classroom }}
-                                <div class="form-text small" id="general_classroom_hint">ជ្រើសរើសបន្ទប់រៀនក្នុងកម្រិតថ្នាក់ខាងលើ</div>
+                                <div {% if is_classroom_locked %}style="pointer-events: none; background-color: #f8fafc; cursor: not-allowed;" tabindex="-1"{% endif %}>
+                                    {{ form.classroom }}
+                                </div>
+                                {% if is_classroom_locked and target_classroom %}
+                                    <input type="hidden" name="classroom" value="{{ target_classroom.id }}">
+                                {% endif %}
+                                <div class="form-text small" id="general_classroom_hint">
+                                    {% if is_classroom_locked %}
+                                        <i class="fa-solid fa-lock text-muted me-1"></i>បន្ទប់រៀនត្រូវបានកំណត់តាម QR Code រួចជាស្រេច
+                                    {% else %}
+                                        ជ្រើសរើសបន្ទប់រៀនក្នុងកម្រិតថ្នាក់ខាងលើ
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -542,20 +538,43 @@
                             <div class="col-md-4">
                                 <label class="form-label fw-bold small text-info d-flex align-items-center justify-content-between">
                                     <span><i class="fa-solid fa-layer-group me-1"></i> ជំហាន ១៖ កម្រិតថ្នាក់ <span class="text-danger">*</span></span>
-                                    <span class="badge bg-info-subtle text-info border border-info-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                    {% if is_grade_locked %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-0.5" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-lock me-1"></i> កំណត់តាម QR (ចាក់សោ)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle px-1.5 py-0.5" style="font-size: 0.7rem;">តម្រូវរើសមុន</span>
+                                    {% endif %}
                                 </label>
-                                <select id="moeys_portal_grade_level" class="form-select fw-semibold border-info shadow-xs" required>
-                                    <option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>
+                                <select id="moeys_portal_grade_level" class="form-select fw-semibold border-info shadow-xs" required {% if is_grade_locked %}style="pointer-events: none; background-color: #f8fafc; cursor: not-allowed;" tabindex="-1"{% endif %}>
+                                    {% if not is_grade_locked %}<option value="">-- សូមជ្រើសរើសកម្រិតថ្នាក់ជាមុនសិន --</option>{% endif %}
                                     {% for gl in available_grade_levels %}
-                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% endif %}>
+                                        <option value="{{ gl.grade_number }}" data-id="{{ gl.id }}" data-track="{{ gl.track }}" {% if selected_grade_number == gl.grade_number and selected_grade_track == gl.track %}selected{% elif selected_grade_number == gl.grade_number and not selected_grade_track %}selected{% elif available_grade_levels|length == 1 %}selected{% endif %}>
                                             {{ gl.name }}
                                         </option>
                                     {% endfor %}
                                 </select>
+                                {% if is_grade_locked %}
+                                <div class="form-text small text-muted" style="font-size: 0.75rem;">
+                                    <i class="fa-solid fa-lock text-info me-1"></i>កម្រិតថ្នាក់ត្រូវបានកំណត់តាម QR Code
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold small">ជំហាន ២៖ ថ្នាក់រៀនដែលត្រូវចុះឈ្មោះ <span class="text-danger">*</span></label>
-                                {{ moeys_form.classroom }}
+                                <label class="form-label fw-bold small d-flex align-items-center justify-content-between">
+                                    <span>ជំហាន ២៖ ថ្នាក់រៀន <span class="text-danger">*</span></span>
+                                    {% if is_classroom_locked %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-0.5" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-lock me-1"></i> ចាក់សោថ្នាក់
+                                        </span>
+                                    {% endif %}
+                                </label>
+                                <div {% if is_classroom_locked %}style="pointer-events: none; background-color: #f8fafc; cursor: not-allowed;" tabindex="-1"{% endif %}>
+                                    {{ moeys_form.classroom }}
+                                </div>
+                                {% if is_classroom_locked and target_classroom %}
+                                    <input type="hidden" name="classroom" value="{{ target_classroom.id }}">
+                                {% endif %}
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold small">ជំនាញ / គន្លងអប់រំ (Track)</label>
@@ -1071,6 +1090,7 @@
         }
 
         // Initialize grade and classroom cascading
+        const isGradeLocked = {{ is_grade_locked|yesno:"true,false" }};
         const initialGrade = '{{ selected_grade_number|default:"" }}' || (genGradeSelect ? genGradeSelect.value : '') || (moeysGradeSelect ? moeysGradeSelect.value : '');
         const initialClassId = '{{ selected_classroom_id|default:"" }}' || '{{ target_classroom.id|default:"" }}';
         if (initialGrade) {
@@ -1078,7 +1098,14 @@
             if (moeysGradeSelect) moeysGradeSelect.value = initialGrade;
             updatePortalClassroomsForGrade(initialGrade, initialClassId);
         } else {
-            updatePortalClassroomsForGrade('', null);
+            const singleOptVal = (genGradeSelect && genGradeSelect.options.length === 1 && genGradeSelect.options[0].value) ? genGradeSelect.options[0].value : null;
+            if (singleOptVal) {
+                if (genGradeSelect) genGradeSelect.value = singleOptVal;
+                if (moeysGradeSelect) moeysGradeSelect.value = singleOptVal;
+                updatePortalClassroomsForGrade(singleOptVal, initialClassId);
+            } else {
+                updatePortalClassroomsForGrade('', null);
+            }
         }
 
         // General Classroom selection

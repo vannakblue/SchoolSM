@@ -122,9 +122,9 @@ class StudentEnrollmentForm(forms.ModelForm):
         if not self.instance.pk and status_choices:
             self.initial.setdefault('status', 'ACTIVE')
 
+        self.fields['scholarship_type'].required = False
+        self.fields['status'].required = False
         if self.instance and self.instance.pk:
-            self.fields['scholarship_type'].required = False
-            self.fields['status'].required = False
             self.fields['classroom'].required = False
 
         # Soften requirements for fields unticked by Admin
@@ -256,6 +256,14 @@ class StudentEnrollmentForm(forms.ModelForm):
                     )
 
         return cleaned_data
+
+    def clean_status(self):
+        status = self.cleaned_data.get('status')
+        return status or 'ACTIVE'
+
+    def clean_scholarship_type(self):
+        st = self.cleaned_data.get('scholarship_type')
+        return st or 'FULL_PAY'
 
     def save(self, commit=True):
         existing_target = getattr(self, 'matched_existing_student', None) or (self.instance if self.instance and self.instance.pk else None)

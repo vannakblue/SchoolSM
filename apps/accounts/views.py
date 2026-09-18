@@ -660,36 +660,65 @@ def api_gemini_test_key(request):
             'message': '❌ មិនមាន API Key សម្រាប់ធ្វើតេស្តឡើយ! សូមវាយបញ្ចូល API Key ក្នុងប្រអប់ខាងលើសិន។'
         }, status=400)
 
-    model_name = request.POST.get('model_name', '').strip() or config.model_name or 'gemini-3.5-flash'
+    model_name = request.POST.get('model_name', '').strip() or config.model_name or 'gemini-3.8-flash'
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={test_key}"
 
     prompt_text = "ឆ្លើយជាភាសាខ្មែរមួយឃ្លាខ្លីថា៖ «ការតភ្ជាប់ជាមួយប្រព័ន្ធ Gemini AI ដំណើរការជោគជ័យ!»"
+    
+    # Configure generation parameters for fast connectivity test
+    # Set thinkingBudget to 0 for non-lite models to avoid heavy reasoning latency and token exhaustion
+    gen_config = {
+        "temperature": 0.2,
+        "maxOutputTokens": 300
+    }
+    if 'lite' not in model_name.lower():
+        gen_config["thinkingConfig"] = {"thinkingBudget": 0}
+
     payload = {
         "contents": [{"parts": [{"text": prompt_text}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 100}
+        "generationConfig": gen_config
     }
+
+    def _extract_reply_text(candidate_dict):
+        parts_list = candidate_dict.get('content', {}).get('parts', [])
+        clean_parts = [p.get('text', '') for p in parts_list if not p.get('thought') and p.get('text')]
+        if not clean_parts:
+            clean_parts = [p.get('text', '') for p in parts_list if p.get('text')]
+        return "".join(clean_parts).strip() or "ជោគជ័យ"
 
     start_time = time.time()
     try:
-        resp = requests.post(url, json=payload, timeout=15)
+        resp = requests.post(url, json=payload, timeout=25)
+        # If model does not support thinkingConfig (HTTP 400), gracefully retry without it
+        if resp.status_code == 400 and 'thinkingConfig' in gen_config:
+            del gen_config['thinkingConfig']
+            resp = requests.post(url, json=payload, timeout=25)
+
         latency_ms = int((time.time() - start_time) * 1000)
 
         # Auto-Fallback if primary model experiences 503 (High Demand) or 404 (Deprecated model)
         if resp.status_code in [503, 404]:
-            fallback_models = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash']
+            fallback_models = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
             for fb_model in fallback_models:
                 if fb_model == model_name:
                     continue
                 fb_url = f"https://generativelanguage.googleapis.com/v1beta/models/{fb_model}:generateContent?key={test_key}"
                 try:
-                    time.sleep(0.5)
-                    fb_resp = requests.post(fb_url, json=payload, timeout=12)
+                    time.sleep(0.3)
+                    fb_cfg = {"temperature": 0.2, "maxOutputTokens": 300}
+                    if 'lite' not in fb_model.lower():
+                        fb_cfg["thinkingConfig"] = {"thinkingBudget": 0}
+                    fb_payload = {"contents": [{"parts": [{"text": prompt_text}]}], "generationConfig": fb_cfg}
+                    fb_resp = requests.post(fb_url, json=fb_payload, timeout=15)
+                    if fb_resp.status_code == 400 and 'thinkingConfig' in fb_cfg:
+                        del fb_cfg['thinkingConfig']
+                        fb_resp = requests.post(fb_url, json=fb_payload, timeout=15)
+
                     if fb_resp.status_code == 200:
                         gemini_rotator.mark_success(test_key)
                         fb_result = fb_resp.json()
                         candidate = fb_result.get('candidates', [{}])[0]
-                        parts = candidate.get('content', {}).get('parts', [])
-                        reply_text = "".join([p.get('text', '') for p in parts]).strip() or "ជោគជ័យ"
+                        reply_text = _extract_reply_text(candidate)
                         latency_ms = int((time.time() - start_time) * 1000)
 
                         config.last_tested_at = timezone.now()
@@ -700,7 +729,7 @@ def api_gemini_test_key(request):
 
                         return JsonResponse({
                             'status': 'success',
-                            'message': f'✅ ការតភ្ជាប់ជោគជ័យ! (ម៉ូដែល {model_name} មានអ្នកប្រើច្រើន 503 ប្រព័ន្ធបានប្តូរទៅកាន់ {fb_model} ដោយជោគជ័យ, Latency: {latency_ms}ms)',
+                            'message': f'✅ ការតភ្ជាប់ជោគជ័យ! (ម៉ូដែល {model_name} ជាប់រវល់/មិនដំណើរការ ប្រព័ន្ធបានប្តូរទៅកាន់ {fb_model} ដោយជោគជ័យ, Latency: {latency_ms}ms)',
                             'reply': reply_text,
                             'latency_ms': latency_ms,
                             'masked_key': masked
@@ -712,8 +741,7 @@ def api_gemini_test_key(request):
             gemini_rotator.mark_success(test_key)
             result_json = resp.json()
             candidate = result_json.get('candidates', [{}])[0]
-            parts = candidate.get('content', {}).get('parts', [])
-            reply_text = "".join([p.get('text', '') for p in parts]).strip() or "ជោគជ័យ"
+            reply_text = _extract_reply_text(candidate)
 
             config.last_tested_at = timezone.now()
             config.last_test_status = "SUCCESS"

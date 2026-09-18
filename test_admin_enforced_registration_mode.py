@@ -32,10 +32,18 @@ def run_tests():
     profile.save()
 
     gl7, _ = GradeLevel.objects.get_or_create(grade_number=7, track='GENERAL', defaults={'name': 'ថ្នាក់ទី ៧', 'order': 7})
+    gl7.is_registration_open = True
+    gl7.save()
     c7, _ = Classroom.objects.get_or_create(code="07A-TEST", defaults={'name': 'ថ្នាក់ទី ៧A', 'grade_level': 7, 'academic_year': year, 'track': 'GENERAL'})
+    c7.academic_year = year
+    c7.save()
 
     gl10, _ = GradeLevel.objects.get_or_create(grade_number=10, track='GENERAL', defaults={'name': 'ថ្នាក់ទី ១០', 'order': 10})
+    gl10.is_registration_open = True
+    gl10.save()
     c10, _ = Classroom.objects.get_or_create(code="10A-ENF", defaults={'name': 'ថ្នាក់ទី ១០A', 'grade_level': 10, 'academic_year': year, 'track': 'GENERAL'})
+    c10.academic_year = year
+    c10.save()
 
     # Configure Grade 10 to strictly use MOEYS_INDIVIDUAL via Admin config
     cfg10, _ = GradeVerificationFormConfig.objects.get_or_create(
@@ -52,20 +60,18 @@ def run_tests():
     assert resp.status_code == 200
     html_content = resp.content.decode('utf-8')
 
-    # Verify that the choice selector card ("សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ") is NOT present
+    # Verify that the choice selector card ("សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ") and indicator banner are NOT present
     assert "សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ" not in html_content, "Applicant choice card should NOT be in HTML"
-    # Verify Admin Enforced banner is present
-    assert "វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយរដ្ឋបាលសាលា" in html_content, "Admin Enforced banner must be in HTML"
-    assert "ទម្រង់បែបបទ Admin បានកំណត់" in html_content
-    print("  ✓ Public portal renders Admin Enforced banner and prevents student selection cards.")
+    assert "វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយរដ្ឋបាលសាលា" not in html_content, "Admin Enforced banner has been removed as requested"
+    assert 'value="ADMIN_CUSTOM"' in html_content
+    print("  ✓ Public portal prevents student selection cards and removed admin banner.")
 
     # 3. Test Grade 10 automatically enforces Admin's MOEYS_INDIVIDUAL template
     req10 = factory.get(f'/students/enroll/online/?classroom={c10.id}&mode=ADMIN_CUSTOM')
     req10.user = AnonymousUser()
     resp10 = public_student_enroll(req10)
     assert resp10.status_code == 200
-    html10 = resp10.content.decode('utf-8')
-    assert "ទម្រង់សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ" in html10
+    assert 'value="MOEYS_INDIVIDUAL"' in resp10.content.decode('utf-8')
     print("  ✓ Public portal strictly enforced Grade 10 Admin template (MOEYS_INDIVIDUAL), ignoring ?mode=ADMIN_CUSTOM.")
 
     # 4. Test api_get_grade_options returns assigned_template
