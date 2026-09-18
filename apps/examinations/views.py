@@ -1894,13 +1894,45 @@ def standardized_exam_list(request):
             found_year = AcademicYear.objects.filter(id=int(selected_year)).first()
             if found_year:
                 active_year = found_year
+        else:
+            year_str = str(selected_year).strip()
+            found_year = AcademicYear.objects.filter(name=year_str).first()
+            if not found_year:
+                norm_str = re.sub(r'[\s\-]+', '', year_str)
+                khmer_map = {'០': '0', '១': '1', '២': '2', '៣': '3', '៤': '4', '៥': '5', '៦': '6', '៧': '7', '៨': '8', '៩': '9'}
+                for kh, ar in khmer_map.items():
+                    norm_str = norm_str.replace(kh, ar)
+                for y in AcademicYear.objects.all():
+                    y_norm = re.sub(r'[\s\-]+', '', str(y.name))
+                    for kh, ar in khmer_map.items():
+                        y_norm = y_norm.replace(kh, ar)
+                    if y_norm == norm_str:
+                        found_year = y
+                        break
+            if found_year:
+                active_year = found_year
 
     selected_grade = request.GET.get('grade') or request.GET.get('grade_level')
     search_q = request.GET.get('q', '').strip()
 
     exams_qs = StandardizedExam.objects.select_related('academic_year').prefetch_related('candidates', 'rooms', 'exam_subjects').all().order_by('-exam_date', 'grade_level')
     if active_year:
-        exams_qs = exams_qs.filter(academic_year=active_year)
+        # Also include equivalent academic years if names normalize to the same string (e.g. 2026-2027 and ២០២៦-២០២៧)
+        khmer_map = {'០': '0', '១': '1', '២': '2', '៣': '3', '៤': '4', '៥': '5', '៦': '6', '៧': '7', '៨': '8', '៩': '9'}
+        act_norm = re.sub(r'[\s\-]+', '', str(active_year.name))
+        for kh, ar in khmer_map.items():
+            act_norm = act_norm.replace(kh, ar)
+        matching_year_ids = [active_year.id]
+        for y in AcademicYear.objects.exclude(id=active_year.id):
+            y_norm = re.sub(r'[\s\-]+', '', str(y.name))
+            for kh, ar in khmer_map.items():
+                y_norm = y_norm.replace(kh, ar)
+            if y_norm == act_norm:
+                matching_year_ids.append(y.id)
+        if len(matching_year_ids) > 1:
+            exams_qs = exams_qs.filter(academic_year_id__in=matching_year_ids)
+        else:
+            exams_qs = exams_qs.filter(academic_year=active_year)
     if selected_grade and selected_grade != 'all' and selected_grade.isdigit():
         exams_qs = exams_qs.filter(grade_level=int(selected_grade))
     if search_q:
@@ -2322,17 +2354,29 @@ def standardized_exam_create(request):
                     total_pulled_candidates += pulled_count
 
         if len(created_exams) == 1:
+            if ay:
+                try:
+                    request.session['active_academic_year_id'] = ay.id
+                except Exception:
+                    pass
             if auto_pull and total_pulled_candidates > 0:
                 messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដា «{created_exams[0].name}» និងបានទាញបញ្ចូលបេក្ខជនចំនួន {total_pulled_candidates} នាក់ដោយស្វ័យប្រវត្តិ!")
             else:
                 messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដា «{created_exams[0].name}» ដោយជោគជ័យ!")
             return redirect('standardized_exam_manage', exam_id=created_exams[0].id)
         elif len(created_exams) > 1:
+            if ay:
+                try:
+                    request.session['active_academic_year_id'] = ay.id
+                except Exception:
+                    pass
             grades_list_str = ", ".join([f"ថ្នាក់ទី {e.grade_level}" for e in created_exams])
             if auto_pull and total_pulled_candidates > 0:
                 messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដាចំនួន {len(created_exams)} កម្រិតថ្នាក់ ({grades_list_str}) ព្រមទាំងបានទាញបញ្ចូលបេក្ខជនសរុបចំនួន {total_pulled_candidates} នាក់ដោយស្វ័យប្រវត្តិ!")
             else:
                 messages.success(request, f"🎉 បានបង្កើតសម័យប្រឡងតេស្តស្តង់ដាចំនួន {len(created_exams)} កម្រិតថ្នាក់ ({grades_list_str}) ដោយជោគជ័យ!")
+            if ay:
+                return redirect(f"{reverse('standardized_exam_list')}?academic_year={ay.id}")
             return redirect('standardized_exam_list')
         else:
             messages.error(request, "⚠️ សូមជ្រើសរើសយ៉ាងហោចណាស់មួយកម្រិតថ្នាក់!")
@@ -10632,6 +10676,66 @@ def homeroom_cumulative_dossier_batch_view(request, classroom_id: int):
     return render(request, 'examinations/student/cumulative_dossier.html', {
         'dossier_list': dossier_list,
     })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER', 'STUDENT'])
+def student_study_tracking_book_view(request, student_id: int):
+    """
+    Official MoEYS Individual Student Study Tracking Book (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ / Carnet Scolaire Individuel)
+    Displays full monthly & semester marks, attendance, conduct, parent/teacher feedback, and promotion decisions.
+    """
+    from .services import get_student_study_tracking_book_data
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year'), id=student_id)
+
+    # Permission check: Admin, Teacher (homeroom or teacher of this student), or the Student themselves
+    is_admin = bool(request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN')
+    is_owner = bool(student.user_id == request.user.id)
+    is_homeroom = bool(student.classroom and can_teacher_manage_homeroom(request.user, student.classroom.id))
+    is_teacher = bool(getattr(request.user, 'role', '') == 'TEACHER')
+
+    if not (is_admin or is_homeroom or is_teacher or is_owner):
+        messages.error(request, "⚠️ លោកគ្រូ-អ្នកគ្រូ គ្មានសិទ្ធិចូលមើលសៀវភៅតាមដានការសិក្សារបស់សិស្សនេះឡើយ!")
+        return redirect('teacher_dashboard')
+
+    tracking_data = get_student_study_tracking_book_data(student)
+
+    return render(request, 'examinations/student/study_tracking_book_individual.html', {
+        'book_list': [tracking_data] if tracking_data else [],
+        'is_batch': False,
+    })
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
+    """
+    Batch print of Individual Student Study Tracking Books (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ៗ)
+    for all active students in a classroom.
+    """
+    from .services import get_student_study_tracking_book_data
+    from apps.teachers.permissions import can_teacher_manage_homeroom
+
+    classroom = get_object_or_404(Classroom.objects.select_related('academic_year', 'homeroom_teacher'), id=classroom_id)
+    if not can_teacher_manage_homeroom(request.user, classroom.id):
+        messages.error(request, f"⚠️ លោកគ្រូ-អ្នកគ្រូ មិនមែនជាគ្រូទទួលបន្ទុកថ្នាក់ «{classroom.name}» ឡើយ!")
+        return redirect('teacher_dashboard')
+
+    students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
+    book_list = []
+    for stu in students:
+        b_data = get_student_study_tracking_book_data(stu)
+        if b_data:
+            book_list.append(b_data)
+
+    return render(request, 'examinations/student/study_tracking_book_individual.html', {
+        'book_list': book_list,
+        'is_batch': True,
+        'classroom': classroom,
+    })
+
 
 
 KHMER_WEEKDAYS_MAP = {

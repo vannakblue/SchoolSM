@@ -34,12 +34,14 @@ class HomeroomAndExamScheduleTests(TestCase):
         self.school.save()
 
         # 3. Academic Year
-        self.year = AcademicYear.objects.create(
-            name="២០២៦-២០២៧",
-            start_date=date(2026, 10, 1),
-            end_date=date(2027, 8, 31),
-            is_current=True
-        )
+        self.year = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.filter(name="2026-2027").first()
+        if not self.year:
+            self.year = AcademicYear.objects.create(
+                name="2026-2027",
+                start_date=date(2026, 10, 1),
+                end_date=date(2027, 8, 31),
+                is_current=True
+            )
 
         # 4. Teachers
         self.teacher1, _ = Teacher.objects.get_or_create(

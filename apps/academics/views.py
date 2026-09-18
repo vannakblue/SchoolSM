@@ -9570,3 +9570,232 @@ def homeroom_teachers_approval_print(request):
         'show_signature': request.GET.get('signature', '1') == '1',
     }
     return render(request, 'academics/homeroom_teachers_approval_print.html', context)
+
+
+# =========================================================================
+# Student Classroom Allocation by Score (ការបែងចែកថ្នាក់រៀនតាមពិន្ទុ)
+# =========================================================================
+
+@login_required
+@role_required(['ADMIN'])
+def student_classroom_allocation_view(request):
+    """
+    Classroom Allocation Hub: Distributes students into classrooms per grade level
+    based on admin-selected score source (Standardized Exam vs Previous Year Annual Average [(S1+S2)/2]).
+    """
+    from apps.academics.utils import get_active_academic_year
+    from apps.academics.allocation_service import ClassroomAllocationService
+
+    active_year = get_active_academic_year(request)
+    year_param = request.GET.get('academic_year') or request.GET.get('year')
+    if year_param and str(year_param).isdigit():
+        target_year = AcademicYear.objects.filter(id=int(year_param)).first() or active_year
+    else:
+        target_year = active_year
+
+    grade_param = request.GET.get('grade') or request.GET.get('grade_level', '7')
+    grade_level = int(grade_param) if str(grade_param).isdigit() and 7 <= int(grade_param) <= 12 else 7
+    track = request.GET.get('track', 'ALL')
+
+    score_sources_info = ClassroomAllocationService.get_available_score_sources(
+        academic_year=target_year,
+        grade_level=grade_level,
+        track=track
+    )
+
+    academic_years = AcademicYear.objects.all().order_by('-start_date')
+
+    return render(request, 'academics/classroom_allocation.html', {
+        'target_year': target_year,
+        'active_year': active_year,
+        'academic_years': academic_years,
+        'grade_level': grade_level,
+        'track': track,
+        'target_classrooms': score_sources_info['target_classrooms'],
+        'available_exams': score_sources_info['available_exams'],
+        'past_academic_years': score_sources_info['past_academic_years'],
+        'suggested_past_year': score_sources_info['suggested_past_year'],
+        'current_students_count': score_sources_info['current_students_count'],
+        'suggested_previous_grade': score_sources_info['suggested_previous_grade'],
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_classroom_allocation_preview(request):
+    """
+    AJAX API: Computes preview of classroom allocation based on selected criteria:
+    - Score source: STANDARDIZED_EXAM vs PREVIOUS_YEAR_ANNUAL
+    - Sorting: Highest to Lowest score
+    - Strategy: TOP_DOWN vs BALANCED_SNAKE vs GENDER_BALANCED
+    """
+    import json
+    from apps.academics.allocation_service import ClassroomAllocationService
+    from apps.academics.utils import get_active_academic_year
+
+    if request.method == 'POST':
+        try:
+            payload = json.loads(request.body)
+        except Exception:
+            payload = request.POST
+    else:
+        payload = request.GET
+
+    target_year_id = payload.get('target_year_id')
+    grade_level = int(payload.get('grade_level', 7))
+    score_source_type = payload.get('score_source_type', 'STANDARDIZED_EXAM')
+    exam_id = payload.get('exam_id')
+    source_year_id = payload.get('source_year_id')
+    track = payload.get('track', 'ALL')
+    strategy = payload.get('strategy', 'TOP_DOWN')
+    target_class_ids = payload.get('target_class_ids', [])
+
+    target_year = AcademicYear.objects.filter(id=target_year_id).first() if target_year_id else get_active_academic_year(request)
+    if not target_year:
+        return JsonResponse({'status': 'error', 'message': 'មិនអាចរកឃើញឆ្នាំសិក្សាគោលដៅឡើយ'}, status=400)
+
+    # 1. Pull students with scores
+    students_res = ClassroomAllocationService.get_students_with_scores(
+        target_year=target_year,
+        grade_level=grade_level,
+        score_source_type=score_source_type,
+        exam_id=int(exam_id) if exam_id and str(exam_id).isdigit() else None,
+        source_year_id=int(source_year_id) if source_year_id and str(source_year_id).isdigit() else None,
+        track=track
+    )
+
+    # 2. Filter target classrooms
+    classes_info = ClassroomAllocationService.get_available_score_sources(target_year, grade_level, track)
+    target_classes = classes_info['target_classrooms']
+    if target_class_ids:
+        c_ids = [int(cid) for cid in target_class_ids if str(cid).isdigit()]
+        if c_ids:
+            target_classes = [c for c in target_classes if c['id'] in c_ids]
+
+    # 3. Compute distribution
+    distribution_res = ClassroomAllocationService.distribute_students_to_classrooms(
+        students=students_res['students'],
+        target_classrooms=target_classes,
+        strategy=strategy
+    )
+
+    # Serialize Decimal objects for JSON response
+    for b in distribution_res['classroom_buckets']:
+        b['average_score'] = float(b['average_score'])
+        b['max_score'] = float(b['max_score'])
+        b['min_score'] = float(b['min_score'])
+        for s in b['students']:
+            s['score'] = float(s['score'])
+            s['total_score'] = float(s['total_score'])
+            s['average_score'] = float(s['average_score'])
+
+    summary = distribution_res['summary']
+    summary['overall_average_score'] = float(summary['overall_average_score'])
+    summary['score_source_title'] = students_res['score_source_title']
+    summary['scored_students_count'] = students_res['scored_students_count']
+
+    return JsonResponse({
+        'status': 'success',
+        'preview': distribution_res,
+        'score_source_title': students_res['score_source_title'],
+        'total_students': students_res['total_students'],
+        'target_classrooms': target_classes,
+    })
+
+
+@login_required
+@role_required(['ADMIN'])
+def api_classroom_allocation_apply(request):
+    """
+    AJAX API: Executes the final classroom allocation atomically.
+    Updates each student's classroom and creates audit logs.
+    """
+    import json
+    from apps.academics.allocation_service import ClassroomAllocationService
+    from apps.academics.utils import get_active_academic_year
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid HTTP method'}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception:
+        payload = request.POST
+
+    target_year_id = payload.get('target_year_id')
+    allocations = payload.get('allocations', [])
+    audit_reason = payload.get('audit_reason', 'បែងចែកថ្នាក់រៀនតាមពិន្ទុ')
+
+    target_year = AcademicYear.objects.filter(id=target_year_id).first() if target_year_id else get_active_academic_year(request)
+    if not target_year:
+        return JsonResponse({'status': 'error', 'message': 'មិនអាចរកឃើញឆ្នាំសិក្សាគោលដៅឡើយ'}, status=400)
+
+    if not allocations:
+        return JsonResponse({'status': 'error', 'message': 'គ្មានទិន្នន័យបែងចែកថ្នាក់ឡើយ'}, status=400)
+
+    res = ClassroomAllocationService.apply_classroom_allocation(
+        allocations_list=allocations,
+        target_academic_year=target_year,
+        user=request.user,
+        audit_reason=audit_reason
+    )
+
+    return JsonResponse(res)
+
+
+@login_required
+@role_required(['ADMIN'])
+def export_classroom_allocation_excel(request):
+    """
+    Exports the classroom allocation as an official Excel workbook.
+    """
+    from apps.academics.allocation_service import ClassroomAllocationService
+    from apps.academics.utils import get_active_academic_year
+
+    target_year_id = request.GET.get('target_year_id')
+    grade_level = int(request.GET.get('grade_level', 7))
+    score_source_type = request.GET.get('score_source_type', 'STANDARDIZED_EXAM')
+    exam_id = request.GET.get('exam_id')
+    source_year_id = request.GET.get('source_year_id')
+    track = request.GET.get('track', 'ALL')
+    strategy = request.GET.get('strategy', 'TOP_DOWN')
+
+    target_year = AcademicYear.objects.filter(id=target_year_id).first() if target_year_id else get_active_academic_year(request)
+    if not target_year:
+        return HttpResponse("Academic Year not found", status=404)
+
+    # 1. Pull students with scores
+    students_res = ClassroomAllocationService.get_students_with_scores(
+        target_year=target_year,
+        grade_level=grade_level,
+        score_source_type=score_source_type,
+        exam_id=int(exam_id) if exam_id and str(exam_id).isdigit() else None,
+        source_year_id=int(source_year_id) if source_year_id and str(source_year_id).isdigit() else None,
+        track=track
+    )
+
+    # 2. Target classes
+    classes_info = ClassroomAllocationService.get_available_score_sources(target_year, grade_level, track)
+    target_classes = classes_info['target_classrooms']
+
+    # 3. Compute distribution
+    distribution_res = ClassroomAllocationService.distribute_students_to_classrooms(
+        students=students_res['students'],
+        target_classrooms=target_classes,
+        strategy=strategy
+    )
+
+    excel_data = ClassroomAllocationService.export_allocation_to_excel(
+        preview_result=distribution_res,
+        grade_level=grade_level,
+        academic_year_name=target_year.name,
+        score_source_title=students_res['score_source_title']
+    )
+
+    response = HttpResponse(
+        excel_data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"Class_Allocation_Grade_{grade_level}_{target_year.name}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

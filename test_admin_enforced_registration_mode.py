@@ -63,8 +63,20 @@ def run_tests():
     # Verify that the choice selector card ("សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ") and indicator banner are NOT present
     assert "សូមជ្រើសរើសវិធីសាស្ត្រចុះឈ្មោះ" not in html_content, "Applicant choice card should NOT be in HTML"
     assert "វិធីសាស្ត្រចុះឈ្មោះកំណត់ដោយរដ្ឋបាលសាលា" not in html_content, "Admin Enforced banner has been removed as requested"
+    assert "ជំហានទី ១៖ ជ្រើសរើសកម្រិតថ្នាក់" not in html_content, "Grade selection dropdown should not be presented to student when locked"
+    assert '<select id="portal_grade_level"' not in html_content, "No interactive grade dropdown when locked"
     assert 'value="ADMIN_CUSTOM"' in html_content
-    print("  ✓ Public portal prevents student selection cards and removed admin banner.")
+    print("  ✓ Public portal prevents student selection cards and removed admin banner and grade choice dropdown.")
+
+    # Test Grade 7 via ?grade=7 also does not show grade dropdown to student
+    req_g7 = factory.get('/students/enroll/online/?grade=7')
+    req_g7.user = AnonymousUser()
+    resp_g7 = public_student_enroll(req_g7)
+    assert resp_g7.status_code == 200
+    html_g7 = resp_g7.content.decode('utf-8')
+    assert "ជំហានទី ១៖ ជ្រើសរើសកម្រិតថ្នាក់" not in html_g7
+    assert '<select id="portal_grade_level"' not in html_g7
+    print("  ✓ Public portal with ?grade=7 directly shows classroom without showing grade selection dropdown.")
 
     # 3. Test Grade 10 automatically enforces Admin's MOEYS_INDIVIDUAL template
     req10 = factory.get(f'/students/enroll/online/?classroom={c10.id}&mode=ADMIN_CUSTOM')

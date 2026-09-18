@@ -97,8 +97,14 @@
 
 <div class="no-print d-flex gap-2">
     <button onclick="window.print()" class="btn btn-primary shadow fw-bold px-4">
-        <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅតាមដាន (Print A4)
+        <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅតាមដានរួម (Print A4)
     </button>
+    <a href="{% url 'homeroom_individual_tracking_books_batch_view' classroom.id %}" target="_blank" class="btn btn-success shadow fw-bold">
+        <i class="fa-solid fa-book-open me-1"></i> សៀវភៅតាមដានសិស្សម្នាក់ៗ (Batch A4)
+    </a>
+    <a href="{% url 'homeroom_cumulative_dossier_batch_view' classroom.id %}" target="_blank" class="btn btn-warning text-dark shadow fw-bold">
+        <i class="fa-solid fa-graduation-cap me-1"></i> សៀវភៅសិក្ខាគារិកទាំងអស់
+    </a>
     <button onclick="window.close()" class="btn btn-light border shadow-sm fw-bold">
         <i class="fa-solid fa-xmark me-1"></i> បិទ
     </button>
@@ -185,7 +191,11 @@
             <tr>
                 <td class="text-center">{{ forloop.counter }}</td>
                 <td class="text-center fw-bold">{{ row.student.student_id }}</td>
-                <td class="fw-bold">{{ row.student.khmer_name }}</td>
+                <td class="fw-bold">
+                    <a href="{% url 'student_study_tracking_book_view' row.student.id %}" target="_blank" class="text-decoration-none text-dark fw-bold" title="ចុចដើម្បីមើលសៀវភៅតាមដានផ្ទាល់ខ្លួនសិស្សម្នាក់នេះ">
+                        {{ row.student.khmer_name }} <i class="fa-solid fa-arrow-up-right-from-square small text-primary ms-1 opacity-75"></i>
+                    </a>
+                </td>
                 <td class="text-center">{% if row.student.gender == 'F' %}ស{% else %}ប{% endif %}</td>
                 
                 <!-- Semester 1 -->

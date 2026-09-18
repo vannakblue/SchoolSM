@@ -21,6 +21,19 @@ def get_active_academic_year(request=None):
             ay = AcademicYear.objects.filter(id=int(year_param)).first()
         if not ay:
             ay = AcademicYear.objects.filter(name=str(year_param).strip()).first()
+        if not ay:
+            raw_param = str(year_param).strip()
+            mapping = {'០': '0', '១': '1', '២': '2', '៣': '3', '៤': '4', '៥': '5', '៦': '6', '៧': '7', '៨': '8', '៩': '9'}
+            norm_param = raw_param
+            for kh, ar in mapping.items():
+                norm_param = norm_param.replace(kh, ar)
+            for y in AcademicYear.objects.all():
+                norm_y = str(y.name).strip()
+                for kh, ar in mapping.items():
+                    norm_y = norm_y.replace(kh, ar)
+                if norm_y == norm_param:
+                    ay = y
+                    break
         if ay:
             try:
                 request.session['active_academic_year_id'] = ay.id
@@ -38,10 +51,15 @@ def get_active_academic_year(request=None):
     except Exception:
         pass
 
-    # 3. Database is_current=True
-    ay = AcademicYear.objects.filter(is_current=True).first()
-    if ay:
-        return ay
+    # 3. Database is_current=True (prefer operational year with classrooms if multiple)
+    current_years = AcademicYear.objects.filter(is_current=True)
+    if current_years.count() > 1:
+        for cy in current_years:
+            if cy.classrooms.exists():
+                return cy
+        return current_years.first()
+    elif current_years.exists():
+        return current_years.first()
 
     # 4. Fallback to latest
     return AcademicYear.objects.order_by('-start_date').first()

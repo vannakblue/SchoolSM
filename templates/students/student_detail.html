@@ -13,6 +13,9 @@
         <a href="{% url 'student_id_card' student.id %}" target="_blank" class="btn btn-outline-primary">
             <i class="fa-solid fa-address-card me-1"></i> បោះពុម្ពកាតសិស្ស
         </a>
+        <a href="{% url 'student_study_tracking_book_view' student.id %}" target="_blank" class="btn btn-outline-success" title="សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ (Carnet Scolaire Individuel)">
+            <i class="fa-solid fa-book-open me-1"></i> សៀវភៅតាមដានការសិក្សា
+        </a>
         <a href="{% url 'student_cumulative_dossier_view' student.id %}" target="_blank" class="btn btn-outline-secondary" title="សៀវភៅសិក្ខាគារិក / សំណុំឯកសារផ្ទាល់ខ្លួនសិស្ស និងប្រវត្តិសិក្សាសន្សំ">
             <i class="fa-solid fa-book-bookmark me-1"></i> សៀវភៅសិក្ខាគារិក
         </a>

@@ -1,36 +1,44 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="km">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>សៀវភៅសិក្ខាគារិក (Student Cumulative Dossier) | SchoolSM</title>
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>សៀវភៅសិក្ខាគារិក (Student Cumulative Dossier) | MoEYS SchoolSM</title>
+    
+    <!-- Google Fonts for Authentic Khmer Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&family=Siemreap&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
         :root {
             --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
-            --font-body: 'Kantumruy Pro', 'Battambang', sans-serif;
+            --font-body: 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
+            --moeys-primary: #1e3a8a;
+            --moeys-secondary: #b91c1c;
+            --moeys-gold: #b45309;
+            --border-color: #334155;
         }
+
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         body {
             font-family: var(--font-body);
             background-color: #f1f5f9;
             color: #0f172a;
             margin: 0;
             padding: 20px 0;
-            font-size: 12px;
+            font-size: 11px;
+            line-height: 1.4;
         }
-        .dossier-booklet {
-            background: white;
-            width: 210mm; /* A4 Portrait */
-            min-height: 297mm;
-            margin: 0 auto 20px auto;
-            padding: 14mm 14mm;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box;
-            position: relative;
-            page-break-after: always;
-        }
+
         .font-moul,
         .font-muol,
         .moul-font,
@@ -42,52 +50,138 @@
         [style*="font-family:'Moul'"],
         [style*='font-family: "Moul"'] {
             font-family: var(--font-moul) !important;
-            font-size: 12pt !important;
+            font-size: 11.5pt !important;
             font-weight: normal !important;
             font-weight: 400 !important;
             font-synthesis: none !important;
             -webkit-font-smoothing: antialiased !important;
             -moz-osx-font-smoothing: grayscale !important;
-            line-height: 1.35 !important;
+            line-height: 1.4 !important;
         }
+
+        .dossier-booklet {
+            background: #ffffff;
+            width: 210mm; /* A4 Portrait */
+            min-height: 297mm;
+            margin: 0 auto 25px auto;
+            padding: 12mm 14mm;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            position: relative;
+            page-break-after: always;
+        }
+
+        .dossier-booklet:last-child {
+            page-break-after: auto;
+        }
+
+        .official-header {
+            border-bottom: 2px solid var(--moeys-primary);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .header-title-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px solid var(--moeys-primary);
+            border-radius: 6px;
+            padding: 8px 14px;
+            margin: 8px 0 12px 0;
+            text-align: center;
+        }
+
         .photo-frame {
-            width: 90px;
-            height: 115px;
-            border: 1px dashed #64748b;
+            width: 95px;
+            height: 125px;
+            border: 1px solid #475569;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #f8fafc;
-            border-radius: 4px;
             overflow: hidden;
             margin: 0 auto;
         }
+
+        .photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .section-header {
+            background: #f1f5f9;
+            border-left: 4px solid var(--moeys-primary);
+            padding: 4px 8px;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--moeys-primary);
+            margin: 10px 0 6px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
         .table-dossier {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
-            margin-top: 10px;
+            font-size: 10px;
+            margin-top: 4px;
         }
+
         .table-dossier th, .table-dossier td {
-            border: 1px solid #1e293b;
-            padding: 5px 6px;
+            border: 1px solid var(--border-color);
+            padding: 4px 5px;
             vertical-align: middle;
+            text-align: center;
         }
+
         .table-dossier th {
             background-color: #f8fafc;
             font-weight: 700;
-            text-align: center;
+            color: #0f172a;
         }
+
         .grade-highlight-current {
-            background-color: #ecfdf5;
-            font-weight: 700;
+            background-color: #ecfdf5 !important;
+            font-weight: 600;
         }
+
+        .profile-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+        }
+
+        .profile-table td {
+            padding: 2.5px 5px;
+            vertical-align: middle;
+        }
+
+        .seal-circle {
+            width: 75px;
+            height: 75px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #94a3b8;
+            margin: 4px auto;
+        }
+
         .no-print {
             position: fixed;
             top: 20px;
             right: 20px;
-            z-index: 9999;
+            z-index: 99999;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
+
         @media print {
             body {
                 background: white;
@@ -97,7 +191,7 @@
                 width: 100%;
                 min-height: auto;
                 margin: 0;
-                padding: 10mm 10mm;
+                padding: 8mm 10mm;
                 box-shadow: none;
                 page-break-after: always;
             }
@@ -113,91 +207,136 @@
 </head>
 <body>
 
-<div class="no-print d-flex gap-2">
-    <button onclick="window.print()" class="btn btn-primary shadow fw-bold px-4">
+<!-- Floating Action Bar -->
+<div class="no-print d-flex gap-2 align-items-center">
+    <button onclick="window.print()" class="btn btn-primary fw-bold px-4 shadow-sm">
         <i class="fa-solid fa-print me-1"></i> បោះពុម្ពសៀវភៅសិក្ខាគារិក (Print A4)
     </button>
-    <button onclick="window.close()" class="btn btn-light border shadow-sm fw-bold">
-        <i class="fa-solid fa-xmark me-1"></i> បិទ
+    <button onclick="window.history.back()" class="btn btn-outline-secondary fw-bold shadow-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i> ថយក្រោយ
     </button>
 </div>
 
 {% for dossier in dossier_list %}
 <div class="dossier-booklet">
     <!-- Header -->
-    <div class="row align-items-center mb-2">
-        <div class="col-6 text-center">
-            <div class="font-moul text-primary">{{ dossier.school_profile.ministry_name_kh|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
-            <div class="font-moul text-dark mt-0.5">{{ dossier.school_name }}</div>
-            <div class="text-muted" style="font-size: 9px;">កូដសាលា៖ {{ dossier.school_profile.school_code|default:"080101" }}</div>
-        </div>
-        <div class="col-6 text-center">
-            <div class="font-moul text-primary">ព្រះរាជាណាចក្រកម្ពុជា</div>
-            <div class="font-moul text-danger">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-            <div style="letter-spacing: 2px; font-size: 10px;">***</div>
+    <div class="official-header">
+        <div class="row align-items-center">
+            <div class="col-6 text-center">
+                <div class="font-moul text-primary" style="font-size: 11pt;">{{ dossier.school_profile.ministry_name|default:"ក្រសួងអប់រំ យុវជន និងកីឡា" }}</div>
+                <div class="fw-bold text-dark" style="font-size: 10.5px;">{{ dossier.school_profile.poe_name|default:"មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ" }}</div>
+                <div class="font-moul text-dark mt-1" style="font-size: 11.5pt;">{{ dossier.school_name }}</div>
+                <div class="text-muted small" style="font-size: 9px;">កូដសាលា (EMIS)៖ <strong>{{ dossier.school_profile.school_code|default:"080101" }}</strong></div>
+            </div>
+            <div class="col-6 text-center">
+                <div class="font-moul text-primary" style="font-size: 11.5pt;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="font-moul text-danger" style="font-size: 11pt;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div style="letter-spacing: 3px; font-size: 11px; color: #b45309;" class="my-1">֍ ֍ ֍</div>
+                <div class="text-muted small" style="font-size: 9px;">បាវចនា៖ «{{ dossier.school_profile.motto|default:"ចំណេះដឹង វិន័យ សីលធម៌ គុណធម៌" }}»</div>
+            </div>
         </div>
     </div>
 
     <!-- Title -->
-    <div class="text-center my-2 pb-1 border-bottom">
-        <h4 class="font-moul text-dark mb-0">សៀវភៅសិក្ខាគារិក</h4>
-        <div class="fw-bold text-primary small">CUMULATIVE ACADEMIC DOSSIER & PROGRESS RECORD (GRADES 7 - 12)</div>
+    <div class="header-title-box">
+        <div class="font-moul text-dark" style="font-size: 13pt;">សៀវភៅសិក្ខាគារិក</div>
+        <div class="fw-bold text-primary" style="font-size: 9.5px; letter-spacing: 1px;">
+            STUDENT CUMULATIVE ACADEMIC DOSSIER & PROGRESS RECORD (GRADES 7 - 12)
+        </div>
+        <div class="small text-muted mt-0.5" style="font-size: 9px;">
+            ថ្នាក់បច្ចុប្បន្ន៖ <strong class="text-success fs-6">{{ dossier.current_classroom.name|default:"-" }}</strong> • ឆ្នាំសិក្សា៖ <strong>{{ dossier.current_academic_year.name|default:"-" }}</strong>
+        </div>
     </div>
 
     <!-- Student Profile Card -->
-    <div class="border rounded-3 p-2.5 mb-3 bg-light">
+    <div class="border rounded-3 p-2.5 mb-2 bg-light">
         <div class="row g-2 align-items-center">
             <div class="col-2 text-center">
                 <div class="photo-frame">
                     {% if dossier.student.photo %}
-                        <img src="{{ dossier.student.photo.url }}" alt="Photo" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ dossier.student.photo.url }}" alt="Photo">
                     {% else %}
                         <div class="text-muted text-center" style="font-size: 9px;">
                             <i class="fa-regular fa-user fa-2x mb-1 opacity-50"></i><br>រូបថត ៤x៦
                         </div>
                     {% endif %}
                 </div>
+                <div class="fw-bold text-primary font-monospace mt-1" style="font-size: 10px;">ID: {{ dossier.student.student_id }}</div>
             </div>
             <div class="col-10">
-                <div class="row g-1 small">
-                    <div class="col-6">
-                        <strong>អត្តលេខសិស្ស៖</strong> <span class="fw-bold text-primary font-monospace">{{ dossier.student.student_id }}</span>
-                    </div>
-                    <div class="col-6">
-                        <strong>ថ្នាក់បច្ចុប្បន្ន៖</strong> <span class="fw-bold text-success">{{ dossier.current_classroom.name|default:"-" }}</span>
-                    </div>
-                    <div class="col-6">
-                        <strong>គោត្តនាម-នាម៖</strong> <span class="fw-bold fs-6">{{ dossier.student.khmer_name }}</span>
-                    </div>
-                    <div class="col-6">
-                        <strong>ឈ្មោះឡាតាំង៖</strong> <span class="fw-bold">{{ dossier.student.latin_name|default:"-" }}</span>
-                    </div>
-                    <div class="col-4">
-                        <strong>ភេទ៖</strong> {% if dossier.student.gender == 'F' %}ស្រី{% else %}ប្រុស{% endif %}
-                    </div>
-                    <div class="col-8">
-                        <strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong> {{ dossier.student.date_of_birth|date:"d/m/Y"|default:"-" }}
-                    </div>
-                    <div class="col-12">
-                        <strong>ទីកន្លែងកំណើត៖</strong> {{ dossier.student.place_of_birth|default:"កម្ពុជា" }}
-                    </div>
-                    <div class="col-6">
-                        <strong>ឪពុក៖</strong> {{ dossier.student.father_name|default:"-" }} {% if dossier.student.father_phone %}({{ dossier.student.father_phone }}){% endif %}
-                    </div>
-                    <div class="col-6">
-                        <strong>ម្តាយ៖</strong> {{ dossier.student.mother_name|default:"-" }} {% if dossier.student.mother_phone %}({{ dossier.student.mother_phone }}){% endif %}
-                    </div>
-                    <div class="col-12">
-                        <strong>អាសយដ្ឋានបច្ចុប្បន្ន៖</strong> {{ dossier.student.current_address|default:"-" }}
-                    </div>
-                </div>
+                <table class="profile-table">
+                    <tr>
+                        <td style="width: 16%;"><strong>គោត្តនាម-នាម៖</strong></td>
+                        <td style="width: 34%;" class="fw-bold fs-6 text-dark">{{ dossier.student.khmer_name }}</td>
+                        <td style="width: 16%;"><strong>ឈ្មោះឡាតាំង៖</strong></td>
+                        <td style="width: 34%;" class="fw-bold text-uppercase">{{ dossier.student.latin_name|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ភេទ៖</strong></td>
+                        <td>{% if dossier.student.gender == 'F' %}ស្រី (Female){% else %}ប្រុស (Male){% endif %}</td>
+                        <td><strong>ថ្ងៃខែឆ្នាំកំណើត៖</strong></td>
+                        <td class="fw-bold">{{ dossier.student.date_of_birth|date:"d/m/Y"|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ទីកន្លែងកំណើត៖</strong></td>
+                        <td colspan="3">{{ dossier.student.place_of_birth|default:"កម្ពុជា" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ឈ្មោះឪពុក៖</strong></td>
+                        <td>{{ dossier.student.father_name|default:"-" }} {% if dossier.student.father_job %}({{ dossier.student.father_job }}){% endif %}</td>
+                        <td><strong>ទូរស័ព្ទឪពុក៖</strong></td>
+                        <td>{{ dossier.student.father_phone|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ឈ្មោះម្តាយ៖</strong></td>
+                        <td>{{ dossier.student.mother_name|default:"-" }} {% if dossier.student.mother_job %}({{ dossier.student.mother_job }}){% endif %}</td>
+                        <td><strong>ទូរស័ព្ទម្តាយ៖</strong></td>
+                        <td>{{ dossier.student.mother_phone|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>អាណាព្យាបាល៖</strong></td>
+                        <td>{{ dossier.student.guardian_name|default:dossier.student.father_name|default:"-" }}</td>
+                        <td><strong>ទូរស័ព្ទបន្ទាន់៖</strong></td>
+                        <td class="fw-bold text-danger">{{ dossier.student.emergency_phone|default:dossier.student.phone|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>អាសយដ្ឋានបច្ចុប្បន្ន៖</strong></td>
+                        <td colspan="3">{{ dossier.student.current_address|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>សាលាបឋមសិក្សា៖</strong></td>
+                        <td colspan="3">{{ dossier.primary_info.previous_school }} (បញ្ចប់ឆ្នាំសិក្សា {{ dossier.primary_info.certificate_year }})</td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Multi-Year Cumulative Progress Table (Grades 7 to 12) -->
-    <div class="fw-bold mb-1 text-dark" style="font-size: 11px;">
-        <i class="fa-solid fa-graduation-cap me-1 text-primary"></i> កំណត់ត្រាប្រវត្តិសិក្សាសន្សំ ពីថ្នាក់ទី ៧ ដល់ ទី ១២ (Academic History Record):
+    <!-- Section 1: Physical & Health Traits -->
+    <div class="section-header">
+        <span><i class="fa-solid fa-heart-pulse me-1"></i> ផ្នែកទី ១៖ ស្ថានភាពសុខភាព និងកាយសម្បទា (Physical & Health Record)</span>
+    </div>
+    <div class="row g-2 border rounded-2 p-2 bg-light mb-2 small">
+        <div class="col-2">
+            <strong>កម្ពស់៖</strong> <span>{{ dossier.health_info.height }} cm</span>
+        </div>
+        <div class="col-2">
+            <strong>ទម្ងន់៖</strong> <span>{{ dossier.health_info.weight }} kg</span>
+        </div>
+        <div class="col-2">
+            <strong>ក្រុមឈាម៖</strong> <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ dossier.health_info.blood_type }}</span>
+        </div>
+        <div class="col-3">
+            <strong>ពិការភាព៖</strong> <span>{{ dossier.health_info.disabilities }}</span>
+        </div>
+        <div class="col-3">
+            <strong>សុខភាពទូទៅ៖</strong> <span class="text-success fw-bold">{{ dossier.health_info.general_health }}</span>
+        </div>
+    </div>
+
+    <!-- Section 2: Multi-Year Academic Progress Record (Grades 7 to 12) -->
+    <div class="section-header">
+        <span><i class="fa-solid fa-graduation-cap me-1"></i> ផ្នែកទី ២៖ កំណត់ត្រាប្រវត្តិសិក្សាសន្សំ ពីថ្នាក់ទី ៧ ដល់ ទី ១២ (Cumulative Academic History)</span>
     </div>
 
     <table class="table-dossier">
@@ -205,55 +344,55 @@
             <tr>
                 <th style="width: 65px;">កម្រិតថ្នាក់</th>
                 <th style="width: 75px;">ឆ្នាំសិក្សា</th>
-                <th style="min-width: 100px;">ឈ្មោះសាលារៀន</th>
+                <th style="min-width: 110px;">គ្រឹះស្ថានសិក្សា</th>
                 <th style="width: 50px;">ថ្នាក់</th>
                 <th style="width: 50px;">ឆ.១</th>
                 <th style="width: 50px;">ឆ.២</th>
                 <th style="width: 55px;">ម.ប្រចាំឆ្នាំ</th>
                 <th style="width: 35px;">និទ្ទេស</th>
-                <th style="width: 40px;">ចំណាត់<br>ថ្នាក់</th>
-                <th style="width: 45px;">អវត្តមាន<br>(ច្បាប់/ឥត)</th>
-                <th style="width: 45px;">មារយាទ</th>
-                <th style="min-width: 90px;">សេចក្តីសម្រេច<br>ចុងឆ្នាំ</th>
+                <th style="width: 42px;">ចំណាត់<br>ថ្នាក់</th>
+                <th style="width: 48px;">អវត្តមាន<br>(ច្បាប់/ឥត)</th>
+                <th style="width: 48px;">មារយាទ</th>
+                <th style="min-width: 95px;">សេចក្តីសម្រេច<br>ចុងឆ្នាំ</th>
             </tr>
         </thead>
         <tbody>
             {% for rec in dossier.grade_records %}
-            <tr class="{% if rec.is_current %}grade-highlight-current{% elif rec.is_future %}table-light opacity-60{% endif %}">
-                <td class="text-center fw-bold">
+            <tr class="{% if rec.is_current %}grade-highlight-current{% elif rec.is_future %}table-light opacity-50{% endif %}">
+                <td class="fw-bold">
                     {{ rec.grade_label }}
                     {% if rec.is_current %}
-                    <div class="badge bg-success-subtle text-success border border-success-subtle p-0 px-1" style="font-size: 8px;">បច្ចុប្បន្ន</div>
+                    <div class="badge bg-success text-white p-0 px-1" style="font-size: 8px;">បច្ចុប្បន្ន</div>
                     {% endif %}
                 </td>
-                <td class="text-center">{{ rec.academic_year_name }}</td>
-                <td>{{ rec.school_name }}</td>
-                <td class="text-center fw-bold">{{ rec.classroom_name }}</td>
+                <td>{{ rec.academic_year_name }}</td>
+                <td class="text-start ps-1">{{ rec.school_name }}</td>
+                <td class="fw-bold">{{ rec.classroom_name }}</td>
                 
-                <td class="text-center fw-bold">
+                <td class="fw-bold">
                     {% if rec.semester_1_average is not None %}{{ rec.semester_1_average|floatformat:2 }}{% else %}-{% endif %}
                 </td>
-                <td class="text-center fw-bold">
+                <td class="fw-bold">
                     {% if rec.semester_2_average is not None %}{{ rec.semester_2_average|floatformat:2 }}{% else %}-{% endif %}
                 </td>
-                <td class="text-center fw-bold text-primary">
+                <td class="fw-bold text-primary">
                     {% if rec.annual_average is not None %}{{ rec.annual_average|floatformat:2 }}{% else %}-{% endif %}
                 </td>
-                <td class="text-center fw-bold">
+                <td class="fw-bold">
                     <span class="{% if rec.grade_letter == 'A' %}text-success{% elif rec.grade_letter == 'F' %}text-danger{% else %}text-dark{% endif %}">
                         {{ rec.grade_letter }}
                     </span>
                 </td>
-                <td class="text-center fw-bold">{{ rec.rank }}</td>
-                <td class="text-center small">
+                <td class="fw-bold">{{ rec.rank }}</td>
+                <td class="small">
                     {% if not rec.is_future %}
                         {{ rec.excused_absence }}/{{ rec.unexcused_absence }}
                     {% else %}
                         -
                     {% endif %}
                 </td>
-                <td class="text-center">{{ rec.conduct }}</td>
-                <td class="text-center small fw-bold {% if rec.is_current %}text-primary{% elif rec.is_past %}text-success{% else %}text-muted{% endif %}">
+                <td>{{ rec.conduct }}</td>
+                <td class="small fw-bold {% if rec.is_current %}text-primary{% elif rec.is_past %}text-success{% else %}text-muted{% endif %}">
                     {{ rec.decision }}
                 </td>
             </tr>
@@ -261,37 +400,86 @@
         </tbody>
     </table>
 
-    <!-- Pedagogical Appraisal & Conduct Summary -->
-    <div class="border rounded-3 p-2.5 mt-3 mb-3 bg-light small">
-        <div class="fw-bold text-dark mb-1">
-            <i class="fa-solid fa-award me-1 text-warning"></i> ការវាយតម្លៃរួមអំពីការសិក្សា និងអាកប្បកិរិយា (General Academic & Conduct Appraisal):
+    <!-- Section 3: National Examinations -->
+    <div class="section-header">
+        <span><i class="fa-solid fa-stamp me-1"></i> ផ្នែកទី ៣៖ កំណត់ត្រាការប្រឡងសញ្ញាបត្រថ្នាក់ជាតិ (National Examination Records)</span>
+    </div>
+
+    <div class="row g-2 mb-2">
+        <div class="col-6">
+            <div class="border rounded-2 p-2 bg-light small">
+                <div class="fw-bold text-primary border-bottom pb-1 mb-1">
+                    <i class="fa-solid fa-certificate me-1"></i> សញ្ញាបត្របឋមភូមិ (ឌីប្លូម / Grade 9 Diploma)
+                </div>
+                <div>• សម័យប្រឡង៖ <strong>{{ dossier.diploma_info.session_year }}</strong></div>
+                <div>• មណ្ឌលប្រឡង៖ <span>{{ dossier.diploma_info.exam_center }}</span></div>
+                <div class="d-flex justify-content-between">
+                    <span>• លេខតុ៖ <strong>{{ dossier.diploma_info.desk_number }}</strong></span>
+                    <span>• បន្ទប់៖ <strong>{{ dossier.diploma_info.room_number }}</strong></span>
+                </div>
+                <div class="mt-1">
+                    • លទ្ធផល៖ <strong class="text-success">{{ dossier.diploma_info.result }}</strong> (និទ្ទេស៖ <strong>{{ dossier.diploma_info.letter_grade }}</strong>)
+                </div>
+            </div>
         </div>
-        <div class="text-muted" style="line-height: 1.6;">
-            សិស្ស <strong>{{ dossier.student.khmer_name }}</strong> មានអាកប្បកិរិយាល្អ គោរពវិន័យសាលា និងបទបញ្ជាផ្ទៃក្នុងបានយ៉ាងខ្ជាប់ខ្ជួន។ 
-            {% if dossier.current_classroom.homeroom_teacher %}
-            (បញ្ជាក់ដោយគ្រូទទួលបន្ទុកថ្នាក់៖ <strong>{{ dossier.current_classroom.homeroom_teacher.khmer_name }}</strong>)
-            {% endif %}
+        <div class="col-6">
+            <div class="border rounded-2 p-2 bg-light small">
+                <div class="fw-bold text-primary border-bottom pb-1 mb-1">
+                    <i class="fa-solid fa-award me-1"></i> សញ្ញាបត្រមធ្យមសិក្សាទុតិយភូមិ (បាក់ឌុប / Grade 12 Bac II)
+                </div>
+                <div>• សម័យប្រឡង៖ <strong>{{ dossier.bac2_info.session_year }}</strong></div>
+                <div>• មណ្ឌលប្រឡង៖ <span>{{ dossier.bac2_info.exam_center }}</span></div>
+                <div class="d-flex justify-content-between">
+                    <span>• លេខតុ៖ <strong>{{ dossier.bac2_info.desk_number }}</strong></span>
+                    <span>• បន្ទប់៖ <strong>{{ dossier.bac2_info.room_number }}</strong></span>
+                </div>
+                <div class="mt-1">
+                    • លទ្ធផល៖ <strong class="text-primary">{{ dossier.bac2_info.result }}</strong> (និទ្ទេស៖ <strong>{{ dossier.bac2_info.letter_grade }}</strong>)
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Official Certification & Signatures -->
-    <div class="row mt-4 pt-2">
-        <div class="col-4 text-center">
-            <div class="fw-bold">បានឃើញ និងបញ្ជាក់ត្រឹមត្រូវ</div>
-            <div class="font-moul text-primary mt-1">នាយកសាលា</div>
-            <div style="height: 55px;"></div>
-            <div class="fw-bold">{{ dossier.school_profile.director_name_kh|default:".........................................." }}</div>
-        </div>
-        <div class="col-4 text-center">
-            <div class="fw-bold">ប្រធានការិយាល័យសិក្សា</div>
-            <div style="height: 65px;"></div>
-            <div class="fw-bold">..........................................</div>
-        </div>
-        <div class="col-4 text-center">
-            <div>ថ្ងៃ....................ខែ.............ឆ្នាំ..............</div>
-            <div class="font-moul mt-1">គ្រូទទួលបន្ទុកថ្នាក់</div>
-            <div style="height: 55px;"></div>
-            <div class="fw-bold">{{ dossier.current_classroom.homeroom_teacher.khmer_name|default:".........................................." }}</div>
+    <!-- Section 4: Pedagogical Conduct & Moral Appraisal -->
+    <div class="section-header">
+        <span><i class="fa-solid fa-scale-balanced me-1"></i> ផ្នែកទី ៤៖ ការវាយតម្លៃរួមផ្នែកគរុកោសល្យ និងមារយាទសិស្ស (Pedagogical & Moral Appraisal)</span>
+    </div>
+    <div class="border rounded-2 p-2 bg-light small mb-2 text-muted" style="line-height: 1.6;">
+        សិស្ស <strong>{{ dossier.student.khmer_name }}</strong> មានអាកប្បកិរិយាល្អ សុភាពរាបសារ គោរពវិន័យសាលា និងបទបញ្ជាផ្ទៃក្នុងបានយ៉ាងខ្ជាប់ខ្ជួន។ មានស្មារតីសាមគ្គីភាព និងសកម្មក្នុងការសិក្សាស្រាវជ្រាវ។ 
+        {% if dossier.current_classroom.homeroom_teacher %}
+        (បញ្ជាក់ និងវាយតម្លៃដោយលោកគ្រូ-អ្នកគ្រូទទួលបន្ទុកថ្នាក់៖ <strong>{{ dossier.current_classroom.homeroom_teacher.khmer_name }}</strong>)
+        {% endif %}
+    </div>
+
+    <!-- Section 5: Official Certification & Signatures -->
+    <div class="border-top pt-2 mt-2">
+        <div class="row align-items-center">
+            <div class="col-4 text-center">
+                <div class="fw-bold text-dark">គ្រូទទួលបន្ទុកថ្នាក់</div>
+                <div class="small text-muted">បានពិនិត្យ និងវាយតម្លៃត្រឹមត្រូវ</div>
+                <div style="height: 48px;"></div>
+                <div class="fw-bold text-primary">{{ dossier.current_classroom.homeroom_teacher.khmer_name|default:".........................................." }}</div>
+            </div>
+
+            <div class="col-4 text-center">
+                <div class="fw-bold text-dark">ប្រធានការិយាល័យសិក្សា</div>
+                <div class="small text-muted">បានផ្ទៀងផ្ទាត់បញ្ជីពិន្ទុ និងវត្តមាន</div>
+                <div style="height: 48px;"></div>
+                <div class="fw-bold">..........................................</div>
+            </div>
+
+            <div class="col-4 text-center">
+                <div>ថ្ងៃទី..........ខែ.............ឆ្នាំ២០២...</div>
+                <div class="font-moul text-primary mt-0.5" style="font-size: 10.5pt;">នាយកសាលា</div>
+                <div class="seal-circle">
+                    {% if dossier.school_profile.seal %}
+                        <img src="{{ dossier.school_profile.seal.url }}" alt="Seal" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                    {% else %}
+                        [ ត្រាសាលា ]
+                    {% endif %}
+                </div>
+                <div class="fw-bold">{{ dossier.school_profile.principal_name|default:"លោកបណ្ឌិត សុខ ចាន់ថន" }}</div>
+            </div>
         </div>
     </div>
 </div>

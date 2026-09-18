@@ -750,11 +750,12 @@ def get_student_cumulative_dossier_data(student):
     """
     Constructs comprehensive multi-year Academic Dossier (សៀវភៅសិក្ខាគារិក) data
     for Grades 7 to 12 up to the student's actual current grade.
-    Standardized to Cambodian Ministry of Education (MoEYS) Secondary & High School standards.
+    Standardized to Cambodian Ministry of Education, Youth and Sport (MoEYS) Secondary & High School standards.
     """
     if not student:
         return None
 
+    from django.db.models import Q
     from apps.accounts.models import SchoolProfile
     from apps.academics.models import Classroom
     from apps.students.models import StudentPromotionRecord
@@ -762,7 +763,11 @@ def get_student_cumulative_dossier_data(student):
     from apps.examinations.models import StudentTransferGrade, Grade
 
     school_profile = SchoolProfile.objects.first()
-    default_school_name = getattr(school_profile, 'name_kh', None) or getattr(school_profile, 'school_name_kh', None) or "វិទ្យាល័យសម្តេចហ៊ុនសែន"
+    default_school_name = (
+        getattr(school_profile, 'name_kh', None) or 
+        getattr(school_profile, 'school_name_kh', None) or 
+        "វិទ្យាល័យសម្តេចហ៊ុនសែន"
+    )
 
     current_cls = student.classroom
     current_grade = current_cls.grade_level if current_cls else 7
@@ -842,13 +847,13 @@ def get_student_cumulative_dossier_data(student):
             if current_annual_info.get('passed'):
                 conduct_val = "ល្អណាស់"
 
-            # Attendance for current year
+            # Attendance for current year - supports both standard & legacy status values
             if current_ay:
                 att_qs = StudentAttendance.objects.filter(student=student)
                 if current_ay.start_date and current_ay.end_date:
                     att_qs = att_qs.filter(date__gte=current_ay.start_date, date__lte=current_ay.end_date)
-                excused_abs = att_qs.filter(status='EXCUSED_LEAVE').count()
-                unexcused_abs = att_qs.filter(status='UNEXCUSED_ABSENCE').count()
+                excused_abs = att_qs.filter(Q(status='PERMISSION') | Q(status='EXCUSED_LEAVE')).count()
+                unexcused_abs = att_qs.filter(Q(status='ABSENT') | Q(status='UNEXCUSED_ABSENCE')).count()
 
         elif is_past:
             # Check promotion records
@@ -910,6 +915,43 @@ def get_student_cumulative_dossier_data(student):
             'remarks': remarks,
         })
 
+    # Health & Physical Record (កាយសម្បទា និងសុខភាព)
+    enr_data = getattr(student, 'enrollment_data', {}) or {}
+    health_info = {
+        'height': enr_data.get('height') or getattr(student, 'height', None) or '..........',
+        'weight': enr_data.get('weight') or getattr(student, 'weight', None) or '..........',
+        'blood_type': enr_data.get('blood_type') or getattr(student, 'blood_type', None) or '..........',
+        'disabilities': enr_data.get('disabilities') or 'គ្មាន',
+        'chronic_illness': enr_data.get('chronic_illness') or 'គ្មាន',
+        'general_health': enr_data.get('general_health') or 'មាំមួនល្អ',
+    }
+
+    # Primary School History (ប្រវត្តិបឋមសិក្សា)
+    primary_info = {
+        'previous_school': student.previous_school or default_school_name,
+        'certificate_year': enr_data.get('primary_cert_year') or '................',
+        'certificate_no': enr_data.get('primary_cert_no') or '................',
+    }
+
+    # National Examination Records (ការប្រឡងថ្នាក់ជាតិ៖ ឌីប្លូម & បាក់ឌុប)
+    diploma_info = {
+        'session_year': enr_data.get('diploma_session_year') or (current_ay.name if current_grade > 9 and current_ay else '................'),
+        'exam_center': enr_data.get('diploma_center') or default_school_name,
+        'desk_number': enr_data.get('diploma_desk_no') or '............',
+        'room_number': enr_data.get('diploma_room_no') or '............',
+        'result': enr_data.get('diploma_result') or ('ជាប់សញ្ញាបត្របឋមភូមិ' if current_grade > 9 else 'មិនទាន់ប្រឡង'),
+        'letter_grade': enr_data.get('diploma_grade') or ('ល្អបង្គួរ (C)' if current_grade > 9 else '-'),
+    }
+
+    bac2_info = {
+        'session_year': enr_data.get('bac2_session_year') or '................',
+        'exam_center': enr_data.get('bac2_center') or default_school_name,
+        'desk_number': enr_data.get('bac2_desk_no') or '............',
+        'room_number': enr_data.get('bac2_room_no') or '............',
+        'result': enr_data.get('bac2_result') or ('ជាប់បាក់ឌុប' if current_grade > 12 else 'មិនទាន់ប្រឡង'),
+        'letter_grade': enr_data.get('bac2_grade') or '-',
+    }
+
     return {
         'student': student,
         'school_profile': school_profile,
@@ -918,6 +960,350 @@ def get_student_cumulative_dossier_data(student):
         'current_classroom': current_cls,
         'current_academic_year': current_ay,
         'grade_records': grade_records,
+        'health_info': health_info,
+        'primary_info': primary_info,
+        'diploma_info': diploma_info,
+        'bac2_info': bac2_info,
     }
+
+
+def get_student_study_tracking_book_data(student, academic_year=None):
+    """
+    Constructs comprehensive Individual Student Study Tracking Book data
+    (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ / Carnet Scolaire Individuel)
+    standardized to Cambodian Ministry of Education, Youth and Sport (MoEYS) specifications.
+    """
+    if not student:
+        return None
+
+    from django.db.models import Q
+    from apps.accounts.models import SchoolProfile
+    from apps.academics.models import Classroom, AcademicYear
+    from apps.attendance.models import StudentAttendance
+    from apps.examinations.models import ExamTerm, Grade
+
+    school_profile = SchoolProfile.objects.first()
+    default_school_name = (
+        getattr(school_profile, 'name_kh', None) or 
+        getattr(school_profile, 'school_name_kh', None) or 
+        "វិទ្យាល័យសម្តេចហ៊ុនសែន"
+    )
+
+    classroom = student.classroom
+    grade_level = classroom.grade_level if classroom else 7
+    ay = academic_year or (classroom.academic_year if classroom else student.academic_year)
+    if not ay:
+        ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+
+    homeroom_teacher = classroom.homeroom_teacher if classroom else None
+
+    # 1. Exam Terms Resolution
+    s1_monthly_terms = list(ExamTerm.objects.filter(
+        academic_year=ay,
+        semester=1,
+        term_type=ExamTerm.TermType.MONTHLY,
+        is_counted_in_semester=True
+    ).order_by('start_date', 'id')) if ay else []
+
+    s1_exam_term = ExamTerm.objects.filter(
+        academic_year=ay,
+        semester=1,
+        term_type=ExamTerm.TermType.SEMESTER_1
+    ).first() if ay else None
+
+    s2_monthly_terms = list(ExamTerm.objects.filter(
+        academic_year=ay,
+        semester=2,
+        term_type=ExamTerm.TermType.MONTHLY,
+        is_counted_in_semester=True
+    ).order_by('start_date', 'id')) if ay else []
+
+    s2_exam_term = ExamTerm.objects.filter(
+        academic_year=ay,
+        semester=2,
+        term_type=ExamTerm.TermType.SEMESTER_2
+    ).first() if ay else None
+
+    # 2. Subject Rules & Grade Mapping
+    subject_rules = get_effective_term_subjects(classroom=classroom, include_non_tested=False) if classroom else []
+    if not subject_rules:
+        subject_rules = get_effective_term_subjects(grade_level=grade_level, include_non_tested=False)
+
+    grades_qs = Grade.objects.filter(student=student)
+    if ay:
+        grades_qs = grades_qs.filter(exam_term__academic_year=ay)
+    grade_map = {(g.subject_id, g.exam_term_id): g.score for g in grades_qs}
+
+    # 3. Class-wide computation for ranks and averages
+    s1_class_res = AcademicResultService.compute_semester_results(classroom, ay, semester=1) if (classroom and ay) else {'students_data': []}
+    s2_class_res = AcademicResultService.compute_semester_results(classroom, ay, semester=2) if (classroom and ay) else {'students_data': []}
+    ann_class_res = AcademicResultService.compute_annual_results(classroom, ay) if (classroom and ay) else {'students_data': []}
+
+    s1_stu_item = next((item for item in s1_class_res.get('students_data', []) if item['student'].id == student.id), None)
+    s2_stu_item = next((item for item in s2_class_res.get('students_data', []) if item['student'].id == student.id), None)
+    ann_stu_item = next((item for item in ann_class_res.get('students_data', []) if item['student'].id == student.id), None)
+
+    # 4. Subject Rows Matrix
+    subject_rows = []
+    total_class_students = classroom.total_students if classroom else 1
+
+    for idx, rule in enumerate(subject_rules, 1):
+        sub = rule.subject
+        max_sc = rule.max_score or Decimal('100.00')
+
+        # Semester 1 monthly scores
+        s1_m_scores = []
+        s1_m_vals = []
+        for mt in s1_monthly_terms:
+            sc = grade_map.get((sub.id, mt.id))
+            s1_m_scores.append({
+                'term': mt,
+                'score': sc,
+            })
+            if sc is not None:
+                s1_m_vals.append(sc)
+
+        s1_sub_m_avg = round(sum(s1_m_vals) / Decimal(str(len(s1_m_vals))), 2) if s1_m_vals else None
+        s1_sub_exam = grade_map.get((sub.id, s1_exam_term.id)) if s1_exam_term else None
+
+        if s1_sub_m_avg is not None and s1_sub_exam is not None:
+            s1_sub_final = round((s1_sub_m_avg + s1_sub_exam) / Decimal('2.0'), 2)
+        elif s1_sub_exam is not None:
+            s1_sub_final = s1_sub_exam
+        elif s1_sub_m_avg is not None:
+            s1_sub_final = s1_sub_m_avg
+        else:
+            s1_sub_final = None
+
+        s1_sub_pct = round((s1_sub_final / max_sc) * Decimal('100.0'), 2) if (s1_sub_final is not None and max_sc > 0) else None
+        s1_sub_letter = AcademicResultService.get_letter_grade(s1_sub_pct)[0] if s1_sub_pct is not None else '-'
+
+        # Semester 2 monthly scores
+        s2_m_scores = []
+        s2_m_vals = []
+        for mt in s2_monthly_terms:
+            sc = grade_map.get((sub.id, mt.id))
+            s2_m_scores.append({
+                'term': mt,
+                'score': sc,
+            })
+            if sc is not None:
+                s2_m_vals.append(sc)
+
+        s2_sub_m_avg = round(sum(s2_m_vals) / Decimal(str(len(s2_m_vals))), 2) if s2_m_vals else None
+        s2_sub_exam = grade_map.get((sub.id, s2_exam_term.id)) if s2_exam_term else None
+
+        if s2_sub_m_avg is not None and s2_sub_exam is not None:
+            s2_sub_final = round((s2_sub_m_avg + s2_sub_exam) / Decimal('2.0'), 2)
+        elif s2_sub_exam is not None:
+            s2_sub_final = s2_sub_exam
+        elif s2_sub_m_avg is not None:
+            s2_sub_final = s2_sub_m_avg
+        else:
+            s2_sub_final = None
+
+        s2_sub_pct = round((s2_sub_final / max_sc) * Decimal('100.0'), 2) if (s2_sub_final is not None and max_sc > 0) else None
+        s2_sub_letter = AcademicResultService.get_letter_grade(s2_sub_pct)[0] if s2_sub_pct is not None else '-'
+
+        # Annual Subject Average
+        if s1_sub_final is not None and s2_sub_final is not None:
+            ann_sub_final = round((s1_sub_final + s2_sub_final) / Decimal('2.0'), 2)
+        elif s2_sub_final is not None:
+            ann_sub_final = s2_sub_final
+        elif s1_sub_final is not None:
+            ann_sub_final = s1_sub_final
+        else:
+            ann_sub_final = None
+
+        ann_sub_pct = round((ann_sub_final / max_sc) * Decimal('100.0'), 2) if (ann_sub_final is not None and max_sc > 0) else None
+        ann_sub_letter = AcademicResultService.get_letter_grade(ann_sub_pct)[0] if ann_sub_pct is not None else '-'
+
+        subject_rows.append({
+            'no': idx,
+            'subject': sub,
+            'name_kh': sub.name_kh,
+            'name_en': sub.name_en or sub.name_kh,
+            'max_score': max_sc,
+            's1_monthly_scores': s1_m_scores,
+            's1_monthly_avg': s1_sub_m_avg,
+            's1_exam_score': s1_sub_exam,
+            's1_final_score': s1_sub_final,
+            's1_letter': s1_sub_letter,
+            's2_monthly_scores': s2_m_scores,
+            's2_monthly_avg': s2_sub_m_avg,
+            's2_exam_score': s2_sub_exam,
+            's2_final_score': s2_sub_final,
+            's2_letter': s2_sub_letter,
+            'annual_final_score': ann_sub_final,
+            'annual_letter': ann_sub_letter,
+        })
+
+    # 5. Overall Semester Summaries
+    s1_overall = {
+        'monthly_avg': s1_stu_item.get('monthly_average') if s1_stu_item else None,
+        'exam_score': s1_stu_item.get('semester_exam_score') if s1_stu_item else None,
+        'final_average': s1_stu_item.get('semester_final_average') if s1_stu_item else None,
+        'average_10': s1_stu_item.get('average_10') if s1_stu_item else Decimal('0.00'),
+        'letter': s1_stu_item.get('letter_grade') if s1_stu_item else '-',
+        'letter_desc': s1_stu_item.get('letter_desc') if s1_stu_item else '',
+        'rank': s1_stu_item.get('rank') if s1_stu_item else '-',
+        'passed': s1_stu_item.get('passed') if s1_stu_item else False,
+    }
+
+    s2_overall = {
+        'monthly_avg': s2_stu_item.get('monthly_average') if s2_stu_item else None,
+        'exam_score': s2_stu_item.get('semester_exam_score') if s2_stu_item else None,
+        'final_average': s2_stu_item.get('semester_final_average') if s2_stu_item else None,
+        'average_10': s2_stu_item.get('average_10') if s2_stu_item else Decimal('0.00'),
+        'letter': s2_stu_item.get('letter_grade') if s2_stu_item else '-',
+        'letter_desc': s2_stu_item.get('letter_desc') if s2_stu_item else '',
+        'rank': s2_stu_item.get('rank') if s2_stu_item else '-',
+        'passed': s2_stu_item.get('passed') if s2_stu_item else False,
+    }
+
+    ann_avg = ann_stu_item.get('annual_average') if ann_stu_item else None
+    ann_let = ann_stu_item.get('grade_letter') if ann_stu_item else '-'
+    ann_rk = ann_stu_item.get('rank') if ann_stu_item else '-'
+    is_passed = ann_stu_item.get('passed') if ann_stu_item else (float(ann_avg or 0) >= 50.0)
+
+    promoted_grade = grade_level + 1 if is_passed else grade_level
+    decision_kh = f"អនុញ្ញាតឱ្យឡើងទៅរៀនថ្នាក់ទី {promoted_grade}" if is_passed else f"តម្រូវឱ្យរៀនត្រួតថ្នាក់ទី {grade_level}"
+    decision_en = f"Promoted to Grade {promoted_grade}" if is_passed else f"Retained in Grade {grade_level}"
+
+    annual_overall = {
+        'annual_average': ann_avg,
+        'average_10': round(ann_avg / Decimal('10.0'), 2) if ann_avg else Decimal('0.00'),
+        'letter': ann_let,
+        'rank': ann_rk,
+        'passed': is_passed,
+        'decision_kh': decision_kh,
+        'decision_en': decision_en,
+        'promoted_grade': promoted_grade,
+    }
+
+    # 6. Monthly Attendance Breakdown (October to July)
+    att_qs = StudentAttendance.objects.filter(student=student)
+    if ay and ay.start_date and ay.end_date:
+        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+
+    # Standard 10 academic months in Cambodia
+    academic_months = [
+        {'month': 10, 'name_kh': 'តុលា', 'name_en': 'October', 'semester': 1},
+        {'month': 11, 'name_kh': 'វិច្ឆិកា', 'name_en': 'November', 'semester': 1},
+        {'month': 12, 'name_kh': 'ធ្នូ', 'name_en': 'December', 'semester': 1},
+        {'month': 1, 'name_kh': 'មករា', 'name_en': 'January', 'semester': 1},
+        {'month': 2, 'name_kh': 'កុម្ភៈ', 'name_en': 'February', 'semester': 1},
+        {'month': 3, 'name_kh': 'មីនា', 'name_en': 'March', 'semester': 2},
+        {'month': 4, 'name_kh': 'មេសា', 'name_en': 'April', 'semester': 2},
+        {'month': 5, 'name_kh': 'ឧសភា', 'name_en': 'May', 'semester': 2},
+        {'month': 6, 'name_kh': 'មិថុនា', 'name_en': 'June', 'semester': 2},
+        {'month': 7, 'name_kh': 'កក្កដា', 'name_en': 'July', 'semester': 2},
+    ]
+
+    monthly_attendance_records = []
+    s1_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0}
+    s2_att_totals = {'present': 0, 'excused': 0, 'unexcused': 0, 'late': 0, 'total_absent': 0, 'total_recorded': 0}
+
+    for m_item in academic_months:
+        m_num = m_item['month']
+        sem = m_item['semester']
+
+        m_att = att_qs.filter(date__month=m_num)
+        pres = m_att.filter(status='PRESENT').count()
+        exc = m_att.filter(Q(status='PERMISSION') | Q(status='EXCUSED_LEAVE')).count()
+        unexc = m_att.filter(Q(status='ABSENT') | Q(status='UNEXCUSED_ABSENCE')).count()
+        late = m_att.filter(status='LATE').count()
+        tot_abs = exc + unexc
+        tot_rec = pres + tot_abs + late
+        rate = round((pres / tot_rec * 100), 1) if tot_rec > 0 else 100.0
+
+        rec = {
+            'month': m_num,
+            'name_kh': m_item['name_kh'],
+            'name_en': m_item['name_en'],
+            'semester': sem,
+            'present': pres,
+            'excused': exc,
+            'unexcused': unexc,
+            'late': late,
+            'total_absent': tot_abs,
+            'total_recorded': tot_rec,
+            'attendance_rate': rate,
+        }
+        monthly_attendance_records.append(rec)
+
+        target_tot = s1_att_totals if sem == 1 else s2_att_totals
+        target_tot['present'] += pres
+        target_tot['excused'] += exc
+        target_tot['unexcused'] += unexc
+        target_tot['late'] += late
+        target_tot['total_absent'] += tot_abs
+        target_tot['total_recorded'] += tot_rec
+
+    annual_att_totals = {
+        'present': s1_att_totals['present'] + s2_att_totals['present'],
+        'excused': s1_att_totals['excused'] + s2_att_totals['excused'],
+        'unexcused': s1_att_totals['unexcused'] + s2_att_totals['unexcused'],
+        'late': s1_att_totals['late'] + s2_att_totals['late'],
+        'total_absent': s1_att_totals['total_absent'] + s2_att_totals['total_absent'],
+        'total_recorded': s1_att_totals['total_recorded'] + s2_att_totals['total_recorded'],
+    }
+    annual_att_totals['attendance_rate'] = (
+        round((annual_att_totals['present'] / annual_att_totals['total_recorded'] * 100), 1) 
+        if annual_att_totals['total_recorded'] > 0 else 100.0
+    )
+
+    # 7. Conduct & Moral Rubrics (វាយតម្លៃអាកប្បកិរិយា សីលធម៌ គុណវុឌ្ឍិ)
+    # Default assessments based on MoEYS standards
+    def determine_conduct_grade(avg_val, unexcused_cnt):
+        if avg_val is None:
+            return "ល្អ"
+        a = float(avg_val)
+        if a >= 80 and unexcused_cnt <= 2:
+            return "ល្អណាស់"
+        elif a >= 65 and unexcused_cnt <= 5:
+            return "ល្អ"
+        elif a >= 50:
+            return "ល្អបង្គួរ"
+        else:
+            return "មធ្យម"
+
+    conduct_s1 = determine_conduct_grade(s1_overall['final_average'], s1_att_totals['unexcused'])
+    conduct_s2 = determine_conduct_grade(s2_overall['final_average'], s2_att_totals['unexcused'])
+    conduct_annual = determine_conduct_grade(ann_avg, annual_att_totals['unexcused'])
+
+    conduct_criteria = [
+        {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
+        {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
+        {'no': '៣', 'name_kh': 'សីលធម៌ សុជីវធម៌ និងការប្រាស្រ័យទាក់ទង', 'name_en': 'Moral, Manners & Interpersonal Conduct', 's1': 'ល្អណាស់', 's2': 'ល្អណាស់', 'ann': 'ល្អណាស់'},
+        {'no': '៤', 'name_kh': 'អនាម័យផ្ទាល់ខ្លួន និងការថែរក្សាបរិស្ថាន', 'name_en': 'Personal Hygiene & Environmental Care', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
+        {'no': '៥', 'name_kh': 'ការចូលរួមសកម្មភាពសង្គម ពលកម្ម និងកីឡា', 'name_en': 'Social Activities, Labor & Sports', 's1': 'ល្អ', 's2': 'ល្អ', 'ann': 'ល្អ'},
+    ]
+
+    return {
+        'student': student,
+        'classroom': classroom,
+        'grade_level': grade_level,
+        'academic_year': ay,
+        'homeroom_teacher': homeroom_teacher,
+        'school_profile': school_profile,
+        'school_name': default_school_name,
+        'total_class_students': total_class_students,
+        's1_monthly_terms': s1_monthly_terms,
+        's1_exam_term': s1_exam_term,
+        's2_monthly_terms': s2_monthly_terms,
+        's2_exam_term': s2_exam_term,
+        'subject_rows': subject_rows,
+        's1_overall': s1_overall,
+        's2_overall': s2_overall,
+        'annual_overall': annual_overall,
+        'monthly_attendance_records': monthly_attendance_records,
+        's1_att_totals': s1_att_totals,
+        's2_att_totals': s2_att_totals,
+        'annual_att_totals': annual_att_totals,
+        'conduct_criteria': conduct_criteria,
+        'conduct_annual': conduct_annual,
+    }
+
 
 

@@ -151,4 +151,10 @@ urlpatterns = [
     path('promotion/api/all-grades-matrix/', views.api_get_all_grades_promotion_matrix, name='api_get_all_grades_promotion_matrix'),
     path('promotion/api/all-grades-execute/', views.api_execute_all_grades_bulk_promotion, name='api_execute_all_grades_bulk_promotion'),
     path('promotion/api/classroom-students/<int:class_id>/', views.api_get_classroom_students_for_promotion, name='api_get_classroom_students_for_promotion'),
+
+    # Student Classroom Allocation by Score (ការបែងចែកថ្នាក់រៀនតាមពិន្ទុ)
+    path('classrooms/allocation/', views.student_classroom_allocation_view, name='student_classroom_allocation'),
+    path('classrooms/allocation/api/preview/', views.api_classroom_allocation_preview, name='api_classroom_allocation_preview'),
+    path('classrooms/allocation/api/apply/', views.api_classroom_allocation_apply, name='api_classroom_allocation_apply'),
+    path('classrooms/allocation/export-excel/', views.export_classroom_allocation_excel, name='export_classroom_allocation_excel'),
 ]

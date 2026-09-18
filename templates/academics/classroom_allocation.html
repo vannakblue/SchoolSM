@@ -1,0 +1,806 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}បែងចែកថ្នាក់រៀនតាមពិន្ទុ (Classroom Allocation by Score) | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+.allocation-stat-card {
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.25s ease;
+    background: #ffffff;
+}
+.allocation-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+.grade-pill-btn {
+    border-radius: 9999px;
+    font-weight: 700;
+    padding: 0.5rem 1.25rem;
+    transition: all 0.2s ease;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+}
+.grade-pill-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border-color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+.source-option-box {
+    border: 2px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+.source-option-box:hover {
+    border-color: #93c5fd;
+    background: #f8fafc;
+}
+.source-option-box.selected {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+.target-class-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.75rem;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+.target-class-chip.active {
+    background: #dbeafe;
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+.student-row-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.5rem;
+}
+.bucket-card {
+    border-radius: 1.25rem;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    overflow: hidden;
+}
+.bucket-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+}
+.bucket-card-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1.5px solid #e2e8f0;
+    padding: 0.85rem 1.15rem;
+}
+.student-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 px-md-3">
+
+    <!-- Top Navigation Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}" class="text-decoration-none">ទំព័រដើម</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'classroom_list' %}" class="text-decoration-none">គ្រប់គ្រងថ្នាក់</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">បែងចែកថ្នាក់រៀនតាមពិន្ទុ</li>
+                </ol>
+            </nav>
+            <h3 class="fw-bold text-primary mb-1">
+                <i class="fa-solid fa-people-arrows me-2"></i>បែងចែកថ្នាក់រៀនតាមពិន្ទុ (Classroom Allocation by Score)
+            </h3>
+            <p class="text-muted small mb-0">
+                ឧបករណ៍ចាត់ចែង និងបែងចែកសិស្សទៅកាន់ថ្នាក់រៀនថ្មីនីមួយៗ ដោយតម្រៀបពីពិន្ទុខ្ពស់មកទាប ផ្អែកលើតេស្តដើមឆ្នាំ ឬពិន្ទុប្រចាំឆ្នាំចាស់ [(ឆ.១ + ឆ.២)/២]
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'classroom_list' %}" class="btn btn-outline-secondary fw-bold btn-sm shadow-sm">
+                <i class="fa-solid fa-chalkboard me-1"></i> បញ្ជីថ្នាក់រៀន
+            </a>
+            <a href="{% url 'standardized_exam_list' %}" class="btn btn-outline-primary fw-bold btn-sm shadow-sm">
+                <i class="fa-solid fa-certificate me-1"></i> សម័យប្រឡង
+            </a>
+            <button type="button" class="btn btn-success fw-bold btn-sm shadow-sm" onclick="exportAllocationExcel()">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយក Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Academic Year & Grade Level Switcher Bar -->
+    <div class="custom-card p-3 mb-4 shadow-sm border-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold small text-muted"><i class="fa-solid fa-calendar me-1"></i> ឆ្នាំសិក្សាគោលដៅ៖</span>
+                <select id="selectAcademicYear" class="form-select form-select-sm fw-bold border-primary" style="width: auto; min-width: 180px;" onchange="changeAcademicYear(this.value)">
+                    {% for ay in academic_years %}
+                    <option value="{{ ay.id }}" {% if target_year and target_year.id == ay.id %}selected{% endif %}>
+                        {{ ay.name }} {% if ay.is_current %}(បច្ចុប្បន្ន){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Grade Level Tabs -->
+            <div class="d-flex flex-wrap gap-2">
+                {% for g in "7,8,9,10,11,12"|make_list %}
+                {% endfor %}
+                <button type="button" class="grade-pill-btn {% if grade_level == 7 %}active{% endif %}" onclick="selectGradeLevel(7)">
+                    ថ្នាក់ទី ៧
+                </button>
+                <button type="button" class="grade-pill-btn {% if grade_level == 8 %}active{% endif %}" onclick="selectGradeLevel(8)">
+                    ថ្នាក់ទី ៨
+                </button>
+                <button type="button" class="grade-pill-btn {% if grade_level == 9 %}active{% endif %}" onclick="selectGradeLevel(9)">
+                    ថ្នាក់ទី ៩
+                </button>
+                <button type="button" class="grade-pill-btn {% if grade_level == 10 %}active{% endif %}" onclick="selectGradeLevel(10)">
+                    ថ្នាក់ទី ១០
+                </button>
+                <button type="button" class="grade-pill-btn {% if grade_level == 11 %}active{% endif %}" onclick="selectGradeLevel(11)">
+                    ថ្នាក់ទី ១១
+                </button>
+                <button type="button" class="grade-pill-btn {% if grade_level == 12 %}active{% endif %}" onclick="selectGradeLevel(12)">
+                    ថ្នាក់ទី ១២
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Configuration Card -->
+    <div class="custom-card p-4 mb-4 shadow-sm border-0">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="fa-solid fa-sliders text-primary me-2"></i>ការកំណត់លក្ខខណ្ឌបែងចែក សម្រាប់ <span class="text-primary">ថ្នាក់ទី {{ grade_level }}</span>
+        </h5>
+
+        <div class="row g-4 mb-4">
+            <!-- 1. Score Source Selection (Radio Cards) -->
+            <div class="col-lg-6">
+                <label class="form-label fw-bold small text-muted mb-2">
+                    <i class="fa-solid fa-award text-warning me-1"></i> ១. ជ្រើសរើសប្រភពពិន្ទុសម្រាប់តម្រៀប (Score Source) *
+                </label>
+
+                <div class="d-flex flex-column gap-2.5">
+                    <!-- Option 1: Standardized / Baseline Exam -->
+                    <div class="source-option-box selected" id="optBoxExam" onclick="chooseScoreSource('STANDARDIZED_EXAM')">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="radio" name="score_source_type" id="srcExam" value="STANDARDIZED_EXAM" checked class="form-check-input mt-0">
+                                <label for="srcExam" class="fw-bold text-dark mb-0 cursor-pointer">
+                                    🎯 ពិន្ទុតេស្តដើមឆ្នាំ / តេស្តស្តង់ដា (Standardized / Baseline Exam)
+                                </label>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 0.7rem;">ណែនាំសម្រាប់ទី៧ & ទី១០</span>
+                        </div>
+                        <p class="text-muted small mb-2 ps-4">
+                            ទាញយកពិន្ទុតេស្តដែលសិស្សបានប្រឡង ដើម្បីតម្រៀបចំណាត់ថ្នាក់ពីពិន្ទុខ្ពស់មកទាបចូលថ្នាក់រៀនថ្មី។
+                        </p>
+                        <div class="ps-4" id="examSelectContainer">
+                            <select id="selectExam" class="form-select form-select-sm fw-bold border-primary">
+                                {% if available_exams %}
+                                    {% for ex in available_exams %}
+                                    <option value="{{ ex.id }}">
+                                        {{ ex.name }} ({{ ex.exam_date }}) - បេក្ខជន {{ ex.candidates_count }} នាក់
+                                    </option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="">-- មិនទាន់មានសម័យប្រឡងសម្រាប់កម្រិតថ្នាក់នេះ --</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: Previous Year Final Annual Average -->
+                    <div class="source-option-box" id="optBoxAnnual" onclick="chooseScoreSource('PREVIOUS_YEAR_ANNUAL')">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="radio" name="score_source_type" id="srcAnnual" value="PREVIOUS_YEAR_ANNUAL" class="form-check-input mt-0">
+                                <label for="srcAnnual" class="fw-bold text-dark mb-0 cursor-pointer">
+                                    🎓 ពិន្ទុមធ្យមភាគចុងឆ្នាំចាស់ [(ឆមាសទី១ + ឆមាសទី២)/២]
+                                </label>
+                            </div>
+                            <span class="badge bg-success-subtle text-success fw-bold" style="font-size: 0.7rem;">ណែនាំសម្រាប់ទី៨, ៩, ១១, ១២</span>
+                        </div>
+                        <p class="text-muted small mb-2 ps-4">
+                            គណនាមធ្យមភាគប្រចាំឆ្នាំចាស់ [(ឆ.១ + ឆ.២)/២] របស់សិស្សកាលពីថ្នាក់ទី {{ suggested_previous_grade }} មកធ្វើជាពិន្ទុដើមឆ្នាំ។
+                        </p>
+                        <div class="ps-4" id="annualSelectContainer" style="display: none;">
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="small text-muted fw-bold text-nowrap">ឆ្នាំសិក្សាប្រភព៖</label>
+                                <select id="selectSourceYear" class="form-select form-select-sm fw-bold border-success">
+                                    {% for py in past_academic_years %}
+                                    <option value="{{ py.id }}" {% if suggested_past_year and suggested_past_year.id == py.id %}selected{% endif %}>
+                                        {{ py.name }}
+                                    </option>
+                                    {% empty %}
+                                    <option value="">-- មិនទាន់មានឆ្នាំសិក្សាប្រភពចាស់ --</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option 3: Manual / Equal Distribution -->
+                    <div class="source-option-box" id="optBoxManual" onclick="chooseScoreSource('CUSTOM_MANUAL')">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <input type="radio" name="score_source_type" id="srcManual" value="CUSTOM_MANUAL" class="form-check-input mt-0">
+                            <label for="srcManual" class="fw-bold text-dark mb-0 cursor-pointer">
+                                ⚖️ បែងចែកស្មើគ្នា / តាមលំដាប់អក្ខរក្រម (Alphabetical / Equal)
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0 ps-4">
+                            បែងចែកសិស្សស្មើដៃគ្នាដោយមិនគិតពិន្ទុតេស្ត ឬពិន្ទុប្រចាំឆ្នាំចាស់។
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Target Classrooms & Strategy -->
+            <div class="col-lg-6">
+                <!-- Distribution Strategy -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted mb-2">
+                        <i class="fa-solid fa-arrows-split-up-and-left text-info me-1"></i> ២. វិធីសាស្ត្រចែកថ្នាក់ (Allocation Strategy) *
+                    </label>
+                    <select id="selectStrategy" class="form-select form-select-sm fw-bold border-info">
+                        <option value="TOP_DOWN" selected>
+                            🥇 រៀបពីពិន្ទុខ្ពស់មកទាបតាមលំដាប់ថ្នាក់ (Top-Down: Rank 1..N ចូល 7A, បន្ទាប់ 7B, 7C...)
+                        </option>
+                        <option value="BALANCED_SNAKE">
+                            🐍 បែងចែកស្មើដៃគ្នាតាមលំដាប់ពិន្ទុ (Balanced Snake / Serpentine: 1-A, 2-B, 3-C, 4-C, 5-B...)
+                        </option>
+                        <option value="GENDER_BALANCED">
+                            ⚖️ បែងចែកស្មើដៃគ្នាទាំងពិន្ទុ និងសមាមាត្រស្រី-ប្រុស (Score & Gender Balanced)
+                        </option>
+                    </select>
+                    <div class="form-text small text-muted mt-1">
+                        ជម្រើស <strong>Top-Down</strong> គឺចាត់សិស្សពិន្ទុខ្ពស់ៗជាងគេចូលថ្នាក់ A, បន្ទាប់មកថ្នាក់ B...។
+                    </div>
+                </div>
+
+                <!-- Track Filter for Grade 11 & 12 -->
+                {% if grade_level >= 11 %}
+                <div class="mb-3 p-2.5 bg-light rounded-3 border">
+                    <label class="form-label fw-bold small text-muted mb-1">ជំនាញ/កម្មវិធីសិក្សា (Track)៖</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm {% if track == 'ALL' %}btn-primary{% else %}btn-outline-secondary{% endif %} fw-bold" onclick="setTrackFilter('ALL')">
+                            ទាំងអស់ (All)
+                        </button>
+                        <button type="button" class="btn btn-sm {% if track == 'SCIENCE' %}btn-info text-white{% else %}btn-outline-info{% endif %} fw-bold" onclick="setTrackFilter('SCIENCE')">
+                            🔬 វិទ្យាសាស្ត្រ (Science)
+                        </button>
+                        <button type="button" class="btn btn-sm {% if track == 'SOCIAL' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %} fw-bold" onclick="setTrackFilter('SOCIAL')">
+                            📚 វិទ្យាសាស្ត្រសង្គម (Social)
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Target Classrooms Chips -->
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="form-label fw-bold small text-muted mb-0">
+                            <i class="fa-solid fa-chalkboard text-primary me-1"></i> ៣. ថ្នាក់រៀនគោលដៅទទួលសិស្ស (Target Classrooms) *
+                        </label>
+                        <div class="small">
+                            <button type="button" class="btn btn-link p-0 text-decoration-none small fw-bold" onclick="toggleAllTargetClasses(true)">ជ្រើសទាំងអស់</button>
+                            <span class="text-muted mx-1">|</span>
+                            <button type="button" class="btn btn-link p-0 text-decoration-none small fw-bold text-muted" onclick="toggleAllTargetClasses(false)">ដោះទាំងអស់</button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2" id="targetClassesChipsContainer">
+                        {% for tc in target_classrooms %}
+                        <div class="target-class-chip active" data-class-id="{{ tc.id }}" onclick="toggleTargetClass(this)">
+                            <i class="fa-solid fa-check text-primary check-icon"></i>
+                            <span>{{ tc.name }}</span>
+                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">ចំណុះ {{ tc.capacity|default:45 }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="text-danger small fw-bold">
+                            ⚠️ មិនទាន់មានថ្នាក់រៀនសម្រាប់កម្រិតថ្នាក់ទី {{ grade_level }} ក្នុងឆ្នាំសិក្សា {{ target_year.name }} នៅឡើយទេ។
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Button to Trigger Preview -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between pt-3 border-top gap-2">
+            <div class="text-muted small">
+                <i class="fa-solid fa-users me-1 text-primary"></i> សិស្សសកម្មសរុបក្នុងកម្រិតថ្នាក់ទី {{ grade_level }}៖ 
+                <strong class="text-dark fs-6">{{ current_students_count }} នាក់</strong>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" id="btnPreviewAllocation" onclick="loadAllocationPreview()">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> មើលការបែងចែកសាកល្បង (Preview Allocation)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW RESULTS SECTION (Dynamically Loaded) -->
+    <div id="allocationPreviewSection" style="display: none;">
+
+        <!-- Summary Statistics Row -->
+        <div class="row g-3 mb-4" id="statsRowContainer">
+            <!-- Filled dynamically -->
+        </div>
+
+        <!-- Classrooms Buckets Section -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-list-check text-primary me-2"></i>លទ្ធផលបែងចែកតាមថ្នាក់រៀននីមួយៗ
+                </h5>
+                <p class="text-muted small mb-0" id="previewSourceTitleDesc"></p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" id="btnViewCards" onclick="setViewMode('cards')">
+                        <i class="fa-solid fa-table-cells-large me-1"></i> កាតតាមថ្នាក់ (Cards)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btnViewTable" onclick="setViewMode('table')">
+                        <i class="fa-solid fa-table-list me-1"></i> បញ្ជីសរុប (Master Table)
+                    </button>
+                </div>
+                <button type="button" class="btn btn-success fw-bold btn-sm shadow-sm" onclick="exportAllocationExcel()">
+                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Container 1: Cards View -->
+        <div class="row g-3 mb-4" id="bucketsCardsContainer">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- Container 2: Master Table View -->
+        <div class="custom-card p-3 mb-4 shadow-sm border-0" id="bucketsTableContainer" style="display: none;">
+            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                <table class="table table-hover table-striped align-middle mb-0" id="masterStudentsTable">
+                    <thead class="table-light sticky-top">
+                        <tr class="small text-muted fw-bold">
+                            <th class="text-center" style="width: 60px;">ល.រ</th>
+                            <th class="text-center" style="width: 80px;">ចំណាត់ថ្នាក់</th>
+                            <th>អត្តលេខសិស្ស</th>
+                            <th>គោត្តនាម-នាម</th>
+                            <th class="text-center" style="width: 70px;">ភេទ</th>
+                            <th>ថ្នាក់ដើម/ចាស់</th>
+                            <th class="text-end" style="width: 100px;">ពិន្ទុ</th>
+                            <th>កំណត់សម្គាល់</th>
+                            <th style="width: 160px;">ថ្នាក់រៀនថ្មី (ចាត់តាំង)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterStudentsTableBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bottom Action Bar to Commit Allocation -->
+        <div class="custom-card p-3 shadow-lg border-primary border-2 mb-5 d-flex flex-wrap justify-content-between align-items-center gap-3" style="background: #f8fafc;">
+            <div>
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> រួចរាល់សម្រាប់ការអនុវត្តការបែងចែកថ្នាក់រៀន
+                </h6>
+                <small class="text-muted">
+                    ចុចប៊ូតុងខាងស្តាំដើម្បីរក្សាទុក និងផ្ទេរសិស្សទាំងអស់ទៅកាន់ថ្នាក់រៀនថ្មីជាផ្លូវការក្នុងប្រព័ន្ធ។
+                </small>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary fw-bold px-3" onclick="resetPreview()">
+                    កំណត់ឡើងវិញ
+                </button>
+                <button type="button" class="btn btn-success fw-bold px-4 shadow" id="btnApplyAllocation" onclick="confirmAndApplyAllocation()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> អនុវត្តការបែងចែកថ្នាក់រៀន (Apply Allocation)
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Apply Confirmation Modal -->
+<div class="modal fade" id="modalConfirmApply" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-success text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-circle-question me-2"></i>បញ្ជាក់ការបែងចែកថ្នាក់រៀន
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="fs-1 text-success mb-3">
+                    <i class="fa-solid fa-school-circle-check"></i>
+                </div>
+                <h5 class="fw-bold mb-2">តើលោកអ្នកពិតជាចង់អនុវត្តការបែងចែកថ្នាក់រៀនមែនទេ?</h5>
+                <p class="text-muted small mb-0">
+                    ប្រព័ន្ធនឹងធ្វើបច្ចុប្បន្នភាពថ្នាក់រៀនរបស់សិស្សសរុប <strong class="text-dark" id="modalStudentCount">0</strong> នាក់ ទៅកាន់ថ្នាក់ថ្មីក្នុងឆ្នាំសិក្សា <strong class="text-primary">{{ target_year.name }}</strong> ព្រមទាំងកត់ត្រាក្នុងកំណត់ត្រាឡើងថ្នាក់/ត្រួតថ្នាក់ស្វ័យប្រវត្តិ។
+                </p>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2.5">
+                <button type="button" class="btn btn-light border px-3" data-bs-dismiss="modal">បោះបង់</button>
+                <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" id="btnExecuteFinalApply" onclick="executeFinalAllocation()">
+                    <i class="fa-solid fa-check me-1"></i> បាទ/ចាស អនុវត្តភ្លាម
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTargetYearId = {{ target_year.id }};
+let currentGradeLevel = {{ grade_level }};
+let currentTrack = '{{ track }}';
+let currentScoreSourceType = 'STANDARDIZED_EXAM';
+let previewData = null;
+let currentViewMode = 'cards';
+
+function changeAcademicYear(yearId) {
+    window.location.href = `?academic_year=${yearId}&grade=${currentGradeLevel}&track=${currentTrack}`;
+}
+
+function selectGradeLevel(grade) {
+    window.location.href = `?academic_year=${currentTargetYearId}&grade=${grade}&track=${currentTrack}`;
+}
+
+function setTrackFilter(tr) {
+    window.location.href = `?academic_year=${currentTargetYearId}&grade=${currentGradeLevel}&track=${tr}`;
+}
+
+function chooseScoreSource(srcType) {
+    currentScoreSourceType = srcType;
+    document.getElementById('srcExam').checked = (srcType === 'STANDARDIZED_EXAM');
+    document.getElementById('srcAnnual').checked = (srcType === 'PREVIOUS_YEAR_ANNUAL');
+    document.getElementById('srcManual').checked = (srcType === 'CUSTOM_MANUAL');
+
+    document.getElementById('optBoxExam').classList.toggle('selected', srcType === 'STANDARDIZED_EXAM');
+    document.getElementById('optBoxAnnual').classList.toggle('selected', srcType === 'PREVIOUS_YEAR_ANNUAL');
+    document.getElementById('optBoxManual').classList.toggle('selected', srcType === 'CUSTOM_MANUAL');
+
+    document.getElementById('examSelectContainer').style.display = (srcType === 'STANDARDIZED_EXAM') ? 'block' : 'none';
+    document.getElementById('annualSelectContainer').style.display = (srcType === 'PREVIOUS_YEAR_ANNUAL') ? 'block' : 'none';
+}
+
+function toggleTargetClass(el) {
+    el.classList.toggle('active');
+    const check = el.querySelector('.check-icon');
+    if (el.classList.contains('active')) {
+        check.style.display = 'inline-block';
+    } else {
+        check.style.display = 'none';
+    }
+}
+
+function toggleAllTargetClasses(select) {
+    document.querySelectorAll('.target-class-chip').forEach(el => {
+        if (select) {
+            el.classList.add('active');
+            el.querySelector('.check-icon').style.display = 'inline-block';
+        } else {
+            el.classList.remove('active');
+            el.querySelector('.check-icon').style.display = 'none';
+        }
+    });
+}
+
+function getSelectedTargetClassIds() {
+    const ids = [];
+    document.querySelectorAll('.target-class-chip.active').forEach(el => {
+        ids.push(el.getAttribute('data-class-id'));
+    });
+    return ids;
+}
+
+// -------------------------------------------------------------------------
+// Load Preview via AJAX
+// -------------------------------------------------------------------------
+function loadAllocationPreview() {
+    const targetClassIds = getSelectedTargetClassIds();
+    if (targetClassIds.length === 0) {
+        alert('⚠️ សូមជ្រើសរើសយ៉ាងហោចណាស់មួយថ្នាក់រៀនគោលដៅ!');
+        return;
+    }
+
+    const examId = document.getElementById('selectExam') ? document.getElementById('selectExam').value : null;
+    const sourceYearId = document.getElementById('selectSourceYear') ? document.getElementById('selectSourceYear').value : null;
+    const strategy = document.getElementById('selectStrategy').value;
+
+    const btn = document.getElementById('btnPreviewAllocation');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> កំពុងគណនាការបែងចែក...`;
+
+    const payload = {
+        target_year_id: currentTargetYearId,
+        grade_level: currentGradeLevel,
+        score_source_type: currentScoreSourceType,
+        exam_id: examId,
+        source_year_id: sourceYearId,
+        track: currentTrack,
+        strategy: strategy,
+        target_class_ids: targetClassIds,
+    };
+
+    fetch("{% url 'api_classroom_allocation_preview' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles me-1"></i> មើលការបែងចែកសាកល្បង (Preview Allocation)`;
+
+        if (data.status !== 'success') {
+            alert('⚠️ ' + (data.message || 'មានបញ្ហាក្នុងការទាញយកទិន្នន័យ'));
+            return;
+        }
+
+        previewData = data;
+        renderPreview(data);
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles me-1"></i> មើលការបែងចែកសាកល្បង (Preview Allocation)`;
+        alert('⚠️ បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
+
+function renderPreview(data) {
+    const preview = data.preview;
+    const summary = preview.summary;
+    const buckets = preview.classroom_buckets;
+
+    document.getElementById('previewSourceTitleDesc').innerText = `ប្រភពពិន្ទុ៖ ${data.score_source_title} | វិធីសាស្ត្រ៖ ${summary.strategy}`;
+
+    // 1. Stats Row
+    const statsHtml = `
+        <div class="col-6 col-md-3">
+            <div class="allocation-stat-card p-3 border-start border-4 border-primary text-center">
+                <div class="fs-4 fw-bold text-primary">${summary.total_students}</div>
+                <div class="small text-muted fw-bold">សិស្សសរុប (Students)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="allocation-stat-card p-3 border-start border-4 border-info text-center">
+                <div class="fs-4 fw-bold text-info">${summary.total_classes}</div>
+                <div class="small text-muted fw-bold">ថ្នាក់រៀនគោលដៅ (Classes)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="allocation-stat-card p-3 border-start border-4 border-success text-center">
+                <div class="fs-4 fw-bold text-success">${summary.overall_average_score.toFixed(2)}</div>
+                <div class="small text-muted fw-bold">ពិន្ទុមធ្យមភាគរួម (Avg Score)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="allocation-stat-card p-3 border-start border-4 border-warning text-center">
+                <div class="fs-4 fw-bold text-warning">${summary.scored_students_count} / ${summary.total_students}</div>
+                <div class="small text-muted fw-bold">សិស្សមានពិន្ទុ (With Score)</div>
+            </div>
+        </div>
+    `;
+    document.getElementById('statsRowContainer').innerHTML = statsHtml;
+
+    // 2. Render Cards View
+    let cardsHtml = '';
+    buckets.forEach(b => {
+        let studentsListHtml = '';
+        b.students.forEach(s => {
+            const avatarBg = s.gender === 'F' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary';
+            const scoreClass = s.has_score ? 'text-primary fw-bold' : 'text-muted';
+            studentsListHtml += `
+                <div class="d-flex align-items-center justify-content-between p-2 border-bottom hover-bg">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="student-avatar ${avatarBg}">
+                            ${s.gender === 'F' ? 'ស្រី' : 'ប្រុស'}
+                        </span>
+                        <div>
+                            <div class="fw-bold small text-dark mb-0">${s.khmer_name}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">
+                                ID: ${s.student_id} | ចំណាត់ថ្នាក់: #${s.rank}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="${scoreClass} small">${s.score.toFixed(2)}</div>
+                        <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">${s.current_class_name}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        cardsHtml += `
+            <div class="col-md-6 col-lg-4">
+                <div class="bucket-card h-100 shadow-sm">
+                    <div class="bucket-card-header d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">${b.classroom_name}</h6>
+                            <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 0.7rem;">${b.track}</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary fs-6 px-2.5 py-1">${b.total_students} នាក់</span>
+                            <div class="text-muted mt-0.5" style="font-size: 0.7rem;">ស្រី ${b.female_count} (${b.female_percentage}%)</div>
+                        </div>
+                    </div>
+                    <div class="p-2.5 bg-light border-bottom d-flex justify-content-between text-center" style="font-size: 0.75rem;">
+                        <div>មធ្យមភាគ៖ <strong class="text-primary">${b.average_score.toFixed(2)}</strong></div>
+                        <div>ខ្ពស់បំផុត៖ <strong class="text-success">${b.max_score.toFixed(2)}</strong></div>
+                        <div>ទាបបំផុត៖ <strong class="text-danger">${b.min_score.toFixed(2)}</strong></div>
+                    </div>
+                    <div style="max-height: 380px; overflow-y: auto;">
+                        ${studentsListHtml || '<div class="p-3 text-center text-muted small">គ្មានសិស្សចាត់តាំង</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    document.getElementById('bucketsCardsContainer').innerHTML = cardsHtml;
+
+    // 3. Render Master Table View
+    let tableRowsHtml = '';
+    let globalIdx = 1;
+    const targetClassOptions = data.target_classrooms.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    buckets.forEach(b => {
+        b.students.forEach(s => {
+            const genderBadge = s.gender === 'F' ? '<span class="badge bg-danger-subtle text-danger">ស្រី</span>' : '<span class="badge bg-primary-subtle text-primary">ប្រុស</span>';
+            tableRowsHtml += `
+                <tr>
+                    <td class="text-center small">${globalIdx++}</td>
+                    <td class="text-center fw-bold text-primary">#${s.rank}</td>
+                    <td class="font-monospace small">${s.student_id}</td>
+                    <td class="fw-bold">${s.khmer_name}</td>
+                    <td class="text-center">${genderBadge}</td>
+                    <td class="small text-muted">${s.current_class_name}</td>
+                    <td class="text-end fw-bold text-primary">${s.score.toFixed(2)}</td>
+                    <td class="small text-muted">${s.score_detail || '-'}</td>
+                    <td>
+                        <select class="form-select form-select-sm fw-bold border-primary student-target-override" data-student-id="${s.id}" data-score="${s.score}" data-rank="${s.rank}">
+                            ${data.target_classrooms.map(c => `
+                                <option value="${c.id}" ${c.id === b.classroom_id ? 'selected' : ''}>${c.name}</option>
+                            `).join('')}
+                        </select>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+    document.getElementById('masterStudentsTableBody').innerHTML = tableRowsHtml;
+
+    document.getElementById('allocationPreviewSection').style.display = 'block';
+    document.getElementById('allocationPreviewSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function setViewMode(mode) {
+    currentViewMode = mode;
+    document.getElementById('btnViewCards').classList.toggle('active', mode === 'cards');
+    document.getElementById('btnViewTable').classList.toggle('active', mode === 'table');
+    document.getElementById('bucketsCardsContainer').style.display = (mode === 'cards') ? 'flex' : 'none';
+    document.getElementById('bucketsTableContainer').style.display = (mode === 'table') ? 'block' : 'none';
+}
+
+function resetPreview() {
+    document.getElementById('allocationPreviewSection').style.display = 'none';
+    previewData = null;
+}
+
+function exportAllocationExcel() {
+    const examId = document.getElementById('selectExam') ? document.getElementById('selectExam').value : '';
+    const sourceYearId = document.getElementById('selectSourceYear') ? document.getElementById('selectSourceYear').value : '';
+    const strategy = document.getElementById('selectStrategy') ? document.getElementById('selectStrategy').value : 'TOP_DOWN';
+    
+    const url = `{% url 'export_classroom_allocation_excel' %}?target_year_id=${currentTargetYearId}&grade_level=${currentGradeLevel}&score_source_type=${currentScoreSourceType}&exam_id=${examId}&source_year_id=${sourceYearId}&track=${currentTrack}&strategy=${strategy}`;
+    window.location.href = url;
+}
+
+function confirmAndApplyAllocation() {
+    if (!previewData) {
+        alert('⚠️ សូមចុចមើលការបែងចែកសាកល្បងជាមុនសិន!');
+        return;
+    }
+    document.getElementById('modalStudentCount').innerText = previewData.total_students;
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmApply'));
+    modal.show();
+}
+
+function executeFinalAllocation() {
+    const modalEl = document.getElementById('modalConfirmApply');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    const btn = document.getElementById('btnApplyAllocation');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> កំពុងអនុវត្តការបែងចែក...`;
+
+    // Gather allocations from table / preview
+    const allocations = [];
+    document.querySelectorAll('.student-target-override').forEach(sel => {
+        allocations.push({
+            student_id: parseInt(sel.getAttribute('data-student-id')),
+            target_classroom_id: parseInt(sel.value),
+            score: parseFloat(sel.getAttribute('data-score') || '0'),
+            rank: parseInt(sel.getAttribute('data-rank') || '0'),
+        });
+    });
+
+    if (allocations.length === 0 && previewData) {
+        previewData.preview.classroom_buckets.forEach(b => {
+            b.students.forEach(s => {
+                allocations.push({
+                    student_id: s.id,
+                    target_classroom_id: b.classroom_id,
+                    score: s.score,
+                    rank: s.rank,
+                });
+            });
+        });
+    }
+
+    const payload = {
+        target_year_id: currentTargetYearId,
+        allocations: allocations,
+        audit_reason: `បែងចែកថ្នាក់តាម ${previewData.score_source_title}`,
+    };
+
+    fetch("{% url 'api_classroom_allocation_apply' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> អនុវត្តការបែងចែកថ្នាក់រៀន (Apply Allocation)`;
+        if (res.status === 'success') {
+            alert(res.message);
+            window.location.reload();
+        } else {
+            alert('⚠️ បរាជ័យ៖ ' + (res.message || 'មិនអាចអនុវត្តការបែងចែកបានទេ'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> អនុវត្តការបែងចែកថ្នាក់រៀន (Apply Allocation)`;
+        alert('⚠️ បរាជ័យក្នុងការតភ្ជាប់៖ ' + err);
+    });
+}
+</script>
+{% endblock %}

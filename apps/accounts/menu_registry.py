@@ -395,6 +395,15 @@ MENU_SECTIONS_CATALOG = [
                 'default_roles': ['TEACHER'],
                 'url_name': 'exam_invigilator_teacher_portal',
             },
+            {
+                'key': 'student_classroom_allocation',
+                'name_kh': 'បែងចែកថ្នាក់តាមពិន្ទុ',
+                'name_en': 'Class Allocation by Score',
+                'icon': 'fa-solid fa-people-arrows text-warning',
+                'default_roles': ['ADMIN'],
+                'url_name': 'student_classroom_allocation',
+                'is_admin_only': True,
+            },
         ]
     },
     {

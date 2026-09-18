@@ -2769,6 +2769,57 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       );
     }
 
+    if (available.length == 1) {
+      final gl = available.first;
+      final gradeName = "${gl['grade_name'] ?? gl['name'] ?? 'ថ្នាក់ទី ${gl['grade_number']}'}";
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.auto_stories_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("កម្រិតថ្នាក់ (Grade Level)", style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text(gradeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text("កំណត់ដោយ Admin", style: TextStyle(fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
     final safeGradeNumber = available.any((g) => g['grade_number'] == _selectedGradeNumber)
         ? _selectedGradeNumber
         : null;
@@ -2800,12 +2851,16 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
 
   Widget _buildClassroomDropdown() {
     final classrooms = _filteredClassrooms;
+    final isSingleGrade = _availableGradeLevels.length == 1;
 
     if (_selectedGradeNumber == null) {
       return DropdownButtonFormField<int>(
         items: const [],
         onChanged: null,
-        decoration: _inputDecoration("២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *", Icons.meeting_room_rounded),
+        decoration: _inputDecoration(
+          isSingleGrade ? "ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *" : "២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *",
+          Icons.meeting_room_rounded,
+        ),
         hint: const Text("-- សូមជ្រើសរើសកម្រិតថ្នាក់ខាងលើជាមុនសិន --"),
       );
     }
@@ -2833,6 +2888,57 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
       );
     }
 
+    if (classrooms.length == 1) {
+      final c = classrooms.first;
+      final code = (c['code'] != null && c['code'].toString().isNotEmpty) ? " (${c['code']})" : "";
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withValues(alpha: 0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.meeting_room_rounded, color: Colors.green, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("បន្ទប់/ថ្នាក់រៀន (Classroom)", style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text("${c['name']}$code", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text("កំណត់រួចរាល់", style: TextStyle(fontSize: 10.5, color: Colors.green, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
     final safeClassroomId = classrooms.any((c) => c['id'] == _selectedClassroomId)
         ? _selectedClassroomId
         : classrooms.first['id'];
@@ -2840,7 +2946,10 @@ class _StudentEnrollmentScreenState extends State<StudentEnrollmentScreen> {
     return DropdownButtonFormField<int>(
       key: ValueKey('classroom_select_${_selectedGradeNumber}_${safeClassroomId}_${classrooms.length}'),
       initialValue: safeClassroomId,
-      decoration: _inputDecoration("២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *", Icons.meeting_room_rounded),
+      decoration: _inputDecoration(
+        isSingleGrade ? "ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *" : "២. ជ្រើសរើសបន្ទប់/ថ្នាក់រៀន (Classroom) *",
+        Icons.meeting_room_rounded,
+      ),
       hint: const Text("-- ជ្រើសរើសបន្ទប់រៀន --"),
       items: classrooms.map<DropdownMenuItem<int>>((c) {
         final code = (c['code'] != null && c['code'].toString().isNotEmpty) ? " (${c['code']})" : "";
