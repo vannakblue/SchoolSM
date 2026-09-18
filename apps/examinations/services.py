@@ -1358,7 +1358,7 @@ def get_student_cumulative_dossier_data(student, class_ranks_cache=None):
     }
 
 
-def get_student_study_tracking_book_data(student, academic_year=None):
+def get_student_study_tracking_book_data(student, academic_year=None, context_cache=None):
     """
     Constructs comprehensive Individual Student Study Tracking Book data
     (សៀវភៅតាមដានការសិក្សារបស់សិស្សម្នាក់ / Carnet Scolaire Individuel)
@@ -1367,13 +1367,19 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     if not student:
         return None
 
+    if context_cache is None:
+        context_cache = {}
+
     from django.db.models import Q
     from apps.accounts.models import SchoolProfile
     from apps.academics.models import Classroom, AcademicYear
     from apps.attendance.models import StudentAttendance
     from apps.examinations.models import ExamTerm, Grade
 
-    school_profile = SchoolProfile.objects.first()
+    if 'school_profile' not in context_cache:
+        context_cache['school_profile'] = SchoolProfile.objects.first()
+    school_profile = context_cache['school_profile']
+
     default_school_name = (
         getattr(school_profile, 'name_kh', None) or 
         getattr(school_profile, 'school_name_kh', None) or 
@@ -1384,47 +1390,88 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     grade_level = classroom.grade_level if classroom else 7
     ay = academic_year or (classroom.academic_year if classroom else student.academic_year)
     if not ay:
-        ay = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+        if 'default_ay' not in context_cache:
+            context_cache['default_ay'] = AcademicYear.objects.filter(is_current=True).first() or AcademicYear.objects.first()
+        ay = context_cache['default_ay']
 
     homeroom_teacher = classroom.homeroom_teacher if classroom else None
 
     # 1. Exam Terms Resolution (Distinct months defined by admin for each semester)
-    s1_monthly_terms = resolve_semester_monthly_terms(ay, semester=1) if ay else []
+    s1_monthly_terms_key = ('s1_monthly_terms', ay.id if ay else None)
+    if s1_monthly_terms_key not in context_cache:
+        context_cache[s1_monthly_terms_key] = resolve_semester_monthly_terms(ay, semester=1) if ay else []
+    s1_monthly_terms = context_cache[s1_monthly_terms_key]
 
-    s1_exam_term = ExamTerm.objects.filter(
-        academic_year=ay,
-        semester=1,
-        term_type=ExamTerm.TermType.SEMESTER_1
-    ).first() if ay else None
+    s1_exam_term_key = ('s1_exam_term', ay.id if ay else None)
+    if s1_exam_term_key not in context_cache:
+        context_cache[s1_exam_term_key] = ExamTerm.objects.filter(
+            academic_year=ay,
+            semester=1,
+            term_type=ExamTerm.TermType.SEMESTER_1
+        ).first() if ay else None
+    s1_exam_term = context_cache[s1_exam_term_key]
 
-    s2_monthly_terms = resolve_semester_monthly_terms(ay, semester=2) if ay else []
+    s2_monthly_terms_key = ('s2_monthly_terms', ay.id if ay else None)
+    if s2_monthly_terms_key not in context_cache:
+        context_cache[s2_monthly_terms_key] = resolve_semester_monthly_terms(ay, semester=2) if ay else []
+    s2_monthly_terms = context_cache[s2_monthly_terms_key]
 
-    s2_exam_term = ExamTerm.objects.filter(
-        academic_year=ay,
-        semester=2,
-        term_type=ExamTerm.TermType.SEMESTER_2
-    ).first() if ay else None
+    s2_exam_term_key = ('s2_exam_term', ay.id if ay else None)
+    if s2_exam_term_key not in context_cache:
+        context_cache[s2_exam_term_key] = ExamTerm.objects.filter(
+            academic_year=ay,
+            semester=2,
+            term_type=ExamTerm.TermType.SEMESTER_2
+        ).first() if ay else None
+    s2_exam_term = context_cache[s2_exam_term_key]
 
     # 2. Subject Rules & Grade Mapping (Guarantee all subjects in this classroom/grade are included)
-    classroom_subjects = []
-    if classroom:
-        assigned_subs = list(classroom.assigned_subjects.select_related('subject').order_by('subject__order', 'id'))
-        if assigned_subs:
-            rule_map = {r.subject_id: r for r in GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject')}
-            for cs in assigned_subs:
-                rule = rule_map.get(cs.subject_id) or GradeLevelRule(
-                    grade_level=grade_level, track=classroom.track, subject=cs.subject, max_score=Decimal('100.00')
-                )
-                classroom_subjects.append(rule)
-        else:
-            classroom_subjects = list(GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject').order_by('subject__order', 'id'))
+    classroom_subjects_key = ('classroom_subjects', classroom.id if classroom else None, grade_level)
+    if classroom_subjects_key not in context_cache:
+        c_subs = []
+        if classroom:
+            assigned_subs = list(classroom.assigned_subjects.select_related('subject').order_by('subject__order', 'id'))
+            if assigned_subs:
+                rule_map = {r.subject_id: r for r in GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject')}
+                for cs in assigned_subs:
+                    rule = rule_map.get(cs.subject_id) or GradeLevelRule(
+                        grade_level=grade_level, track=classroom.track, subject=cs.subject, max_score=Decimal('100.00')
+                    )
+                    c_subs.append(rule)
+            else:
+                c_subs = list(GradeLevelRule.objects.filter(grade_level=grade_level, track=classroom.track).select_related('subject').order_by('subject__order', 'id'))
 
-    if not classroom_subjects:
-        classroom_subjects = list(GradeLevelRule.objects.filter(grade_level=grade_level).select_related('subject').order_by('subject__order', 'id'))
+        if not c_subs:
+            c_subs = list(GradeLevelRule.objects.filter(grade_level=grade_level).select_related('subject').order_by('subject__order', 'id'))
+        context_cache[classroom_subjects_key] = c_subs
+
+    classroom_subjects = list(context_cache[classroom_subjects_key])
+
+    # 2. Subject Rules & Grade Mapping (Guarantee all subjects in this classroom/grade are included)
+    grades_cache_key = ('classroom_grades', classroom.id if classroom else None, ay.id if ay else None)
+    if grades_cache_key not in context_cache:
+        if classroom and ay:
+            from collections import defaultdict
+            cg_map = defaultdict(dict)
+            all_grades = Grade.objects.filter(student__classroom=classroom, exam_term__academic_year=ay).values_list('student_id', 'subject_id', 'exam_term_id', 'score')
+            for stu_id, sub_id, et_id, sc in all_grades:
+                cg_map[stu_id][(sub_id, et_id)] = sc
+            context_cache[grades_cache_key] = cg_map
+        else:
+            context_cache[grades_cache_key] = None
+
+    cg_map = context_cache.get(grades_cache_key)
+    if cg_map is not None:
+        grade_map = cg_map.get(student.id, {})
+    else:
+        grades_qs = Grade.objects.filter(student=student)
+        if ay:
+            grades_qs = grades_qs.filter(exam_term__academic_year=ay)
+        grade_map = {(g.subject_id, g.exam_term_id): g.score for g in grades_qs}
 
     # Also include any subjects that have recorded grades for this student
     existing_sub_ids = {r.subject_id for r in classroom_subjects}
-    extra_grade_sub_ids = set(Grade.objects.filter(student=student, exam_term__academic_year=ay).values_list('subject_id', flat=True)) - existing_sub_ids
+    extra_grade_sub_ids = {sub_id for (sub_id, et_id) in grade_map.keys()} - existing_sub_ids
     if extra_grade_sub_ids:
         extra_subs = Subject.objects.filter(id__in=extra_grade_sub_ids).order_by('order', 'id')
         for es in extra_subs:
@@ -1434,59 +1481,108 @@ def get_student_study_tracking_book_data(student, academic_year=None):
 
     subject_rules = classroom_subjects
 
-    grades_qs = Grade.objects.filter(student=student)
-    if ay:
-        grades_qs = grades_qs.filter(exam_term__academic_year=ay)
-    grade_map = {(g.subject_id, g.exam_term_id): g.score for g in grades_qs}
-
     # 3. Class-wide computation for ranks and averages
-    s1_class_res = AcademicResultService.compute_semester_results(classroom, ay, semester=1) if (classroom and ay) else {'students_data': []}
-    s2_class_res = AcademicResultService.compute_semester_results(classroom, ay, semester=2) if (classroom and ay) else {'students_data': []}
-    ann_class_res = AcademicResultService.compute_annual_results(classroom, ay) if (classroom and ay) else {'students_data': []}
+    s1_class_key = ('s1_class_res', classroom.id if classroom else None, ay.id if ay else None)
+    if s1_class_key not in context_cache:
+        context_cache[s1_class_key] = AcademicResultService.compute_semester_results(classroom, ay, semester=1) if (classroom and ay) else {'students_data': []}
+    s1_class_res = context_cache[s1_class_key]
 
-    s1_stu_item = next((item for item in s1_class_res.get('students_data', []) if item['student'].id == student.id), None)
-    s2_stu_item = next((item for item in s2_class_res.get('students_data', []) if item['student'].id == student.id), None)
-    ann_stu_item = next((item for item in ann_class_res.get('students_data', []) if item['student'].id == student.id), None)
+    s2_class_key = ('s2_class_res', classroom.id if classroom else None, ay.id if ay else None)
+    if s2_class_key not in context_cache:
+        context_cache[s2_class_key] = AcademicResultService.compute_semester_results(classroom, ay, semester=2) if (classroom and ay) else {'students_data': []}
+    s2_class_res = context_cache[s2_class_key]
+
+    ann_class_key = ('ann_class_res', classroom.id if classroom else None, ay.id if ay else None)
+    if ann_class_key not in context_cache:
+        context_cache[ann_class_key] = AcademicResultService.compute_annual_results(classroom, ay) if (classroom and ay) else {'students_data': []}
+    ann_class_res = context_cache[ann_class_key]
+
+    s1_stu_item = next((item for item in s1_class_res.get('students_data', []) if getattr(item.get('student'), 'id', None) == student.id), None)
+    s2_stu_item = next((item for item in s2_class_res.get('students_data', []) if getattr(item.get('student'), 'id', None) == student.id), None)
+    ann_stu_item = next((item for item in ann_class_res.get('students_data', []) if getattr(item.get('student'), 'id', None) == student.id), None)
 
     # Compute Grade-Level Ranks across all classrooms of this grade level
-    grade_classrooms = list(Classroom.objects.filter(grade_level=grade_level, academic_year=ay)) if ay else ([classroom] if classroom else [])
+    grade_classrooms_key = ('grade_classrooms', grade_level, ay.id if ay else None)
+    if grade_classrooms_key not in context_cache:
+        context_cache[grade_classrooms_key] = list(Classroom.objects.filter(grade_level=grade_level, academic_year=ay)) if ay else ([classroom] if classroom else [])
+    grade_classrooms = context_cache[grade_classrooms_key]
+
     total_class_students = classroom.total_students if classroom else 1
 
-    s1_grade_rank = s1_stu_item.get('rank') if s1_stu_item else None
+    s1_default_rank = s1_stu_item.get('rank') if s1_stu_item else None
+    s1_grade_rank = s1_default_rank
     total_grade_students_s1 = total_class_students
     if len(grade_classrooms) > 1:
-        all_s1 = []
-        for c in grade_classrooms:
-            c_res = AcademicResultService.compute_semester_results(c, ay, semester=1)
-            all_s1.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
-        if all_s1:
-            all_s1.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
-            total_grade_students_s1 = len(all_s1)
-            s1_grade_rank = next((idx + 1 for idx, item in enumerate(all_s1) if item['student'].id == student.id), s1_stu_item.get('rank'))
+        all_s1_key = ('all_s1', grade_level, ay.id if ay else None)
+        if all_s1_key not in context_cache:
+            all_s1 = []
+            for c in grade_classrooms:
+                c_key = ('s1_class_res', c.id, ay.id if ay else None)
+                if c_key not in context_cache:
+                    context_cache[c_key] = AcademicResultService.compute_semester_results(c, ay, semester=1)
+                c_res = context_cache[c_key]
+                all_s1.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
+            if all_s1:
+                all_s1.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
+            context_cache[all_s1_key] = all_s1
+        all_s1 = context_cache[all_s1_key]
 
-    s2_grade_rank = s2_stu_item.get('rank') if s2_stu_item else None
+        if all_s1:
+            total_grade_students_s1 = len(all_s1)
+            s1_grade_rank = next(
+                (idx + 1 for idx, item in enumerate(all_s1) if getattr(item.get('student'), 'id', None) == student.id),
+                s1_default_rank
+            )
+
+    s2_default_rank = s2_stu_item.get('rank') if s2_stu_item else None
+    s2_grade_rank = s2_default_rank
     total_grade_students_s2 = total_class_students
     if len(grade_classrooms) > 1:
-        all_s2 = []
-        for c in grade_classrooms:
-            c_res = AcademicResultService.compute_semester_results(c, ay, semester=2)
-            all_s2.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
-        if all_s2:
-            all_s2.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
-            total_grade_students_s2 = len(all_s2)
-            s2_grade_rank = next((idx + 1 for idx, item in enumerate(all_s2) if item['student'].id == student.id), s2_stu_item.get('rank'))
+        all_s2_key = ('all_s2', grade_level, ay.id if ay else None)
+        if all_s2_key not in context_cache:
+            all_s2 = []
+            for c in grade_classrooms:
+                c_key = ('s2_class_res', c.id, ay.id if ay else None)
+                if c_key not in context_cache:
+                    context_cache[c_key] = AcademicResultService.compute_semester_results(c, ay, semester=2)
+                c_res = context_cache[c_key]
+                all_s2.extend([st for st in c_res.get('students_data', []) if st.get('semester_final_average') is not None])
+            if all_s2:
+                all_s2.sort(key=lambda x: float(x.get('semester_final_average') or 0), reverse=True)
+            context_cache[all_s2_key] = all_s2
+        all_s2 = context_cache[all_s2_key]
 
-    ann_grade_rank = ann_stu_item.get('rank') if ann_stu_item else None
+        if all_s2:
+            total_grade_students_s2 = len(all_s2)
+            s2_grade_rank = next(
+                (idx + 1 for idx, item in enumerate(all_s2) if getattr(item.get('student'), 'id', None) == student.id),
+                s2_default_rank
+            )
+
+    ann_default_rank = ann_stu_item.get('rank') if ann_stu_item else None
+    ann_grade_rank = ann_default_rank
     total_grade_students_ann = total_class_students
     if len(grade_classrooms) > 1:
-        all_ann = []
-        for c in grade_classrooms:
-            c_res = AcademicResultService.compute_annual_results(c, ay)
-            all_ann.extend([st for st in c_res.get('students_data', []) if st.get('annual_average') is not None])
+        all_ann_key = ('all_ann', grade_level, ay.id if ay else None)
+        if all_ann_key not in context_cache:
+            all_ann = []
+            for c in grade_classrooms:
+                c_key = ('ann_class_res', c.id, ay.id if ay else None)
+                if c_key not in context_cache:
+                    context_cache[c_key] = AcademicResultService.compute_annual_results(c, ay)
+                c_res = context_cache[c_key]
+                all_ann.extend([st for st in c_res.get('students_data', []) if st.get('annual_average') is not None])
+            if all_ann:
+                all_ann.sort(key=lambda x: float(x.get('annual_average') or 0), reverse=True)
+            context_cache[all_ann_key] = all_ann
+        all_ann = context_cache[all_ann_key]
+
         if all_ann:
-            all_ann.sort(key=lambda x: float(x.get('annual_average') or 0), reverse=True)
             total_grade_students_ann = len(all_ann)
-            ann_grade_rank = next((idx + 1 for idx, item in enumerate(all_ann) if item['student'].id == student.id), ann_stu_item.get('rank'))
+            ann_grade_rank = next(
+                (idx + 1 for idx, item in enumerate(all_ann) if getattr(item.get('student'), 'id', None) == student.id),
+                ann_default_rank
+            )
 
     # 4. Subject Rows Matrix
     subject_rows = []
@@ -1646,9 +1742,29 @@ def get_student_study_tracking_book_data(student, academic_year=None):
 
     # 6. Monthly Attendance Breakdown (October to July)
     # 6. Monthly Attendance Breakdown (Counted per session/shift: 1 session/shift = 1 count)
-    att_qs = StudentAttendance.objects.filter(student=student)
-    if ay and ay.start_date and ay.end_date:
-        att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+    att_cache_key = ('classroom_attendance', classroom.id if classroom else None, ay.id if ay else None)
+    if att_cache_key not in context_cache:
+        if classroom and ay and ay.start_date and ay.end_date:
+            from collections import defaultdict
+            c_att = defaultdict(list)
+            for a in StudentAttendance.objects.filter(
+                student__classroom=classroom,
+                date__gte=ay.start_date,
+                date__lte=ay.end_date
+            ).only('student_id', 'date', 'session', 'status'):
+                c_att[a.student_id].append(a)
+            context_cache[att_cache_key] = c_att
+        else:
+            context_cache[att_cache_key] = None
+
+    c_att = context_cache.get(att_cache_key)
+    if c_att is not None:
+        all_att = c_att.get(student.id, [])
+    else:
+        att_qs = StudentAttendance.objects.filter(student=student)
+        if ay and ay.start_date and ay.end_date:
+            att_qs = att_qs.filter(date__gte=ay.start_date, date__lte=ay.end_date)
+        all_att = list(att_qs.only('date', 'session', 'status'))
 
     # Standard 10 academic months in Cambodia
     academic_months = [
@@ -1670,7 +1786,7 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         m_num = m_item['month']
         sem = m_item['semester']
 
-        m_att = att_qs.filter(date__month=m_num)
+        m_att = [a for a in all_att if a.date and a.date.month == m_num]
 
         # In Cambodian schools: 1 session/shift (MORNING or AFTERNOON) = 1 time/count (១ពេល/វេន គឺគិតយកម្តង)
         session_groups = {}
@@ -1726,7 +1842,7 @@ def get_student_study_tracking_book_data(student, academic_year=None):
             if matching:
                 records.append(matching)
             else:
-                m_att = att_qs.filter(date__month=m_num)
+                m_att = [a for a in all_att if a.date and a.date.month == m_num]
                 session_groups = {}
                 for a in m_att:
                     sess_key = (a.date, a.session or 'MORNING')
@@ -1808,7 +1924,21 @@ def get_student_study_tracking_book_data(student, academic_year=None):
     )
 
     # 7. Conduct & Moral Rubrics (វាយតម្លៃអាកប្បកិរិយា សីលធម៌ គុណវុឌ្ឍិ & មតិគ្រូ/មាតាបិតា)
-    conduct_obj = StudentConductAssessment.objects.filter(student=student, academic_year=ay).first()
+    conduct_cache_key = ('conduct_map', classroom.id if classroom else None, ay.id if ay else None)
+    if conduct_cache_key not in context_cache:
+        if classroom and ay:
+            context_cache[conduct_cache_key] = {
+                ca.student_id: ca
+                for ca in StudentConductAssessment.objects.filter(student__classroom=classroom, academic_year=ay)
+            }
+        else:
+            context_cache[conduct_cache_key] = None
+
+    conduct_map = context_cache.get(conduct_cache_key)
+    if conduct_map is not None:
+        conduct_obj = conduct_map.get(student.id)
+    else:
+        conduct_obj = StudentConductAssessment.objects.filter(student=student, academic_year=ay).first()
     if conduct_obj:
         conduct_s1 = conduct_obj.overall_s1
         conduct_s2 = conduct_obj.overall_s2

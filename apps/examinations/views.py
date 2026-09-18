@@ -10773,8 +10773,9 @@ def homeroom_individual_tracking_books_batch_view(request, classroom_id: int):
 
     students = Student.objects.filter(classroom=classroom, status='ACTIVE').order_by('student_id')
     book_list = []
+    context_cache = {}
     for stu in students:
-        b_data = get_student_study_tracking_book_data(stu)
+        b_data = get_student_study_tracking_book_data(stu, classroom.academic_year, context_cache=context_cache)
         if b_data:
             book_list.append(b_data)
 

@@ -32,10 +32,28 @@
             font-style: normal;
             font-display: swap;
         }
+        @font-face {
+            font-family: 'Khmer OS Siemreap';
+            src: local('Khmer OS Siemreap'),
+                 local('KhmerOSsiemreap'),
+                 url("{% static 'fonts/KhmerOSsiemreap.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'KhmerOSsiemreap';
+            src: local('Khmer OS Siemreap'),
+                 local('KhmerOSsiemreap'),
+                 url("{% static 'fonts/KhmerOSsiemreap.ttf' %}") format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
 
         :root {
             --font-moul: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', cursive, serif;
-            --font-body: 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
+            --font-body: 'Khmer OS Siemreap', 'KhmerOSsiemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
             --moeys-primary: #1e3a8a;
             --moeys-secondary: #b91c1c;
             --moeys-gold: #b45309;
@@ -309,7 +327,7 @@
             <div class="col-10">
                 <table class="profile-table">
                     <tr>
-                        <td style="width: 16%;"><strong class="font-moul" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 10pt; font-weight: normal;">គោត្តនាម-នាម៖</strong></td>
+                        <td style="width: 16%;"><strong>គោត្តនាម-នាម៖</strong></td>
                         <td style="width: 34%;" class="text-dark">
                             <span class="font-moul text-dark" style="font-family: 'Khmer OS Muol Light', 'KhmerOSmuollight', 'Moul', serif; font-size: 11pt; font-weight: normal;">{{ dossier.student.khmer_name }}</span>
                         </td>

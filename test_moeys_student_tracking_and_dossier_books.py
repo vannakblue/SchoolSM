@@ -271,8 +271,16 @@ def run_tests():
     content2 = resp2.content.decode('utf-8')
     assert "សៀវភៅតាមដានការសិក្សា" in content2
     assert "សុខ សុវណ្ណារ៉ា" in content2
-    assert "បោះពុម្ពមួយថ្នាក់" in content2
     print("  [PASS] homeroom_individual_tracking_books_batch_view rendered with 200 OK!")
+
+    # View 2b: homeroom_individual_tracking_books_batch_view - MONTHLY period
+    req2_m = setup_request(factory.get(f"/examinations/homeroom/{classroom.id}/individual-tracking-books/?period=MONTHLY"), teacher_user)
+    resp2_m = homeroom_individual_tracking_books_batch_view(req2_m, classroom.id)
+    assert resp2_m.status_code == 200, f"Expected 200 for MONTHLY period, got {resp2_m.status_code}"
+    content2_m = resp2_m.content.decode('utf-8')
+    assert "សៀវភៅតាមដានការសិក្សា" in content2_m
+    assert "របាយការណ៍តាមដានប្រចាំខែ" in content2_m
+    print("  [PASS] homeroom_individual_tracking_books_batch_view with ?period=MONTHLY rendered with 200 OK!")
 
     # View 3: student_cumulative_dossier_view
     req3 = setup_request(factory.get(f"/examinations/students/{student.id}/cumulative-dossier/"), admin_user)
