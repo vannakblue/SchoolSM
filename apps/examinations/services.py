@@ -1815,8 +1815,10 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         conduct_annual = conduct_obj.overall_annual
         teacher_comment_s1 = conduct_obj.teacher_comment_s1 or "សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។"
         teacher_comment_s2 = conduct_obj.teacher_comment_s2 or "សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។"
+        teacher_comment_monthly = getattr(conduct_obj, 'teacher_comment_monthly', None) or "សិស្សមានការយកចិត្តទុកដាក់រៀនសូត្រ វត្តមានទៀងទាត់ និងខិតខំបំពេញកិច្ចការផ្ទះបានល្អ។"
         parent_comment_s1 = conduct_obj.parent_comment_s1 or "បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។"
         parent_comment_s2 = conduct_obj.parent_comment_s2 or "សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។"
+        parent_comment_monthly = getattr(conduct_obj, 'parent_comment_monthly', None) or "បានពិនិត្យ និងតាមដានលទ្ធផលសិក្សាប្រចាំខែរបស់កូនរួចរាល់។"
         conduct_criteria = [
             {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_obj.discipline_s1, 's2': conduct_obj.discipline_s2, 'ann': conduct_obj.discipline_annual},
             {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_obj.diligence_s1, 's2': conduct_obj.diligence_s2, 'ann': conduct_obj.diligence_annual},
@@ -1843,8 +1845,10 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         conduct_annual = determine_conduct_grade(ann_avg, annual_att_totals['unexcused'])
         teacher_comment_s1 = "សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។"
         teacher_comment_s2 = "សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។"
+        teacher_comment_monthly = "សិស្សមានការយកចិត្តទុកដាក់រៀនសូត្រ វត្តមានទៀងទាត់ និងខិតខំបំពេញកិច្ចការផ្ទះបានល្អ។"
         parent_comment_s1 = "បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។"
         parent_comment_s2 = "សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។"
+        parent_comment_monthly = "បានពិនិត្យ និងតាមដានលទ្ធផលសិក្សាប្រចាំខែរបស់កូនរួចរាល់។"
         conduct_criteria = [
             {'no': '១', 'name_kh': 'ការគោរពវិន័យ និងបទបញ្ជាផ្ទៃក្នុងសាលា', 'name_en': 'Discipline & School Regulations', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
             {'no': '២', 'name_kh': 'ការខិតខំប្រឹងប្រែងក្នុងការសិក្សា និងស្វ័យសិក្សា', 'name_en': 'Academic Diligence & Self-Study', 's1': conduct_s1, 's2': conduct_s2, 'ann': conduct_annual},
@@ -1883,8 +1887,10 @@ def get_student_study_tracking_book_data(student, academic_year=None):
         'conduct_annual': conduct_annual,
         'teacher_comment_s1': teacher_comment_s1,
         'teacher_comment_s2': teacher_comment_s2,
+        'teacher_comment_monthly': teacher_comment_monthly,
         'parent_comment_s1': parent_comment_s1,
         'parent_comment_s2': parent_comment_s2,
+        'parent_comment_monthly': parent_comment_monthly,
         'conduct_assessment': conduct_obj,
     }
 

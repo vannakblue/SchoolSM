@@ -210,12 +210,38 @@
         .badge-e { background: #f3e8ff; color: #7e22ce; }
         .badge-f { background: #fee2e2; color: #b91c1c; }
 
+        /* Strict Section-Based Page-Break Pagination Rules */
+        .section-block,
+        .keep-together,
+        .student-bio-card,
+        .annual-decision-card,
+        .official-header,
+        .header-title-box {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+        }
+
+        .section-header {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+            -webkit-column-break-after: avoid !important;
+        }
+
         .signature-box {
             border: 1px dashed #94a3b8;
             border-radius: 6px;
             padding: 8px 10px;
             background: #fdfdfd;
             height: 100%;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+        }
+
+        .table-matrix tr {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
         }
 
         .seal-circle {
@@ -231,6 +257,35 @@
             margin: 4px auto;
         }
 
+        /* Review columns layout container */
+        .reviews-container {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        .reviews-container .review-col {
+            flex: 1;
+            min-width: 0;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+
+        /* Annual decision seals layout */
+        .seals-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        .seals-container .seal-col {
+            flex: 1;
+            text-align: center;
+        }
+
         /* Scoping CSS rules for Print & Screen */
         .scope-title-annual, .scope-title-s1, .scope-title-s2, .scope-title-monthly {
             display: none !important;
@@ -240,42 +295,66 @@
         body.scope-semester_2 .scope-title-s2 { display: inline-block !important; }
         body.scope-monthly .scope-title-monthly { display: inline-block !important; }
 
-        /* When Semester 1 is active: hide Semester 2 and Annual columns */
+        /* Review columns display control */
+        .col-monthly-review {
+            display: none !important;
+        }
+
+        /* When Semester 1 is active: hide Semester 2, Annual, and Monthly reviews */
         body.scope-semester_1 .col-grp-s2,
         body.scope-semester_1 .col-s2,
         body.scope-semester_1 .col-grp-annual,
         body.scope-semester_1 .col-annual,
         body.scope-semester_1 .col-att-s2,
         body.scope-semester_1 .col-att-annual,
-        body.scope-semester_1 .col-s2-review {
+        body.scope-semester_1 .col-s2-review,
+        body.scope-semester_1 .col-monthly-review {
             display: none !important;
         }
         body.scope-semester_1 .col-s1-review {
+            display: block !important;
             width: 100% !important;
         }
 
-        /* When Semester 2 is active: hide Semester 1 and Annual columns */
+        /* When Semester 2 is active: hide Semester 1, Annual, and Monthly reviews */
         body.scope-semester_2 .col-grp-s1,
         body.scope-semester_2 .col-s1,
         body.scope-semester_2 .col-grp-annual,
         body.scope-semester_2 .col-annual,
         body.scope-semester_2 .col-att-s1,
         body.scope-semester_2 .col-att-annual,
-        body.scope-semester_2 .col-s1-review {
+        body.scope-semester_2 .col-s1-review,
+        body.scope-semester_2 .col-monthly-review {
             display: none !important;
         }
         body.scope-semester_2 .col-s2-review {
+            display: block !important;
             width: 100% !important;
         }
 
-        /* When Monthly is active: hide Semester Exams & Annual, highlight monthly columns */
+        /* When Annual is active: hide monthly review */
+        body.scope-annual .col-monthly-review {
+            display: none !important;
+        }
+        body.scope-annual .col-s1-review,
+        body.scope-annual .col-s2-review {
+            display: block !important;
+        }
+
+        /* When Monthly is active: hide Semester Exams, Annual & Semester Reviews, show ONLY Monthly Review */
         body.scope-monthly .col-s1-exam,
         body.scope-monthly .col-s1-final,
         body.scope-monthly .col-s2-exam,
         body.scope-monthly .col-s2-final,
         body.scope-monthly .col-grp-annual,
-        body.scope-monthly .col-annual {
+        body.scope-monthly .col-annual,
+        body.scope-monthly .col-s1-review,
+        body.scope-monthly .col-s2-review {
             display: none !important;
+        }
+        body.scope-monthly .col-monthly-review {
+            display: block !important;
+            width: 100% !important;
         }
         body.scope-monthly .col-s1-m,
         body.scope-monthly .col-s2-m {
@@ -305,9 +384,12 @@
                 width: 100%;
                 min-height: auto;
                 margin: 0;
-                padding: 7mm 9mm;
+                padding: 3mm 5mm;
                 box-shadow: none;
-                page-break-after: always;
+            }
+            .tracking-booklet:not(:last-child) {
+                page-break-after: always !important;
+                break-after: page !important;
             }
             .no-print {
                 display: none !important;
@@ -315,6 +397,89 @@
             @page {
                 size: A4 portrait;
                 margin: 6mm 8mm;
+            }
+
+            /* Absolute rule: Never break sections across pages */
+            .section-block,
+            .keep-together,
+            .student-bio-card,
+            .annual-decision-card {
+                display: block !important;
+                width: 100% !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+                margin-bottom: 6px !important;
+            }
+
+            .section-header {
+                break-after: avoid !important;
+                page-break-after: avoid !important;
+                -webkit-column-break-after: avoid !important;
+            }
+
+            .table-matrix {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .table-matrix tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            .signature-box {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+            }
+
+            /* Table-based print layout ensures Chromium NEVER splits flex boxes across pages */
+            body.scope-annual .reviews-container {
+                display: table !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-spacing: 8px 0 !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+            }
+            body.scope-annual .reviews-container .review-col,
+            body.scope-annual .reviews-container .review-col.col-s1-review,
+            body.scope-annual .reviews-container .review-col.col-s2-review {
+                display: table-cell !important;
+                vertical-align: top !important;
+                width: 50% !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+            }
+
+            body.scope-semester_1 .reviews-container,
+            body.scope-semester_2 .reviews-container,
+            body.scope-monthly .reviews-container {
+                display: block !important;
+            }
+            body.scope-semester_1 .reviews-container .review-col,
+            body.scope-semester_2 .reviews-container .review-col,
+            body.scope-monthly .reviews-container .review-col {
+                display: block !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+
+            .seals-container {
+                display: table !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+            }
+            .seals-container .seal-col {
+                display: table-cell !important;
+                vertical-align: top !important;
+                width: 33.333% !important;
+                text-align: center !important;
             }
         }
     </style>
@@ -462,7 +627,7 @@
     </div>
 
     <!-- Student Bio Card -->
-    <div class="border rounded-3 p-2.5 mb-2 bg-light">
+    <div class="section-block keep-together student-bio-card border rounded-3 p-2.5 mb-2 bg-light">
         <div class="row g-2 align-items-center">
             <div class="col-2 text-center">
                 <div class="photo-box">
@@ -605,17 +770,18 @@
     </div>
 
     <!-- 2. Academic Performance Matrix -->
-    <div class="section-header">
-        <span>
-            <i class="fa-solid fa-graduation-cap me-1"></i>
-            <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ</span>
-            <span class="lang-en">Part 1: Academic Performance Record (Monthly, Semester & Annual)</span>
-        </span>
-        <span class="small fw-normal">
-            <span class="lang-kh">សរុបសិស្សក្នុងថ្នាក់៖ <strong>{{ book.total_class_students }}</strong> នាក់</span>
-            <span class="lang-en">Class Total: <strong>{{ book.total_class_students }}</strong> Students</span>
-        </span>
-    </div>
+    <div class="section-block keep-together">
+        <div class="section-header">
+            <span>
+                <i class="fa-solid fa-graduation-cap me-1"></i>
+                <span class="lang-kh">ផ្នែកទី ១៖ តារាងលទ្ធផលសិក្សាប្រចាំខែ ឆមាស និងប្រចាំឆ្នាំ</span>
+                <span class="lang-en">Part 1: Academic Performance Record (Monthly, Semester & Annual)</span>
+            </span>
+            <span class="small fw-normal">
+                <span class="lang-kh">សរុបសិស្សក្នុងថ្នាក់៖ <strong>{{ book.total_class_students }}</strong> នាក់</span>
+                <span class="lang-en">Class Total: <strong>{{ book.total_class_students }}</strong> Students</span>
+            </span>
+        </div>
 
     <table class="table-matrix">
         <thead>
@@ -801,9 +967,11 @@
             </tr>
         </tbody>
     </table>
+    </div>
 
     <!-- 3. Monthly Attendance Record -->
-    <div class="section-header">
+    <div class="section-block keep-together">
+        <div class="section-header">
         <span>
             <i class="fa-solid fa-clipboard-user me-1"></i>
             <span class="lang-kh">ផ្នែកទី ២៖ កំណត់ត្រាវត្តមាន និងអវត្តមានសិស្សប្រចាំខែ</span>
@@ -945,9 +1113,11 @@
             </tr>
         </tbody>
     </table>
+    </div>
 
     <!-- 4. Conduct & Moral Assessment -->
-    <div class="section-header">
+    <div class="section-block keep-together">
+        <div class="section-header">
         <span>
             <i class="fa-solid fa-award me-1"></i>
             <span class="lang-kh">ផ្នែកទី ៣៖ ការវាយតម្លៃអាកប្បកិរិយា សីលធម៌ និងគុណវុឌ្ឍិ</span>
@@ -1008,91 +1178,136 @@
             {% endfor %}
         </tbody>
     </table>
-
-    <!-- 5. Parent-Teacher Communication & Comments -->
-    <div class="section-header">
-        <span>
-            <i class="fa-solid fa-comments me-1"></i>
-            <span class="lang-kh">ផ្នែកទី ៤៖ មតិយោបល់ និងការតាមដានរវាងគ្រូ និងមាតាបិតា/អាណាព្យាបាល</span>
-            <span class="lang-en">Part 4: Homeroom Teacher & Parent Communication</span>
-        </span>
-        {% if book.classroom %}
-        <a href="{% url 'homeroom_conduct_assessment' book.classroom.id %}" target="_blank" class="btn btn-xs btn-outline-primary no-print" style="font-size: 9px; padding: 1px 6px;">
-            <i class="fa-solid fa-pen-to-square me-1"></i>
-            <span class="lang-kh">បញ្ចូលមតិ</span>
-            <span class="lang-en">Add Feedback</span>
-        </a>
-        {% endif %}
     </div>
 
-    <div class="row g-2 mb-2">
-        <!-- Semester 1 Review -->
-        <div class="col-6 col-s1-review">
-            <div class="signature-box">
-                <div class="fw-bold text-primary border-bottom pb-1 mb-1">
-                    <i class="fa-regular fa-calendar-check me-1"></i>
-                    <span class="lang-kh">ការតាមដានឆមាសទី ១</span>
-                    <span class="lang-en">Semester 1 Review</span>
-                </div>
-                <div class="small" style="line-height: 1.5;">
-                    <div>
-                        • <strong>
-                            <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
-                            <span class="lang-en">Homeroom Teacher's Feedback:</span>
-                        </strong>
-                        <span class="text-dark">{{ book.teacher_comment_s1|default:"សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។" }}</span>
+    <!-- 5. Parent-Teacher Communication & Comments -->
+    <div class="section-block keep-together">
+        <div class="section-header">
+            <span>
+                <i class="fa-solid fa-comments me-1"></i>
+                <span class="lang-kh">ផ្នែកទី ៤៖ មតិយោបល់ និងការតាមដានរវាងគ្រូ និងមាតាបិតា/អាណាព្យាបាល</span>
+                <span class="lang-en">Part 4: Homeroom Teacher & Parent Communication</span>
+            </span>
+            {% if book.classroom %}
+            <a href="{% url 'homeroom_conduct_assessment' book.classroom.id %}" target="_blank" class="btn btn-xs btn-outline-primary no-print" style="font-size: 9px; padding: 1px 6px;">
+                <i class="fa-solid fa-pen-to-square me-1"></i>
+                <span class="lang-kh">បញ្ចូលមតិ</span>
+                <span class="lang-en">Add Feedback</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="reviews-container my-1">
+            <!-- Semester 1 Review -->
+            <div class="review-col col-s1-review">
+                <div class="signature-box">
+                    <div class="fw-bold text-primary border-bottom pb-1 mb-1">
+                        <i class="fa-regular fa-calendar-check me-1"></i>
+                        <span class="lang-kh">ការតាមដានឆមាសទី ១</span>
+                        <span class="lang-en">Semester 1 Review</span>
                     </div>
-                    <div class="text-end mt-2">
-                        <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
-                        <span class="lang-en">Teacher's Signature: .................................</span>
-                    </div>
-                    <hr class="my-1">
-                    <div>
-                        • <strong>
-                            <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
-                            <span class="lang-en">Parent/Guardian's Feedback:</span>
-                        </strong>
-                        <span class="text-dark">{{ book.parent_comment_s1|default:"បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។" }}</span>
-                    </div>
-                    <div class="text-end mt-2">
-                        <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
-                        <span class="lang-en">Parent's Signature: .................................</span>
+                    <div class="small" style="line-height: 1.5;">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
+                                <span class="lang-en">Homeroom Teacher's Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.teacher_comment_s1|default:"សិស្សមានការខិតខំប្រឹងប្រែងរៀនសូត្របានល្អ និងគោរពវិន័យបានត្រឹមត្រូវ។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
+                            <span class="lang-en">Teacher's Signature: .................................</span>
+                        </div>
+                        <hr class="my-1">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
+                                <span class="lang-en">Parent/Guardian's Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.parent_comment_s1|default:"បានពិនិត្យ និងតាមដានការសិក្សារបស់កូនរួចរាល់។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
+                            <span class="lang-en">Parent's Signature: .................................</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Semester 2 Review -->
-        <div class="col-6 col-s2-review">
-            <div class="signature-box">
-                <div class="fw-bold text-primary border-bottom pb-1 mb-1">
-                    <i class="fa-regular fa-calendar-check me-1"></i>
-                    <span class="lang-kh">ការតាមដានឆមាសទី ២</span>
-                    <span class="lang-en">Semester 2 Review</span>
+            <!-- Semester 2 Review -->
+            <div class="review-col col-s2-review">
+                <div class="signature-box">
+                    <div class="fw-bold text-primary border-bottom pb-1 mb-1">
+                        <i class="fa-regular fa-calendar-check me-1"></i>
+                        <span class="lang-kh">ការតាមដានឆមាសទី ២</span>
+                        <span class="lang-en">Semester 2 Review</span>
+                    </div>
+                    <div class="small" style="line-height: 1.5;">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
+                                <span class="lang-en">Homeroom Teacher's Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.teacher_comment_s2|default:"សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
+                            <span class="lang-en">Teacher's Signature: .................................</span>
+                        </div>
+                        <hr class="my-1">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
+                                <span class="lang-en">Parent/Guardian's Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.parent_comment_s2|default:"សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
+                            <span class="lang-en">Parent's Signature: .................................</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="small" style="line-height: 1.5;">
-                    <div>
-                        • <strong>
-                            <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់៖</span>
-                            <span class="lang-en">Homeroom Teacher's Feedback:</span>
-                        </strong>
-                        <span class="text-dark">{{ book.teacher_comment_s2|default:"សិស្សមានការរីកចម្រើនគួរឱ្យកត់សម្គាល់ ទទួលបានលទ្ធផលគាប់ប្រសើរ។" }}</span>
+            </div>
+
+            <!-- Monthly Review (បង្ហាញតែពេលជ្រើសរើសប្រចាំខែ) -->
+            <div class="review-col col-monthly-review">
+                <div class="signature-box">
+                    <div class="fw-bold text-primary border-bottom pb-1 mb-1 d-flex justify-content-between align-items-center">
+                        <span>
+                            <i class="fa-regular fa-calendar-days me-1 text-primary"></i>
+                            <span class="lang-kh">ការតាមដានប្រចាំខែ (លទ្ធផលសិក្សា និងវត្តមាន)</span>
+                            <span class="lang-en">Monthly Review (Progress & Attendance)</span>
+                        </span>
+                        <span class="badge bg-warning text-dark small">
+                            <span class="lang-kh">ប្រចាំខែ</span>
+                            <span class="lang-en">Monthly</span>
+                        </span>
                     </div>
-                    <div class="text-end mt-2">
-                        <span class="lang-kh">ហត្ថលេខាគ្រូ៖ .................................</span>
-                        <span class="lang-en">Teacher's Signature: .................................</span>
-                    </div>
-                    <hr class="my-1">
-                    <div>
-                        • <strong>
-                            <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាល៖</span>
-                            <span class="lang-en">Parent/Guardian's Feedback:</span>
-                        </strong>
-                        <span class="text-dark">{{ book.parent_comment_s2|default:"សូមថ្លែងអំណរគុណលោកគ្រូ-អ្នកគ្រូដែលបានយកចិត្តទុកដាក់បង្រៀន។" }}</span>
-                    </div>
-                    <div class="text-end mt-2">
-                        <span class="lang-kh">ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
-                        <span class="lang-en">Parent's Signature: .................................</span>
+                    <div class="small" style="line-height: 1.6;">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិគ្រូទទួលបន្ទុកថ្នាក់ប្រចាំខែ៖</span>
+                                <span class="lang-en">Homeroom Teacher's Monthly Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.teacher_comment_monthly|default:"សិស្សមានការយកចិត្តទុកដាក់រៀនសូត្រ វត្តមានទៀងទាត់ និងខិតខំបំពេញកិច្ចការផ្ទះបានល្អ។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">កាលបរិច្ឆេទ៖ ....../....../២០២... &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ហត្ថលេខាគ្រូ៖ .................................</span>
+                            <span class="lang-en">Date: ...../...../202... &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Teacher's Signature: .................................</span>
+                        </div>
+                        <hr class="my-1">
+                        <div>
+                            • <strong>
+                                <span class="lang-kh">មតិមាតាបិតា/អាណាព្យាបាលប្រចាំខែ៖</span>
+                                <span class="lang-en">Parent/Guardian's Monthly Feedback:</span>
+                            </strong>
+                            <span class="text-dark">{{ book.parent_comment_monthly|default:"បានពិនិត្យ និងតាមដានលទ្ធផលសិក្សាប្រចាំខែរបស់កូនរួចរាល់។" }}</span>
+                        </div>
+                        <div class="text-end mt-2">
+                            <span class="lang-kh">កាលបរិច្ឆេទ៖ ....../....../២០២... &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ហត្ថលេខាអាណាព្យាបាល៖ .................................</span>
+                            <span class="lang-en">Date: ...../...../202... &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Parent's Signature: .................................</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1100,34 +1315,34 @@
     </div>
 
     <!-- 6. Official Annual Promotion Decision & Seals -->
-    <div class="border-2 border rounded-3 p-2.5 bg-light mt-2 col-annual">
-        <div class="row align-items-center">
-            <div class="col-12 text-center pb-2 border-bottom mb-2">
-                <div class="font-moul text-dark" style="font-size: 11pt;">
-                    <span class="lang-kh">សេចក្តីសម្រេចរបស់ក្រុមប្រឹក្សាវិន័យ និងគរុកោសល្យចុងឆ្នាំ</span>
-                    <span class="lang-en">Annual Academic Council & Promotion Decision</span>
-                </div>
-                <div class="fw-bold fs-6 mt-1 {% if book.annual_overall.passed %}text-success{% else %}text-danger{% endif %}">
-                    <span class="lang-kh">
-                        លទ្ធផល៖ {{ book.annual_overall.decision_kh }}
-                        {% if book.annual_overall.passed %}
-                        (ជាប់ជាស្ថាពរ ដោយទទួលបានមធ្យមភាគប្រចាំឆ្នាំ {{ book.annual_overall.annual_average|clean_score }}% និទ្ទេស {{ book.annual_overall.letter }})
-                        {% else %}
-                        (មិនទាន់គ្រប់លក្ខខណ្ឌឡើងថ្នាក់ ដោយសារមធ្យមភាគក្រោម ៥០)
-                        {% endif %}
-                    </span>
-                    <span class="lang-en">
-                        Result: {{ book.annual_overall.decision_en }}
-                        {% if book.annual_overall.passed %}
-                        (Successfully passed with Annual Average {{ book.annual_overall.annual_average|clean_score }}%, Grade {{ book.annual_overall.letter }})
-                        {% else %}
-                        (Retained due to Annual Average below 50%)
-                        {% endif %}
-                    </span>
-                </div>
+    <div class="section-block keep-together col-annual annual-decision-card border-2 border rounded-3 p-2.5 bg-light mt-2">
+        <div class="text-center pb-2 border-bottom mb-2">
+            <div class="font-moul text-dark" style="font-size: 11pt;">
+                <span class="lang-kh">សេចក្តីសម្រេចរបស់ក្រុមប្រឹក្សាវិន័យ និងគរុកោសល្យចុងឆ្នាំ</span>
+                <span class="lang-en">Annual Academic Council & Promotion Decision</span>
             </div>
+            <div class="fw-bold fs-6 mt-1 {% if book.annual_overall.passed %}text-success{% else %}text-danger{% endif %}">
+                <span class="lang-kh">
+                    លទ្ធផល៖ {{ book.annual_overall.decision_kh }}
+                    {% if book.annual_overall.passed %}
+                    (ជាប់ជាស្ថាពរ ដោយទទួលបានមធ្យមភាគប្រចាំឆ្នាំ {{ book.annual_overall.annual_average|clean_score }}% និទ្ទេស {{ book.annual_overall.letter }})
+                    {% else %}
+                    (មិនទាន់គ្រប់លក្ខខណ្ឌឡើងថ្នាក់ ដោយសារមធ្យមភាគក្រោម ៥០)
+                    {% endif %}
+                </span>
+                <span class="lang-en">
+                    Result: {{ book.annual_overall.decision_en }}
+                    {% if book.annual_overall.passed %}
+                    (Successfully passed with Annual Average {{ book.annual_overall.annual_average|clean_score }}%, Grade {{ book.annual_overall.letter }})
+                    {% else %}
+                    (Retained due to Annual Average below 50%)
+                    {% endif %}
+                </span>
+            </div>
+        </div>
 
-            <div class="col-4 text-center">
+        <div class="seals-container mt-2">
+            <div class="seal-col">
                 <div class="fw-bold text-dark">
                     <span class="lang-kh">គ្រូទទួលបន្ទុកថ្នាក់</span>
                     <span class="lang-en">Homeroom Teacher</span>
@@ -1140,7 +1355,7 @@
                 <div class="fw-bold text-primary">{{ book.homeroom_teacher.khmer_name|default:".........................................." }}</div>
             </div>
 
-            <div class="col-4 text-center">
+            <div class="seal-col">
                 <div class="fw-bold text-dark">
                     <span class="lang-kh">ប្រធានការិយាល័យសិក្សា</span>
                     <span class="lang-en">Director of Academic Affairs</span>
@@ -1153,7 +1368,7 @@
                 <div class="fw-bold">..........................................</div>
             </div>
 
-            <div class="col-4 text-center">
+            <div class="seal-col">
                 <div>
                     <span class="lang-kh">ថ្ងៃទី..........ខែ.............ឆ្នាំ២០២...</span>
                     <span class="lang-en">Date: ..... / ..... / 202...</span>

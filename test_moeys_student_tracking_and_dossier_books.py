@@ -236,6 +236,19 @@ def run_tests():
     assert "col-grp-s2" in content1_annual
     assert "col-grp-annual" in content1_annual
 
+    # Strict Page-Break Pagination & Section Integrity Assertions
+    assert "section-block keep-together student-bio-card" in content1_annual, "Bio card must be keep-together"
+    assert "ផ្នែកទី ១៖" in content1_annual
+    assert "ផ្នែកទី ២៖" in content1_annual
+    assert "ផ្នែកទី ៣៖" in content1_annual
+    assert "ផ្នែកទី ៤៖" in content1_annual
+    assert "reviews-container" in content1_annual, "Section 4 must use reviews-container"
+    assert "review-col col-s1-review" in content1_annual, "S1 review must be review-col"
+    assert "review-col col-s2-review" in content1_annual, "S2 review must be review-col"
+    assert "annual-decision-card" in content1_annual, "Section 5 must be annual-decision-card"
+    assert "seals-container" in content1_annual, "Section 5 must use seals-container"
+    assert content1_annual.count("section-block keep-together") >= 6, "Must wrap Bio and all 5 sections in section-block keep-together"
+
     # View 1: student_study_tracking_book_view - Semester 1 scope
     req1_s1 = setup_request(factory.get(f"/examinations/students/{student.id}/tracking-book/?period=SEMESTER_1"), admin_user)
     resp1_s1 = student_study_tracking_book_view(req1_s1, student.id)

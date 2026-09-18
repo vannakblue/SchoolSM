@@ -267,6 +267,10 @@ class StudentConductAssessment(models.Model):
     social_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="សកម្មភាពសង្គម/ពលកម្ម (ប្រចាំឆ្នាំ)")
     overall_annual = models.CharField(max_length=20, choices=RATING_CHOICES, default='ល្អ', verbose_name="មារយាទប្រចាំឆ្នាំ")
 
+    # Monthly Comments (មតិប្រចាំខែ)
+    teacher_comment_monthly = models.TextField(blank=True, default='', verbose_name="មតិគ្រូបន្ទុកថ្នាក់ (ប្រចាំខែ)")
+    parent_comment_monthly = models.TextField(blank=True, default='', verbose_name="មតិមាតាបិតា (ប្រចាំខែ)")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

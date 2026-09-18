@@ -210,7 +210,7 @@
                 width: 100%;
                 min-height: auto;
                 margin: 0;
-                padding: 8mm 10mm;
+                padding: 5mm 8mm;
                 box-shadow: none;
                 page-break-after: always;
             }
@@ -220,6 +220,25 @@
             @page {
                 size: A4 portrait;
                 margin: 6mm 8mm;
+            }
+
+            .section-block,
+            .keep-together,
+            .border {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+            }
+
+            .section-header {
+                break-after: avoid !important;
+                page-break-after: avoid !important;
+                -webkit-column-break-after: avoid !important;
+            }
+
+            .table-matrix tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
     </style>
