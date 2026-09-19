@@ -1,0 +1,782 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}របាយការណ៍អវត្តមានសិស្ស សរុបតាមខែ ឆមាស និងប្រចាំឆ្នាំ | SchoolSM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-card {
+        background: #fff;
+        border-radius: 0.85rem;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 1.25rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    }
+    .kpi-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+
+    /* Table Matrix Design */
+    .table-matrix-wrapper {
+        background: #fff;
+        border-radius: 0.85rem;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        overflow-x: auto;
+    }
+    .table-matrix {
+        font-size: 0.875rem;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+    .table-matrix th {
+        vertical-align: middle;
+        text-align: center;
+        font-weight: 700;
+        padding: 0.65rem 0.5rem;
+        border-color: #e2e8f0;
+    }
+    .table-matrix td {
+        vertical-align: middle;
+        padding: 0.55rem 0.5rem;
+        border-color: #edf2f7;
+    }
+
+    /* Tier 1 Header Colors */
+    .th-tier1-base {
+        background: #1e293b !important;
+        color: #fff !important;
+        border-bottom: 2px solid #0f172a;
+    }
+    .th-tier1-sem1 {
+        background: #1e40af !important;
+        color: #fff !important;
+        border-bottom: 2px solid #1d4ed8;
+    }
+    .th-tier1-sem2 {
+        background: #065f46 !important;
+        color: #fff !important;
+        border-bottom: 2px solid #047857;
+    }
+    .th-tier1-annual {
+        background: #92400e !important;
+        color: #fff !important;
+        border-bottom: 2px solid #78350f;
+    }
+
+    /* Tier 2 Header Colors */
+    .th-tier2-base {
+        background: #334155 !important;
+        color: #f1f5f9 !important;
+        font-size: 0.8rem;
+    }
+    .th-tier2-sem1 {
+        background: #3b82f6 !important;
+        color: #fff !important;
+        font-size: 0.8rem;
+    }
+    .th-tier2-sem1-total {
+        background: #1d4ed8 !important;
+        color: #fff !important;
+        font-weight: 800;
+        font-size: 0.82rem;
+    }
+    .th-tier2-sem2 {
+        background: #10b981 !important;
+        color: #fff !important;
+        font-size: 0.8rem;
+    }
+    .th-tier2-sem2-total {
+        background: #047857 !important;
+        color: #fff !important;
+        font-weight: 800;
+        font-size: 0.82rem;
+    }
+    .th-tier2-annual {
+        background: #d97706 !important;
+        color: #fff !important;
+        font-weight: 800;
+        font-size: 0.85rem;
+    }
+
+    /* Cell styles */
+    .cell-sem1-total {
+        background: #eff6ff;
+        font-weight: 700;
+        color: #1d4ed8;
+        text-align: center;
+    }
+    .cell-sem2-total {
+        background: #ecfdf5;
+        font-weight: 700;
+        color: #047857;
+        text-align: center;
+    }
+    .cell-annual-total {
+        background: #fffbeb;
+        font-weight: 800;
+        color: #b45309;
+        text-align: center;
+    }
+
+    .row-grade-header {
+        background: #f8fafc !important;
+        font-weight: 800;
+        color: #334155;
+        border-top: 2px solid #cbd5e1;
+        border-bottom: 1px solid #cbd5e1;
+    }
+    .row-grade-subtotal {
+        background: #f1f5f9 !important;
+        font-weight: 700;
+        color: #0f172a;
+        border-top: 1px dashed #cbd5e1;
+        border-bottom: 2px solid #94a3b8;
+    }
+    .row-grand-total {
+        background: #e2e8f0 !important;
+        font-weight: 800;
+        color: #0f172a;
+        border-top: 3px double #64748b;
+        font-size: 0.95rem;
+    }
+
+    .val-has-data {
+        color: #dc2626;
+        font-weight: 700;
+    }
+    .val-zero {
+        color: #94a3b8;
+    }
+
+    @media print {
+        .no-print, .main-sidebar, .main-header {
+            display: none !important;
+        }
+        body {
+            background: #fff !important;
+            font-size: 8pt !important;
+        }
+        .table-matrix {
+            font-size: 7.5pt !important;
+            width: 100% !important;
+        }
+        .table-matrix-wrapper {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .print-header {
+            display: block !important;
+        }
+    }
+    .print-header {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Print Only Header -->
+    <div class="print-header text-center mb-3">
+        <h4 class="fw-bold mb-1">ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ</h4>
+        <h5 class="fw-bold mb-1">របាយការណ៍អវត្តមានសិស្ស សរុបតាមខែ ឆមាស និងប្រចាំឆ្នាំ</h5>
+        <p class="mb-0 text-muted small">ឆ្នាំសិក្សា៖ {{ active_year.name }} | កាលបរិច្ឆេទចេញរបាយការណ៍៖ {% now "d/m/Y H:i" %}</p>
+        <hr>
+    </div>
+
+    <!-- Top Action Bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 no-print">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-chart-line me-1"></i> របាយការណ៍កម្រិតខ្ពស់ (Cumulative Matrix)
+                </span>
+                {% if active_year %}
+                <span class="badge bg-secondary-subtle text-secondary fw-semibold px-2 py-1 rounded-pill">
+                    <i class="fa-solid fa-calendar-days me-1"></i> ឆ្នាំសិក្សា {{ active_year.name }}
+                </span>
+                {% endif %}
+            </div>
+            <h2 class="fw-bold mb-1 text-dark">
+                <i class="fa-solid fa-calendar-check text-primary me-2"></i>របាយការណ៍អវត្តមានសិស្ស តាមខែ/ឆមាស/ប្រចាំឆ្នាំ
+            </h2>
+            <p class="text-muted small mb-0">
+                បូកសរុបអវត្តមានសិស្សតាមខែនីមួយៗ ឆមាសទី ១ (កញ្ញា-កុម្ភៈ) ឆមាសទី ២ (មីនា-កក្កដា) និងប្រចាំឆ្នាំ (ឆ.១ + ឆ.២)
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            {% if is_admin %}
+            <button type="button" class="btn btn-success shadow-sm fw-bold" onclick="exportStudentSemesterAnnualExcel()" id="btnExportExcel" title="ទាញយករបាយការណ៍បច្ចុប្បន្នជាឯកសារ Excel">
+                <i class="fa-solid fa-file-excel me-1"></i> ទាញយកជា Excel
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-outline-secondary shadow-sm fw-semibold" onclick="window.print()">
+                <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print)
+            </button>
+            <a href="{% url 'student_attendance_grid' %}" class="btn btn-primary shadow-sm fw-semibold">
+                <i class="fa-solid fa-clipboard-user me-1"></i> ស្រង់វត្តមានប្រចាំថ្ងៃ
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Switcher Navigation Tabs -->
+    <div class="d-flex align-items-center gap-2 mb-4 p-2 bg-white rounded-3 border no-print shadow-sm flex-wrap">
+        <span class="text-muted small fw-bold px-2">ផ្លាស់ប្តូររបាយការណ៍៖</span>
+        <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-users me-1"></i> របាយការណ៍វត្តមានសិស្ស (Student Attendance)
+        </a>
+        <a href="{% url 'student_semester_annual_attendance_report' %}" class="btn btn-sm btn-primary active fw-bold">
+            <i class="fa-solid fa-calendar-week me-1"></i> សរុបតាមខែ/ឆមាស/ឆ្នាំ (Cumulative Report)
+        </a>
+        <a href="{% url 'teacher_attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-chalkboard-user me-1"></i> របាយការណ៍វត្តមានគ្រូ (Teacher Attendance)
+        </a>
+        <a href="{% url 'at_risk_attendance' %}" class="btn btn-sm btn-outline-danger ms-auto">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i> សិស្សអវត្តមានច្រើន (At-Risk)
+        </a>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Students -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold mb-1">
+                            {% if view_scope == 'STUDENT_ROSTER' %}សិស្សក្នុងបញ្ជី{% else %}សិស្សសរុបទូទាំងសាលា{% endif %}
+                        </div>
+                        <h3 class="fw-bold mb-0 text-dark">{{ summary_kpis.total_students }} <span class="fs-6 fw-normal text-muted">នាក់</span></h3>
+                    </div>
+                    <div class="kpi-icon-box bg-primary-subtle text-primary">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Semester 1 Absences -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold mb-1">អវត្តមានឆមាសទី ១</div>
+                        <h3 class="fw-bold mb-0 text-primary">{{ summary_kpis.sem1_absences }} <span class="fs-6 fw-normal text-muted">{% if unit == 'DAYS' %}ថ្ងៃ{% else %}លើក{% endif %}</span></h3>
+                    </div>
+                    <div class="kpi-icon-box bg-blue-subtle text-primary" style="background:#eff6ff;">
+                        <i class="fa-solid fa-calendar-minus"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Semester 2 Absences -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold mb-1">អវត្តមានឆមាសទី ២</div>
+                        <h3 class="fw-bold mb-0 text-success">{{ summary_kpis.sem2_absences }} <span class="fs-6 fw-normal text-muted">{% if unit == 'DAYS' %}ថ្ងៃ{% else %}លើក{% endif %}</span></h3>
+                    </div>
+                    <div class="kpi-icon-box bg-success-subtle text-success">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Annual Total Absences -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="kpi-card h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold mb-1">អវត្តមានសរុបប្រចាំឆ្នាំ</div>
+                        <h3 class="fw-bold mb-0 text-warning" style="color: #d97706 !important;">{{ summary_kpis.annual_absences }} <span class="fs-6 fw-normal text-muted">{% if unit == 'DAYS' %}ថ្ងៃ{% else %}លើក{% endif %}</span></h3>
+                    </div>
+                    <div class="kpi-icon-box bg-warning-subtle text-warning">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Control Card -->
+    <div class="custom-card p-3 mb-4 shadow-sm border-0 bg-white rounded-3 no-print">
+        <form method="GET" id="summaryFilterForm">
+            <div class="row g-2 align-items-end">
+                <!-- 1. Scope Selector: Class Summary vs Student Roster -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-table-columns text-primary me-1"></i>ទម្រង់បង្ហាញ
+                    </label>
+                    <select name="scope" id="scopeSelect" class="form-select form-select-sm" onchange="handleScopeChange(this.value)">
+                        <option value="CLASS_SUMMARY" {% if view_scope == 'CLASS_SUMMARY' %}selected{% endif %}>
+                            📊 សរុបតាមកម្រិតថ្នាក់ & ថ្នាក់
+                        </option>
+                        <option value="STUDENT_ROSTER" {% if view_scope == 'STUDENT_ROSTER' %}selected{% endif %}>
+                            👤 បញ្ជីឈ្មោះសិស្សលម្អិត
+                        </option>
+                    </select>
+                </div>
+
+                <!-- 2. Grade Level Filter -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-layer-group text-primary me-1"></i>កម្រិតថ្នាក់
+                    </label>
+                    <select name="grade_level" id="gradeLevelSelect" class="form-select form-select-sm" onchange="handleGradeChange(this.value)">
+                        <option value="" {% if not selected_grade_level or selected_grade_level == 'ALL' %}selected{% endif %}>-- គ្រប់កម្រិតថ្នាក់ --</option>
+                        {% for g in available_grades %}
+                        <option value="{{ g }}" {% if selected_grade_level == g|stringformat:"s" %}selected{% endif %}>ថ្នាក់ទី {{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 3. Classroom Filter -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-school text-primary me-1"></i>ថ្នាក់រៀន
+                    </label>
+                    <select name="classroom" id="classroomSelect" class="form-select form-select-sm" onchange="document.getElementById('summaryFilterForm').submit()">
+                        <option value="ALL" {% if selected_class_id == 'ALL' or not selected_class_id %}selected{% endif %}>
+                            {% if selected_grade_level %}-- គ្រប់ថ្នាក់ទី {{ selected_grade_level }} --{% else %}-- គ្រប់ថ្នាក់ទាំងអស់ --{% endif %}
+                        </option>
+                        {% for c in filtered_classrooms %}
+                        <option value="{{ c.id }}" data-grade="{{ c.grade_level }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>
+                            {{ c.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 4. Absence Type Filter -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-filter text-primary me-1"></i>ប្រភេទអវត្តមាន
+                    </label>
+                    <select name="absence_type" id="absenceTypeSelect" class="form-select form-select-sm" onchange="document.getElementById('summaryFilterForm').submit()">
+                        <option value="ALL" {% if absence_type == 'ALL' %}selected{% endif %}>សរុប (ឥតច្បាប់ + ច្បាប់)</option>
+                        <option value="UNEXCUSED" {% if absence_type == 'UNEXCUSED' %}selected{% endif %}>ឥតច្បាប់ (Unexcused ❌)</option>
+                        <option value="PERMISSION" {% if absence_type == 'PERMISSION' %}selected{% endif %}>មានច្បាប់ (Permission 📝)</option>
+                        <option value="DUAL" {% if absence_type == 'DUAL' %}selected{% endif %}>បង្ហាញទាំងពីរ (ឥតច្បាប់ / ច្បាប់)</option>
+                    </select>
+                </div>
+
+                <!-- 5. Unit: Sessions vs Days -->
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-calculator text-primary me-1"></i>ឯកតារាប់
+                    </label>
+                    <select name="unit" id="unitSelect" class="form-select form-select-sm" onchange="document.getElementById('summaryFilterForm').submit()">
+                        <option value="SESSIONS" {% if unit == 'SESSIONS' %}selected{% endif %}>លើក / វេន (1 វេន = 1 ដង)</option>
+                        <option value="DAYS" {% if unit == 'DAYS' %}selected{% endif %}>ថ្ងៃ (0.5 ថ្ងៃ / វេន)</option>
+                    </select>
+                </div>
+
+                <!-- 6. Search (when Student Roster is active) -->
+                {% if view_scope == 'STUDENT_ROSTER' %}
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label fw-bold small text-muted mb-1">
+                        <i class="fa-solid fa-magnifying-glass text-primary me-1"></i>ស្វែងរកសិស្ស
+                    </label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="q" value="{{ search_query }}" placeholder="ឈ្មោះ ឬ អត្តលេខ..." class="form-control" id="searchStudentInput">
+                        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-search"></i></button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Live Client Filter for Table (Search Roster / Classes) -->
+    <div class="d-flex justify-content-between align-items-center mb-2 no-print">
+        <div class="small text-muted">
+            {% if view_scope == 'CLASS_SUMMARY' %}
+                បង្ហាញសង្ខេប <strong>{{ school_total.classrooms_count }}</strong> ថ្នាក់រៀន ក្នុង <strong>{{ class_groups|length }}</strong> កម្រិតថ្នាក់
+            {% else %}
+                បង្ហាញសិស្សចំនួន <strong>{{ student_rows|length }}</strong> នាក់
+            {% endif %}
+            (ឯកតា៖ <strong>{% if unit == 'DAYS' %}ថ្ងៃ (Days){% else %}លើក (Sessions){% endif %}</strong> | 
+            ប្រភេទ៖ <strong>{% if absence_type == 'UNEXCUSED' %}ឥតច្បាប់{% elif absence_type == 'PERMISSION' %}មានច្បាប់{% elif absence_type == 'DUAL' %}ឥតច្បាប់/ច្បាប់{% else %}សរុប{% endif %}</strong>)
+        </div>
+        <div class="w-auto">
+            <input type="text" id="liveFilterInput" class="form-control form-control-sm" placeholder="🔍 តម្រងរហ័សលើតារាង..." style="max-width: 250px;">
+        </div>
+    </div>
+
+    <!-- ==================== VIEW 1: CLASSROOM & GRADE SUMMARY ==================== -->
+    {% if view_scope == 'CLASS_SUMMARY' %}
+    <div class="table-matrix-wrapper mb-4">
+        <table class="table table-bordered table-hover table-matrix" id="matrixReportTable">
+            <thead>
+                <!-- Tier 1 Headers -->
+                <tr>
+                    <th rowspan="2" class="th-tier1-base" style="width: 50px;">ល.រ</th>
+                    <th rowspan="2" class="th-tier1-base" style="min-width: 140px;">ថ្នាក់រៀន</th>
+                    <th rowspan="2" class="th-tier1-base" style="width: 80px;">ចំនួនសិស្ស</th>
+                    <th colspan="{{ sem1_count|add:'1' }}" class="th-tier1-sem1 text-center">
+                        <i class="fa-solid fa-sun me-1"></i> ឆមាសទី ១ (SEMESTER 1)
+                    </th>
+                    <th colspan="{{ sem2_count|add:'1' }}" class="th-tier1-sem2 text-center">
+                        <i class="fa-solid fa-leaf me-1"></i> ឆមាសទី ២ (SEMESTER 2)
+                    </th>
+                    <th rowspan="2" class="th-tier1-annual text-center" style="min-width: 110px;">
+                        <i class="fa-solid fa-star me-1"></i> សរុបប្រចាំឆ្នាំ<br><small class="fw-normal">(ឆ.១ + ឆ.២)</small>
+                    </th>
+                </tr>
+                <!-- Tier 2 Headers -->
+                <tr>
+                    {% for m in sem1_months %}
+                    <th class="th-tier2-sem1" style="min-width: 75px;">
+                        {{ m.name_kh }}<br><small class="opacity-75">{{ m.year }}</small>
+                    </th>
+                    {% endfor %}
+                    <th class="th-tier2-sem1-total" style="min-width: 90px;">
+                        សរុប ឆ.១
+                    </th>
+
+                    {% for m in sem2_months %}
+                    <th class="th-tier2-sem2" style="min-width: 75px;">
+                        {{ m.name_kh }}<br><small class="opacity-75">{{ m.year }}</small>
+                    </th>
+                    {% endfor %}
+                    <th class="th-tier2-sem2-total" style="min-width: 90px;">
+                        សរុប ឆ.២
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grp in class_groups %}
+                    <!-- Grade Level Header Row -->
+                    <tr class="row-grade-header group-header-row">
+                        <td colspan="{{ sem1_count|add:sem2_count|add:'6' }}" class="py-2 px-3">
+                            <i class="fa-solid fa-folder-open text-primary me-2"></i>
+                            <strong>{{ grp.grade_name }}</strong> — <span class="badge bg-secondary-subtle text-secondary">{{ grp.classrooms|length }} ថ្នាក់ | សិស្សសរុប {{ grp.student_count }} នាក់</span>
+                        </td>
+                    </tr>
+
+                    <!-- Class Rows -->
+                    {% for c in grp.classrooms %}
+                    <tr class="table-data-row">
+                        <td class="text-center text-muted">{{ forloop.counter }}</td>
+                        <td class="fw-bold text-dark">
+                            <a href="{% url 'student_semester_annual_attendance_report' %}?scope=STUDENT_ROSTER&classroom={{ c.classroom.id }}&absence_type={{ absence_type }}&unit={{ unit }}" class="text-decoration-none text-dark d-flex align-items-center gap-1" title="ចុចដើម្បីមើលបញ្ជីឈ្មោះសិស្សលម្អិត">
+                                <span>{{ c.classroom_name }}</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-muted small ms-1" style="font-size: 0.7rem;"></i>
+                            </a>
+                        </td>
+                        <td class="text-center">{{ c.student_count }}</td>
+
+                        <!-- Sem 1 Monthly Cells -->
+                        {% for cell in c.sem1_cells %}
+                        <td class="text-center {% if cell.has_data %}val-has-data{% else %}val-zero{% endif %}">
+                            {{ cell.display }}
+                        </td>
+                        {% endfor %}
+                        <!-- Sem 1 Total -->
+                        <td class="cell-sem1-total">
+                            {{ c.sem1_total_cell.display }}
+                        </td>
+
+                        <!-- Sem 2 Monthly Cells -->
+                        {% for cell in c.sem2_cells %}
+                        <td class="text-center {% if cell.has_data %}val-has-data{% else %}val-zero{% endif %}">
+                            {{ cell.display }}
+                        </td>
+                        {% endfor %}
+                        <!-- Sem 2 Total -->
+                        <td class="cell-sem2-total">
+                            {{ c.sem2_total_cell.display }}
+                        </td>
+
+                        <!-- Annual Total -->
+                        <td class="cell-annual-total">
+                            {{ c.annual_total_cell.display }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Grade Subtotal Row -->
+                    <tr class="row-grade-subtotal group-subtotal-row">
+                        <td colspan="2" class="text-end fw-bold">
+                            <i class="fa-solid fa-calculator text-muted me-1"></i>សរុប {{ grp.grade_name }}៖
+                        </td>
+                        <td class="text-center fw-bold">{{ grp.subtotal.student_count }}</td>
+
+                        {% for cell in grp.subtotal.sem1_cells %}
+                        <td class="text-center fw-bold {% if cell.has_data %}text-primary{% else %}val-zero{% endif %}">
+                            {{ cell.display }}
+                        </td>
+                        {% endfor %}
+                        <td class="cell-sem1-total fw-bold">
+                            {{ grp.subtotal.sem1_total_cell.display }}
+                        </td>
+
+                        {% for cell in grp.subtotal.sem2_cells %}
+                        <td class="text-center fw-bold {% if cell.has_data %}text-success{% else %}val-zero{% endif %}">
+                            {{ cell.display }}
+                        </td>
+                        {% endfor %}
+                        <td class="cell-sem2-total fw-bold">
+                            {{ grp.subtotal.sem2_total_cell.display }}
+                        </td>
+
+                        <td class="cell-annual-total fw-bold">
+                            {{ grp.subtotal.annual_total_cell.display }}
+                        </td>
+                    </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ sem1_count|add:sem2_count|add:'6' }}" class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-inbox fs-3 d-block mb-2 text-secondary"></i>
+                        ពុំមានទិន្នន័យថ្នាក់រៀន ឬអវត្តមានក្នុងលក្ខខណ្ឌដែលបានជ្រើសរើសឡើយ។
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if class_groups %}
+            <tfoot>
+                <!-- School Grand Total Row -->
+                <tr class="row-grand-total">
+                    <td colspan="2" class="text-end fw-bold text-dark py-3">
+                        <i class="fa-solid fa-building-columns me-1"></i> សរុបរួមទូទាំងសាលា (GRAND TOTAL)៖
+                    </td>
+                    <td class="text-center fw-bold text-dark py-3">{{ school_total.student_count }}</td>
+
+                    {% for cell in school_total.sem1_cells %}
+                    <td class="text-center fw-bold py-3 {% if cell.has_data %}text-primary{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <td class="cell-sem1-total py-3 fs-6">
+                        {{ school_total.sem1_total_cell.display }}
+                    </td>
+
+                    {% for cell in school_total.sem2_cells %}
+                    <td class="text-center fw-bold py-3 {% if cell.has_data %}text-success{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <td class="cell-sem2-total py-3 fs-6">
+                        {{ school_total.sem2_total_cell.display }}
+                    </td>
+
+                    <td class="cell-annual-total py-3 fs-6">
+                        {{ school_total.annual_total_cell.display }}
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+
+    <!-- ==================== VIEW 2: STUDENT INDIVIDUAL ROSTER ==================== -->
+    {% if view_scope == 'STUDENT_ROSTER' %}
+    <div class="table-matrix-wrapper mb-4">
+        <table class="table table-bordered table-hover table-matrix" id="matrixReportTable">
+            <thead>
+                <!-- Tier 1 Headers -->
+                <tr>
+                    <th rowspan="2" class="th-tier1-base" style="width: 45px;">ល.រ</th>
+                    <th rowspan="2" class="th-tier1-base" style="width: 85px;">អត្តលេខ</th>
+                    <th rowspan="2" class="th-tier1-base" style="min-width: 130px;">គោត្តនាម-នាម</th>
+                    <th rowspan="2" class="th-tier1-base" style="min-width: 120px;">ឈ្មោះឡាតាំង</th>
+                    <th rowspan="2" class="th-tier1-base" style="width: 50px;">ភេទ</th>
+                    <th rowspan="2" class="th-tier1-base" style="width: 80px;">ថ្នាក់</th>
+                    <th colspan="{{ sem1_count|add:'1' }}" class="th-tier1-sem1 text-center">
+                        <i class="fa-solid fa-sun me-1"></i> ឆមាសទី ១ (SEMESTER 1)
+                    </th>
+                    <th colspan="{{ sem2_count|add:'1' }}" class="th-tier1-sem2 text-center">
+                        <i class="fa-solid fa-leaf me-1"></i> ឆមាសទី ២ (SEMESTER 2)
+                    </th>
+                    <th rowspan="2" class="th-tier1-annual text-center" style="min-width: 110px;">
+                        <i class="fa-solid fa-star me-1"></i> សរុបប្រចាំឆ្នាំ<br><small class="fw-normal">(ឆ.១ + ឆ.២)</small>
+                    </th>
+                </tr>
+                <!-- Tier 2 Headers -->
+                <tr>
+                    {% for m in sem1_months %}
+                    <th class="th-tier2-sem1" style="min-width: 75px;">
+                        {{ m.name_kh }}<br><small class="opacity-75">{{ m.year }}</small>
+                    </th>
+                    {% endfor %}
+                    <th class="th-tier2-sem1-total" style="min-width: 90px;">
+                        សរុប ឆ.១
+                    </th>
+
+                    {% for m in sem2_months %}
+                    <th class="th-tier2-sem2" style="min-width: 75px;">
+                        {{ m.name_kh }}<br><small class="opacity-75">{{ m.year }}</small>
+                    </th>
+                    {% endfor %}
+                    <th class="th-tier2-sem2-total" style="min-width: 90px;">
+                        សរុប ឆ.២
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in student_rows %}
+                <tr class="table-data-row">
+                    <td class="text-center text-muted">{{ forloop.counter }}</td>
+                    <td class="font-monospace text-center fw-bold">{{ r.student.student_id|default:"-" }}</td>
+                    <td class="fw-bold text-dark">{{ r.student.khmer_name }}</td>
+                    <td>{{ r.student.latin_name|default:"-" }}</td>
+                    <td class="text-center">
+                        {% if r.student.gender == 'F' or r.student.gender == 'ស្រី' %}
+                            <span class="badge bg-danger-subtle text-danger">ស្រី</span>
+                        {% else %}
+                            <span class="badge bg-primary-subtle text-primary">ប្រុស</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-semibold">{{ r.student.classroom.name|default:"-" }}</td>
+
+                    <!-- Sem 1 Monthly Cells -->
+                    {% for cell in r.sem1_cells %}
+                    <td class="text-center {% if cell.has_data %}val-has-data{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <!-- Sem 1 Total -->
+                    <td class="cell-sem1-total">
+                        {{ r.sem1_total_cell.display }}
+                    </td>
+
+                    <!-- Sem 2 Monthly Cells -->
+                    {% for cell in r.sem2_cells %}
+                    <td class="text-center {% if cell.has_data %}val-has-data{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <!-- Sem 2 Total -->
+                    <td class="cell-sem2-total">
+                        {{ r.sem2_total_cell.display }}
+                    </td>
+
+                    <!-- Annual Total -->
+                    <td class="cell-annual-total">
+                        {{ r.annual_total_cell.display }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ sem1_count|add:sem2_count|add:'9' }}" class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-inbox fs-3 d-block mb-2 text-secondary"></i>
+                        ពុំមានទិន្នន័យសិស្ស ឬអវត្តមានក្នុងលក្ខខណ្ឌដែលបានជ្រើសរើសឡើយ។
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if student_rows %}
+            <tfoot>
+                <!-- Roster Grand Total Row -->
+                <tr class="row-grand-total">
+                    <td colspan="6" class="text-end fw-bold text-dark py-3">
+                        <i class="fa-solid fa-users me-1"></i> សរុបរួមសិស្សទាំងអស់ ({{ roster_total.student_count }} នាក់)៖
+                    </td>
+
+                    {% for cell in roster_total.sem1_cells %}
+                    <td class="text-center fw-bold py-3 {% if cell.has_data %}text-primary{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <td class="cell-sem1-total py-3 fs-6">
+                        {{ roster_total.sem1_total_cell.display }}
+                    </td>
+
+                    {% for cell in roster_total.sem2_cells %}
+                    <td class="text-center fw-bold py-3 {% if cell.has_data %}text-success{% else %}val-zero{% endif %}">
+                        {{ cell.display }}
+                    </td>
+                    {% endfor %}
+                    <td class="cell-sem2-total py-3 fs-6">
+                        {{ roster_total.sem2_total_cell.display }}
+                    </td>
+
+                    <td class="cell-annual-total py-3 fs-6">
+                        {{ roster_total.annual_total_cell.display }}
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Guidance and Notes Card -->
+    <div class="custom-card p-3 mb-4 bg-white rounded-3 border no-print">
+        <h6 class="fw-bold text-dark mb-2">
+            <i class="fa-solid fa-circle-info text-info me-2"></i>ចំណាំ និងគោលការណ៍គណនា
+        </h6>
+        <ul class="text-muted small mb-0 ps-3">
+            <li><strong>ឆមាសទី ១ (Semester 1)៖</strong> បូកសរុបអវត្តមានសិស្សពីខែ <strong>កញ្ញា ដល់ កុម្ភៈ</strong> (ខែទី ៩ ដល់ទី ២)។</li>
+            <li><strong>ឆមាសទី ២ (Semester 2)៖</strong> បូកសរុបអវត្តមានសិស្សពីខែ <strong>មីនា ដល់ កក្កដា</strong> (ខែទី ៣ ដល់ទី ៧)។</li>
+            <li><strong>សរុបប្រចាំឆ្នាំ (Annual Total)៖</strong> ស្មើនឹង <strong>ឆមាសទី ១ + ឆមាសទី ២</strong>។</li>
+            <li><strong>ឯកតា លើក / វេន (Sessions)៖</strong> គិតត្រឹម ១ ដងក្នុងមួយវេនសិក្សា (ព្រឹក ឬ រសៀល) បើទោះជាសិស្សអវត្តមានច្រើនម៉ោងក្នុងវេននោះក៏ដោយ។</li>
+            <li><strong>ឯកតា ថ្ងៃ (Days)៖</strong> គិតតាមស្តង់ដារអប់រំ ១ វេន = ០.៥ ថ្ងៃ (អវត្តមានពេញមួយថ្ងៃ = ១.០ ថ្ងៃ)។</li>
+            <li><strong>ទាញយកជា Excel៖</strong> ផ្តល់សិទ្ធិផ្តាច់មុខសម្រាប់តែ Admin ដើម្បីទាញយកទិន្នន័យជាក់ស្តែងតាមអ្វីដែលកំពុងបង្ហាញនៅលើអេក្រង់បច្ចុប្បន្ន។</li>
+        </ul>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Live Filter Client-Side search
+    document.getElementById('liveFilterInput').addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+        const rows = document.querySelectorAll('#matrixReportTable tbody tr.table-data-row');
+        
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            if (!query || text.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Dynamic filtering for grade level dropdown
+    function handleGradeChange(gradeVal) {
+        const classSelect = document.getElementById('classroomSelect');
+        if (classSelect) {
+            classSelect.value = 'ALL';
+        }
+        document.getElementById('summaryFilterForm').submit();
+    }
+
+    // Dynamic scope switcher
+    function handleScopeChange(scopeVal) {
+        document.getElementById('summaryFilterForm').submit();
+    }
+
+    // Export Excel Trigger
+    function exportStudentSemesterAnnualExcel() {
+        const form = document.getElementById('summaryFilterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        params.set('export', 'excel');
+        
+        const url = "{% url 'student_semester_annual_attendance_report' %}?" + params.toString();
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

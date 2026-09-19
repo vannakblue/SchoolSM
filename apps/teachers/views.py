@@ -302,6 +302,333 @@ def teacher_attendance_view(request):
     })
 
 
+def export_teacher_attendance_report_excel(filtered_rows, summary, filter_type, filter_label, active_year, selected_date=None, start_date=None, end_date=None, query=''):
+    """Generates a styled Excel export for teacher attendance matching the current view."""
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+    from apps.accounts.models import SchoolProfile
+
+    try:
+        school_info = SchoolProfile.get_settings()
+        school_name = school_info.name_kh if school_info and school_info.name_kh else "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+    except Exception:
+        school_name = "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "វត្តមានគ្រូបង្រៀន"
+    ws.views.sheetView[0].showGridLines = True
+
+    font_title = Font(name='Kantumruy Pro', size=14, bold=True, color='312E81')
+    font_subtitle = Font(name='Kantumruy Pro', size=11, bold=True, color='1E293B')
+    font_meta = Font(name='Kantumruy Pro', size=10, italic=False, color='475569')
+    font_header = Font(name='Kantumruy Pro', size=10, bold=True, color='FFFFFF')
+    font_data = Font(name='Kantumruy Pro', size=10)
+    font_data_bold = Font(name='Kantumruy Pro', size=10, bold=True)
+    font_danger = Font(name='Kantumruy Pro', size=10, bold=True, color='DC2626')
+    font_success = Font(name='Kantumruy Pro', size=10, bold=True, color='16A34A')
+    font_warning = Font(name='Kantumruy Pro', size=10, bold=True, color='D97706')
+
+    fill_header = PatternFill(start_color='4338CA', end_color='4338CA', fill_type='solid')
+    fill_sub_kpi = PatternFill(start_color='EEF2FF', end_color='EEF2FF', fill_type='solid')
+    fill_zebra = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
+    fill_total = PatternFill(start_color='E2E8F0', end_color='E2E8F0', fill_type='solid')
+
+    border_thin = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+    border_double = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='double', color='1E293B')
+    )
+
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    align_left = Alignment(horizontal='left', vertical='center')
+
+    is_daily = (filter_type in ['period', 'day'])
+    max_col_letter = 'R' if is_daily else 'L'
+
+    # Row 1: School Name
+    ws.merge_cells(f'A1:{max_col_letter}1')
+    ws['A1'] = school_name
+    ws['A1'].font = font_title
+    ws['A1'].alignment = align_center
+    ws.row_dimensions[1].height = 28
+
+    # Row 2: Title
+    ws.merge_cells(f'A2:{max_col_letter}2')
+    ws['A2'] = "របាយការណ៍វត្តមាន & អវត្តមានគ្រូបង្រៀន (TEACHER ATTENDANCE REPORT)"
+    ws['A2'].font = font_subtitle
+    ws['A2'].alignment = align_center
+    ws.row_dimensions[2].height = 22
+
+    # Row 3: Filter Info
+    ay_txt = f"ឆ្នាំសិក្សា៖ {active_year.name if active_year else '-'}"
+    meta_txt = f"ប្រភេទរបាយការណ៍៖ {filter_label}  |  {ay_txt}"
+    if query:
+        meta_txt += f"  |  ស្វែងរក៖ \"{query}\""
+    ws.merge_cells(f'A3:{max_col_letter}3')
+    ws['A3'] = meta_txt
+    ws['A3'].font = font_meta
+    ws['A3'].alignment = align_center
+    ws.row_dimensions[3].height = 20
+
+    # Row 4: Summary KPI Bar
+    if is_daily:
+        kpi_txt = (
+            f"គ្រូត្រូវបង្រៀនសរុប៖ {summary.get('total_teachers', 0)} នាក់   |   "
+            f"មានម៉ោងបង្រៀនថ្ងៃនេះ៖ {summary.get('teachers_with_schedule', 0)} នាក់   |   "
+            f"ម៉ោងបង្រៀនសរុប៖ {summary.get('total_scheduled_periods', 0)} ម៉ោង   |   "
+            f"បានស្រង់វត្តមាន៖ {summary.get('total_recorded_periods', 0)} ម៉ោង   |   "
+            f"ខកខានមិនបានស្រង់៖ {summary.get('total_unrecorded_periods', 0)} ម៉ោង   |   "
+            f"អត្រាអនុលោមភាព៖ {summary.get('compliance_rate', 100)}%"
+        )
+    else:
+        kpi_txt = (
+            f"គ្រូសរុប៖ {summary.get('total_teachers', 0)} នាក់   |   "
+            f"ចំនួនថ្ងៃបង្រៀនសរុប៖ {summary.get('total_teaching_dates', 0)} ថ្ងៃ   |   "
+            f"ម៉ោងបង្រៀនសរុប៖ {summary.get('total_scheduled_hours', 0)} ម៉ោង   |   "
+            f"បានស្រង់វត្តមាន៖ {summary.get('total_recorded_hours', 0)} ម៉ោង   |   "
+            f"ខកខានមិនបានស្រង់៖ {summary.get('total_unrecorded_hours', 0)} ម៉ោង   |   "
+            f"ថ្ងៃច្បាប់សរុប៖ {summary.get('total_excused_days', 0)} ថ្ងៃ   |   "
+            f"អត្រាអនុលោមភាពមធ្យម៖ {summary.get('overall_compliance_rate', 100)}%"
+        )
+    ws.merge_cells(f'A4:{max_col_letter}4')
+    ws['A4'] = kpi_txt
+    ws['A4'].font = font_data_bold
+    ws['A4'].fill = fill_sub_kpi
+    ws['A4'].alignment = align_center
+    ws['A4'].border = border_thin
+    ws.row_dimensions[4].height = 24
+
+    ws.row_dimensions[5].height = 8
+
+    # Row 6: Table Headers
+    if is_daily:
+        headers = [
+            "ល.រ", "អត្តលេខ", "គោត្តនាម និងនាម", "ឈ្មោះឡាតាំង", "ភេទ", "ឯកទេស",
+            "ម៉ោងទី ១", "ម៉ោងទី ២", "ម៉ោងទី ៣", "ម៉ោងទី ៤",
+            "ម៉ោងទី ៥", "ម៉ោងទី ៦", "ម៉ោងទី ៧", "ម៉ោងទី ៨",
+            "ម៉ោងត្រូវបង្រៀន", "បានស្រង់", "ខកខាន", "ស្ថានភាព"
+        ]
+    else:
+        headers = [
+            "ល.រ", "អត្តលេខ", "គោត្តនាម និងនាម", "ឈ្មោះឡាតាំង", "ភេទ", "ឯកទេស",
+            "ថ្ងៃត្រូវបង្រៀន", "ម៉ោងត្រូវបង្រៀន", "ម៉ោងបានស្រង់", "ម៉ោងខកខាន", "ថ្ងៃសុំច្បាប់", "អត្រាអនុលោមភាព (%)"
+        ]
+
+    ws.row_dimensions[6].height = 28
+    for col_num, h_title in enumerate(headers, 1):
+        cell = ws.cell(row=6, column=col_num, value=h_title)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center
+        cell.border = border_thin
+
+    current_row = 7
+    status_label_map = {
+        'PRESENT': 'វត្តមានគ្រប់',
+        'UNRECORDED': 'ខកខានមិនបានស្រង់',
+        'EXCUSED_LEAVE': 'សុំច្បាប់',
+        'NO_SCHEDULE': 'គ្មានម៉ោងបង្រៀន',
+    }
+
+    sum_scheduled = 0
+    sum_recorded = 0
+    sum_unrecorded = 0
+    sum_leaves = 0
+
+    for idx, r in enumerate(filtered_rows, 1):
+        t = r['teacher']
+        gender_km = 'ស្រី' if getattr(t, 'gender', '') == 'F' else 'ប្រុស'
+        spec = getattr(t, 'specialization', '') or '-'
+
+        if is_daily:
+            p_slots = r.get('period_slots', {})
+            slot_texts = []
+            for p_num in range(1, 9):
+                s_info = p_slots.get(p_num)
+                if not s_info:
+                    slot_texts.append("-")
+                elif s_info.get('status') == 'RECORDED':
+                    cls_name = s_info.get('classroom_name', '')
+                    subj_name = s_info.get('subject_name', '')
+                    slot_texts.append(f"✓ {cls_name} ({subj_name})" if subj_name else f"✓ {cls_name}")
+                elif s_info.get('status') == 'UNRECORDED':
+                    cls_name = s_info.get('classroom_name', '')
+                    slot_texts.append(f"✗ ខកខាន ({cls_name})")
+                elif s_info.get('status') == 'PENDING':
+                    cls_name = s_info.get('classroom_name', '')
+                    slot_texts.append(f"⏳ រង់ចាំ ({cls_name})")
+                else:
+                    slot_texts.append(s_info.get('status_label', '-'))
+
+            status_txt = status_label_map.get(r.get('daily_status'), r.get('daily_status', '-'))
+            sched_cnt = r.get('scheduled_count', 0)
+            rec_cnt = r.get('recorded_count', 0)
+            unrec_cnt = r.get('unrecorded_count', 0)
+
+            sum_scheduled += sched_cnt
+            sum_recorded += rec_cnt
+            sum_unrecorded += unrec_cnt
+
+            row_values = [
+                idx,
+                t.teacher_id,
+                t.khmer_name,
+                t.latin_name or '',
+                gender_km,
+                spec,
+                *slot_texts,
+                sched_cnt,
+                rec_cnt,
+                unrec_cnt,
+                status_txt
+            ]
+        else:
+            teach_days = r.get('teaching_days_count', 0)
+            sched_hrs = r.get('scheduled_hours', 0)
+            rec_hrs = r.get('recorded_hours', 0)
+            unrec_hrs = r.get('unrecorded_hours', 0)
+            leave_days = r.get('excused_days_count', 0)
+            comp_rate = r.get('compliance_rate', 100.0)
+
+            sum_scheduled += sched_hrs
+            sum_recorded += rec_hrs
+            sum_unrecorded += unrec_hrs
+            sum_leaves += leave_days
+
+            row_values = [
+                idx,
+                t.teacher_id,
+                t.khmer_name,
+                t.latin_name or '',
+                gender_km,
+                spec,
+                teach_days,
+                sched_hrs,
+                rec_hrs,
+                unrec_hrs,
+                leave_days,
+                f"{comp_rate}%"
+            ]
+
+        ws.row_dimensions[current_row].height = 22
+        is_even = (idx % 2 == 0)
+
+        for col_num, val in enumerate(row_values, 1):
+            cell = ws.cell(row=current_row, column=col_num, value=val)
+            cell.font = font_data
+            cell.border = border_thin
+            if is_even:
+                cell.fill = fill_zebra
+
+            if col_num in [1, 2, 5]:
+                cell.alignment = align_center
+            elif is_daily and (7 <= col_num <= 18):
+                cell.alignment = align_center
+            elif (not is_daily) and (7 <= col_num <= 12):
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+
+            # Highlights
+            if is_daily:
+                if col_num == 17 and r.get('unrecorded_count', 0) > 0:
+                    cell.font = font_danger
+                elif col_num == 18:
+                    if r.get('daily_status') == 'PRESENT':
+                        cell.font = font_success
+                    elif r.get('daily_status') == 'UNRECORDED':
+                        cell.font = font_danger
+                    elif r.get('daily_status') == 'EXCUSED_LEAVE':
+                        cell.font = font_warning
+            else:
+                if col_num == 10 and r.get('unrecorded_hours', 0) > 0:
+                    cell.font = font_danger
+                elif col_num == 12:
+                    if r.get('compliance_rate', 100) >= 90:
+                        cell.font = font_success
+                    elif r.get('compliance_rate', 100) >= 70:
+                        cell.font = font_warning
+                    else:
+                        cell.font = font_danger
+
+        current_row += 1
+
+    # Total row
+    if filtered_rows:
+        ws.row_dimensions[current_row].height = 24
+        ws.cell(row=current_row, column=3, value="សរុបរួម (Overall Total)").font = font_data_bold
+        ws.cell(row=current_row, column=3).alignment = align_left
+
+        if is_daily:
+            for c_idx in range(1, 15):
+                ws.cell(row=current_row, column=c_idx).fill = fill_total
+                ws.cell(row=current_row, column=c_idx).border = border_double
+
+            d_sums = [(15, sum_scheduled), (16, sum_recorded), (17, sum_unrecorded), (18, f"{summary.get('compliance_rate', 100)}%")]
+            for c_num, s_val in d_sums:
+                sc = ws.cell(row=current_row, column=c_num, value=s_val)
+                sc.font = font_data_bold
+                sc.fill = fill_total
+                sc.border = border_double
+                sc.alignment = align_center
+        else:
+            for c_idx in range(1, 8):
+                ws.cell(row=current_row, column=c_idx).fill = fill_total
+                ws.cell(row=current_row, column=c_idx).border = border_double
+
+            r_sums = [
+                (8, sum_scheduled),
+                (9, sum_recorded),
+                (10, sum_unrecorded),
+                (11, sum_leaves),
+                (12, f"{summary.get('overall_compliance_rate', 100)}%"),
+            ]
+            for c_num, s_val in r_sums:
+                sc = ws.cell(row=current_row, column=c_num, value=s_val)
+                sc.font = font_data_bold
+                sc.fill = fill_total
+                sc.border = border_double
+                sc.alignment = align_center
+
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 14
+    ws.column_dimensions['C'].width = 24
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 10
+    ws.column_dimensions['F'].width = 18
+
+    if is_daily:
+        for col_l in ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']:
+            ws.column_dimensions[col_l].width = 18
+        ws.column_dimensions['O'].width = 16
+        ws.column_dimensions['P'].width = 14
+        ws.column_dimensions['Q'].width = 14
+        ws.column_dimensions['R'].width = 20
+    else:
+        ws.column_dimensions['G'].width = 16
+        ws.column_dimensions['H'].width = 18
+        ws.column_dimensions['I'].width = 16
+        ws.column_dimensions['J'].width = 16
+        ws.column_dimensions['K'].width = 16
+        ws.column_dimensions['L'].width = 22
+
+    filename = f"Teacher_Attendance_Report_{filter_type}_{date.today().strftime('%Y%m%d')}.xlsx"
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
 @login_required
 @role_required(['ADMIN', 'TEACHER'])
 def teacher_attendance_report(request):
@@ -439,12 +766,32 @@ def teacher_attendance_report(request):
 
         summary = range_res['summary']
 
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+    # Admin export to Excel based on current filter & view
+    if request.GET.get('export') == 'excel':
+        if not is_admin:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("លោកអ្នកមិនមានសិទ្ធិទាញយករបាយការណ៍ជា Excel ឡើយ។")
+        return export_teacher_attendance_report_excel(
+            filtered_rows=filtered_rows,
+            summary=summary,
+            filter_type=filter_type,
+            filter_label=filter_label,
+            active_year=active_year,
+            selected_date=selected_date,
+            start_date=start_date,
+            end_date=end_date,
+            query=query,
+        )
+
     return render(request, 'teachers/teacher_attendance_report.html', {
         'filter_type': filter_type,
         'filter_label': filter_label,
         'status_filter': status_filter,
         'period_filter': period_filter,
         'query': query,
+        'is_admin': is_admin,
         'selected_date': selected_date.strftime('%Y-%m-%d'),
         'selected_date_obj': selected_date,
         'week_date_str': week_date_str,

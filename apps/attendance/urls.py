@@ -5,6 +5,8 @@ from apps.teachers import views as teacher_views
 urlpatterns = [
     path('', views.student_attendance_grid, name='student_attendance_grid'),
     path('report/', views.attendance_report, name='attendance_report'),
+    path('semester-annual-summary/', views.student_semester_annual_attendance_report, name='student_semester_annual_attendance_report'),
+    path('semester_annual_summary/', views.student_semester_annual_attendance_report),
     path('teacher-report/', teacher_views.teacher_attendance_report, name='teacher_attendance_report_alias'),
     path('at-risk/', views.at_risk_attendance_view, name='at_risk_attendance'),
     path('at_risk/', views.at_risk_attendance_view),

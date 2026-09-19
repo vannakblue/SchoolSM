@@ -294,6 +294,14 @@ MENU_SECTIONS_CATALOG = [
                 'url_name': 'attendance_report',
             },
             {
+                'key': 'student_semester_annual_attendance_report',
+                'name_kh': 'សរុបវត្តមានតាមខែ ឆមាស & ឆ្នាំ',
+                'name_en': 'Monthly, Semester & Annual Absences',
+                'icon': 'fa-solid fa-table-cells text-indigo',
+                'default_roles': ['ADMIN', 'TEACHER'],
+                'url_name': 'student_semester_annual_attendance_report',
+            },
+            {
                 'key': 'attendance_admin_hub',
                 'name_kh': 'គ្រប់គ្រងវត្តមាន & Telegram',
                 'name_en': 'Attendance & Telegram Hub',

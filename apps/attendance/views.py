@@ -623,6 +623,250 @@ def student_attendance_grid(request):
 
 
 
+def export_student_attendance_report_excel(report_data, summary_stats, selected_class, selected_grade_level, target_classes_count, filter_label, active_year, search_query=''):
+    """Generates a styled Excel export for student attendance matching the current view."""
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+    from apps.accounts.models import SchoolProfile
+
+    try:
+        school_info = SchoolProfile.get_settings()
+        school_name = school_info.name_kh if school_info and school_info.name_kh else "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+    except Exception:
+        school_name = "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "វត្តមានសិស្ស"
+    ws.views.sheetView[0].showGridLines = True
+
+    font_title = Font(name='Kantumruy Pro', size=14, bold=True, color='1E3A8A')
+    font_subtitle = Font(name='Kantumruy Pro', size=11, bold=True, color='1E293B')
+    font_meta = Font(name='Kantumruy Pro', size=10, italic=False, color='475569')
+    font_header = Font(name='Kantumruy Pro', size=10, bold=True, color='FFFFFF')
+    font_data = Font(name='Kantumruy Pro', size=10)
+    font_data_bold = Font(name='Kantumruy Pro', size=10, bold=True)
+    font_danger = Font(name='Kantumruy Pro', size=10, bold=True, color='DC2626')
+    font_success = Font(name='Kantumruy Pro', size=10, bold=True, color='16A34A')
+    font_warning = Font(name='Kantumruy Pro', size=10, bold=True, color='D97706')
+
+    fill_header = PatternFill(start_color='1E40AF', end_color='1E40AF', fill_type='solid') # Royal Blue
+    fill_sub_kpi = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid') # Light Slate
+    fill_zebra = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
+    fill_total = PatternFill(start_color='E2E8F0', end_color='E2E8F0', fill_type='solid')
+
+    border_thin = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+    border_double = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='double', color='1E293B')
+    )
+
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    align_left = Alignment(horizontal='left', vertical='center')
+
+    # Row 1: School Name
+    ws.merge_cells('A1:L1')
+    ws['A1'] = school_name
+    ws['A1'].font = font_title
+    ws['A1'].alignment = align_center
+    ws.row_dimensions[1].height = 28
+
+    # Row 2: Report Title
+    ws.merge_cells('A2:L2')
+    ws['A2'] = "របាយការណ៍វត្តមានសិស្ស (STUDENT ATTENDANCE REPORT)"
+    ws['A2'].font = font_subtitle
+    ws['A2'].alignment = align_center
+    ws.row_dimensions[2].height = 22
+
+    # Row 3: Scope Description
+    if selected_class:
+        scope_txt = f"ថ្នាក់រៀន៖ {selected_class.name}"
+    elif selected_grade_level:
+        scope_txt = f"កម្រិតថ្នាក់៖ ថ្នាក់ទី {selected_grade_level} ({target_classes_count} ថ្នាក់)"
+    else:
+        scope_txt = f"វិសាលភាព៖ គ្រប់ថ្នាក់ទូទាំងសាលា ({target_classes_count} ថ្នាក់)"
+
+    ay_txt = f"ឆ្នាំសិក្សា៖ {active_year.name if active_year else '-'}"
+    filter_desc = f"{scope_txt}  |  ចន្លោះពេល៖ {filter_label}  |  {ay_txt}"
+    if search_query:
+        filter_desc += f"  |  ពាក្យស្វែងរក៖ \"{search_query}\""
+
+    ws.merge_cells('A3:L3')
+    ws['A3'] = filter_desc
+    ws['A3'].font = font_meta
+    ws['A3'].alignment = align_center
+    ws.row_dimensions[3].height = 20
+
+    # Row 4: Summary KPI Bar
+    kpi_txt = (
+        f"សិស្សសរុប៖ {summary_stats.get('total_students', 0)} នាក់   |   "
+        f"វេនសិក្សាបានស្រង់៖ {summary_stats.get('total_sessions_held', 0)} ពេល   |   "
+        f"អវត្តមានឥតច្បាប់៖ {summary_stats.get('total_absent_sessions', 0)} ពេល   |   "
+        f"សុំច្បាប់៖ {summary_stats.get('total_permission_sessions', 0)} ពេល   |   "
+        f"មកយឺត៖ {summary_stats.get('total_late_sessions', 0)} ពេល   |   "
+        f"អត្រាវត្តមានមធ្យម៖ {summary_stats.get('avg_attendance_rate', 100.0)}%"
+    )
+    ws.merge_cells('A4:L4')
+    ws['A4'] = kpi_txt
+    ws['A4'].font = font_data_bold
+    ws['A4'].fill = fill_sub_kpi
+    ws['A4'].alignment = align_center
+    ws['A4'].border = border_thin
+    ws.row_dimensions[4].height = 24
+
+    ws.row_dimensions[5].height = 8
+
+    # Row 6: Table Headers
+    headers = [
+        "ល.រ",
+        "អត្តលេខសិស្ស",
+        "គោត្តនាម និងនាម",
+        "ឈ្មោះឡាតាំង",
+        "ថ្នាក់រៀន",
+        "ភេទ",
+        "វត្តមាន (Present)",
+        "ច្បាប់ (Permission)",
+        "អវត្តមាន (Absent)",
+        "មកយឺត (Late)",
+        "វេនសរុប (Total)",
+        "អត្រាវត្តមាន (%)",
+    ]
+    ws.row_dimensions[6].height = 28
+    for col_num, h_title in enumerate(headers, 1):
+        cell = ws.cell(row=6, column=col_num, value=h_title)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center
+        cell.border = border_thin
+
+    # Data Rows
+    current_row = 7
+    total_present_sum = 0
+    total_perm_sum = 0
+    total_absent_sum = 0
+    total_late_sum = 0
+    total_held_sum = 0
+
+    for idx, r in enumerate(report_data, 1):
+        stu = r['student']
+        gender_km = 'ស្រី' if getattr(stu, 'gender', '') == 'F' else 'ប្រុស'
+        class_name = stu.classroom.name if getattr(stu, 'classroom', None) else '-'
+
+        row_values = [
+            idx,
+            stu.student_id,
+            stu.khmer_name,
+            stu.latin_name or '',
+            class_name,
+            gender_km,
+            r.get('present', 0),
+            r.get('permission', 0),
+            r.get('absent', 0),
+            r.get('late', 0),
+            r.get('total', 0),
+            f"{r.get('rate', 100.0)}%",
+        ]
+
+        total_present_sum += r.get('present', 0)
+        total_perm_sum += r.get('permission', 0)
+        total_absent_sum += r.get('absent', 0)
+        total_late_sum += r.get('late', 0)
+        total_held_sum += r.get('total', 0)
+
+        ws.row_dimensions[current_row].height = 22
+        is_even = (idx % 2 == 0)
+
+        for col_num, val in enumerate(row_values, 1):
+            cell = ws.cell(row=current_row, column=col_num, value=val)
+            cell.font = font_data
+            cell.border = border_thin
+            if is_even:
+                cell.fill = fill_zebra
+
+            if col_num in [1, 2, 5, 6, 7, 8, 9, 10, 11, 12]:
+                cell.alignment = align_center
+            else:
+                cell.alignment = align_left
+
+            # Highlights
+            if col_num == 9 and r.get('absent', 0) > 0:
+                cell.font = font_danger
+            elif col_num == 8 and r.get('permission', 0) > 0:
+                cell.font = font_warning
+            elif col_num == 7 and r.get('present', 0) > 0:
+                cell.font = font_success
+            elif col_num == 12:
+                rate_val = r.get('rate', 100.0)
+                if rate_val >= 80:
+                    cell.font = font_success
+                elif rate_val >= 50:
+                    cell.font = font_warning
+                else:
+                    cell.font = font_danger
+
+        current_row += 1
+
+    # Summary Total Row
+    if report_data:
+        ws.row_dimensions[current_row].height = 24
+        ws.cell(row=current_row, column=1, value="")
+        ws.cell(row=current_row, column=2, value="")
+        total_label_cell = ws.cell(row=current_row, column=3, value="សរុបរួម (Overall Total)")
+        total_label_cell.font = font_data_bold
+        total_label_cell.alignment = align_left
+
+        for c_idx in range(1, 7):
+            c = ws.cell(row=current_row, column=c_idx)
+            c.fill = fill_total
+            c.border = border_double
+
+        sums = [
+            (7, total_present_sum),
+            (8, total_perm_sum),
+            (9, total_absent_sum),
+            (10, total_late_sum),
+            (11, total_held_sum),
+            (12, f"{summary_stats.get('avg_attendance_rate', 100.0)}%"),
+        ]
+        for col_idx, s_val in sums:
+            scell = ws.cell(row=current_row, column=col_idx, value=s_val)
+            scell.font = font_data_bold
+            scell.fill = fill_total
+            scell.border = border_double
+            scell.alignment = align_center
+
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 16
+    ws.column_dimensions['C'].width = 24
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 14
+    ws.column_dimensions['F'].width = 10
+    ws.column_dimensions['G'].width = 18
+    ws.column_dimensions['H'].width = 18
+    ws.column_dimensions['I'].width = 18
+    ws.column_dimensions['J'].width = 14
+    ws.column_dimensions['K'].width = 14
+    ws.column_dimensions['L'].width = 18
+
+    target_tag = selected_class.name if selected_class else (f"Grade_{selected_grade_level}" if selected_grade_level else "All_Classes")
+    safe_target = "".join(c for c in target_tag if c.isalnum() or c in ('-', '_'))
+    filename = f"Student_Attendance_{safe_target}_{date.today().strftime('%Y%m%d')}.xlsx"
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
 @login_required
 @role_required(['ADMIN', 'TEACHER'])
 def attendance_report(request):
@@ -842,6 +1086,24 @@ def attendance_report(request):
         if summary_stats['total_students'] > 0:
             summary_stats['avg_attendance_rate'] = round(total_rate_accum / summary_stats['total_students'], 1)
 
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+    # Admin export to Excel based on current filter & view
+    if request.GET.get('export') == 'excel':
+        if not is_admin:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("លោកអ្នកមិនមានសិទ្ធិទាញយករបាយការណ៍ជា Excel ឡើយ។")
+        return export_student_attendance_report_excel(
+            report_data=report_data,
+            summary_stats=summary_stats,
+            selected_class=selected_class,
+            selected_grade_level=str(grade_level) if grade_level else '',
+            target_classes_count=target_classes.count(),
+            filter_label=filter_label,
+            active_year=active_year,
+            search_query=search_query,
+        )
+
     return render(request, 'attendance/attendance_report.html', {
         'classrooms': base_classrooms,
         'filtered_classrooms': filtered_classrooms,
@@ -860,6 +1122,755 @@ def attendance_report(request):
         'report_data': report_data,
         'summary_stats': summary_stats,
         'active_year': active_year,
+        'is_admin': is_admin,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Cumulative Multi-Month, Semester & Annual Student Absence Matrix
+# ---------------------------------------------------------------------------
+
+def get_academic_year_months_catalog(academic_year):
+    """
+    Generates an ordered list of academic month descriptors spanning the academic year.
+    Semester 1: Months 9, 10, 11, 12, 1, 2 (កញ្ញា ដល់ កុម្ភៈ)
+    Semester 2: Months 3, 4, 5, 6, 7, 8 (មីនា ដល់ កក្កដា/សីហា)
+    """
+    if not academic_year or not academic_year.start_date or not academic_year.end_date:
+        start_d = date(2026, 9, 1)
+        end_d = date(2027, 7, 31)
+    else:
+        start_d = academic_year.start_date
+        end_d = academic_year.end_date
+
+    kh_month_names = {
+        1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា',
+        5: 'ឧសភា', 6: 'មិថុនា', 7: 'កក្កដា', 8: 'សីហា',
+        9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ',
+    }
+    en_month_names = {
+        1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+        5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+        9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec',
+    }
+
+    months = []
+    curr_y, curr_m = start_d.year, start_d.month
+    end_y, end_m = end_d.year, end_d.month
+
+    while (curr_y < end_y) or (curr_y == end_y and curr_m <= end_m):
+        sem = 1 if curr_m in [9, 10, 11, 12, 1, 2] else 2
+        m_kh = kh_month_names.get(curr_m, str(curr_m))
+        m_en = en_month_names.get(curr_m, str(curr_m))
+        str_key = f"{curr_y}_{curr_m:02d}"
+        months.append({
+            'year': curr_y,
+            'month': curr_m,
+            'key': (curr_y, curr_m),
+            'str_key': str_key,
+            'name_kh': m_kh,
+            'name_en': m_en,
+            'short_label': m_kh,
+            'full_label': f"{m_kh} {curr_y}",
+            'semester': sem,
+        })
+        curr_m += 1
+        if curr_m > 12:
+            curr_m = 1
+            curr_y += 1
+
+    sem1_months = [m for m in months if m['semester'] == 1]
+    sem2_months = [m for m in months if m['semester'] == 2]
+
+    return {
+        'all_months': months,
+        'sem1_months': sem1_months,
+        'sem2_months': sem2_months,
+    }
+
+
+def export_student_semester_annual_attendance_report_excel(
+    view_scope,
+    absence_type,
+    unit,
+    all_months,
+    sem1_months,
+    sem2_months,
+    class_groups,
+    school_total,
+    student_rows,
+    roster_total,
+    active_year,
+    selected_grade_level,
+    selected_class
+):
+    """Generates a professional Excel spreadsheet with dual-level group headers for Semester & Annual Absences."""
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+    from apps.accounts.models import SchoolProfile
+
+    try:
+        school_info = SchoolProfile.get_settings()
+        school_name = school_info.name_kh if school_info and school_info.name_kh else "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+    except Exception:
+        school_name = "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)"
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "អវត្តមានខែ-ឆមាស-ប្រចាំឆ្នាំ"
+    ws.views.sheetView[0].showGridLines = True
+
+    font_title = Font(name='Kantumruy Pro', size=14, bold=True, color='1E3A8A')
+    font_subtitle = Font(name='Kantumruy Pro', size=11, bold=True, color='1E293B')
+    font_meta = Font(name='Kantumruy Pro', size=10, italic=False, color='475569')
+    font_group_header = Font(name='Kantumruy Pro', size=10, bold=True, color='FFFFFF')
+    font_sub_header = Font(name='Kantumruy Pro', size=9, bold=True, color='1E293B')
+    font_data = Font(name='Kantumruy Pro', size=9)
+    font_data_bold = Font(name='Kantumruy Pro', size=9, bold=True)
+    font_danger = Font(name='Kantumruy Pro', size=9, bold=True, color='DC2626')
+
+    fill_group_info = PatternFill(start_color='1E3A8A', end_color='1E3A8A', fill_type='solid')
+    fill_group_sem1 = PatternFill(start_color='1D4ED8', end_color='1D4ED8', fill_type='solid')
+    fill_group_sem2 = PatternFill(start_color='0D9488', end_color='0D9488', fill_type='solid')
+    fill_group_annual = PatternFill(start_color='B45309', end_color='B45309', fill_type='solid')
+    fill_sub_hdr = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+    fill_zebra = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
+    fill_subtotal = PatternFill(start_color='E2E8F0', end_color='E2E8F0', fill_type='solid')
+    fill_total = PatternFill(start_color='CBD5E1', end_color='CBD5E1', fill_type='solid')
+
+    border_thin = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+    border_double = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='double', color='0F172A')
+    )
+
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    align_left = Alignment(horizontal='left', vertical='center')
+
+    num_info_cols = 4
+    s1_start_col = num_info_cols + 1
+    s1_end_col = s1_start_col + len(sem1_months)
+    s2_start_col = s1_end_col + 1
+    s2_end_col = s2_start_col + len(sem2_months)
+    annual_col = s2_end_col + 1
+    total_cols = annual_col
+    last_col_letter = get_column_letter(total_cols)
+
+    # Row 1: School Name
+    ws.merge_cells(f'A1:{last_col_letter}1')
+    ws['A1'] = school_name
+    ws['A1'].font = font_title
+    ws['A1'].alignment = align_center
+    ws.row_dimensions[1].height = 28
+
+    # Row 2: Title
+    ws.merge_cells(f'A2:{last_col_letter}2')
+    scope_title_km = "សរុបតាមកម្រិតថ្នាក់ & ថ្នាក់នីមួយៗ" if view_scope == 'CLASS_SUMMARY' else f"សរុបសិស្សម្នាក់ៗ ({selected_class.name if selected_class else 'ថ្នាក់រៀន'})"
+    ws['A2'] = f"របាយការណ៍អវត្តមានសិស្សតាមខែ ឆមាស & ប្រចាំឆ្នាំ ({scope_title_km})"
+    ws['A2'].font = font_subtitle
+    ws['A2'].alignment = align_center
+    ws.row_dimensions[2].height = 22
+
+    # Row 3: Meta
+    unit_label = "គិតជាថ្ងៃ (0.5 ថ្ងៃ/វេន)" if unit == 'DAYS' else "គិតជាចំនួនដង/វេន"
+    type_label_map = {'TOTAL': 'សរុប (ច្បាប់+ឥតច្បាប់)', 'UNEXCUSED': 'អវត្តមានឥតច្បាប់', 'PERMISSION': 'សុំច្បាប់', 'DUAL': 'បង្ហាញទាំងពីរ (ច្បាប់ / ឥតច្បាប់)'}
+    type_label = type_label_map.get(absence_type, 'សរុប')
+    ay_label = active_year.name if active_year else '-'
+    meta_str = f"ប្រភេទអវត្តមាន៖ {type_label}  |  ខ្នាតរាប់៖ {unit_label}  |  ឆ្នាំសិក្សា៖ {ay_label}"
+    ws.merge_cells(f'A3:{last_col_letter}3')
+    ws['A3'] = meta_str
+    ws['A3'].font = font_meta
+    ws['A3'].alignment = align_center
+    ws.row_dimensions[3].height = 20
+
+    ws.row_dimensions[4].height = 8
+
+    # Row 5: Group Headers (Level 1)
+    ws.merge_cells(f'A5:{get_column_letter(num_info_cols)}5')
+    ws['A5'] = "ព័ត៌មានទូទៅ (GENERAL INFO)"
+    ws['A5'].font = font_group_header
+    ws['A5'].fill = fill_group_info
+    ws['A5'].alignment = align_center
+    for c in range(1, num_info_cols + 1):
+        ws.cell(row=5, column=c).border = border_thin
+        ws.cell(row=5, column=c).fill = fill_group_info
+
+    ws.merge_cells(f'{get_column_letter(s1_start_col)}5:{get_column_letter(s1_end_col)}5')
+    cell_s1 = ws.cell(row=5, column=s1_start_col, value="ឆមាសទី ១ (SEMESTER 1: យកខែក្នុងឆមាសទី១ បូកបញ្ចូលគ្នា)")
+    cell_s1.font = font_group_header
+    cell_s1.fill = fill_group_sem1
+    cell_s1.alignment = align_center
+    for c in range(s1_start_col, s1_end_col + 1):
+        ws.cell(row=5, column=c).border = border_thin
+        ws.cell(row=5, column=c).fill = fill_group_sem1
+
+    ws.merge_cells(f'{get_column_letter(s2_start_col)}5:{get_column_letter(s2_end_col)}5')
+    cell_s2 = ws.cell(row=5, column=s2_start_col, value="ឆមាសទី ២ (SEMESTER 2: យកខែក្នុងឆមាសទី២ បូកបញ្ចូលគ្នា)")
+    cell_s2.font = font_group_header
+    cell_s2.fill = fill_group_sem2
+    cell_s2.alignment = align_center
+    for c in range(s2_start_col, s2_end_col + 1):
+        ws.cell(row=5, column=c).border = border_thin
+        ws.cell(row=5, column=c).fill = fill_group_sem2
+
+    cell_ann = ws.cell(row=5, column=annual_col, value="សរុបប្រចាំឆ្នាំ")
+    cell_ann.font = font_group_header
+    cell_ann.fill = fill_group_annual
+    cell_ann.alignment = align_center
+    cell_ann.border = border_thin
+    ws.row_dimensions[5].height = 26
+
+    # Row 6: Sub Headers (Level 2)
+    if view_scope == 'CLASS_SUMMARY':
+        sub_headers = ["ល.រ", "កម្រិតថ្នាក់", "ថ្នាក់រៀន", "សិស្សសរុប"]
+    else:
+        sub_headers = ["ល.រ", "អត្តលេខសិស្ស", "គោត្តនាម និងនាម", "ភេទ"]
+
+    for m in sem1_months:
+        sub_headers.append(m['short_label'])
+    sub_headers.append("សរុបឆមាស១")
+
+    for m in sem2_months:
+        sub_headers.append(m['short_label'])
+    sub_headers.append("សរុបឆមាស២")
+
+    sub_headers.append("សរុបប្រចាំឆ្នាំ (S1+S2)")
+
+    ws.row_dimensions[6].height = 26
+    for col_idx, h_name in enumerate(sub_headers, 1):
+        c = ws.cell(row=6, column=col_idx, value=h_name)
+        c.font = font_sub_header
+        c.fill = fill_sub_hdr
+        c.alignment = align_center
+        c.border = border_thin
+
+    current_row = 7
+
+    # Data Rows
+    if view_scope == 'CLASS_SUMMARY':
+        overall_idx = 1
+        for grp in class_groups:
+            for c_info in grp['classrooms']:
+                row_vals = [
+                    overall_idx,
+                    f"ថ្នាក់ទី {c_info['grade_level']}",
+                    c_info['classroom_name'],
+                    c_info['student_count'],
+                ]
+                for cell_item in c_info['sem1_cells']:
+                    row_vals.append(cell_item['display'])
+                row_vals.append(c_info['sem1_total_cell']['display'])
+
+                for cell_item in c_info['sem2_cells']:
+                    row_vals.append(cell_item['display'])
+                row_vals.append(c_info['sem2_total_cell']['display'])
+
+                row_vals.append(c_info['annual_total_cell']['display'])
+
+                ws.row_dimensions[current_row].height = 20
+                for c_idx, val in enumerate(row_vals, 1):
+                    cell = ws.cell(row=current_row, column=c_idx, value=val)
+                    cell.font = font_data
+                    cell.border = border_thin
+                    cell.alignment = align_center if c_idx not in [3] else align_left
+                    if c_idx > num_info_cols and str(val) not in ['0', '0.0', '0 / 0', '0/0', '-']:
+                        cell.font = font_danger
+                overall_idx += 1
+                current_row += 1
+
+            # Subtotal row for Grade Level
+            sub_vals = [
+                "",
+                f"សរុប {grp['grade_name']}",
+                f"{len(grp['classrooms'])} ថ្នាក់",
+                grp['subtotal']['student_count'],
+            ]
+            for cell_item in grp['subtotal']['sem1_cells']:
+                sub_vals.append(cell_item['display'])
+            sub_vals.append(grp['subtotal']['sem1_total_cell']['display'])
+
+            for cell_item in grp['subtotal']['sem2_cells']:
+                sub_vals.append(cell_item['display'])
+            sub_vals.append(grp['subtotal']['sem2_total_cell']['display'])
+
+            sub_vals.append(grp['subtotal']['annual_total_cell']['display'])
+
+            ws.row_dimensions[current_row].height = 22
+            for c_idx, val in enumerate(sub_vals, 1):
+                cell = ws.cell(row=current_row, column=c_idx, value=val)
+                cell.font = font_data_bold
+                cell.fill = fill_subtotal
+                cell.border = border_thin
+                cell.alignment = align_center if c_idx not in [2] else align_left
+                if c_idx > num_info_cols and str(val) not in ['0', '0.0', '0 / 0', '0/0', '-']:
+                    cell.font = font_danger
+            current_row += 1
+
+        # Grand School Total Row
+        grand_vals = [
+            "",
+            "សរុបរួមទូទាំងសាលា",
+            f"{school_total['classrooms_count']} ថ្នាក់",
+            school_total['student_count'],
+        ]
+        for cell_item in school_total['sem1_cells']:
+            grand_vals.append(cell_item['display'])
+        grand_vals.append(school_total['sem1_total_cell']['display'])
+
+        for cell_item in school_total['sem2_cells']:
+            grand_vals.append(cell_item['display'])
+        grand_vals.append(school_total['sem2_total_cell']['display'])
+
+        grand_vals.append(school_total['annual_total_cell']['display'])
+
+        ws.row_dimensions[current_row].height = 24
+        for c_idx, val in enumerate(grand_vals, 1):
+            cell = ws.cell(row=current_row, column=c_idx, value=val)
+            cell.font = font_data_bold
+            cell.fill = fill_total
+            cell.border = border_double
+            cell.alignment = align_center if c_idx not in [2] else align_left
+            if c_idx > num_info_cols and str(val) not in ['0', '0.0', '0 / 0', '0/0', '-']:
+                cell.font = font_danger
+        current_row += 1
+
+    else:
+        # STUDENT_ROSTER Mode
+        for idx, stu_row in enumerate(student_rows, 1):
+            stu = stu_row['student']
+            gender_km = 'ស្រី' if getattr(stu, 'gender', '') == 'F' else 'ប្រុស'
+            row_vals = [
+                idx,
+                stu.student_id,
+                stu.khmer_name,
+                gender_km,
+            ]
+            for cell_item in stu_row['sem1_cells']:
+                row_vals.append(cell_item['display'])
+            row_vals.append(stu_row['sem1_total_cell']['display'])
+
+            for cell_item in stu_row['sem2_cells']:
+                row_vals.append(cell_item['display'])
+            row_vals.append(stu_row['sem2_total_cell']['display'])
+
+            row_vals.append(stu_row['annual_total_cell']['display'])
+
+            ws.row_dimensions[current_row].height = 20
+            is_even = (idx % 2 == 0)
+
+            for c_idx, val in enumerate(row_vals, 1):
+                cell = ws.cell(row=current_row, column=c_idx, value=val)
+                cell.font = font_data
+                cell.border = border_thin
+                cell.alignment = align_center if c_idx not in [3] else align_left
+                if is_even:
+                    cell.fill = fill_zebra
+                if c_idx > num_info_cols and str(val) not in ['0', '0.0', '0 / 0', '0/0', '-']:
+                    cell.font = font_danger
+            current_row += 1
+
+        # Roster Total Row
+        r_vals = [
+            "",
+            "សរុបរួមប្រចាំថ្នាក់",
+            f"{len(student_rows)} នាក់",
+            "",
+        ]
+        for cell_item in roster_total['sem1_cells']:
+            r_vals.append(cell_item['display'])
+        r_vals.append(roster_total['sem1_total_cell']['display'])
+
+        for cell_item in roster_total['sem2_cells']:
+            r_vals.append(cell_item['display'])
+        r_vals.append(roster_total['sem2_total_cell']['display'])
+
+        r_vals.append(roster_total['annual_total_cell']['display'])
+
+        ws.row_dimensions[current_row].height = 24
+        for c_idx, val in enumerate(r_vals, 1):
+            cell = ws.cell(row=current_row, column=c_idx, value=val)
+            cell.font = font_data_bold
+            cell.fill = fill_total
+            cell.border = border_double
+            cell.alignment = align_center if c_idx not in [2] else align_left
+            if c_idx > num_info_cols and str(val) not in ['0', '0.0', '0 / 0', '0/0', '-']:
+                cell.font = font_danger
+        current_row += 1
+
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 16
+    ws.column_dimensions['C'].width = 22
+    ws.column_dimensions['D'].width = 12
+
+    for c in range(s1_start_col, annual_col + 1):
+        col_l = get_column_letter(c)
+        if c == s1_end_col or c == s2_end_col:
+            ws.column_dimensions[col_l].width = 14
+        elif c == annual_col:
+            ws.column_dimensions[col_l].width = 16
+        else:
+            ws.column_dimensions[col_l].width = 11
+
+    filename = f"Student_Semester_Annual_Absences_{date.today().strftime('%Y%m%d')}.xlsx"
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    wb.save(response)
+    return response
+
+
+@login_required
+@role_required(['ADMIN', 'TEACHER'])
+def student_semester_annual_attendance_report(request):
+    """
+    Cumulative Student Absence Matrix:
+    - Grouped by Grade Level & Classroom (សរុបតាមកម្រិតថ្នាក់/ថ្នាក់នីមួយៗ)
+    - By Each Academic Month (តាមខែនីមួយៗ)
+    - By Semester (ប្រចាំឆមាសនីមួយៗ: ឆមាសទី១ និង ឆមាសទី២ ដោយយកតាមខែក្នុងឆមាសបូកបញ្ចូលគ្នា)
+    - By Academic Year (ប្រចាំឆ្នាំ: ឆមាសទី១ + ឆមាសទី២)
+    - Fully downloadable as Excel for Admin according to currently viewed filters.
+    """
+    active_year = get_active_academic_year(request)
+    months_catalog = get_academic_year_months_catalog(active_year)
+    all_months = months_catalog['all_months']
+    sem1_months = months_catalog['sem1_months']
+    sem2_months = months_catalog['sem2_months']
+
+    grade_level = request.GET.get('grade_level', '').strip()
+    selected_class_id = request.GET.get('classroom', '').strip()
+    view_scope = request.GET.get('view_scope', '').strip() or request.GET.get('scope', '').strip()
+    absence_type = request.GET.get('absence_type', 'TOTAL').strip().upper()
+    unit = request.GET.get('unit', 'SESSIONS').strip().upper()
+    search_query = request.GET.get('q', '').strip()
+
+    if not view_scope:
+        view_scope = 'STUDENT_ROSTER' if (selected_class_id and selected_class_id != 'ALL') else 'CLASS_SUMMARY'
+
+    base_classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
+
+    if getattr(request.user, 'role', None) == 'TEACHER':
+        from apps.academics.utils import get_teacher_allowed_classroom_ids
+        allowed_cls_ids = get_teacher_allowed_classroom_ids(request.user)
+        base_classrooms = base_classrooms.filter(id__in=allowed_cls_ids)
+
+    available_grades = sorted(list(set(base_classrooms.values_list('grade_level', flat=True).distinct())))
+
+    filtered_classrooms = base_classrooms
+    if grade_level and grade_level != 'ALL':
+        try:
+            gl_int = int(grade_level)
+            filtered_classrooms = base_classrooms.filter(grade_level=gl_int)
+        except ValueError:
+            pass
+
+    if selected_class_id and selected_class_id != 'ALL':
+        target_classes = filtered_classrooms.filter(id=selected_class_id)
+        if not target_classes.exists():
+            target_classes = base_classrooms.filter(id=selected_class_id)
+            if target_classes.exists():
+                c_grade = target_classes.first().grade_level
+                grade_level = str(c_grade)
+                filtered_classrooms = base_classrooms.filter(grade_level=c_grade)
+            else:
+                target_classes = filtered_classrooms
+                selected_class_id = 'ALL'
+    else:
+        selected_class_id = 'ALL'
+        target_classes = filtered_classrooms
+
+    selected_class = target_classes.first() if (selected_class_id != 'ALL' and target_classes.count() == 1) else None
+
+    # Fetch distinct attendance records
+    start_d = active_year.start_date if active_year and active_year.start_date else date(2026, 9, 1)
+    end_d = active_year.end_date if active_year and active_year.end_date else date(2027, 7, 31)
+
+    raw_records = list(StudentAttendance.objects.filter(
+        classroom__in=target_classes,
+        date__range=(start_d, end_d),
+        status__in=[StudentAttendance.Status.ABSENT, StudentAttendance.Status.PERMISSION]
+    ).order_by().values_list('classroom_id', 'student_id', 'date', 'session', 'status').distinct())
+
+    session_map = {}
+    for cls_id, stu_id, d, sess, st in raw_records:
+        key = (stu_id, d, sess)
+        if key not in session_map or st == StudentAttendance.Status.ABSENT:
+            session_map[key] = (cls_id, st)
+
+    mult = 0.5 if unit == 'DAYS' else 1.0
+
+    student_att = {}
+    class_att = {}
+
+    for (stu_id, d, sess), (cls_id, st) in session_map.items():
+        y_m = (d.year, d.month)
+        if stu_id not in student_att:
+            student_att[stu_id] = {}
+        if y_m not in student_att[stu_id]:
+            student_att[stu_id][y_m] = {'unexcused': 0.0, 'permission': 0.0}
+
+        if cls_id not in class_att:
+            class_att[cls_id] = {}
+        if y_m not in class_att[cls_id]:
+            class_att[cls_id][y_m] = {'unexcused': 0.0, 'permission': 0.0}
+
+        if st == StudentAttendance.Status.ABSENT:
+            student_att[stu_id][y_m]['unexcused'] += mult
+            class_att[cls_id][y_m]['unexcused'] += mult
+        elif st == StudentAttendance.Status.PERMISSION:
+            student_att[stu_id][y_m]['permission'] += mult
+            class_att[cls_id][y_m]['permission'] += mult
+
+    def make_cell_val(unexcused, permission):
+        u = unexcused
+        p = permission
+        tot = u + p
+        if absence_type == 'UNEXCUSED':
+            num = u
+            disp = f"{round(num, 1)}" if isinstance(num, float) and num % 1 != 0 else f"{int(num)}"
+        elif absence_type == 'PERMISSION':
+            num = p
+            disp = f"{round(num, 1)}" if isinstance(num, float) and num % 1 != 0 else f"{int(num)}"
+        elif absence_type == 'DUAL':
+            num = tot
+            p_s = f"{round(p, 1)}" if isinstance(p, float) and p % 1 != 0 else f"{int(p)}"
+            u_s = f"{round(u, 1)}" if isinstance(u, float) and u % 1 != 0 else f"{int(u)}"
+            disp = f"{p_s} / {u_s}"
+        else: # TOTAL
+            num = tot
+            disp = f"{round(num, 1)}" if isinstance(num, float) and num % 1 != 0 else f"{int(num)}"
+
+        return {
+            'unexcused': u,
+            'permission': p,
+            'total': tot,
+            'num': num,
+            'display': disp,
+            'is_positive': (num > 0),
+        }
+
+    def compute_cells_bundle(data_map):
+        sem1_cells = []
+        sem2_cells = []
+        s1_u, s1_p = 0.0, 0.0
+        s2_u, s2_p = 0.0, 0.0
+
+        for m in sem1_months:
+            rec = data_map.get(m['key'], {'unexcused': 0.0, 'permission': 0.0})
+            u = rec['unexcused']
+            p = rec['permission']
+            s1_u += u
+            s1_p += p
+            sem1_cells.append(make_cell_val(u, p))
+
+        for m in sem2_months:
+            rec = data_map.get(m['key'], {'unexcused': 0.0, 'permission': 0.0})
+            u = rec['unexcused']
+            p = rec['permission']
+            s2_u += u
+            s2_p += p
+            sem2_cells.append(make_cell_val(u, p))
+
+        ann_u = s1_u + s2_u
+        ann_p = s1_p + s2_p
+
+        return {
+            'sem1_cells': sem1_cells,
+            'sem1_total_cell': make_cell_val(s1_u, s1_p),
+            'sem2_cells': sem2_cells,
+            'sem2_total_cell': make_cell_val(s2_u, s2_p),
+            'annual_total_cell': make_cell_val(ann_u, ann_p),
+            'raw_s1': {'unexcused': s1_u, 'permission': s1_p, 'total': s1_u + s1_p},
+            'raw_s2': {'unexcused': s2_u, 'permission': s2_p, 'total': s2_u + s2_p},
+            'raw_annual': {'unexcused': ann_u, 'permission': ann_p, 'total': ann_u + ann_p},
+        }
+
+    # 1. Classroom & Grade Summary
+    class_groups = []
+    grade_map = {}
+
+    school_total_raw = {
+        'classrooms_count': target_classes.count(),
+        'student_count': 0,
+        'months': {m['key']: {'unexcused': 0.0, 'permission': 0.0} for m in all_months},
+    }
+
+    active_students_qs = Student.objects.filter(classroom__in=target_classes, status='ACTIVE')
+    student_class_counts = dict(active_students_qs.values('classroom_id').annotate(cnt=Count('id')).values_list('classroom_id', 'cnt'))
+
+    for c in target_classes:
+        c_att = class_att.get(c.id, {})
+        bundle = compute_cells_bundle(c_att)
+        stu_cnt = student_class_counts.get(c.id, 0)
+        school_total_raw['student_count'] += stu_cnt
+
+        c_data = {
+            'classroom': c,
+            'classroom_name': c.name,
+            'grade_level': c.grade_level,
+            'student_count': stu_cnt,
+            'sem1_cells': bundle['sem1_cells'],
+            'sem1_total_cell': bundle['sem1_total_cell'],
+            'sem2_cells': bundle['sem2_cells'],
+            'sem2_total_cell': bundle['sem2_total_cell'],
+            'annual_total_cell': bundle['annual_total_cell'],
+        }
+
+        gl = c.grade_level
+        if gl not in grade_map:
+            grade_map[gl] = {
+                'grade_level': gl,
+                'grade_name': f"កម្រិតថ្នាក់ទី {gl}",
+                'classrooms': [],
+                'student_count': 0,
+                'months': {m['key']: {'unexcused': 0.0, 'permission': 0.0} for m in all_months},
+            }
+        grade_map[gl]['classrooms'].append(c_data)
+        grade_map[gl]['student_count'] += stu_cnt
+
+        for m in all_months:
+            m_key = m['key']
+            rec = c_att.get(m_key, {'unexcused': 0.0, 'permission': 0.0})
+            grade_map[gl]['months'][m_key]['unexcused'] += rec['unexcused']
+            grade_map[gl]['months'][m_key]['permission'] += rec['permission']
+            school_total_raw['months'][m_key]['unexcused'] += rec['unexcused']
+            school_total_raw['months'][m_key]['permission'] += rec['permission']
+
+    for gl in sorted(grade_map.keys()):
+        grp = grade_map[gl]
+        grp_bundle = compute_cells_bundle(grp['months'])
+        grp['subtotal'] = {
+            'student_count': grp['student_count'],
+            'sem1_cells': grp_bundle['sem1_cells'],
+            'sem1_total_cell': grp_bundle['sem1_total_cell'],
+            'sem2_cells': grp_bundle['sem2_cells'],
+            'sem2_total_cell': grp_bundle['sem2_total_cell'],
+            'annual_total_cell': grp_bundle['annual_total_cell'],
+        }
+        class_groups.append(grp)
+
+    school_bundle = compute_cells_bundle(school_total_raw['months'])
+    school_total = {
+        'classrooms_count': school_total_raw['classrooms_count'],
+        'student_count': school_total_raw['student_count'],
+        'sem1_cells': school_bundle['sem1_cells'],
+        'sem1_total_cell': school_bundle['sem1_total_cell'],
+        'sem2_cells': school_bundle['sem2_cells'],
+        'sem2_total_cell': school_bundle['sem2_total_cell'],
+        'annual_total_cell': school_bundle['annual_total_cell'],
+    }
+
+    # 2. Student Individual Roster
+    student_rows = []
+    roster_raw = {
+        'student_count': 0,
+        'months': {m['key']: {'unexcused': 0.0, 'permission': 0.0} for m in all_months},
+    }
+
+    if view_scope == 'STUDENT_ROSTER':
+        students_qs = Student.objects.filter(classroom__in=target_classes, status='ACTIVE')\
+                                     .select_related('classroom')\
+                                     .order_by('classroom__grade_level', 'classroom__name', 'student_id')
+        if search_query:
+            students_qs = students_qs.filter(
+                Q(student_id__icontains=search_query) |
+                Q(khmer_name__icontains=search_query) |
+                Q(latin_name__icontains=search_query)
+            )
+
+        students = list(students_qs)
+        roster_raw['student_count'] = len(students)
+
+        for s in students:
+            s_att = student_att.get(s.id, {})
+            bundle = compute_cells_bundle(s_att)
+
+            student_rows.append({
+                'student': s,
+                'sem1_cells': bundle['sem1_cells'],
+                'sem1_total_cell': bundle['sem1_total_cell'],
+                'sem2_cells': bundle['sem2_cells'],
+                'sem2_total_cell': bundle['sem2_total_cell'],
+                'annual_total_cell': bundle['annual_total_cell'],
+            })
+
+            for m in all_months:
+                m_key = m['key']
+                rec = s_att.get(m_key, {'unexcused': 0.0, 'permission': 0.0})
+                roster_raw['months'][m_key]['unexcused'] += rec['unexcused']
+                roster_raw['months'][m_key]['permission'] += rec['permission']
+
+    roster_bundle = compute_cells_bundle(roster_raw['months'])
+    roster_total = {
+        'student_count': roster_raw['student_count'],
+        'sem1_cells': roster_bundle['sem1_cells'],
+        'sem1_total_cell': roster_bundle['sem1_total_cell'],
+        'sem2_cells': roster_bundle['sem2_cells'],
+        'sem2_total_cell': roster_bundle['sem2_total_cell'],
+        'annual_total_cell': roster_bundle['annual_total_cell'],
+    }
+
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
+    # Excel Export
+    if request.GET.get('export') == 'excel':
+        if not is_admin:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("លោកអ្នកមិនមានសិទ្ធិទាញយករបាយការណ៍ជា Excel ឡើយ។")
+        return export_student_semester_annual_attendance_report_excel(
+            view_scope=view_scope,
+            absence_type=absence_type,
+            unit=unit,
+            all_months=all_months,
+            sem1_months=sem1_months,
+            sem2_months=sem2_months,
+            class_groups=class_groups,
+            school_total=school_total,
+            student_rows=student_rows,
+            roster_total=roster_total,
+            active_year=active_year,
+            selected_grade_level=str(grade_level) if grade_level else '',
+            selected_class=selected_class,
+        )
+
+    # Top KPI Metrics
+    summary_kpis = {
+        'total_students': school_total['student_count'] if view_scope == 'CLASS_SUMMARY' else roster_total['student_count'],
+        'sem1_absences': school_total['sem1_total_cell']['display'] if view_scope == 'CLASS_SUMMARY' else roster_total['sem1_total_cell']['display'],
+        'sem2_absences': school_total['sem2_total_cell']['display'] if view_scope == 'CLASS_SUMMARY' else roster_total['sem2_total_cell']['display'],
+        'annual_absences': school_total['annual_total_cell']['display'] if view_scope == 'CLASS_SUMMARY' else roster_total['annual_total_cell']['display'],
+    }
+
+    return render(request, 'attendance/student_semester_annual_attendance_report.html', {
+        'active_year': active_year,
+        'all_months': all_months,
+        'sem1_months': sem1_months,
+        'sem2_months': sem2_months,
+        'sem1_count': len(sem1_months),
+        'sem2_count': len(sem2_months),
+        'classrooms': base_classrooms,
+        'filtered_classrooms': filtered_classrooms,
+        'available_grades': available_grades,
+        'selected_grade_level': str(grade_level) if grade_level else '',
+        'selected_class_id': selected_class_id,
+        'selected_class': selected_class,
+        'view_scope': view_scope,
+        'absence_type': absence_type,
+        'unit': unit,
+        'search_query': search_query,
+        'class_groups': class_groups,
+        'school_total': school_total,
+        'student_rows': student_rows,
+        'roster_total': roster_total,
+        'summary_kpis': summary_kpis,
+        'is_admin': is_admin,
     })
 
 
